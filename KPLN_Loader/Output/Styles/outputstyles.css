@@ -1,0 +1,88 @@
+body {
+	color: #233749;
+	font-family: Consolas;
+	font-size: 9pt;
+	height: 100%;
+	margin: 5px 5px 5px 5px;
+	padding: 0;
+	scrollbar-arrow-color: #233749;
+	scrollbar-base-color: white;
+	scrollbar-face-color: #DDD;
+	scrollbar-highlight-color: white;
+	scrollbar-shadow-color: white;
+	scrollbar-track-color: white;
+}
+
+.systemok {
+	border-radius: 0;
+	padding: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+	color: #25C774;
+	padding-left: 20px;
+	font-weight: bold;
+}
+
+.systemregular {
+	border-radius: 0;
+	padding: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+	color: #0000FF;
+	padding-left: 20px;
+}
+
+.logdefault {
+	border-radius: 0;
+	padding: 0px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+}
+
+.logheader {
+	border-radius: 0;
+	padding: 0px;
+	font-weight: bold;
+}
+
+.logerror {
+	padding: 5px;
+	background: #f9f2f4;
+	color: #c7254e;
+}
+
+.logerrorheader {
+	padding: 5px;
+	background: #c7254e;
+	color: white;
+	margin-bottom: 0px;
+}
+
+.logwarning {
+	padding: 5px;
+	background: #F7F3F2;
+	color: #C64325;
+}
+
+.logcritical {
+	padding: 5px;
+	background: #c7254e;
+	color: white;
+}
+
+.logsuccess {
+	padding: 5px;
+	background: #25C774;
+	color: white;
+}
+
+.code {
+	background: #E7E7E7;
+	border-radius: 0;
+	font-family: Monaco, Consolas, "Andale Mono", "DejaVu Sans Mono", monospace;
+	line-height: 140%;
+	padding-bottom: 5px;
+	padding-top: 0px;
+	padding-left: 5px;
+	margin-top: 0px;
+}
