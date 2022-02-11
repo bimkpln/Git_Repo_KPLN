@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Tools", "KPLN_Tools\KPLN_Tools.csproj", "{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8BCF8A81-5604-427D-B29A-04C63E2B9AE4}
+	EndGlobalSection
+EndGlobal
