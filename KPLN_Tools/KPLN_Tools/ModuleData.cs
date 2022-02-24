@@ -4,6 +4,10 @@ namespace KPLN_Tools
 {
     public static class ModuleData
     {
+#if Revit2022
+        public static string RevitVersion = "2022";
+        public static Window RevitWindow { get; set; }
+#endif
 #if Revit2020
         public static string RevitVersion = "2020";
         public static Window RevitWindow { get; set; }

@@ -22,6 +22,11 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+#if Revit2022
+            MainWindowHandle = application.MainWindowHandle;
+            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
+            RevitWindow = hwndSource.RootVisual as Window;
+#endif
 #if Revit2020
             MainWindowHandle = application.MainWindowHandle;
             HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
@@ -30,7 +35,7 @@ namespace KPLN_Tools
 #if Revit2018
             try
             {
-                MainWindowHandle = WindowHandleSearch.MainWindowHandle.Handle;
+                MainWindowHandle = Tools.WindowHandleSearch.MainWindowHandle.Handle;
             }
             catch (Exception e)
             {
