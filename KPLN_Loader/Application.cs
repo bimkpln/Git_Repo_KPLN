@@ -31,7 +31,7 @@ namespace KPLN_Loader
 #if Revit2018
             try
             {
-                MainWindowHandle = WindowHandleSearch.MainWindowHandle.Handle;
+                MainWindowHandle = SystemTools.WindowHandleSearch.MainWindowHandle.Handle;
             }
             catch (Exception e)
             {
