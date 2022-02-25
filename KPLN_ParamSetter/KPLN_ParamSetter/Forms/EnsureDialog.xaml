@@ -1,0 +1,32 @@
+﻿<Window x:Class="KPLN_ParamManager.Forms.EnsureDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_ParamManager.Forms"
+             mc:Ignorable="d" 
+             Width="300" ResizeMode="NoResize" WindowStyle="ToolWindow" Title="KPLN: Предупреждение" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" WindowStartupLocation="CenterOwner" Topmost="True" SizeToContent="Height">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Rectangle Grid.Row="1" Fill="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Margin="0,10,0,0" VerticalAlignment="Top" Text="{Binding SIcon}" FontSize="48"/>
+            <StackPanel Margin="10" Grid.Column="1" Orientation="Vertical">
+                <TextBlock Margin="0,10,0,5" VerticalAlignment="Top" Text="{Binding Header}" FontSize="14" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock VerticalAlignment="Top" Text="{Binding MainContent}" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <Button Margin="10,10,10,10" Width="60" Content="Ок" VerticalAlignment="Top" Background="White" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" Click="OnOk" IsDefault="True"/>
+            <Button x:Name="btnCancel" Margin="0,10,10,10" Width="60" Content="Отмена" VerticalAlignment="Top" Background="White" BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" Click="OnDeny" IsCancel="True"/>
+        </StackPanel>
+        
+    </Grid>
+</Window>
