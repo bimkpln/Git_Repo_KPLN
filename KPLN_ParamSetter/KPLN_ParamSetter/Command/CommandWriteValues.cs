@@ -1,15 +1,15 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_ParamManager.Common;
-using KPLN_ParamManager.Forms;
+using KPLN_ParamSetter.Common;
+using KPLN_ParamSetter.Forms;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamManager.Command
+namespace KPLN_ParamSetter.Command
 {
     public class CommandWriteValues : IExecutableCommand
     {

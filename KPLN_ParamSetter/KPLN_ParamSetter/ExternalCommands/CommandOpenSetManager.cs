@@ -1,11 +1,11 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ParamManager.Forms;
+using KPLN_ParamSetter.Forms;
 using System;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamManager.ExternalCommands
+namespace KPLN_ParamSetter.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]

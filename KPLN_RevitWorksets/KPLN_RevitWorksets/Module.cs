@@ -10,10 +10,16 @@ as long as you credit the author by linking back and license your new creations 
 This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Windows.Interop;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
+using static KPLN_RevitWorksets.ModuleData;
+using static KPLN_Loader.Output.Output;
+using System.Windows;
 using System.Windows.Media.Imaging;
 
 
@@ -33,9 +39,27 @@ namespace KPLN_RevitWorksets
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            try { application.CreateRibbonTab(tabName); } catch { }
-
+#if Revit2022
+            MainWindowHandle = application.MainWindowHandle;
+            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
+            RevitWindow = hwndSource.RootVisual as Window;
+#endif
+#if R2020
+            MainWindowHandle = application.MainWindowHandle;
+            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
+            RevitWindow = hwndSource.RootVisual as Window;
+#endif
+#if R2018
+            try
+            {
+                MainWindowHandle = Tools.WindowHandleSearch.MainWindowHandle.Handle;
+            }
+            catch (Exception e)
+            {
+                PrintError(e);
+            }
+#endif
+            string assembly = Assembly.GetExecutingAssembly().Location.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
             string panelName = "Параметры";
             RibbonPanel panel = null;
             List<RibbonPanel> tryPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName).ToList();
@@ -47,21 +71,24 @@ namespace KPLN_RevitWorksets
             {
                 panel = tryPanels.First();
             }
-
-            PushButton btnHostMark = panel.AddItem(new PushButtonData(
-                "RevitWorksetsCommand",
-                "Рабочие\nнаборы",
-                assemblyPath,
-                "RevitWorksets.Command")
-                ) as PushButton;
-            btnHostMark.LargeImage = PngImageSource("RevitWorksets.Resources.Command_large.png");
-            btnHostMark.Image = PngImageSource("RevitWorksets.Resources.Command_small.png");
-            btnHostMark.ToolTip = "Рабочие наборы";
-            btnHostMark.LongDescription = "Возможности:\n" +
-                "Создание рабочих наборов и распределение элементов по ним по настроенным правилам. Примеры файлов в папке с программой;\n\n";
-            btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=396&chapterid=437"));
+            AddPushButtonData(
+                "Рабочие наборы",
+                "Рабочие наборы",
+                "Возможности:\nСоздание рабочих наборов и распределение элементов по ним по настроенным правилам. Примеры файлов в папке с программой\n",
+                string.Format("{0}.{1}", assembly, "ExternalCommands.CommandOpenSetManager"),
+                panel,
+                new Source.Source(Common.Collections.Icon.Command_large));
 
             return Result.Succeeded;
+        }
+        private void AddPushButtonData(string name, string text, string description, string className, RibbonPanel panel, Source.Source imageSource)
+        {
+            PushButtonData data = new PushButtonData(name, text, Assembly.GetExecutingAssembly().Location, className);
+            PushButton button = panel.AddItem(data) as PushButton;
+            button.ToolTip = description;
+            button.LongDescription = string.Format("Верстия: {0}\nСборка: {1}-{2}", ModuleData.Version, ModuleData.Build, ModuleData.Date);
+            button.ItemText = text;
+            button.LargeImage = new BitmapImage(new Uri(imageSource.Value));
         }
 
         public Result Close()

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_ParamManager.Common
+namespace KPLN_ParamSetter.Common
 {
     public class ListBoxElement : INotifyPropertyChanged
     {

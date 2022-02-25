@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ParamManager.Command;
-using KPLN_ParamManager.Common;
+using KPLN_ParamSetter.Command;
+using KPLN_ParamSetter.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -21,7 +21,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamManager.Forms
+namespace KPLN_ParamSetter.Forms
 {
     /// <summary>
     /// Логика взаимодействия для ParamSetter.xaml

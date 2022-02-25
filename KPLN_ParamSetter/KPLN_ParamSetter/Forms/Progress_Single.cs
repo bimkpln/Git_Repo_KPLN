@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KPLN_ParamManager.Forms
+namespace KPLN_ParamSetter.Forms
 {
     public partial class Progress_Single : Form
     {

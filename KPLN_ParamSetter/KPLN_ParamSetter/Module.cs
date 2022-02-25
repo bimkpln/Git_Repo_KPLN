@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_ParamManager.Tools;
+using KPLN_ParamSetter.Tools;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -8,9 +8,9 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using static KPLN_Loader.Output.Output;
-using static KPLN_ParamManager.ModuleData;
+using static KPLN_ParamSetter.ModuleData;
 
-namespace KPLN_ParamManager
+namespace KPLN_ParamSetter
 {
     public class Module : IExternalModule
     {

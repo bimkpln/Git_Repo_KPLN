@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace KPLN_ParamManager
+namespace KPLN_ParamSetter
 {
     public static class ModuleData
     {

@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ParamManager.Forms;
+using KPLN_ParamSetter.Forms;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamManager.Common
+namespace KPLN_ParamSetter.Common
 {
     public class ParameterRuleElement : INotifyPropertyChanged
     {

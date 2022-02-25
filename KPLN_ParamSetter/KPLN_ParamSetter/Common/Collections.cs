@@ -1,4 +1,4 @@
-﻿namespace KPLN_ParamManager.Common
+﻿namespace KPLN_ParamSetter.Common
 {
     public static class Collections
     {

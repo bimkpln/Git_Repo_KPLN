@@ -1,8 +1,8 @@
 ﻿using System.IO;
 using System.Reflection;
-using static KPLN_ParamManager.Common.Collections;
+using static KPLN_ParamSetter.Common.Collections;
 
-namespace KPLN_ParamManager.Source
+namespace KPLN_ParamSetter.Source
 {
     public class Source
     {
