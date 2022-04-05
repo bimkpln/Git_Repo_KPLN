@@ -15,7 +15,7 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
-    <OutputPath>..\..\..\09_Модули_KPLN_Loader\Common\RTls2018\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RTls2018\</OutputPath>
     <DefineConstants>Revit2018</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
@@ -24,7 +24,7 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
-    <OutputPath>..\..\..\09_Модули_KPLN_Loader\Common\RTls2020\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RTls2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
@@ -95,6 +95,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\Collections.cs" />
+    <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandRenamer.cs" />
     <Compile Include="Forms\FormRenamer.xaml.cs">
       <DependentUpon>FormRenamer.xaml</DependentUpon>
@@ -107,6 +108,12 @@
     <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Source\autonumber.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\ImageData\autonumber.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Source\ImageData\renamerFunc.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

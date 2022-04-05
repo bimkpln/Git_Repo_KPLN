@@ -26,6 +26,9 @@ namespace KPLN_Tools.Source
                 case Icon.renamerFunc:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\renamerFunc.png");
                     break;
+                case Icon.autonumber:
+                    Value = Path.Combine(AssemblyPath, @"Source\ImageData\autonumber.png");
+                    break;
                 default:
                     throw new Exception("Undefined icon!");
             }

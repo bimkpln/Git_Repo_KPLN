@@ -47,8 +47,9 @@ namespace KPLN_Tools
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
             pullDown.LargeImage = new BitmapImage(new Uri(new Source.Source(Common.Collections.Icon.toolBox).Value));
             string assembly = Assembly.GetExecutingAssembly().Location.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
-            AddPushButtonData("Прикрепить", "Прикрепить элементы модели", "Прикрепляет (pin) следующие элементы: связи, оси, уровни, базовую точку проекта.", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandPicker"), pullDown, new Source.Source(Common.Collections.Icon.pushPin));
-            AddPushButtonData("Перенумеровать", "Перенумеровать листы", "Перенумеровать листы по заданной функции", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandRenamer"), pullDown, new Source.Source(Common.Collections.Icon.renamerFunc));
+            AddPushButtonData("Прикрепить", "Прикрепить элементы модели", "Прикрепляет (pin) следующие элементы: связи, оси, уровни, базовую точку проекта.", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandPicker"), pullDown, new Source.Source(Common.Collections.Icon.pushPin), "http://moodle.stinproject.local");
+            AddPushButtonData("Перенумеровать", "Перенумеровать листы", "Перенумеровать листы по заданной функции", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandRenamer"), pullDown, new Source.Source(Common.Collections.Icon.renamerFunc), "http://moodle.stinproject.local");
+            AddPushButtonData("Нумерация", "Нумерация", "Нумерация позици в спецификации на +1 от начального значения", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandAutonumber"), pullDown, new Source.Source(Common.Collections.Icon.autonumber), "https://bim-starter.com/plugins/autonumber");
             
             return Result.Succeeded;
         }
@@ -61,14 +62,15 @@ namespace KPLN_Tools
         /// <param name="className"></param>
         /// <param name="pullDown"></param>
         /// <param name="imageSource"></param>
-        private void AddPushButtonData(string name, string text, string description, string className, PulldownButton pullDown, Source.Source imageSource)
+        private void AddPushButtonData(string name, string text, string description, string className, PulldownButton pullDown, Source.Source imageSource, string manualPage)
         {
             PushButtonData data = new PushButtonData(name, text, Assembly.GetExecutingAssembly().Location, className);
             PushButton button = pullDown.AddPushButton(data) as PushButton;
             button.ToolTip = description;
-            button.LongDescription = string.Format("Верстия: {0}\nСборка: {1}-{2}", ModuleData.Version, ModuleData.Build, ModuleData.Date);
+            button.LongDescription = string.Format("Версия: {0}\nСборка: {1}-{2}", ModuleData.Version, ModuleData.Build, ModuleData.Date);
             button.ItemText = text;
-            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, ModuleData.ManualPage));
+            //Ссылка на web-страницу по клавише F1
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, manualPage));
             button.LargeImage = new BitmapImage(new Uri(imageSource.Value));
         }
     }

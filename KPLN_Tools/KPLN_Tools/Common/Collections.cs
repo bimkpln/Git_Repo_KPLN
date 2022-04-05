@@ -12,6 +12,6 @@ namespace KPLN_Tools.Common
         /// Спискок иконок для работы класса <see cref="KPLN_Tools.Source.Source"/>.
         /// Сделано для ускорения процесса обращения к элементам внутри папки Source.
         /// </summary>
-        public enum Icon { toolBox, pushPin, renamerFunc }
+        public enum Icon { toolBox, pushPin, renamerFunc, autonumber }
     }
 }
