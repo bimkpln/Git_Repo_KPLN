@@ -19,7 +19,7 @@ namespace KPLN_RevitWorksets
         public static string Build = string.Format("Revit {0}", RevitVersion);
         public static string Version = "1.0.0.1";//Отображаемая версия модуля в Revit
         public static string Date = "2022/02/25";//Дата последнего изменения
-        public static string ManualPage = "http://moodle.stinproject.local/mod/book/view.php?id=396&chapterid=437";//Ссылка на web-страницу по клавише F1
+        public static string ManualPage = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=668";//Ссылка на web-страницу по клавише F1
         public static string ModuleName = "RevitWorksets";//Имя модуля
     }
 }

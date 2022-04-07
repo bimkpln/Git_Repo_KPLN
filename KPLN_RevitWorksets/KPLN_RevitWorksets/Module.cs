@@ -75,7 +75,9 @@ namespace KPLN_RevitWorksets
                 "Рабочие наборы",
                 "Рабочие наборы",
                 "Возможности:\nСоздание рабочих наборов и распределение элементов по ним по настроенным правилам. Примеры файлов в папке с программой\n",
-                string.Format("{0}.{1}", assembly, "ExternalCommands.CommandOpenSetManager"),
+                string.Format("{0}.{1}",
+                assembly,
+                "Command"),
                 panel,
                 new Source.Source(Common.Collections.Icon.Command_large));
 
@@ -88,6 +90,8 @@ namespace KPLN_RevitWorksets
             button.ToolTip = description;
             button.LongDescription = string.Format("Верстия: {0}\nСборка: {1}-{2}", ModuleData.Version, ModuleData.Build, ModuleData.Date);
             button.ItemText = text;
+            //Ссылка на web-страницу по клавише F1
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, ModuleData.ManualPage));
             button.LargeImage = new BitmapImage(new Uri(imageSource.Value));
         }
 
