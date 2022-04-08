@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30621.155
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_NavisWorksReports", "KPLN_NavisWorksReports.csproj", "{A263AB27-7745-4848-BEBB-C31B05CCB996}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2022|Any CPU = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2022|Any CPU.ActiveCfg = Revit2022|Any CPU
+		{A263AB27-7745-4848-BEBB-C31B05CCB996}.Revit2022|Any CPU.Build.0 = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {82BDA832-D4BB-4B1B-94F5-53E7FC1A7276}
+	EndGlobalSection
+EndGlobal
