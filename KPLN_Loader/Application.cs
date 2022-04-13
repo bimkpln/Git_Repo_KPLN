@@ -120,6 +120,10 @@ namespace KPLN_Loader
                                                 loadedModules.Add(moduleInstance);
                                                 Print(string.Format("Модуль [{0}] успешно активирован!", module.Name), MessageType.System_OK);
                                             }
+                                            else
+                                            {
+                                                Print(string.Format("С модулем [{0}] есть проблемы!", module.Name), MessageType.Warning);
+                                            }
                                         }
                                         catch (Exception e)
                                         {
