@@ -72,9 +72,11 @@
     <Reference Include="KPLN_DataBase, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\KPLN_DataBase.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_Loader\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
