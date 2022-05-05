@@ -23,14 +23,14 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
-    <OutputPath>bin\Revit2020\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Setup\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <Optimize>true</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2022|AnyCPU'">
-    <OutputPath>bin\Revit2022\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Setup\2022\</OutputPath>
     <DefineConstants>Revit2022</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <Optimize>true</Optimize>

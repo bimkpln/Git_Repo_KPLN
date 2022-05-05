@@ -9,11 +9,31 @@ namespace KPLN_Loader
 {
     public class Tools_Environment
     {
-        public string RevitVersion { get; }
+        ///<summary>
+        ///Путь до локальной папки пользователя
+        ///</summary>
         private readonly DirectoryInfo UserLocation = new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"AppData\Local"));
+        
+        ///<summary>
+        ///Версия Revit
+        ///</summary>
+        public string RevitVersion { get; }
+        
+        ///<summary>
+        ///Папка, в которую будут скопированы локально файлы для каждой версии Revit
+        ///</summary>
         public DirectoryInfo ApplicationLocation { get; }
+        
+        ///<summary>
+        ///Путь, по которому будет создана папка сесии
+        ///</summary>
         private DirectoryInfo SessionLocation { get; }
+
+        ///<summary>
+        ///Путь, по которому будет создана папка со скопироваными модулями
+        ///</summary>
         public DirectoryInfo ModulesLocation { get; }
+        
         public Tools_Environment(string revitVersion)
         {
             RevitVersion = revitVersion;
@@ -66,6 +86,7 @@ namespace KPLN_Loader
                     {
                         if (!BusyFilesInDirectory(subLoc))
                         { 
+                            // Очистка от файлов dll предыдущего запуска
                             ClearDirectory(subLoc);
                             subLoc.Delete();
                         }
