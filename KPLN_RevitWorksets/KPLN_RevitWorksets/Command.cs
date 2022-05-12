@@ -58,7 +58,7 @@ namespace KPLN_RevitWorksets
                 {
                     storage = (InfosStorage)serializer.Deserialize(r);
                 }
-                if (storage.LinkedFilesPrefix == null) storage.LinkedFilesPrefix = "#";
+                if (storage.LinkedFilesPrefix == null) storage.LinkedFilesPrefix = "00";
 
                 using (Transaction t = new Transaction(doc))
                 {
