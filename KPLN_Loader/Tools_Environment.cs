@@ -41,6 +41,11 @@ namespace KPLN_Loader
             SessionLocation = new DirectoryInfo(Path.Combine(ApplicationLocation.FullName, string.Format(@"{0}_{1}", RevitVersion, Guid.NewGuid().ToString())));
             ModulesLocation = new DirectoryInfo(Path.Combine(SessionLocation.FullName, "Modules"));
         }
+        
+        /// <summary>
+        /// Подготовка директорий к записи
+        /// </summary>
+        /// <returns></returns>
         public bool PrepareLocalDirectory()
         {
             try
@@ -56,6 +61,10 @@ namespace KPLN_Loader
                 return false;
             }
         }
+        
+        /// <summary>
+        /// Удаление старого лога html
+        /// </summary>
         public void ClearPreviousLog()
         {
             string outputPath = string.Format(@"{0}\log_{1}.html", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), Guid.NewGuid());
@@ -76,17 +85,31 @@ namespace KPLN_Loader
                 }
             }
         }
+        
+        public DirectoryInfo CopyModuleFromPath(DirectoryInfo path, string version, string name)
+        {
+            DirectoryInfo moduleDirectory = Directory.CreateDirectory(Path.Combine(ModulesLocation.FullName, path.Name));
+            DirectoryCopy(path.FullName, Path.Combine(ModulesLocation.FullName, path.Name), true);
+            Print(string.Format("Инфо: Модуль «{1}» получен и готов к активации [версия модуля: {0}]", version, name), MessageType.System_Regular);
+            return new DirectoryInfo(Path.Combine(ModulesLocation.FullName, path.Name));
+        }
+
+        /// <summary>
+        /// Подготовка папок по указанному пути
+        /// </summary>
+        /// <param name="loc">Путь к папке</param>
+        /// <param name="clearFreeElements">Нужно ли удалять элементы?</param>
+        /// <returns></returns>
         private bool PrepareLocation(DirectoryInfo loc, bool clearFreeElements)
         {
-            if (IsDirectoryExist(loc))
+            if (Directory.Exists(ApplicationLocation.FullName))
             {
                 if (clearFreeElements)
                 {
                     foreach (DirectoryInfo subLoc in loc.GetDirectories())
                     {
-                        if (!BusyFilesInDirectory(subLoc))
-                        { 
-                            // Очистка от файлов dll предыдущего запуска
+                        if (!BusyFilesInDirectory(subLoc) && subLoc.Name.Contains(RevitVersion))
+                        {
                             ClearDirectory(subLoc);
                             subLoc.Delete();
                         }
@@ -100,26 +123,16 @@ namespace KPLN_Loader
                 return true;
             }
         }
-        public DirectoryInfo CopyModuleFromPath(DirectoryInfo path, string version, string name)
-        {
-            DirectoryInfo moduleDirectory = Directory.CreateDirectory(Path.Combine(ModulesLocation.FullName, path.Name));
-            DirectoryCopy(path.FullName, Path.Combine(ModulesLocation.FullName, path.Name), true);
-            Print(string.Format("Инфо: Модуль «{1}» получен и готов к активации [версия модуля: {0}]", version, name), MessageType.System_Regular);
-            return new DirectoryInfo(Path.Combine(ModulesLocation.FullName, path.Name));
-        }
-        public bool IsDirectoryExist(DirectoryInfo path)
-        {
-            if (Directory.Exists(ApplicationLocation.FullName))
-            {
-                return true;
-            }
-            return false;
-        }
+
+        /// <summary>
+        /// Создание папок
+        /// </summary>
+        /// <param name="path"></param>
         private void CreateDirectory(DirectoryInfo path)
         {
             try
             {
-                if (!IsDirectoryExist(path))
+                if (!Directory.Exists(ApplicationLocation.FullName))
                 {
                     DirectoryInfo dir = Directory.CreateDirectory(path.FullName);
                 }
@@ -141,23 +154,11 @@ namespace KPLN_Loader
             }
             return false;
         }
-        private void ClearModulesDirectory(int loop = 0)
-        {
-            try
-            {
-                ClearDirectory(ModulesLocation);
-            }
-            catch (Exception)
-            {
-                if (loop < 5)
-                {
-                    Thread.Sleep(5000);
-                    ClearModulesDirectory(loop++);
-                }
-                else
-                { }
-            }
-        }
+        
+        /// <summary>
+        /// Очистка указанной дериктории
+        /// </summary>
+        /// <param name="dirPath"></param>
         private void ClearDirectory(DirectoryInfo dirPath)
         {
             try

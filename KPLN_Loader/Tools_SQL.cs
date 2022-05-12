@@ -1,7 +1,6 @@
 ﻿using KPLN_Loader.Common;
 using static KPLN_Loader.Preferences;
 using static KPLN_Loader.Output.Output;
-
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -11,10 +10,12 @@ namespace KPLN_Loader
     public class Tools_SQL
     {
         private SQLiteConnection sql = new SQLiteConnection();
-        public Tools_SQL()
+        
+        public Tools_SQL(string path)
         {
-            sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
+            sql.ConnectionString = string.Format(@"Data Source=" + path + ";Version=3;");
         }
+        
         private string GetCurentTime()
         {
             DateTime time = DateTime.Now;
@@ -22,6 +23,7 @@ namespace KPLN_Loader
             time.Hour.ToString(), time.Minute.ToString(), time.Second.ToString() };
             return string.Join(":", parts);
         }
+        
         private bool ProjectIdInList(SQLProjectInfo project, List<SQLProjectInfo> projectList)
         {
             foreach (SQLProjectInfo p in projectList)
@@ -30,6 +32,7 @@ namespace KPLN_Loader
             }
             return false;
         }
+        
         public List<SQLDepartmentInfo> GetDepartments()
         {
             List<SQLDepartmentInfo> departments = new List<SQLDepartmentInfo>();
@@ -62,6 +65,7 @@ namespace KPLN_Loader
             return departments;
 
         }
+        
         public void GetUserProjects(string systemName, bool initialization = false)
         {
             string log = "";
@@ -94,6 +98,7 @@ namespace KPLN_Loader
             }
             try { sql.Close(); } catch (Exception) { }
         }
+        
         public void GetUsers(int loop = 1)
         {
             Preferences.Users.Clear();
@@ -143,6 +148,7 @@ namespace KPLN_Loader
                 }
             }
         }
+        
         public SQLUserInfo GetUser(string systemName, int loop = 1)
         {
             SQLUserInfo User = null;
@@ -187,6 +193,7 @@ namespace KPLN_Loader
             try { sql.Close(); } catch (Exception) { }
             return User;
         }
+        
         public void GetUserData(string systemName, int loop=1)
         {
             try
@@ -232,6 +239,7 @@ namespace KPLN_Loader
             }
             try { sql.Close(); } catch (Exception) { }
         }
+        
         public bool IfUserExist(string username, int loop = 1)
         {
             if (loop > 1) { Print(string.Format("Попытка найти текущего пользователя {0}...", loop.ToString()), MessageType.Regular); }
@@ -267,6 +275,7 @@ namespace KPLN_Loader
             try { sql.Close(); } catch (Exception) { }
             return false;
         }
+        
         public void CreateUser(string systemName, string name, string family, string surname, int department, int loop = 1)
         {
             if (loop > 1) { Print(string.Format("Попытка создать нового пользователя {0}...", loop.ToString()), MessageType.Regular); }
@@ -302,6 +311,7 @@ namespace KPLN_Loader
             }
             try { sql.Close(); } catch (Exception) { }
         }
+        
         public void UpdateStatusMessage(int id, MessageDialogResult result)
         {
             string value = "Pending";
@@ -340,6 +350,7 @@ namespace KPLN_Loader
             catch (Exception) { }
             try { sql.Close(); } catch (Exception) { }
         }
+        
         public List<SQLModuleInfo> GetModules(string department, string table, string version, string projectId)
         {
             List<SQLModuleInfo> FoundedModules = new List<SQLModuleInfo>();
@@ -368,6 +379,7 @@ namespace KPLN_Loader
             try { sql.Close(); } catch (Exception) { }
             return FoundedModules;
         }
+        
         public void UpdateUserConnection(string systemName, string table)
         {
             try
