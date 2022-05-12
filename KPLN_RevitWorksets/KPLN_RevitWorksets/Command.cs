@@ -62,7 +62,7 @@ namespace KPLN_RevitWorksets
 
                 using (Transaction t = new Transaction(doc))
                 {
-                    t.Start("Создание рабочих наборов");
+                    t.Start("KPLN_Создание рабочих наборов");
 
                     //назначаю рабочие наборы в случае, если указана категория
                     foreach (WorksetByCategory wb in storage.worksetsByCategory)
@@ -164,10 +164,8 @@ namespace KPLN_RevitWorksets
 
 
                     //назначаю рабочие наборы для связанных файлов
-                    List<RevitLinkInstance> links = new FilteredElementCollector(doc)
-                        .OfClass(typeof(RevitLinkInstance))
-                        .Cast<RevitLinkInstance>()
-                        .ToList();
+                    FilteredElementCollector links = new FilteredElementCollector(doc)
+                        .OfClass(typeof(RevitLinkInstance));
 
                     foreach (RevitLinkInstance rli in links)
                     {
@@ -179,16 +177,17 @@ namespace KPLN_RevitWorksets
                         string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
                         string linkWorksetName = storage.LinkedFilesPrefix + linkWorksetName2;
                         bool checkExists = WorksetTable.IsWorksetNameUnique(doc, linkWorksetName);
-                        if (!checkExists) continue;
-
-                        Workset.Create(doc, linkWorksetName);
+                        if (checkExists)
+                        {
+                            Workset.Create(doc, linkWorksetName);
+                        }
 
                         Workset linkWorkset = new FilteredWorksetCollector(doc)
                             .OfKind(WorksetKind.UserWorkset)
                             .ToWorksets()
                             .Where(w => w.Name == linkWorksetName)
                             .First();
-
+                        
                         WorksetBy.SetWorkset(rli, linkWorkset);
                         WorksetBy.SetWorkset(linkFileType, linkWorkset);
                     }
