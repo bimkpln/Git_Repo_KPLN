@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_CSharp_Template", "KPLN_CSharp_Template\KPLN_CSharp_Template.csproj", "{00675015-3002-4A8F-B7C7-CBB16F172C75}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2022|Any CPU = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2022|Any CPU.ActiveCfg = Revit2022|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2022|Any CPU.Build.0 = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2990DC33-6E7B-4225-904A-7C4E85B1BFA6}
+	EndGlobalSection
+EndGlobal
