@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ModelChecker_User", "KPLN_ModelChecker_User.csproj", "{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9A70A01-3165-42EB-87D9-7EF9FAAF6559}
+	EndGlobalSection
+EndGlobal
