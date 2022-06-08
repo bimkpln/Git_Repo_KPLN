@@ -28,9 +28,9 @@ namespace KPLN_ModelChecker_Debugger
             //Добавляю выпадающий список pullDown
             PulldownButtonData pullDownData = new PulldownButtonData("Исправление", "Исправление");
             PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
-            BtnImagine(pullDown, "mainIcon.png");
+            BtnImagine(pullDown, "mainLarge.png");
 
-            //Добавляю кнопку в выпадающий список pullDown
+            //Добавляю pinner в выпадающий список pullDown
             AddPushButtonDataInPullDown(
                 "Прикрепить",
                 "Прикрепить элементы модели",
@@ -41,10 +41,27 @@ namespace KPLN_ModelChecker_Debugger
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Picker).FullName,
+                typeof(ExternalCommands.Pinner).FullName,
                 pullDown,
-                "pushPin.png",
+                "pinnerLarge.png",
                 "http://moodle.stinproject.local/mod/page/view.php?id=189"
+            );
+
+            //Добавляю worksetter в выпадающий список pullDown
+            AddPushButtonDataInPullDown(
+                "Рабочие наборы",
+                "Рабочие наборы",
+                "Распределяет элементы по рабочим наборам",
+                string.Format(
+                    "Возможности:\nСоздание рабочих наборов и распределение элементов по ним по настроенным правилам. Примеры файлов в папке с программой.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Worksetter).FullName,
+                pullDown,
+                "worksetLarge.png",
+                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=668"
             );
 
             return Result.Succeeded;
