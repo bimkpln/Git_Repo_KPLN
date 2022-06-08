@@ -20,9 +20,6 @@ namespace KPLN_Tools.Source
                 case Icon.toolBox:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\toolBox.png");
                     break;
-                case Icon.pushPin:
-                    Value = Path.Combine(AssemblyPath, @"Source\ImageData\pushPin.png");
-                    break;
                 case Icon.renamerFunc:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\renamerFunc.png");
                     break;

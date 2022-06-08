@@ -47,7 +47,6 @@ namespace KPLN_Tools
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
             pullDown.LargeImage = new BitmapImage(new Uri(new Source.Source(Common.Collections.Icon.toolBox).Value));
             string assembly = Assembly.GetExecutingAssembly().Location.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
-            AddPushButtonData("Прикрепить", "Прикрепить элементы модели", "Прикрепляет (pin) следующие элементы: связи, оси, уровни, базовую точку проекта.", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandPicker"), pullDown, new Source.Source(Common.Collections.Icon.pushPin), "http://moodle.stinproject.local");
             AddPushButtonData("Перенумеровать", "Перенумеровать листы", "Перенумеровать листы по заданной функции", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandRenamer"), pullDown, new Source.Source(Common.Collections.Icon.renamerFunc), "http://moodle.stinproject.local");
             AddPushButtonData("Нумерация", "Нумерация", "Нумерация позици в спецификации на +1 от начального значения", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandAutonumber"), pullDown, new Source.Source(Common.Collections.Icon.autonumber), "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=687");
             
