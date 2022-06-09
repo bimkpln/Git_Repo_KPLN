@@ -8,19 +8,19 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands.Common
     public class WorksetDTO
     {
         /// <summary>
-        /// Имя отдела
-        /// </summary>
-        public string Department;
-
-        /// <summary>
         /// Префикс для связей
         /// </summary>
         public string LinkedFilesPrefix;
 
         /// <summary>
-        /// Префикс для скопированных элементов
+        /// Нужно ли использовать отдельные рабочие наборы для копируемых с мониторингом элементам?
         /// </summary>
-        public string CopyElementsPrefix;
+        public bool UseMonitoredElements;
+
+        /// <summary>
+        /// Имя рабоего набора для скопированных элементов (кроме осей и уровней)
+        /// </summary>
+        public string MonitoredElementsName;
 
         /// <summary>
         /// Список параметров, для фильтрации

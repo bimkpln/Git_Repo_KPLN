@@ -101,6 +101,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Forms\" />
+    <Folder Include="Workset_Patterns\ГЛУ33\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Imagens\mainLarge.png">

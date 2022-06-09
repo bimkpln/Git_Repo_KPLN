@@ -55,9 +55,12 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                 {
                     t.Start("KPLN_Создание рабочих наборов");
 
-                    //Назначение рабочих наборов для элементов модели
-                    string department = dto.Department;
+                    // Общие поля класса WorksetDTO
                     string linkedFilesPrefix = dto.LinkedFilesPrefix;
+                    bool useMonitoredElems = dto.UseMonitoredElements;
+                    string monitoredElementsName = dto.MonitoredElementsName;
+
+                    //Назначение рабочих наборов для элементов модели по правилам из поля класса WorksetDTO
                     foreach (WorksetByCurrentParameter param in dto.WorksetByCurrentParameterList)
                     {
                         Workset workset = param.GetWorkset(doc);
@@ -91,7 +94,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                             foreach (string familyName in param.FamilyNames)
                             {
                                 List<FamilyInstance> elems = famIns
-                                    .Where(f => f.Symbol.FamilyName.ToLower().Contains(familyName.ToLower()))
+                                    .Where(f => f.Symbol.FamilyName.ToLower().StartsWith(familyName.ToLower()))
                                     .ToList();
 
                                 foreach (Element elem in elems)
@@ -118,7 +121,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                                     ElementType elemType = doc.GetElement(typeId) as ElementType;
                                     if (elemType == null) continue;
 
-                                    if (elemType.Name.ToLower().Contains(typeName.ToLower()))
+                                    if (elemType.Name.ToLower().StartsWith(typeName.ToLower()))
                                     {
                                         WorksetByCurrentParameter.SetWorkset(elem, workset);
                                     }
@@ -140,7 +143,15 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                                 {
                                     try
                                     {
-                                        string data = elem.LookupParameter(p.ParameterName).AsString();
+                                        string data;
+                                        try
+                                        {
+                                            data = elem.LookupParameter(p.ParameterName).AsString();
+                                        }
+                                        catch (ArgumentNullException)
+                                        {
+                                            data = elem.LookupParameter(p.ParameterName).AsValueString();
+                                        }
                                         if (data.Equals(p.ParameterValue))
                                         {
                                             WorksetByCurrentParameter.SetWorkset(elem, workset);
@@ -151,6 +162,27 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                             }
 
                         }
+                    }
+
+                    //Назначение рабочих наборов для элементов с монитрингом (кроме осей и уровней)
+                    if (useMonitoredElems)
+                    {
+                        Workset monitoredWorkset = CreateNewWorkset(doc, monitoredElementsName);
+                        List<FamilyInstance> allModelElements = new FilteredElementCollector(doc)
+                            .OfClass(typeof(FamilyInstance))
+                            .Cast<FamilyInstance>()
+                            .ToList();
+                        
+                        foreach (Element elem in allModelElements)
+                        {
+                            if ((elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Grids) 
+                                && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Levels)
+                                && (elem.IsMonitoringLinkElement() || elem.IsMonitoringLocalElement()))
+                            {
+                                WorksetByCurrentParameter.SetWorkset(elem, monitoredWorkset);
+                            }
+                        }
+
                     }
 
                     //Назначение рабочих наборов для связанных файлов
@@ -164,17 +196,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                         string linkWorksetName1 = linkInstance.Name.Split(':')[0];
                         string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
                         string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
-                        bool isUnique = WorksetTable.IsWorksetNameUnique(doc, linkWorksetName);
-                        if (isUnique)
-                        {
-                            Workset.Create(doc, linkWorksetName);
-                        }
-
-                        Workset linkWorkset = new FilteredWorksetCollector(doc)
-                            .OfKind(WorksetKind.UserWorkset)
-                            .ToWorksets()
-                            .Where(w => w.Name == linkWorksetName)
-                            .First();
+                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
 
                         WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
                         WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
@@ -227,6 +249,24 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                 }
             }
             return emptyWorksetsNames;
+        }
+
+        /// <summary>
+        /// Метод для создания рабочего набора
+        /// </summary>
+        private Workset CreateNewWorkset(Document doc, string name)
+        {
+            bool isUnique = WorksetTable.IsWorksetNameUnique(doc, name);
+            if (isUnique)
+            {
+                Workset.Create(doc, name);
+            }
+            Workset linkWorkset = new FilteredWorksetCollector(doc)
+                .OfKind(WorksetKind.UserWorkset)
+                .ToWorksets()
+                .Where(w => w.Name == name)
+                .First();
+            return linkWorkset;
         }
     }
 }
