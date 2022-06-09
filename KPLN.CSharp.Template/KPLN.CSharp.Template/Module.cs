@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Windows.Media.Imaging;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_CSharp_Template
+namespace KPLN.CSharp.Template
 {
     public class Module : IExternalModule
     {
@@ -26,6 +26,7 @@ namespace KPLN_CSharp_Template
 
             //Добавляю выпадающий список pullDown
             PulldownButtonData pullDownData = new PulldownButtonData("Шаблон", "Шаблон");
+            pullDownData.ToolTip = "Описание выпадающего списка";
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
             BtnImagine(pullDown, "temp.png");
 

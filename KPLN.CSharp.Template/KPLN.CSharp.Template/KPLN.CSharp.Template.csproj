@@ -95,8 +95,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Core\" />
-    <Folder Include="ExternalCommands\Common\" />
+    <Folder Include="Common\" />
     <Folder Include="Forms\" />
   </ItemGroup>
   <ItemGroup>
