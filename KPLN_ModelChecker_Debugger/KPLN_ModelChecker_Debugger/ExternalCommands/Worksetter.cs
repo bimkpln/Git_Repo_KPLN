@@ -94,7 +94,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                             foreach (string familyName in param.FamilyNames)
                             {
                                 List<FamilyInstance> elems = famIns
-                                    .Where(f => f.Symbol.FamilyName.ToLower().StartsWith(familyName.ToLower()))
+                                    .Where(f => f.Symbol.FamilyName.ToLower().Contains(familyName.ToLower()))
                                     .ToList();
 
                                 foreach (Element elem in elems)
@@ -121,7 +121,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                                     ElementType elemType = doc.GetElement(typeId) as ElementType;
                                     if (elemType == null) continue;
 
-                                    if (elemType.Name.ToLower().StartsWith(typeName.ToLower()))
+                                    if (elemType.Name.ToLower().Contains(typeName.ToLower()))
                                     {
                                         WorksetByCurrentParameter.SetWorkset(elem, workset);
                                     }
