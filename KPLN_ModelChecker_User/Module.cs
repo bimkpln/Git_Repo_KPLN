@@ -42,10 +42,13 @@ namespace KPLN_ModelChecker_User
             }
 #endif
             string assembly = Assembly.GetExecutingAssembly().Location.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Проверка");
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Контроль качества");
             PulldownButtonData pullDownData = new PulldownButtonData("Проверки", "Проверки");
+            pullDownData.ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки";
+
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
             pullDown.LargeImage = new BitmapImage(new Uri(new Source.Source(Common.Collections.Icon.Errors).Value));
+            
             AddPushButtonData("Проверить уровни элементов", "Проверка\nуровней", "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandCheckLevelOfInstances"), pullDown, new Source.Source(Common.Collections.Icon.CheckLevels));
             AddPushButtonData("Найти зеркальные элементы", "Проверка\nзеркальных", "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandCheckMirroredInstances"), pullDown, new Source.Source(Common.Collections.Icon.CheckMirrored));
             AddPushButtonData("Проверить площадки", "Проверка\nсвязей", "Проверка подгруженных rvt-связей на правильность настройки общей площадки Revit и выбранного рабочего набора.", string.Format("{0}.{1}", assembly, "ExternalCommands.CommandCheckPosition"), pullDown, new Source.Source(Common.Collections.Icon.CheckLocations));

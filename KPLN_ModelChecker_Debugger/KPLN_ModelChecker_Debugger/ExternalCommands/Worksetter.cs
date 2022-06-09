@@ -31,7 +31,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
                 //Вывод пользовательского окна с xml-шаблонами
                 string dllPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                string folder = Path.GetDirectoryName(dllPath);
+                string folder = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
                 System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog();
                 dialog.InitialDirectory = folder;
                 dialog.Multiselect = false;

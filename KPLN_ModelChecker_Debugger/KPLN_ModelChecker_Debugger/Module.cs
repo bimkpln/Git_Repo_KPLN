@@ -22,11 +22,12 @@ namespace KPLN_ModelChecker_Debugger
         public Result Execute(UIControlledApplication application, string tabName)
         {
             //Добавляю кнопку в панель
-            string currentPanelName = "Проверка";
+            string currentPanelName = "Контроль качества";
             RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().First();
 
             //Добавляю выпадающий список pullDown
             PulldownButtonData pullDownData = new PulldownButtonData("Исправление", "Исправление");
+            pullDownData.ToolTip = "Набор плагинов, для исправления выявленных ошибок в модели";
             PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
             BtnImagine(pullDown, "mainLarge.png");
 

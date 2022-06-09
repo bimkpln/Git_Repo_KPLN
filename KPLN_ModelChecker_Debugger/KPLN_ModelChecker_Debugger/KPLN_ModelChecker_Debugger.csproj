@@ -112,27 +112,13 @@
     <Content Include="Imagens\worksetLarge.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="XML_Patterns\Workset_SS_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_EOM_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_VK_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_OV_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_AR_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="XML_Patterns\Workset_KR_Sample.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="Workset_Patterns\Workset_SS.xml" />
+    <Content Include="Workset_Patterns\Workset_EOM.xml" />
+    <Content Include="Workset_Patterns\Workset_VK.xml" />
+    <Content Include="Workset_Patterns\Workset_Template.xml" />
+    <Content Include="Workset_Patterns\Workset_OV.xml" />
+    <Content Include="Workset_Patterns\Workset_AR.xml" />
+    <Content Include="Workset_Patterns\Workset_KR.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
