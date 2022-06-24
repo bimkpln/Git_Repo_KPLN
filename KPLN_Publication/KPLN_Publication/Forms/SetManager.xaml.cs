@@ -62,11 +62,11 @@ namespace KPLN_Publication.Forms
         public SetManager(Document doc)
         {
 #if Revit2020
-            Owner = SetManagerModuleData.RevitWindow;
+            Owner = ModuleData.RevitWindow;
 #endif
 #if Revit2018
             WindowInteropHelper helper = new WindowInteropHelper(this);
-            helper.Owner = SetManagerModuleData.MainWindowHandle;
+            helper.Owner = ModuleData.MainWindowHandle;
 #endif
             Doc = doc;
             List<ListBoxParameter> parameters = new List<ListBoxParameter>();

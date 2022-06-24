@@ -57,8 +57,7 @@
       <HintPath>..\packages\iTextSharp.5.5.13.2\lib\itextsharp.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>Z:\Отдел BIM\Перфильев Игорь\Репозитории\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>..\..\KPLN_Loader\bin\Revit2022\KPLN_Loader.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

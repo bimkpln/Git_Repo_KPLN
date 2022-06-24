@@ -25,7 +25,7 @@ namespace KPLN_Publication
             return decoder.Frames[0];
         }
 
-        private void AddPushButtonData(PulldownButton pullDown, string name, string text, string className, string largeImage, string image, string tTip, string lDiscr)
+        private void AddPushButtonData(PulldownButton pullDown, string name, string text, string className, string largeImage, string image, string tTip, string lDiscr, string contextualHelp)
         {
             PushButton button = pullDown.AddPushButton(new PushButtonData(
                 name, 
@@ -37,6 +37,7 @@ namespace KPLN_Publication
             button.Image = PngImageSource(image);
             button.ToolTip = tTip;
             button.LongDescription = lDiscr;
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
         }
 
         public Result Execute(UIControlledApplication application, string tabName)
@@ -64,6 +65,7 @@ namespace KPLN_Publication
                 " - Объединение листов в один PDF;\n" +
                 " - Авто именование PDF файлов по маске;\n\n";
             btnCreate.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=667"));
+            
             // Stacked items: Обновить спецификации, создание наборов публикаций и набор действий перед выдачей
             // Обновить спецификации
             PushButtonData btnRefresh = new PushButtonData("RefreshSchedules", "Обновить\nспецификации", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandRefreshSchedules");
@@ -71,6 +73,7 @@ namespace KPLN_Publication
             btnRefresh.Image = PngImageSource("KPLN_Publication.Resources.UpdateSmall.png");
             btnRefresh.ToolTip = "...";
             btnRefresh.LongDescription = "Обновляет спецификации на листах";
+            
             // Создание наборов публикаций
             PushButtonData btnPublSets = new PushButtonData("CreatePublicationSets", "Менеджер\nнаборов", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandOpenSetManager");
             btnPublSets.LargeImage = PngImageSource("KPLN_Publication.Resources.SetsBig.png");
@@ -78,29 +81,37 @@ namespace KPLN_Publication
             btnPublSets.LongDescription = "Пакетно создает наборы публикации по определенным условиям";
             btnPublSets.ToolTip = "Утилита для создания наборов видов и листов (для печати и экспорта DWG/BIM360)";
             btnPublSets.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=666"));
+            
             // Набор действий перед выдачей
             PulldownButtonData pullDownData = new PulldownButtonData("Перед выдачей", "Перед выдачей");
             pullDownData.LargeImage = PngImageSource("KPLN_Publication.Resources.PublBig.png");
             pullDownData.Image = PngImageSource("KPLN_Publication.Resources.PublSmall.png");
+            
             // Stacked items: добавление элементов
             IList<RibbonItem> stackedGroup = panel1.AddStackedItems(btnRefresh, btnPublSets, pullDownData);
             PulldownButton pullDownPubl = stackedGroup[2] as PulldownButton;
-            AddPushButtonData(pullDownPubl, 
+            AddPushButtonData(
+                pullDownPubl, 
                 "delLists", 
                 "Удалить листы",
                 "KPLN_Publication.ExternalCommands.BeforePublication.CommandDelLists",
                 "KPLN_Publication.Resources.DeleteLists.png",
                 "KPLN_Publication.Resources.DeleteLists.png", 
                 "Удаляет листы, которые не входят в параметры публикации",
-                "Выбираешь параметры публикации (можно несколько), которые будешь передавать Заказчику и все листы, которые в них не входят - удалятся");
-            AddPushButtonData(pullDownPubl,
+                "Выбираешь параметры публикации (можно несколько), которые будешь передавать Заказчику и все листы, которые в них не входят - удалятся",
+                "http://moodle.stinproject.local"
+            );
+            AddPushButtonData(
+                pullDownPubl,
                 "delViews",
                 "Удалить виды не на листах",
                 "KPLN_Publication.ExternalCommands.BeforePublication.CommandDelViews",
                 "KPLN_Publication.Resources.DeleteViews.png",
                 "KPLN_Publication.Resources.DeleteViews.png",
                 "Удаляет виды, которые НЕ расположены на листах",
-                "Скрипт выдаёт список НЕ размещенных на листы видов (план этажа/потолка, 3d-вид, чертежный вид, спецификации). Все позиции которые выберешь - удалятся");
+                "Скрипт выдаёт список НЕ размещенных на листы видов (план этажа/потолка, 3d-вид, чертежный вид, спецификации). Все позиции которые выберешь - удалятся",
+                "http://moodle.stinproject.local"
+            );
 
             return Result.Succeeded;
         }
