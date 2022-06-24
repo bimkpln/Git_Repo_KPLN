@@ -1,0 +1,105 @@
+﻿<Window  x:Class="KPLN.WPF.Template.FormRenamer"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+         xmlns:local="clr-namespace:KPLN_Tools.Forms"
+         mc:Ignorable="d" 
+         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
+         Title="KPLN: Нумерация листов" MaxWidth="450" SizeToContent="WidthAndHeight" Background="#FF292D36" WindowStartupLocation="CenterOwner" ResizeMode="NoResize" WindowStyle="ToolWindow" Topmost="True">
+    <Window.Resources>
+        <Style TargetType="Button" x:Key="BTN">
+            <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="Padding" Value="5,0,5,0"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="TXT">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
+        <Style TargetType="CheckBox" x:Key="CHB">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+        <Style TargetType="Expander" x:Key="EXP">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+        </Grid>
+        <Rectangle Fill="White" RadiusX="3" RadiusY="3" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.1"/>
+        <StackPanel>
+            <TextBlock Style="{StaticResource TXT}" IsHyphenationEnabled="True" Text="Позволяет задать номер листа в формате: [Том] - [Номер]" />
+            <TextBlock Style="{StaticResource TXT}" Text="[Том]: Укажи префикс, если он есть"/>
+            <TextBox x:Name="prfTextBox" Text=""></TextBox>
+        </StackPanel>
+        <StackPanel Grid.Row="2">
+            <TextBlock Style="{StaticResource TXT}" Text="[Номер]: Выбери действие и стартовый номер (при необходимости)"></TextBlock>
+            <CheckBox x:Name="isRenumbering" Style="{StaticResource CHB}" IsChecked="False" Click="Renumb" Margin="5" Content="Изменить нумерацию?">
+                <CheckBox.ToolTip>
+                    <TextBlock Text="Включи для изменения номера листа. Активация галки - разболкирует возможность редактирования значения стартового номера"/>
+                </CheckBox.ToolTip>
+            </CheckBox>
+            <TextBlock Style="{StaticResource TXT}" Text="Укажи стартовый номер:" Opacity="0.5"></TextBlock>
+            <TextBox x:Name="strNumTextBox" Text="1" IsEnabled="False"></TextBox>
+        </StackPanel>
+        <StackPanel Grid.Row="3">
+            <Expander Style="{StaticResource EXP}" Header="Изменение нумерации в основной надписи на листе">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" Text="Параметр штампа (основной надписи): Заполнение"></TextBlock>
+                    <CheckBox x:Name="isChangingList" Style="{StaticResource CHB}" IsChecked="False" Click="ListRenumb" Margin="5" Content="Изменить номер листа в штампе?">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="Включи для изменения номера в параметре основной надписи. Активация галки - заполнит выпадающий список с именами параметров"/>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource TXT}" Text="Выбери параметр для номера в основной надписи:" Opacity="0.5"></TextBlock>
+                    <ComboBox x:Name="cmbParam" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Definition.Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+        <StackPanel Margin="0,10,0,5" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+            <Button x:Name="btnOk" Style="{StaticResource BTN}" Content="Запуск" IsDefault="True" Click="OnOk"/>
+            <Button x:Name="btnCancel" Style="{StaticResource BTN}" Content="Отмена" Click="OnCancel"/>
+        </StackPanel>
+        <StackPanel Margin="0,5,0,5" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+            <Expander Style="{StaticResource EXP}" Header="Подсказка">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" Text="1. Если префикс не нужен - оставь поле [Том] пустым." Opacity="0.5"/>
+                    <TextBlock Style="{StaticResource TXT}" Text="2. Если Если не включить галку 'Изменить нумерацию?' плагин оставит нумерацию прежней, и только добавит префикс." Opacity="0.5"/>
+                    <TextBlock Style="{StaticResource TXT}" Text="3. Чтобы добавить разделитель между [Том] и [Номер] - просто добавь его в поле [Том], например:
+                               [Том]: 'АР/', [Номер]: 1 приведет к формату нумерации - 'АР/1, АР/2...'. Если добавить разделитель в поле [Номер] - плагин не отработает." Opacity="0.5"/>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+
+    </Grid>
+</Window>
