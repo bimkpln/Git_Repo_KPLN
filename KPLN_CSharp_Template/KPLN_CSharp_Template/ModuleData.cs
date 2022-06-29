@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KPLN.CSharp.Template
+namespace KPLN_CSharp_Template
 {
     internal static class ModuleData
     {

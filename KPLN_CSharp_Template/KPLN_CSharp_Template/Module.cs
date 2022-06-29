@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Windows.Media.Imaging;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN.CSharp.Template
+namespace KPLN_CSharp_Template
 {
     public class Module : IExternalModule
     {
