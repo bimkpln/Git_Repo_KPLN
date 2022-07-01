@@ -13,60 +13,66 @@ Zuev Aleksandr, 2020, all rigths reserved.*/
 #region Usings
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 #endregion
 
-namespace KPLN_Views_Ribbon
+namespace KPLN_Views_Ribbon.Views.CsvReaders
 {
-    public partial class FormBatchDelete : Form
+    public class FilterSourceInfo
     {
-        private List<string> m_items = new List<string>();
-        public List<string> Items
+
+        private string name = "";
+        public string FilterName
         {
-            get { return m_items; }
-            set { m_items = value; }
+            get { return name; }
         }
 
-        private List<string> m_checkedItems = new List<string>();
-        public List<string> CheckedItems
+        private string[] cats;
+        public string[] Categories
         {
-            get { return m_checkedItems; }
+            get { return cats; }
         }
 
-        public FormBatchDelete()
+        public int CountFilterRules
         {
-            InitializeComponent();
+            get { return sourceRules.Count; }
         }
 
-        private void FormBatchDelete_Load(object sender, EventArgs e)
+        private List<string[]> sourceRules = new List<string[]>();
+        public List<string[]> SourceRules
         {
-            string[] lines = m_items.ToArray();
-            //checkedListBox1.Items.AddRange(lines);
-            listBox1.Items.AddRange(lines);
+            get { return sourceRules; }
         }
 
-        private void btnCancel_Click(object sender, EventArgs e)
-        {
-            this.DialogResult = DialogResult.Cancel;
-            this.Close();
-        }
 
-        private void btnOk_Click(object sender, EventArgs e)
+        public FilterSourceInfo(string[] Line)
         {
-            foreach(object item in listBox1.SelectedItems)
+            int length = Line.Length;
+            if (length != 11 && length != 8 && length != 5)
+                return;
+
+            name = Line[0];
+            cats = Line[1].Split(',');
+
+            for (int i = 2; i < Line.Length; i++)
             {
-                m_checkedItems.Add(item.ToString());
+                string[] rule = new string[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    string check = Line[i];
+                    if (string.IsNullOrEmpty(check)) return;
+                    rule[j] = Line[i];
+                    i++;
+                }
+                sourceRules.Add(rule);
+                i--;
             }
-
-
-            this.DialogResult = DialogResult.OK;
-            this.Close();
         }
+
     }
 }

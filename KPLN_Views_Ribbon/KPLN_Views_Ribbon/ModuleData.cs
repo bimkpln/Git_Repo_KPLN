@@ -19,7 +19,7 @@ namespace KPLN_Views_Ribbon
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2022/06/24";
+        public static string Date = "2022/06/29";
 
         /// <summary>
         /// Имя модуля

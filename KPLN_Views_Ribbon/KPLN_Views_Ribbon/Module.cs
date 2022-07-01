@@ -25,13 +25,19 @@ namespace KPLN_Views_Ribbon
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Виды и листы");
 
-            // Добавляю выпадающий список pullDown
-            PulldownButtonData pullDownData = new PulldownButtonData("Views", "Виды");
-            pullDownData.ToolTip = "Пакетная работа с видами";
-            PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
-            BtnImagine(pullDown, "mainButton.png");
+            // Добавляю выпадающие списки pullDown для видов
+            PulldownButtonData pullDownData_Views = new PulldownButtonData("Views", "Виды");
+            pullDownData_Views.ToolTip = "Пакетная работа с видами";
+            PulldownButton pullDown_Views = panel.AddItem(pullDownData_Views) as PulldownButton;
+            BtnImagine(pullDown_Views, "mainViews.png");
 
-            // Добавляю в выпадающий список элементы
+            // Добавляю выпадающие списки pullDown для листов
+            PulldownButtonData pullDownData_Lists = new PulldownButtonData("Lists", "Листы");
+            pullDownData_Lists.ToolTip = "Пакетная работа с листами";
+            PulldownButton pullDown_Lists = panel.AddItem(pullDownData_Lists) as PulldownButton;
+            BtnImagine(pullDown_Lists, "mainLists.png");
+
+            #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
                 "BatchCreate",
                 "Создать\nфильтры",
@@ -42,8 +48,8 @@ namespace KPLN_Views_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandCreate).FullName,
-                pullDown,
+                typeof(ExternalCommands.Views.CommandCreate).FullName,
+                pullDown_Views,
                 "CommandCreate_small.png",
                 "http://moodle.stinproject.local"
             );
@@ -58,8 +64,8 @@ namespace KPLN_Views_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandBatchDelete).FullName,
-                pullDown,
+                typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
+                pullDown_Views,
                 "CommandBatchDelete_small.png",
                 "http://moodle.stinproject.local"
             );
@@ -74,8 +80,8 @@ namespace KPLN_Views_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandViewColoring).FullName,
-                pullDown,
+                typeof(ExternalCommands.Views.CommandViewColoring).FullName,
+                pullDown_Views,
                 "CommandViewColoring_small.png",
                 "http://moodle.stinproject.local"
             );
@@ -86,17 +92,40 @@ namespace KPLN_Views_Ribbon
                 "Штриховки\nстен",
                 "Штриховка по высоте стен",
                 string.Format(
-                    "Вычисляет отметки верха и низа стен; создает набор фильтров и выделяет стены разными штриховками;\n" +
-                    "записывает условное обозначение, соответствующее штриховке.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Вычисляет отметки верха и низа стен;\n"+
+                    "Создает набор фильтров и выделяет стены разными штриховками;\n" +
+                    "Записывает условное обозначение, соответствующее штриховке.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandWallHatch).FullName,
-                pullDown,
+                typeof(ExternalCommands.Views.CommandWallHatch).FullName,
+                pullDown_Views,
                 "CommandWallHatch_small.png",
                 "http://bim-starter.com/plugins/wallhatch/"
             );
+            #endregion
+
+            #region Добавляю в выпадающий список элементы для листов
+            AddPushButtonDataInPullDown(
+                "RenumberLists",
+                "Перенумеровать\nлисты",
+                "Перенумеровать листы",
+                string.Format(
+                    "Изменяет нумерацию по заданной функции;\n" +
+                    "Заполняет выбранный символ Юникода.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Lists.CommandListRename).FullName,
+                pullDown_Lists,
+                "CommandListRename.png",
+                "http://moodle.stinproject.local"
+            );
+            #endregion
 
             return Result.Succeeded;
         }

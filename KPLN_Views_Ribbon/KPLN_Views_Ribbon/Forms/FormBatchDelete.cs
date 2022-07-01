@@ -13,39 +13,60 @@ Zuev Aleksandr, 2020, all rigths reserved.*/
 #region Usings
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 #endregion
 
-namespace KPLN_Views_Ribbon
+namespace KPLN_Views_Ribbon.Forms
 {
-    public static class ReadDataFromCSV
+    public partial class FormBatchDelete : Form
     {
-        public static List<string[]> Read(string filePath)
+        private List<string> m_items = new List<string>();
+        public List<string> Items
         {
-            //int rowsCount = 0;
-            int colsCount = 0;
-
-            List<string[]> linesList = new List<string[]>();
-            string[] lines = System.IO.File.ReadAllLines(filePath, Encoding.Default);
-
-            colsCount = lines[0].Split(';').Length;
-            string[] line = new string[colsCount];
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i][0] == '#')
-                    continue;
-
-                if (!string.IsNullOrEmpty(lines[i]))
-                {
-                    line = lines[i].Split(';');
-                    linesList.Add(line);
-                }
-            }
-            return linesList;
+            get { return m_items; }
+            set { m_items = value; }
         }
 
+        private List<string> m_checkedItems = new List<string>();
+        public List<string> CheckedItems
+        {
+            get { return m_checkedItems; }
+        }
+
+        public FormBatchDelete()
+        {
+            InitializeComponent();
+        }
+
+        private void FormBatchDelete_Load(object sender, EventArgs e)
+        {
+            string[] lines = m_items.ToArray();
+            //checkedListBox1.Items.AddRange(lines);
+            listBox1.Items.AddRange(lines);
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
+        }
+
+        private void btnOk_Click(object sender, EventArgs e)
+        {
+            foreach(object item in listBox1.SelectedItems)
+            {
+                m_checkedItems.Add(item.ToString());
+            }
+
+
+            this.DialogResult = DialogResult.OK;
+            this.Close();
+        }
     }
 }

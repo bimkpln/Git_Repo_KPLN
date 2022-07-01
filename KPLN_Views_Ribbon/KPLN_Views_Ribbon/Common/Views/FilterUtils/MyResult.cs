@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KPLN_Views_Ribbon
+namespace KPLN_Views_Ribbon.Views.FilterUtils
 {
     public enum ResultType { ok, warning, cancel, error}
     public class MyDialogResult

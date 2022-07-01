@@ -1,4 +1,4 @@
-﻿namespace KPLN_Views_Ribbon
+﻿namespace KPLN_Views_Ribbon.Views.Colorize
 {
     partial class FormSelectParameterForFilters
     {

@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using KPLN_Views_Ribbon.Views.FilterUtils;
 
-namespace KPLN_Views_Ribbon
+namespace KPLN_Views_Ribbon.Views.Colorize.FilterData
 {
     class FilterDataSimple : IFilterData
     {
