@@ -11,15 +11,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     public class CommandZoomElement : IExecutableCommand
     {
-        public CommandZoomElement(Element element, BoundingBoxXYZ box, XYZ centroid)
-        {
-            Element = element;
-            Box = box;
-            Centroid = centroid;
-        }
         private Element Element { get; set; }
         private BoundingBoxXYZ Box { get; set; }
         private XYZ Centroid { get; set; }
+        
+        public CommandZoomElement(Element element)
+        {
+            Element = element;
+        }
+
+        public CommandZoomElement(Element element, BoundingBoxXYZ box, XYZ centroid) : this(element)
+        {
+            Box = box;
+            Centroid = centroid;
+        }
+        
         public Result Execute(UIApplication app)
         {
             try
@@ -33,6 +39,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 try
                 {
                     app.ActiveUIDocument.ShowElements(Element);
+                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { Element.Id });
                 }
                 catch (Exception) { }
             }

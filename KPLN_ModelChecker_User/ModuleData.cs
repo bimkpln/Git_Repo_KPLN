@@ -1,5 +1,6 @@
 ﻿using KPLN_Loader.Common;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Windows;
 
 namespace KPLN_ModelChecker_User
@@ -14,11 +15,20 @@ namespace KPLN_ModelChecker_User
         public static string RevitVersion = "2018";
 #endif
         public static System.IntPtr MainWindowHandle { get; set; }
-        public static string Build = string.Format("Revit {0}", RevitVersion);
-        public static string Version = "1.0.0.2b";
-        public static string Date = "2020/10/02";
-        public static string ManualPage = "https://kpln.kdb24.ru/article/60264/";
-        public static string ModuleName = "Model checker";
+        /// <summary>
+        /// Версия сборки, отображаемая в Revit
+        /// </summary>
+        public static string Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+        /// <summary>
+        /// Актуальная дата плагина
+        /// </summary>
+        public static string Date = "2022/07/07";
+
+        /// <summary>
+        /// Имя модуля
+        /// </summary>
+        public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
         public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
     }
 }

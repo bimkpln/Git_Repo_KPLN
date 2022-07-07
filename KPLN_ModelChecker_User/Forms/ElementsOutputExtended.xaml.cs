@@ -81,9 +81,16 @@ namespace KPLN_ModelChecker_User.Forms
         {
             WPFDisplayItem element = (sender as Button).DataContext as WPFDisplayItem;
             element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
+            
+            // Поиск вида для элементов
             if (element.Box != null)
             {
                 ModuleData.CommandQueue.Enqueue(new CommandZoomElement(element.Element, element.Box, element.Centroid));
+                element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
+            }
+            else
+            {
+                ModuleData.CommandQueue.Enqueue(new CommandZoomElement(element.Element));
                 element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
             }
         }
