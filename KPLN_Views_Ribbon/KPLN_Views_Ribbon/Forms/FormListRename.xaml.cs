@@ -43,6 +43,7 @@ namespace KPLN_Views_Ribbon.Forms
             ExpBlocker(ExpUnicodes, true);
             ExpBlocker(ExpPrefixes, false);
             ExpBlocker(ExpParamRefresh, false);
+            ExpBlocker(ExpClearRenumb, false);
 
             cmbUniCode.ItemsSource = new UniCodesCollection().UniCodes;
         }
@@ -52,6 +53,7 @@ namespace KPLN_Views_Ribbon.Forms
             ExpBlocker(ExpUnicodes, false);
             ExpBlocker(ExpPrefixes, true);
             ExpBlocker(ExpParamRefresh, false);
+            ExpBlocker(ExpClearRenumb, false);
         }
         
         private void RefreshParam(object sender, RoutedEventArgs e)
@@ -59,8 +61,17 @@ namespace KPLN_Views_Ribbon.Forms
             ExpBlocker(ExpUnicodes, false);
             ExpBlocker(ExpPrefixes, false);
             ExpBlocker(ExpParamRefresh, true);
+            ExpBlocker(ExpClearRenumb, false);
             
             cmbParam.ItemsSource = _tBParams;
+        }
+
+        private void UseClearRenumb(object sender, RoutedEventArgs e)
+        {
+            ExpBlocker(ExpUnicodes, false);
+            ExpBlocker(ExpPrefixes, false);
+            ExpBlocker(ExpParamRefresh, false);
+            ExpBlocker(ExpClearRenumb, true);
         }
 
         private void OnOk(object sender, RoutedEventArgs e)
@@ -74,11 +85,6 @@ namespace KPLN_Views_Ribbon.Forms
             Close();
         }
         
-        private void OnInfo(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
-
         private void Renumb(object sender, EventArgs e)
         {
             if ((bool)isRenumbering.IsChecked)

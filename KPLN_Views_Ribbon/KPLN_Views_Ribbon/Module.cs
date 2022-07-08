@@ -123,7 +123,7 @@ namespace KPLN_Views_Ribbon
                 typeof(ExternalCommands.Lists.CommandListRename).FullName,
                 pullDown_Lists,
                 "CommandListRename.png",
-                "http://moodle.stinproject.local"
+                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=911"
             );
             #endregion
 

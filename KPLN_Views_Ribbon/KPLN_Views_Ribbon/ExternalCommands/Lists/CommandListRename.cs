@@ -31,8 +31,8 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
             foreach (ElementId selId in selIds)
             {
                 Element elem = doc.GetElement(selId);
-                int a = elem.Category.Id.IntegerValue;
-                if (elem.Category.Id.IntegerValue == -2003100)
+                int catId = elem.Category.Id.IntegerValue;
+                if (catId.Equals((int)BuiltInCategory.OST_Sheets))
                 {
                     ViewSheet curViewSheet = elem as ViewSheet;
                     mixedSheetsList.Add(curViewSheet);
@@ -54,41 +54,65 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
                 using (Transaction trans = new Transaction(doc, "KPLN: Перенумеровать лист"))
                 {
                     trans.Start();
-                    
-                    //Меняю номер листа с использованием символов Юникода
-                    if ((bool)inputForm.isUNICode.IsChecked && inputForm.IsRun)
+                    try
                     {
-                        UniEntity cmbSelUni = (UniEntity)inputForm.cmbUniCode.SelectedItem;
-                        int uniNumber = Int32.Parse(inputForm.strNumUniCode.Text) - 1;
-                        bool isRun = true;
-                        while (isRun)
+                        //Меняю номер листа с использованием символов Юникода
+                        if ((bool)inputForm.isUNICode.IsChecked && inputForm.IsRun)
                         {
-                            uniNumber++;
-                            isRun = UseUniCodes(sortedSheets, cmbSelUni, uniNumber);
+                            UniEntity cmbSelUni = (UniEntity)inputForm.cmbUniCode.SelectedItem;
+                            int uniNumber = Int32.Parse(inputForm.strNumUniCode.Text) - 1;
+                            bool isRun = true;
+                            while (isRun)
+                            {
+                                uniNumber++;
+                                isRun = UseUniCodes(sortedSheets, cmbSelUni, uniNumber, (bool)inputForm.isEditToUni.IsChecked);
+                            }
+                        }
+                    
+                        //Меняю номер листа с использованием префиксов
+                        else if ((bool)inputForm.isPrefix.IsChecked && inputForm.IsRun)
+                        {
+                            string userPrefix = inputForm.prfTextBox.Text;
+                            userPrefix = userPrefix.Length > 0 ? userPrefix = userPrefix + "/" : userPrefix;
+                            int userNumber = Convert.ToInt32(inputForm.strNumTextBox.Text) - 1;
+                            if ((bool)inputForm.isRenumbering.IsChecked)
+                            {
+                                UsePrefix(sortedSheets, userPrefix, userNumber);
+                            }
+                            else
+                            {
+                                UsePrefix(sortedSheets, userPrefix);
+                            }
+                        }
+
+                        //Меняю номер листа без префиксов и Юникодов
+                        else if ((bool)inputForm.isClearRenumb.IsChecked && inputForm.IsRun)
+                        {
+                            int startNumber = Convert.ToInt32(inputForm.strClearNumTextBox.Text);
+                            ClearRenumber(sortedSheets, startNumber);
+                        }
+
+                        // Заполняю пользовательский параметр для нумерации в штампе
+                        else if ((bool)inputForm.isRefreshParam.IsChecked && inputForm.IsRun)
+                        {
+                            Parameter cmbSelPar = (Parameter)inputForm.cmbParam.SelectedItem;
+                            ParamRefresh(sortedSheets, cmbSelPar);
                         }
                     }
-                    
-                    //Меняю номер листа с использованием префиксов
-                    else if ((bool)inputForm.isPrefix.IsChecked && inputForm.IsRun)
+                    catch (Exception ex)
                     {
-                        string userPrefix = inputForm.prfTextBox.Text;
-                        userPrefix = userPrefix.Length > 0 ? userPrefix = userPrefix + "/" : userPrefix;
-                        int userNumber = Convert.ToInt32(inputForm.strNumTextBox.Text) - 1;
-                        if ((bool)inputForm.isRenumbering.IsChecked)
+                        if (ex.Message.Contains("Sheet number is already in use"))
                         {
-                            UsePrefix(sortedSheets, userPrefix, userNumber);
+                            TaskDialog.Show("Предупреждение", "Такой номер листа уже есть. Работа экстренно завершена!", TaskDialogCommonButtons.Ok);
+                            trans.RollBack();
+                            return Result.Failed;
                         }
                         else
                         {
-                            UsePrefix(sortedSheets, userPrefix);
+                            TaskDialog.Show("Ошибка", $"Отправь в BIM-отдел\n\n{ex.StackTrace}\n{ex.Message}\n\nРабота экстренно завершена!", TaskDialogCommonButtons.Ok);
+                            trans.RollBack();
+                            return Result.Failed;
                         }
-                    }
-
-                    // Заполняю пользовательский параметр для нумерации в штампе
-                    else if ((bool)inputForm.isRefreshParam.IsChecked && inputForm.IsRun)
-                    {
-                        Parameter cmbSelPar = (Parameter)inputForm.cmbParam.SelectedItem;
-                        ParamRefresh(sortedSheets, cmbSelPar);
                     }
                     trans.Commit();
                 }
@@ -118,6 +142,51 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
         }
 
         /// <summary>
+        /// Метод для замены номер листа с использованием символов Юникода
+        /// </summary>
+        /// <example> 
+        /// "7.1" преобразуется в "символЮникода7.1"
+        /// </example>
+        private bool UseUniCodes(List<ViewSheet> sortedSheets, UniEntity cmbSelUni, int counter, bool isConvertToUni)
+        {
+            try
+            {
+                foreach (ViewSheet curVSheet in sortedSheets)
+                {
+                    string trueNumb;
+                    if (isConvertToUni)
+                    {
+                        string strVSheetNumb = curVSheet.SheetNumber;
+                        trueNumb = UserNumber(strVSheetNumb);
+                    }
+                    else
+                    {
+                        trueNumb = curVSheet.SheetNumber;
+                    }
+                    curVSheet.SheetNumber = String.Concat(Enumerable.Repeat(cmbSelUni.Code, counter)) + trueNumb;
+                    try
+                    {
+
+                        if (counter == 1)
+                        {
+                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set(cmbSelUni.Name);
+                        }
+                        else
+                        {
+                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set($"{counter}X{cmbSelUni.Name}");
+                        }
+                    }
+                    catch { }
+                }
+                return false;
+            }
+            catch (Autodesk.Revit.Exceptions.ArgumentException)
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Метод для замены номер листа с использованием символов префикса и стартового номера листа
         /// </summary>
         /// <example> 
@@ -127,8 +196,6 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
         {
             foreach (ViewSheet curVSheet in sortedSheets)
             {
-                string strVSheetNumb = curVSheet.SheetNumber;
-                string onlyNumb = UserNumber(strVSheetNumb);
                 userNumber++;
                 RenumberWithPrefix(curVSheet, userPrefix, userNumber.ToString());
             }
@@ -147,6 +214,59 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
                 string strVSheetNumb = curVSheet.SheetNumber;
                 string onlyNumb = UserNumber(strVSheetNumb);
                 RenumberWithPrefix(curVSheet, userPrefix, onlyNumb);
+            }
+        }
+
+        /// <summary>
+        /// Метод для замены номер листа с использованием стартового номера
+        /// </summary>
+        /// <example> 
+        /// "7" преобразуется в "8"
+        /// </example>
+        private void ClearRenumber(List<ViewSheet> sortedSheets, int startNumber)
+        {
+            // Получаю стартовую разницу между номерами
+            int deltaNumber;
+            string constPartOfStartNumber = sortedSheets[0].SheetNumber.Split('.')[0];
+            if (Int32.TryParse(UserNumber(constPartOfStartNumber), out int constStartNumber))
+            {
+                deltaNumber = Math.Abs(startNumber - constStartNumber);
+            }
+            else
+            {
+                throw new Exception("Сначала очисти от приставок, а потом запускай нумерацию");
+            }
+            
+            // Задаю нумерацию с учетом стартовой разницы
+            string constPartOfNumber;
+            string varPartOfNumber;
+            sortedSheets.Reverse();
+            foreach (ViewSheet curVSheet in sortedSheets)
+            {
+                if (curVSheet.SheetNumber.Contains("."))
+                {
+                    constPartOfNumber = curVSheet.SheetNumber.Split('.')[0];
+                    varPartOfNumber = curVSheet.SheetNumber.Split('.').Skip(1).Aggregate((x, y) => x + y);
+                    if (Int32.TryParse(UserNumber(constPartOfNumber), out int constNumber))
+                    {
+                        curVSheet.SheetNumber = (constNumber + deltaNumber).ToString() + "." + varPartOfNumber;
+                    }
+                    else
+                    {
+                        throw new Exception("Сначала очисти от приставок, а потом запускай нумерацию");
+                    }
+                }
+                else
+                {
+                    if (Int32.TryParse(UserNumber(curVSheet.SheetNumber), out int constNumber))
+                    {
+                        curVSheet.SheetNumber = (constNumber + deltaNumber).ToString();
+                    }
+                    else
+                    {
+                        throw new Exception("Сначала очисти от приставок, а потом запускай нумерацию");
+                    }
+                }
             }
         }
 
@@ -198,15 +318,7 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
             {
                 ZeroNumber = $"{number}";
             }
-
-            try
-            {
-                sheet.SheetNumber = prefix + ZeroNumber;
-            }
-            catch (Exception e)
-            {
-                TaskDialog.Show("Ошибка", string.Format("Для элемента {0} - Ошибка: {1}", sheet, e));
-            }
+            sheet.SheetNumber = prefix + ZeroNumber;
         }
 
         /// <summary>
@@ -255,42 +367,6 @@ namespace KPLN_Views_Ribbon.ExternalCommands.Lists
                 }
             }
             return Int32.Parse(new String(number.Where(Char.IsDigit).ToArray()));
-        }
-
-        /// <summary>
-        /// Метод для замены номер листа с использованием символов Юникода
-        /// </summary>
-        /// <example> 
-        /// "7.1" преобразуется в "символЮникода7.1"
-        /// </example>
-        private bool UseUniCodes(List<ViewSheet> sortedSheets, UniEntity cmbSelUni, int counter)
-        {
-            try
-            {
-                foreach (ViewSheet curVSheet in sortedSheets)
-                {
-                    string strVSheetNumb = curVSheet.SheetNumber;
-                    curVSheet.SheetNumber = String.Concat(Enumerable.Repeat(cmbSelUni.Code, counter)) + strVSheetNumb;
-                    try
-                    {
-
-                        if (counter == 1)
-                        {
-                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set(cmbSelUni.Name);
-                        }
-                        else
-                        {
-                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set($"{counter}X{cmbSelUni.Name}");
-                        }
-                    }
-                    catch { }
-                }
-                return false;
-            }
-            catch (Autodesk.Revit.Exceptions.ArgumentException)
-            {
-                return true;
-            }
         }
     }
 }
