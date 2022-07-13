@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
@@ -20,6 +21,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandCheckNames : IExternalCommand
     {
+        
         private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status, BoundingBoxXYZ box)
         {
             StatusExtended exstatus;
@@ -32,18 +34,32 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     exstatus = StatusExtended.Warning;
                     break;
             }
-            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, "✔");
+
+            int catId;
+            string catName = string.Empty;
+            try 
+            {
+                catId = element.Category.Id.IntegerValue;
+                catName = element.Category.Name;
+            }
+            catch
+            {
+                Family family = (Family)element;
+                catId = family.FamilyCategory.Id.IntegerValue;
+                catName = family.FamilyCategory.Name;
+            }
+            WPFDisplayItem item = new WPFDisplayItem(catId, exstatus, "✔");
             try
             {
                 item.SetZoomParams(element, box);
                 item.Name = name;
                 item.Header = header;
                 item.Description = description;
-                item.Category = string.Format("<{0}>", element.Category.Name);
+                item.Category = string.Format("<{0}>", catName);
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
                 item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection.Add(new WPFDisplayItem(catId, exstatus) { Header = "Подсказка: ", Description = description });
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)
@@ -57,6 +73,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             return item;
         }
+
         private bool CatInList(List<List<object>> aCats, Category cat)
         { 
             foreach(List<object> c in aCats)
@@ -69,117 +86,145 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             return false;
         }
-        private void IncreaseCategoryAmmount(List<List<object>> aCats, Category cat)
+
+        /// <summary>
+        /// Поиск похожего имени. Одинаковым должна быть только первичная часть имени, до среза по циферным значениям
+        /// </summary>
+        /// <param name="currentName">Имя, которое нужно проанализировать</param>
+        /// <param name="elemsColl">Коллекция, по которой нужно осуществлять поиск</param>
+        /// <returns>Имя подобного элемента</returns>
+        private string SearchSimilarName(string currentName, List<Element> elemsColl)
         {
-            foreach (List<object> c in aCats)
+            string similarFamilyName = String.Empty;
+
+            // Осуществляю поиск цифр в конце имени
+            string digitEndTrimmer = Regex.Match(currentName, @"\d*$").Value;
+            // Осуществляю срез имени на найденные цифры в конце имени
+            string truePartOfName = currentName.TrimEnd(digitEndTrimmer.ToArray());
+            if (digitEndTrimmer.Length > 0)
             {
-                Category ca = c[1] as Category;
-                if (ca.Id.IntegerValue == cat.Id.IntegerValue)
+                foreach (Element checkElem in elemsColl)
                 {
-                    c[0] = (int)c[0] + 1;
+                    if (!checkElem.Equals(currentName) && checkElem.Name.Equals(truePartOfName.TrimEnd(new char[] { ' ', '.' })))
+                    {
+                        similarFamilyName = checkElem.Name;
+                    }
                 }
             }
+            return similarFamilyName;
         }
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
             {
                 Document doc = commandData.Application.ActiveUIDocument.Document;
-                HashSet<int> _fam_ids = new HashSet<int>();
-                HashSet<string> _fam_names = new HashSet<string>();
-                List<Family> _fams = new List<Family>();
+                List<Element> docFamilies = new List<Element>();
+                HashSet<int> familyIds = new HashSet<int>();
+                HashSet<string> docFamilyNames = new HashSet<string>();
                 List<List<object>> aCats = new List<List<object>>();
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
+                
                 foreach (Family family in new FilteredElementCollector(doc).OfClass(typeof(Family)).ToElements())
                 {
                     if (!CatInList(aCats, family.FamilyCategory))
                     {
                         aCats.Add(new List<object> { 0, family.FamilyCategory });
                     }
-                    if (!_fam_ids.Contains(family.Id.IntegerValue))
+                    if (!familyIds.Contains(family.Id.IntegerValue))
                     {
-                        _fam_ids.Add(family.Id.IntegerValue);
-                        _fams.Add(family);
-                        _fam_names.Add(family.Name);
+                        docFamilies.Add(family);
+                        familyIds.Add(family.Id.IntegerValue);
+                        docFamilyNames.Add(family.Name);
                     }
                     else
                     {
                         continue;
                     }
                 }
-                foreach (Family family in _fams)
+                
+                foreach (Family currentFam in docFamilies)
                 {
-                    try
+                    List<Element> currentFamilySymols = new List<Element>();
+                    string currentFamName = currentFam.Name;
+                    if (Regex.Match(currentFamName, @"\b[.0]\d*$").Value.Length > 2)
                     {
-                        HashSet<string> _sym_names = new HashSet<string>();
-                        List<FamilySymbol> _syms = new List<FamilySymbol>();
-                        string _family_name = family.Name;
-                        if (IsInteger(_family_name[_family_name.Length - 1]) && !IsInteger(_family_name[_family_name.Length - 2]))
-                        {
-                            foreach (int i in new int[] { 1, 2 })
+                        WPFDisplayItem item = GetItemByElement(
+                            currentFam,
+                            $"{currentFamName}",
+                            "Предупреждение семейства",
+                            $"Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
+                            Status.Error,
+                            null
+                        );
+
+                        item.Collection.Add(
+                            new WPFDisplayItem(-1, StatusExtended.Critical)
                             {
-                                if (_fam_names.Contains(GetShortenedName(_family_name, i)))
-                                {
-                                    try
-                                    {
-                                        IncreaseCategoryAmmount(aCats, family.Category);
-                                        WPFDisplayItem item = GetItemByElement(family, family.Name, "Предупреждение семейства", string.Format("Возможно семейство является копией семейства «{0}.rfa»", GetShortenedName(_family_name, i)), Status.Error, null);
-                                        item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Инфо:", Description = "Копий семейств в проекте быть не должно! Копии типоразмеров - допускаются, но только по согласованию с BIM-отделом" });
-                                        outputCollection.Add(item);
-                                    }
-                                    catch (Exception)
-                                    { }
-                                }
-                                else
-                                {
-                                    continue;
-                                }
+                                Header = "Инфо:",
+                                Description = "Необходимо корректно обновить семейство. Резервные копии - могут содержать не корректную информацию!"
                             }
-                        }
-                        foreach (ElementId id in family.GetFamilySymbolIds())
-                        {
-                            FamilySymbol symbol = family.Document.GetElement(id) as FamilySymbol;
-                            _syms.Add(symbol);
-                            _sym_names.Add(symbol.Name);
-                        }
-                        HashSet<string> _check_names = new HashSet<string>();
-                        foreach (FamilySymbol symbol in _syms)
-                        {
-                            string _symbol_name = symbol.Name;
-                            if (IsInteger(_symbol_name[_symbol_name.Length - 1]) && !IsInteger(_symbol_name[_symbol_name.Length - 2]))
-                            {
-                                foreach (int i in new int[] { 1, 2 })
-                                {
-                                    _check_names.Add(GetShortenedName(_symbol_name, i));
-                                    if (_sym_names.Contains(GetShortenedName(_symbol_name, i)))
-                                    {
-                                        try
-                                        {
-                                            IncreaseCategoryAmmount(aCats, symbol.Category);
-                                            WPFDisplayItem item = GetItemByElement(symbol, string.Format("{0} ({1})", _family_name, _symbol_name), "Предупреждение типоразмера", string.Format("Возможно тип является копией типоразмера «{0}»", GetShortenedName(_symbol_name, i)), Status.Error, null);
-                                            item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Инфо:", Description = "Копии необходимо наименовывать корректно, либо избегать появления копий в проекте!" });
-                                            outputCollection.Add(item);
-                                        }
-                                        catch (Exception)
-                                        { }
-                                    }
-                                    else
-                                    {
-                                        continue;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                continue;
-                            }
-                        }
+                        );
+
+                        outputCollection.Add(item);
                     }
-                    catch (Exception e)
+
+                    string similarFamilyName = SearchSimilarName(currentFamName, docFamilies);
+                    if (!similarFamilyName.Equals(String.Empty))
                     {
-                        PrintError(e);
+                        WPFDisplayItem item = GetItemByElement(
+                            currentFam,
+                            $"{currentFamName}",
+                            "Предупреждение семейства",
+                            $"Возможно семейство является копией семейства «{similarFamilyName}»",
+                            Status.Error,
+                            null
+                        );
+                                
+                        item.Collection.Add(
+                            new WPFDisplayItem(-1, StatusExtended.Critical) { 
+                                Header = "Инфо:",
+                                Description = "Копий семейств в проекте быть не должно!" 
+                            }
+                        );
+                                
+                        outputCollection.Add(item);
+                    }
+                        
+                    foreach (ElementId id in currentFam.GetFamilySymbolIds())
+                    {
+                        FamilySymbol symbol = currentFam.Document.GetElement(id) as FamilySymbol;
+                        currentFamilySymols.Add(symbol);
+                    }
+                        
+                    foreach (FamilySymbol currentSymbol in currentFamilySymols)
+                    {
+                        string currentSymName = currentSymbol.Name;
+                        string similarSymbolName = SearchSimilarName(currentSymName, currentFamilySymols);
+
+                        if (!similarSymbolName.Equals(String.Empty))
+                        {
+                            WPFDisplayItem item = GetItemByElement(
+                                currentSymbol,
+                                $"{currentFamName}: {currentSymName}",
+                                "Предупреждение типоразмера",
+                                $"Возможно тип является копией типоразмера «{similarSymbolName}»",
+                                Status.Error,
+                                null
+                            );
+                                    
+                            item.Collection.Add(
+                                new WPFDisplayItem(-1, StatusExtended.Critical) { 
+                                    Header = "Инфо:",
+                                    Description = "Копии необходимо наименовывать корректно, либо избегать появления копий в проекте!"
+                                }
+                            );
+                                    
+                            outputCollection.Add(item);
+                        }
                     }
                 }
+                
                 ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
                 wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 foreach (List<object> cat in aCats)
@@ -188,6 +233,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     Category category = cat[1] as Category;
                     wpfCategories.Add(new WPFDisplayItem(category.Id.IntegerValue, StatusExtended.Critical) { Name = string.Format("{0} ({1})", category.Name, ((int)cat[0]).ToString()) });
                 }
+                
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
                 ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
                 int counter = 1;
@@ -225,28 +271,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 return Result.Failed;
             }
         }
-        private static string GetShortenedName(string value, int ammount = 1)
-        {
-            string result = string.Empty;
-            for (int i = 0; i < value.Length - ammount; i++)
-            {
-                try
-                {
-                    result += value[i];
-                }
-                catch (Exception)
-                { }
-            }
-            return result;
-        }
-        private static bool IsInteger(char c)
-        {
-            if("0123456789".Contains(c))
-            { 
-                return true; 
-            }
-            return false;
 
-        }
     }
 }
