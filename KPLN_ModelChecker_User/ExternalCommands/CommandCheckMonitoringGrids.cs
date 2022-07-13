@@ -100,51 +100,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Document doc = commandData.Application.ActiveUIDocument.Document;
                 HashSet<int> ids = new HashSet<int>();
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
-                foreach (Element element in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType().ToElements())
-                { 
-                    try
-                    {
-                        if (element.IsMonitoringLinkElement())
-                        {
-                            RevitLinkInstance link = null;
-                            List<string> names = new List<string>();
-                            foreach (ElementId i in element.GetMonitoredLinkElementIds())
-                            {
-                                ids.Add(i.IntegerValue);
-                                link = commandData.Application.ActiveUIDocument.Document.GetElement(i) as RevitLinkInstance;
-                                names.Add(link.Name);
-                            }
-                            if (link == null)
-                            {
-                                outputCollection.Add(GetItemByElement(element, element.Name, string.Format("Связь не найдена: Ось «{0}»", element.Name), string.Format("Элементу с ID {0} необходимо исправить мониторинг", element.Id), Status.Error, null));
-                            }
-                        }
-                        else
-                        {
-                            outputCollection.Add(GetItemByElement(element, element.Name, string.Format("Отсутствует мониторинг: Ось «{0}»", element.Name), string.Format("Элементу с ID {0} необходимо задать мониторинг", element.Id), Status.Error, null));
-                        }
-                    }
-                    catch (Exception)
-                    { }
-                }
-                if (ids.Count > 1)
-                {
-                    WPFDisplayItem item = GetItemByElement(doc.Title, "Мониторинг настроен на основе нескольких файлов", "Необходимо настраивать мониторинг на основе одного файла (Разбивочный файл/Архитектурный файл)", Status.Error);
-                    foreach (int i in ids)
-                    {
-                        try
-                        {
-                            RevitLinkInstance link = doc.GetElement(new ElementId(i)) as RevitLinkInstance;
-                            item.Collection.Add(new WPFDisplayItem(link.Category.Id.IntegerValue, StatusExtended.Critical) { Header = "Связь с мониторингом:", Description = string.Format("«{0}» <{1}>", link.Name, link.Id.ToString()) });
-
-                        }
-                        catch (Exception)
-                        {
-                            item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Связь с мониторингом:", Description = string.Format("Не найдена <{0}>", i.ToString()) });
-                        }
-                    }
-                    outputCollection.Add(item);
-                }
+                KPLN_ModelChecker_User.Common.MonitoringSearcher.GetLinks(commandData, doc, BuiltInCategory.OST_Grids, ref outputCollection, ref ids);
                 ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
                 wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
