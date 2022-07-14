@@ -11,7 +11,7 @@ using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.Common
 {
-    internal static class MonitoringSearcher
+    internal static class MonitoringAndPinnerSearcher
     {
         private static WPFDisplayItem GetItemByElement(string name, string header, string description, Status status)
         {
@@ -107,8 +107,8 @@ namespace KPLN_ModelChecker_User.Common
                             GetItemByElement(
                                 element,
                                 element.Name,
-                                string.Format("Связь не найдена: Ось «{0}»", element.Name),
-                                string.Format("Элементу с ID {0} необходимо исправить мониторинг", element.Id),
+                                $"Связь не найдена: «{element.Name}»",
+                                $"Элементу с ID {element.Id} необходимо исправить мониторинг",
                                 Status.Error,
                                 null)
                             );
@@ -155,8 +155,8 @@ namespace KPLN_ModelChecker_User.Common
                             GetItemByElement(
                                 element,
                                 element.Name,
-                                string.Format("Мониторинг не из разбивочного файла: Ось «{0}»", element.Name),
-                                string.Format("Элементу с ID {0} необходимо исправить мониторинг", element.Id),
+                                $"Мониторинг не из разбивочного файла: «{element.Name}»",
+                                $"Элементу с ID {element.Id} необходимо исправить мониторинг",
                                 Status.Error,
                                 null)
                             );
@@ -168,8 +168,20 @@ namespace KPLN_ModelChecker_User.Common
                         GetItemByElement(
                             element,
                             element.Name,
-                            string.Format("Отсутствует мониторинг: Ось «{0}»", element.Name),
-                            string.Format("Элементу с ID {0} необходимо задать мониторинг", element.Id),
+                            $"Отсутствует мониторинг: «{element.Name}»",
+                            $"Элементу с ID {element.Id} необходимо задать мониторинг",
+                            Status.Error,
+                            null)
+                        );
+                }
+                if (!element.Pinned)
+                {
+                    outputCollection.Add(
+                        GetItemByElement(
+                            element,
+                            element.Name,
+                            $"Элемент не прикреплен: «{element.Name}»",
+                            $"Элемент с ID {element.Id} необходимо прикрепить",
                             Status.Error,
                             null)
                         );

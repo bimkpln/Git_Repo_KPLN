@@ -111,7 +111,7 @@ namespace KPLN_ModelChecker_User
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandCheckMonitoringLevels).FullName,
+                typeof(ExternalCommands.CommandCheckLevels).FullName,
                 pullDown,
                 "checker_levels_monitor.png",
                 null
@@ -126,7 +126,7 @@ namespace KPLN_ModelChecker_User
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandCheckMonitoringGrids).FullName,
+                typeof(ExternalCommands.CommandCheckGrids).FullName,
                 pullDown,
                 "checker_grids_monitor.png",
                 null
