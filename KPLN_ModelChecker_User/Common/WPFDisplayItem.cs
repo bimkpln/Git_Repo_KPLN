@@ -148,5 +148,10 @@ namespace KPLN_ModelChecker_User.Common
                     break;
             }
         }
+
+        public WPFDisplayItem(int categoryId, StatusExtended status, int elementId) : this (categoryId, status)
+        {
+            ElementId = elementId;
+        }
     }
 }

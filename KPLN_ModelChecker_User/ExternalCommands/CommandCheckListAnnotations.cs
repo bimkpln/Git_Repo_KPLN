@@ -231,22 +231,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             else
             {
+                // Настраиваю сортировку в окне и генерирую экземпляры ошибок
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
+                ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>();
+                wpfFiltration.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 foreach (KeyValuePair<ViewSheet, List<ElementId> > kvp in _errorDict)
                 {
                     foreach (ElementId elementId in kvp.Value)
                     {
                         Element element = doc.GetElement(elementId);
-                        WPFDisplayItem item = GetItemByElement(element, element.Name, $"Лист номер {kvp.Key.SheetNumber}", "Данные элементы запрещено использовать на моделируемых видах", Status.Error);
+                        WPFDisplayItem item = GetItemByElement(element, element.Name, kvp.Key.Id.IntegerValue, $"Лист номер {kvp.Key.SheetNumber}", "Данные элементы запрещено использовать на моделируемых видах", Status.Error);
                         item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = element.Id.ToString() });
                         outputCollection.Add(item);
                     }
+                    wpfFiltration.Add(new WPFDisplayItem(-2, StatusExtended.Critical, kvp.Key.Id.IntegerValue) { Name = $"Лист номер {kvp.Key.SheetNumber}"});
                 }
-                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
-                wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
-                ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
+                
+                // Вывожу результат
                 int counter = 1;
+                ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
                 foreach (WPFDisplayItem e in sortedOutputCollection)
                 {
                     e.Header = string.Format("{0}# {1}", (counter++).ToString(), e.Header);
@@ -254,13 +258,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 if (wpfElements.Count != 0)
                 {
-                    ElementsOutputExtended form = new ElementsOutputExtended(wpfElements, wpfCategories);
+                    ElementsOutputExtended form = new ElementsOutputExtended(wpfElements, wpfFiltration);
                     form.Show();
                 }
             }
         }
         
-        private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status)
+        private WPFDisplayItem GetItemByElement(Element element, string name, int listId, string header, string description, Status status)
         {
             StatusExtended exstatus;
             switch (status)
@@ -272,7 +276,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     exstatus = StatusExtended.Warning;
                     break;
             }
-            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus);
+            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, listId);
             try
             {
                 item.SetZoomParams(element, null);

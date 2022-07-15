@@ -25,7 +25,7 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class ElementsOutputExtended : Window
     {
-        public ElementsOutputExtended(ObservableCollection<WPFDisplayItem> collection, ObservableCollection<WPFDisplayItem> categories)
+        public ElementsOutputExtended(ObservableCollection<WPFDisplayItem> collection, ObservableCollection<WPFDisplayItem> filtration)
         {
 #if Revit2020
             Owner = ModuleData.RevitWindow;
@@ -38,8 +38,8 @@ namespace KPLN_ModelChecker_User.Forms
             try
             {
                 iControll.ItemsSource = collection;
-                cbxCategories.ItemsSource = categories;
-                cbxCategories.SelectedIndex = 0;
+                cbxFiltration.ItemsSource = filtration;
+                cbxFiltration.SelectedIndex = 0;
             }
             catch (Exception e)
             {
@@ -47,32 +47,34 @@ namespace KPLN_ModelChecker_User.Forms
             }
             
         }
-        private void UpdateCollection(int catId)
+        private void UpdateCollection(int itemCatId, int itemId)
         {
             foreach (WPFDisplayItem item in iControll.ItemsSource as ObservableCollection<WPFDisplayItem>)
             {
-                if (catId == -1)
+                if (itemCatId == -1)
                 {
-                    if (item.Visibility != Visibility.Visible)
+                    item.Visibility = Visibility.Visible;
+                }
+                else if (itemCatId == -2)
+                {
+                    if (item.ElementId == itemId)
                     {
                         item.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        item.Visibility = Visibility.Collapsed;
                     }
                 }
                 else
                 {
-                    if (item.CategoryId == catId)
+                    if (item.CategoryId == itemCatId)
                     {
-                        if (item.Visibility != Visibility.Visible)
-                        {
-                            item.Visibility = Visibility.Visible;
-                        }
+                        item.Visibility = Visibility.Visible;
                     }
                     else
                     {
-                        if (item.Visibility != Visibility.Collapsed)
-                        {
-                            item.Visibility = Visibility.Collapsed;
-                        }
+                        item.Visibility = Visibility.Collapsed;
                     }
                 }
             }
@@ -97,7 +99,9 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
         {
-            UpdateCollection((cbxCategories.SelectedItem as WPFDisplayItem).CategoryId);
+            int itemCatId = (cbxFiltration.SelectedItem as WPFDisplayItem).CategoryId;
+            int itemId = (cbxFiltration.SelectedItem as WPFDisplayItem).ElementId;
+            UpdateCollection(itemCatId, itemId);
         }
     }
 }

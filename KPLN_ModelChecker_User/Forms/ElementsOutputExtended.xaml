@@ -13,8 +13,8 @@
             <RowDefinition/>
         </Grid.RowDefinitions>
         <StackPanel Orientation="Vertical" Grid.Row="0">
-            <TextBlock Text="Категории:"/>
-            <ComboBox x:Name="cbxCategories" Margin="0,5,0,5" Background="White" SelectionChanged="OnSelectedCategoryChanged">
+            <TextBlock Text="Фильтрация:"/>
+            <ComboBox x:Name="cbxFiltration" Margin="0,5,0,5" Background="White" SelectionChanged="OnSelectedCategoryChanged">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Name}"/>

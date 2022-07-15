@@ -61,12 +61,7 @@ namespace KPLN_ModelChecker_User
                 "CheckLevels", 
                 "Проверка\nуровней", 
                 "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckLevelOfInstances).FullName,
                 pullDown,
                 "checker_levels.png",
@@ -76,12 +71,7 @@ namespace KPLN_ModelChecker_User
                 "CheckMirrored", 
                 "Проверка\nзеркальных", 
                 "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckMirroredInstances).FullName,
                 pullDown,
                 "checker_mirrored.png",
@@ -90,42 +80,30 @@ namespace KPLN_ModelChecker_User
             AddPushButtonData(
                 "CheckCoordinates", 
                 "Проверка\nсвязей", 
-                "Проверка подгруженных rvt-связей на правильность настройки общей площадки Revit и выбранного рабочего набора.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandCheckPosition).FullName,
+                "Проверка подгруженных rvt-связей:" +
+                "\n1. Корректность настройки общей площадки Revit;" +
+                "\n2. Корректность заданного рабочего набора;" +
+                "\n3. Прикрепление экземпляра связи.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandLinks).FullName,
                 pullDown,
                 "checker_locations.png",
                 null
                 );
             AddPushButtonData(
                 "CheckLevelMonitored", 
-                "Проверка\nуровней", "Проверка элементов на наличие настроенного мониторинга.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                "Мониторинг\nуровней", "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckLevels).FullName,
                 pullDown,
                 "checker_levels_monitor.png",
                 null
                 );
             AddPushButtonData(
-                "CheckGridMonitored", 
-                "Проверка\nосей", 
-                "Проверка элементов на наличие настроенного мониторинга.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                "CheckGridMonitored",
+                "Мониторинг\nосей",
+                "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckGrids).FullName,
                 pullDown,
                 "checker_grids_monitor.png",
@@ -135,12 +113,7 @@ namespace KPLN_ModelChecker_User
                 "CheckNames", 
                 "Проверка\nимен", 
                 "Проверка семейств и типоразмеров на наличие дубликатов имен.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckNames).FullName,
                 pullDown,
                 "family_name.png",
@@ -150,12 +123,7 @@ namespace KPLN_ModelChecker_User
                 "CheckWorksets", 
                 "Проверка\nрабочих наборов", 
                 "Проверка элементов на корректность рабочих наборов.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckElementWorksets).FullName,
                 pullDown,
                 "checker_worksets.png",
@@ -169,12 +137,7 @@ namespace KPLN_ModelChecker_User
                     "\n2. Элементы узлов;" + 
                     "\n3. Текст;" +
                     "\n4. Изображения.",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckListAnnotations).FullName,
                 pullDown,
                 "surch_list_annotation.png",

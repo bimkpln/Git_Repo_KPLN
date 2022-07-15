@@ -17,89 +17,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class CommandCheckPosition : IExternalCommand
+    public class CommandLinks : IExternalCommand
     {
-        private WPFDisplayItem GetItemByElement(string name, string header, string description, Status status)
-        {
-            StatusExtended exstatus;
-            switch (status)
-            {
-                case Status.Error:
-                    exstatus = StatusExtended.Critical;
-                    break;
-                default:
-                    exstatus = StatusExtended.Warning;
-                    break;
-            }
-            WPFDisplayItem item = new WPFDisplayItem(-1, exstatus, "✔");
-            try
-            {
-                item.Name = name;
-                item.Header = header;
-                item.Description = description;
-                item.Category = string.Format("<{0}>", "Документ");
-                item.Visibility = System.Windows.Visibility.Visible;
-                item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(-1, exstatus) { Header = "Описание: ", Description = description });
-                HashSet<string> values = new HashSet<string>();
-            }
-            catch (Exception e)
-            {
-                try
-                {
-                    PrintError(e.InnerException);
-                }
-                catch (Exception) { }
-                PrintError(e);
-            }
-            return item;
-        }
-        private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status, BoundingBoxXYZ box)
-        {
-            StatusExtended exstatus;
-            switch (status)
-            {
-                case Status.Error:
-                    exstatus = StatusExtended.Critical;
-                    break;
-                default:
-                    exstatus = StatusExtended.Warning;
-                    break;
-            }
-            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, "✔");
-            try
-            {
-                item.SetZoomParams(element, box);
-                item.Name = name;
-                item.Header = header;
-                item.Description = description;
-                item.Category = string.Format("<{0}>", element.Category.Name);
-                item.Visibility = System.Windows.Visibility.Visible;
-                item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
-                HashSet<string> values = new HashSet<string>();
-            }
-            catch (Exception e)
-            {
-                try
-                {
-                    PrintError(e.InnerException);
-                }
-                catch (Exception) { }
-                PrintError(e);
-            }
-            return item;
-        }
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
             {
-                ///HashSet<string> links = new HashSet<string>();
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
                 Document doc = commandData.Application.ActiveUIDocument.Document;
+
+                // Обрабатываю rvt-связи
+                IList<Element> rvtLinks = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements();
                 if (doc.IsWorkshared)
                 {
                     List<Workset> worksets = new List<Workset>();
@@ -112,7 +40,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         }
                         worksets.Add(w);
                     }
-                    foreach (RevitLinkInstance link in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements())
+                    foreach (RevitLinkInstance link in rvtLinks)
                     {
                         string[] separators = { ".rvt : " };
                         string[] nameSubs = link.Name.Split(separators, StringSplitOptions.None);
@@ -140,7 +68,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     WPFDisplayItem item = GetItemByElement(doc.Title, "Ошибка проекта", "Файл не настроен для совместной работы", Status.Error);
                     outputCollection.Add(item);
                 }
-                foreach (RevitLinkInstance link in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElements())
+                
+                foreach (RevitLinkInstance link in rvtLinks)
                 {
                     string[] separators = { ".rvt : " };
                     string[] nameSubs = link.Name.Split(separators, StringSplitOptions.None);
@@ -263,6 +192,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         catch (Exception) { }
                     }
                 }
+
+                // Заполняю пользовательское окно результатов
                 ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
                 wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
@@ -280,7 +211,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Мониторинг] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Мониторинг связей] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
                 }
                 return Result.Succeeded;
             }
@@ -290,5 +221,81 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 return Result.Failed;
             }
         }
+        
+        private WPFDisplayItem GetItemByElement(string name, string header, string description, Status status)
+        {
+            StatusExtended exstatus;
+            switch (status)
+            {
+                case Status.Error:
+                    exstatus = StatusExtended.Critical;
+                    break;
+                default:
+                    exstatus = StatusExtended.Warning;
+                    break;
+            }
+            WPFDisplayItem item = new WPFDisplayItem(-1, exstatus, "✔");
+            try
+            {
+                item.Name = name;
+                item.Header = header;
+                item.Description = description;
+                item.Category = string.Format("<{0}>", "Документ");
+                item.Visibility = System.Windows.Visibility.Visible;
+                item.IsEnabled = true;
+                item.Collection = new ObservableCollection<WPFDisplayItem>();
+                item.Collection.Add(new WPFDisplayItem(-1, exstatus) { Header = "Описание: ", Description = description });
+                HashSet<string> values = new HashSet<string>();
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    PrintError(e.InnerException);
+                }
+                catch (Exception) { }
+                PrintError(e);
+            }
+            return item;
+        }
+        
+        private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status, BoundingBoxXYZ box)
+        {
+            StatusExtended exstatus;
+            switch (status)
+            {
+                case Status.Error:
+                    exstatus = StatusExtended.Critical;
+                    break;
+                default:
+                    exstatus = StatusExtended.Warning;
+                    break;
+            }
+            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, "✔");
+            try
+            {
+                item.SetZoomParams(element, box);
+                item.Name = name;
+                item.Header = header;
+                item.Description = description;
+                item.Category = string.Format("<{0}>", element.Category.Name);
+                item.Visibility = System.Windows.Visibility.Visible;
+                item.IsEnabled = true;
+                item.Collection = new ObservableCollection<WPFDisplayItem>();
+                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                HashSet<string> values = new HashSet<string>();
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    PrintError(e.InnerException);
+                }
+                catch (Exception) { }
+                PrintError(e);
+            }
+            return item;
+        }
+
     }
 }

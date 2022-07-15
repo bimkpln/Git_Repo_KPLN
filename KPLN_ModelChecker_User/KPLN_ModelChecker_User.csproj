@@ -88,7 +88,7 @@
     <Compile Include="ExternalCommands\CommandCheckLevels.cs" />
     <Compile Include="ExternalCommands\CommandCheckGrids.cs" />
     <Compile Include="ExternalCommands\CommandCheckNames.cs" />
-    <Compile Include="ExternalCommands\CommandCheckPosition.cs" />
+    <Compile Include="ExternalCommands\CommandLinks.cs" />
     <Compile Include="ExternalCommands\CommandZoomElement.cs" />
     <Compile Include="Forms\ElementsOutput.xaml.cs">
       <DependentUpon>ElementsOutput.xaml</DependentUpon>
