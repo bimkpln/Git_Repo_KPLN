@@ -1,4 +1,4 @@
-﻿namespace KPLN_ParamSetter.Forms
+﻿namespace KPLN_Parameters_Ribbon.Forms
 {
     partial class Progress_Single
     {

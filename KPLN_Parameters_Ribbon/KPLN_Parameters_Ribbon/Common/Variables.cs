@@ -1,4 +1,4 @@
-﻿namespace KPLN_ParamSetter
+﻿namespace KPLN_Parameters_Ribbon.Common
 {
     public static class Variables
     {

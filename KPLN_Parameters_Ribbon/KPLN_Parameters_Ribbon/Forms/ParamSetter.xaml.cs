@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ParamSetter.Command;
-using KPLN_ParamSetter.Common;
+using KPLN_Parameters_Ribbon.Command;
+using KPLN_Parameters_Ribbon.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -21,24 +21,14 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamSetter.Forms
+namespace KPLN_Parameters_Ribbon.Forms
 {
-    /// <summary>
-    /// Логика взаимодействия для ParamSetter.xaml
-    /// </summary>
     public partial class ParamSetter : Window
     {
         private Document Doc { get; set; }
         public ObservableCollection<ListBoxElement> _Categories = new ObservableCollection<ListBoxElement>();
         public ParamSetter(Document doc)
         {
-#if Revit2020
-            Owner = ModuleData.RevitWindow;
-#endif
-#if Revit2018
-            WindowInteropHelper helper = new WindowInteropHelper(this);
-            helper.Owner = ModuleData.MainWindowHandle;
-#endif
             _Categories.Add(new ListBoxElement(null, "<Нет>"));
             ObservableCollection<ListBoxElement> _сategories = new ObservableCollection<ListBoxElement>();
             Doc = doc;
@@ -48,7 +38,7 @@ namespace KPLN_ParamSetter.Forms
             this.RulesControll.ItemsSource = new ObservableCollection<ParameterRuleElement>();
             foreach (BuiltInCategory built_in_category in Enum.GetValues(typeof(BuiltInCategory)))
             {
-                
+
                 try
                 {
                     Category cat = Category.GetCategory(Doc, built_in_category);
@@ -266,7 +256,7 @@ namespace KPLN_ParamSetter.Forms
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     if (!ParameterRuleElement.SaveData(dialog.FileName, this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>))
-                    { 
+                    {
                         EnsureDialog form = new EnsureDialog(this, ":(", "Ошибка при сохранении", "При сохранении настроек произошла ошибка...");
                         form.ShowDialog();
                     }

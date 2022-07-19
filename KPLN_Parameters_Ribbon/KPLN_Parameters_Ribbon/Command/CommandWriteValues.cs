@@ -1,15 +1,15 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_ParamSetter.Common;
-using KPLN_ParamSetter.Forms;
+using KPLN_Parameters_Ribbon.Common;
+using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamSetter.Command
+namespace KPLN_Parameters_Ribbon.Command
 {
     public class CommandWriteValues : IExecutableCommand
     {
@@ -53,9 +53,9 @@ namespace KPLN_ParamSetter.Command
                     max += new FilteredElementCollector(doc).OfCategoryId((rule.SelectedCategory.Data as Category).Id).ToElements().Count;
                 }
                 string format = "{0} из " + max.ToString() + " элементов обработано";
-                using (Progress_Single pb = new Progress_Single("Копирование параметров", format, max)) 
+                using (Progress_Single pb = new Progress_Single("Копирование параметров", format, max))
                 {
-                    using (Transaction t = new Transaction(doc, "Копирование параметров")) 
+                    using (Transaction t = new Transaction(doc, "Копирование параметров"))
                     {
                         t.Start();
                         try
@@ -172,7 +172,7 @@ namespace KPLN_ParamSetter.Command
                         return null;
                 }
             }
-            catch (Exception) 
+            catch (Exception)
             {
                 try
                 {

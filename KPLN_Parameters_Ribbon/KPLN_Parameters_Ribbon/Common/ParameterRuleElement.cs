@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ParamSetter.Forms;
+using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ParamSetter.Common
+namespace KPLN_Parameters_Ribbon.Common
 {
     public class ParameterRuleElement : INotifyPropertyChanged
     {
@@ -72,7 +72,7 @@ namespace KPLN_ParamSetter.Common
                 bool target_found = false;
                 foreach (ListBoxElement par in rule.SourceParameters)
                 {
-                    
+
                     if ((par.Data as Parameter).Definition.Name == parts[1])
                     {
                         rule.SelectedSourceParameter = par;
@@ -206,5 +206,4 @@ namespace KPLN_ParamSetter.Common
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
-
 }

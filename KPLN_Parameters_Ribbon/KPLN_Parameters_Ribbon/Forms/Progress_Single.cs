@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KPLN_ParamSetter.Forms
+namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class Progress_Single : Form
     {
@@ -57,5 +57,4 @@ namespace KPLN_ParamSetter.Forms
             System.Windows.Forms.Application.DoEvents();
         }
     }
-
 }

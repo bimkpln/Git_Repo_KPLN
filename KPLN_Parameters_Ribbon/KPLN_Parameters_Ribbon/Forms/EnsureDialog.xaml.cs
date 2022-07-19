@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace KPLN_ParamSetter.Forms
+namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class EnsureDialog : Window
     {
@@ -23,7 +23,7 @@ namespace KPLN_ParamSetter.Forms
         public static bool Commited = false;
         public EnsureDialog(Window parent, string sIcon, string header, string mainContent, bool cancelIsEnabled = true)
         {
-            if(!cancelIsEnabled)
+            if (!cancelIsEnabled)
             { btnCancel.Visibility = Visibility.Collapsed; }
             SIcon = sIcon;
             Header = header;

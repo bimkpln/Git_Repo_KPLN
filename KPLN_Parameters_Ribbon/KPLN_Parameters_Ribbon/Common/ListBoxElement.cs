@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_ParamSetter.Common
+namespace KPLN_Parameters_Ribbon.Common
 {
     public class ListBoxElement : INotifyPropertyChanged
     {
@@ -29,5 +29,4 @@ namespace KPLN_ParamSetter.Common
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
-
 }
