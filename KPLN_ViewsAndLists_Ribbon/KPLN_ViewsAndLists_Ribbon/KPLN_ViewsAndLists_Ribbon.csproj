@@ -7,8 +7,8 @@
     <ProjectGuid>{CA8DE30C-7493-4B17-AD21-1CC0D8F4B2CE}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KPLN_Views_Ribbon</RootNamespace>
-    <AssemblyName>KPLN_Views_Ribbon</AssemblyName>
+    <RootNamespace>KPLN_ViewsAndLists_Ribbon</RootNamespace>
+    <AssemblyName>KPLN_ViewsAndLists_Ribbon</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -27,7 +27,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RVF2018\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RVL2018\</OutputPath>
     <DefineConstants>TRACE;DEBUG;R2018</DefineConstants>
     <AssemblyName>$(AssemblyName)</AssemblyName>
     <ErrorReport>prompt</ErrorReport>
@@ -39,7 +39,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RVF2020\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RVL2020\</OutputPath>
     <DefineConstants>R2020</DefineConstants>
     <AssemblyName>$(AssemblyName)</AssemblyName>
     <ErrorReport>prompt</ErrorReport>
