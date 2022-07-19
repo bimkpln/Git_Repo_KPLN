@@ -1,0 +1,152 @@
+﻿<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.FormListRename"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
+        Title="KPLN: Нумерация листов" MaxWidth="500" SizeToContent="WidthAndHeight" Background="#FF292D36" WindowStartupLocation="CenterOwner" ResizeMode="NoResize" WindowStyle="ToolWindow" Topmost="False">
+    <Window.Resources>
+        <Style TargetType="Button" x:Key="BTN">
+            <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="Padding" Value="5,0,5,0"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="TXT">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
+        <Style TargetType="CheckBox" x:Key="CHB">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+        <Style TargetType="RadioButton" x:Key="MainRB">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="Expander" x:Key="EXP">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+ 
+        <StackPanel Grid.Row="0">
+            <RadioButton GroupName="RenameType" x:Name="isUNICode" Style="{StaticResource MainRB}" IsChecked="False" Click="UseUNICode" Content="Использовать Юникоды?">
+                <RadioButton.ToolTip>
+                    <TextBlock Text="Включи для использования в нумерации Юникоды"/>
+                </RadioButton.ToolTip>
+            </RadioButton>
+            <Expander x:Name="ExpUnicodes" Style="{StaticResource EXP}" Header="Используем Юникоды!" IsEnabled="False">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" Text="Выбери символ Юникода:"></TextBlock>
+                    <ComboBox x:Name="cmbUniCode" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                    <TextBlock Text="{Binding Path=Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <CheckBox x:Name="isEditToUni" Style="{StaticResource CHB}" IsChecked="False" Margin="5" Content="Перевести нумерацию на Юникоды?">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="Включи для замены префиксной нумерации на использование Юникодов"/>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                    <CheckBox x:Name="isStrongUniCounter" Style="{StaticResource CHB}" IsChecked="False" Click="UniCouneter" Margin="5" Content="Задать количество символов Юникода вручную?">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="Включи для введения коэффициента Юникода вручную (количество добавлений одного и того же кода)"/>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource TXT}" Text="Укажи коэффициент:" Opacity="0.5"></TextBlock>
+                    <TextBox x:Name="strNumUniCode" Text="1" IsEnabled="False"></TextBox>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <RadioButton GroupName="RenameType" x:Name="isPrefix" Style="{StaticResource MainRB}" IsChecked="False" Click="UsePrefix" Content="Использовать приставки?">
+                <RadioButton.ToolTip>
+                    <TextBlock Text="Включи для использования в нумерации префиксы"/>
+                </RadioButton.ToolTip>
+            </RadioButton>
+            <Expander x:Name="ExpPrefixes" Style="{StaticResource EXP}" Header="Используем префиксы!" IsEnabled="False">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" IsHyphenationEnabled="True" Text="Позволяет задать номер листа в формате: [Том]/[Номер]. Номер в формате 001, ... 010, ... 100 (для корректного группирования в диспетчере проекта)" />
+                    <TextBlock Style="{StaticResource TXT}" Text="[Том]: Укажи префикс"/>
+                    <TextBox x:Name="prfTextBox" Text=""></TextBox>
+                    <TextBlock Style="{StaticResource TXT}" Text="[Номер]: Выбери действие и стартовый номер (при необходимости)"></TextBlock>
+                    <CheckBox x:Name="isRenumbering" Style="{StaticResource CHB}" IsChecked="False" Click="Renumb" Margin="5" Content="Изменить нумерацию?">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="Включи для изменения номера листа. Активация галки - разболкирует возможность редактирования значения стартового номера"/>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                    <TextBlock Style="{StaticResource TXT}" Text="Укажи стартовый номер:" Opacity="0.5"></TextBlock>
+                    <TextBox x:Name="strNumTextBox" Text="1" IsEnabled="False"></TextBox>
+                    <Expander Style="{StaticResource EXP}" Header="Подсказка">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource TXT}" Text="1. Если префикс не нужен - оставь поле [Том] пустым. В этом случае - в нумерации добавятся приставные 0, например: 1 => 001, 10 => 010" Opacity="0.5"/>
+                            <TextBlock Style="{StaticResource TXT}" Text="2. Рразделитель между [Том] и [Номер] - символ '/', например: 'АР/001, АР/002, ... АР/010, ... АР/100'." Opacity="0.5"/>
+                            <TextBlock Style="{StaticResource TXT}" Text="3. Если не включить галку 'Изменить нумерацию?' плагин оставит нумерацию прежней, добавит префикс и приставные 0, например: (при значении [Том] = 'СКК.'): 1 => СКК.001, 10 => СКК.010, 100 => СКК.100." Opacity="0.5"/>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2">
+            <RadioButton GroupName="RenameType" x:Name="isClearRenumb" Style="{StaticResource MainRB}" IsChecked="False" Click="UseClearRenumb" Content="Перенумеровать без приставок и Юникодов?">
+                <RadioButton.ToolTip>
+                    <TextBlock Text="Включи, чтобы изменить нумерацию листов без использования префиксов или Юникодов"/>
+                </RadioButton.ToolTip>
+            </RadioButton>
+            <Expander x:Name="ExpClearRenumb" Style="{StaticResource EXP}" Header="Обновляем нумерацию!" IsEnabled="False">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" Text="Укажи стартовый номер:" Opacity="0.5"></TextBlock>
+                    <TextBox x:Name="strClearNumTextBox" Text="1"></TextBox>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+        
+        <StackPanel Grid.Row="3">
+            <RadioButton GroupName="RenameType" x:Name="isRefreshParam" Style="{StaticResource MainRB}" IsChecked="False" Click="RefreshParam" Content="Обновить значения параметров?">
+                <RadioButton.ToolTip>
+                    <TextBlock Text="Включи, чтобы обновить значения параметров для занесения в штамп"/>
+                </RadioButton.ToolTip>
+            </RadioButton>
+            <Expander x:Name="ExpParamRefresh" Style="{StaticResource EXP}" Header="Обновляем параметр!" IsEnabled="False">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TXT}" Text="Параметр штампа (основной надписи):"></TextBlock>
+                    <ComboBox x:Name="cmbParam" >
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Definition.Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </Expander>
+        </StackPanel>
+        
+        <StackPanel Margin="0,10,0,5" Grid.Row="4" Orientation="Horizontal">
+            <Button x:Name="btnOk" Style="{StaticResource BTN}" Content="Запуск" IsDefault="True" Click="OnOk"/>
+            <Button x:Name="btnCancel" Style="{StaticResource BTN}" Content="Отмена" Click="OnCancel"/>
+        </StackPanel>
+    </Grid>
+</Window>
