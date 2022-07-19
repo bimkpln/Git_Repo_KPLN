@@ -15,6 +15,18 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class CommandCopyProjectParams : IExternalCommand
     {
+        private List<string> _parametersName = new List<string>() 
+        {
+            "SHT_Вид строительства",
+            "SHT_Абсолютная отметка",
+            "Дата утверждения проекта",
+            "Статус проекта",
+            "Заказчик",
+            "Адрес проекта",
+            "Наименование проекта",
+            "Номер проекта",
+        };
+        
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
@@ -30,7 +42,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                 foreach (Document doc in activeDocs)
                 {
-                    if (doc.Title.Contains("cведения") || doc.Title.Contains("Сведения"))
+                    if (doc.Title.ToLower().Contains("сведения"))
                     {
                         baseDoc = doc;
                         break;
@@ -54,15 +66,11 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     .Cast<ProjectInfo>()
                     .ToList()[0];
 
-                List<Parameter> baseParameters = new List<Parameter>();
-                baseParameters.Add(baseInfo.LookupParameter("SHT_Абсолютная отметка"));
-                baseParameters.Add(baseInfo.LookupParameter("SHT_Вид строительства"));
-                baseParameters.Add(baseInfo.LookupParameter("Дата утверждения проекта"));
-                baseParameters.Add(baseInfo.LookupParameter("Статус проекта"));
-                baseParameters.Add(baseInfo.LookupParameter("Заказчик"));
-                baseParameters.Add(baseInfo.LookupParameter("Адрес проекта"));
-                baseParameters.Add(baseInfo.LookupParameter("Наименование проекта"));
-                baseParameters.Add(baseInfo.LookupParameter("Номер проекта"));
+                Dictionary<string, Parameter> paramsDict = new Dictionary<string, Parameter>();
+                foreach (string currentName in _parametersName)
+                {
+                    paramsDict.Add(currentName, baseInfo.LookupParameter(currentName));
+                }
 
                 int counter = 0;
                 int falseCounter = 0;
@@ -73,9 +81,9 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                     Print(string.Format("Копирование параметров из файла: \"{0}\" в файл: \"{1}\" ↑", baseDoc.Title, currentDoc.Title), KPLN_Loader.Preferences.MessageType.Header);
 
-                    foreach (Parameter parameter in baseParameters)
+                    foreach (KeyValuePair<string, Parameter> kvp in paramsDict)
                     {
-                        if (copyingParams(parameter, currentInfo))
+                        if (CopyerParams(kvp, currentInfo))
                         {
                             counter++;
                         }
@@ -125,14 +133,16 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             return check;
         }
 
-        public bool copyingParams(Parameter param, Element currentInfo)
+        public bool CopyerParams(KeyValuePair<string, Parameter> kvp, Element currentInfo)
         {
             bool check = false;
-            if (param == null || currentInfo == null)
+            string paramName = kvp.Key;
+            Parameter param = kvp.Value;
+            if (param == null)
             {
+                Print("Не скопирован параметр: " + paramName + ", т.к. он отсутсвует. Обратись к норм. контроллеру.", KPLN_Loader.Preferences.MessageType.Warning);
                 return check;
             }
-            string paramName = param.Definition.Name;
             if (!param.HasValue)
             {
                 Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", KPLN_Loader.Preferences.MessageType.Code);
