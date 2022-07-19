@@ -154,13 +154,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc, viewId).OfCategory(bic).WhereElementIsNotElementType();
                 ICollection<ElementId> collection = FilteredByStringColl(bicColl).ToElementIds();
-                if (_errorDict.ContainsKey(viewSheet))
+                if (collection.Count > 0)
                 {
-                    _errorDict[viewSheet].AddRange(collection as List<ElementId>);
-                }
-                else
-                {
-                    _errorDict.Add(viewSheet, collection as List<ElementId>);
+                    if (_errorDict.ContainsKey(viewSheet))
+                    {
+                        _errorDict[viewSheet].AddRange(collection as List<ElementId>);
+                    }
+                    else
+                    {
+                        _errorDict.Add(viewSheet, collection as List<ElementId>);
+                    }
                 }
             }
         }

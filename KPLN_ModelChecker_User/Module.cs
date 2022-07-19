@@ -50,7 +50,7 @@ namespace KPLN_ModelChecker_User
 #endif
             string assembly = _AssemblyPath.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Контроль качества");
-            PulldownButtonData pullDownData = new PulldownButtonData("Проверки", "Проверки");
+            PulldownButtonData pullDownData = new PulldownButtonData("Проверить", "Проверить");
             pullDownData.ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки";
             pullDownData.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, _mainContextualHelp));
 
