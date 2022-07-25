@@ -51,7 +51,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             WPFDisplayItem item = new WPFDisplayItem(catId, exstatus, "✔");
             try
             {
-                item.SetZoomParams(element, box);
                 item.Name = name;
                 item.Header = header;
                 item.Description = description;

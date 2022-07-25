@@ -247,6 +247,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = element.Id.ToString() });
                         outputCollection.Add(item);
                     }
+                    // Добавляю критерии сортировки
                     wpfFiltration.Add(new WPFDisplayItem(-2, StatusExtended.Critical, kvp.Key.Id.IntegerValue) { Name = $"Лист номер {kvp.Key.SheetNumber}"});
                 }
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();

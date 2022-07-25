@@ -25,6 +25,8 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class ElementsOutputExtended : Window
     {
+        private bool _isToggle = true;
+        
         public ElementsOutputExtended(ObservableCollection<WPFDisplayItem> collection, ObservableCollection<WPFDisplayItem> filtration)
         {
 #if Revit2020
@@ -83,17 +85,17 @@ namespace KPLN_ModelChecker_User.Forms
         {
             WPFDisplayItem element = (sender as Button).DataContext as WPFDisplayItem;
             element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
-            
+
             // Поиск вида для элементов
             if (element.Box != null)
             {
                 ModuleData.CommandQueue.Enqueue(new CommandZoomElement(element.Element, element.Box, element.Centroid));
-                element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
+                TogglerClick(element);
             }
             else
             {
                 ModuleData.CommandQueue.Enqueue(new CommandZoomElement(element.Element));
-                element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
+                TogglerClick(element);
             }
         }
 
@@ -103,5 +105,20 @@ namespace KPLN_ModelChecker_User.Forms
             int itemId = (cbxFiltration.SelectedItem as WPFDisplayItem).ElementId;
             UpdateCollection(itemCatId, itemId);
         }
+
+        private void TogglerClick(WPFDisplayItem element)
+        {
+            if (_isToggle)
+            {
+                element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 110, 215, 89));
+                _isToggle = false;
+            }
+            else
+            {
+                element.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 218, 247, 166));
+                _isToggle = true;
+            }
+        }
+
     }
 }

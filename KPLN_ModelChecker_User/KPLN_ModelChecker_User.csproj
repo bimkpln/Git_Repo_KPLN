@@ -29,6 +29,9 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <Optimize>true</Optimize>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'bin|AnyCPU'">
+    <OutputPath>bin\bin\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
@@ -79,8 +82,10 @@
     <Compile Include="Common\GeometryBoundingBox.cs" />
     <Compile Include="Common\LevelChecker.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
+    <Compile Include="Common\SharedEntity.cs" />
     <Compile Include="Common\WPFElement.cs" />
     <Compile Include="Common\WPFDisplayItem.cs" />
+    <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
@@ -127,6 +132,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\checker_worksets.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\dimensions.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\family_name.png">

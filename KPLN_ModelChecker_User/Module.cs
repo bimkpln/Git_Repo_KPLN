@@ -130,6 +130,18 @@ namespace KPLN_ModelChecker_User
                 null
                 );
             AddPushButtonData(
+                "CheckDimensions",
+                "Проверка размеров",
+                "Анализирует все размеры, на предмет:" +
+                    "\n1. Замены значения;" +
+                    "\n2. Округления значений размеров с нарушением требований пункта 5.1 ВЕР.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckDimensions).FullName,
+                pullDown,
+                "dimensions.png",
+                null
+                );
+            AddPushButtonData(
                 "CheckAnnotations", 
                 "Проверка листов на аннотации", 
                 "Анализирует все элементы на листах и ищет аннотации следующих типов:" +

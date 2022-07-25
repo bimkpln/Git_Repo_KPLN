@@ -140,11 +140,14 @@ namespace KPLN_ModelChecker_User.Common
             CategoryId = categoryId;
             switch (status)
             {
-                case StatusExtended.Critical:
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 195, 0));
+                case StatusExtended.LittleWarning:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 220, 90));
                     break;
                 case StatusExtended.Warning:
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 218, 247, 166));
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 180, 90));
+                    break;
+                case StatusExtended.Critical:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 195, 0));
                     break;
             }
         }
