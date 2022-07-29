@@ -55,7 +55,7 @@ namespace KPLN_Parameters_Ribbon
                 typeof(ExternalCommands.CommandCopyProjectParams).FullName,
                 panel,
                 "copyProjectParams.png",
-                "http://moodle.stinproject.local"
+                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=663"
             );
 
             return Result.Succeeded;
