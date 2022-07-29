@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.Common
@@ -136,7 +137,6 @@ namespace KPLN_ModelChecker_User.Common
         }
         public WPFDisplayItem(int categoryId, StatusExtended status, string icon= "🔍")
         {
-            Icon = icon;
             CategoryId = categoryId;
             switch (status)
             {
@@ -150,6 +150,7 @@ namespace KPLN_ModelChecker_User.Common
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 195, 0));
                     break;
             }
+            Icon = icon;
         }
 
         public WPFDisplayItem(int categoryId, StatusExtended status, int elementId) : this (categoryId, status)

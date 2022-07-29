@@ -82,7 +82,6 @@
     <Compile Include="Common\GeometryBoundingBox.cs" />
     <Compile Include="Common\LevelChecker.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
-    <Compile Include="Common\SharedEntity.cs" />
     <Compile Include="Common\WPFElement.cs" />
     <Compile Include="Common\WPFDisplayItem.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />

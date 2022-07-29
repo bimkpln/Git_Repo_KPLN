@@ -22,7 +22,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список сущностей со своими атрибутами, которые соответсвуют ошибке
         /// </summary>
-        private List<SharedEntity> _errorList = new List<SharedEntity>();
+        private List<WPFElement> _errorList = new List<WPFElement>();
 
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
@@ -31,7 +31,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             "...",
             "до",
-            "-"
+            "-",
+            "max",
+            "min"
         };
 
         /// <summary>
@@ -56,14 +58,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             //Получение объектов приложения и документа
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
-            string docTitle = doc.Title;
-
+            
             //Основная часть
             FilteredElementCollector docDimensions = new FilteredElementCollector(doc).OfClass(typeof(Dimension)).WhereElementIsNotElementType();
-            CheckOverride(docDimensions);
-            CheckAccuracy(docDimensions, docTitle);
+            try
+            {
+                CheckOverride(doc, docDimensions);
+                CheckAccuracy(doc);
+                ShowResult();
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+                return Result.Failed;
+            }
 
-            ShowResult(doc);
             return Result.Succeeded;
         }
 
@@ -71,61 +80,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Определяю размеры, которые были переопределены в проекте
         /// </summary>
-        private void CheckOverride(FilteredElementCollector docDimensions)
+        private void CheckOverride(Document doc, FilteredElementCollector docDimensions)
         {
             foreach (Dimension dim in docDimensions)
             {
-                // Игнорирую чертежные виды
-                try
-                {
-                    if (dim.View.GetType().Equals(typeof(ViewDrafting))) { continue; }
-                }
-                catch (NullReferenceException) { continue; }
-
                 double? currentValue = dim.Value;
+                
                 if (currentValue.HasValue && dim.ValueOverride?.Length > 0)
                 {
                     double value = currentValue.Value * 304.8;
                     string overrideValue = dim.ValueOverride;
-                    double[] doubleValues = DigitValue(overrideValue);
-                    double minValue = doubleValues[0];
-                    double maxValue = doubleValues[1];
-
-                    // Нахожу значения без диапозона и игнорирую небольшие округления - больше 10 мм, при условии, что это не составляет 5% от размера
-                    if (maxValue == Convert.ToDouble(int.MaxValue))
-                    {
-                        if (Math.Abs(minValue - value) > 10.0 || Math.Abs((minValue / value) * 100 - 100) > 5)
-                        {
-                            _errorList.Add(new SharedEntity(
-                                dim.Id.IntegerValue,
-                                dim.Name,
-                                "Размер значительно отличается от реального",
-                                $"Значение реального размера {Math.Round(value, 2)} мм, а при переопределении указано {overrideValue} мм. Разница существенная, лучше устранить.",
-                                Status.Error)
-                            );
-                        }
-                        else
-                        {
-                            _errorList.Add(new SharedEntity(
-                                dim.Id.IntegerValue,
-                                dim.Name,
-                                "Размер не значительно отличается от реального",
-                                $"Значение реального размера {Math.Round(value, 2)} мм, а при переопределении указано {overrideValue} мм. Разница не существенная, достаточно проконтролировать.",
-                                Status.LittleWarning)
-                            );
-                        }
-                    }
-                    // Нахожу значения вне диапозоне
-                    else if ((value >= maxValue | value < minValue))
-                    {
-                        _errorList.Add(new SharedEntity(
-                            dim.Id.IntegerValue,
-                            dim.Name,
-                            "Размер вне диапозона",
-                            $"Значение реального размера {Math.Round(value, 2)} мм, а диапозон указан {overrideValue}",
-                            Status.Error)
-                        );
-                    }
+                    int dimId = dim.Id.IntegerValue;
+                    string dimName = dim.Name;
+                    CheckDimValues(doc, value, overrideValue, dimId, dimName);
                 }
                 else
                 {
@@ -134,110 +101,150 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (segment.ValueOverride?.Length > 0)
                         {
-                            _errorList.Add(new SharedEntity(
-                                dim.Id.IntegerValue,
-                                "Размер",
-                                "Размер переопределен",
-                                "Запрещено переопределять значения размеров",
-                                Status.Error)
-                            );
+                            double value = segment.Value.Value * 304.8;
+                            string overrideValue = segment.ValueOverride;
+                            int dimId = dim.Id.IntegerValue;
+                            string dimName = dim.Name;
+                            CheckDimValues(doc, value, overrideValue, dimId, dimName);
                         }
                     }
                 }
-
             }
         }
 
         /// <summary>
-        /// Поиск цифровых значений
+        /// Анализ значения размера
         /// </summary>
-        /// <param name="value">Текст, который нужно распознать</param>
-        /// <returns>Массив из 2-х значений: 1 - Минимальное значение, а также текущее для бездиапозонных; 2 - максимальное значение (в случае наличия дапозонов)</returns>
-        private double[] DigitValue(string value)
+        private void CheckDimValues(Document doc, double value, string overrideValue, int elemId, string elemName)
         {
+
             string ovverrideMinValue = String.Empty;
             double overrideMinDouble = 0.0;
             string ovverrideMaxValue = String.Empty;
-            int overrideMaxInt = int.MaxValue;
-            
-            string[] splitValues = value.Split(_separArr, StringSplitOptions.None); 
+            double overrideMaxDouble = 0.0;
+
+            string[] splitValues = overrideValue.Split(_separArr, StringSplitOptions.None);
+
+            // Анализирую диапозоны
             if (splitValues.Length > 1)
             {
                 ovverrideMinValue = splitValues[0];
-                ovverrideMaxValue = splitValues[1];
-            }
-            else
-            {
-                ovverrideMinValue = value;
+                if (ovverrideMinValue.Length == 0)
+                {
+                    ovverrideMinValue = overrideValue;
+                }
+                else
+                {
+                    ovverrideMaxValue = splitValues[1];
+                }
+
+                string onlyNumbMin = new string(ovverrideMinValue.Where(x => Char.IsDigit(x)).ToArray());
+                Double.TryParse(onlyNumbMin, out overrideMinDouble);
+                if (!ovverrideMaxValue.Equals(String.Empty))
+                {
+                    string onlyNumbMax = new string(ovverrideMaxValue.Where(x => Char.IsDigit(x)).ToArray());
+                    Double.TryParse(onlyNumbMax, out overrideMaxDouble);
+                    // Нахожу значения вне диапозоне
+                    if (value >= overrideMaxDouble | value < overrideMinDouble)
+                    {
+                        _errorList.Add(new WPFElement(
+                            doc.GetElement(new ElementId(elemId)),
+                            elemName,
+                            "Размер вне диапозона",
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
+                            Status.Error)
+                        );
+                    }
+                }
+                else
+                {
+                    _errorList.Add(new WPFElement(
+                        doc.GetElement(new ElementId(elemId)),
+                        elemName,
+                        "Диапазон. Нужен ручной анализ",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
+                        Status.Warning)
+                    );
+                }
             }
 
-            string onlyNumbMin = new string(ovverrideMinValue.Where(x => Char.IsDigit(x)).ToArray());
-            overrideMinDouble = Double.Parse(onlyNumbMin);
-            
-            if (ovverrideMaxValue.Equals(String.Empty))
-            {
-                return new double[2] { overrideMinDouble, Convert.ToDouble(overrideMaxInt) };
-            }
+            // Нахожу значения без диапозона и игнорирую небольшие округления - больше 10 мм, при условии, что это не составляет 5% от размера
             else
             {
-                string onlyNumbMax = new string(ovverrideMaxValue.Where(x => Char.IsDigit(x)).ToArray());
-                double overrideMaxDouble = Double.Parse(onlyNumbMax);
-                return new double[2] { overrideMinDouble, overrideMaxDouble};
+                double overrideDouble = 0.0;
+                string onlyNumbMin = new string(overrideValue.Where(x => Char.IsDigit(x)).ToArray());
+                Double.TryParse(onlyNumbMin, out overrideDouble);
+                if (overrideDouble == 0.0)
+                {
+                    _errorList.Add(new WPFElement(
+                        doc.GetElement(new ElementId(elemId)),
+                        elemName,
+                        "Нет возможности анализа",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
+                        Status.Error)
+                    );
+                }
+                else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
+                {
+                    _errorList.Add(new WPFElement(
+                        doc.GetElement(new ElementId(elemId)),
+                        elemName,
+                        "Размер значительно отличается от реального",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.",
+                        Status.Error)
+                    );
+                }
+                else
+                {
+                    _errorList.Add(new WPFElement(
+                        doc.GetElement(new ElementId(elemId)),
+                        elemName,
+                        "Размер не значительно отличается от реального",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
+                        Status.LittleWarning)
+                    );
+                }
             }
-        }
-
-        /// <summary>
-        /// Пользовательский срез по разделителю
-        /// </summary>
-        /// <param name="value">Текст, который нужно распознать</param>
-        /// <param name="separ">Разделитель</param>
-        /// <returns></returns>
-        private string[] MyRegex(string value, string separ)
-        {
-            string pattern = $@"\b[{separ}]+";
-            string[] trySplit = Regex.Split(value, pattern);
-            return trySplit;
         }
         
         /// <summary>
         /// Определяю размеры, которые не соответствуют необходимой точности
         /// </summary>
-        private void CheckAccuracy(FilteredElementCollector docDimensions, string docTitle)
+        private void CheckAccuracy(Document doc)
         {
-            foreach (Dimension dim in docDimensions)
+            string docTitle = doc.Title;
+            FilteredElementCollector docDimensionTypes = new FilteredElementCollector(doc).OfClass(typeof(DimensionType)).WhereElementIsElementType();
+            foreach (DimensionType dimType in docDimensionTypes)
             {
-                if (_errorList.Where(x => x.Id == dim.Id.IntegerValue).ToList().Count > 0)
+                if (dimType.UnitType == UnitType.UT_Length)
                 {
-                    continue;
-                }
-                
-                double? currentValue = dim.Value;
-                if (currentValue.HasValue)
-                {
-                    DimensionType dimType = dim.DimensionType;
-                    FormatOptions dimTypeSettings = dimType.GetUnitsFormatOptions();
-                    //double currentAccuracy = dimTypeSettings.Accuracy;
-                    //!!! ДОБИТЬ ОТСЮДА. БЫЛО ПРИНЯТО РЕШЕНИЕ - ИСКАТЬ ТИПОРАЗМЕРЫ РАЗМЕРОВ, И ОПРЕДЕЛЯТЬ ИХ ОКРУГЛЕНИЕ. ДАЛЕЕ, ЕСЛИ ОКРУГЛЕНИЕ ДО 1 (Т.Е. В НОРМЕ), ТО ДЛЯ КР 
-                    // НУЖНО ПРОИЗВЕСТИ СРАВНЕНИЕ РЕАЛЬНОГО ЗНАЧЕНИЯ, С ЦЕЛЬЮ ВЫЯВЛЕНИЯ ЕГО ТОЧНОСТИ
-                    // ПОФИКСИТЬ ТОТ ФАКТ, ЧТО ДЛЯ ЭЛЕМЕНТОВ НА ЛЕГЕНДЕ - АВТОМАТИЧЕСКИЙ ВИД НЕ ОТКРЫВАЕТСЯ
-
-                }
-                else
-                {
-                    DimensionSegmentArray segments = dim.Segments;
-                    foreach (DimensionSegment segment in segments)
+                    FormatOptions typeOpt = dimType.GetUnitsFormatOptions();
+                    try
                     {
-                        
+                        double currentAccuracy = typeOpt.Accuracy;
+                        if (currentAccuracy > 1.0)
+                        {
+                            _errorList.Add(new WPFElement(
+                                doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
+                                dimType.Name,
+                                "Размер имеет запрещенно низкую точность",
+                                $"Принятое округление в 1 мм, а в данном типе - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер.",
+                                Status.Error)
+                            );
+                        }
+                    }
+                    catch (Exception) 
+                    { 
+                        //Игнорирую типы без настроек округления
                     }
                 }
-
             }
         }
 
         /// <summary>
         /// Метод для вывода результатов пользователю
         /// </summary>
-        private void ShowResult(Document doc)
+        private void ShowResult()
         {
             if (_errorList.Count == 0)
             {
@@ -249,14 +256,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
                 ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>();
                 wpfFiltration.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
-                foreach (SharedEntity entity in _errorList)
+                foreach (WPFElement wpfElem in _errorList)
                 {
-                    Element element = doc.GetElement(new ElementId(entity.Id));
-                    WPFDisplayItem item = GetItemByElement(element, entity.Name, element.OwnerViewId.IntegerValue, entity.Header, entity.Description, entity.CurrentStatus);
-                    item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = entity.Id.ToString() });
+                    Element element = wpfElem.Element;
+                    WPFDisplayItem item = GetItemByElement(wpfElem.Element, wpfElem.Name, element.OwnerViewId.IntegerValue, wpfElem.Header, wpfElem.Description, wpfElem.CurrentStatus);
+                    item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = wpfElem.Element.Id.ToString() });
                     outputCollection.Add(item);
-                    // Добавляю критерии сортировки
-                    //wpfFiltration.Add(new WPFDisplayItem(-2, StatusExtended.Critical, kvp.Key.Id.IntegerValue) { Name = $"Лист номер {kvp.Key.SheetNumber}" });
                 }
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
 
@@ -291,18 +296,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     exstatus = StatusExtended.Warning;
                     break;
             }
-            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, elemId);
+            WPFDisplayItem item = new WPFDisplayItem(-20000260, exstatus, elemId);
             try
             {
                 item.SetZoomParams(element, null);
                 item.Name = name;
                 item.Header = header;
                 item.Description = description;
-                item.Category = string.Format("<{0}>", element.Category.Name);
+                item.Category = "Размеры";
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
                 item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection.Add(new WPFDisplayItem(-20000260, exstatus) { Header = "Подсказка: ", Description = description });
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)
