@@ -88,7 +88,7 @@ namespace KPLN_ModelChecker_User.Common
             return item;
         }
 
-        public static void GetLinks(ExternalCommandData commandData, Document doc, BuiltInCategory bic, ref ObservableCollection<WPFDisplayItem> outputCollection, ref HashSet<int> ids)
+        public static void GetLinks(ExternalCommandData commandData, Document doc, BuiltInCategory bic, ref ObservableCollection<WPFDisplayItem> outputCollection)
         {
             foreach (Element element in new FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType().ToElements())
             {
@@ -97,7 +97,6 @@ namespace KPLN_ModelChecker_User.Common
                     RevitLinkInstance link = null;
                     foreach (ElementId i in element.GetMonitoredLinkElementIds())
                     {
-                        ids.Add(i.IntegerValue);
                         link = commandData.Application.ActiveUIDocument.Document.GetElement(i) as RevitLinkInstance;
                     }
                     
@@ -113,43 +112,7 @@ namespace KPLN_ModelChecker_User.Common
                                 null)
                             );
                     }
-                    
-                    else if (ids.Count > 1)
-                    {
-                        WPFDisplayItem item = GetItemByElement(
-                            doc.Title,
-                            "Мониторинг настроен на основе нескольких файлов",
-                            "Необходимо настраивать мониторинг на основе одного файла (Разбивочный файл/Архитектурный файл)",
-                            Status.Error
-                        );
-                        
-                        foreach (int i in ids)
-                        {
-                            try
-                            {
-                                link = doc.GetElement(new ElementId(i)) as RevitLinkInstance;
-                                item.Collection.Add(new WPFDisplayItem(link.Category.Id.IntegerValue, StatusExtended.Critical) 
-                                    { 
-                                        Header = "Связь с мониторингом:",
-                                        Description = string.Format("«{0}» <{1}>", link.Name, link.Id.ToString())
-                                    }
-                                );
-
-                            }
-                            catch (Exception)
-                            {
-                                item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) 
-                                    { 
-                                        Header = "Связь с мониторингом:",
-                                        Description = string.Format("Не найдена <{0}>", i.ToString()) 
-                                    }
-                                );
-                            }
-                        }
-                        outputCollection.Add(item);
-                    }
-                    
-                    else if (!link.Name.Contains("Разб"))
+                    else if (!link.Name.ToLower().Contains("разб"))
                     {
                         outputCollection.Add(
                             GetItemByElement(

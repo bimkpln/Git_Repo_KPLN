@@ -24,9 +24,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 List<WPFElement> Elements = new List<WPFElement>();
                 Document doc = commandData.Application.ActiveUIDocument.Document;
-                HashSet<int> ids = new HashSet<int>();
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
-                KPLN_ModelChecker_User.Common.MonitoringAndPinnerSearcher.GetLinks(commandData, doc, BuiltInCategory.OST_Levels, ref outputCollection, ref ids);
+                KPLN_ModelChecker_User.Common.MonitoringAndPinnerSearcher.GetLinks(commandData, doc, BuiltInCategory.OST_Levels, ref outputCollection);
                 ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
                 wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
