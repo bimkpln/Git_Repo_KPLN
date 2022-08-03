@@ -1,11 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -13,9 +11,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     public class CommandZoomElement : IExecutableCommand
     {
         private Element Element { get; set; }
+
         private BoundingBoxXYZ Box { get; set; }
+
         private XYZ Centroid { get; set; }
-        
+
+        private bool _isLegendOpen;
+
         public CommandZoomElement(Element element)
         {
             Element = element;
@@ -26,7 +28,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Box = box;
             Centroid = centroid;
         }
-        
+
         public Result Execute(UIApplication app)
         {
             try
@@ -37,10 +39,23 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             catch (Exception)
             {
+                _isLegendOpen = false;
+
                 try
                 {
+                    // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
+                    app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBoxShowing);
+                    
                     app.ActiveUIDocument.ShowElements(Element);
+                    if (_isLegendOpen)
+                    {
+                        Dimension dim = Element as Dimension;
+                        View view = dim.View;
+                        TaskDialog.Show("KPLN", $"Открой легенду ({view.Name}) вручную");
+                    }
                     app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { Element.Id });
+                    
+                    app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBoxShowing);
                 }
                 catch (Exception) { }
             }
@@ -89,6 +104,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             double c = Math.Sin(angleHorizR);
             double d = Math.Sin(angleVertR);
             return new XYZ(a * b, a * c, d);
+        }
+
+        /// <summary>
+        /// Закрывает окно с ошибкой об открытии легенды. Меняет параметр _isLegendOpen на true
+        /// </summary>
+        private void DialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
+        {
+            TaskDialogShowingEventArgs td = args as TaskDialogShowingEventArgs;
+            if (td.Message.Equals("Невозможно подобрать подходящий вид."))
+            {
+                args.OverrideResult(1);
+                _isLegendOpen = true;
+            }
         }
     }
 }
