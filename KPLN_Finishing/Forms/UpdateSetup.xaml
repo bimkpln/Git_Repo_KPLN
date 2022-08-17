@@ -1,0 +1,94 @@
+﻿<Window x:Class="KPLN_Finishing.Forms.UpdateSetup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_Finishing.Forms"
+             mc:Ignorable="d" SizeToContent="WidthAndHeight" Title="KPLN: Обновить ведомости" WindowStartupLocation="CenterScreen" Topmost="True" ResizeMode="CanResizeWithGrip">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="535"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Vertical" Margin="5" Grid.Row="0">
+            <Label Content="Группировка по помещениям:" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <Label Content="Параметр группировки" FontSize="8" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_00" SelectionChanged="OnSelectionChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Label Content="Параметр группировки" FontSize="8" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_01" SelectionChanged="OnSelectionChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Label Content="Параметр группировки" FontSize="8" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_02" SelectionChanged="OnSelectionChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox x:Name="chbxUniqTypes"  Content="Группировать по наборам типоразмеров" Click="OnClick">
+                <CheckBox.ToolTip>
+                    <ToolTip Content="При активации помещения с разным набором типов отделки не будут группироваться в одной строке."/>
+                </CheckBox.ToolTip>
+            </CheckBox>
+            <Label Content="Параметры отображения:" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <Label Content="Параметр номера" FontSize="8" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_06" SelectionChanged="OnSelectionChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Label Content="Состав описания" FontSize="8" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_03" SelectionChanged="OnSelectionChanged"/>
+            <CheckBox x:Name="chbxCalculateResults" Content="Расчитывать итоговую площадь"  Click="OnClick"/>
+            <Label Content="Параметры рассчета:" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <CheckBox x:Name="chbxWalls" Content="Рассчитывать стены"  Click="OnClick"/>
+            <CheckBox x:Name="chbxFloors" Content="Рассчитывать полы"  Click="OnClick"/>
+            <CheckBox x:Name="chbxCeilings" Content="Рассчитывать потолки"  Click="OnClick"/>
+            <CheckBox x:Name="chbxPlinths" Content="Рассчитывать плинтусы"  Click="OnClick"/>
+            <Label Content="Коэффициент площади" FontSize="6" FontWeight="Medium" Foreground="Magenta" Margin="0,-5,0,-5"/>
+            <ComboBox x:Name="cbxParameters_04" SelectionChanged="OnSelectionChanged"/>
+            <Label Content="Фильтр помещений:" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" x:Name="cbxParameters_05" Margin="0,0,5,0" SelectionChanged="OnFilterChange">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ComboBox Grid.Column="1" x:Name="cbxParameters_05_condition" Margin="0,0,0,0" SelectionChanged="OnFilterChange">
+                    <ComboBoxItem Content="Равно"/>
+                    <ComboBoxItem Content="Не равно"/>
+                </ComboBox>
+                <ComboBox Grid.Column="2" x:Name="cbxParameters_05_value" Margin="5,0,0,0"  SelectionChanged="OnFilterChange"/>
+            </Grid>
+            <Button x:Name="btnApply" Content="Применить фильтр" Margin="0,5,5,0" HorizontalAlignment="Left" Click="OnFilterApply"/>
+            <Label Content="Запуск:" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <Button x:Name="btnOk" Background="LightGreen" FontWeight="Medium" Content="Применить в Revit" Margin="0,5,5,0" Click="OnOk"/>
+            <Label Content="Предварительный вид ведомости:" FontWeight="Medium" HorizontalAlignment="Center"/>
+        </StackPanel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Visible" Grid.Row="1">
+            <StackPanel x:Name="spExample" Orientation="Vertical" Margin="5">
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+
+</Window>
