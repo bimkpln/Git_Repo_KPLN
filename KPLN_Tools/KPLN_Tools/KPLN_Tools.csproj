@@ -94,32 +94,27 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\Collections.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
-    <Compile Include="ExternalCommands\CommandRenamer.cs" />
+    <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="Forms\FormRenamer.xaml.cs">
       <DependentUpon>FormRenamer.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Source\Source.cs" />
     <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Source\ImageData\autonumber.png">
+    <Content Include="Imagens\autonumber.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Source\ImageData\renamerFunc.png">
+    <Content Include="Imagens\toolBox.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Source\ImageData\pushPin.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\ImageData\toolBox.png">
+    <Content Include="Imagens\wipe.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -131,6 +126,9 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Common\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
