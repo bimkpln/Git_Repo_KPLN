@@ -20,7 +20,7 @@
                 <MenuItem Header="Сохранить как" Click="OnClickSaveAs"/>
             </MenuItem>
             <MenuItem Header="Помощь">
-                <MenuItem Header="Битрик24 : KPLN" Click="OnClickGoToHelp"/>
+                <MenuItem Header="Инструкция" Click="OnClickGoToHelp"/>
             </MenuItem>
         </Menu>
         <StackPanel Grid.Row="1" Orientation="Vertical" Margin="5">
@@ -81,14 +81,14 @@
                                     <ColumnDefinition Width="190"/>
                                     <ColumnDefinition Width="28"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged">
+                                <ComboBox Name="CurrentCat" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged" SelectedIndex="0">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Name}"/>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <ComboBox VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="1" Margin="2" SelectedItem="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding SourceParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedSourceParamChanged">
+                                <ComboBox Name="SourceParam" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="1" Margin="2" SelectedItem="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding SourceParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedSourceParamChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <ListBoxItem ToolTip="{Binding ToolTip}">
@@ -97,7 +97,7 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <ComboBox VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="2" Margin="2" SelectedItem="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding TargetParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedTargetParamChanged">
+                                <ComboBox Name="TargetParam" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="2" Margin="2" SelectedItem="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding TargetParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedTargetParamChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <ListBoxItem ToolTip="{Binding ToolTip}">

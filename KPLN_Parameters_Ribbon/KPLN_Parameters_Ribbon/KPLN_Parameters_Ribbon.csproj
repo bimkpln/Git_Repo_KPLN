@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>bin\Revit2020\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -96,7 +96,7 @@
     <Compile Include="Common\Variables.cs" />
     <Compile Include="Common\ListBoxElement.cs" />
     <Compile Include="Common\ParameterRuleElement.cs" />
-    <Compile Include="ExternalCommands\CommandOpenSetManager.cs" />
+    <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
     <Compile Include="Forms\EnsureDialog.xaml.cs">
       <DependentUpon>EnsureDialog.xaml</DependentUpon>

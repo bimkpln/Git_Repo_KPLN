@@ -9,7 +9,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class CommandOpenSetManager : IExternalCommand
+    public class CommandCopyElemParamData : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

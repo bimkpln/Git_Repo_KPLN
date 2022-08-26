@@ -53,9 +53,9 @@ namespace KPLN_Parameters_Ribbon.Command
                     max += new FilteredElementCollector(doc).OfCategoryId((rule.SelectedCategory.Data as Category).Id).ToElements().Count;
                 }
                 string format = "{0} из " + max.ToString() + " элементов обработано";
-                using (Progress_Single pb = new Progress_Single("Копирование параметров", format, max))
+                using (Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, max))
                 {
-                    using (Transaction t = new Transaction(doc, "Копирование параметров"))
+                    using (Transaction t = new Transaction(doc, "KPLN: Копирование параметров"))
                     {
                         t.Start();
                         try

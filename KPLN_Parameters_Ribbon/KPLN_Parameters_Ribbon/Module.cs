@@ -35,7 +35,7 @@ namespace KPLN_Parameters_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandOpenSetManager).FullName,
+                typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
                 "paramSetter.png",
                 "http://moodle.stinproject.local"
