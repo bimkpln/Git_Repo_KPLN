@@ -1,19 +1,17 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Media.Imaging;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_CSharp_Template
 {
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        
+
         public Result Close()
         {
             return Result.Succeeded;
