@@ -1,11 +1,11 @@
-﻿using KPLN_DataBase.Controll;
+﻿using KPLN_Library_DataBase.Controll;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_DataBase.Collections
+namespace KPLN_Library_DataBase.Collections
 {
     public class DbProject : DbElement, INotifyPropertyChanged, IDisposable
     {

@@ -1,4 +1,4 @@
-﻿namespace KPLN_DataBase.Controll
+﻿namespace KPLN_Library_DataBase.Controll
 {
     public class DbDepartmentInfo
     {

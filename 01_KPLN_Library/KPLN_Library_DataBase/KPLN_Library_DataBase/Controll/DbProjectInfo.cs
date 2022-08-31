@@ -1,7 +1,7 @@
-﻿using KPLN_DataBase.Collections;
+﻿using KPLN_Library_DataBase.Collections;
 using System.Collections.ObjectModel;
 
-namespace KPLN_DataBase.Controll
+namespace KPLN_Library_DataBase.Controll
 {
     public class DbProjectInfo
     {

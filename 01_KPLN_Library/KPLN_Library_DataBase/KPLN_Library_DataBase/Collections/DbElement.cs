@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace KPLN_DataBase.Collections
+namespace KPLN_Library_DataBase.Collections
 {
     public abstract class DbElement : IDisposable
     {

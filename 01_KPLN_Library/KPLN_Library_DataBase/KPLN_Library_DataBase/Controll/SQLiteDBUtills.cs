@@ -1,9 +1,9 @@
-﻿using KPLN_DataBase.Collections;
+﻿using KPLN_Library_DataBase.Collections;
 using System;
 using System.Collections.ObjectModel;
 using System.Data.SQLite;
 
-namespace KPLN_DataBase.Controll
+namespace KPLN_Library_DataBase.Controll
 {
     public static class SQLiteDBUtills
     {

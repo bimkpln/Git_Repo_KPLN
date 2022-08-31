@@ -1,10 +1,10 @@
-﻿using KPLN_DataBase.Collections;
-using KPLN_DataBase.Controll;
+﻿using KPLN_Library_DataBase.Collections;
+using KPLN_Library_DataBase.Controll;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace KPLN_DataBase
+namespace KPLN_Library_DataBase
 {
     public static class DbControll
     {
