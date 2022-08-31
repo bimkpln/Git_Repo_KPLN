@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30503.244
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_DataBase", "KPLN_DataBase\KPLN_DataBase.csproj", "{262C2497-CA7C-4118-AA56-3FA45AE78F6E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_DataBase", "KPLN_Library_DataBase\KPLN_Library_DataBase.csproj", "{262C2497-CA7C-4118-AA56-3FA45AE78F6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
