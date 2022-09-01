@@ -17,6 +17,7 @@ namespace KPLN_Loader
 {
     public class Application : IExternalApplication
     {
+        
         private const string _RibbonName = "KPLN";
         private string _RevitVersion;
         
@@ -46,14 +47,13 @@ namespace KPLN_Loader
             Tools = new Tools_Environment(_RevitVersion);
             Tools.ClearPreviousLog();
             application.CreateRibbonTab(_RibbonName);
-            string sqlPath = "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Loader.db";
             Print("Инициализация...", MessageType.Header);
             Logger.Trace($"---[Запуск в Revit {_RevitVersion}]---\n");
-            if (File.Exists(sqlPath))
+            try
             {
-                SQLiteDataBase = new Tools_SQL(sqlPath);
+                SQLiteDataBase = new Tools_SQL();
             }
-            else
+            catch (ArgumentException)
             {
                 Print(
                     "Ошибка подключения БД. Будут загружены старые версии плагинов. Работа некоторых из них - будет ограничена!", 
@@ -134,29 +134,45 @@ namespace KPLN_Loader
                     {
                         List<SQLModuleInfo> foundedModules = new List<SQLModuleInfo>();
                         Print("Поиск доступных модулей...", MessageType.Header);
-                        
-                        //Загрузка общих модулей по отделу
-                        foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
-                        {
-                            foundedModules.Add(module);
-                        }
 
-                        //Загрузка общих модулей по отделу и проекту
-                        foreach (SQLProjectInfo project in User_Projects)
+                        // Загрузка модулей для тестирования
+                        if (User.Department.Id == 6)
                         {
-                            foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, project.Id.ToString()))
+                            Print($"Выбран режим тестирования. Загрузка модулей ограничена модулями для Department={User.Department.Id}", MessageType.Warning);
+                            foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
                             {
                                 foundedModules.Add(module);
                             }
                         }
-                        Logger.Info($"Успешное подключение к БД. Осуществляю загрузку отсюда: {sqlPath}\n");
+                        
+                        // Загрузка модулей для стандартного запуска
+                        else
+                        {
+                            //Загрузка общих модулей по отделу
+                            foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
+                            {
+                                foundedModules.Add(module);
+                            }
+
+                            //Загрузка общих модулей по отделу и проекту
+                            foreach (SQLProjectInfo project in User_Projects)
+                            {
+                                foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, project.Id.ToString()))
+                                {
+                                    foundedModules.Add(module);
+                                }
+                            }
+                        }
+
+                        // Загрузка выбранных модулей
+                        Logger.Info($"Успешное подключение к БД. Осуществляю загрузку отсюда: {Tools_SQL.SQLPath}\n");
                         foreach (SQLModuleInfo module in foundedModules)
                         {
                             Print(string.Format("Инфо: Загрузка модуля [{0}]", module.Name), MessageType.System_Regular);
                             try
                             {
                                 DirectoryInfo loadedModule = Tools.CopyModuleFromPath(new DirectoryInfo(module.Path), module.Version, module.Name);
-                                
+
                                 // Загрузка модулей
                                 UpdateModules(loadedModule, application, module);
                             }
@@ -240,19 +256,15 @@ namespace KPLN_Loader
             {
                 if (file.Name.Split('.').Last() == "dll")
                 {
+                    Logger.Info($"Загружаю dll отсюда {file.FullName}");
+                    Assembly assembly = Assembly.LoadFrom(file.FullName);
+
                     try
                     {
-                        Logger.Info($"Загружаю dll отсюда {file.FullName}\n");
-                        Assembly assembly = Assembly.LoadFrom(file.FullName);
-                        Type implemnentationType = assembly.GetType(file.Name.Split('.').First() + ".Module");
-                        try
-                        {
-                            implemnentationType.GetMember("Module");
-                        }
-                        catch (Exception)
-                        {
-                            continue;
-                        }
+                        // Беру тип. В случае ошибки - кидаю Exception
+                        Type implemnentationType = assembly.GetType(file.Name.Split('.').First() + ".Module", true);
+                        implemnentationType.GetMember("Module");
+                        
                         IExternalModule moduleInstance = Activator.CreateInstance(implemnentationType) as IExternalModule;
 
                         Result loadingResult = moduleInstance.Execute(application, _RibbonName);
@@ -265,10 +277,21 @@ namespace KPLN_Loader
                         {
                             Print(string.Format("С модулем [{0}] есть проблемы!", module.Name), MessageType.Warning);
                         }
+                        else if (loadingResult != Result.Succeeded)
+                        {
+                            Print(string.Format("[{0}] - ошибка {1}", module.Name, loadingResult.ToString()), MessageType.Warning);
+                        }
                     }
-                    catch (Exception e)
+                    // Обработка исключения при взятии типа implemnentationType
+                    catch (TypeLoadException ex)
                     {
-                        PrintError(e);
+                        //Logger.Info($"Ошибка при имплементации у файла {file.Name} - {ex}\n");
+                        continue;
+                    }
+                    
+                    catch (Exception ex)
+                    {
+                        PrintError(ex);
                     }
                 }
             }

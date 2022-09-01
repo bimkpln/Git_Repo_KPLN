@@ -4,16 +4,30 @@ using static KPLN_Loader.Output.Output;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.IO;
 
 namespace KPLN_Loader
 {
     public class Tools_SQL
     {
-        private SQLiteConnection sql = new SQLiteConnection();
+        public const string SQLPath = "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Loader.db";
+        private SQLiteConnection _SQL = new SQLiteConnection();
         
-        public Tools_SQL(string path)
+        public Tools_SQL()
         {
-            sql.ConnectionString = string.Format(@"Data Source=" + path + ";Version=3;");
+            if (File.Exists(SQLPath))
+            {
+                _SQL.ConnectionString = string.Format(@"Data Source=" + SQLPath + ";Version=3;");
+            }
+            else
+            {
+                Print(
+                    "Ошибка подключения БД. Будут загружены старые версии плагинов. Работа некоторых из них - будет ограничена!",
+                    MessageType.Error
+                    );
+                throw new ArgumentException("БД по указнному пути - отсутсвтует!");
+            }
+
         }
         
         private string GetCurentTime()
@@ -38,9 +52,9 @@ namespace KPLN_Loader
             List<SQLDepartmentInfo> departments = new List<SQLDepartmentInfo>();
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Departments", sql))
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Departments", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -51,7 +65,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception e)
             {
@@ -59,7 +73,7 @@ namespace KPLN_Loader
             }
             try
             {
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception) { }
             return departments;
@@ -71,9 +85,9 @@ namespace KPLN_Loader
             string log = "";
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Projects WHERE Users LIKE '%{0}%'", systemName), sql))
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Projects WHERE Users LIKE '%{0}%'", systemName), _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -89,14 +103,14 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception e) { PrintError(e); }
             if (initialization)
             {
                 Print(log, MessageType.System_Regular);
             }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
         
         public void GetUsers(int loop = 1)
@@ -106,12 +120,12 @@ namespace KPLN_Loader
             {
                 try
                 {
-                    sql.Close();
+                    _SQL.Close();
                 }
                 catch (Exception) { }
-                sql.Open();
+                _SQL.Open();
                 List<SQLDepartmentInfo> departments = new List<SQLDepartmentInfo>();
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Departments", sql))
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Departments", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -121,7 +135,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", sql))
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -138,7 +152,7 @@ namespace KPLN_Loader
                     }
                 }
 
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception)
             {
@@ -155,9 +169,9 @@ namespace KPLN_Loader
             try
             {
                 int department_id = -1;
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", sql))
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -171,7 +185,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Departments WHERE Id = {0}", department_id.ToString()), sql))
+                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Departments WHERE Id = {0}", department_id.ToString()), _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -181,7 +195,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception)
             {
@@ -190,7 +204,7 @@ namespace KPLN_Loader
                     return GetUser(systemName, loop++);
                 }
             }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
             return User;
         }
         
@@ -199,9 +213,9 @@ namespace KPLN_Loader
             try
             {
                 int department_id = -1;
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", sql))
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -215,7 +229,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Departments WHERE Id = {0}", department_id.ToString()), sql))
+                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM Departments WHERE Id = {0}", department_id.ToString()), _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -225,10 +239,10 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                SQLiteCommand cmd_update = new SQLiteCommand(sql);
+                SQLiteCommand cmd_update = new SQLiteCommand(_SQL);
                 cmd_update.CommandText = string.Format("UPDATE Users SET Connection = '{0}' WHERE SystemName = '{1}'", GetCurentTime(), systemName);
                 cmd_update.ExecuteNonQuery();
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception)
             {
@@ -237,7 +251,7 @@ namespace KPLN_Loader
                     GetUserData(systemName, loop++);
                 }
             }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
         
         public bool IfUserExist(string username, int loop = 1)
@@ -246,9 +260,9 @@ namespace KPLN_Loader
 
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand("SELECT SystemName FROM Users", sql))
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT SystemName FROM Users", _SQL))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -259,7 +273,7 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception e)
             {
@@ -272,7 +286,7 @@ namespace KPLN_Loader
                     Print(string.Format("Не удалось проверить наличие пользователя : {0}", e.Message), MessageType.Error);
                 }
             }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
             return false;
         }
         
@@ -281,9 +295,9 @@ namespace KPLN_Loader
             if (loop > 1) { Print(string.Format("Попытка создать нового пользователя {0}...", loop.ToString()), MessageType.Regular); }
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = sql.CreateCommand())
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = _SQL.CreateCommand())
                 {
                     cmd.CommandText = "INSERT INTO Users ([SystemName], [Name], [Family], [Surname], [Department], [Status], [Connection], [Sex]) VALUES (@SystemName, @Name, @Family, @Surname, @Department, @Status, @Connection, @Sex)";
                     cmd.Parameters.Add(new SQLiteParameter("@SystemName") { Value = systemName });
@@ -296,7 +310,7 @@ namespace KPLN_Loader
                     cmd.Parameters.Add(new SQLiteParameter("@Sex") { Value = "Undefined" });
                     cmd.ExecuteNonQuery();
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception e)
             {
@@ -309,7 +323,7 @@ namespace KPLN_Loader
                     Print(string.Format("Не удалось создать нового пользователя : {0}", e.Message), MessageType.Error);
                 }
             }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
         
         public void UpdateStatusMessage(int id, MessageDialogResult result)
@@ -341,14 +355,14 @@ namespace KPLN_Loader
             }
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Users SET Status = '{1}' WHERE Id = '{0}'", id, value), sql);
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Users SET Status = '{1}' WHERE Id = '{0}'", id, value), _SQL);
                 cmd.ExecuteNonQuery();
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception) { }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
         
         public List<SQLModuleInfo> GetModules(string department, string table, string version, string projectId)
@@ -356,9 +370,28 @@ namespace KPLN_Loader
             List<SQLModuleInfo> FoundedModules = new List<SQLModuleInfo>();
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = new SQLiteCommand(string.Format("SELECT * FROM {0} WHERE (Department = {1} OR Department = -1) AND SupportedVersions LIKE '%{2}%' AND Enabled = 'True' AND Project = {3}", table, department, version, projectId), sql))
+                try { _SQL.Close(); } catch (Exception) { }
+
+                SQLiteCommand cmd;
+                // Фильтрация для режима тестирования
+                if (department == "6")
+                {
+                    cmd = new SQLiteCommand(
+                        $"SELECT * FROM {table} WHERE (Department = {department}) " +
+                            $"AND SupportedVersions LIKE '%{version}%' AND Enabled = 'True' AND Project = {projectId}",
+                        _SQL);
+                }
+                // Обычный запуск
+                else
+                {
+                    cmd = new SQLiteCommand(
+                        $"SELECT * FROM {table} WHERE (Department = {department} OR Department = -1) " +
+                            $"AND SupportedVersions LIKE '%{version}%' AND Enabled = 'True' AND Project = {projectId}",
+                        _SQL);
+                }
+                
+                _SQL.Open();
+                using (cmd)
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
@@ -372,11 +405,11 @@ namespace KPLN_Loader
                         }
                     }
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception e)
             { PrintError(e); }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
             return FoundedModules;
         }
         
@@ -384,25 +417,25 @@ namespace KPLN_Loader
         {
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                SQLiteCommand cmd_update = new SQLiteCommand(sql);
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                SQLiteCommand cmd_update = new SQLiteCommand(_SQL);
                 cmd_update.CommandText = string.Format("UPDATE {0} SET Connection = '{1}' WHERE SystemName = '{2}'", table, GetCurentTime(), systemName);
                 cmd_update.ExecuteNonQuery();
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception)
             { }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
         public void CreateLogMessage(string value)
         {
             string[] values = value.Split('*');
             try
             {
-                try { sql.Close(); } catch (Exception) { }
-                sql.Open();
-                using (SQLiteCommand cmd = sql.CreateCommand())
+                try { _SQL.Close(); } catch (Exception) { }
+                _SQL.Open();
+                using (SQLiteCommand cmd = _SQL.CreateCommand())
                 {
                     cmd.CommandText = "INSERT INTO Modules_Log ([User], [Name], [Date], [Log], [DocumentPath]) VALUES (@User, @Name, @Date, @Log, @DocumentPath)";
                     cmd.Parameters.Add(new SQLiteParameter("@User") { Value = values[0] });
@@ -412,10 +445,10 @@ namespace KPLN_Loader
                     cmd.Parameters.Add(new SQLiteParameter("@DocumentPath") { Value = values[4] });
                     cmd.ExecuteNonQuery();
                 }
-                sql.Close();
+                _SQL.Close();
             }
             catch (Exception) { }
-            try { sql.Close(); } catch (Exception) { }
+            try { _SQL.Close(); } catch (Exception) { }
         }
     }
 }
