@@ -41,6 +41,15 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>bin\Revit2020\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+  </PropertyGroup>
   <Choose>
     <When Condition=" '$(Configuration)'=='Revit2018' " />
     <When Condition=" '$(Configuration)'=='Revit2020' " />
@@ -58,12 +67,15 @@
       <HintPath>packages\HtmlAgilityPack.1.11.26\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_DataBase">
-      <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\KPLN_DataBase.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="KPLN_Library_DataBase">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_SelectItem">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_SelectItem\KPLN_Library_SelectItem\bin\Release\KPLN_Library_SelectItem.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\KPLN_Loader\bin\Revit2022\KPLN_Loader.dll</HintPath>
+      <HintPath>..\KPLN_Loader\bin\Revit2018\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -83,20 +95,17 @@
     </Reference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.SQLite, Version=1.0.114.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\System.Data.SQLite.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="System.Data.SQLite">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\System.Data.SQLite.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="System.Data.SQLite.EF6, Version=1.0.114.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\System.Data.SQLite.EF6.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="System.Data.SQLite.EF6">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\System.Data.SQLite.EF6.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="System.Data.SQLite.Linq, Version=1.0.114.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\System.Data.SQLite.Linq.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="System.Data.SQLite.Linq">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\System.Data.SQLite.Linq.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
@@ -139,10 +148,6 @@
       <DependentUpon>ConfirmDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\KPTaskDialog.cs" />
-    <Compile Include="Forms\ProjectPickDialog.cs" />
-    <Compile Include="Forms\ProjectPicker.xaml.cs">
-      <DependentUpon>ProjectPicker.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\ReportManager.xaml.cs">
       <DependentUpon>ReportManager.xaml</DependentUpon>
     </Compile>
@@ -185,10 +190,6 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\ConfirmDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\ProjectPicker.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

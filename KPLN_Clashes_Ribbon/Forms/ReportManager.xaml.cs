@@ -25,6 +25,9 @@ using static KPLN_Loader.Output.Output;
 using static KPLN_Clashes_Ribbon.Tools.HTMLTools;
 using Image = System.Windows.Controls.Image;
 using Path = System.IO.Path;
+using KPLN_Library_DataBase.Collections;
+using KPLN_Library_SelectItem.Forms;
+using KPLN_Library_SelectItem;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -33,18 +36,25 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportManager : Window
     {
-        public ReportManager()
+        private DbProject _project;
+
+        public ReportManager(DbProject project)
         {
+            _project = project;
+            
             InitializeComponent();
+            
             if (KPLN_Loader.Preferences.User.Department.Id != 4)
             {
                 btnAddGroup.Visibility = Visibility.Collapsed;
             }
+            
             UpdateGroups();
         }
+
         private void UpdateGroups()
         {
-            ObservableCollection<ReportGroup> groups = ReportGroup.GetReportGroups();
+            ObservableCollection<ReportGroup> groups = ReportGroup.GetReportGroups(_project);
             ObservableCollection<Report> reports = Report.GetReports();
             foreach (ReportGroup group in groups)
             {
@@ -62,6 +72,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             this.iControllGroups.ItemsSource = groups;
         }
+        
         private void OnBtnRemoveReport(object sender, RoutedEventArgs args)
         {
             KPTaskDialog dialog = new KPTaskDialog(this, "Удалить отчет", "Необходимо подтверждение", "Вы уверены, что хотите удалить данный отчет?", Common.Collections.KPTaskDialogIcon.Question, true, "После удаления данные о статусе и комментарии будут безвозвратно потеряны!");
@@ -81,6 +92,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }    
 
         }
+        
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
             if (KPLN_Loader.Preferences.User.Department.Id != 4) { return; }
@@ -257,6 +269,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 PrintError(e);
             }
         }
+        
         private void OnButtonCloseReportGroup(object sender, RoutedEventArgs args)
         {
             KPTaskDialog dialog = new KPTaskDialog(this, "Закрыть группу", "Необходимо подтверждение", "Вы уверены, что хотите закрыть данную группу отчетов?", Common.Collections.KPTaskDialogIcon.Ooo, true, "После закрытия все действия с отчетами будут заморожены!");
@@ -277,30 +290,47 @@ namespace KPLN_Clashes_Ribbon.Forms
                 UpdateGroups();
             }
         }
+        
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
             if (KPLN_Loader.Preferences.User.Department.Id != 4) { return; }
             try
             {
-                ProjectPickDialog dialog = new ProjectPickDialog(this);
-                dialog.ShowDialog();
-                if (dialog.IsConfirmed())
+                DbProject currentDbProject;
+
+                if (_project != null)
                 {
-                    TextInputDialog inputName = new TextInputDialog(this, "Введите наименование отчета:");
-                    inputName.ShowDialog();
-                    if (inputName.IsConfirmed())
+                    currentDbProject = _project;
+                }
+                else
+                {
+                    FormSinglePick selectedProjectForm = SelectProject.CreateForm();
+                    bool? dialogResult = selectedProjectForm.ShowDialog();
+                    if (dialogResult != false)
                     {
-                        DbController.AddGroup(inputName.GetLastPickedValue(), dialog.GetLastPickedProject());
+                        currentDbProject = selectedProjectForm.SelectedDbProject;
+                    }
+                    else
+                    {
+                        currentDbProject = _project;
                     }
                 }
+
+                TextInputDialog inputName = new TextInputDialog(this, "Введите наименование отчета:");
+                inputName.ShowDialog();
+                if (inputName.IsConfirmed())
+                {
+                    DbController.AddGroup(inputName.GetLastPickedValue(), currentDbProject);
+                }
+                    
                 UpdateGroups();
             }
             catch (Exception e)
             {
                 PrintError(e);
             }
-
         }
+        
         private void RecEnter(object sender, System.Windows.Input.MouseEventArgs args)
         {
             SolidColorBrush color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 255, 115));
@@ -322,6 +352,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             catch (Exception)
             { }
         }
+        
         private void RecLeave(object sender, System.Windows.Input.MouseEventArgs args)
         {
             try
@@ -342,6 +373,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             catch (Exception)
             { }
         }
+        
         private ReportGroup GetGroupById(int groupid)
         {
             foreach (ReportGroup group in this.iControllGroups.ItemsSource as ObservableCollection<ReportGroup>)
@@ -353,6 +385,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             return null;
         }
+        
         private void OnUp(object sender, MouseButtonEventArgs args)
         {
             if (args.ChangedButton == MouseButton.Right)
@@ -408,6 +441,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
             }
         }
+        
         private void OnRemoveGroup(object sender, RoutedEventArgs e)
         {
             KPTaskDialog dialog = new KPTaskDialog(this, "Удалить группу", "Необходимо подтверждение", "Вы уверены, что хотите удалить данную группу отчетов?", Common.Collections.KPTaskDialogIcon.Ooo, true, "После удаления данные будут безвозвратно потеряны!");

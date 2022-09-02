@@ -1,4 +1,4 @@
-﻿using KPLN_DataBase.Collections;
+﻿using KPLN_Library_DataBase.Collections;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -18,20 +18,34 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 {
     public class ReportGroup : INotifyPropertyChanged
     {
-        public ObservableCollection<Report> _Reports { get; set; } = new ObservableCollection<Report>();
+        private ObservableCollection<Report> _Reports { get; set; } = new ObservableCollection<Report>();
+        
         private int _Id { get; set; }
+        
         private int _ProjectId { get; set; }
+        
         private string _Name { get; set; }
+        
         private int _Status { get; set; }
+        
         private string _DateCreated { get; set; }
+        
         private string _UserCreated { get; set; }
+        
         private string _DateLast { get; set; }
+        
         private string _UserLast { get; set; }
+        
         private Source.Source _Source { get; set; }
+        
         private SolidColorBrush _Fill { get; set; }
+        
         private bool _IsEnabled { get; set; } = true;
+        
         public string DBUserLast { get; set; }
+        
         public string DBUserCreated { get; set; }
+        
         public bool IsEnabled
         {
             get
@@ -242,6 +256,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 NotifyPropertyChanged();
             }
         }
+        
         private ReportGroup(ObservableCollection<DbProject> dbProjects, int id, int projectId, string name, int status, string dateCreated, string userCreated, string dateLast, string userLast)
         {
             Id = id;
@@ -260,18 +275,31 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             DateLast = dateLast;
             UserLast = userLast;
         }
-        public static ObservableCollection<ReportGroup> GetReportGroups()
+        
+        public static ObservableCollection<ReportGroup> GetReportGroups(DbProject project)
         {
             ObservableCollection<ReportGroup> groups = new ObservableCollection<ReportGroup>();
-            KPLN_DataBase.DbControll.Update();
-            ObservableCollection<DbProject> dbProjects = KPLN_DataBase.DbControll.Projects;
+            ObservableCollection<DbProject> dbProjects;
+            string sqlCommand;
+            if (project != null)
+            {
+                dbProjects = new ObservableCollection<DbProject>() { project };
+                sqlCommand = $"SELECT * FROM ReportGroups Where ProjectId = {project.Id}";
+            }
+            else
+            {
+                KPLN_Library_DataBase.DbControll.Update();
+                dbProjects = KPLN_Library_DataBase.DbControll.Projects;
+                sqlCommand = $"SELECT * FROM ReportGroups";
+            }
+            
             try
             {
                 SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;"));
                 try
                 {
                     db.Open();
-                    using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM ReportGroups", db)) 
+                    using (SQLiteCommand cmd = new SQLiteCommand(sqlCommand, db)) 
                     {
                         using (SQLiteDataReader rdr = cmd.ExecuteReader())
                         {

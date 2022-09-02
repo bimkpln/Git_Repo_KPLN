@@ -17,9 +17,6 @@ namespace KPLN_Clashes_Ribbon.Source
         {
             switch (icon)
             {
-                case Icon.Default:
-                    Value = Path.Combine(AssemblyPath, @"Source\icon_default.png");
-                    break;
                 case Icon.Report:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_default.png");
                     break;

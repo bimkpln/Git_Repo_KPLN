@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:KPLN_Clashes_Ribbon.Forms"
              mc:Ignorable="d" 
-             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="KPLN: Отчеты Navisworks" WindowStyle="ToolWindow" Topmost="True" WindowStartupLocation="CenterOwner" Width="600" Height="500" Background="#FF292D36">
+             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="KPLN: Отчеты Navisworks" WindowStyle="ToolWindow" Topmost="False" WindowStartupLocation="CenterScreen" Width="600" Height="500" Background="#FF292D36">
     <Window.Resources>
         <Style x:Key="ExpanderDownHeaderStyle" TargetType="{x:Type ToggleButton}">
             <Setter Property="Template">

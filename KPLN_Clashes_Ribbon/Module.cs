@@ -35,7 +35,8 @@ namespace KPLN_Clashes_Ribbon
                 typeof(Commands.CommandShowManager).FullName,
                 panel,
                 "icon_default.png",
-                "http://moodle.stinproject.local/mod/page/view.php?id=326&forceview=1"
+                "http://moodle.stinproject.local/mod/page/view.php?id=326&forceview=1",
+                true
             );
 
             return Result.Succeeded;
@@ -74,7 +75,7 @@ namespace KPLN_Clashes_Ribbon
         /// <param name="panel">Панель, в которую добавляем кнопку</param>
         /// <param name="imageName">Имя иконки</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
+        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp, bool avclass)
         {
             PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
             PushButton button = panel.AddItem(data) as PushButton;
@@ -83,6 +84,11 @@ namespace KPLN_Clashes_Ribbon
             button.ItemText = text;
             BtnImagine(button, imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
+            
+            if (avclass)
+            {
+                button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
+            }
         }
 
         /// <summary>
