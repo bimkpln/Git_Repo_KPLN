@@ -1,20 +1,33 @@
 ﻿using KPLN_Library_DataBase.Collections;
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Data.SQLite;
 
 namespace KPLN_Library_DataBase.Controll
 {
     public static class SQLiteDBUtills
     {
+        private static string _sqlConnection;
+
+        /// <summary>
+        /// Путь к базе данных
+        /// </summary>
+        internal static string SqlConnection
+        {
+            get { return _sqlConnection; }
+            set { _sqlConnection = value; }
+        }
+
         public static ObservableCollection<DbUserInfo> GetUserInfo(ObservableCollection<DbDepartment> departments)
         {
             ObservableCollection<DbUserInfo> users = new ObservableCollection<DbUserInfo>();
             SQLiteConnection sql = new SQLiteConnection();
+            
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
-                sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Users", sql))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
@@ -25,26 +38,25 @@ namespace KPLN_Library_DataBase.Controll
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
+                sql.Close();
+                throw new Exception($"{typeof(SQLiteDBUtills).FullName} get exception: {ex}\n");
             }
+            sql.Close();
+
             return users;
         }
         public static ObservableCollection<DbDepartmentInfo> GetDepartmentInfo()
         {
             ObservableCollection<DbDepartmentInfo> departments = new ObservableCollection<DbDepartmentInfo>();
             SQLiteConnection sql = new SQLiteConnection();
+            
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
-                sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Departments", sql))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
@@ -55,26 +67,25 @@ namespace KPLN_Library_DataBase.Controll
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
+                sql.Close();
+                throw new Exception($"{typeof(SQLiteDBUtills).FullName} get exception: {ex}\n");
             }
+            sql.Close();
+
             return departments;
         }
         public static ObservableCollection<DbSubDepartmentInfo> GetSubDepartmentInfo()
         {
             ObservableCollection<DbSubDepartmentInfo> subDepartments = new ObservableCollection<DbSubDepartmentInfo>();
             SQLiteConnection sql = new SQLiteConnection();
+            
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
-                sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM SubDepartments", sql))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
@@ -85,26 +96,25 @@ namespace KPLN_Library_DataBase.Controll
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
+                sql.Close();
+                throw new Exception($"{typeof(SQLiteDBUtills).FullName} get exception: {ex}\n");
             }
+            sql.Close();
+
             return subDepartments;
         }
         public static ObservableCollection<DbProjectInfo> GetProjectInfo(ObservableCollection<DbUser> users)
         {
             ObservableCollection<DbProjectInfo> projects = new ObservableCollection<DbProjectInfo>();
             SQLiteConnection sql = new SQLiteConnection();
+
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
-                sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Projects", sql))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
@@ -115,26 +125,25 @@ namespace KPLN_Library_DataBase.Controll
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
+                sql.Close();
+                throw new Exception($"{typeof(SQLiteDBUtills).FullName} get exception: {ex}\n");
             }
+            sql.Close();
+
             return projects;
         }
         public static ObservableCollection<DbDocumentInfo> GetDocumentInfo(ObservableCollection<DbSubDepartment> subdepartments, ObservableCollection<DbProject> projects)
         {
             ObservableCollection<DbDocumentInfo> documents = new ObservableCollection<DbDocumentInfo>();
             SQLiteConnection sql = new SQLiteConnection();
+            
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
-                sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Documents", sql))
                 {
                     using (SQLiteDataReader rdr = cmd.ExecuteReader())
@@ -145,16 +154,14 @@ namespace KPLN_Library_DataBase.Controll
                         }
                     }
                 }
+            }
+            catch (Exception ex) 
+            { 
                 sql.Close();
+                throw new Exception($"{typeof(SQLiteDBUtills).FullName} get exception: {ex}\n"); 
             }
-            catch (Exception)
-            {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
-            }
+            sql.Close();
+
             return documents;
         }
         public static bool SetValue(DbElement element, string parameterName, string parameterValue)
@@ -177,6 +184,5 @@ namespace KPLN_Library_DataBase.Controll
             { }
             return false;
         }
-
     }
 }

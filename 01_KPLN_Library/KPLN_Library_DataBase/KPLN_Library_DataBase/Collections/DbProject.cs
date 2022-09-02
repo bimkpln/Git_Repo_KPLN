@@ -9,45 +9,16 @@ namespace KPLN_Library_DataBase.Collections
 {
     public class DbProject : DbElement, INotifyPropertyChanged, IDisposable
     {
-        public static ObservableCollection<DbProject> GetAllProjects(ObservableCollection<DbProjectInfo> projectInfo)
-        {
-            ObservableCollection<DbProject> projects = new ObservableCollection<DbProject>();
-            foreach (DbProjectInfo projectData in projectInfo)
-            {
-                projects.Add(new DbProject(projectData));
-            }
-            return projects;
-        }
-        private DbProject(DbProjectInfo projectData)
-        {
-            _id = projectData.Id;
-            _name = projectData.Name;
-            _users = projectData.Users;
-            _documents = new ObservableCollection<DbDocument>();
-            _code = projectData.Code;
-            _keys = projectData.Keys;
-        }
-        public void JoinDocumentsFromList(ObservableCollection<DbDocument> documents)
-        {
-            foreach (DbDocument doc in documents)
-            {
-                if (doc.Project != null)
-                {
-                    if (doc.Project.Id == Id)
-                    {
-                        _documents.Add(doc);
-                    }
-                }
-            }
-        }
-        public override string TableName 
-        {
-            get
-            {
-                return "Projects";
-            }
-        }
-        private string _name { get; set; }
+        private string _name;
+
+        private ObservableCollection<DbUser> _users;
+        
+        private ObservableCollection<DbDocument> _documents;
+        
+        private string _code;
+        
+        private string _keys;
+        
         public string Name
         {
             get { return _name; }
@@ -60,7 +31,15 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private ObservableCollection<DbUser> _users { get; set; }
+        
+        public override string TableName
+        {
+            get
+            {
+                return "Projects";
+            }
+        }
+
         public ObservableCollection<DbUser> Users
         {
             get { return _users; }
@@ -79,7 +58,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private ObservableCollection<DbDocument> _documents { get; set; }
+
         public ObservableCollection<DbDocument> Documents
         {
             get { return _documents; }
@@ -93,7 +72,7 @@ namespace KPLN_Library_DataBase.Collections
                 NotifyPropertyChanged();
             }
         }
-        private string _code { get; set; }
+
         public string Code
         {
             get { return _code; }
@@ -106,7 +85,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private string _keys { get; set; }
+
         public string Keys
         {
             get { return _keys; }
@@ -119,10 +98,46 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
+
         public event PropertyChangedEventHandler PropertyChanged;
+        
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public static ObservableCollection<DbProject> GetAllProjects(ObservableCollection<DbProjectInfo> projectInfo)
+        {
+            ObservableCollection<DbProject> projects = new ObservableCollection<DbProject>();
+            foreach (DbProjectInfo projectData in projectInfo)
+            {
+                projects.Add(new DbProject(projectData));
+            }
+            return projects;
+        }
+        
+        private DbProject(DbProjectInfo projectData)
+        {
+            _id = projectData.Id;
+            _name = projectData.Name;
+            _users = projectData.Users;
+            _documents = new ObservableCollection<DbDocument>();
+            _code = projectData.Code;
+            _keys = projectData.Keys;
+        }
+        
+        public void JoinDocumentsFromList(ObservableCollection<DbDocument> documents)
+        {
+            foreach (DbDocument doc in documents)
+            {
+                if (doc.Project != null)
+                {
+                    if (doc.Project.Id == Id)
+                    {
+                        _documents.Add(doc);
+                    }
+                }
+            }
         }
     }
 }

@@ -2,30 +2,65 @@
 using KPLN_Library_DataBase.Controll;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data.SQLite;
 using System.Linq;
 
 namespace KPLN_Library_DataBase
 {
     public static class DbControll
     {
+
+        private readonly static string _sqlConnection = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
+
         public static ObservableCollection<DbDepartment> Departments { get; private set; }
+        
+        internal static ObservableCollection<DbDepartmentInfo> DepartmentInfos { get; set; }
+        
         public static ObservableCollection<DbDocument> Documents { get; private set; }
-        public static ObservableCollection<DbProject> Projects { get; private set; }
+        
+        internal static ObservableCollection<DbDocumentInfo> DocumentInfos { get; set; }
+        
+        public static ObservableCollection<DbProject> Projects { get; set; }
+
+        internal static ObservableCollection<DbProjectInfo> ProjectInfos { get; set; }
+        
         public static ObservableCollection<DbSubDepartment> SubDepartments { get; private set; }
+
+        internal static ObservableCollection<DbSubDepartmentInfo> SubDepartmentInfos { get; set; }
+        
         public static ObservableCollection<DbUser> Users { get; private set; }
+        
+        internal static ObservableCollection<DbUserInfo> UserInfos { get; set; }
+        
         public static DbUser CurrentUser { get; private set; }
+        
+        /// <summary>
+        /// Обновление данных из базы данных КПЛН
+        /// </summary>
         public static void Update()
         {
-            _Departments = SQLiteDBUtills.GetDepartmentInfo();
-            Departments = DbDepartment.GetAllDepartments(_Departments);
-            _SubDepartments = SQLiteDBUtills.GetSubDepartmentInfo();
-            SubDepartments = DbSubDepartment.GetAllSubDepartments(_SubDepartments);
-            _Users = SQLiteDBUtills.GetUserInfo(Departments);
-            Users = DbUser.GetAllUsers(_Users);
-            _Projects = SQLiteDBUtills.GetProjectInfo(Users);
-            Projects = DbProject.GetAllProjects(_Projects);
-            _Documents = SQLiteDBUtills.GetDocumentInfo(SubDepartments, Projects);
-            Documents = DbDocument.GetAllDocuments(_Documents);
+            SQLiteConnection sql = new SQLiteConnection();
+            sql.ConnectionString = _sqlConnection;
+            sql.Open();
+            sql.Close();
+
+            SQLiteDBUtills.SqlConnection = _sqlConnection;
+
+            DepartmentInfos = SQLiteDBUtills.GetDepartmentInfo();
+            Departments = DbDepartment.GetAllDepartments(DepartmentInfos);
+            
+            UserInfos = SQLiteDBUtills.GetUserInfo(Departments);
+            Users = DbUser.GetAllUsers(UserInfos);
+
+            ProjectInfos = SQLiteDBUtills.GetProjectInfo(Users);
+            Projects = DbProject.GetAllProjects(ProjectInfos);
+
+            SubDepartmentInfos = SQLiteDBUtills.GetSubDepartmentInfo();
+            SubDepartments = DbSubDepartment.GetAllSubDepartments(SubDepartmentInfos);
+
+            DocumentInfos = SQLiteDBUtills.GetDocumentInfo(SubDepartments, Projects);
+            Documents = DbDocument.GetAllDocuments(DocumentInfos);
+            
             string currentUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
             foreach (DbUser user in Users)
             {
@@ -39,11 +74,7 @@ namespace KPLN_Library_DataBase
                 project.JoinDocumentsFromList(Documents);
             }
         }
-        public static ObservableCollection<DbDepartmentInfo> _Departments { get; set; }
-        public static ObservableCollection<DbDocumentInfo> _Documents { get; set; }
-        public static ObservableCollection<DbProjectInfo> _Projects { get; set; }
-        public static ObservableCollection<DbSubDepartmentInfo> _SubDepartments { get; set; }
-        public static ObservableCollection<DbUserInfo> _Users { get; set; }
+        
         public static ObservableCollection<DbDocument> GetDocumentsByProject(DbProject project)
         {
             ObservableCollection<DbDocument> documents = new ObservableCollection<DbDocument>();
@@ -56,6 +87,7 @@ namespace KPLN_Library_DataBase
             }
             return documents;
         }
+        
         public static ObservableCollection<DbUser> GetUsersByNames(List<string> userData)
         {
             ObservableCollection<DbUser> users = new ObservableCollection<DbUser>();
