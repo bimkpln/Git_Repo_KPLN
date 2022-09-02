@@ -31,6 +31,8 @@ namespace KPLN_Tools.ExternalCommands
         /// </summary>
         private List<ElementId> _correctedList = new List<ElementId>();
 
+        private TaskDialogResult _mainTaskDialogRes;
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Get application and documnet objects
@@ -64,6 +66,16 @@ namespace KPLN_Tools.ExternalCommands
             // Поиск элементов на удаление
             try
             {
+                TaskDialog taskDialog = new TaskDialog("Выбери действие");
+                taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconInformation;
+                taskDialog.MainContent = "Восстановить связь у марок - нажми Да.\nУдалить марки - нажми Нет.";
+                taskDialog.CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No;
+                _mainTaskDialogRes = taskDialog.Show();
+                if (_mainTaskDialogRes == TaskDialogResult.Cancel)
+                {
+                    return Result.Cancelled;
+                }
+
                 // Анализирую выбранные листы
                 if (sheetsList.Count > 0)
                 {
@@ -95,6 +107,7 @@ namespace KPLN_Tools.ExternalCommands
             }
             return Result.Succeeded;
         }
+
 
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на единице выбранного элемента и записи в коллекцию
@@ -143,7 +156,7 @@ namespace KPLN_Tools.ExternalCommands
                 Element currentElement = doc.GetElement(viewId);
                 
                 // Анализирую только виды
-                if (currentElement.GetType().Equals(typeof(ViewPlan)) || currentElement.GetType().Equals(typeof(ViewSection)))
+                if (currentElement.GetType().Equals(typeof(ViewPlan)))
                 {
                     FindAllElements(doc, viewId);
                 }
@@ -155,10 +168,10 @@ namespace KPLN_Tools.ExternalCommands
         /// </summary>
         private void CorrectedElements(Document doc)
         {
-            ICollection<ElementId> collection = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType().ToElementIds();
-            foreach (ElementId linktId in collection)
+            FilteredElementCollector collection = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkInstance));
+            foreach (Element link in collection)
             {
-                RevitLinkInstance linkInst = doc.GetElement(linktId) as RevitLinkInstance;
+                RevitLinkInstance linkInst = link as RevitLinkInstance;
                 
                 if (linkInst.Name.ToLower().Contains("ar") || linkInst.Name.ToLower().Contains("ар"))
                 {
@@ -166,34 +179,35 @@ namespace KPLN_Tools.ExternalCommands
                     
                     if (linkDoc != null) 
                     { 
-                        FilteredElementCollector roomsColl = new FilteredElementCollector(linkDoc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType();
-                        if (roomsColl.Count() > 0)
+                        
+                        foreach (KeyValuePair<ElementId, List<ElementId>> kvp in _errorDict)
                         {
-                            //var transformCoord = linkInst.GetTransform();
-
-                            foreach (KeyValuePair<ElementId, List<ElementId>> kvp in _errorDict)
+                            foreach (ElementId elemId in kvp.Value)
                             {
-                                foreach (ElementId errId in kvp.Value)
+                                ViewPlan currentView = doc.GetElement(kvp.Key) as ViewPlan;
+
+                                FilteredElementCollector roomsColl = new FilteredElementCollector(linkDoc).OfCategory(BuiltInCategory.OST_Rooms);
+                                if (roomsColl.Count() > 0)
                                 {
-                                    RoomTag roomTag = doc.GetElement(errId) as RoomTag;
+                                    Transform transformCoord = linkInst.GetTransform();
+                                    
+                                    RoomTag roomTag = doc.GetElement(elemId) as RoomTag;
                                     LocationPoint tagLocationPoint = roomTag.Location as LocationPoint;
                                     XYZ tagPoint = tagLocationPoint.Point;
 
                                     foreach (Element elem in roomsColl)
                                     {
-                                        //transformCoord.OfPoint(tagPoint);
                                         Room room = elem as Room;
+                                        
                                         if (room.IsPointInRoom(tagPoint))
                                         {
-                                            //Print($"{linkInst.Name}/{room.Name}", KPLN_Loader.Preferences.MessageType.Regular);
                                             LinkElementId roomId = new LinkElementId(linkInst.Id, room.Id);
-                                            var uvPoint = new UV(tagPoint.X, tagPoint.Y);
-                                            
-                                            var newRoomTag = doc.Create.NewRoomTag(roomId, uvPoint, kvp.Key);
+                                            UV uvPoint = new UV(tagPoint.X, tagPoint.Y);
+
+                                            RoomTag newRoomTag = doc.Create.NewRoomTag(roomId, uvPoint, currentView.Id);
                                             newRoomTag.RoomTagType = roomTag.RoomTagType;
 
-
-                                            _correctedList.Add(errId);
+                                            _correctedList.Add(elemId);
                                         }
                                     }
                                 }
@@ -214,11 +228,17 @@ namespace KPLN_Tools.ExternalCommands
             {
                 t.Start("KPLN_Почистить/починить марки помещений");
                 
-                CorrectedElements(doc);
-                foreach (KeyValuePair<ElementId, List<ElementId>> kvp in _errorDict)
+                if (_mainTaskDialogRes == TaskDialogResult.Yes)
                 {
-                    doc.Delete(kvp.Value);
+                    CorrectedElements(doc);
                 }
+                
+                foreach (List<ElementId> values in _errorDict.Values)
+                {
+                    _errorList.AddRange(values);
+                }
+                
+                doc.Delete(_errorList);
                 
                 t.Commit();
             }
@@ -226,17 +246,20 @@ namespace KPLN_Tools.ExternalCommands
             // Вывожу результат пользователю
             if (_errorDict.Count == 0)
             {
-                TaskDialog.Show("Результат", "Элементы не обнаружены :)", TaskDialogCommonButtons.Ok);
+                TaskDialog.Show(
+                    "Результат",
+                    "Элементы не обнаружены :)",
+                    TaskDialogCommonButtons.Ok
+                );
             }
-            else if (_correctedList.Count != 0)
+            else 
             {
-                TaskDialog.Show("Результат исправления", $"Элементы исправлены. Количество - {_correctedList.Count}", TaskDialogCommonButtons.Ok);
+                TaskDialog.Show(
+                    "Результат",
+                    $"Удаленные элементы - {_errorList.Count} шт.\nИз них было исправлено - {_correctedList.Count} шт.",
+                    TaskDialogCommonButtons.Ok
+                );
             }
-            else if (_errorDict.Count != 0)
-            {
-                TaskDialog.Show("Результат удаления", $"Элементы удалены. Количество - {_errorDict.Values.Count}", TaskDialogCommonButtons.Ok);
-            }
-
         }
     }
 }
