@@ -1,4 +1,4 @@
-﻿namespace KPLN_Parameters_Ribbon.Common
+﻿namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
     public static class Variables
     {

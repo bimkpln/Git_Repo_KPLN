@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_Parameters_Ribbon.Common
+namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
     public class ListBoxElement : INotifyPropertyChanged
     {

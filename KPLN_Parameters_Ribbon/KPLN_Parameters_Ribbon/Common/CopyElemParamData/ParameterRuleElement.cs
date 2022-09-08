@@ -9,7 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_Parameters_Ribbon.Common
+namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
     public class ParameterRuleElement : INotifyPropertyChanged
     {

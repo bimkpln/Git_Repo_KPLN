@@ -22,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -93,11 +94,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Command\CommandWriteValues.cs" />
-    <Compile Include="Common\Variables.cs" />
-    <Compile Include="Common\ListBoxElement.cs" />
-    <Compile Include="Common\ParameterRuleElement.cs" />
+    <Compile Include="Common\CopyElemParamData\Variables.cs" />
+    <Compile Include="Common\CopyElemParamData\ListBoxElement.cs" />
+    <Compile Include="Common\CopyElemParamData\ParameterRuleElement.cs" />
+    <Compile Include="Common\GripParam\SectionExcecuter.cs" />
+    <Compile Include="Common\GripParam\Builder\AbstrGripBuilder.cs" />
+    <Compile Include="Common\GripParam\Builder\GripBuilder_AR.cs" />
+    <Compile Include="Common\GripParam\Builder\GripBuilder_KR.cs" />
+    <Compile Include="Common\GripParam\Builder\GripDirector.cs" />
+    <Compile Include="Common\GripParam\Builder\OBDN\GripBuilder_KR_OBDN.cs" />
+    <Compile Include="Common\GripParam\GripParamWriter.cs" />
+    <Compile Include="Common\GripParam\Actions\IGripAction.cs" />
+    <Compile Include="Common\GripParam\Actions\GripOnLevelAction.cs" />
+    <Compile Include="Common\Tools\ClockwiseComparerTool.cs" />
+    <Compile Include="Common\Tools\ElementComparerTool.cs" />
+    <Compile Include="Common\Tools\GeometryTool.cs" />
+    <Compile Include="Common\Tools\LevelTool.cs" />
+    <Compile Include="Common\Tools\SolidComparerTool.cs" />
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
+    <Compile Include="ExternalCommands\CommandGripParam.cs" />
     <Compile Include="Forms\EnsureDialog.xaml.cs">
       <DependentUpon>EnsureDialog.xaml</DependentUpon>
     </Compile>
@@ -127,6 +143,12 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Imagens\copyProjectParams.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Imagens\gripParams.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Imagens\paramPullDown.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Imagens\paramSetter.png">

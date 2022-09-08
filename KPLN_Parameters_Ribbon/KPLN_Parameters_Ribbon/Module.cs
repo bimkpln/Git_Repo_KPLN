@@ -41,6 +41,7 @@ namespace KPLN_Parameters_Ribbon
                 "http://moodle.stinproject.local"
             );
 
+            //Добавляю кнопку в панель
             AddPushButtonDataInPanel(
                 "Копирование параметров проекта",
                 "Параметры\nпроекта",
@@ -57,6 +58,30 @@ namespace KPLN_Parameters_Ribbon
                 "copyProjectParams.png",
                 "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=663"
             );
+
+            //Добавляю выпадающий список в панель
+            PulldownButtonData pullDownData = new PulldownButtonData("Параметры под проект", "Параметры\nпод проект");
+            pullDownData.ToolTip = "Коллекция плагинов, для заполнения парамтеров под конкретный проект";
+            PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
+            BtnImagine(pullDown, "paramPullDown.png");
+
+            //Добавляю кнопку в выпадающий список pullDown
+            AddPushButtonDataInPullDown(
+            "Параметры захваток",
+            "Параметры захваток",
+            "Производит заполнение параметров Секции и Этажа по требованиям ВЕР под проект",
+            string.Format(
+                "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                ModuleData.Date,
+                ModuleData.Version,
+                ModuleData.ModuleName
+            ),
+            typeof(ExternalCommands.CommandGripParam).FullName,
+            pullDown,
+            "gripParams.png",
+            "http://moodle.stinproject.local"
+        );
+            
 
             return Result.Succeeded;
         }
