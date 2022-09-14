@@ -27,6 +27,11 @@ namespace KPLN_Parameters_Ribbon.Forms
             Show();
             System.Windows.Forms.Application.DoEvents();
         }
+
+        /// <summary>
+        /// Увеличение значения на 1
+        /// </summary>
+        /// <param name="value"></param>
         public void Increment(string value = null)
         {
             if (value != null)

@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Parameters_Ribbon.Common.Tools;
+using KPLN_Parameters_Ribbon.Forms;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN
@@ -15,16 +16,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN
         {
         }
 
-        protected override void FloorNumberUnderLevel(ref int counter)
+        protected override void FloorNumberUnderLevelByElement(Progress_Single pb)
         {
-            foreach (Element elem in _elemsUnderLevel)
+            foreach (Element elem in ElemsUnderLevel)
             {
                 Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
                 if (baseLevel != null)
                 {
                     string floorNumber = null; 
 
-                    floorNumber = LevelTool.GetFloorNumberDecrementLevel(baseLevel, LevelNumberIndex, Doc, SplitLevelChar);
+                    floorNumber = LevelTool.GetFloorNumberDecrementLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
 
                     if (floorNumber == null)
                     {
@@ -38,7 +39,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN
                     Parameter floor = elem.LookupParameter(LevelParamName);
                     if (floor == null) continue;
                     floor.Set(floorNumber);
-                    counter++;
+                    
+                    pb.Increment();
                 }
                 else
                 {

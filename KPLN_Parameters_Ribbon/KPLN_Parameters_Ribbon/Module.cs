@@ -79,7 +79,7 @@ namespace KPLN_Parameters_Ribbon
             typeof(ExternalCommands.CommandGripParam).FullName,
             pullDown,
             "gripParams.png",
-            "http://moodle.stinproject.local"
+            "https://docs.google.com/document/d/1QwE91BT5gs64xPSiFO7prKO__HPZnDX_IPiA-Sa2Gfo/edit"
         );
             
 

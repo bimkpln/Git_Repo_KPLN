@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,28 +27,31 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         public void BuildWriter()
         {
             _builder.Prepare();
-            
+
+            _builder.Check();
+
+            // Заполняю уровни с учетом секций (пока не реализован поиск уровня с учетом секции - как вариант организовать отдельную сущность, куда будут помещаться элементы с указанием номера секции, потом этажи заполнять с учетом номера секции)
             using (Transaction t = new Transaction(_builder.Doc))
             {
                 t.Start($"{_builder.DocMainTitle}: Параметры захваток");
-
-                Print("Заполнение параметров уровня ↑", KPLN_Loader.Preferences.MessageType.Header);
-                bool writeLevelParams = _builder.ExecuteLevelParams();
-                if (writeLevelParams)
+                
+                int max = _builder.AllElementsCount;
+                string format = "{0} из " + max.ToString() + " элементов обработано";
+                
+                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров секции", format, max))
                 {
-                    Print("Параметры уровня подготовлены успешно!", KPLN_Loader.Preferences.MessageType.Regular);
+                    //bool writeLevelParams = _builder.ExecuteSectionParams(pb);
                 }
                 
-                Print("Заполнение параметров секции ↑", KPLN_Loader.Preferences.MessageType.Header);
-                bool writeSectionParams = _builder.ExecuteSectionParams();
-                if (writeSectionParams)
+                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров уровня", format, max))
                 {
-                    Print("Параметры секции подготовлены успешно!", KPLN_Loader.Preferences.MessageType.Regular);
+                    bool writeLevelParams = _builder.ExecuteLevelParams(pb);
                 }
-
-                Print("Параметры заполнены!", KPLN_Loader.Preferences.MessageType.Success);
+                
                 t.Commit();
             }
+            
+            Print("Параметры захваток заполнены!", KPLN_Loader.Preferences.MessageType.Success);
         }
     }
 }

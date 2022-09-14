@@ -1,29 +1,16 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
+using KPLN_Parameters_Ribbon.Common.Tools;
+using KPLN_Parameters_Ribbon.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
-using KPLN_Parameters_Ribbon.Common.GripParam.Actions;
-using KPLN_Parameters_Ribbon.Common.Tools;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_KR : AbstrGripBuilder
     {
-
-        /// <summary>
-        /// Элементы под уровнем
-        /// </summary>
-        protected List<Element> _elemsUnderLevel = new List<Element>();
-
-        /// <summary>
-        /// Коллекция всех лестниц
-        /// </summary>
-        protected List<Element> _stairsElems = new List<Element>();
-
         public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName)
         {
         }
@@ -35,41 +22,41 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         public override bool Prepare()
         {
             // Категория "Стены" над уровнем
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => !x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк")));
 
             // Категория "Стены" под уровнем
-            _elemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")));
 
             // Категория "Перекрытия" над уровнем
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => !x.Name.ToLower().Contains("площадка") && !x.Name.ToLower().Contains("фундамент") && !x.Name.ToLower().Contains("пандус")));
 
             // Категория "Перекрытия" под уровнем
-            _elemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")));
 
             // Семейства "Обобщенные модели" над уровнем
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
                 .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2")));
 
             // Семейства "Окна" над уровнем
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
                 .Where(i => i.Symbol.FamilyName.StartsWith("23")));
@@ -81,89 +68,108 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             IEnumerable<StairsLanding> stairsLanding = new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsLanding))
                .Cast<StairsLanding>();
-            _elemsOnLevel.AddRange(stairsRun);
-            _elemsOnLevel.AddRange(stairsLanding);
-            _stairsElems.AddRange(stairsRun);
-            _stairsElems.AddRange(stairsLanding);
+            ElemsOnLevel.AddRange(stairsRun);
+            ElemsOnLevel.AddRange(stairsLanding);
+            StairsElems.AddRange(stairsRun);
+            StairsElems.AddRange(stairsLanding);
 
             // Семейства "Колоны" над уровнем
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralColumns)
                 .Cast<FamilyInstance>());
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFoundation)
                 .Cast<FamilyInstance>());
 
             // Семейства "Колоны" под уровнем
-            _elemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilyInstance>());
 
 
             // Семейства "Перекрытия" под уровнем
-            _elemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Floors)
                 .Cast<FamilyInstance>());
 
-            _elemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Walls)
                 .Cast<FamilyInstance>());
 
-            _allElems.AddRange(_elemsOnLevel);
-            _allElems.AddRange(_elemsUnderLevel);
-            _allElems.AddRange(_stairsElems);
+            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + StairsElems.Count;
 
-            if (_allElems.Count > 0)
+            if (AllElementsCount > 0)
             {
                 return true;
             }
             else
             {
-                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет!");
+                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
             }
         }
 
-        public override bool ExecuteLevelParams()
+        public override bool ExecuteLevelParams(Progress_Single pb)
         {
-            int counter = 0;
+            LevelTool.Levels = new FilteredElementCollector(Doc)
+                .OfClass(typeof(Level))
+                .WhereElementIsNotElementType()
+                .Cast<Level>();
 
-            FloorNumberOnLevel(ref counter);
+            FloorNumberOnLevelByElement(pb);
 
-            FloorNumberUnderLevel(ref counter);
-
-            Print("Обработано элементов: " + counter, KPLN_Loader.Preferences.MessageType.Warning);
+            FloorNumberUnderLevelByElement(pb);
 
             return true;
         }
 
-        public override bool ExecuteSectionParams()
+        public override bool ExecuteSectionParams(Progress_Single pb)
         {
-            return SectionExcecuter.Execute(Doc, _allElems, "Орг.ОсьБлок", SectionParamName);
+            bool byElem = false;
+            bool byUnderElem = false;
+            bool byStairsElem = false;
+
+            if (ElemsOnLevel.Count > 0)
+            {
+                byElem = SectionExcecuter.ExecuteByElement(Doc, ElemsOnLevel, "Орг.ОсьБлок", SectionParamName, pb);
+            }
+
+            if (ElemsByHost.Count > 0)
+            {
+                byUnderElem = SectionExcecuter.ExecuteByElement(Doc, ElemsUnderLevel, "Орг.ОсьБлок", SectionParamName, pb);
+            }
+
+            if (StairsElems.Count > 0)
+            {
+                byStairsElem = SectionExcecuter.ExecuteByElement(Doc, StairsElems, "Орг.ОсьБлок", SectionParamName, pb);
+            }
+
+            return byElem && byUnderElem && byStairsElem;
         }
 
         /// <summary>
         /// Заполняю номер этажа для элементов, находящихся НА уровне
         /// </summary>
-        protected virtual void FloorNumberOnLevel(ref int counter)
+        protected virtual void FloorNumberOnLevelByElement(Progress_Single pb)
         {
-            foreach (Element elem in _elemsOnLevel)
+            foreach (Element elem in ElemsOnLevel)
             {
                 try
                 {
                     Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
                     if (baseLevel != null)
                     {
-                        string floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, 1, SplitLevelChar);
+                        string floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
                         if (floorNumber == null) continue;
                         Parameter floor = elem.LookupParameter(LevelParamName);
                         if (floor == null) continue;
                         floor.Set(floorNumber);
-                        counter++;
+                        
+                        pb.Increment();
                     }
                 }
                 catch (Exception e)
@@ -176,9 +182,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Заполняю номер этажа для элементов, находящихся ПОД уровнем
         /// </summary>
-        protected virtual void FloorNumberUnderLevel(ref int counter)
+        protected virtual void FloorNumberUnderLevelByElement(Progress_Single pb)
         {
-            foreach (Element elem in _elemsUnderLevel)
+            foreach (Element elem in ElemsUnderLevel)
             {
                 Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
                 if (baseLevel != null)
@@ -208,7 +214,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     Parameter floor = elem.LookupParameter(LevelParamName);
                     if (floor == null) continue;
                     floor.Set(floorNumber);
-                    counter++;
+                    
+                    pb.Increment();
                 }
                 else
                 {

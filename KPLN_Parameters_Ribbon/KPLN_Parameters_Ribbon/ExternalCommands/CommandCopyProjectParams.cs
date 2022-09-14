@@ -15,7 +15,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class CommandCopyProjectParams : IExternalCommand
     {
-        private List<string> _parametersName = new List<string>() 
+        private readonly List<string> _parametersName = new List<string>() 
         {
             "SHT_Вид строительства",
             "SHT_Абсолютная отметка",
@@ -104,7 +104,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             }
         }
 
-        public bool copyingGlobalParams(GlobalParameter param, Document currentDoc)
+        public bool CopyingGlobalParams(GlobalParameter param, Document currentDoc)
         {
             bool check = false;
             if (param == null)

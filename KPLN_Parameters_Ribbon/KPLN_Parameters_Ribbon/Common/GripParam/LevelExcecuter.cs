@@ -10,23 +10,23 @@ using KPLN_Parameters_Ribbon.Forms;
 namespace KPLN_Parameters_Ribbon.Common.GripParam
 {
     /// <summary>
-    /// Общий класс для обработки секций
+    /// Общий класс для обработки уровней
     /// </summary>
-    internal static class SectionExcecuter
+    internal static class LevelExcecuter
     {
+        private static IEnumerable<Level> _levels = null;
+
         /// <summary>
         /// Общие метод записи значения секции для всех элементов
         /// </summary>
         /// <param name="doc">Документ Ревит</param>
         /// <param name="elems">Коллекция элементов для обработки</param>
         /// <param name="gridSectionParam">Имя параметра номера секции у осей</param>
-        /// <param name="sectionParam">Имя параметра номера секции у заполняемых элементов</param>
+        /// <param name="levelParam">Имя параметра номера уровня у заполняемых элементов</param>
         /// <returns></returns>
-        public static bool ExecuteByElement(Document doc, List<Element> elems, string gridSectionParam, string sectionParam, Progress_Single pb)
+        public static bool ExecuteByElement(Document doc, List<Element> elems, string gridSectionParam, string levelParam, Progress_Single pb)
         {
-            double[] minMaxCoords = GetMinMaxZCoordOfModel(elems);
             List<Grid> grids = new FilteredElementCollector(doc).WhereElementIsNotElementType().OfClass(typeof(Grid)).Cast<Grid>().ToList();
-            
             Dictionary<string, HashSet<Grid>> sectionsGrids = new Dictionary<string, HashSet<Grid>>();
             foreach (Grid grid in grids)
             {
@@ -49,57 +49,81 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 throw new Exception($"Для заполнения номера секции в элементах, необходимо заполнить параметр: {gridSectionParam} в осях! Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
             }
 
-            #region Этап №1 - анализ на коллизию с солидом
-            List<Element> notIntersectedElems = elems;
-            Dictionary<Solid, string> sectionSolids = new Dictionary<Solid, string>();
-            Dictionary<Element, List<string>> duplicatesWriteElems = new Dictionary<Element, List<string>>(new ElementComparerTool());
-            List<DirectShape> directShapes = new List<DirectShape>();
-            foreach (string sg in sectionsGrids.Keys)
-            {
-                List<Grid> gridsOfSect = sectionsGrids[sg].ToList();
-                if (sectionsGrids[sg].Count < 4)
-                {
-                    throw new Exception($"Количество осей с номером секции: {sg} меньше 4. Проверьте назначение параметров у осей!");
-                }
-                List<XYZ> pointsOfGridsIntersect = GetPointsOfGridsIntersection(gridsOfSect);
-                pointsOfGridsIntersect.Sort(new ClockwiseComparerTool(GetCenterPointOfPoints(pointsOfGridsIntersect)));
-                
-                Solid solid;
-                DirectShape directShape = CreateSolidsInModel(doc, minMaxCoords, pointsOfGridsIntersect, out solid);
-                sectionSolids.Add(solid, sg);
-                directShapes.Add(directShape);
-                
-                // Поиск элементов, которые находятся внутри солидов, построенных на основании пересечения осей
-                List<Element> intersectedElements = new FilteredElementCollector(doc, elems.Select(x => x.Id).ToList())
+            _levels = new FilteredElementCollector(doc)
+                    .OfClass(typeof(Level))
                     .WhereElementIsNotElementType()
-                    .WherePasses(new ElementIntersectsSolidFilter(solid))
-                    .ToElements()
-                    .ToList();
-                foreach (Element item in intersectedElements)
+                    .Cast<Level>();
+
+            Level currentUpperLevel = null;
+            List<DirectShape> directShapes = new List<DirectShape>();
+            Dictionary<Solid, string> sectionLevelSolids = new Dictionary<Solid, string>();
+            Dictionary<Element, List<string>> duplicatesWriteElems = new Dictionary<Element, List<string>>(new ElementComparerTool());
+            List<Element> notIntersectedElems = elems;
+            foreach (Level level in _levels)
+            {
+                ElementId aboveLevelId = level.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL).AsElementId();
+                Level aboveLevel = (Level)doc.GetElement(aboveLevelId);
+                if (aboveLevel == null) { continue; }
+                if (currentUpperLevel == null)
                 {
-                    if (item == null) continue;
-                    
-                    Parameter parameter = item.LookupParameter(sectionParam);
-                    if (parameter != null && !parameter.IsReadOnly)
+                    currentUpperLevel = aboveLevel;
+                }
+                else if (currentUpperLevel == aboveLevel) { continue; }
+
+
+                double[] minMaxCoords = GetMinMaxZCoordOfLevel(level, aboveLevel);
+                // Исправить, сейчас только под ОБДН
+                string levelIndex = GetFloorNumberByLevel(level, 1, '_');
+
+                #region Этап №1 - анализ на коллизию с солидом
+                foreach (string sg in sectionsGrids.Keys)
+                {
+                    List<Grid> gridsOfSect = sectionsGrids[sg].ToList();
+                    if (sectionsGrids[sg].Count < 4)
                     {
-                        parameter.Set(sg);
-                        if (duplicatesWriteElems.ContainsKey(item))
+                        throw new Exception($"Количество осей с номером секции: {sg} меньше 4. Проверьте назначение параметров у осей!");
+                    }
+                    List<XYZ> pointsOfGridsIntersect = GetPointsOfGridsIntersection(gridsOfSect);
+                    pointsOfGridsIntersect.Sort(new ClockwiseComparerTool(GetCenterPointOfPoints(pointsOfGridsIntersect)));
+                
+                    Solid solid;
+                    DirectShape directShape = CreateSolidsInModel(doc, minMaxCoords, pointsOfGridsIntersect, out solid);
+                    sectionLevelSolids.Add(solid, levelIndex);
+                    directShapes.Add(directShape);
+                
+                    // Поиск элементов, которые находятся внутри солидов, построенных на основании пересечения осей
+                    List<Element> intersectedElements = new FilteredElementCollector(doc, elems.Select(x => x.Id).ToList())
+                        .WhereElementIsNotElementType()
+                        .WherePasses(new ElementIntersectsSolidFilter(solid))
+                        .ToElements()
+                        .ToList();
+                    foreach (Element item in intersectedElements)
+                    {
+                        if (item == null) continue;
+                    
+                        Parameter parameter = item.LookupParameter(levelParam);
+                        if (parameter != null && !parameter.IsReadOnly)
                         {
-                            duplicatesWriteElems[item].Add(sg);
-                        }
-                        else
-                        {
-                            duplicatesWriteElems.Add(item, new List<string>() { sg });
+                            parameter.Set(levelIndex);
+                            if (duplicatesWriteElems.ContainsKey(item))
+                            {
+                                duplicatesWriteElems[item].Add(levelIndex);
+                            }
+                            else
+                            {
+                                duplicatesWriteElems.Add(item, new List<string>() { levelIndex });
                             
-                            pb.Increment();
+                                pb.Increment();
+                            }
                         }
                     }
-                }
                 
-                // Получение элементов, которые находятся ВНЕ солида
-                notIntersectedElems = notIntersectedElems.Except(intersectedElements, new ElementComparerTool()).ToList();
+                    // Получение элементов, которые находятся ВНЕ солида
+                    notIntersectedElems = notIntersectedElems.Except(intersectedElements, new ElementComparerTool()).ToList();
+                }
+
             }
-            
+
             duplicatesWriteElems = duplicatesWriteElems.Where(x => x.Value.Count > 1).ToDictionary(x => x.Key, x => x.Value);
             Print($"Количество элементов, которые подверглись перезаписи параметра на этапе №1 (поиск внутри пересечения осей): {duplicatesWriteElems.Keys.Count}." +
                 $"\nОни подвеграются вторичному анализу", KPLN_Loader.Preferences.MessageType.Regular);
@@ -111,15 +135,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 if (elemPointCenter == null) continue;
 
                 //Расстояние от центра элемента до центроида солида
-                List<Solid> solidsList = sectionSolids.Where(x => item.Value.Contains(x.Value)).ToDictionary(x => x.Key, x => x.Value).Keys.ToList();
+                List<Solid> solidsList = sectionLevelSolids.Where(x => item.Value.Contains(x.Value)).ToDictionary(x => x.Key, x => x.Value).Keys.ToList();
                 solidsList.Sort((x, y) => (int)(x.ComputeCentroid().DistanceTo(elemPointCenter) - y.ComputeCentroid().DistanceTo(elemPointCenter)));
                 Solid solid = solidsList.First();
                 if (solid == null) continue;
                 
-                Parameter parameter = item.Key.LookupParameter(sectionParam);
+                Parameter parameter = item.Key.LookupParameter(levelParam);
                 if (parameter != null && !parameter.IsReadOnly)
                 {
-                    parameter.Set(sectionSolids[solid]);
+                    parameter.Set(sectionLevelSolids[solid]);
 
                     pb.Increment();
                 }
@@ -142,15 +166,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 if (elemPointCenter == null) continue;
 
                 //Расстояние от центра элемента до центроида солида
-                List<Solid> solidsList = sectionSolids.Keys.ToList();
+                List<Solid> solidsList = sectionLevelSolids.Keys.ToList();
                 solidsList.Sort((x, y) => (int)(x.ComputeCentroid().DistanceTo(elemPointCenter) - y.ComputeCentroid().DistanceTo(elemPointCenter)));
                 Solid solid = solidsList.First();
                 if (solid == null) continue;
                 
-                Parameter parameter = elem.LookupParameter(sectionParam);
+                Parameter parameter = elem.LookupParameter(levelParam);
                 if (parameter != null && !parameter.IsReadOnly)
                 {
-                    if (parameter.Set(sectionSolids[solid]))
+                    if (parameter.Set(sectionLevelSolids[solid]))
                     {
                         // Получение элементов, которые не могут найти ближайший элемент
                         notNearestSolidElems = notNearestSolidElems.Except(notIntersectedElems, new ElementComparerTool()).ToList();
@@ -179,13 +203,33 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         }
 
         /// <summary>
+        /// Поиск номера уровня у элемента (над уровнем) по уровню
+        /// </summary>
+        /// <param name="lev">Уровень</param>
+        /// <param name="floorTextPosition">Индекс номера уровня с учетом разделителя</param>
+        /// <param name="splitChar">Разделитель</param>
+        /// <returns>Номер уровня</returns>
+        public static string GetFloorNumberByLevel(Level lev, int floorTextPosition, char splitChar)
+        {
+            string levname = lev.Name;
+            string[] splitname = levname.Split(splitChar);
+            if (splitname.Length < 2)
+            {
+                throw new Exception($"Некорректное имя уровня: {levname}");
+            }
+            string floorNumber = splitname[floorTextPosition];
+
+            return floorNumber;
+        }
+
+        /// <summary>
         /// Общие метод записи значения секции для витражей АР
         /// </summary>
         /// <param name="doc">Документ Ревит</param>
         /// <param name="elems">Коллекция элементов для обработки</param>
-        /// <param name="sectionParam">Имя параметра номера секции у заполняемых элементов</param>
+        /// <param name="levelParam">Имя параметра номера секции у заполняемых элементов</param>
         /// <returns></returns>
-        public static bool ExecuteByHost_AR(List<Element> elems, string sectionParam, Progress_Single pb)
+        public static bool ExecuteByHost_AR(List<Element> elems, string levelParam, Progress_Single pb)
         {
             foreach(Element elem in elems)
             {
@@ -215,8 +259,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                         break;
                 }
                 
-                var hostElemParamValue = hostElem.LookupParameter(sectionParam).AsString();
-                elem.LookupParameter(sectionParam).Set(hostElemParamValue);
+                var hostElemParamValue = hostElem.LookupParameter(levelParam).AsString();
+                elem.LookupParameter(levelParam).Set(hostElemParamValue);
 
                 pb.Increment();
             }
@@ -228,16 +272,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         /// </summary>
         /// <param name="doc">Документ Ревит</param>
         /// <param name="elems">Коллекция элементов для обработки</param>
-        /// <param name="sectionParam">Имя параметра номера секции у заполняемых элементов</param>
+        /// <param name="levelParam">Имя параметра номера секции у заполняемых элементов</param>
         /// <returns></returns>
-        public static bool ExecuteByHost(List<Element> elems, string sectionParam, Progress_Single pb)
+        public static bool ExecuteByHost(List<Element> elems, string levelParam, Progress_Single pb)
         {
             foreach (Element elem in elems)
             {
                 FamilyInstance instance = elem as FamilyInstance;
                 Element hostElem = instance.SuperComponent;
-                var hostElemParamValue = hostElem.LookupParameter(sectionParam).AsString();
-                elem.LookupParameter(sectionParam).Set(hostElemParamValue);
+                var hostElemParamValue = hostElem.LookupParameter(levelParam).AsString();
+                elem.LookupParameter(levelParam).Set(hostElemParamValue);
 
                 pb.Increment();
             }
@@ -384,18 +428,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             return false;
         }
 
-        private static double[] GetMinMaxZCoordOfModel(List<Element> elems)
+        private static double[] GetMinMaxZCoordOfLevel(Level level, Level aboveLevel)
         {
-            List<BoundingBoxXYZ> elemsBox = new List<BoundingBoxXYZ>();
-            foreach (Element item in elems)
-            {
-                BoundingBoxXYZ itemBox = item.get_BoundingBox(null);
-                if (itemBox == null) continue;
-                elemsBox.Add(itemBox);
-            }
-            double maxPointOfModel = elemsBox.Select(x => x.Max.Z).Max();
-            double minPointOfModel = elemsBox.Select(x => x.Min.Z).Min();
-            return new double[] { minPointOfModel, maxPointOfModel };
+            double minPointOfLevels = level.Elevation;
+            double maxPointOLevels = aboveLevel.Elevation;
+            
+            return new double[] { minPointOfLevels, maxPointOLevels };
         }
 
         public static Solid SolidBoundingBox(BoundingBoxXYZ bbox)

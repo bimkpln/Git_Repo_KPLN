@@ -21,17 +21,33 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             Document doc = uiapp.ActiveUIDocument.Document;
 
             int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+            // Техническая подмена оазделов для режима тестирования
+            if (userDepartment == 6) { userDepartment = 4; }
             
-            AbstrGripBuilder gripBuilder;
+            AbstrGripBuilder gripBuilder = null;
             try
             {
-                if (userDepartment == 1)
+                // Посадить на конфиг под каждый файл
+                if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("АР"))
                 {
-                    gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    {
+                        gripBuilder = new GripBuilder_AR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                    }
                 }
-                else if (userDepartment == 4 || userDepartment == 6 && doc.Title.ToUpper().Contains("ОБДН"))
+                else if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("КР"))
                 {
-                    gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    {
+                        gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                    }
+                }
+                else if (userDepartment == 3 || userDepartment == 4 && (doc.Title.ToUpper().Contains("ОВ") || doc.Title.ToUpper().Contains("ВК") || doc.Title.ToUpper().Contains("АУПТ") || doc.Title.ToUpper().Contains("ЭОМ") || doc.Title.ToUpper().Contains("СС") || doc.Title.ToUpper().Contains("АВ")))
+                {
+                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    {
+                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                    }
                 }
                 else
                 {

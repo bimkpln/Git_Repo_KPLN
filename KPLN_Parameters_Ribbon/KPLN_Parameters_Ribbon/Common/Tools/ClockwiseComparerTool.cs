@@ -9,7 +9,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
 {
     internal class ClockwiseComparerTool : IComparer<XYZ>
     {
-        private XYZ CenterPoint;
+        private readonly XYZ CenterPoint;
 
         public ClockwiseComparerTool(XYZ centerPoint)
         {

@@ -31,6 +31,22 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 _maxLevel = value;
             }
         }
+        
+        private static IEnumerable<Level> _levels = null;
+
+        /// <summary>
+        /// Коллекция уровней в проекте
+        /// </summary>
+        public static IEnumerable<Level> Levels
+        {
+            get { return _levels; }
+            set { _levels = value; }
+        }
+
+        /// <summary>
+        /// Словарь "номер уровня - уровень". Для экономии ресурсов
+        /// </summary>
+        private static Dictionary<ElementId, string> _levelNumberMap = new Dictionary<ElementId, string>();
 
         /// <summary>
         /// Поиск номера уровня у элемента (над уровнем) по уровню
@@ -41,15 +57,24 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <returns>Номер уровня</returns>
         public static string GetFloorNumberByLevel(Level lev, int floorTextPosition, char splitChar)
         {
-            string levname = lev.Name;
-            string[] splitname = levname.Split(splitChar);
-            if (splitname.Length < 2)
+            
+            if (_levelNumberMap.ContainsKey(lev.Id))
             {
-                Print("Некорректное имя уровня: " + levname, KPLN_Loader.Preferences.MessageType.Error);
-                return null;
+                return _levelNumberMap[lev.Id];
             }
-            string floorNumber = splitname[floorTextPosition];
-            return floorNumber;
+            else
+            {
+                string levname = lev.Name;
+                string[] splitname = levname.Split(splitChar);
+                if (splitname.Length < 2)
+                {
+                    throw new Exception($"Некорректное имя уровня: {levname}");
+                }
+                string floorNumber = splitname[floorTextPosition];
+
+                _levelNumberMap.Add(lev.Id, floorNumber);
+                return floorNumber;
+            }
         }
 
         /// <summary>
@@ -94,7 +119,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <param name="doc">Документ для анализа</param>
         /// <param name="splitChar">Разделитель</param>
         /// <returns>Номер уровня</returns>
-        public static string GetFloorNumberDecrementLevel(Level lev, int floorTextPosition, Document doc, char splitChar)
+        public static string GetFloorNumberDecrementLevel(Level lev, int floorTextPosition, char splitChar)
         {
             List<char> resultFloorNumber = new List<char>();
             string floorNumber = GetFloorNumberByLevel(lev, floorTextPosition, splitChar);
@@ -171,7 +196,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 if (solids.Count == 0) return null;
                 XYZ[] maxmin = GeometryTool.GetMaxMinHeightPoints(solids);
                 XYZ minPoint = maxmin[1];
-                levId = GetNearestLevel(minPoint, doc);
+                levId = GetNearestBelowPointLevel(minPoint, doc).Id;
             }
 
             if (levId == ElementId.InvalidElementId)
@@ -182,13 +207,15 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         }
 
         /// <summary>
-        /// Поиск ближайшего уровня
+        /// Поиск уровня, ближайшего к точке и ниже этой точки. Для элементов на нижних уровнях с отрицательной отметкой выдаст нижний уровень
         /// </summary>
         /// <param name="point">Точка в пространстве</param>
         /// <param name="doc">Документ для анализа</param>
         /// <returns>Id уровня</returns>
-        public static ElementId GetNearestLevel(XYZ point, Document doc)
+        public static Level GetNearestBelowPointLevel(XYZ point, Document doc)
         {
+            double pointZ = point.Z;
+
             BasePoint projectBasePoint = new FilteredElementCollector(doc)
                 .OfClass(typeof(BasePoint))
                 .WhereElementIsNotElementType()
@@ -196,45 +223,68 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 .Where(i => i.IsShared == false)
                 .First();
             double projectPointElevation = projectBasePoint.get_BoundingBox(null).Min.Z;
-
-            double pointZ = point.Z;
-            List<Level> levels = new FilteredElementCollector(doc)
-                .OfClass(typeof(Level))
-                .WhereElementIsNotElementType()
-                .Cast<Level>()
-                .ToList();
-
-            Level finalLevel = null;
-
-            foreach (Level lev in levels)
-            {
-                if (finalLevel == null)
-                {
-                    finalLevel = lev;
-                    continue;
-                }
-                if (lev.Elevation < finalLevel.Elevation)
-                {
-                    finalLevel = lev;
-                    continue;
-                }
-            }
+            
+            Level nearestLevel = null;
 
             double offset = 10000;
-            foreach (Level lev in levels)
+            foreach (Level lev in Levels)
             {
                 double levHeigth = lev.Elevation + projectPointElevation;
-                double testElev = pointZ - levHeigth;
-                if (testElev < 0) continue;
+                double tempElev = pointZ - levHeigth;
+                if (tempElev < 0) continue;
 
-                if (testElev < offset)
+                if (tempElev < offset)
                 {
-                    finalLevel = lev;
-                    offset = testElev;
+                    nearestLevel = lev;
+                    offset = tempElev;
                 }
             }
 
-            return finalLevel.Id;
+            if (nearestLevel == null)
+            {
+                foreach (Level lev in Levels)
+                {
+                    if (nearestLevel == null)
+                    {
+                        nearestLevel = lev;
+                        continue;
+                    }
+                    if (lev.Elevation < nearestLevel.Elevation)
+                    {
+                        nearestLevel = lev;
+                    }
+                }
+            }
+
+            return nearestLevel;
+        }
+
+        /// <summary>
+        /// Поиск уровня, ближайшего к уровню и ниже его. Для элементов на нижних уровнях с отрицательной отметкой выдаст нижний уровень
+        /// </summary>
+        /// <param name="point">Точка в пространстве</param>
+        /// <param name="doc">Документ для анализа</param>
+        /// <returns>Id уровня</returns>
+        public static Level GetNearestBelowLevel(Level level, Document doc)
+        {
+            double zValue = level.Elevation;
+            return GetNearestBelowPointLevel(new XYZ(0, 0, zValue), doc);
+        }
+
+        /// <summary>
+        /// Поиск уровня, ближайшего к уровню и выше его
+        /// </summary>
+        /// <param name="point">Точка в пространстве</param>
+        /// <param name="doc">Документ для анализа</param>
+        /// <returns>Id уровня</returns>
+        private static Level GetNearestUpperLevel(Level level, Document doc)
+        {
+            double zValue = level.Elevation;
+            
+            return Levels
+                .Where(x => x.Elevation > zValue || x.Elevation == zValue)
+                .OrderBy(x => x.Elevation)
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -244,10 +294,25 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <returns>Id уровня</returns>
         public static double GetElementLevelGrip(Element elem, Level level)
         {
+            // Первичный отлов по категории
+            double ZCoord;
+            Type elemType = elem.GetType();
+            switch (elemType.Name)
+            {
+                case nameof(ExtrusionRoof):
+                    double offsetRoofConstr = elem.get_Parameter(BuiltInParameter.ROOF_CONSTRAINT_OFFSET_PARAM).AsDouble();
+                    return offsetRoofConstr;
+                case nameof(FootPrintRoof):
+                    double offsetRoof = elem.get_Parameter(BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM).AsDouble();
+                    return offsetRoof;
+                case nameof(Railing):
+                    double offsetStairs = elem.get_Parameter(BuiltInParameter.STAIRS_RAILING_HEIGHT_OFFSET).AsDouble();
+                    return offsetStairs;
+            }
+
+            // Вторичный отлов по типу Loaction
             Location location = elem.Location;
             Type locationType = location.GetType();
-
-            double ZCoord;
             switch (locationType.Name)
             {
                 case nameof(LocationCurve):
@@ -275,12 +340,8 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         {
             if (MaxLevel == null)
             {
-                var levColl = new FilteredElementCollector(doc)
-                    .OfCategory(BuiltInCategory.OST_Levels)
-                    .WhereElementIsNotElementType();
-
                 Level upperLev = null;
-                foreach (Level lvl in levColl)
+                foreach (Level lvl in Levels)
                 {
                     if (upperLev == null)
                     {

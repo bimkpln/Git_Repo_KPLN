@@ -68,8 +68,6 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                         break;
                     }
                 }
-                bool source_found = false;
-                bool target_found = false;
                 foreach (ListBoxElement par in rule.SourceParameters)
                 {
 
@@ -77,14 +75,12 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                     {
                         rule.SelectedSourceParameter = par;
                         System.Windows.Forms.Application.DoEvents();
-                        source_found = true;
                         break;
                     }
                     if ((par.Data as Parameter).Id.ToString() == parts[1])
                     {
                         rule.SelectedSourceParameter = par;
                         System.Windows.Forms.Application.DoEvents();
-                        source_found = true;
                         break;
                     }
                 }
@@ -94,22 +90,14 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                     {
                         rule.SelectedTargetParameter = par;
                         System.Windows.Forms.Application.DoEvents();
-                        target_found = true;
                         break;
                     }
                     if ((par.Data as Parameter).Id.ToString() == parts[2])
                     {
                         rule.SelectedTargetParameter = par;
                         System.Windows.Forms.Application.DoEvents();
-                        target_found = true;
                         break;
                     }
-                }
-                int num;
-                if (!int.TryParse(parts[1], out num) && !int.TryParse(parts[2], out num))
-                {
-                    if (!source_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[1]), KPLN_Loader.Preferences.MessageType.Error); }
-                    if (!target_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[2]), KPLN_Loader.Preferences.MessageType.Error); }
                 }
             }
         }
@@ -153,7 +141,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        private ListBoxElement _selectedCategory { get; set; }
+        private ListBoxElement _selectedCategory;
         public ListBoxElement SelectedCategory
         {
             get
@@ -170,7 +158,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        private ListBoxElement _selectedSourceParameter { get; set; }
+        private ListBoxElement _selectedSourceParameter;
         public ListBoxElement SelectedSourceParameter
         {
             get
@@ -183,7 +171,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        private ListBoxElement _selectedTargetParameter { get; set; }
+        private ListBoxElement _selectedTargetParameter;
         public ListBoxElement SelectedTargetParameter
         {
             get
