@@ -18,7 +18,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN
         {
         }
 
-        protected override void FloorNumberOnLevelByElement(Progress_Single pb)
+        protected virtual void FloorNumberOnLevelByElement(Progress_Single pb)
         {
             foreach (Element elem in ElemsOnLevel)
             {

@@ -72,24 +72,24 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Name.StartsWith("199_")));
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
 
             // Семейства "Обощенные модели"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Name.StartsWith("199_")));
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
 
             // Семейства "Каркас несущий (перемычки)"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Name.StartsWith("199_")));
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
 
 
-            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + StairsElems.Count;
+            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + StairsElems.Count;
 
             if (AllElementsCount > 0)
             {
@@ -101,118 +101,46 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             }
         }
 
-        public override bool ExecuteLevelParams(Progress_Single pb)
+        public override bool ExecuteGripParams(Progress_Single pb)
         {
-            LevelTool.Levels = new FilteredElementCollector(Doc)
-                .OfClass(typeof(Level))
-                .WhereElementIsNotElementType()
-                .Cast<Level>();
+            GripByGeometry gripByGeometry = new GripByGeometry(Doc, LevelParamName, SectionParamName);
 
-            FloorNumberOnLevelByElement(pb);
+            IEnumerable<MyLevel> myLevelColl = gripByGeometry.LevelPrepare();
 
-            FloorNumberOnLevelByHost(pb);
+            Dictionary<string, HashSet<Grid>> gridsDict = gripByGeometry.GridPrepare("КП_О_Секция");
 
-            return true;
-        }
+            IEnumerable<MySolid> mySolids = gripByGeometry.SolidsCollectionPrepare(gridsDict, myLevelColl, LevelNumberIndex, SplitLevelChar);
 
-        public override bool ExecuteSectionParams(Progress_Single pb)
-        {
             bool byElem = false;
-            bool byHost = false;
-            bool byStairsElem = false;
-
             if (ElemsOnLevel.Count > 0)
             {
-                byElem = SectionExcecuter.ExecuteByElement(Doc, ElemsOnLevel, "КП_О_Секция", SectionParamName, pb);
-            }
 
-            if (ElemsByHost.Count > 0)
-            {
-                byHost = SectionExcecuter.ExecuteByHost_AR(ElemsByHost, SectionParamName, pb);
-            }
+                IEnumerable<Element> notIntersectedElems = gripByGeometry.IntersectWithSolidExcecute(ElemsOnLevel, mySolids, pb);
 
-            if (StairsElems.Count > 0)
-            {
-                byStairsElem = SectionExcecuter.ExecuteByElement(Doc, StairsElems, "КП_О_Секция", SectionParamName, pb);
-            }
+                IEnumerable<Element> notNearestSolidElems = gripByGeometry.FindNearestSolid(notIntersectedElems, mySolids, pb);
 
-            return byElem && byHost && byStairsElem;
-        }
+                IEnumerable<Element> notRevalueElems = gripByGeometry.ReValueDuplicates(mySolids, pb);
 
-        /// <summary>
-        /// Заполняю номер этажа для элементов, находящихся НА уровне
-        /// </summary>
-        protected virtual void FloorNumberOnLevelByElement(Progress_Single pb)
-        {
-            foreach (Element elem in ElemsOnLevel)
-            {
-                try
+                if (gripByGeometry.DuplicatesWriteParamElems.Keys.Count() > 0)
                 {
-                    Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
-                    if (baseLevel != null)
+                    foreach (Element element in gripByGeometry.DuplicatesWriteParamElems.Keys)
                     {
-                        string floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
-
-                        double offsetFromLev = LevelTool.GetElementLevelGrip(elem, baseLevel);
-
-                        if (offsetFromLev < 0)
-                        {
-                            floorNumber = LevelTool.GetFloorNumberDecrementLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
-                        }
-
-                        if (floorNumber == null) continue;
-                        Parameter floor = elem.LookupParameter(LevelParamName);
-                        if (floor == null) continue;
-                        floor.Set(floorNumber);
-                        
-                        pb.Increment();
+                        Print($"Проверь вручную элемент с id: {element.Id}", KPLN_Loader.Preferences.MessageType.Warning);
                     }
                 }
-                catch (Exception e)
-                {
-                    PrintError(e, "Не удалось обработать элемент: " + elem.Id.IntegerValue + " " + elem.Name);
-                }
-            }
-        }
 
-        /// <summary>
-        /// Заполняю номер этажа для вложенных элементов
-        /// </summary>
-        protected virtual void FloorNumberOnLevelByHost(Progress_Single pb)
-        {
-            foreach (Element elem in ElemsByHost)
+                gripByGeometry.DeleteDirectShapes();
+
+                byElem = true;
+            }
+
+            bool byHost = false;
+            if (ElemsByHost.Count > 0)
             {
-                Element hostElem = null;
-                Wall hostWall = null;
-                Type elemType = elem.GetType();
-                switch (elemType.Name)
-                {
-                    // Проброс панелей витража на стену
-                    case nameof(Panel):
-                        Panel panel = (Panel)elem;
-                        hostWall = (Wall)panel.Host;
-                        hostElem = hostWall;
-                        break;
-
-                    // Проброс импостов витража на стену
-                    case nameof(Mullion):
-                        Mullion mullion = (Mullion)elem;
-                        hostWall = (Wall)mullion.Host;
-                        hostElem = hostWall;
-                        break;
-
-                    // Проброс на вложенные общие семейства
-                    default:
-                        FamilyInstance instance = elem as FamilyInstance;
-                        hostElem = instance.SuperComponent;
-                        break;
-                }
-
-                var hostElemParamValue = hostElem.LookupParameter(LevelParamName).AsString();
-                elem.LookupParameter(LevelParamName).Set(hostElemParamValue);
-
-                pb.Increment();
+                byHost = new GripByHost().ExecuteByHost_AR(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
             }
+
+            return byElem && byHost;
         }
     }
 }

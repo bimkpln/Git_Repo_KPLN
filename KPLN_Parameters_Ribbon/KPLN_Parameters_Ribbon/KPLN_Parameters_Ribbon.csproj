@@ -98,6 +98,7 @@
     <Compile Include="Common\CopyElemParamData\ParameterRuleElement.cs" />
     <Compile Include="Common\GripParam\Builder\GripBuilder_IOS.cs" />
     <Compile Include="Common\GripParam\Builder\OBDN\GripBuilder_AR_OBDN.cs" />
+    <Compile Include="Common\GripParam\GripByHost.cs" />
     <Compile Include="Common\GripParam\LevelExcecuter.cs" />
     <Compile Include="Common\GripParam\SectionExcecuter.cs" />
     <Compile Include="Common\GripParam\Builder\AbstrGripBuilder.cs" />
@@ -109,7 +110,7 @@
     <Compile Include="Common\Tools\ElementComparerTool.cs" />
     <Compile Include="Common\Tools\GeometryTool.cs" />
     <Compile Include="Common\Tools\LevelTool.cs" />
-    <Compile Include="Common\Tools\MainTool.cs" />
+    <Compile Include="Common\GripParam\GripByGeometry.cs" />
     <Compile Include="Common\Tools\MyLevel.cs" />
     <Compile Include="Common\Tools\MySolid.cs" />
     <Compile Include="Common\Tools\SolidComparerTool.cs" />

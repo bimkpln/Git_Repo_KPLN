@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             _builder.Check();
 
-            // Заполняю уровни с учетом секций (пока не реализован поиск уровня с учетом секции - как вариант организовать отдельную сущность, куда будут помещаться элементы с указанием номера секции, потом этажи заполнять с учетом номера секции)
+            // Заполняю уровни с учетом секций
             using (Transaction t = new Transaction(_builder.Doc))
             {
                 t.Start($"{_builder.DocMainTitle}: Параметры захваток");
@@ -38,20 +39,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 int max = _builder.AllElementsCount;
                 string format = "{0} из " + max.ToString() + " элементов обработано";
                 
-                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров секции", format, max))
+                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров захваток", format, max))
                 {
-                    //bool writeLevelParams = _builder.ExecuteSectionParams(pb);
-                }
-                
-                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров уровня", format, max))
-                {
-                    bool writeLevelParams = _builder.ExecuteLevelParams(pb);
+                    bool writeLevelParams = _builder.ExecuteGripParams(pb);
                 }
                 
                 t.Commit();
             }
+
+            TaskDialog taskDialog = new TaskDialog("KPLN: Параметры захваток");
+            taskDialog.MainInstruction = "Параметры захваток заполнены!";
+            taskDialog.CommonButtons = TaskDialogCommonButtons.Ok;
             
-            Print("Параметры захваток заполнены!", KPLN_Loader.Preferences.MessageType.Success);
+            taskDialog.Show();
         }
     }
 }

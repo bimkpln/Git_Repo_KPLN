@@ -1,13 +1,8 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using KPLN_Parameters_Ribbon.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Mechanical;
-using Autodesk.Revit.DB.Plumbing;
-using KPLN_Parameters_Ribbon.Common.Tools;
-using KPLN_Parameters_Ribbon.Forms;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -95,9 +90,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Количество всех элементов
         /// </summary>
-        public int AllElementsCount 
-        { 
-            get { return _allElementsCount; } 
+        public int AllElementsCount
+        {
+            get { return _allElementsCount; }
             protected set { _allElementsCount = value; }
         }
 
@@ -133,20 +128,18 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         }
 
         /// <summary>
-        /// Метод заполнения парамтеров уровня
+        /// Метод заполнения парамтеров захваток (секции и уровня)
         /// </summary>
+        /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
+        /// <returns></returns>
         public abstract bool ExecuteGripParams(Progress_Single pb);
 
         /// <summary>
-        /// Метод заполнения парамтеров уровня
+        /// Метод проверки элементов
         /// </summary>
-        public abstract bool ExecuteLevelParams(Progress_Single pb);
-
-        /// <summary>
-        /// Метод заполнения парамтеров секции
-        /// </summary>
-        public abstract bool ExecuteSectionParams(Progress_Single pb);
-
+        /// <param name="checkColl">Коллекция для проверки</param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         private bool CheckElemParams(List<Element> checkColl)
         {
             if (checkColl.Count > 0)

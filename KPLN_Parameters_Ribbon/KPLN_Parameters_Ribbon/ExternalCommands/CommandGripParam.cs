@@ -32,7 +32,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 {
                     if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
                     {
-                        gripBuilder = new GripBuilder_AR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }
                 }
                 else if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("КР"))

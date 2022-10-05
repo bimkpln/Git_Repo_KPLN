@@ -25,14 +25,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_"))
+                .Where(x => x.Name.StartsWith("00_") || x.Name.StartsWith("02_"))
                 .Where(x => !x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк")));
 
             // Категория "Стены" под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_"))
+                .Where(x => x.Name.StartsWith("00_") || x.Name.StartsWith("02_"))
                 .Where(x => x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")));
 
             // Категория "Перекрытия" над уровнем
@@ -89,11 +89,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilyInstance>());
 
+            // Категория "Кровля" под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(RoofBase))
+                .Cast<RoofBase>());
 
             // Семейства "Перекрытия" под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Floors)
+                .Cast<FamilyInstance>());
+
+            // Семейства "Обобщенная модель" под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>());
 
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -113,8 +123,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             }
         }
 
-        public override bool ExecuteLevelParams(Progress_Single pb)
+        public override bool ExecuteGripParams(Progress_Single pb)
         {
+            //Уровень
             LevelTool.Levels = new FilteredElementCollector(Doc)
                 .OfClass(typeof(Level))
                 .WhereElementIsNotElementType()
@@ -124,11 +135,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             FloorNumberUnderLevelByElement(pb);
 
-            return true;
-        }
-
-        public override bool ExecuteSectionParams(Progress_Single pb)
-        {
+            //Секция
             bool byElem = false;
             bool byUnderElem = false;
             bool byStairsElem = false;
@@ -147,6 +154,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             {
                 byStairsElem = SectionExcecuter.ExecuteByElement(Doc, StairsElems, "Орг.ОсьБлок", SectionParamName, pb);
             }
+
 
             return byElem && byUnderElem && byStairsElem;
         }

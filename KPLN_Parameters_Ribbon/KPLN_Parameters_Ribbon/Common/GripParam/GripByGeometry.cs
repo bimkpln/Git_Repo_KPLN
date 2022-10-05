@@ -1,32 +1,30 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+using KPLN_Parameters_Ribbon.Common.Tools;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_Parameters_Ribbon.Common.Tools
+namespace KPLN_Parameters_Ribbon.Common.GripParam
 {
     /// <summary>
-    /// Общий класс для обработки элементов
+    /// Общий класс для обработки элементов с построением солидов
     /// </summary>
-    internal class MainTool
+    internal class GripByGeometry
     {
         private readonly Document _doc;
 
         private readonly string _levelParamName;
-        
+
         private readonly string _sectionParamName;
 
-        private int _pbCounter = 0;
+        public int PbCounter = 0;
 
         private List<DirectShape> _directShapesColl = new List<DirectShape>();
 
         private Dictionary<Element, List<string>> _duplicatesWriteParamElems = new Dictionary<Element, List<string>>();
-        
+
         /// <summary>
         /// Словарь элементов, которые подверглись повторной записи параметров
         /// </summary>
@@ -35,7 +33,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             get { return _duplicatesWriteParamElems; }
         }
 
-        public MainTool(Document doc, string levelParamName, string sectionParamName)
+        public GripByGeometry(Document doc, string levelParamName, string sectionParamName)
         {
             _doc = doc;
             _sectionParamName = sectionParamName;
@@ -79,7 +77,6 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <summary>
         /// Анализ осей проекта
         /// </summary>
-        /// <param name="doc">Документ Ревит</param>
         /// <param name="gridSectionParam">Параметр осей, откуда берется номер секции</param>
         /// <returns>Коллекция осей, которые являются граничными для секций</returns>
         /// <exception cref="Exception"></exception>
@@ -92,7 +89,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             {
                 Parameter param = grid.LookupParameter(gridSectionParam);
                 if (param == null) continue;
-                
+
                 string valueOfParam = param.AsString();
                 if (valueOfParam == null || valueOfParam.Length == 0) continue;
 
@@ -105,7 +102,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                     }
                     sectionsGrids.Add(item, new HashSet<Grid>() { grid });
                 }
-                
+
             }
 
             foreach (string sg in sectionsGrids.Keys)
@@ -115,7 +112,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                     throw new Exception($"Количество осей с номером секции: {sg} меньше 4. Проверьте назначение параметров у осей!");
                 }
             }
-            
+
             if (sectionsGrids.Keys.Count == 0)
             {
                 throw new Exception($"Для заполнения номера секции в элементах, необходимо заполнить параметр: {gridSectionParam} в осях! Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
@@ -127,21 +124,19 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <summary>
         /// Создание внутренней коллекции солидов с атрибутами
         /// </summary>
-        /// <param name="doc">Документ Ревит</param>
         /// <param name="sectionsGrids">Коллекция граничных осей для солида</param>
-        /// <param name="levels">Коллекция уровней документа</param>
         /// <param name="floorTextPosition">Позиция индекса уровня</param>
         /// <param name="splitChar">Разделитель в именах уровней</param>
         /// <returns>Коллекция солидов, ограниченных сетками (оси и уровни) Ревит</returns>
         public IEnumerable<MySolid> SolidsCollectionPrepare(
-            Dictionary<string, HashSet<Grid>> sectionsGrids, 
-            IEnumerable<MyLevel> myLevels, 
-            int floorTextPosition, 
+            Dictionary<string, HashSet<Grid>> sectionsGrids,
+            IEnumerable<MyLevel> myLevels,
+            int floorTextPosition,
             char splitChar)
-        
+
         {
             List<MySolid> mySolidsColl = new List<MySolid>();
-            
+
             foreach (MyLevel myLevel in myLevels)
             {
                 double[] minMaxCoords = GetMinMaxZCoordOfLevel(myLevel.CurrentLevel, myLevel.AboveLevel);
@@ -169,15 +164,12 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <summary>
         /// Поиск элементов, которые пересекаются с коллекцией солидов
         /// </summary>
-        /// <param name="doc">Документ Ревит</param>
         /// <param name="elems">Коллекция элементов для обработки</param>
         /// <param name="mySolidsColl">Коллекция спец. солидов, для анализа на вхождение</param>
-        /// <param name="levelParam">Имя параметра дял записи номера уровня</param>
-        /// <param name="sectParam">Имя параметра дял записи номера секции</param>
         /// <returns>Коллекция элементов, которые не попали в пересечения с солидами</returns>
         public IEnumerable<Element> IntersectWithSolidExcecute(
-            List<Element> elems, 
-            IEnumerable<MySolid> mySolidsColl, 
+            List<Element> elems,
+            IEnumerable<MySolid> mySolidsColl,
             Progress_Single pb)
 
         {
@@ -189,21 +181,21 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 IEnumerable<Element> intersectedElements = new FilteredElementCollector(_doc, elems.Select(x => x.Id).ToList())
                     .WhereElementIsNotElementType()
                     .WherePasses(new ElementIntersectsSolidFilter(mySolid.Solid));
-                
+
                 foreach (Element elem in intersectedElements)
                 {
                     if (elem == null) continue;
 
                     SetParamDataAndDuplicates(elem, _levelParamName, mySolid.LevelIndex);
-                    
+
                     SetParamDataAndDuplicates(elem, _sectionParamName, mySolid.SectionIndex);
                 }
 
                 // Получение элементов, которые находятся ВНЕ солида
                 notIntersectedElems = notIntersectedElems.Except(intersectedElements, new ElementComparerTool()).ToList();
-                _pbCounter = elems.Count() - notIntersectedElems.Count();
+                PbCounter = elems.Count() - notIntersectedElems.Count();
 
-                pb.Update(_pbCounter, "Анализ элементов внутри солидов");
+                pb.Update(PbCounter, "Анализ элементов внутри солидов");
             }
 
             return notIntersectedElems;
@@ -214,7 +206,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// </summary>
         /// <returns>Коллекция элементов, которые не нашли ближайший солид</returns>
         public IEnumerable<Element> FindNearestSolid(
-            IEnumerable<Element> notIntersectedElems, 
+            IEnumerable<Element> notIntersectedElems,
             IEnumerable<MySolid> mySolidsColl,
             Progress_Single pb)
 
@@ -241,9 +233,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
 
                 SetParamDataAndDuplicates(elem, _sectionParamName, mySolid.SectionIndex);
 
-                _pbCounter ++;
-                
-                pb.Update(_pbCounter, "Поиск ближайшего солида");
+                pb.Update(++PbCounter, "Поиск ближайшего солида");
             }
 
             return notNearestSolidElems;
@@ -261,7 +251,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         {
 
             Dictionary<Element, List<string>> tempDuplicatesWriteParamElems = _duplicatesWriteParamElems
-                //Чистка дубликатов. Больше 4, т.к. минимум вписывается 2 значения - 1 уровень и 2й секция
+                    //Чистка дубликатов. Больше 4, т.к. минимум вписывается 2 значения - 1 уровень и 2й секция
                     .Where(x => x.Value.Count > 4)
                     .ToDictionary(x => x.Key, x => x.Value);
 
@@ -336,7 +326,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                     Curve curve2 = grid2.Curve;
                     IntersectionResultArray intersectionResultArray = new IntersectionResultArray();
                     curve1.Intersect(curve2, out intersectionResultArray);
-                    
+
                     if (intersectionResultArray == null || intersectionResultArray.IsEmpty) continue;
 
                     foreach (IntersectionResult intersection in intersectionResultArray)
@@ -351,7 +341,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             }
             return pointsOfGridsIntersect;
         }
-        
+
         private static XYZ ElemPointCenter(Element elem)
         {
             XYZ elemPointCenter = null;
@@ -438,7 +428,6 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <summary>
         /// Создание солида по параметрам
         /// </summary>
-        /// <param name="doc">Документ Ревит</param>
         /// <param name="minMaxCoords">Массив из мин и макс точек для солида по оси Z</param>
         /// <param name="pointsOfGridsIntersect">Точки пересечения граничных осей</param>
         /// <param name="solid">Результирующий солид</param>
@@ -455,7 +444,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 XYZ newPointUp = new XYZ(point.X, point.Y, minMaxCoords[1]);
                 pointsOfGridsIntersectUp.Add(newPointUp);
             }
-            
+
             List<Curve> curvesListDwn = GetCurvesListFromPoints(pointsOfGridsIntersectDwn);
             List<Curve> curvesListUp = GetCurvesListFromPoints(pointsOfGridsIntersectUp);
             CurveLoop curveLoopDwn = CurveLoop.Create(curvesListDwn);
@@ -463,10 +452,11 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             try
             {
                 CurveLoop[] curves = new CurveLoop[] { curveLoopDwn, curveLoopUp };
-                //SolidOptions solidOptions = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
-                SolidOptions solidOptions = new SolidOptions(new ElementId(6102499), new ElementId(127916));
+                SolidOptions solidOptions = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
+                // Отрисовка солидов. Возможно стоит вынести в возможность создания для координаторов???
+                //SolidOptions solidOptions = new SolidOptions(new ElementId(6102499), new ElementId(127916));
                 solid = GeometryCreationUtilities.CreateLoftGeometry(curves, solidOptions);
-                
+
                 DirectShape directShape = DirectShape.CreateElement(_doc, new ElementId(BuiltInCategory.OST_GenericModel));
                 directShape.AppendShape(new GeometryObject[] { solid });
                 return directShape;
@@ -494,7 +484,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                     continue;
                 }
                 curvesList.Add(Line.CreateBound(pointsOfGridsIntersect[i], pointsOfGridsIntersect[i + 1]));
-                
+
             }
             return curvesList;
         }
@@ -521,7 +511,8 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <summary>
         /// Минимально нижняя точка и максимально верхняя точка между уровнями
         /// </summary>
-        /// <param name="elems">Список элементов</param>
+        /// <param name="level">Нижний уровень</param>
+        /// <param name="aboveLevel">Верхний уровень</param>
         /// <returns></returns>
         private static double[] GetMinMaxZCoordOfLevel(Level level, Level aboveLevel)
         {
