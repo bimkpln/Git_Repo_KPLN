@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using System.Windows.Media.Imaging;
+﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
+using System;
+using System.IO;
 using System.Reflection;
+using System.Windows.Media.Imaging;
 
 namespace KPLN_ViewsAndLists_Ribbon
 {
@@ -86,13 +81,13 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=671l"
             );
 
-            
+
             AddPushButtonDataInPullDown(
                 "WallHatch",
                 "Штриховки\nстен",
                 "Штриховка по высоте стен",
                 string.Format(
-                    "Вычисляет отметки верха и низа стен;\n"+
+                    "Вычисляет отметки верха и низа стен;\n" +
                     "Создает набор фильтров и выделяет стены разными штриховками;\n" +
                     "Записывает условное обозначение, соответствующее штриховке.\n" +
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",

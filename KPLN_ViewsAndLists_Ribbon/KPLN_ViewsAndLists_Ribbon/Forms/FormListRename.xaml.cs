@@ -45,7 +45,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             ExpBlocker(ExpParamRefresh, false);
             ExpBlocker(ExpClearRenumb, false);
 
-            cmbUniCode.ItemsSource = new UniCodesCollection().UniCodes;
+            cmbUniCode.ItemsSource = UniCodesCollection.CorretcUniCodes;
         }
         
         private void UsePrefix(object sender, RoutedEventArgs e)

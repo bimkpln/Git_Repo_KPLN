@@ -336,6 +336,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 {
                     number = number.Trim(c);
                 }
+                else if (Enum.IsDefined(typeof(UniDecCodes), (int)c))
+                {
+                    number = number.Trim(c);
+                }
                 else if (c.Equals('.'))
                 {
                     continue;
