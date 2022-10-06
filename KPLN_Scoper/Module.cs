@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -11,7 +10,6 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Scoper
@@ -460,7 +458,7 @@ namespace KPLN_Scoper
                 using (SQLiteCommand cmd = sql.CreateCommand())
                 {
                     cmd.CommandText = "INSERT INTO Documents ([Path], [Name], [Department], [Project], [Code]) VALUES (@Path, @Name, @Department, @Project, @Code)";
-                    cmd.Parameters.Add(new SQLiteParameter() { ParameterName= "@Path", Value = document.Path });
+                    cmd.Parameters.Add(new SQLiteParameter() { ParameterName = "@Path", Value = document.Path });
                     cmd.Parameters.Add(new SQLiteParameter() { ParameterName = "@Name", Value = document.Name });
                     cmd.Parameters.Add(new SQLiteParameter() { ParameterName = "@Department", Value = document.Department });
                     cmd.Parameters.Add(new SQLiteParameter() { ParameterName = "@Project", Value = document.Project });
@@ -477,7 +475,7 @@ namespace KPLN_Scoper
                     sql.Close();
                 }
                 catch (Exception) { }
-                
+
             }
             return false;
         }

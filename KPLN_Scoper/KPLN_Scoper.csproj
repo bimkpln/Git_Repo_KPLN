@@ -43,9 +43,8 @@
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_DataBase">
-      <HintPath>..\KPLN_DataBase\KPLN_DataBase\bin\Default\KPLN_DataBase.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="KPLN_Library_DataBase">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2022\KPLN_Loader.dll</HintPath>
