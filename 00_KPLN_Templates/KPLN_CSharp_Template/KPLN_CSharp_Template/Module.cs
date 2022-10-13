@@ -10,7 +10,7 @@ namespace KPLN_CSharp_Template
 {
     public class Module : IExternalModule
     {
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
         {
@@ -80,7 +80,7 @@ namespace KPLN_CSharp_Template
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = pullDownButton.AddPushButton(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
@@ -102,7 +102,7 @@ namespace KPLN_CSharp_Template
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = panel.AddItem(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
@@ -118,7 +118,7 @@ namespace KPLN_CSharp_Template
         /// <param name="imageName">Имя иконки с раширением</param>
         private void BtnImagine(RibbonButton button, string imageName)
         {
-            string imageFullPath = Path.Combine(new FileInfo(_AssemblyPath).DirectoryName, @"Imagens\", imageName);
+            string imageFullPath = Path.Combine(new FileInfo(_assemblyPath).DirectoryName, @"Imagens\", imageName);
             button.LargeImage = new BitmapImage(new Uri(imageFullPath));
 
         }
