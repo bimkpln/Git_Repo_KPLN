@@ -17,14 +17,19 @@ namespace KPLN_Scoper.Tools
         public static ConcurrentQueue<ActivityInfo> ActivityApprovedBag = new ConcurrentQueue<ActivityInfo>();
         public static int NullActions = 0;
         public static int ActivityActions = 0;
+        
         public static Document ActiveDocument { get; set; }
-        private static System.Threading.Timer _timer_small { get; set; }
-        private static System.Threading.Timer _timer_big { get; set; }
+        
+        private static Timer _timer_small { get; set; }
+        
+        private static Timer _timer_big { get; set; }
+        
         public static void Destroy()
         {
             _timer_small.Dispose();
             _timer_big.Dispose();
         }
+        
         public static void Run()
         {
             var autoEvent_little = new AutoResetEvent(true);
@@ -34,6 +39,7 @@ namespace KPLN_Scoper.Tools
             time = 1000 * 60 * 30;
             _timer_big = new System.Threading.Timer(Synchronize, autoEvent_big, time, time);
         }
+        
         public static void Synchronize(Object stateInfo)
         {
             Thread t = new Thread(() =>
@@ -54,6 +60,7 @@ namespace KPLN_Scoper.Tools
             t.IsBackground = true;
             t.Start();
         }
+        
         public static void Update(Object stateInfo)
         {
 
@@ -152,6 +159,7 @@ namespace KPLN_Scoper.Tools
             t.IsBackground = true;
             t.Start();
         }
+        
         public static int CountValue<T>(List<T> list, T value)
         {
             int count = 0;
@@ -164,6 +172,7 @@ namespace KPLN_Scoper.Tools
             }
             return count;
         }
+        
         public static T MaxFrequent<T>(List<T> list)
         {
             T value = default(T);
@@ -179,6 +188,7 @@ namespace KPLN_Scoper.Tools
             }
             return value;
         }
+        
         private static FileInfo GetDbPath()
         {
             string base_name = string.Format("ADB_{0}_{1}_{2}.db", DateTime.Now.Year.ToString(), DateTime.Now.Month.ToString(), DateTime.Now.Day.ToString());
@@ -207,6 +217,7 @@ namespace KPLN_Scoper.Tools
                 }
             }
         }
+
         private static void AddValueToDb(string user, int project, int document, string time, BuiltInActivity type, string title, double value)
         {
             FileInfo dbFile = GetDbPath();

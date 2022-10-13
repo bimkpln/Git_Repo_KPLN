@@ -17,6 +17,7 @@ namespace KPLN_Scoper
     public class Module : IExternalModule
     {
         private string _versionName { get; set; }
+        
         public Result Close()
         {
             try
@@ -33,6 +34,7 @@ namespace KPLN_Scoper
             { }
             return Result.Succeeded;
         }
+        
         public Result Execute(UIControlledApplication application, string tabName)
         {
             try
@@ -67,6 +69,7 @@ namespace KPLN_Scoper
                 return Result.Failed;
             }
         }
+        
         private void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
             try
@@ -81,6 +84,7 @@ namespace KPLN_Scoper
                 ActivityManager.ActiveDocument = null;
             }
         }
+        
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
             try
@@ -93,6 +97,7 @@ namespace KPLN_Scoper
             }
             catch (Exception) { }
         }
+        
         private SQLProject GetProjectById(List<SQLProject> list, int id)
         {
             foreach (SQLProject project in list)
@@ -104,6 +109,7 @@ namespace KPLN_Scoper
             }
             return null;
         }
+        
         private SQLDepartment GetDepartmentById(List<SQLDepartment> list, int id)
         {
             foreach (SQLDepartment department in list)
@@ -115,6 +121,7 @@ namespace KPLN_Scoper
             }
             return null;
         }
+        
         private void UpdateAllDocumentInfo()
         {
             if (KPLN_Loader.Preferences.User.SystemName != "iperfilyev")
@@ -269,6 +276,7 @@ namespace KPLN_Scoper
             t.Start();
         }
         */
+        
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             try
@@ -293,6 +301,7 @@ namespace KPLN_Scoper
             { ActivityManager.Synchronize(null); }
             catch (Exception) { }
         }
+        
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             try
@@ -304,6 +313,7 @@ namespace KPLN_Scoper
                 }
             }
             catch (Exception) { }
+            
             try
             {
                 Autodesk.Revit.DB.Document document = args.Document;
@@ -373,11 +383,14 @@ namespace KPLN_Scoper
                         AddDocument(openedDocument);
                     }
                 }
+                
                 foreach (RevitLinkInstance link in new FilteredElementCollector(document).OfClass(typeof(RevitLinkInstance)).WhereElementIsNotElementType().ToElements())
                 {
                     try
                     {
-                        Autodesk.Revit.DB.Document linkDocument = link.GetLinkDocument();
+                        Document linkDocument = link.GetLinkDocument();
+                        if (linkDocument != null) { continue; }
+
                         if (linkDocument.IsWorkshared)
                         {
                             string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(linkDocument.GetWorksharingCentralModelPath());
@@ -448,6 +461,7 @@ namespace KPLN_Scoper
             }
             catch (Exception) { }
         }
+        
         private bool AddDocument(SQLDocument document)
         {
             SQLiteConnection sql = new SQLiteConnection();
@@ -479,6 +493,7 @@ namespace KPLN_Scoper
             }
             return false;
         }
+        
         private List<SQLDocument> GetDocuments()
         {
             List<SQLDocument> documents = new List<SQLDocument>();
@@ -510,6 +525,7 @@ namespace KPLN_Scoper
             }
             return documents;
         }
+        
         private bool IsCopy(string name)
         {
             List<string> parts = name.Split('.').ToList();
@@ -518,12 +534,14 @@ namespace KPLN_Scoper
             if (parts.Last().Length == 4 && parts.Last().StartsWith("0")) { return true; }
             return false;
         }
+        
         private string OnlyName(string name)
         {
             List<string> parts = name.Split('.').ToList();
             parts.RemoveAt(parts.Count - 1);
             return string.Join(".", parts);
         }
+        
         private string GetTemplates()
         {
             List<string> parts = new List<string>();
@@ -541,6 +559,7 @@ namespace KPLN_Scoper
             }
             return string.Join(",", parts);
         }
+        
         private void OverwriteIni(string revitVersion)
         {
             FileInfo iniLocation = new FileInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), string.Format(@"AppData\Roaming\Autodesk\Revit\Autodesk Revit {0}\Revit.ini", revitVersion)));
@@ -554,6 +573,7 @@ namespace KPLN_Scoper
             manager.WritePrivateString("DirectoriesENU", "DefaultTemplate", GetTemplates());
 #endif
         }
+        
         private List<SQLProject> GetProjects()
         {
             List<SQLProject> projects = new List<SQLProject>();
@@ -584,6 +604,7 @@ namespace KPLN_Scoper
             }
             return projects;
         }
+        
         private List<SQLDepartment> GetDepartments()
         {
             List<SQLDepartment> departments = new List<SQLDepartment>();

@@ -9,40 +9,51 @@ namespace KPLN_Scoper.Common
     public class ActivityInfo
     {
         public string DocumentTitle { get; set; } = string.Empty;
+        
         public int ProjectId { get; set; }
+        
         public int DocumentId { get; set; }
+        
         public double Value { get; set; } = 1.0;
+        
         public BuiltInActivity Type { get; set; }
+        
         public string Time { get; set; } = DateTime.Now.ToString();
+        
         public ActivityInfo(Document doc, BuiltInActivity type)
         {
             Type = type;
             if (doc.IsDetached || !doc.IsWorkshared) { throw new Exception("Документ не подходит для совместной работы!"); }
+            
             string filename = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())).FullName;
-            DocumentTitle = string.Format("{0} : {1}", filename, doc.ActiveView.Name);
-            DocumentId = -1;
-            ProjectId = -1;
-            try
+            View actView = doc.ActiveView;
+            if (actView != null)
             {
-                foreach (DbDocument docu in KPLN_Library_DataBase.DbControll.Documents)
+                DocumentTitle = string.Format("{0} : {1}", filename, actView.Name);
+                DocumentId = -1;
+                ProjectId = -1;
+                try
                 {
-                    try
+                    foreach (DbDocument docu in KPLN_Library_DataBase.DbControll.Documents)
                     {
-                        if (new FileInfo(docu.Path).FullName == filename)
+                        try
                         {
-                            DocumentId = docu.Id;
-                            if (docu.Project != null)
+                            if (new FileInfo(docu.Path).FullName == filename)
                             {
-                                ProjectId = docu.Project.Id;
+                                DocumentId = docu.Id;
+                                if (docu.Project != null)
+                                {
+                                    ProjectId = docu.Project.Id;
+                                }
                             }
                         }
+                        catch (Exception)
+                        { }
                     }
-                    catch (Exception)
-                    { }
                 }
+                catch (Exception)
+                { }
             }
-            catch (Exception)
-            { }
 
         }
         public ActivityInfo(int doc, int project, BuiltInActivity type, string title, int skip_amount)
