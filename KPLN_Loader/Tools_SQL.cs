@@ -8,16 +8,26 @@ using System.IO;
 
 namespace KPLN_Loader
 {
-    public class Tools_SQL
+    /// <summary>
+    /// Класс-контейнер для использования БД
+    /// </summary>
+    public static class Tools_SQL
     {
-        public const string SQLPath = "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Loader.db";
-        private SQLiteConnection _SQL = new SQLiteConnection();
+        private static string _dbPath = KPLN_Library_DataBase.DbControll.MainDBPath;
+
+        private static readonly string _mainDBConnectionPath = KPLN_Library_DataBase.DbControll.MainDBConnection;
+
+        private static SQLiteConnection _SQL = new SQLiteConnection();
         
-        public Tools_SQL()
+        /// <summary>
+        /// Подготовка - инициализация подключения к БД
+        /// </summary>
+        /// <exception cref="ArgumentException"></exception>
+        public static void Preapre()
         {
-            if (File.Exists(SQLPath))
+            if (File.Exists(_dbPath))
             {
-                _SQL.ConnectionString = string.Format(@"Data Source=" + SQLPath + ";Version=3;");
+                _SQL.ConnectionString = _mainDBConnectionPath;
             }
             else
             {
@@ -27,18 +37,17 @@ namespace KPLN_Loader
                     );
                 throw new ArgumentException("БД по указнному пути - отсутсвтует!");
             }
-
         }
         
-        private string GetCurentTime()
+        private static string GetCurentTime()
         {
             DateTime time = DateTime.Now;
             string[] parts = new string[] { time.Year.ToString(), time.Month.ToString(), time.Day.ToString(),
             time.Hour.ToString(), time.Minute.ToString(), time.Second.ToString() };
             return string.Join(":", parts);
         }
-        
-        private bool ProjectIdInList(SQLProjectInfo project, List<SQLProjectInfo> projectList)
+
+        private static bool ProjectIdInList(SQLProjectInfo project, List<SQLProjectInfo> projectList)
         {
             foreach (SQLProjectInfo p in projectList)
             {
@@ -46,8 +55,8 @@ namespace KPLN_Loader
             }
             return false;
         }
-        
-        public List<SQLDepartmentInfo> GetDepartments()
+
+        public static List<SQLDepartmentInfo> GetDepartments()
         {
             List<SQLDepartmentInfo> departments = new List<SQLDepartmentInfo>();
             try
@@ -79,8 +88,8 @@ namespace KPLN_Loader
             return departments;
 
         }
-        
-        public void GetUserProjects(string systemName, bool initialization = false)
+
+        public static void GetUserProjects(string systemName, bool initialization = false)
         {
             string log = "";
             try
@@ -112,8 +121,8 @@ namespace KPLN_Loader
             }
             try { _SQL.Close(); } catch (Exception) { }
         }
-        
-        public void GetUsers(int loop = 1)
+
+        public static void GetUsers(int loop = 1)
         {
             Preferences.Users.Clear();
             try
@@ -162,8 +171,8 @@ namespace KPLN_Loader
                 }
             }
         }
-        
-        public SQLUserInfo GetUser(string systemName, int loop = 1)
+
+        public static SQLUserInfo GetUser(string systemName, int loop = 1)
         {
             SQLUserInfo User = null;
             try
@@ -207,8 +216,8 @@ namespace KPLN_Loader
             try { _SQL.Close(); } catch (Exception) { }
             return User;
         }
-        
-        public void GetUserData(string systemName, int loop=1)
+
+        public static void GetUserData(string systemName, int loop=1)
         {
             try
             {
@@ -253,8 +262,8 @@ namespace KPLN_Loader
             }
             try { _SQL.Close(); } catch (Exception) { }
         }
-        
-        public bool IfUserExist(string username, int loop = 1)
+
+        public static bool IfUserExist(string username, int loop = 1)
         {
             if (loop > 1) { Print(string.Format("Попытка найти текущего пользователя {0}...", loop.ToString()), MessageType.Regular); }
 
@@ -289,8 +298,8 @@ namespace KPLN_Loader
             try { _SQL.Close(); } catch (Exception) { }
             return false;
         }
-        
-        public void CreateUser(string systemName, string name, string family, string surname, int department, int loop = 1)
+
+        public static void CreateUser(string systemName, string name, string family, string surname, int department, int loop = 1)
         {
             if (loop > 1) { Print(string.Format("Попытка создать нового пользователя {0}...", loop.ToString()), MessageType.Regular); }
             try
@@ -325,8 +334,8 @@ namespace KPLN_Loader
             }
             try { _SQL.Close(); } catch (Exception) { }
         }
-        
-        public void UpdateStatusMessage(int id, MessageDialogResult result)
+
+        public static void UpdateStatusMessage(int id, MessageDialogResult result)
         {
             string value = "Pending";
             switch (result)
@@ -364,8 +373,8 @@ namespace KPLN_Loader
             catch (Exception) { }
             try { _SQL.Close(); } catch (Exception) { }
         }
-        
-        public List<SQLModuleInfo> GetModules(string department, string table, string version, string projectId)
+
+        public static List<SQLModuleInfo> GetModules(string department, string table, string version, string projectId)
         {
             List<SQLModuleInfo> FoundedModules = new List<SQLModuleInfo>();
             try
@@ -412,8 +421,8 @@ namespace KPLN_Loader
             try { _SQL.Close(); } catch (Exception) { }
             return FoundedModules;
         }
-        
-        public void UpdateUserConnection(string systemName, string table)
+
+        public static void UpdateUserConnection(string systemName, string table)
         {
             try
             {
@@ -428,7 +437,7 @@ namespace KPLN_Loader
             { }
             try { _SQL.Close(); } catch (Exception) { }
         }
-        public void CreateLogMessage(string value)
+        public static void CreateLogMessage(string value)
         {
             string[] values = value.Split('*');
             try

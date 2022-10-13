@@ -12,6 +12,7 @@ namespace KPLN_Loader
         public static Window RevitWindow { get; set; }
 #endif
         public static System.IntPtr MainWindowHandle { get; set; }
+        
         public static Tools_Environment Tools { get; set; }
         
         public static Queue<IExecutableCommand> ExecutableCommands = new Queue<IExecutableCommand>();
@@ -29,11 +30,6 @@ namespace KPLN_Loader
         
         public static string HTML_Output_Head { get { return string.Format(@"<head><meta http-equiv='X-UA-Compatible' content='IE=9'><meta http-equiv='content-type' content='text/html; charset=utf-8'><meta name='appversion' content='0.2.0.0'><link href='file:///{0}\Output\Styles\outputstyles.css' rel='stylesheet'></head>", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString()); } }
         
-        /// <summary>
-        /// Создание класса для работы с СУБД
-        /// </summary>
-        public static Tools_SQL SQLiteDataBase;
-
         public static SQLUserInfo User;
         
         public static List<SQLUserInfo> Users = new List<SQLUserInfo>();

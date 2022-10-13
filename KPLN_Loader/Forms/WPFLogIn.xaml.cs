@@ -1,5 +1,4 @@
 ﻿using KPLN_Loader.Common;
-
 using System.Windows;
 using System.Windows.Controls;
 using System.Linq;
@@ -38,17 +37,19 @@ namespace KPLN_Loader.Forms
                 this.tbxSurname.Text,
                 this.tbxFamily.Text,
                 "");
+            
             User.Department = this.cbxDepartment.SelectedItem as SQLDepartmentInfo;
+            
             try
             {
-                SQLiteDataBase.CreateUser(User.SystemName,
+                Tools_SQL.CreateUser(User.SystemName,
                         User.Name,
                         User.Family,
                         User.Surname,
                         User.Department.Id);
             }
-            catch (System.Exception)
-            { }
+            catch (System.Exception) { }
+            
             this.Close();
         }
 

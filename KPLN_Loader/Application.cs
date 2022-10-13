@@ -44,35 +44,30 @@ namespace KPLN_Loader
 #endif
             // Запуск основного процесса
             _RevitVersion = application.ControlledApplication.VersionNumber;
+            
             Tools = new Tools_Environment(_RevitVersion);
             Tools.ClearPreviousLog();
+            
             application.CreateRibbonTab(_RibbonName);
+            
             Print("Инициализация...", MessageType.Header);
+            
             Logger.Trace($"---[Запуск в Revit {_RevitVersion}]---\n");
+            
             try
             {
-                SQLiteDataBase = new Tools_SQL();
-            }
-            catch (ArgumentException)
-            {
-                Print(
-                    "Ошибка подключения БД. Будут загружены старые версии плагинов. Работа некоторых из них - будет ограничена!", 
-                    MessageType.Error
-                    );
-                SQLiteDataBase = null;
-            }
+                Tools_SQL.Preapre();
 
-            // Запускается основной процесс инициализации
-            if (SQLiteDataBase != null)
-            {
-                if (SQLiteDataBase.IfUserExist(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last()))
+                // Запускается основной процесс инициализации
+                if (Tools_SQL.IfUserExist(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last()))
                 {
-                    SQLiteDataBase.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
+                    Tools_SQL.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
                     Print(string.Format("Добро пожаловать, {0}!", User.Name), MessageType.Success);
-                    try { SQLiteDataBase.GetUserProjects(User.SystemName, true); }
+                    try { Tools_SQL.GetUserProjects(User.SystemName, true); }
                     catch (Exception e) { PrintError(e); }
                 }
-                else 
+                
+                else
                 {
                     WPFLogIn logInForm = new WPFLogIn();
                     bool wasHiden = false;
@@ -85,17 +80,16 @@ namespace KPLN_Loader
                         }
                     }
                     catch (Exception) { }
-                    logInForm.cbxDepartment.ItemsSource = SQLiteDataBase.GetDepartments();
+                    logInForm.cbxDepartment.ItemsSource = Tools_SQL.GetDepartments();
                     logInForm.ShowDialog();
                     if (wasHiden) { FormOutput.Show(); }
-                    SQLiteDataBase.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
+                    Tools_SQL.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
                     Print(string.Format("Добро пожаловать, {0}!", User.Name), MessageType.Success);
                 }
             }
-            
-            // Обработка ошибки подключения БД
-            else
+            catch (ArgumentException)
             {
+                // Обработка ошибки подключения БД
                 DirectoryInfo userDirsRoot = Tools.ApplicationLocation;
                 DirectoryInfo[] userDirs = userDirsRoot.GetDirectories();
                 foreach (DirectoryInfo rootFolder in userDirs)
@@ -107,6 +101,7 @@ namespace KPLN_Loader
                 }
                 DirectoryInfo userRevitVersionDirs = new DirectoryInfo(Path.Combine(userDirsRoot.FullName, "Modules"));
                 Logger.Info($"Ошибка подключения к БД. Осуществляю загрузку отсюда: {userRevitVersionDirs}\n");
+                
                 foreach(DirectoryInfo userFolder in userRevitVersionDirs.GetDirectories())
                 {
                     try
@@ -139,7 +134,7 @@ namespace KPLN_Loader
                         if (User.Department.Id == 6)
                         {
                             Print($"Выбран режим тестирования. Загрузка модулей ограничена модулями для Department={User.Department.Id}", MessageType.Warning);
-                            foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
+                            foreach (SQLModuleInfo module in Tools_SQL.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
                             {
                                 foundedModules.Add(module);
                             }
@@ -149,7 +144,7 @@ namespace KPLN_Loader
                         else
                         {
                             //Загрузка общих модулей по отделу
-                            foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
+                            foreach (SQLModuleInfo module in Tools_SQL.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, "-1"))
                             {
                                 foundedModules.Add(module);
                             }
@@ -157,7 +152,7 @@ namespace KPLN_Loader
                             //Загрузка общих модулей по отделу и проекту
                             foreach (SQLProjectInfo project in User_Projects)
                             {
-                                foreach (SQLModuleInfo module in SQLiteDataBase.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, project.Id.ToString()))
+                                foreach (SQLModuleInfo module in Tools_SQL.GetModules(User.Department.Id.ToString(), "Modules", _RevitVersion, project.Id.ToString()))
                                 {
                                     foundedModules.Add(module);
                                 }
@@ -165,7 +160,7 @@ namespace KPLN_Loader
                         }
 
                         // Загрузка выбранных модулей
-                        Logger.Info($"Успешное подключение к БД. Осуществляю загрузку отсюда: {Tools_SQL.SQLPath}\n");
+                        Logger.Info($"Успешное подключение к БД. Осуществляю загрузку из БД по подключению: {KPLN_Library_DataBase.DbControll.MainDBPath}\n");
                         foreach (SQLModuleInfo module in foundedModules)
                         {
                             Print(string.Format("Инфо: Загрузка модуля [{0}]", module.Name), MessageType.System_Regular);
@@ -173,7 +168,7 @@ namespace KPLN_Loader
                             {
                                 DirectoryInfo loadedModule = Tools.CopyModuleFromPath(new DirectoryInfo(module.Path), module.Version, module.Name);
 
-                                // Загрузка модулей
+                                // Активация модулей
                                 UpdateModules(loadedModule, application, module);
                             }
                             catch (Exception e)
@@ -236,10 +231,10 @@ namespace KPLN_Loader
             {
                 try
                 {
-                    SQLiteDataBase.UpdateUserConnection(User.SystemName, "Users");
-                    SQLiteDataBase.GetUserData(User.SystemName);
-                    SQLiteDataBase.GetUserProjects(User.SystemName, false);
-                    SQLiteDataBase.GetUsers();
+                    Tools_SQL.UpdateUserConnection(User.SystemName, "Users");
+                    Tools_SQL.GetUserData(User.SystemName);
+                    Tools_SQL.GetUserProjects(User.SystemName, false);
+                    Tools_SQL.GetUsers();
                 }
                 catch (Exception)
                 { }
@@ -285,7 +280,7 @@ namespace KPLN_Loader
                     // Обработка исключения при взятии типа implemnentationType
                     catch (TypeLoadException ex)
                     {
-                        //Logger.Info($"Ошибка при имплементации у файла {file.Name} - {ex}\n");
+                        Logger.Info($"Ошибка при имплементации у файла {file.Name} - {ex}\n");
                         continue;
                     }
                     
