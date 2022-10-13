@@ -8,16 +8,7 @@ namespace KPLN_Library_DataBase.Controll
 {
     public static class SQLiteDBUtills
     {
-        private static string _sqlConnection;
-
-        /// <summary>
-        /// Путь к базе данных
-        /// </summary>
-        internal static string SqlConnection
-        {
-            get { return _sqlConnection; }
-            set { _sqlConnection = value; }
-        }
+        private static string _sqlConnection = DbControll.MainDBConnection;
 
         public static ObservableCollection<DbUserInfo> GetUserInfo(ObservableCollection<DbDepartment> departments)
         {
@@ -48,6 +39,7 @@ namespace KPLN_Library_DataBase.Controll
 
             return users;
         }
+        
         public static ObservableCollection<DbDepartmentInfo> GetDepartmentInfo()
         {
             ObservableCollection<DbDepartmentInfo> departments = new ObservableCollection<DbDepartmentInfo>();
@@ -77,6 +69,7 @@ namespace KPLN_Library_DataBase.Controll
 
             return departments;
         }
+        
         public static ObservableCollection<DbSubDepartmentInfo> GetSubDepartmentInfo()
         {
             ObservableCollection<DbSubDepartmentInfo> subDepartments = new ObservableCollection<DbSubDepartmentInfo>();
@@ -106,6 +99,7 @@ namespace KPLN_Library_DataBase.Controll
 
             return subDepartments;
         }
+        
         public static ObservableCollection<DbProjectInfo> GetProjectInfo(ObservableCollection<DbUser> users)
         {
             ObservableCollection<DbProjectInfo> projects = new ObservableCollection<DbProjectInfo>();
@@ -135,6 +129,7 @@ namespace KPLN_Library_DataBase.Controll
 
             return projects;
         }
+        
         public static ObservableCollection<DbDocumentInfo> GetDocumentInfo(ObservableCollection<DbSubDepartment> subdepartments, ObservableCollection<DbProject> projects)
         {
             ObservableCollection<DbDocumentInfo> documents = new ObservableCollection<DbDocumentInfo>();
@@ -164,6 +159,7 @@ namespace KPLN_Library_DataBase.Controll
 
             return documents;
         }
+        
         public static bool SetValue(DbElement element, string parameterName, string parameterValue)
         {
             try
@@ -174,6 +170,7 @@ namespace KPLN_Library_DataBase.Controll
             { }
             return false;
         }
+        
         public static bool SetValue(DbElement element, string parameterName, int parameterValue)
         {
             try

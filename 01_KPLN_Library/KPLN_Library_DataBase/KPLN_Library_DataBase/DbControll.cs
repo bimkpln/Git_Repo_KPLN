@@ -9,8 +9,15 @@ namespace KPLN_Library_DataBase
 {
     public static class DbControll
     {
+        /// <summary>
+        /// Путь к основной базе данных. Используется во всех загружаемых модулях для централизованного управления БД
+        /// </summary>
+        public static readonly string MainDBPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db";
 
-        private readonly static string _sqlConnection = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
+        /// <summary>
+        /// Подключение к основной базе данных. Используется во всех загружаемых модулях для централизованного управления БД
+        /// </summary>
+        public static readonly string MainDBConnection = string.Format(@"Data Source=" + MainDBPath + ";Version=3;");
 
         public static ObservableCollection<DbDepartment> Departments { get; private set; }
         
@@ -39,13 +46,6 @@ namespace KPLN_Library_DataBase
         /// </summary>
         public static void Update()
         {
-            SQLiteConnection sql = new SQLiteConnection();
-            sql.ConnectionString = _sqlConnection;
-            sql.Open();
-            sql.Close();
-
-            SQLiteDBUtills.SqlConnection = _sqlConnection;
-
             DepartmentInfos = SQLiteDBUtills.GetDepartmentInfo();
             Departments = DbDepartment.GetAllDepartments(DepartmentInfos);
             
