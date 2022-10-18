@@ -32,10 +32,11 @@ namespace KPLN_Scoper.Tools
         }
 
         //Пишет значение в INI-файл (по указанным секции и ключу) 
-        public void WritePrivateString(string aSection, string aKey, string aValue)
+        public bool WritePrivateString(string aSection, string aKey, string aValue)
         {
             //Записать значение в INI-файл
             WritePrivateString(aSection, aKey, aValue, path);
+            return true;
         }
 
         //Возвращает или устанавливает путь к INI файлу

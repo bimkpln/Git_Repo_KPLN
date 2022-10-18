@@ -22,40 +22,26 @@ namespace KPLN_Scoper.Common
         
         public ActivityInfo(Document doc, BuiltInActivity type)
         {
+            if (doc.IsDetached || !doc.IsWorkshared) { throw new Exception("Внимание: Документ не для совместной работы!"); }
+            
             Type = type;
-            if (doc.IsDetached || !doc.IsWorkshared) { throw new Exception("Документ не подходит для совместной работы!"); }
             
             string filename = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())).FullName;
+            
             View actView = doc.ActiveView;
+            
             if (actView != null)
             {
                 DocumentTitle = string.Format("{0} : {1}", filename, actView.Name);
-                DocumentId = -1;
-                ProjectId = -1;
-                try
-                {
-                    foreach (DbDocument docu in KPLN_Library_DataBase.DbControll.Documents)
-                    {
-                        try
-                        {
-                            if (new FileInfo(docu.Path).FullName == filename)
-                            {
-                                DocumentId = docu.Id;
-                                if (docu.Project != null)
-                                {
-                                    ProjectId = docu.Project.Id;
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        { }
-                    }
-                }
-                catch (Exception)
-                { }
+                SetInfoDocValues(filename);
             }
-
+            else
+            {
+                DocumentTitle = string.Format("{0}", filename);
+                SetInfoDocValues(filename);
+            }
         }
+        
         public ActivityInfo(int doc, int project, BuiltInActivity type, string title, int skip_amount)
         {
             DocumentTitle = title;
@@ -77,6 +63,20 @@ namespace KPLN_Scoper.Common
                 {
                     if (type == BuiltInActivity.DocumentChanged)
                     { Value = Value * 1.1; }
+                }
+            }
+        }
+
+        private void SetInfoDocValues(string filename)
+        {
+            DocumentId = -1;
+            ProjectId = -1;
+            foreach (DbDocument docu in KPLN_Library_DataBase.DbControll.Documents)
+            {
+                if (new FileInfo(docu.Path).FullName == filename)
+                {
+                    DocumentId = docu?.Id ?? -1;
+                    ProjectId = docu.Project?.Id ?? -1;
                 }
             }
         }

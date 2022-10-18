@@ -34,12 +34,15 @@ namespace KPLN_Scoper.Tools
         {
             var autoEvent_little = new AutoResetEvent(true);
             int time = 1000 * 60;
-            _timer_small = new System.Threading.Timer(Update, autoEvent_little, time, time);
+            _timer_small = new Timer(Update, autoEvent_little, time, time);
             var autoEvent_big = new AutoResetEvent(true);
             time = 1000 * 60 * 30;
-            _timer_big = new System.Threading.Timer(Synchronize, autoEvent_big, time, time);
+            _timer_big = new Timer(Synchronize, autoEvent_big, time, time);
         }
         
+        /// <summary>
+        /// Запись всех данных за сессию (между синхронизациями) в БД
+        /// </summary>
         public static void Synchronize(Object stateInfo)
         {
             Thread t = new Thread(() =>
@@ -51,7 +54,12 @@ namespace KPLN_Scoper.Tools
                         ActivityInfo dequeuesInfo;
                         if (ActivityApprovedBag.TryDequeue(out dequeuesInfo))
                         {
-                            AddValueToDb(KPLN_Loader.Preferences.User.SystemName, dequeuesInfo.ProjectId, dequeuesInfo.DocumentId, dequeuesInfo.Time, dequeuesInfo.Type, dequeuesInfo.DocumentTitle, dequeuesInfo.Value);
+                            var a = dequeuesInfo;
+                            int prjId = dequeuesInfo.ProjectId;
+                            int docId = dequeuesInfo.DocumentId;
+                            string docTitle = dequeuesInfo.DocumentTitle;
+
+                            AddValueToDb(KPLN_Loader.Preferences.User.SystemName, prjId, docId, dequeuesInfo.Time, dequeuesInfo.Type, docTitle, dequeuesInfo.Value);
                         }
                     }
                 }
@@ -61,6 +69,10 @@ namespace KPLN_Scoper.Tools
             t.Start();
         }
         
+        /// <summary>
+        /// Обновление данных по документу
+        /// </summary>
+        /// <param name="stateInfo"></param>
         public static void Update(Object stateInfo)
         {
 
@@ -80,28 +92,36 @@ namespace KPLN_Scoper.Tools
                             info = null;
                         }
                     }
-                    //
-                    List<ActivityInfo> activities = new List<ActivityInfo>();
+
+                    //Обработка активного документа
+                    if (info != null)
+                    {
+                        ActivityApprovedBag.Enqueue(new ActivityInfo(info.DocumentId, info.ProjectId, BuiltInActivity.ActiveDocument, info.DocumentTitle, NullActions));
+                        NullActions++;
+                    }
+                    
+                    //Обработка активности с файлом
+                    List<ActivityInfo> activitieInfos = new List<ActivityInfo>();
                     while (!ActivityBag.IsEmpty)
                     {
                         ActivityInfo dequeuesInfo;
                         if (ActivityBag.TryDequeue(out dequeuesInfo))
                         {
-                            activities.Add(dequeuesInfo);
+                            activitieInfos.Add(dequeuesInfo);
                         }
                     }
-                    List<ActivityInfo> temp = new List<ActivityInfo>();
+                    
+
                     //CHANGED DOCUMENTS
                     bool on_document_changed_found = false;
                     List<int> temp_doc = new List<int>();
                     List<int> temp_proj = new List<int>();
                     List<string> temp_titles = new List<string>();
                     ActivityActions = 0;
-                    foreach (ActivityInfo i in activities)
+                    foreach (ActivityInfo i in activitieInfos)
                     {
-                        if (i.Type == Collections.BuiltInActivity.DocumentChanged)
+                        if (i.Type == BuiltInActivity.DocumentChanged)
                         {
-                            temp.Add(i);
                             temp_doc.Add(i.DocumentId);
                             temp_proj.Add(i.ProjectId);
                             temp_titles.Add(i.DocumentTitle);
@@ -119,22 +139,20 @@ namespace KPLN_Scoper.Tools
                         ActivityActions = 0;
                         return;
                     }
+                    
                     //SYNCHRONIZED DOCUMENTS
-                    temp.Clear();
                     bool on_document_synchronized_found = false;
                     temp_doc = new List<int>();
                     temp_proj = new List<int>();
                     temp_titles = new List<string>();
-                    foreach (ActivityInfo i in activities)
+                    foreach (ActivityInfo i in activitieInfos)
                     {
-                        if (i.Type == Collections.BuiltInActivity.DocumentSynchronized)
+                        if (i.Type == BuiltInActivity.DocumentSynchronized)
                         {
-                            temp.Add(i);
                             temp_doc.Add(i.DocumentId);
                             temp_proj.Add(i.ProjectId);
                             temp_titles.Add(i.DocumentTitle);
                             on_document_synchronized_found = true;
-
                         }
                     }
                     if (on_document_synchronized_found)
@@ -145,11 +163,6 @@ namespace KPLN_Scoper.Tools
                         NullActions = 0;
                         ActivityApprovedBag.Enqueue(new ActivityInfo(max_doc, max_proj, BuiltInActivity.DocumentSynchronized, max_title, NullActions));
                         return;
-                    }
-                    if (info != null)
-                    {
-                        ActivityApprovedBag.Enqueue(new ActivityInfo(info.DocumentId, info.ProjectId, BuiltInActivity.ActiveDocument, info.DocumentTitle, NullActions));
-                        NullActions++;
                     }
                 }
                 catch (Exception)

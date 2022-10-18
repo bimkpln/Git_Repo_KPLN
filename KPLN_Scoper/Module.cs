@@ -20,18 +20,24 @@ namespace KPLN_Scoper
         
         public Result Close()
         {
-            try
+            bool overWriteIni = OverwriteIni(_versionName);
+            if (!overWriteIni)
             {
-                OverwriteIni(_versionName);
+                throw new Exception($"Ошибка при перезаписи ini-файла");
             }
-            catch (Exception) { }
+
             try
             {
                 ActivityManager.Synchronize(null);
                 ActivityManager.Destroy();
             }
+            catch (ArgumentNullException ex)
+            {
+                PrintError(ex);
+            }
             catch (Exception)
             { }
+            
             return Result.Succeeded;
         }
         
@@ -39,33 +45,35 @@ namespace KPLN_Scoper
         {
             try
             {
-                try
+                _versionName = application.ControlledApplication.VersionNumber;
+                bool overWriteIni = OverwriteIni(_versionName);
+                if (!overWriteIni)
                 {
-                    _versionName = application.ControlledApplication.VersionNumber;
-                    OverwriteIni(_versionName);
+                    throw new Exception($"Ошибка при перезаписи ini-файла");
                 }
-                catch (Exception) { }
-                try
-                {
-                    UpdateAllDocumentInfo();
-                }
-                catch (Exception) { }
+                
+                UpdateAllDocumentInfo();
+                
+                //Подписка на события
+                application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
-                application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
+                
                 try
                 {
                     ActivityManager.Run();
                 }
                 catch (Exception e)
                 {
-                    PrintError(e);
+                    Print($"Ошибка запуске ActivityManager: {e.Message}", KPLN_Loader.Preferences.MessageType.Error);
                 }
+                
                 return Result.Succeeded;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Print($"Ошибка при инициализации: {ex.Message}", KPLN_Loader.Preferences.MessageType.Error);
                 return Result.Failed;
             }
         }
@@ -74,7 +82,7 @@ namespace KPLN_Scoper
         {
             try
             {
-                if (args.Document.Title != null)
+                if (args.Document.Title != null && !args.Document.IsFamilyDocument )
                 {
                     ActivityManager.ActiveDocument = args.Document;
                 }
@@ -89,7 +97,7 @@ namespace KPLN_Scoper
         {
             try
             {
-                if (ActivityManager.ActiveDocument != null)
+                if (ActivityManager.ActiveDocument != null && !ActivityManager.ActiveDocument.IsFamilyDocument && !ActivityManager.ActiveDocument.PathName.Contains(".rte"))
                 {
                     ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
                     ActivityManager.ActivityBag.Enqueue(info);
@@ -97,40 +105,31 @@ namespace KPLN_Scoper
             }
             catch (Exception) { }
         }
-        
-        private SQLProject GetProjectById(List<SQLProject> list, int id)
-        {
-            foreach (SQLProject project in list)
-            {
-                if (project.Id == id)
-                {
-                    return project;
-                }
-            }
-            return null;
-        }
-        
-        private SQLDepartment GetDepartmentById(List<SQLDepartment> list, int id)
-        {
-            foreach (SQLDepartment department in list)
-            {
-                if (department.Id == id)
-                {
-                    return department;
-                }
-            }
-            return null;
-        }
-        
+       
+
+        /// <summary>
+        /// Обновление данных в БД администратором БД (по имени пользователя)
+        /// </summary>
         private void UpdateAllDocumentInfo()
         {
-            if (KPLN_Loader.Preferences.User.SystemName != "iperfilyev")
+            if (KPLN_Loader.Preferences.User.SystemName != "tkutsko")
             { return; }
             List<SQLProject> projects = GetProjects();
             List<SQLDepartment> departments = GetDepartments();
             foreach (SQLDocument doc in GetDocuments())
             {
-                if (new FileInfo(doc.Path).Exists)
+                bool isExist = false;
+                try
+                {
+                    isExist = new FileInfo(doc.Path).Exists;
+                }
+                catch (Exception)
+                {
+                    Print($"Проблемы в указнном пути для документа (Documents) Id: {doc.Id}, Name: {doc.Name}", KPLN_Loader.Preferences.MessageType.Error);
+                    continue;
+                }
+                
+                if (isExist)
                 {
                     try
                     {
@@ -138,14 +137,18 @@ namespace KPLN_Scoper
                         {
                             SQLProject pickedProject = GetProjectById(projects, doc.Project);
                             SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
-                            if (pickedProject == null || pickedDepartment == null) { continue; }
+                            if (pickedProject == null || pickedDepartment == null) 
+                            {
+                                Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents) Id: {doc.Id}, Name: {doc.Name}", KPLN_Loader.Preferences.MessageType.Error);
+                                continue;
+                            }
+                            
                             string code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
                             if (doc.Code == "NONE" || doc.Code != code)
                             {
-                                SQLiteConnection sql = new SQLiteConnection();
+                                SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
                                 try
                                 {
-                                    sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
                                     sql.Open();
                                     SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1}", code, doc.Id), sql);
                                     cmd.ExecuteNonQuery();
@@ -168,7 +171,7 @@ namespace KPLN_Scoper
                 {
                     try
                     {
-                        SQLiteConnection db = new SQLiteConnection(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
+                        SQLiteConnection db = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
                         try
                         {
                             db.Open();
@@ -184,6 +187,8 @@ namespace KPLN_Scoper
                     catch (Exception) { }
                 }
             }
+
+            Print($"Проверка/автоопределение БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
         }
         /*
         private void UpdateRoomDictKeys(Document doc)
@@ -298,176 +303,84 @@ namespace KPLN_Scoper
             { }
             */
             try
-            { ActivityManager.Synchronize(null); }
-            catch (Exception) { }
+            { 
+                ActivityManager.Synchronize(null); 
+            }
+            catch (ArgumentNullException ex)
+            {
+                PrintError(ex);
+            }
+            catch (Exception)
+            { }
         }
         
+        /// <summary>
+        /// Событие на открытие документа
+        /// </summary>
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             try
             {
-                if (ActivityManager.ActiveDocument != null)
+                if (ActivityManager.ActiveDocument != null && !ActivityManager.ActiveDocument.IsFamilyDocument && !ActivityManager.ActiveDocument.PathName.Contains(".rte"))
                 {
                     ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
                     ActivityManager.ActivityBag.Enqueue(info);
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex) { PrintError(ex); }
             
             try
             {
-                Autodesk.Revit.DB.Document document = args.Document;
+                Document document = args.Document;
 
                 if (document.IsWorkshared && !document.IsDetached)
                 {
-                    string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(document.GetWorksharingCentralModelPath());
-                    string name = path.Split(new string[] { @"\" }, StringSplitOptions.None).Last();
-                    List<string> parts = new List<string>();
-                    SQLProject pickedProject = null;
-                    SQLDepartment pickedDepartment = null;
-                    foreach (SQLProject prj in GetProjects())
-                    {
-                        if (prj.Keys.Contains('*'))
-                        {
-                            foreach (string part in prj.Keys.Split('*'))
-                            {
-                                if (path != string.Empty && path.Contains(part))
-                                {
-                                    pickedProject = prj;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (path.Contains(prj.Keys))
-                            {
-                                pickedProject = prj;
-                            }
-                        }
-
-                    }
-                    foreach (SQLDepartment dep in GetDepartments())
-                    {
-                        if (name.Contains(dep.Code) || name.Contains(dep.CodeUs))
-                        {
-                            pickedDepartment = dep;
-                        }
-                    }
-                    int department = -1;
-                    int project = -1;
-                    if (pickedProject != null)
-                    {
-                        project = pickedProject.Id;
-                    }
-                    if (pickedDepartment != null)
-                    {
-                        department = pickedDepartment.Id;
-                    }
-                    string code = "NONE";
-                    if (pickedProject != null && pickedDepartment != null)
-                    {
-                        code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
-                    }
-                    SQLDocument openedDocument = new SQLDocument(-1, path, name, department, project, code);
-                    bool documentExist = false;
-                    foreach (SQLDocument doc in GetDocuments())
-                    {
-
-                        if (doc.Path == openedDocument.Path)
-                        {
-                            documentExist = true;
-                        }
-                    }
-                    if (!documentExist)
-                    {
-                        AddDocument(openedDocument);
-                    }
+                    DocumentPreapre(document);
                 }
                 
                 foreach (RevitLinkInstance link in new FilteredElementCollector(document).OfClass(typeof(RevitLinkInstance)).WhereElementIsNotElementType().ToElements())
                 {
-                    try
+                    Document linkDocument = link.GetLinkDocument();
+                    if (linkDocument == null) { continue; }
+
+                    if (linkDocument.IsWorkshared)
                     {
-                        Document linkDocument = link.GetLinkDocument();
-                        if (linkDocument != null) { continue; }
-
-                        if (linkDocument.IsWorkshared)
-                        {
-                            string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(linkDocument.GetWorksharingCentralModelPath());
-                            string name = path.Split(new string[] { @"\" }, StringSplitOptions.None).Last();
-                            List<string> parts = new List<string>();
-                            SQLProject pickedProject = null;
-                            SQLDepartment pickedDepartment = null;
-                            foreach (SQLProject prj in GetProjects())
-                            {
-                                if (prj.Keys.Contains('*'))
-                                {
-                                    foreach (string part in prj.Keys.Split('*'))
-                                    {
-                                        if (path != string.Empty && path.Contains(part))
-                                        {
-                                            pickedProject = prj;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (path.Contains(prj.Keys))
-                                    {
-                                        pickedProject = prj;
-                                    }
-                                }
-
-                            }
-                            foreach (SQLDepartment dep in GetDepartments())
-                            {
-                                if (name.Contains(dep.Code) || name.Contains(dep.CodeUs))
-                                {
-                                    pickedDepartment = dep;
-                                }
-                            }
-                            int department = -1;
-                            int project = -1;
-                            if (pickedProject != null)
-                            {
-                                project = pickedProject.Id;
-                            }
-                            if (pickedDepartment != null)
-                            {
-                                department = pickedDepartment.Id;
-                            }
-                            string code = "NONE";
-                            if (pickedProject != null && pickedDepartment != null)
-                            {
-                                code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
-                            }
-                            SQLDocument scopeDocument = new SQLDocument(-1, path, name, department, project, code);
-                            bool documentExist = false;
-                            foreach (SQLDocument doc in GetDocuments())
-                            {
-                                if (doc.Path == scopeDocument.Path)
-                                {
-                                    documentExist = true;
-                                }
-                            }
-                            if (!documentExist)
-                            {
-                                AddDocument(scopeDocument);
-                            }
-                        }
+                        DocumentPreapre(linkDocument);
                     }
-                    catch (Exception) { }
                 }
             }
             catch (Exception) { }
         }
-        
+
+        private SQLProject GetProjectById(List<SQLProject> list, int id)
+        {
+            foreach (SQLProject project in list)
+            {
+                if (project.Id == id)
+                {
+                    return project;
+                }
+            }
+            return null;
+        }
+
+        private SQLDepartment GetDepartmentById(List<SQLDepartment> list, int id)
+        {
+            foreach (SQLDepartment department in list)
+            {
+                if (department.Id == id)
+                {
+                    return department;
+                }
+            }
+            return null;
+        }
+
         private bool AddDocument(SQLDocument document)
         {
-            SQLiteConnection sql = new SQLiteConnection();
+            SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
                 sql.Open();
                 using (SQLiteCommand cmd = sql.CreateCommand())
                 {
@@ -497,10 +410,9 @@ namespace KPLN_Scoper
         private List<SQLDocument> GetDocuments()
         {
             List<SQLDocument> documents = new List<SQLDocument>();
-            SQLiteConnection sql = new SQLiteConnection();
+            SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
                 sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Documents", sql))
                 {
@@ -525,7 +437,75 @@ namespace KPLN_Scoper
             }
             return documents;
         }
-        
+
+        /// <summary>
+        /// Подготовка, проверка и инициализация записи докумнета в БД
+        /// </summary>
+        private void DocumentPreapre(Document document)
+        {
+            string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(document.GetWorksharingCentralModelPath());
+            string name = path.Split(new string[] { @"\" }, StringSplitOptions.None).Last();
+            List<string> parts = new List<string>();
+            SQLProject pickedProject = null;
+            SQLDepartment pickedDepartment = null;
+            foreach (SQLProject prj in GetProjects())
+            {
+                if (prj.Keys.Contains('*'))
+                {
+                    foreach (string part in prj.Keys.Split('*'))
+                    {
+                        if (path != string.Empty && path.Contains(part))
+                        {
+                            pickedProject = prj;
+                        }
+                    }
+                }
+                else
+                {
+                    if (path.Contains(prj.Keys))
+                    {
+                        pickedProject = prj;
+                    }
+                }
+
+            }
+            foreach (SQLDepartment dep in GetDepartments())
+            {
+                if (name.Contains(dep.Code) || name.Contains(dep.CodeUs))
+                {
+                    pickedDepartment = dep;
+                }
+            }
+            int department = -1;
+            int project = -1;
+            if (pickedProject != null)
+            {
+                project = pickedProject.Id;
+            }
+            if (pickedDepartment != null)
+            {
+                department = pickedDepartment.Id;
+            }
+            string code = "NONE";
+            if (pickedProject != null && pickedDepartment != null)
+            {
+                code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
+            }
+            SQLDocument scopeDocument = new SQLDocument(-1, path, name, department, project, code);
+            bool documentExist = false;
+            foreach (SQLDocument doc in GetDocuments())
+            {
+                if (doc.Path == scopeDocument.Path)
+                {
+                    documentExist = true;
+                }
+            }
+            if (!documentExist)
+            {
+                AddDocument(scopeDocument);
+            }
+        }
+
         private bool IsCopy(string name)
         {
             List<string> parts = name.Split('.').ToList();
@@ -560,27 +540,45 @@ namespace KPLN_Scoper
             return string.Join(",", parts);
         }
         
-        private void OverwriteIni(string revitVersion)
+        /// <summary>
+        /// Перезапись (добавление) ini-файла на определенные данные
+        /// </summary>
+        /// <param name="revitVersion"></param>
+        private bool OverwriteIni(string revitVersion)
         {
-            FileInfo iniLocation = new FileInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), string.Format(@"AppData\Roaming\Autodesk\Revit\Autodesk Revit {0}\Revit.ini", revitVersion)));
-            if (!iniLocation.Exists) { return; }
+            string iniFilePath = string.Format(@"AppData\Roaming\Autodesk\Revit\Autodesk Revit {0}\Revit.ini", revitVersion);
+            
+            FileInfo iniLocation = new FileInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), iniFilePath));
+            
+            if (!iniLocation.Exists) 
+            {
+                throw new NullReferenceException($"По ссылке отсутсвует ini-файл: {iniFilePath}");
+            }
+            
             INIManager manager = new INIManager(iniLocation.FullName);
-            manager.WritePrivateString("Selection", "AllowPressAndDrag", "0");
-            manager.WritePrivateString("Selection", "AllowFaceSelection", "0");
-            manager.WritePrivateString("Selection", "AllowUnderlaySelection", "1");
-#if Revit2020
-            manager.WritePrivateString("DirectoriesRUS", "DefaultTemplate", GetTemplates());
-            manager.WritePrivateString("DirectoriesENU", "DefaultTemplate", GetTemplates());
-#endif
+            
+            if (manager.WritePrivateString("Selection", "AllowPressAndDrag", "0")
+                && manager.WritePrivateString("Selection", "AllowFaceSelection", "0")
+                && manager.WritePrivateString("Selection", "AllowUnderlaySelection", "1"))
+            {
+                if (revitVersion == "2020"
+                    && manager.WritePrivateString("DirectoriesRUS", "DefaultTemplate", GetTemplates())
+                    && manager.WritePrivateString("DirectoriesENU", "DefaultTemplate", GetTemplates()))
+                {
+                    return true;
+                }
+                return true;
+            }
+
+            return false;
         }
         
         private List<SQLProject> GetProjects()
         {
             List<SQLProject> projects = new List<SQLProject>();
-            SQLiteConnection sql = new SQLiteConnection();
+            SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
                 sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Projects", sql))
                 {
@@ -608,10 +606,9 @@ namespace KPLN_Scoper
         private List<SQLDepartment> GetDepartments()
         {
             List<SQLDepartment> departments = new List<SQLDepartment>();
-            SQLiteConnection sql = new SQLiteConnection();
+            SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
             try
             {
-                sql.ConnectionString = string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader.db;Version=3;");
                 sql.Open();
                 using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM SubDepartments", sql))
                 {
