@@ -54,7 +54,6 @@ namespace KPLN_Scoper.Tools
                         ActivityInfo dequeuesInfo;
                         if (ActivityApprovedBag.TryDequeue(out dequeuesInfo))
                         {
-                            var a = dequeuesInfo;
                             int prjId = dequeuesInfo.ProjectId;
                             int docId = dequeuesInfo.DocumentId;
                             string docTitle = dequeuesInfo.DocumentTitle;

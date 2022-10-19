@@ -116,7 +116,8 @@ namespace KPLN_Scoper
             { return; }
             List<SQLProject> projects = GetProjects();
             List<SQLDepartment> departments = GetDepartments();
-            foreach (SQLDocument doc in GetDocuments())
+            List<SQLDocument> documents = GetDocuments();
+            foreach (SQLDocument doc in documents)
             {
                 bool isExist = false;
                 try
@@ -139,7 +140,9 @@ namespace KPLN_Scoper
                             SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
                             if (pickedProject == null || pickedDepartment == null) 
                             {
-                                Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents) Id: {doc.Id}, Name: {doc.Name}", KPLN_Loader.Preferences.MessageType.Error);
+                                Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
+                                    $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
+                                KPLN_Loader.Preferences.MessageType.Error);
                                 continue;
                             }
                             
@@ -421,7 +424,13 @@ namespace KPLN_Scoper
                         while (rdr.Read())
                         {
                             if (rdr.GetInt32(0) == -1) { continue; }
-                            documents.Add(new SQLDocument(rdr.GetInt32(0), rdr.GetString(1), rdr.GetString(2), rdr.GetInt32(3), rdr.GetInt32(4), rdr.GetString(5)));
+                            documents.Add(new SQLDocument(
+                                rdr.GetInt32(0), 
+                                rdr.GetString(1), 
+                                rdr.GetString(2), 
+                                rdr.GetInt32(3), 
+                                rdr.GetInt32(4), 
+                                rdr.GetString(5)));
                         }
                     }
                 }
@@ -476,6 +485,7 @@ namespace KPLN_Scoper
                     pickedDepartment = dep;
                 }
             }
+            
             int department = -1;
             int project = -1;
             if (pickedProject != null)
@@ -486,12 +496,21 @@ namespace KPLN_Scoper
             {
                 department = pickedDepartment.Id;
             }
+            
             string code = "NONE";
             if (pickedProject != null && pickedDepartment != null)
             {
                 code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
             }
-            SQLDocument scopeDocument = new SQLDocument(-1, path, name, department, project, code);
+            
+            SQLDocument scopeDocument = new SQLDocument(
+                -1, 
+                path, 
+                name, 
+                department, 
+                project, 
+                code);
+            
             bool documentExist = false;
             foreach (SQLDocument doc in GetDocuments())
             {

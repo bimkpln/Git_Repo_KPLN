@@ -5,6 +5,18 @@ namespace KPLN_Library_DataBase.Controll
 {
     public class DbDocumentInfo
     {
+        public int Id { get; }
+        
+        public string Path { get; }
+        
+        public string Name { get; }
+        
+        public DbProject Project { get; }
+        
+        public DbSubDepartment Department { get; }
+        
+        public string Code { get; }
+        
         public DbDocumentInfo(int id, string path, string name, string code, int project, int department, ObservableCollection<DbProject> projects, ObservableCollection<DbSubDepartment> departments)
         {
             Id = id;
@@ -22,11 +34,6 @@ namespace KPLN_Library_DataBase.Controll
             }
             Code = code;
         }
-        public int Id { get; }
-        public string Path { get; }
-        public string Name { get; }
-        public DbProject Project { get; }
-        public DbSubDepartment Department { get; }
-        public string Code { get; }
+        
     }
 }

@@ -8,32 +8,16 @@ namespace KPLN_Library_DataBase.Collections
 {
     public class DbDocument : DbElement, INotifyPropertyChanged, IDisposable
     {
-        public static ObservableCollection<DbDocument> GetAllDocuments(ObservableCollection<DbDocumentInfo> documentInfo)
-        {
-            ObservableCollection<DbDocument> documents = new ObservableCollection<DbDocument>();
-            foreach (DbDocumentInfo documentData in documentInfo)
-            {
-                documents.Add(new DbDocument(documentData));
-            }
-            return documents;
-        }
-        private DbDocument(DbDocumentInfo documentData)
-        {
-            _id = documentData.Id;
-            _path = documentData.Path;
-            _name = documentData.Name;
-            _department = documentData.Department;
-            _project = documentData.Project;
-            _code = documentData.Code;
-        }
-        public override string TableName
-        {
-            get
-            {
-                return "Documents";
-            }
-        }
         private string _path { get; set; }
+        
+        private string _name { get; set; }
+        
+        private DbSubDepartment _department { get; set; }
+        
+        private DbProject _project { get; set; }
+        
+        private string _code { get; set; }
+        
         public string Path
         {
             get { return _path; }
@@ -46,7 +30,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private string _name { get; set; }
+        
         public string Name
         {
             get { return _name; }
@@ -59,7 +43,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private DbSubDepartment _department { get; set; }
+        
         public DbSubDepartment Department
         {
             get { return _department; }
@@ -72,7 +56,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private DbProject _project { get; set; }
+        
         public DbProject Project
         {
             get { return _project; }
@@ -85,7 +69,7 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
-        private string _code { get; set; }
+        
         public string Code
         {
             get { return _code; }
@@ -98,7 +82,37 @@ namespace KPLN_Library_DataBase.Collections
                 }
             }
         }
+
+        public override string TableName
+        {
+            get
+            {
+                return "Documents";
+            }
+        }
+
+        private DbDocument(DbDocumentInfo documentData)
+        {
+            _id = documentData.Id;
+            _path = documentData.Path;
+            _name = documentData.Name;
+            _department = documentData.Department;
+            _project = documentData.Project;
+            _code = documentData.Code;
+        }
+
+        public static ObservableCollection<DbDocument> GetAllDocuments(ObservableCollection<DbDocumentInfo> documentInfo)
+        {
+            ObservableCollection<DbDocument> documents = new ObservableCollection<DbDocument>();
+            foreach (DbDocumentInfo documentData in documentInfo)
+            {
+                documents.Add(new DbDocument(documentData));
+            }
+            return documents;
+        }
+        
         public event PropertyChangedEventHandler PropertyChanged;
+        
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
