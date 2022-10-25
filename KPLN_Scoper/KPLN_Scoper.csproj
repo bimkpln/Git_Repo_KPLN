@@ -43,7 +43,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <OutputPath>bin\DebugScoper\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;Revit2020</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;Revit2018</DefineConstants>
     <Optimize>false</Optimize>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>

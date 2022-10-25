@@ -12,6 +12,7 @@ using Autodesk.Revit.DB.Events;
 using System.Collections.Generic;
 using System.Windows.Interop;
 using System.Windows;
+using System.Diagnostics;
 
 namespace KPLN_Loader
 {
@@ -62,7 +63,16 @@ namespace KPLN_Loader
                 if (Tools_SQL.IfUserExist(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last()))
                 {
                     Tools_SQL.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
-                    Print(string.Format("Добро пожаловать, {0}!", User.Name), MessageType.Success);
+                    
+                    Assembly assembly = Assembly.GetExecutingAssembly();
+                    FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+
+                    Print(string.Format(
+                            "Добро пожаловать, {0}! Версия импортера модулей - {1}", 
+                            User.Name,
+                            fvi.FileVersion), 
+                        MessageType.Success);
+                    
                     try { Tools_SQL.GetUserProjects(User.SystemName, true); }
                     catch (Exception e) { PrintError(e); }
                 }
@@ -70,7 +80,9 @@ namespace KPLN_Loader
                 else
                 {
                     WPFLogIn logInForm = new WPFLogIn();
+                    
                     bool wasHiden = false;
+                    
                     try
                     {
                         if (FormOutput.Visible == true)
@@ -80,10 +92,14 @@ namespace KPLN_Loader
                         }
                     }
                     catch (Exception) { }
+                    
                     logInForm.cbxDepartment.ItemsSource = Tools_SQL.GetDepartments();
                     logInForm.ShowDialog();
+                    
                     if (wasHiden) { FormOutput.Show(); }
+                    
                     Tools_SQL.GetUserData(System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last());
+                    
                     Print(string.Format("Добро пожаловать, {0}!", User.Name), MessageType.Success);
                 }
             }
@@ -166,7 +182,7 @@ namespace KPLN_Loader
                             Print(string.Format("Инфо: Загрузка модуля [{0}]", module.Name), MessageType.System_Regular);
                             try
                             {
-                                DirectoryInfo loadedModule = Tools.CopyModuleFromPath(new DirectoryInfo(module.Path), module.Version, module.Name);
+                                DirectoryInfo loadedModule = Tools.CopyModuleFromPath(module);
 
                                 // Активация модулей
                                 UpdateModules(loadedModule, application, module);

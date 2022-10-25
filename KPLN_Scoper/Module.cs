@@ -8,6 +8,7 @@ using KPLN_Scoper.Tools;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using static KPLN_Loader.Output.Output;
@@ -43,8 +44,12 @@ namespace KPLN_Scoper
         
         public Result Execute(UIControlledApplication application, string tabName)
         {
+
             try
             {
+                // Обновление файлов в БД.
+                KPLN_Library_DataBase.DbControll.Update();
+                
                 _versionName = application.ControlledApplication.VersionNumber;
                 bool overWriteIni = OverwriteIni(_versionName);
                 if (!overWriteIni)
@@ -53,7 +58,9 @@ namespace KPLN_Scoper
                 }
                 
                 UpdateAllDocumentInfo();
-                
+
+                UpdateAllModuleInfo();
+
                 //Подписка на события
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
@@ -108,12 +115,13 @@ namespace KPLN_Scoper
        
 
         /// <summary>
-        /// Обновление данных в БД администратором БД (по имени пользователя)
+        /// Обновление данных по документам в БД администратором БД (по имени пользователя)
         /// </summary>
         private void UpdateAllDocumentInfo()
         {
             if (KPLN_Loader.Preferences.User.SystemName != "tkutsko")
             { return; }
+            
             List<SQLProject> projects = GetProjects();
             List<SQLDepartment> departments = GetDepartments();
             List<SQLDocument> documents = GetDocuments();
@@ -191,7 +199,7 @@ namespace KPLN_Scoper
                 }
             }
 
-            Print($"Проверка/автоопределение БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
+            Print($"Автоопределение кодов документов БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
         }
         /*
         private void UpdateRoomDictKeys(Document doc)
@@ -284,8 +292,53 @@ namespace KPLN_Scoper
             t.Start();
         }
         */
-        
-        private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
+
+        /// <summary>
+        /// Обновление данных по модулям в БД администратором БД (по имени пользователя)
+        /// </summary>
+        private void UpdateAllModuleInfo()
+        {
+            if (KPLN_Loader.Preferences.User.SystemName != "tkutsko")
+            { return; }
+
+            List<SQLModuleInfo> modules = GetModules();
+            foreach (SQLModuleInfo module in modules) 
+            {
+                string moduleName = module.Name;
+                string modulePath = module.Path;
+
+                DirectoryInfo directoryInfo = new DirectoryInfo(modulePath);
+                foreach (FileInfo file in directoryInfo.GetFiles())
+                {
+                    if (file.Name.Contains(moduleName))
+                    {
+                        FileVersionInfo moduleFileVersionInfo = FileVersionInfo.GetVersionInfo($"{modulePath}\\{file.Name}");
+
+                        SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
+                        
+                        try
+                        {
+                            sql.Open();
+                            SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Modules SET Version = '{0}' WHERE Id = {1}", moduleFileVersionInfo.FileVersion, module.Id), sql);
+                            cmd.ExecuteNonQuery();
+                        }
+                        catch (Exception ex) 
+                        {
+                            PrintError(ex);
+                        }
+                        finally
+                        {
+                            sql.Close();
+                        }
+                        break;
+                    }
+                }
+            }
+
+            Print($"Обновление версий модулей в БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
+        }
+
+       private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             try
             {
@@ -647,6 +700,41 @@ namespace KPLN_Scoper
                 catch (Exception) { }
             }
             return departments;
+        }
+
+        /// <summary>
+        /// Взять все модули из БД
+        /// </summary>
+        /// <returns>Коллекция SQLModuleInfo</returns>
+        private List<SQLModuleInfo> GetModules()
+        {
+            List<SQLModuleInfo> modules = new List<SQLModuleInfo>();
+            
+            SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
+            try
+            {
+                sql.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Modules", sql))
+                {
+                    using (SQLiteDataReader rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            modules.Add(new SQLModuleInfo(rdr.GetInt32(0), rdr.GetInt32(1), rdr.GetString(2), rdr.GetString(3), rdr.GetString(4)));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) 
+            {
+                PrintError(ex);
+            }
+            finally
+            {
+                sql.Close();
+            }
+
+            return modules;
         }
     }
 }

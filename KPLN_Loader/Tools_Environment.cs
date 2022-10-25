@@ -1,4 +1,6 @@
-﻿using System;
+﻿using KPLN_Loader.Common;
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -85,13 +87,20 @@ namespace KPLN_Loader
                 }
             }
         }
-        
-        public DirectoryInfo CopyModuleFromPath(DirectoryInfo path, string version, string name)
+
+        /// <summary>
+        /// Копирование модулей
+        /// </summary>
+        /// <param name="module">Модуль для копирования</param>
+        /// <returns>Новый DirectoryInfo, куда скопирован файл</returns>
+        public DirectoryInfo CopyModuleFromPath(SQLModuleInfo module)
         {
-            DirectoryInfo moduleDirectory = Directory.CreateDirectory(Path.Combine(ModulesLocation.FullName, path.Name));
-            DirectoryCopy(path.FullName, Path.Combine(ModulesLocation.FullName, path.Name), true);
-            Print(string.Format("Инфо: Модуль «{1}» получен и готов к активации [версия модуля: {0}]", version, name), MessageType.System_Regular);
-            return new DirectoryInfo(Path.Combine(ModulesLocation.FullName, path.Name));
+            DirectoryInfo modulePath = new DirectoryInfo(module.Path);
+            DirectoryCopy(modulePath.FullName, Path.Combine(ModulesLocation.FullName, modulePath.Name), true);
+
+            Print(string.Format("Инфо: Модуль «{0}» получен и готов к активации [версия модуля: {1}]", module.Name, module.Version), MessageType.System_Regular);
+            
+            return new DirectoryInfo(Path.Combine(ModulesLocation.FullName, modulePath.Name));
         }
 
         /// <summary>

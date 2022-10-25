@@ -37,14 +37,14 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 }
                 else if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("КР"))
                 {
-                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
                     {
                         gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }
                 }
                 else if (userDepartment == 3 || userDepartment == 4 && (doc.Title.ToUpper().Contains("ОВ") || doc.Title.ToUpper().Contains("ВК") || doc.Title.ToUpper().Contains("АУПТ") || doc.Title.ToUpper().Contains("ЭОМ") || doc.Title.ToUpper().Contains("СС") || doc.Title.ToUpper().Contains("АВ")))
                 {
-                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (userDepartment == 3 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
                     {
                         gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }
