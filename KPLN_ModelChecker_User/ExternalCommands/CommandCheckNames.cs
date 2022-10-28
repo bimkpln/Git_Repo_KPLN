@@ -104,7 +104,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 foreach (Element checkElem in elemsColl)
                 {
-                    if (!checkElem.Equals(currentName) && checkElem.Name.Equals(truePartOfName.TrimEnd(new char[] { ' ', '.' })))
+                    if (!checkElem.Equals(currentName) && checkElem.Name.Equals(truePartOfName.TrimEnd(new char[] { ' ' })))
                     {
                         similarFamilyName = checkElem.Name;
                     }

@@ -17,80 +17,15 @@ namespace KPLN_ModelChecker_User.Common
     public class WPFDisplayItem : INotifyPropertyChanged
     {
         public BoundingBoxXYZ Box { get; private set; }
+        
         public XYZ Centroid { get; private set; }
+        
         public int CategoryId { get; }
+        
         public string Icon { get; set; }
+        
         public Element Element { get; private set; }
-        public void SetZoomParams(Element element, BoundingBoxXYZ box)
-        {
-            Element = element;
-            if (box != null)
-            {
-                Box = box;
-                Centroid = new XYZ((box.Max.X + box.Min.X) / 2, (box.Max.Y + box.Min.Y) / 2, (box.Max.Z + box.Min.Z) / 2);
-            }
-        }
-        private ObservableCollection<WPFDisplayItem> _collection { get; set; }
-        public ObservableCollection<WPFDisplayItem> Collection
-        {
-            get { return _collection; }
-            set
-            {
-                _collection = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private int _elementId { get; set; }
-        public int ElementId
-        {
-            get { return _elementId; }
-            set
-            {
-                _elementId = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private string _toolTip { get; set; }
-        public string ToolTip
-        {
-            get { return _toolTip; }
-            set
-            {
-                _toolTip = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private string _header { get; set; }
-        public string Header
-        {
-            get { return _header; }
-            set
-            {
-                _header = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private string _description { get; set; }
-        public string Description
-        {
-            get { return _description; }
-            set
-            {
-                _description = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private string _category { get; set; }
-        public string Category
-        {
-            get { return _category; }
-            set
-            {
-                _category = value;
-                NotifyPropertyChanged();
-            }
-        }
-        private string _name { get; set; }
+
         public string Name
         {
             get { return _name; }
@@ -100,7 +35,37 @@ namespace KPLN_ModelChecker_User.Common
                 NotifyPropertyChanged();
             }
         }
-        private SolidColorBrush _background { get; set; }
+
+        public int ElementId 
+        {
+            get { return _elementId; }
+            set
+            {
+                _elementId = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string Category
+        {
+            get { return _category; }
+            set
+            {
+                _category = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public System.Windows.Visibility Visibility
+        {
+            get { return _visibility; }
+            set
+            {
+                _visibility = value;
+                NotifyPropertyChanged();
+            }
+        }
+
         public SolidColorBrush Background
         {
             get { return _background; }
@@ -110,7 +75,47 @@ namespace KPLN_ModelChecker_User.Common
                 NotifyPropertyChanged();
             }
         }
-        private bool _isEnabled { get; set; }
+
+        public string Header
+        {
+            get { return _header; }
+            set
+            {
+                _header = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string Description
+        {
+            get { return _description; }
+            set
+            {
+                _description = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string ToolTip
+        {
+            get { return _toolTip; }
+            set
+            {
+                _toolTip = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<WPFDisplayItem> Collection
+        {
+            get { return _collection; }
+            set
+            {
+                _collection = value;
+                NotifyPropertyChanged();
+            }
+        }
+
         public bool IsEnabled
         {
             get { return _isEnabled; }
@@ -120,21 +125,27 @@ namespace KPLN_ModelChecker_User.Common
                 NotifyPropertyChanged();
             }
         }
-        private System.Windows.Visibility _visibility { get; set; }
-        public System.Windows.Visibility Visibility 
-        {
-            get { return _visibility; }
-            set 
-            {
-                _visibility = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public event PropertyChangedEventHandler PropertyChanged;
-        public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+
+        private ObservableCollection<WPFDisplayItem> _collection;
+        
+        private int _elementId;
+
+        private string _toolTip;
+
+        private string _header;
+        
+        private string _description;
+        
+        private string _category;
+
+        private string _name;
+
+        private SolidColorBrush _background;
+        
+        private bool _isEnabled;
+        
+        private System.Windows.Visibility _visibility;
+        
         public WPFDisplayItem(int categoryId, StatusExtended status, string icon= "🔍")
         {
             CategoryId = categoryId;
@@ -156,6 +167,23 @@ namespace KPLN_ModelChecker_User.Common
         public WPFDisplayItem(int categoryId, StatusExtended status, int elementId) : this (categoryId, status)
         {
             ElementId = elementId;
+        }
+
+        public void SetZoomParams(Element element, BoundingBoxXYZ box)
+        {
+            Element = element;
+            if (box != null)
+            {
+                Box = box;
+                Centroid = new XYZ((box.Max.X + box.Min.X) / 2, (box.Max.Y + box.Min.Y) / 2, (box.Max.Z + box.Min.Z) / 2);
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

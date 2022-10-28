@@ -44,7 +44,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 try
                 {
                     // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
-                    app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBoxShowing);
+                    app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
                     
                     app.ActiveUIDocument.ShowElements(Element);
                     if (_isLegendOpen)
@@ -55,7 +55,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { Element.Id });
                     
-                    app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBoxShowing);
+                    app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
                 }
                 catch (Exception) { }
             }
@@ -109,7 +109,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Закрывает окно с ошибкой об открытии легенды. Меняет параметр _isLegendOpen на true
         /// </summary>
-        private void DialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
+        private void DialogBox(object sender, DialogBoxShowingEventArgs args)
         {
             TaskDialogShowingEventArgs td = args as TaskDialogShowingEventArgs;
             if (td.Message.Equals("Невозможно подобрать подходящий вид."))

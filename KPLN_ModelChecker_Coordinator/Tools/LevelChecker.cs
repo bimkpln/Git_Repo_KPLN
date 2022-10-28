@@ -1,69 +1,20 @@
-﻿using Autodesk.Revit.DB;
+﻿extern alias revit;
+using revit::Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_ModelChecker_User.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_ModelChecker_Coordinator.Common.Collections;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Coordinator.Tools
 {
     public class LevelChecker
     {
-        public static List<LevelChecker> LevelCheckers = new List<LevelChecker>();
-        
+        public static List<LevelChecker> Levels = new List<LevelChecker>();
         public double Min { get; }
-        
         public double Max { get; }
-        
         public Level Level { get; }
-        
         public Level UpperLevel { get; private set; }
-        
         private Document Doc { get; }
-
-        public LevelChecker(Document doc, Level level, string code)
-        {
-            Doc = doc;
-            Level = level;
-            Min = level.Elevation;
-            
-            ElementId upperLevelId = level.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL).AsElementId();
-            
-            if (upperLevelId == null || upperLevelId.IntegerValue == -1)
-            {
-                if (code != null)
-                {
-                    string name = Level.get_Parameter(BuiltInParameter.DATUM_TEXT).AsString();
-                    string part = null;
-                    if (name.Contains('_'))
-                    {
-                        part = name.Split('_')[0];
-                    }
-                    UpperLevel = GetNearestUpperLevel(level.Elevation, part);
-                }
-                else
-                {
-                    UpperLevel = GetNearestUpperLevel(level.Elevation, null);
-                }
-                if (UpperLevel != null)
-                {
-                    Max = UpperLevel.Elevation;
-                }
-                else
-                {
-                    Max = Min + 10000 / 304.8;
-                }
-            }
-            else
-            {
-                UpperLevel = doc.GetElement(upperLevelId) as Level;
-                Max = UpperLevel.Elevation;
-            }
-            //Print(string.Format("{0} ====> {1} ({2}mm:{3}mm)", Level.Name, UpperLevel != null ? UpperLevel.Name : "null", Math.Round(Min * 304.8, 2), Math.Round(Max * 304.8, 2)), KPLN_Loader.Preferences.MessageType.System_Regular);
-        }
-
         public static CheckResult CheckLevels(Document doc)
         {
             HashSet<int> x = new HashSet<int>();
@@ -85,10 +36,6 @@ namespace KPLN_ModelChecker_User.Common
                         }
                         else
                         {
-                            if (prefix.StartsWith("C") || prefix.StartsWith("c") || prefix.StartsWith("K") || prefix.StartsWith("k"))
-                            { Print(string.Format("Не допускается использование латинницы в наименовании уровней\nсм.уровень «{0}»", name), KPLN_Loader.Preferences.MessageType.Error); }
-                            if (prefix.StartsWith("с") || prefix.StartsWith("к"))
-                            { Print(string.Format("Некорректный регистр\nсм.уровень «{0}»", name), KPLN_Loader.Preferences.MessageType.Error); }
                             x.Add(2);
                         }
                     }
@@ -110,42 +57,38 @@ namespace KPLN_ModelChecker_User.Common
             }
             return CheckResult.Error;
         }
-        
         public static void AddLevel(Level level, Document doc, string code)
         {
-            LevelCheckers.Add(new LevelChecker(doc, level, code));
+            Levels.Add(new LevelChecker(doc, level, code));
         }
-        
         public static LevelChecker GetLevelById(ElementId id)
         {
-            foreach (LevelChecker lvlChk in LevelCheckers)
+            foreach (LevelChecker lvl in Levels)
             {
-                if (lvlChk.Level.Id.IntegerValue == id.IntegerValue)
+                if (lvl.Level.Id.IntegerValue == id.IntegerValue)
                 {
-                    return lvlChk;
+                    return lvl;
                 }
             }
             return null;
         }
-        
         public static List<LevelChecker> GetOtherLevelById(ElementId id)
         {
             List<LevelChecker> levels = new List<LevelChecker>();
-            foreach (LevelChecker lvlChk in LevelCheckers)
+            foreach (LevelChecker lvl in Levels)
             {
-                if (lvlChk.Level.Id.IntegerValue != id.IntegerValue)
+                if (lvl.Level.Id.IntegerValue != id.IntegerValue)
                 {
-                    levels.Add(lvlChk);
+                    levels.Add(lvl);
                 }
             }
             return levels;
         }
-        
         public LevelCheckResult GetLevelIntersection(BoundingBoxXYZ box)
         {
-            if (box.Min.Z > Max || box.Max.Z < Min) 
+            if (box.Min.Z >= Max || box.Max.Z <= Min)
             {
-                return LevelCheckResult.NotInside; 
+                return LevelCheckResult.NotInside;
             }
             if (box.Min.Z >= Min && box.Max.Z <= Max)
             {
@@ -157,12 +100,12 @@ namespace KPLN_ModelChecker_User.Common
                 double max = Math.Min(box.Max.Z, Max);
                 double min = Math.Max(box.Min.Z, Min);
                 double intersectHeight = max - min;
-                if (intersectHeight < elementHeight)
-                { 
+                if (intersectHeight < elementHeight / 2)
+                {
                     return LevelCheckResult.TheLeastInside;
                 }
                 else
-                { 
+                {
                     return LevelCheckResult.MostlyInside;
                 }
             }
@@ -170,17 +113,54 @@ namespace KPLN_ModelChecker_User.Common
 
         public LevelCheckResult GetFloorLevelIntersection(BoundingBoxXYZ box)
         {
-            if (box.Max.Z < Min - 1500 / 304.8 || box.Min.Z > Min + 1500 / 304.8)
+            if (box.Min.Z < Min - 1000 / 304.8 || box.Max.Z > Min + 1000 / 304.8)
             {
                 return LevelCheckResult.NotInside;
             }
-            if (box.Min.Z >= Min - 1500 / 304.8 && box.Max.Z <= Min + 1500 / 304.8)
+            if (box.Min.Z >= Min - 1000 / 304.8 && box.Max.Z <= Min + 1000 / 304.8)
             {
                 return LevelCheckResult.FullyInside;
             }
             return LevelCheckResult.MostlyInside;
         }
-        
+        public LevelChecker(Document doc, Level level, string code)
+        {
+            Doc = doc;
+            Level = level;
+            Min = level.Elevation;
+            ElementId upperLevelId = level.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL).AsElementId();
+            if (upperLevelId == null || upperLevelId.IntegerValue == -1)
+            {
+                string name = Level.get_Parameter(BuiltInParameter.DATUM_TEXT).AsString();
+                string part = null;
+                if (name.Contains('_'))
+                {
+                    part = name.Split('_')[0];
+                }
+                UpperLevel = GetNearestUpperLevel(level.Elevation, doc, part);
+                if (code != null)
+                {
+                    UpperLevel = GetNearestUpperLevel(level.Elevation, doc, part);
+                }
+                else
+                {
+                    UpperLevel = GetNearestUpperLevel(level.Elevation, doc, null);
+                }
+                if (UpperLevel != null)
+                {
+                    Max = UpperLevel.Elevation;
+                }
+                else
+                {
+                    Max = Min + 3000 / 304.8;
+                }
+            }
+            else
+            {
+                UpperLevel = doc.GetElement(upperLevelId) as Level;
+                Max = UpperLevel.Elevation;
+            }
+        }
         private List<Level> GetLevelsByP(double elevation, Document doc, double min, double max, string part = null)
         {
             List<Level> levels = new List<Level>();
@@ -201,20 +181,20 @@ namespace KPLN_ModelChecker_User.Common
             }
             return levels;
         }
-        public Level GetNearestUpperLevel(double elevation, string part = null)
+        public Level GetNearestUpperLevel(double elevation, Document doc, string part = null)
         {
-            List<Level> levels = GetLevelsByP(elevation, Doc, 2000, 6000, part);
+            List<Level> levels = GetLevelsByP(elevation, doc, 2000, 6000, part);
             if (levels.Count == 0)
             {
-                levels = GetLevelsByP(elevation, Doc, 1000, 2000, part);
+                levels = GetLevelsByP(elevation, doc, 1000, 2000, part);
             }
             if (levels.Count == 0)
             {
                 return null;
             }
-            if(levels.Count == 1)
+            if (levels.Count == 1)
             {
-                return levels[0];    
+                return levels[0];
             }
             List<Level> sortedLevels = levels.OrderBy(o => o.Elevation).ToList();
             return sortedLevels[0];

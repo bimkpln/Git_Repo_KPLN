@@ -20,10 +20,7 @@ namespace KPLN_ModelChecker_User
 {
     public class Module : IExternalModule
     {
-        /// <summary>
-        /// Ссылка на основную статью. Предполагается использование якорей в статье под отдельные плагины
-        /// </summary>
-        private string _mainContextualHelp = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=920";
+        private string _mainContextualHelp = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=937";
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -65,7 +62,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckLevelOfInstances).FullName,
                 pullDown,
                 "checker_levels.png",
-                null
+                "https://clck.ru/32GG7V"
                 );
             AddPushButtonData(
                 "CheckMirrored", 
@@ -75,7 +72,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckMirroredInstances).FullName,
                 pullDown,
                 "checker_mirrored.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckCoordinates", 
@@ -88,7 +85,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandLinks).FullName,
                 pullDown,
                 "checker_locations.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckLevelMonitored", 
@@ -97,7 +94,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckLevels).FullName,
                 pullDown,
                 "checker_levels_monitor.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckGridMonitored",
@@ -107,7 +104,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckGrids).FullName,
                 pullDown,
                 "checker_grids_monitor.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckNames", 
@@ -117,7 +114,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckNames).FullName,
                 pullDown,
                 "family_name.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckWorksets", 
@@ -127,7 +124,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckElementWorksets).FullName,
                 pullDown,
                 "checker_worksets.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckDimensions",
@@ -139,7 +136,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckDimensions).FullName,
                 pullDown,
                 "dimensions.png",
-                null
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckAnnotations", 
@@ -154,7 +151,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckListAnnotations).FullName,
                 pullDown,
                 "surch_list_annotation.png",
-                null
+                _mainContextualHelp
                 );
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
             return Result.Succeeded;
@@ -209,7 +206,7 @@ namespace KPLN_ModelChecker_User
             button.ToolTip = description;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, _mainContextualHelp + anchorlHelp));
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, anchorlHelp));
             BtnImagine(button, imageName);
         }
 

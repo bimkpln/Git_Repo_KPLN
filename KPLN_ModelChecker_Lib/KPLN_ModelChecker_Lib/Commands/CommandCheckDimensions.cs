@@ -1,29 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ModelChecker_User.Common;
-using KPLN_ModelChecker_User.Forms;
-using static KPLN_Loader.Output.Output;
-using static KPLN_ModelChecker_User.Common.Collections;
+using KPLN_ModelChecker_Lib.Common;
+using KPLN_ModelChecker_Lib.Common.ErrorTypes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace KPLN_ModelChecker_User.ExternalCommands
+namespace KPLN_ModelChecker_Lib.ExternalCommands
 {
-    [Transaction(TransactionMode.Manual)]
-    [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckDimensions : IExternalCommand
+    public sealed class CommandCheckDimensions : AbstractCheckCommand
     {
-        /// <summary>
-        /// Список сущностей со своими атрибутами, которые соответсвуют ошибке
-        /// </summary>
-        private List<WPFElement> _errorList = new List<WPFElement>();
-
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
         /// </summary>
@@ -36,87 +22,29 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "min"
         };
 
-        ///// <summary>
-        ///// Точность размеров раздела АР
-        ///// </summary>
-        //private float _arAccuracy = 1.0f;
-        ///// <summary>
-        ///// Точность размеров раздела КР
-        ///// </summary>
-        //private float _krAccuracy = 0.1f;
-        ///// <summary>
-        ///// Точность размеров разделов ИОС
-        ///// </summary>
-        //private float _iosAccuracy = 1.0f;
-        ///// <summary>
-        ///// Точность межосевых размеров
-        ///// </summary>
-        //private float _gridsAccuracy = 0.000001f;
-
-        private WPFDisplayItem GetItemByElement(Element element, string name, int elemId, string header, string description, Status status)
+        public CommandCheckDimensions(UIApplication uiapp)
         {
-            StatusExtended exstatus;
-            switch (status)
-            {
-                case Status.Error:
-                    exstatus = StatusExtended.Critical;
-                    break;
-                case Status.LittleWarning:
-                    exstatus = StatusExtended.LittleWarning;
-                    break;
-                default:
-                    exstatus = StatusExtended.Warning;
-                    break;
-            }
-            WPFDisplayItem item = new WPFDisplayItem(-20000260, exstatus, elemId);
-            try
-            {
-                item.SetZoomParams(element, null);
-                item.Name = name;
-                item.Header = header;
-                item.Description = description;
-                item.Category = "Размеры";
-                item.Visibility = System.Windows.Visibility.Visible;
-                item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(-20000260, exstatus) { Header = "Подсказка: ", Description = description });
-                HashSet<string> values = new HashSet<string>();
-            }
-            catch (Exception e)
-            {
-                try
-                {
-                    PrintError(e.InnerException);
-                }
-                catch (Exception) { }
-                PrintError(e);
-            }
-            return item;
+            UIApp = uiapp;
+            ErrorCollection = new List<ElementEntity>();
         }
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public override IList<ElementEntity> Run()
         {
-            //Получение объектов приложения и документа
-            UIApplication uiapp = commandData.Application;
-            Document doc = uiapp.ActiveUIDocument.Document;
-            
-            //Основная часть
+            Document doc = UIApp.ActiveUIDocument.Document;
             FilteredElementCollector docDimensions = new FilteredElementCollector(doc).OfClass(typeof(Dimension)).WhereElementIsNotElementType();
+            
             try
             {
                 CheckOverride(doc, docDimensions);
                 CheckAccuracy(doc);
-                ShowResult();
             }
             catch (Exception ex)
             {
-                PrintError(ex);
-                return Result.Failed;
+                throw ex;
             }
-
-            return Result.Succeeded;
+            
+            return ErrorCollection;
         }
-
 
         /// <summary>
         /// Определяю размеры, которые были переопределены в проекте
@@ -133,7 +61,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 catch (NullReferenceException) { continue; }
 
                 double? currentValue = dim.Value;
-                
+
                 if (currentValue.HasValue && dim.ValueOverride?.Length > 0)
                 {
                     double value = currentValue.Value * 304.8;
@@ -195,23 +123,23 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     // Нахожу значения вне диапозоне
                     if (value >= overrideMaxDouble | value < overrideMinDouble)
                     {
-                        _errorList.Add(new WPFElement(
+                        ErrorCollection.Add(new ElementEntity(
                             doc.GetElement(new ElementId(elemId)),
                             elemName,
                             "Размер вне диапозона",
                             $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                            Status.Error)
+                            new Error())
                         );
                     }
                 }
                 else
                 {
-                    _errorList.Add(new WPFElement(
+                    ErrorCollection.Add(new ElementEntity(
                         doc.GetElement(new ElementId(elemId)),
                         elemName,
                         "Диапазон. Нужен ручной анализ",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                        Status.Warning)
+                        new Warning())
                     );
                 }
             }
@@ -224,43 +152,42 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Double.TryParse(onlyNumbMin, out overrideDouble);
                 if (overrideDouble == 0.0)
                 {
-                    _errorList.Add(new WPFElement(
+                    ErrorCollection.Add(new ElementEntity(
                         doc.GetElement(new ElementId(elemId)),
                         elemName,
                         "Нет возможности анализа",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
-                        Status.Error)
+                        new Error())
                     );
                 }
                 else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
                 {
-                    _errorList.Add(new WPFElement(
+                    ErrorCollection.Add(new ElementEntity(
                         doc.GetElement(new ElementId(elemId)),
                         elemName,
                         "Размер значительно отличается от реального",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.",
-                        Status.Error)
+                        new Error())
                     );
                 }
                 else
                 {
-                    _errorList.Add(new WPFElement(
+                    ErrorCollection.Add(new ElementEntity(
                         doc.GetElement(new ElementId(elemId)),
                         elemName,
-                        "Размер незначительно отличается от реального",
+                        "Размер не значительно отличается от реального",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
-                        Status.LittleWarning)
+                        new LittleWarning())
                     );
                 }
             }
         }
-        
+
         /// <summary>
         /// Определяю размеры, которые не соответствуют необходимой точности
         /// </summary>
         private void CheckAccuracy(Document doc)
         {
-            string docTitle = doc.Title;
             FilteredElementCollector docDimensionTypes = new FilteredElementCollector(doc).OfClass(typeof(DimensionType)).WhereElementIsElementType();
             foreach (DimensionType dimType in docDimensionTypes)
             {
@@ -272,62 +199,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         double currentAccuracy = typeOpt.Accuracy;
                         if (currentAccuracy > 1.0)
                         {
-                            _errorList.Add(new WPFElement(
+                            ErrorCollection.Add(new ElementEntity(
                                 doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
                                 dimType.Name,
                                 "Размер имеет запрещенно низкую точность",
                                 $"Принятое округление в 1 мм, а в данном типе - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер.",
-                                Status.Error)
+                                new Error())
                             );
                         }
                     }
-                    catch (Exception) 
-                    { 
+                    catch (Exception)
+                    {
                         //Игнорирую типы без настроек округления
                     }
                 }
             }
         }
-
-        /// <summary>
-        /// Метод для вывода результатов пользователю
-        /// </summary>
-        private void ShowResult()
-        {
-            if (_errorList.Count == 0)
-            {
-                TaskDialog.Show("Результат", "Проблемы не обнаружены :)", TaskDialogCommonButtons.Ok);
-            }
-            else
-            {
-                // Настраиваю сортировку в окне и генерирую экземпляры ошибок
-                ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
-                ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>();
-                wpfFiltration.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
-                foreach (WPFElement wpfElem in _errorList)
-                {
-                    Element element = wpfElem.Element;
-                    WPFDisplayItem item = GetItemByElement(wpfElem.Element, wpfElem.Name, element.OwnerViewId.IntegerValue, wpfElem.Header, wpfElem.Description, wpfElem.CurrentStatus);
-                    item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = wpfElem.Element.Id.ToString() });
-                    outputCollection.Add(item);
-                }
-                List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
-
-                // Вывожу результат
-                int counter = 1;
-                ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
-                foreach (WPFDisplayItem e in sortedOutputCollection)
-                {
-                    e.Header = string.Format("{0}# {1}", (counter++).ToString(), e.Header);
-                    wpfElements.Add(e);
-                }
-                if (wpfElements.Count != 0)
-                {
-                    ElementsOutputExtended form = new ElementsOutputExtended(wpfElements, wpfFiltration);
-                    form.Show();
-                }
-            }
-        }
-
     }
 }

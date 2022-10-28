@@ -1,0 +1,33 @@
+﻿<Window x:Class="KPLN_ModelChecker_Coordinator.Forms.Picker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_ModelChecker_Coordinator.Forms"
+             mc:Ignorable="d" 
+             Height="450" Width="400" ResizeMode="NoResize" WindowStyle="ToolWindow" WindowStartupLocation="CenterOwner">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBlock Name="tbHeader" Text="" Grid.Row="0" HorizontalAlignment="Center" FontSize="16" FontWeight="Bold"/>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Orientation="Vertical">
+                <ItemsControl x:Name="Projects">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button HorizontalContentAlignment="Left" Background="White" Click="OnBtnClick" Margin="3" BorderBrush="{x:Null}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Department.Code}" FontWeight="Bold" TextDecorations="{x:Null}"/>
+                                    <TextBlock Text=" - "/>
+                                    <TextBlock Text="{Binding Name}" TextDecorations="Underline"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

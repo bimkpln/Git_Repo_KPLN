@@ -7,10 +7,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ModelChecker_User", "K
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Revit2018|Any CPU = Revit2018|Any CPU
 		Revit2020|Any CPU = Revit2020|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
 		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
 		{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU

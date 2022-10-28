@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ModelChecker_Lib", "KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib.csproj", "{57CAEFFD-5880-4A89-A882-127729008CB1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2022|Any CPU = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2022|Any CPU.ActiveCfg = Revit2022|Any CPU
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2022|Any CPU.Build.0 = Revit2022|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {60FA7847-DBAD-4378-B5E0-B7764D90CAB9}
+	EndGlobalSection
+EndGlobal
