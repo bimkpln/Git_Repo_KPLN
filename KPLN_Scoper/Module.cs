@@ -159,13 +159,13 @@ namespace KPLN_Scoper
 
                     // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
                     if (info.ProjectId == -1
-                        && (!info.DocumentTitle.ToLower().Contains("_кон_")
-                        || !info.DocumentTitle.ToLower().Contains("_kon_")))
+                        && !info.DocumentTitle.ToLower().Contains("_кон_")
+                        && !info.DocumentTitle.ToLower().Contains("_kon_"))
                     {
-                        Print("Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
+                        Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
                             " - можете продолжить работу. Если же это файл новго проекта - напишите " +
                             "руководителю BIM-отдела",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            KPLN_Loader.Preferences.MessageType.Error);;
                     }
                 }
             }
@@ -222,43 +222,65 @@ namespace KPLN_Scoper
                 
                 if (isExist)
                 {
+                    SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
+                    
+                    // Поиск проекта и отдела
+                    SQLProject pickedProject = GetProjectById(projects, doc.Project);
+                    SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
+                    
+                    // Анализ кодов документов из БД
                     try
                     {
-                        if (doc.Department != -1 && doc.Project != -1)
+                        // Игнорирую файлы ревизора с диска С и файлы концепции
+                        if (doc.Path.Contains($"C:\\") || doc.Name.ToLower().Contains("_кон_") || doc.Name.ToLower().Contains("_kon_"))
                         {
-                            SQLProject pickedProject = GetProjectById(projects, doc.Project);
-                            SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
+                            continue;
+                        }
+                        
+                        // Поиск отдела и проекта по ключам (часть пути файла и имя файла)
+                        if (doc.Department == -1 || doc.Project == -1)
+                        {
                             if (pickedProject == null || pickedDepartment == null) 
                             {
-                                Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
-                                    $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
-                                KPLN_Loader.Preferences.MessageType.Error);
-                                continue;
+                                pickedProject = GetProjectByPath(projects, doc.Path);
+                                pickedDepartment = GetDepartmentByDocName(departments, doc.Name);
+
+                                if (pickedProject == null || pickedDepartment == null)
+                                {
+                                    Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
+                                        $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
+                                        KPLN_Loader.Preferences.MessageType.Error);
+                                    continue;
+                                }
+                                
+                                // Обновление данных по проекту и отделу исходя из ключей
+                                sql.Open();
+                                SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Department = '{1}' WHERE Id = {0}; " +
+                                    "UPDATE Documents SET Project = '{2}' WHERE Id = {0}; ",
+                                    doc.Id,
+                                    doc.Department,
+                                    doc.Project), sql);
+                                cmd.ExecuteNonQuery();
+                                sql.Close();
                             }
                             
+                        }
+                        
+                        // Назначение шифра проекта по коду и отделу
+                        if (doc.Code == "NONE")
+                        {
+                            sql.Open();
                             string code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
-                            if (doc.Code == "NONE" || doc.Code != code)
-                            {
-                                SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
-                                try
-                                {
-                                    sql.Open();
-                                    SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1}", code, doc.Id), sql);
-                                    cmd.ExecuteNonQuery();
-                                    sql.Close();
-                                }
-                                catch (Exception) { }
-                                {
-                                    try
-                                    {
-                                        sql.Close();
-                                    }
-                                    catch (Exception) { }
-                                }
-                            }
+                            SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1};", 
+                                code, 
+                                doc.Id), sql);
+                                    
+                            cmd.ExecuteNonQuery();
+                            sql.Close();
                         }
                     }
                     catch (Exception) { }
+                    finally { sql.Close(); }
                 }
                 else
                 {
@@ -396,12 +418,17 @@ namespace KPLN_Scoper
                     {
                         FileVersionInfo moduleFileVersionInfo = FileVersionInfo.GetVersionInfo($"{modulePath}\\{file.Name}");
 
-                        SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
+                        SQLiteConnection sql = new SQLiteConnection(
+                            KPLN_Library_DataBase.DbControll.MainDBConnection);
                         
                         try
                         {
                             sql.Open();
-                            SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Modules SET Version = '{0}' WHERE Id = {1}", moduleFileVersionInfo.FileVersion, module.Id), sql);
+                            SQLiteCommand cmd = new SQLiteCommand(
+                                string.Format("UPDATE Modules SET Version = '{0}' WHERE Id = {1}",
+                                moduleFileVersionInfo.FileVersion, 
+                                module.Id), sql);
+                            
                             cmd.ExecuteNonQuery();
                         }
                         catch (Exception ex) 
@@ -420,6 +447,12 @@ namespace KPLN_Scoper
             Print($"Обновление версий модулей в БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
         }
 
+        /// <summary>
+        /// Поиск проекта по id
+        /// </summary>
+        /// <param name="list">Коллекция проектов из БД</param>
+        /// <param name="id">Id проекта</param>
+        /// <returns></returns>
         private SQLProject GetProjectById(List<SQLProject> list, int id)
         {
             foreach (SQLProject project in list)
@@ -432,11 +465,56 @@ namespace KPLN_Scoper
             return null;
         }
 
+        /// <summary>
+        /// Поиск проекта по пути
+        /// </summary>
+        /// <param name="list">Коллекция проектов из БД</param>
+        /// <param name="path">Путь проекта</param>
+        /// <returns></returns>
+        private SQLProject GetProjectByPath(List<SQLProject> list, string path)
+        {
+            foreach (SQLProject project in list)
+            {
+                if (path.Contains(project.Keys))
+                {
+                    return project;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Поиск отдела по id
+        /// </summary>
+        /// <param name="list">Коллекция отделов из БД</param>
+        /// <param name="id">Id отдела</param>
+        /// <returns></returns>
         private SQLDepartment GetDepartmentById(List<SQLDepartment> list, int id)
         {
             foreach (SQLDepartment department in list)
             {
                 if (department.Id == id)
+                {
+                    return department;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Поиск отдела по имени файла
+        /// </summary>
+        /// <param name="list">Коллекция отделов из БД</param>
+        /// <param name="docName">Имя файла</param>
+        /// <returns></returns>
+        private SQLDepartment GetDepartmentByDocName(List<SQLDepartment> list, string docName)
+        {
+            foreach (SQLDepartment department in list)
+            {
+                if (docName.Contains($"_{department.Code}") 
+                    || docName.Contains($"_{department.CodeUs}")
+                    || docName.Contains($"{department.Code}_") 
+                    || docName.Contains($"{department.CodeUs}_"))
                 {
                     return department;
                 }
@@ -545,7 +623,10 @@ namespace KPLN_Scoper
             }
             foreach (SQLDepartment dep in GetDepartments())
             {
-                if (name.Contains(dep.Code) || name.Contains(dep.CodeUs))
+                if (name.Contains($"_{dep.Code}") 
+                    || name.Contains($"_{dep.CodeUs}")
+                    || name.Contains($"{dep.Code}_")
+                    || name.Contains($"{dep.CodeUs}_"))
                 {
                     pickedDepartment = dep;
                 }
