@@ -52,7 +52,7 @@
   <ItemGroup>
     <Reference Include="KPLN_Library_DataBase">
       <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
@@ -138,6 +138,7 @@
     <Compile Include="Common\SQLDepartment.cs" />
     <Compile Include="Common\SQLDocument.cs" />
     <Compile Include="Common\SQLProject.cs" />
+    <Compile Include="Common\UserException.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

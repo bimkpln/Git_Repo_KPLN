@@ -112,7 +112,89 @@ namespace KPLN_Scoper
             }
             catch (Exception) { }
         }
-       
+
+        private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
+        {
+            try
+            {
+                if (ActivityManager.ActiveDocument != null)
+                {
+                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
+                    ActivityManager.ActivityBag.Enqueue(info);
+                }
+            }
+            catch (Exception) { }
+            /*
+            try
+            {
+                Autodesk.Revit.DB.Document document = args.Document;
+                UpdateRoomDictKeys(document);
+            }
+            catch (Exception)
+            { }
+            */
+            try
+            {
+                ActivityManager.Synchronize(null);
+            }
+            catch (ArgumentNullException ex)
+            {
+                PrintError(ex);
+            }
+            catch (Exception)
+            { }
+        }
+
+        /// <summary>
+        /// Событие на открытие документа
+        /// </summary>
+        private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
+        {
+            try
+            {
+                if (ActivityManager.ActiveDocument != null && !args.Document.IsFamilyDocument && !args.Document.PathName.Contains(".rte"))
+                {
+                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
+                    ActivityManager.ActivityBag.Enqueue(info);
+
+                    // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
+                    if (info.ProjectId == -1
+                        && (!info.DocumentTitle.ToLower().Contains("_кон_")
+                        || !info.DocumentTitle.ToLower().Contains("_kon_")))
+                    {
+                        Print("Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
+                            " - можете продолжить работу. Если же это файл новго проекта - напишите " +
+                            "руководителю BIM-отдела",
+                            KPLN_Loader.Preferences.MessageType.Error);
+                    }
+                }
+            }
+            catch (UserException ex) { Print(ex.Message, KPLN_Loader.Preferences.MessageType.Error); }
+            catch (Exception ex) { PrintError(ex); }
+
+            try
+            {
+                Document document = args.Document;
+
+                if (document.IsWorkshared && !document.IsDetached)
+                {
+                    DocumentPreapre(document);
+                }
+
+                foreach (RevitLinkInstance link in new FilteredElementCollector(document).OfClass(typeof(RevitLinkInstance)).WhereElementIsNotElementType().ToElements())
+                {
+                    Document linkDocument = link.GetLinkDocument();
+                    if (linkDocument == null) { continue; }
+
+                    if (linkDocument.IsWorkshared)
+                    {
+                        DocumentPreapre(linkDocument);
+                    }
+                }
+            }
+            catch (Exception) { }
+        }
+
 
         /// <summary>
         /// Обновление данных по документам в БД администратором БД (по имени пользователя)
@@ -336,76 +418,6 @@ namespace KPLN_Scoper
             }
 
             Print($"Обновление версий модулей в БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
-        }
-
-       private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
-        {
-            try
-            {
-                if (ActivityManager.ActiveDocument != null)
-                {
-                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
-                    ActivityManager.ActivityBag.Enqueue(info);
-                }
-            }
-            catch (Exception) { }
-            /*
-            try
-            {
-                Autodesk.Revit.DB.Document document = args.Document;
-                UpdateRoomDictKeys(document);
-            }
-            catch (Exception)
-            { }
-            */
-            try
-            { 
-                ActivityManager.Synchronize(null); 
-            }
-            catch (ArgumentNullException ex)
-            {
-                PrintError(ex);
-            }
-            catch (Exception)
-            { }
-        }
-        
-        /// <summary>
-        /// Событие на открытие документа
-        /// </summary>
-        private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
-        {
-            try
-            {
-                if (ActivityManager.ActiveDocument != null && !ActivityManager.ActiveDocument.IsFamilyDocument && !ActivityManager.ActiveDocument.PathName.Contains(".rte"))
-                {
-                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
-                    ActivityManager.ActivityBag.Enqueue(info);
-                }
-            }
-            catch (Exception ex) { PrintError(ex); }
-            
-            try
-            {
-                Document document = args.Document;
-
-                if (document.IsWorkshared && !document.IsDetached)
-                {
-                    DocumentPreapre(document);
-                }
-                
-                foreach (RevitLinkInstance link in new FilteredElementCollector(document).OfClass(typeof(RevitLinkInstance)).WhereElementIsNotElementType().ToElements())
-                {
-                    Document linkDocument = link.GetLinkDocument();
-                    if (linkDocument == null) { continue; }
-
-                    if (linkDocument.IsWorkshared)
-                    {
-                        DocumentPreapre(linkDocument);
-                    }
-                }
-            }
-            catch (Exception) { }
         }
 
         private SQLProject GetProjectById(List<SQLProject> list, int id)

@@ -3,6 +3,7 @@ using KPLN_Library_DataBase.Collections;
 using System;
 using System.IO;
 using static KPLN_Scoper.Common.Collections;
+using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Scoper.Common
 {
@@ -22,7 +23,10 @@ namespace KPLN_Scoper.Common
         
         public ActivityInfo(Document doc, BuiltInActivity type)
         {
-            if (doc.IsDetached || !doc.IsWorkshared) { throw new Exception("Внимание: Документ не для совместной работы!"); }
+            if (doc.IsDetached || !doc.IsWorkshared) 
+            { 
+                throw new UserException("Внимание: Документ не для совместной работы!"); 
+            }
             
             Type = type;
             
