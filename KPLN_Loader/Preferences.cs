@@ -28,7 +28,13 @@ namespace KPLN_Loader
 
         public static string HTML_Output_DocType = "<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' 'http://www.w3.org/TR/html4/loose.dtd'>";
         
-        public static string HTML_Output_Head { get { return string.Format(@"<head><meta http-equiv='X-UA-Compatible' content='IE=9'><meta http-equiv='content-type' content='text/html; charset=utf-8'><meta name='appversion' content='0.2.0.0'><link href='file:///{0}\Output\Styles\outputstyles.css' rel='stylesheet'></head>", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString()); } }
+        public static string HTML_Output_Head 
+        { 
+            get 
+            { 
+                return string.Format(@"<head><meta http-equiv='X-UA-Compatible' content='IE=9'><meta http-equiv='content-type' content='text/html; charset=utf-8'><meta name='appversion' content='0.2.0.0'><link href='file:///{0}\Output\Styles\outputstyles.css' rel='stylesheet'></head>", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString()); 
+            } 
+        }
         
         public static SQLUserInfo User;
         
@@ -41,10 +47,37 @@ namespace KPLN_Loader
         /// </summary>
         public static NLog.Logger Logger = NLog.LogManager.LoadConfiguration(AssemblyPath + "\\nlog.config").GetCurrentClassLogger();
         
-        public enum MessageType { Header, Regular, Error, Warning, Critical, Code, Success, System_OK, System_Regular }
+        public enum MessageType 
+        { 
+            Header, 
+            Regular, 
+            Error, 
+            Warning, 
+            Critical, 
+            Code, 
+            Success, 
+            System_OK, 
+            System_Regular 
+        }
         
-        public enum MessageDialogType { Regular, Warning, Important, Fun, System }
+        public enum MessageDialogType 
+        { 
+            Regular, 
+            Warning, 
+            Important, 
+            Fun, 
+            System 
+        }
         
-        public enum MessageDialogResult { Read, Ok, Thx, Close, None, Pending, Shown }
+        public enum MessageDialogResult 
+        { 
+            Read, 
+            Ok, 
+            Thx, 
+            Close, 
+            None, 
+            Pending, 
+            Shown 
+        }
     }
 }
