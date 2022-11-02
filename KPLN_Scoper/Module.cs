@@ -231,8 +231,13 @@ namespace KPLN_Scoper
                     // Анализ кодов документов из БД
                     try
                     {
-                        // Игнорирую файлы ревизора с диска С и файлы концепции
-                        if (doc.Path.Contains($"C:\\") || doc.Name.ToLower().Contains("_кон_") || doc.Name.ToLower().Contains("_kon_"))
+                        // Игнорирую файлы ревизора с диска С, файлы концепции, отсоединенные файлы
+                        if (
+                            doc.Path.Contains($"C:\\") 
+                            || doc.Name.ToLower().Contains("отсоединено") 
+                            || doc.Path.ToLower().Contains("концепц") 
+                            || doc.Name.ToLower().Contains("_кон_") 
+                            || doc.Name.ToLower().Contains("_kon_"))
                         {
                             continue;
                         }
