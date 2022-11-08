@@ -13,7 +13,7 @@ namespace KPLN_Clashes_Ribbon
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2022/08/30";
+        public static string Date = "2022/11/07";
 
         /// <summary>
         /// Имя модуля

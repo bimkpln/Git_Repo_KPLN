@@ -5,21 +5,19 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Web;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Clashes_Ribbon.Tools
 {
-    public static class HTMLTools
+    internal static class HTMLTools
     {
         public static string GetTime(string value)
         {
             string result = string.Empty;
             int i = 0;
-            foreach (char c in value) 
+            foreach (char c in value)
             {
-                if (i >= 5) 
+                if (i >= 5)
                 {
                     break;
                 }
@@ -87,7 +85,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             { }
             return comments;
         }
-        public static int GetRowId(List<string> values, string value, bool skipfirst=false)
+        public static int GetRowId(List<string> values, string value, bool skipfirst = false)
         {
             bool first_found = false;
             int n = 0;
@@ -146,7 +144,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 {
                     headers.Add(sub_node.InnerText);
                 }
-                
+
             }
             return headers;
         }

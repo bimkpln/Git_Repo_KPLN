@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KPLN_Clashes_Ribbon.Tools;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -13,255 +14,43 @@ using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
-    public class Report : INotifyPropertyChanged
+    /// <summary>
+    /// Данные по экземплярам отчетов, объедененные в группы из таблицы групп отчетов
+    /// </summary>
+    public sealed class Report : INotifyPropertyChanged
     {
-        private int _Progress { get; set; } = 0;
-        public int Progress
-        {
-            get
-            {
-                return _Progress;
-            }
-            set
-            {
-                _Progress = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public void UpdateProgress()
-        {
-            int max = 0;
-            int done = 0;
-            foreach (ReportInstance ri in ReportInstance.GetReportInstances(Path))
-            {
-                max++;
-                if (ri.Status != Collections.Status.Opened)
-                {
-                    done++;
-                }
-            }
-            int result = (int)Math.Round((double)(done * 100 / max));
-            Progress = result;
-            PbEnabled = System.Windows.Visibility.Visible;
-        }
-        private System.Windows.Visibility _PbEnabled { get; set; } = System.Windows.Visibility.Collapsed;
-        private System.Windows.Visibility _IsGroupEnabled { get; set; } = System.Windows.Visibility.Visible;
-        private int _Id { get; set; }
-        private int _GroupId { get; set; }
-        private string _Name { get; set; }
-        private int _Status { get; set; }
-        private string _Path { get; set; }
-        private string _DateCreated { get; set; }
-        private string _UserCreated { get; set; }
-        private string _DateLast { get; set; }
-        private string _UserLast { get; set; }
-        private Source.Source _Source { get; set; }
-        public SolidColorBrush _Fill_Default
-        {
-            get
-            {
-                if (IsGroupEnabled == System.Windows.Visibility.Visible)
-                { return new SolidColorBrush(System.Windows.Media.Color.FromArgb(225, 255, 255, 255)); }
-                return new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 155, 155, 155));
-            }
-        }
-        private SolidColorBrush _Fill { get; set; } = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
-        public System.Windows.Visibility IsGroupEnabled
-        {
-            get
-            {
-                return _IsGroupEnabled;
-            }
-            set
-            {
-                _IsGroupEnabled = value;
-                NotifyPropertyChanged();
-                _Fill = _Fill_Default;
-            }
-        }
-        public System.Windows.Visibility PbEnabled
-        {
-            get
-            {
-                return _PbEnabled;
-            }
-            set
-            {
-                _PbEnabled = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public System.Windows.Visibility AdminControllsVisibility
-        {
-            get
-            {
-                if (KPLN_Loader.Preferences.User.Department.Id != 4)
-                {
-                    return System.Windows.Visibility.Collapsed;
-                }
-                return IsGroupEnabled;
-            }
-        }
-        public System.Windows.Visibility IsGroupNotEnabled
-        {
-            get
-            {
-                if (_IsGroupEnabled == System.Windows.Visibility.Visible)
-                { return System.Windows.Visibility.Collapsed; } 
-                return System.Windows.Visibility.Visible;
-            }
-            set
-            {
-                _IsGroupEnabled = value;
-                NotifyPropertyChanged();
-                _Fill = _Fill_Default;
-            }
-        }
-        public SolidColorBrush Fill
-        {
-            get
-            {
-                return _Fill;
-            }
-            set
-            {
-                _Fill = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public int Id
-        {
-            get
-            {
-                return _Id;
-            }
-            set
-            {
-                _Id = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public int GroupId
-        {
-            get
-            {
-                return _GroupId;
-            }
-            set
-            {
-                _GroupId = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string Name
-        {
-            get
-            {
-                return _Name;
-            }
-            set
-            {
-                _Name = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public int Status
-        {
-            get
-            {
-                return _Status;
-            }
-            set
-            {
-                if (value != 1)
-                {
-                    Source = new Source.Source(Collections.Icon.Instance);
-                }
-                else
-                { 
-                    Source = new Source.Source(Collections.Icon.Instance_Closed);
-                }
-                _Status = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string Path
-        {
-            get
-            {
-                return _Path;
-            }
-            set
-            {
-                _Path = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string DateCreated
-        {
-            get
-            {
-                return _DateCreated;
-            }
-            set
-            {
-                _DateCreated = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string UserCreated
-        {
-            get
-            {
-                return _UserCreated;
-            }
-            set
-            {
-                _UserCreated = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string DateLast
-        {
-            get
-            {
-                return _DateLast;
-            }
-            set
-            {
-                _DateLast = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public string UserLast
-        {
-            get
-            {
-                return _UserLast;
-            }
-            set
-            {
-                _UserLast = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public Source.Source Source
-        {
-            get
-            {
-                return _Source;
-            }
-            set
-            {
-                _Source = value;
-                NotifyPropertyChanged();
-            }
-        }
-        public void GetProgress()
-        {
-            Task t2 = Task.Run(() =>
-            { UpdateProgress(); });
-        }
+        public event PropertyChangedEventHandler PropertyChanged;
+        
+        private int _progress = 0;
+
+        private int _delegationProgress = 0;
+
+        private System.Windows.Visibility _pbEnabled = System.Windows.Visibility.Collapsed;
+
+        private System.Windows.Visibility _isGroupEnabled = System.Windows.Visibility.Visible;
+
+        private int _id;
+
+        private int _groupId;
+        
+        private string _name;
+        
+        private int _status;
+        
+        private string _path;
+
+        private string _dateCreated;
+
+        private string _userCreated;
+
+        private string _dateLast;
+
+        private string _userLast;
+
+        private Source.Source _source;
+
+        private SolidColorBrush _fill = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
+
         private Report(int id, int groupId, string name, int status, string path, string dateCreated, string userCreated, string dateLast, string userLast)
         {
             Id = id;
@@ -274,12 +63,260 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             DateLast = dateLast;
             UserLast = userLast;
         }
+        
+        public int Progress
+        {
+            get
+            {
+                return _progress;
+            }
+            set
+            {
+                _progress = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public int DelegationProgress
+        {
+            get
+            {
+                return _delegationProgress;
+            }
+            set 
+            {
+                _delegationProgress = value; 
+                NotifyPropertyChanged(); 
+            }
+        }
+
+        public SolidColorBrush _Fill_Default
+        {
+            get
+            {
+                if (IsGroupEnabled == System.Windows.Visibility.Visible)
+                { return new SolidColorBrush(Color.FromArgb(225, 255, 255, 255)); }
+                return new SolidColorBrush(Color.FromArgb(255, 155, 155, 155));
+            }
+        }
+
+        public System.Windows.Visibility IsGroupEnabled
+        {
+            get
+            {
+                return _isGroupEnabled;
+            }
+            set
+            {
+                _isGroupEnabled = value;
+                NotifyPropertyChanged();
+                _fill = _Fill_Default;
+            }
+        }
+
+        public System.Windows.Visibility PbEnabled
+        {
+            get
+            {
+                return _pbEnabled;
+            }
+            set
+            {
+                _pbEnabled = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public System.Windows.Visibility AdminControllsVisibility
+        {
+            get
+            {
+                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+                {
+                    return IsGroupEnabled;
+                }
+
+                return System.Windows.Visibility.Collapsed;
+            }
+        }
+
+        public System.Windows.Visibility IsGroupNotEnabled
+        {
+            get
+            {
+                if (_isGroupEnabled == System.Windows.Visibility.Visible)
+                { return System.Windows.Visibility.Collapsed; }
+                return System.Windows.Visibility.Visible;
+            }
+            set
+            {
+                _isGroupEnabled = value;
+                NotifyPropertyChanged();
+                _fill = _Fill_Default;
+            }
+        }
+
+        public int Id
+        {
+            get
+            {
+                return _id;
+            }
+            set
+            {
+                _id = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public int GroupId
+        {
+            get
+            {
+                return _groupId;
+            }
+            set
+            {
+                _groupId = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string Name
+        {
+            get
+            {
+                return _name;
+            }
+            set
+            {
+                _name = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public int Status
+        {
+            get
+            {
+                return _status;
+            }
+            set
+            {
+                if (value == 1)
+                { Source = new Source.Source(Collections.Icon.Instance_Closed); }
+                else if (value == 2)
+                { Source = new Source.Source(Collections.Icon.Instance_Delegated); }
+                else 
+                { Source = new Source.Source(Collections.Icon.Instance); }
+
+                _status = value;
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string Path
+        {
+            get
+            {
+                return _path;
+            }
+            set
+            {
+                _path = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string DateCreated
+        {
+            get
+            {
+                return _dateCreated;
+            }
+            set
+            {
+                _dateCreated = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string UserCreated
+        {
+            get
+            {
+                return _userCreated;
+            }
+            set
+            {
+                _userCreated = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string DateLast
+        {
+            get
+            {
+                return _dateLast;
+            }
+            set
+            {
+                _dateLast = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public string UserLast
+        {
+            get
+            {
+                return _userLast;
+            }
+            set
+            {
+                _userLast = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public Source.Source Source
+        {
+            get
+            {
+                return _source;
+            }
+            set
+            {
+                _source = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public SolidColorBrush Fill
+        {
+            get
+            {
+                return _fill;
+            }
+            set
+            {
+                _fill = value;
+                NotifyPropertyChanged();
+            }
+        }
+
         public static ObservableCollection<Report> GetReports()
         {
             ObservableCollection<Report> reports = new ObservableCollection<Report>();
             try
             {
-                SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;"));
+                SQLiteConnection db = new SQLiteConnection(
+                    string.Format(
+                        @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;")
+                    );
+
                 try
                 {
                     db.Open();
@@ -320,7 +357,44 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             catch (Exception) { }
             return reports;
         }
-        public event PropertyChangedEventHandler PropertyChanged;
+
+        public void UpdateProgress()
+        {
+            int max = 0;
+            int done = 0;
+            int delegated = 0;
+            foreach (ReportInstance ri in ReportInstance.GetReportInstances(Path))
+            {
+                max++;
+                
+                if (ri.Status != Collections.Status.Opened && ri.Status != Collections.Status.Delegated)
+                { done++; }
+                else if (ri.Status == Collections.Status.Delegated)
+                { delegated++; }
+            }
+            
+            int doneCount = (int)Math.Round((double)(done * 100 / max));
+            Progress = doneCount;
+
+            int delegatedCount = (int)Math.Round((double)(delegated * 100 / max));
+            DelegationProgress = delegatedCount;
+
+            // Устанавливаю статус для смены пиктограммы при условии что все коллизии просмотрены (делегированы, либо устранены)
+            if (done + delegated == max && delegated > 0)
+            {
+                Status = 2;
+                DbController.SetInstanceValue(Path, Id, "STATUS", 2);
+            }
+
+            PbEnabled = System.Windows.Visibility.Visible;
+        }
+
+        public void GetProgress()
+        {
+            Task t2 = Task.Run(() =>
+            { UpdateProgress(); });
+        }
+
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

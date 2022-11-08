@@ -1,141 +1,167 @@
 ﻿using KPLN_Library_DataBase.Collections;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data.SQLite;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Media;
-using static KPLN_Loader.Output.Output;
 using static KPLN_Clashes_Ribbon.Common.Collections;
+using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
-    public class ReportGroup : INotifyPropertyChanged
+    /// <summary>
+    /// Общая группа отчетов из таблицы групп отчетов
+    /// </summary>
+    internal sealed class ReportGroup : INotifyPropertyChanged
     {
-        private ObservableCollection<Report> _Reports { get; set; } = new ObservableCollection<Report>();
-        
-        private int _Id { get; set; }
-        
-        private int _ProjectId { get; set; }
-        
-        private string _Name { get; set; }
-        
-        private int _Status { get; set; }
-        
-        private string _DateCreated { get; set; }
-        
-        private string _UserCreated { get; set; }
-        
-        private string _DateLast { get; set; }
-        
-        private string _UserLast { get; set; }
-        
-        private Source.Source _Source { get; set; }
-        
-        private SolidColorBrush _Fill { get; set; }
-        
-        private bool _IsEnabled { get; set; } = true;
-        
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private ObservableCollection<Report> _reports = new ObservableCollection<Report>();
+
+        private int _id;
+
+        private int _projectId;
+
+        private string _name;
+
+        private int _status;
+
+        private string _dateCreated;
+
+        private string _userCreated;
+
+        private string _dateLast;
+
+        private string _userLast;
+
+        private Source.Source _source;
+
+        private SolidColorBrush _fill;
+
+        private bool _isEnabled = true;
+
+        private bool _isExpandedItem = false;
+
+        private ReportGroup(ObservableCollection<DbProject> dbProjects, int id, int projectId, string name, int status, string dateCreated, string userCreated, string dateLast, string userLast)
+        {
+            Id = id;
+            ProjectId = projectId;
+            Name = name;
+            foreach (DbProject proj in dbProjects)
+            {
+                if (projectId == proj.Id)
+                {
+                    Name = string.Format("[{0}]: {1} ({2})", proj.Code, name, proj.Name);
+                }
+            }
+            Status = status;
+            DateCreated = dateCreated;
+            UserCreated = userCreated;
+            DateLast = dateLast;
+            UserLast = userLast;
+        }
+
         public string DBUserLast { get; set; }
-        
+
         public string DBUserCreated { get; set; }
-        
+
         public bool IsEnabled
         {
             get
             {
-                return _IsEnabled;
+                return _isEnabled;
             }
             set
             {
-                _IsEnabled = value;
+                _isEnabled = value;
                 NotifyPropertyChanged();
             }
         }
+
         public SolidColorBrush Fill
         {
             get
             {
-                return _Fill;
+                return _fill;
             }
             set
             {
-                _Fill = value;
+                _fill = value;
                 NotifyPropertyChanged();
             }
         }
+
         public ObservableCollection<Report> Reports
         {
             get
             {
-                return _Reports;
+                return _reports;
             }
             set
             {
-                _Reports = value;
+                _reports = value;
                 NotifyPropertyChanged();
             }
         }
-        public int Id 
+
+        public int Id
         {
             get
             {
-                return _Id;
+                return _id;
             }
-            set 
+            set
             {
-                _Id = value;
+                _id = value;
                 NotifyPropertyChanged();
-            } 
+            }
         }
+
         public int ProjectId
         {
             get
             {
-                return _ProjectId;
+                return _projectId;
             }
             set
             {
-                _ProjectId = value;
+                _projectId = value;
                 NotifyPropertyChanged();
             }
         }
+
         public string Name
         {
             get
             {
-                return _Name;
+                return _name;
             }
             set
             {
-                _Name = value;
+                _name = value;
                 NotifyPropertyChanged();
             }
         }
-        private bool _IsExpandedItem { get; set; } = false;
+
         public bool IsExpandedItem
         {
             get
             {
-                return _IsExpandedItem;
+                return _isExpandedItem;
             }
             set
             {
-                _IsExpandedItem = value;
+                _isExpandedItem = value;
                 NotifyPropertyChanged();
             }
         }
+
         public int Status
         {
             get
             {
-                return _Status;
+                return _status;
             }
             set
             {
@@ -160,122 +186,108 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                     Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 78, 97, 112));
                     IsEnabled = false;
                 }
-                _Status = value;
+                _status = value;
                 NotifyPropertyChanged();
             }
         }
+
         public System.Windows.Visibility AdminControllsVisibility
         {
             get
             {
-                if (KPLN_Loader.Preferences.User.Department.Id != 4)
+                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
                 {
-                    return System.Windows.Visibility.Collapsed;
+                    return System.Windows.Visibility.Visible;
                 }
-                return System.Windows.Visibility.Visible;
+
+                return System.Windows.Visibility.Collapsed;
             }
         }
+
         public System.Windows.Visibility AdminControllsVisibilityAdd
         {
             get
             {
-                if (KPLN_Loader.Preferences.User.Department.Id != 4)
-                {
-                    
-                }
                 if (IsEnabled)
-                { 
+                {
                     return System.Windows.Visibility.Visible;
                 }
                 else
-                { 
+                {
                     return System.Windows.Visibility.Collapsed;
                 }
-                
+
             }
         }
+
         public string DateCreated
         {
             get
             {
-                return _DateCreated;
+                return _dateCreated;
             }
             set
             {
-                _DateCreated = value;
+                _dateCreated = value;
                 NotifyPropertyChanged();
             }
         }
+
         public string UserCreated
         {
             get
             {
-                return _UserCreated;
+                return _userCreated;
             }
             set
             {
                 DBUserCreated = ModuleData.GetUserBySystemName(value);
-                _UserCreated = value;
+                _userCreated = value;
                 NotifyPropertyChanged();
             }
         }
+
         public string DateLast
         {
             get
             {
-                return _DateLast;
+                return _dateLast;
             }
             set
             {
-                _DateLast = value;
+                _dateLast = value;
                 NotifyPropertyChanged();
             }
         }
+
         public string UserLast
         {
             get
             {
-                return _UserLast;
+                return _userLast;
             }
             set
             {
                 DBUserLast = ModuleData.GetUserBySystemName(value);
-                _UserLast = value;
+                _userLast = value;
                 NotifyPropertyChanged();
             }
         }
+
         public Source.Source Source
         {
             get
             {
-                return _Source;
+                return _source;
             }
             set
             {
-                _Source = value;
+                _source = value;
                 NotifyPropertyChanged();
             }
         }
-        
-        private ReportGroup(ObservableCollection<DbProject> dbProjects, int id, int projectId, string name, int status, string dateCreated, string userCreated, string dateLast, string userLast)
-        {
-            Id = id;
-            ProjectId = projectId;
-            Name = name;
-            foreach (DbProject proj in dbProjects)
-            {
-                if (projectId == proj.Id)
-                {
-                    Name = string.Format("[{0}]: {1} ({2})", proj.Code, name, proj.Name);
-                }
-            }
-            Status = status;
-            DateCreated = dateCreated;
-            UserCreated = userCreated;
-            DateLast = dateLast;
-            UserLast = userLast;
-        }
-        
+
+
         public static ObservableCollection<ReportGroup> GetReportGroups(DbProject project)
         {
             ObservableCollection<ReportGroup> groups = new ObservableCollection<ReportGroup>();
@@ -292,14 +304,18 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 dbProjects = KPLN_Library_DataBase.DbControll.Projects;
                 sqlCommand = $"SELECT * FROM ReportGroups";
             }
-            
+
             try
             {
-                SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;"));
+                SQLiteConnection db = new SQLiteConnection(
+                    string.Format(
+                        @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;")
+                    );
+                
                 try
                 {
                     db.Open();
-                    using (SQLiteCommand cmd = new SQLiteCommand(sqlCommand, db)) 
+                    using (SQLiteCommand cmd = new SQLiteCommand(sqlCommand, db))
                     {
                         using (SQLiteDataReader rdr = cmd.ExecuteReader())
                         {
@@ -337,10 +353,11 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             catch (Exception) { }
             return groups;
         }
-        public event PropertyChangedEventHandler PropertyChanged;
+
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
     }
 }

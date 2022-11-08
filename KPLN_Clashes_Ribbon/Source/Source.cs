@@ -11,8 +11,8 @@ namespace KPLN_Clashes_Ribbon.Source
 {
     public class Source
     {
-        public string Value { get; }
         private static string AssemblyPath = new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName;
+        
         public Source(Icon icon)
         {
             switch (icon)
@@ -32,8 +32,12 @@ namespace KPLN_Clashes_Ribbon.Source
                 case Icon.Instance_Closed:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_closed.png");
                     break;
+                case Icon.Instance_Delegated:
+                    Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_delegated.png");
+                    break;
             }
         }
-    }
 
+        public string Value { get; }
+    }
 }
