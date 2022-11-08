@@ -219,6 +219,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             try
             {
                 DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", 0);
+                DbController.SetInstanceValue(_currentReport.Path, report.Id, "DEPARTMENT", -1);
                 report.Status = Common.Collections.Status.Closed;
                 report.AddComment(string.Format("Статус изменен: <Исправлено>\n"), 1);
                 DbController.UpdateGroupLastChange(_currentReport.GroupId);
