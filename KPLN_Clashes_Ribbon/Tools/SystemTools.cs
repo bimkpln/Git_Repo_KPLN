@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Tools
 {
-    public static class SystemTools
+    internal static class SystemTools
     {
 		public static byte[] ReadFully(Stream input)
 		{
@@ -23,6 +23,7 @@ namespace KPLN_Clashes_Ribbon.Tools
 				return ms.ToArray();
 			}
 		}
+		
 		public static Image byteArrayToImage(byte[] byteArrayIn)
 		{
 			Image result = null;

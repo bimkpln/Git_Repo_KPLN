@@ -6,11 +6,12 @@
              xmlns:local="clr-namespace:KPLN_Clashes_Ribbon.Forms"
              mc:Ignorable="d" 
              Height="600" Width="800"
-             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="KPLN: Отчет Navisworks" WindowStyle="ToolWindow" Topmost="True" WindowStartupLocation="CenterOwner" Background="#FF292D36">
+             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="KPLN: Отчет Navisworks" WindowStyle="ToolWindow" Topmost="False" WindowStartupLocation="CenterOwner" Background="#FF292D36">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Rectangle Fill="#FFFFD100"/>
         <StackPanel  Grid.Row="0" Orientation="Vertical">
@@ -22,9 +23,10 @@
                 </Grid.ColumnDefinitions>
                 <ComboBox Grid.Column="0" SelectedIndex="1" Margin="5,0,5,5" x:Name="cbxFilter" SelectionChanged="OnSelectionChanged">
                     <ComboBoxItem Content="Все коллизии"/>
-                    <ComboBoxItem Content="Открытые"/>
+                    <ComboBoxItem Content="Открытые и делегированные"/>
                     <ComboBoxItem Content="Исправленные"/>
                     <ComboBoxItem Content="Допустимые"/>
+                    <ComboBoxItem Content="Делегированные"/>
                 </ComboBox>
                 <Button Margin="0,0,5,5" Grid.Column="1" Content="🖬" Padding="5,1" Background="White" BorderBrush="#FFAA8B00" Foreground="#FFFFD100" Click="OnExport">
                     <Button.ToolTip>
@@ -39,6 +41,7 @@
             </Grid>
             
         </StackPanel>
+        
         <ScrollViewer Margin="0,0,0,17" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsDeferredScrollingEnabled="True">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="ReportControll">
@@ -51,12 +54,14 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="0.5*"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Rectangle Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Margin="-3" RadiusX="3" RadiusY="3" Grid.ColumnSpan="2" Grid.RowSpan="5"/>
+                                <Rectangle Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Margin="-3" RadiusX="3" RadiusY="3" Grid.ColumnSpan="2" Grid.RowSpan="7"/>
                                 <TextBlock Margin="3,2,0,5"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Name}" Foreground="White" FontWeight="Bold"/>
                                 <Button Grid.Column="0" Grid.Row="1"  Width="200" Height="200" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
                                 <Image VerticalAlignment="Top" Grid.Column="0" Width="200" Height="200" Grid.Row="1" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
@@ -105,6 +110,8 @@
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
                                                     </Grid.RowDefinitions>
                                                     <Rectangle Margin="-3"  Fill="#3FFFFFFF" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="5" RadiusX="3" RadiusY="3"/>
                                                     <Button Grid.Column="0" Grid.Row="0" Grid.RowSpan="5"  Width="80" Height="80" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="5" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
@@ -138,7 +145,10 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </Grid>
-                                <StackPanel Margin="0,0,0,4" Orientation="Horizontal" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Visibility="{Binding IsControllsVisible, UpdateSourceTrigger=PropertyChanged}">
+
+                                <!--Кнопки устранения-->
+                                <TextBlock Margin="4,3,0,0" Grid.Row="2" Grid.Column="0" Text="Статус конфликта:" Foreground="White"/>
+                                <StackPanel Margin="0,0,0,4" Orientation="Horizontal" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Visibility="{Binding IsControllsVisible, UpdateSourceTrigger=PropertyChanged}">
                                     <Button Height="25" Padding="5,0,5,0" x:Name="btn_corrected" Margin="3,10,0,0" Content="✔ Устранено" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnCorrected">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="300">
@@ -170,8 +180,31 @@
                                         </Button.ToolTip>
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Margin="4,3,0,0"  Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="Комментарии:" Foreground="White"/>
-                                <ScrollViewer  Margin="0,20,4,0" Grid.Row="3" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+
+                                <!--Кнопки делегирования-->
+                                <TextBlock Margin="4,3,0,0" Grid.Row="2" Grid.Column="1"  Text="Делегировать отделу:" Foreground="White"/>
+                                <ItemsControl Margin="30,3,0,0" Grid.Row="3" Grid.Column="1" ItemsSource="{Binding SubDepartmentBtns}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                                                <Button Height="25" Width="50" Padding="5,0,5,0" x:Name="btn_delegate" Margin="3,10,0,0" Content="{Binding Name}" Background="{Binding DelegateBtnBackground}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnDelegate">
+                                                    <Button.ToolTip>
+                                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Description}"/>
+                                                    </Button.ToolTip>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!--Блок комментирования-->
+                                <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Комментарии:" Foreground="White"/>
+                                <ScrollViewer  Margin="0,20,4,0" Grid.Row="4" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                     <StackPanel Orientation="Vertical">
                                         <ItemsControl ItemsSource="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                             <ItemsControl.ItemTemplate>
@@ -207,6 +240,7 @@
                                         </ItemsControl>
                                     </StackPanel>
                                 </ScrollViewer>
+                                
                                 <Button Grid.Row="5" Content="Комментировать" IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Top" Margin="2,0,0,4" Background="{x:Null}" BorderBrush="White" Foreground="White" BorderThickness="2" Click="OnAddComment"/>
                             </Grid>
                         </DataTemplate>
@@ -214,5 +248,14 @@
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
+        <StackPanel Orientation="Horizontal" Grid.Row="2">
+            <Button x:Name="btnUpdate" Margin="5,5,5,5" Content="Обновить отчеты" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnUpdate" Foreground="White">
+                <Button.ToolTip>
+                    <StackPanel MaxWidth="300">
+                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Обновляет статусы по отчетам" FontStyle="Italic"/>
+                    </StackPanel>
+                </Button.ToolTip>
+            </Button>
+        </StackPanel>
     </Grid>
 </Window>

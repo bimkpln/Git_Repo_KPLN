@@ -10,7 +10,7 @@ using System.Windows.Interop;
 
 namespace KPLN_Clashes_Ribbon.Tools
 {
-    public class WindowHandleSearch : IWin32Window, System.Windows.Forms.IWin32Window
+    internal sealed class WindowHandleSearch : IWin32Window, System.Windows.Forms.IWin32Window
     {
         #region Static methods
         /// <summary>

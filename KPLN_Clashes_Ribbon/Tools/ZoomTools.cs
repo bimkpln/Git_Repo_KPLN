@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Tools
 {
-    public static class ZoomTools
+    internal static class ZoomTools
     {
         public static void ZoomElement(BoundingBoxXYZ box, UIDocument uidoc)
         {
@@ -41,6 +41,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 return;
             }
         }
+        
         public static XYZ VectorFromHorizVertAngles(double angleHorizD, double angleVertD)
         {
             double degToRadian = Math.PI * 2 / 360;

@@ -24,6 +24,7 @@ namespace KPLN_Clashes_Ribbon.Forms
     public partial class ConfirmDialog : Window
     {
         private KPTaskDialog Dialog { get; }
+
         public ConfirmDialog(Window parent, KPTaskDialog taskDialog, string title, string header, string message, KPTaskDialogIcon iconType, bool canCandel, string footer = null)
         {
             Title = "KPLN: " + title;

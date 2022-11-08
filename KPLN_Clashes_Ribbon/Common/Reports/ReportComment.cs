@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
-    public class ReportComment : INotifyPropertyChanged
+    public sealed class ReportComment : INotifyPropertyChanged
     {
         public ReportInstance Parent { get; set; }
         public event PropertyChangedEventHandler PropertyChanged;

@@ -35,7 +35,7 @@ namespace KPLN_Clashes_Ribbon
                 typeof(Commands.CommandShowManager).FullName,
                 panel,
                 "icon_default.png",
-                "http://moodle.stinproject.local/mod/page/view.php?id=326&forceview=1",
+                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=672",
                 true
             );
 
@@ -84,7 +84,7 @@ namespace KPLN_Clashes_Ribbon
             button.ItemText = text;
             BtnImagine(button, imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            
+
             if (avclass)
             {
                 button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
