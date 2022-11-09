@@ -22,7 +22,6 @@ namespace KPLN_Publication.ExternalCommands.Print
             {
                 Module.assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
 
-
                 Logger logger = new Logger();
                 logger.Write("Print started");
 
@@ -36,8 +35,8 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 //получаю выбранные листы в диспетчере проекта
                 List<ElementId> selIds = sel.GetElementIds().ToList();
-                //List<MySheet> mSheets0 = new List<MySheet>();
                 bool sheetsIsChecked = false;
+                List<string> errorListNames = new List<string>();
                 foreach (ElementId id in selIds)
                 {
                     Element elem = mainDoc.GetElement(id);
@@ -48,12 +47,55 @@ namespace KPLN_Publication.ExternalCommands.Print
                     MySheet sheetInBase = allSheets[mainDocTitle].Where(i => i.sheet.Id.IntegerValue == sheet.Id.IntegerValue).First();
                     sheetInBase.IsPrintable = true;
 
-                    //mSheets0.Add(new MySheet(sheet));
+                    // Анализирую листы на наличие 2х основных надписей в одном месте
+                    List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>(); 
+                    FilteredElementCollector tBlocksColl = new FilteredElementCollector(mainDoc)
+                        .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                        .WhereElementIsNotElementType();
+
+                    foreach(FamilyInstance tBlock in tBlocksColl)
+                    {
+                        List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
+                        BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet);
+                        if (boxXYZ == null) continue;
+                        
+                        if (tBlockLocations.Count == 0)
+                        {
+                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
+                            continue;
+                        }
+                        // Equals не даёт нужный результат
+                        foreach(var tbl in tBlockLocations)
+                        {
+                            if (tbl.Item1.DistanceTo(boxXYZ.Max) == 0
+                                && tbl.Item2.DistanceTo(boxXYZ.Min) == 0
+                                && !errorListNames.Contains(sheet.Name))
+                            {
+                                errorListNames.Add($"{sheet.SheetNumber}-{sheet.Name}");
+                            }
+                            else
+                            {
+                                templList.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
+                            }
+                        }
+
+                        tBlockLocations.AddRange(templList);
+                    }
                 }
+                
                 if (!sheetsIsChecked)
                 {
                     message = "Не выбраны листы. Выберите листы в Диспетчере проекта через Shift.";
                     logger.Write("Печать остановлена, не выбраны листы");
+                    return Result.Failed;
+                }
+
+                if (errorListNames.Count != 0)
+                {
+                    foreach(string listName in errorListNames)
+                    {
+                        KPLN_Loader.Output.Output.Print($"На листе {listName} несколько экземпляров основной надписи в одном месте. Печать остановлена", KPLN_Loader.Preferences.MessageType.Error);
+                    }
                     return Result.Failed;
                 }
 
