@@ -5,67 +5,37 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
     public sealed class ReportComment : INotifyPropertyChanged
     {
-        public ReportInstance Parent { get; set; }
         public event PropertyChangedEventHandler PropertyChanged;
-        public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        public string User
-        {
-            get
-            {
-                foreach (SQLUserInfo user in KPLN_Loader.Preferences.Users)
-                {
-                    if (user.SystemName == UserSystemName)
-                    {
-                        if (user.Surname != string.Empty)
-                        {
-                            return string.Format("{0} {1}.{2}.", user.Family, user.Name[0], user.Surname[0]);
-                        }
-                        else
-                        {
-                            return string.Format("{0} {1}", user.Family, user.Name);
-                        }
-                    }
-                }
-                return UserSystemName;
-            }
-        }
-        public System.Windows.Visibility VisibleIfUserComment { get; set; }
-        public string UserSystemName { get; set; }
-        public string Time { get; set; }
-        public int Type { get; set; }
-        public string Message { get; set; }
+
         public ReportComment(string message, int type)
         {
-            UserSystemName = KPLN_Loader.Preferences.User.SystemName;
+            UserName = KPLN_Loader.Preferences.User.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
             Type = type;
-            if (Type == 0 && UserSystemName == KPLN_Loader.Preferences.User.SystemName)
+            if (Type == 0 && UserName == KPLN_Loader.Preferences.User.SystemName)
             { VisibleIfUserComment = System.Windows.Visibility.Visible; }
             else
             { VisibleIfUserComment = System.Windows.Visibility.Collapsed; }
         }
+
         public ReportComment(string user, string date, string message, int type)
         {
-            UserSystemName = user;
+            UserName = user;
             Time = date;
             Message = message;
             Type = type;
-            if (Type == 0 && UserSystemName == KPLN_Loader.Preferences.User.SystemName)
+            if (Type == 0 && UserName == KPLN_Loader.Preferences.User.SystemName)
             { VisibleIfUserComment = System.Windows.Visibility.Visible; }
             else
             { VisibleIfUserComment = System.Windows.Visibility.Collapsed; }
         }
+
         public static ObservableCollection<ReportComment> ParseComments(string value, ReportInstance instance)
         {
             ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
@@ -77,9 +47,45 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
             return comments;
         }
+
+        public ReportInstance Parent { get; set; }
+
+        /// <summary>
+        /// Имя фамилия из общей БД KPLN в формате "Фамилия Имя"
+        /// </summary>
+        public string User
+        {
+            get
+            {
+                foreach (SQLUserInfo user in KPLN_Loader.Preferences.Users)
+                {
+                    if (user.SystemName == UserName)
+                    {
+                        return string.Format("{0} {1}", user.Family, user.Name);
+                    }
+                }
+                return UserName;
+            }
+        }
+        
+        public System.Windows.Visibility VisibleIfUserComment { get; set; }
+        
+        public string UserName { get; set; }
+        
+        public string Time { get; set; }
+        
+        public int Type { get; set; }
+        
+        public string Message { get; set; }
+
+        public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         public override string ToString()
         {
-            return string.Join(Collections.separator_sub_element, new string[] { UserSystemName, Time, Message, Type.ToString() });
+            return string.Join(Collections.separator_sub_element, new string[] { UserName, Time, Message, Type.ToString() });
         }
     }
 }
