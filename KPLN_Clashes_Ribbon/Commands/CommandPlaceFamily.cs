@@ -125,17 +125,14 @@ namespace KPLN_Clashes_Ribbon.Commands
             }
             return l;
         }
+        
         private static FamilyInstance CreateFamilyInstance(Document doc, XYZ position)
         {
             GetFamilySymbol(doc);
             Level level = GetNearestLevel(doc, position.Z);
-            if (GetFamilySymbol(doc) == null)
-            {
-                Print("Семейство не найдено!", KPLN_Loader.Preferences.MessageType.Critical);
-            }
             if (level == null)
             {
-                Print("Уровни не найдены!", KPLN_Loader.Preferences.MessageType.Critical);
+                throw new Exception("В проекте отсутсвуют уровни!");
             }
             FamilyInstance instance = doc.Create.NewFamilyInstance(position, GetFamilySymbol(doc), level, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
             doc.Regenerate();
@@ -143,6 +140,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             doc.Regenerate();
             return instance;
         }
+        
         private static FamilySymbol GetFamilySymbol(Document doc)
         {
             string familyName = "ClashPoint";
@@ -157,7 +155,10 @@ namespace KPLN_Clashes_Ribbon.Commands
             }
             try
             {
-                doc.LoadFamily(string.Format(@"{0}\Source\RevitData\{1}\{2}.rfa", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString(), ModuleData.RevitVersion, familyName));
+                if (!doc.LoadFamily(($@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{ModuleData.RevitVersion}\{familyName}.rfa")))
+                {
+                    throw new Exception("Семейство для метки не найдено!");
+                }
                 doc.Regenerate();
             }
             catch (Exception e) { PrintError(e); }

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -123,27 +124,32 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
-            try
+            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
+            string pt = report.Point;
+            pt = pt.Replace("X:", "");
+            pt = pt.Replace("Y:", "");
+            pt = pt.Replace("Z:", "");
+            string pts = string.Empty;
+            foreach (char c in pt)
             {
-                ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-                string pt = report.Point;
-                pt = pt.Replace("X:", "");
-                pt = pt.Replace("Y:", "");
-                pt = pt.Replace("Z:", "");
-                string pts = string.Empty;
-                foreach (char c in pt)
+                if ("-0123456789.,".Contains(c))
                 {
-                    if ("-0123456789.,".Contains(c))
-                    {
-                        pts += c;
-                    }
+                    pts += c;
                 }
-                string[] parts = pts.Split(',');
-                XYZ point = new XYZ(double.Parse(parts[0].Replace(".", ","), System.Globalization.NumberStyles.Float), double.Parse(parts[1].Replace(".", ","), System.Globalization.NumberStyles.Float), double.Parse(parts[2].Replace(".", ","), System.Globalization.NumberStyles.Float));
+            }
+            string[] parts = pts.Split(',');
+            //var temp = double.Parse(parts[0].Replace(".", ","), NumberStyles.Float);
+            if (
+                double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointX)
+                && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointY)
+                && double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointZ)
+                )
+            {
+                XYZ point = new XYZ(pointX, pointY, pointZ);
                 KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
             }
-            catch (Exception)
-            { }
+            else
+            { throw new Exception("Проблемы с CultureInfo"); }
         }
 
         private void UpdateCollection()

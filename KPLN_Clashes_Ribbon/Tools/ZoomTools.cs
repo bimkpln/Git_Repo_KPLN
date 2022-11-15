@@ -15,6 +15,9 @@ namespace KPLN_Clashes_Ribbon.Tools
             XYZ offsetMin = new XYZ(-5, -5, -2);
             XYZ offsetMax = new XYZ(5, 5, 1);
             View3D activeView = uidoc.ActiveView as View3D;
+            if (activeView == null)
+            { throw new Exception("Расставлять метки можно тоько на 3D-виде. Открой и подготовь 3D-вид"); }
+            
             ViewFamily activeViewFamily = ViewFamily.Invalid;
             try
             {
