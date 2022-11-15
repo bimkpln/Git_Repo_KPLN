@@ -159,6 +159,7 @@ namespace KPLN_Scoper
 
                     // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
                     if (info.ProjectId == -1
+                        && info.DocumentId != -1
                         && !info.DocumentTitle.ToLower().Contains("_кон_")
                         && !info.DocumentTitle.ToLower().Contains("_kon_"))
                     {
@@ -223,11 +224,6 @@ namespace KPLN_Scoper
                 if (isExist)
                 {
                     SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
-                    
-                    // Поиск проекта и отдела
-                    SQLProject pickedProject = GetProjectById(projects, doc.Project);
-                    SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
-                    
                     // Анализ кодов документов из БД
                     try
                     {
@@ -241,48 +237,78 @@ namespace KPLN_Scoper
                         {
                             continue;
                         }
-                        
+
+                        // Поиск проекта и отдела по id
+                        SQLProject pickedProject = GetProjectById(projects, doc.Project);
+                        SQLDepartment pickedDepartment = GetDepartmentById(departments, doc.Department);
+
                         // Поиск отдела и проекта по ключам (часть пути файла и имя файла)
                         if (doc.Department == -1 || doc.Project == -1)
                         {
-                            if (pickedProject == null || pickedDepartment == null) 
-                            {
-                                pickedProject = GetProjectByPath(projects, doc.Path);
-                                pickedDepartment = GetDepartmentByDocName(departments, doc.Name);
+                            // Поиск проекта и отдела по пути или имени
+                            pickedProject = GetProjectByPath(projects, doc.Path);
+                            pickedDepartment = GetDepartmentByDocName(departments, doc.Name);
 
-                                if (pickedProject == null || pickedDepartment == null)
-                                {
-                                    Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
-                                        $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
-                                        KPLN_Loader.Preferences.MessageType.Error);
-                                    continue;
-                                }
-                                
-                                // Обновление данных по проекту и отделу исходя из ключей
-                                sql.Open();
-                                SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Department = '{1}' WHERE Id = {0}; " +
-                                    "UPDATE Documents SET Project = '{2}' WHERE Id = {0}; ",
-                                    doc.Id,
-                                    doc.Department,
-                                    doc.Project), sql);
-                                cmd.ExecuteNonQuery();
-                                sql.Close();
+                            if (pickedProject == null || pickedDepartment == null)
+                            {
+                                Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
+                                    $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
+                                    KPLN_Loader.Preferences.MessageType.Error);
+                                continue;
                             }
-                            
+
+                            // Обновление данных по проекту и отделу исходя из ключей
+                            sql.Open();
+                            SQLiteCommand cmd = new SQLiteCommand($"UPDATE Documents SET Department = '{pickedDepartment.Id}' WHERE Id = {doc.Id}; " +
+                                $"UPDATE Documents SET Project = '{pickedProject.Id}' WHERE Id = {doc.Id}; ", sql);
+                            cmd.ExecuteNonQuery();
+                            sql.Close();
+
                         }
-                        
+
                         // Назначение шифра проекта по коду и отделу
                         if (doc.Code == "NONE")
                         {
                             sql.Open();
-                            string code = string.Format("{0}_{1}", pickedProject.Code, pickedDepartment.Code);
-                            SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1};", 
-                                code, 
-                                doc.Id), sql);
-                                    
+                            string code = $"{pickedProject.Code}_{pickedDepartment.Code}";
+                            SQLiteCommand cmd = new SQLiteCommand($"UPDATE Documents SET Code = '{code}' WHERE Id = {doc.Id};", sql);
                             cmd.ExecuteNonQuery();
                             sql.Close();
                         }
+
+
+
+                        //if (pickedProjectByPath == null || pickedDepartmentByName == null)
+                        //{
+                        //    Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
+                        //        $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
+                        //        KPLN_Loader.Preferences.MessageType.Error);
+                        //    continue;
+                        //}
+
+                        //// Проверка корректности заполнения отдела и имени проекта у файла и обновление их
+                        //if (doc.Department != pickedDepartmentByName.Id
+                        //    || doc.Project != pickedProjectByPath.Id)
+                        //{
+                        //    sql.Open();
+                        //    SQLiteCommand cmd = new SQLiteCommand($"UPDATE Documents SET Department = '{pickedDepartmentByName}' WHERE Id = {doc.Id}; " +
+                        //        $"UPDATE Documents SET Project = '{pickedProjectByPath}' WHERE Id = {doc.Id}; ", sql);
+                        //    cmd.ExecuteNonQuery();
+                        //    sql.Close();
+                        //}
+
+                        //// Назначение шифра проекта по коду и отделу
+                        //string code = $"{pickedProjectByPath.Code}_{pickedDepartmentByName.Code}";
+                        //if (doc.Code == "NONE" || doc.Code != code)
+                        //{
+                        //    sql.Open();
+                        //    SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1};", 
+                        //        code, 
+                        //        doc.Id), sql);
+                                    
+                        //    cmd.ExecuteNonQuery();
+                        //    sql.Close();
+                        //}
                     }
                     catch (Exception) { }
                     finally { sql.Close(); }
@@ -507,6 +533,24 @@ namespace KPLN_Scoper
         }
 
         /// <summary>
+        /// Поиск отдела по части имени имени
+        /// </summary>
+        /// <param name="list">Коллекция отделов из БД</param>
+        /// <param name="namePart">Часть имени отдела</param>
+        /// <returns></returns>
+        private SQLDepartment GetDepartmentByNameContain(List<SQLDepartment> list, string namePart)
+        {
+            foreach (SQLDepartment department in list)
+            {
+                if (department.Name.ToLower().Contains(namePart))
+                {
+                    return department;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Поиск отдела по имени файла
         /// </summary>
         /// <param name="list">Коллекция отделов из БД</param>
@@ -514,14 +558,51 @@ namespace KPLN_Scoper
         /// <returns></returns>
         private SQLDepartment GetDepartmentByDocName(List<SQLDepartment> list, string docName)
         {
-            foreach (SQLDepartment department in list)
+            // Тонкая отработка разбивочных файлов
+            if (docName.ToLower().Contains("разбив")
+                || docName.ToLower().Contains("разбфайл")
+                || docName.ToLower().Contains("разб.файл"))
             {
-                if (docName.Contains($"_{department.Code}") 
-                    || docName.Contains($"_{department.CodeUs}")
-                    || docName.Contains($"{department.Code}_") 
-                    || docName.Contains($"{department.CodeUs}_"))
+                return GetDepartmentByNameContain(list, "разбивочный");
+            }
+            // Тонкая отработка файлов КР (КЖ)
+            else if (docName.ToLower().Contains("кж")
+                || docName.ToLower().Contains("kg"))
+            {
+                return GetDepartmentByNameContain(list, "конструктив");
+            }
+            // Тонкая отработка файлов ВК (АУПТ)
+            else if (docName.ToLower().Contains("пт")
+                || docName.ToLower().Contains("аупт")
+                || docName.ToLower().Contains("pt")
+                || docName.ToLower().Contains("aupt"))
+            {
+                return GetDepartmentByNameContain(list, "система пожаротушения");
+            }
+            // Тонкая отработка файлов ОВ (ИТП)
+            else if (docName.ToLower().Contains("итп")
+                || docName.ToLower().Contains("itp"))
+            {
+                return GetDepartmentByNameContain(list, "тепловой пункт");
+            }
+            // Тонкая отработка файлов СС (автоматизация)
+            else if (docName.ToLower().Contains("ав")
+                || docName.ToLower().Contains("av"))
+            {
+                return GetDepartmentByNameContain(list, "автоматизация");
+            }
+            // Обрабатываю остальные файлы
+            else
+            {
+                foreach (SQLDepartment department in list)
                 {
-                    return department;
+                    if (docName.Contains($"_{department.Code}") 
+                        || docName.Contains($"_{department.CodeUs}")
+                        || docName.Contains($"{department.Code}_") 
+                        || docName.Contains($"{department.CodeUs}_"))
+                    {
+                        return department;
+                    }
                 }
             }
             return null;
@@ -605,7 +686,9 @@ namespace KPLN_Scoper
             List<string> parts = new List<string>();
             SQLProject pickedProject = null;
             SQLDepartment pickedDepartment = null;
-            foreach (SQLProject prj in GetProjects())
+
+            List<SQLProject> dbProjects = GetProjects();
+            foreach (SQLProject prj in dbProjects)
             {
                 if (prj.Keys.Contains('*'))
                 {
@@ -626,7 +709,15 @@ namespace KPLN_Scoper
                 }
 
             }
-            foreach (SQLDepartment dep in GetDepartments())
+
+            List<SQLDepartment> dbDepartments = GetDepartments();
+            // Тонкая отработка файлов БИМ-отдела
+            if (pickedProject.Id == 1)
+            {
+                pickedDepartment = dbDepartments.Where(d => d.Id == 10).FirstOrDefault();
+            }
+            // Отработка остальных файлов
+            foreach (SQLDepartment dep in dbDepartments)
             {
                 if (name.Contains($"_{dep.Code}") 
                     || name.Contains($"_{dep.CodeUs}")
