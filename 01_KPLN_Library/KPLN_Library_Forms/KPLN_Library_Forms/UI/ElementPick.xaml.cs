@@ -8,7 +8,7 @@ using static KPLN_Loader.Output.Output;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace KPLN_Library_SelectItem.Forms
+namespace KPLN_Library_Forms.UI
 {
     public partial class FormSinglePick : Window
     {

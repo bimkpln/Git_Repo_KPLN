@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_SelectItem", "KPLN_Library_SelectItem\KPLN_Library_SelectItem.csproj", "{6DEDAA32-33DF-4AE2-8158-9D49798E2966}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Forms", "KPLN_Library_Forms\KPLN_Library_Forms.csproj", "{6DEDAA32-33DF-4AE2-8158-9D49798E2966}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

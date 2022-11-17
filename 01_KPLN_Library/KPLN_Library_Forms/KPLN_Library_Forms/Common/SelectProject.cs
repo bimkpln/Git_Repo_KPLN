@@ -1,13 +1,13 @@
 ﻿using KPLN_Library_DataBase;
 using KPLN_Library_DataBase.Collections;
 using KPLN_Library_DataBase.Controll;
-using KPLN_Library_SelectItem.Forms;
+using KPLN_Library_Forms.UI;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 
-namespace KPLN_Library_SelectItem
+namespace KPLN_Library_Forms.Common
 {
     /// <summary>
     /// Выбор проекта из базы данных
