@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_Forms.UI;
 using KPLN_Loader.Common;
 using KPLN_Scoper.Common;
 using KPLN_Scoper.Tools;
@@ -11,13 +12,24 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Scoper
 {
     public class Module : IExternalModule
     {
-        private string _versionName { get; set; }
+        /// <summary>
+        /// Информация о пользователе (кэширование)
+        /// </summary>
+        private SQLUserInfo _dbUserInfo;
+
+        private string _versionName;
+
+        public Module()
+        {
+            _dbUserInfo = KPLN_Loader.Preferences.User;
+        }
         
         public Result Close()
         {
@@ -66,7 +78,12 @@ namespace KPLN_Scoper
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
-                
+
+                if (!_dbUserInfo.Department.Code.Equals("BIM"))
+                {
+                    application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
+                } 
+
                 try
                 {
                     ActivityManager.Run();
@@ -102,8 +119,74 @@ namespace KPLN_Scoper
         
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
+            
             try
             {
+                #region Анализ вставляемых семейств из других проектов
+                Document doc = args.GetDocument();
+                // Игнорирую не для совместной работы
+                if (doc.IsWorkshared)
+                {
+                    // Игнорирую файлы не с диска Y: и файлы концепции
+                    string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+                    if (docPath.Contains("stinproject.local\\project\\")
+                        && !(docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
+                    {
+                        string transName = args.GetTransactionNames().FirstOrDefault();
+                        if (transName.Contains("Начальная вставка"))
+                        {
+                            List<FamilySymbol> addedFamilySymbols = new List<FamilySymbol>();
+                            ICollection<ElementId> addedElems = args.GetAddedElementIds();
+                            if (addedElems.Count() > 0)
+                            {
+                                foreach (ElementId elemId in addedElems)
+                                {
+                                    FamilySymbol familySymbol = doc.GetElement(elemId) as FamilySymbol;
+                                    if (familySymbol != null)
+                                    {
+                                        addedFamilySymbols.Add(familySymbol);
+                                    }
+                                }
+                            }
+
+                            if (addedFamilySymbols.Count() > 0)
+                            {
+                                FilteredElementCollector prjFamilies = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).WhereElementIsElementType();
+                                bool isFamilyInclude = false;
+                                bool isFamilyNew = false;
+                                foreach (FamilySymbol fs in addedFamilySymbols)
+                                {
+                                    string fsName = fs.FamilyName;
+                                    string digitEndTrimmer = Regex.Match(fsName, @"\d*$").Value;
+                                    // Осуществляю срез имени на найденные цифры в конце имени
+                                    string truePartOfName = fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray());
+                                    var includeFam = prjFamilies
+                                        .FirstOrDefault(f => f.Name.Equals(fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray())) && !f.Name.Equals(fsName));
+
+                                    if (includeFam == null)
+                                        isFamilyNew = true;
+                                    else
+                                        isFamilyInclude = true;
+                                }
+
+                                if (isFamilyInclude && isFamilyNew)
+                                    TaskDialog.Show("Предупреждение", 
+                                        "Только что были скопированы семейства, которые являются как новыми, так и уже имеющимися в проекте. " +
+                                        "Запусти плагин KPLN для проверки семейств");
+                                else if (isFamilyInclude)
+                                    TaskDialog.Show("Предупреждение", 
+                                        "Только что были скопированы семейства, которые уже имеющимися в проекте. " +
+                                        "Запусти плагин KPLN для проверки семейств, чтобы избежать дублирования семейств");
+                                else if (isFamilyNew)
+                                    TaskDialog.Show("Предупреждение", 
+                                        "Только что были скопированы семейства, которые являются новыми. " +
+                                        "Запусти плагин KPLN для проверки семейств, чтобы избежать наличия семейств из сторонних источников");
+                            }
+                        }
+                    }
+                }
+                #endregion
+
                 if (ActivityManager.ActiveDocument != null && !ActivityManager.ActiveDocument.IsFamilyDocument && !ActivityManager.ActiveDocument.PathName.Contains(".rte"))
                 {
                     ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
@@ -111,6 +194,39 @@ namespace KPLN_Scoper
                 }
             }
             catch (Exception) { }
+        }
+
+        /// <summary>
+        /// Контроль процесса загрузки семейств в проекты КПЛН
+        /// </summary>
+        private void OnFamilyLoadingIntoDocument(object sender, FamilyLoadingIntoDocumentEventArgs args)
+        {
+            // Игнорирую не для совместной работы
+            if (!args.Document.IsWorkshared)
+                return;
+
+            // Игнорирую файлы не с диска Y: и файлы концепции
+            string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(args.Document.GetWorksharingCentralModelPath());
+            if (!docPath.Contains("stinproject.local\\project\\")
+                && (docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
+                return;
+
+            string familyPath = args.FamilyPath;
+            if (!familyPath.StartsWith("X:\\BIM"))
+            {
+                UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
+                userVerify.ShowDialog();
+
+                if (userVerify.WorkStatus == UserVerify.Status.CloseBecauseError)
+                {
+                    TaskDialog.Show("Заперщено", "Не верный пароль, в загрузке семейства отказано!");
+                    args.Cancel();
+                }
+                else if (userVerify.WorkStatus == UserVerify.Status.Close)
+                {
+                    args.Cancel();
+                }
+            }
         }
 
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
@@ -202,7 +318,7 @@ namespace KPLN_Scoper
         /// </summary>
         private void UpdateAllDocumentInfo()
         {
-            if (KPLN_Loader.Preferences.User.SystemName != "tkutsko")
+            if (_dbUserInfo.SystemName != "tkutsko")
             { return; }
             
             List<SQLProject> projects = GetProjects();
@@ -433,7 +549,7 @@ namespace KPLN_Scoper
         /// </summary>
         private void UpdateAllModuleInfo()
         {
-            if (KPLN_Loader.Preferences.User.SystemName != "tkutsko")
+            if (_dbUserInfo.SystemName != "tkutsko")
             { return; }
 
             List<SQLModuleInfo> modules = GetModules();
@@ -712,7 +828,7 @@ namespace KPLN_Scoper
 
             List<SQLDepartment> dbDepartments = GetDepartments();
             // Тонкая отработка файлов БИМ-отдела
-            if (pickedProject.Id == 1)
+            if (pickedProject != null && pickedProject.Id == 1)
             {
                 pickedDepartment = dbDepartments.Where(d => d.Id == 10).FirstOrDefault();
             }
@@ -789,9 +905,9 @@ namespace KPLN_Scoper
             DirectoryInfo templateFolder = new DirectoryInfo(@"X:\BIM\2_Шаблоны");
             foreach (DirectoryInfo folder in templateFolder.GetDirectories())
             {
-                if (KPLN_Loader.Preferences.User.Department.Id == 1 && (folder.Name != "1_АР" && folder.Name != "0_Общие шаблоны")) { continue; }
-                if (KPLN_Loader.Preferences.User.Department.Id == 2 && (folder.Name != "2_КР" && folder.Name != "0_Общие шаблоны")) { continue; }
-                if (KPLN_Loader.Preferences.User.Department.Id == 3 && (folder.Name == "1_АР" || folder.Name == "2_КР" || folder.Name == "0_Общие шаблоны")) { continue; }
+                if (_dbUserInfo.Department.Id == 1 && (folder.Name != "1_АР" && folder.Name != "0_Общие шаблоны")) { continue; }
+                if (_dbUserInfo.Department.Id == 2 && (folder.Name != "2_КР" && folder.Name != "0_Общие шаблоны")) { continue; }
+                if (_dbUserInfo.Department.Id == 3 && (folder.Name == "1_АР" || folder.Name == "2_КР" || folder.Name == "0_Общие шаблоны")) { continue; }
                 foreach (FileInfo file in folder.GetFiles())
                 {
                     if (IsCopy(file.Name) || file.Extension.ToLower() != ".rte") { continue; }
