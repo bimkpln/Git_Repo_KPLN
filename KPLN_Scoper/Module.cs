@@ -212,7 +212,8 @@ namespace KPLN_Scoper
                 return;
 
             string familyPath = args.FamilyPath;
-            if (!familyPath.StartsWith("X:\\BIM"))
+            if (!familyPath.StartsWith("X:\\BIM") 
+                && !familyPath.Contains("KPLN_Loader"))
             {
                 UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
                 userVerify.ShowDialog();
