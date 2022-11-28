@@ -1,39 +1,40 @@
 ﻿using System;
-using System.Collections;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
     public partial class UserVerify : Window
     {
-        public enum Status { Run, Cancel, Close, CloseBecauseError}
-
         private string _inputPassword;
 
         /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х
+        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
         /// </summary>
         private bool _isRun = false;
 
         public UserVerify(string description)
         {
             InitializeComponent();
-            
+
             this.FormDescription.Text = description;
 
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
-        public Status WorkStatus { get; private set; }
+        /// <summary>
+        /// Статус запуска
+        /// </summary>
+        public RunStatus Status { get; private set; }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                WorkStatus = Status.Close;
+                Status = RunStatus.Close;
                 Close();
             }
             else if (e.Key == Key.Enter)
@@ -51,7 +52,7 @@ namespace KPLN_Library_Forms.UI
         {
             if (!_isRun)
             {
-                WorkStatus = Status.Close;
+                Status = RunStatus.Close;
             }
         }
 
@@ -65,9 +66,9 @@ namespace KPLN_Library_Forms.UI
         {
             _isRun = true;
 
-            if (CheckVerify(_inputPassword)) { WorkStatus = Status.Run; }
-            else { WorkStatus = Status.CloseBecauseError; }
-            
+            if (CheckVerify(_inputPassword)) { Status = RunStatus.Run; }
+            else { Status = RunStatus.CloseBecauseError; }
+
             Close();
         }
 
@@ -84,7 +85,7 @@ namespace KPLN_Library_Forms.UI
                         truePassowrd = sr.ReadLine();
                     }
                 }
-                
+
                 if (truePassowrd.Equals(password)) { return true; }
 
                 return false;

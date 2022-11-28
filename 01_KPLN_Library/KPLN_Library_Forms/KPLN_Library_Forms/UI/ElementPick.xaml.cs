@@ -7,38 +7,81 @@ using System.Linq;
 using static KPLN_Loader.Output.Output;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using KPLN_Library_Forms.Common;
+using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
-    public partial class FormSinglePick : Window
+    public partial class ElementPick : Window
     {
-        private IEnumerable _collection;
+        /// <summary>
+        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
+        /// </summary>
+        private bool _isRun = false;
 
-        public DbProject SelectedDbProject;
+        /// <summary>
+        /// Статус запуска
+        /// </summary>
+        public RunStatus Status { get; private set; }
 
-        public FormSinglePick(IEnumerable collection)
+        private IEnumerable<ElementEntity> _collection;
+
+        private ElementEntity _selectedElement;
+
+        public ElementPick(IEnumerable<ElementEntity> collection)
         {
             _collection = collection;
             InitializeComponent();
 
-            Projects.ItemsSource = _collection;
+            Elements.ItemsSource = _collection;
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
+        }
+
+        /// <summary>
+        /// Коллекция элементов, которые будут отображаться в окне
+        /// </summary>
+        public IEnumerable<ElementEntity> Collection { get { return _collection; } }
+
+        /// <summary>
+        /// Выбранный элемент
+        /// </summary>
+        public ElementEntity SelectedElement 
+        { 
+            get
+                { return _selectedElement; }
+            set
+                { _selectedElement = value; }
         }
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                this.DialogResult = false;
+                Status = RunStatus.Close;
                 Close();
+            }
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(SearchText);
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_isRun)
+            {
+                Status = RunStatus.Close;
             }
         }
 
         private void OnElementClick(object sender, RoutedEventArgs e)
         {
-            SelectedDbProject = (sender as Button).DataContext as DbProject;
-            this.DialogResult = true;
-            this.Close();
+            SelectedElement = (sender as Button).DataContext as ElementEntity;
+
+            _isRun = true;
+            Status = RunStatus.Run;
+            Close();
         }
 
         /// <summary>
@@ -49,17 +92,17 @@ namespace KPLN_Library_Forms.UI
             TextBox textBox = (TextBox)sender;
             string _searchName = textBox.Text.ToLower();
 
-            ObservableCollection<DbProject> filteredProjects = new ObservableCollection<DbProject>();
+            ObservableCollection<ElementEntity> filteredElement = new ObservableCollection<ElementEntity>();
 
-            foreach (DbProject project in _collection)
+            foreach (ElementEntity elemnt in Collection)
             {
-                if (project.Name.ToLower().StartsWith(_searchName))
+                if (elemnt.Name.ToLower().Contains(_searchName))
                 {
-                    filteredProjects.Add(project);
+                    filteredElement.Add(elemnt);
                 }
             }
-            
-            Projects.ItemsSource = filteredProjects;
+
+            Elements.ItemsSource = filteredElement;
         }
 
         /// <summary>
@@ -67,9 +110,10 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         private void OnRunWithoutFilterClick(object sender, RoutedEventArgs e)
         {
-            SelectedDbProject = null;
-            this.DialogResult = true;
-            this.Close();
+            SelectedElement = null;
+            _isRun = true;
+            Status = RunStatus.Run;
+            Close();
         }
     }
 }
