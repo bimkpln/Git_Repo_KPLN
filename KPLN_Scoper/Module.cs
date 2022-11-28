@@ -1,7 +1,9 @@
-﻿using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Loader.Common;
 using KPLN_Scoper.Common;
@@ -141,8 +143,7 @@ namespace KPLN_Scoper
                             {
                                 foreach (ElementId elemId in addedElems)
                                 {
-                                    FamilySymbol familySymbol = doc.GetElement(elemId) as FamilySymbol;
-                                    if (familySymbol != null)
+                                    if (doc.GetElement(elemId) is FamilySymbol familySymbol)
                                     {
                                         addedFamilySymbols.Add(familySymbol);
                                     }
@@ -205,25 +206,49 @@ namespace KPLN_Scoper
             if (!args.Document.IsWorkshared)
                 return;
 
-            // Игнорирую файлы не с диска Y: и файлы концепции
-            string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(args.Document.GetWorksharingCentralModelPath());
+            Application app = sender as Application;
+            Document prjDoc = args.Document;
+            string familyName = args.FamilyName;
+            string familyPath = args.FamilyPath;
+            
+            // Игнорирую файлы не с диска Y, файлы концепции
+            string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(prjDoc.GetWorksharingCentralModelPath());
             if (!docPath.Contains("stinproject.local\\project\\")
-                && (docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
+                || docPath.ToLower().Contains("конц"))
                 return;
 
-            string familyPath = args.FamilyPath;
+            // Отлов семейств марок (могут разрабатывать все)
+            DocumentSet appDocsSet = app.Documents;
+            foreach (Document doc in appDocsSet)
+            {
+                if (doc.PathName.Equals($"{familyPath}{familyName}.rfa"))
+                {
+                    if (doc.IsFamilyDocument)
+                    {
+                        Family family = doc.OwnerFamily;
+                        Category famCat = family.FamilyCategory;
+                        if (famCat.CategoryType.Equals(CategoryType.Annotation))
+                            return;
+                    }
+                    else
+                        throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
+
+                }
+            }
+            
+            // Отлов семейств, расположенных не на Х, не из плагинов
             if (!familyPath.StartsWith("X:\\BIM") 
                 && !familyPath.Contains("KPLN_Loader"))
             {
                 UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
                 userVerify.ShowDialog();
 
-                if (userVerify.WorkStatus == UserVerify.Status.CloseBecauseError)
+                if (userVerify.Status == UIStatus.RunStatus.CloseBecauseError)
                 {
                     TaskDialog.Show("Заперщено", "Не верный пароль, в загрузке семейства отказано!");
                     args.Cancel();
                 }
-                else if (userVerify.WorkStatus == UserVerify.Status.Close)
+                else if (userVerify.Status == UIStatus.RunStatus.Close)
                 {
                     args.Cancel();
                 }
@@ -269,7 +294,9 @@ namespace KPLN_Scoper
         {
             try
             {
-                if (ActivityManager.ActiveDocument != null && !args.Document.IsFamilyDocument && !args.Document.PathName.Contains(".rte"))
+                if (ActivityManager.ActiveDocument != null 
+                    && !args.Document.IsFamilyDocument 
+                    && !args.Document.PathName.Contains(".rte"))
                 {
                     ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
                     ActivityManager.ActivityBag.Enqueue(info);
@@ -277,8 +304,7 @@ namespace KPLN_Scoper
                     // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
                     if (info.ProjectId == -1
                         && info.DocumentId != -1
-                        && !info.DocumentTitle.ToLower().Contains("_кон_")
-                        && !info.DocumentTitle.ToLower().Contains("_kon_"))
+                        && !info.DocumentTitle.ToLower().Contains("конц"))
                     {
                         Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
                             " - можете продолжить работу. Если же это файл новго проекта - напишите " +
