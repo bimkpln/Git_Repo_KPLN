@@ -86,12 +86,12 @@
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5,0,0,0" Text="Категория: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Element_1_Info}"  TextWrapping="Wrap" Foreground="White" FontSize="12"/>
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="10"/>
-                                    <Button Grid.Row="2" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectId"/>
+                                    <Button Grid.Row="2" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1"/>
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Элемент 2" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="4" Grid.Column="0" Text=" Категория: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Element_2_Info}" TextWrapping="Wrap" Foreground="White" FontSize="12"/>
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="12"/>
-                                    <Button Grid.Row="5" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectId"/>
+                                    <Button Grid.Row="5" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2"/>
                                     <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" Grid.Row="6" Grid.Column="0" Margin="5,0,0,0" Text="Дополнительно: " Foreground="White" FontSize="12"/>
                                     <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="6" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2"/>
                                     <TextBlock Visibility="{Binding IsGroup}" HorizontalAlignment="Right" Grid.Row="7" Grid.Column="0" Margin="5,0,0,0" Text="Субэлементы: " Foreground="White" FontSize="12"/>
@@ -118,7 +118,7 @@
                                                     <Image VerticalAlignment="Top" Grid.Column="0" Margin="5" Grid.Row="0" Width="80" Grid.RowSpan="5" Height="80" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
                                                     <TextBlock Margin="0,0,0,5" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="0" Text="{Binding Name}" Foreground="White"  FontSize="12" FontWeight="Bold" TextDecorations="Underline"/>
                                                     <TextBlock Grid.Column="1" Grid.Row="1" Text="Элемент 1:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                                    <Button Grid.Column="2" Grid.Row="1" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectId" FontSize="10">
+                                                    <Button Grid.Column="2" Grid.Row="1" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1" FontSize="10">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Элемент #1"/>
@@ -129,7 +129,7 @@
                                                         </Button.ToolTip>
                                                     </Button>
                                                     <TextBlock Grid.Column="1" Grid.Row="2" Text="Элемент 2:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                                    <Button Grid.Column="2" Grid.Row="2" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectId" FontSize="10">
+                                                    <Button Grid.Column="2" Grid.Row="2" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2" FontSize="10">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Элемент #2"/>

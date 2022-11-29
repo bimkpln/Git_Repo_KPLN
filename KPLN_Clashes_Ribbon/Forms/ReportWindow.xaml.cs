@@ -110,25 +110,44 @@ namespace KPLN_Clashes_Ribbon.Forms
             ((sender as System.Windows.Controls.Button).DataContext as ReportInstance).LoadImage();
         }
 
-        private void SelectId(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                int id = int.Parse((sender as System.Windows.Controls.Button).Content.ToString(), System.Globalization.NumberStyles.Integer);
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandZoomSelectElement(id));
-            }
-            catch (Exception)
-            { }
 
+        /// <summary>
+        /// Разделение вызываемых элементов по кнопке для конфликта №1
+        /// </summary>
+        private void SelectIdElement_1(object sender, RoutedEventArgs e)
+        {
+            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
+            SelectId(sender, e, report.Element_1_Info);
+        }
+
+        /// <summary>
+        /// Разделение вызываемых элементов по кнопке для конфликта №2
+        /// </summary>
+        private void SelectIdElement_2(object sender, RoutedEventArgs e)
+        {
+            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
+            SelectId(sender, e, report.Element_2_Info);
+        }
+
+        private void SelectId(object sender, RoutedEventArgs e, string elInfo)
+        {
+            if (int.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
+            {
+                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
+            }
+            else
+                throw new Exception("Проблемы с отчетом: параметр id не парсится");
         }
 
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
             ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
+            
             string pt = report.Point;
             pt = pt.Replace("X:", "");
             pt = pt.Replace("Y:", "");
             pt = pt.Replace("Z:", "");
+            
             string pts = string.Empty;
             foreach (char c in pt)
             {
@@ -137,6 +156,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     pts += c;
                 }
             }
+            
             string[] parts = pts.Split(',');
             //var temp = double.Parse(parts[0].Replace(".", ","), NumberStyles.Float);
             if (
@@ -149,7 +169,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
             }
             else
-            { throw new Exception("Проблемы с CultureInfo"); }
+                throw new Exception("Проблемы с CultureInfo");
         }
 
         private void UpdateCollection()

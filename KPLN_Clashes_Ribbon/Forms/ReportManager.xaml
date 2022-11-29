@@ -7,6 +7,9 @@
              mc:Ignorable="d" 
              FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="KPLN: Отчеты Navisworks" WindowStyle="ToolWindow" Topmost="False" WindowStartupLocation="CenterScreen" Width="600" Height="500" Background="#FF292D36">
     <Window.Resources>
+        
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        
         <Style x:Key="ExpanderDownHeaderStyle" TargetType="{x:Type ToggleButton}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -26,6 +29,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        
         <Style TargetType="Expander">
             <Style.Resources>
                 <LinearGradientBrush x:Key="BackBrush" StartPoint="0.5,0" EndPoint="0.5,1">
@@ -58,13 +62,21 @@
             </Setter>
         </Style>
 
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
     </Window.Resources>
+    
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        
         <TextBlock Text="Группы отчетов:" Margin="0,0,0,5" FontWeight="Bold" Foreground="White"/>
         <ScrollViewer Padding="0,0,5,0" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" x:Name="sp">
@@ -79,14 +91,23 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
+                                
                                 <Rectangle Margin="-5" RadiusX="3" RadiusY="3" Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Grid.RowSpan="5"/>
+                                
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <Image Source="{Binding Source.Value, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Width="30" Height="30"/>
                                     <StackPanel Margin="5,0,0,0" Orientation="Vertical" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Foreground="White"/>
                                         <TextBlock Text="{Binding DateCreated}" TextWrapping="Wrap" VerticalAlignment="Center" Opacity="0.5" Foreground="White"/>
+                                        <!-- Поиск внутри группы-->
+                                        <DockPanel>
+                                            <TextBlock Text="Поиск отчета:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
+                                            <TextBox x:Name="SearchText" Style="{StaticResource TXTBX}" Grid.Row="0" TextChanged="SearchText_Changed"
+                                                     TextAlignment="Left" VerticalAlignment="Center" DockPanel.Dock="Right" FontStretch="ExtraExpanded"/>
+                                        </DockPanel>
                                     </StackPanel>
                                 </StackPanel>
+                                
                                 <Expander Grid.Row="1" Margin="0,0,0,0" Header="Список отчетов:" Foreground="White" IsExpanded="{Binding IsExpandedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <ItemsControl ItemsSource="{Binding Reports}">
                                         <ItemsControl.ItemTemplate>
@@ -102,7 +123,10 @@
                                                         <RowDefinition Height="6"/>
                                                         <RowDefinition/>
                                                     </Grid.RowDefinitions>
-                                                    <Rectangle Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="-4" RadiusX="3" RadiusY="3" MouseEnter="RecEnter" MouseLeave="RecLeave" Fill="{Binding Fill, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MouseUp="OnUp"/>
+                                                    <!--Прямоугольник с отчетом-->
+                                                    <Rectangle Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="-4" RadiusX="3" RadiusY="3" 
+                                                               MouseEnter="RecEnter" MouseLeave="RecLeave" Fill="{Binding Fill, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MouseUp="OnUp"
+                                                               Visibility="{Binding IsReportVisible, Converter={StaticResource BoolToVis}}"/>
                                                     <!--Прогерссбар по отработке-->
                                                     <ProgressBar Margin="0,0,0,2" Height="3" Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Value="{Binding Progress, UpdateSourceTrigger=PropertyChanged}" Foreground="Green" Maximum="100"/>
                                                     <!--Прогерссбар по делегированию-->
@@ -192,6 +216,7 @@
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </Expander>
+                                
                                 <Button Content="✖" Visibility="{Binding AdminControllsVisibility}" Width="20" Height="20" HorizontalAlignment="Right" VerticalAlignment="Top" Opacity="0.2" Click="OnRemoveGroup">
                                     <Button.ToolTip>
                                         <StackPanel MaxWidth="300">
@@ -202,6 +227,7 @@
                                         </StackPanel>
                                     </Button.ToolTip>
                                 </Button>
+                                
                                 <StackPanel Margin="0,10,0,0" Grid.Row="2" Orientation="Horizontal">
                                     <Button Visibility="{Binding AdminControllsVisibilityAdd}" IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Content="Добавить" Background="{x:Null}" BorderBrush="White" Click="OnBtnAddReport" Opacity="0.2" Foreground="White">
                                         <Button.ToolTip>
@@ -224,6 +250,7 @@
                                         </Button.ToolTip>
                                     </Button>
                                 </StackPanel>
+                                
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">
                                     <TextBlock Text="Автор: " Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DBUserCreated}" Opacity="0.2" Foreground="White"/>
@@ -231,6 +258,7 @@
                                     <TextBlock Text="{Binding DateCreated}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
                                 </StackPanel>
+                                
                                 <StackPanel Grid.Row="4" Orientation="Horizontal">
                                     <TextBlock Text="Изменил: " Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DBUserLast}" Opacity="0.2" Foreground="White"/>
@@ -238,12 +266,14 @@
                                     <TextBlock Text="{Binding DateLast}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
                                 </StackPanel>
+                                
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
+        
         <StackPanel Orientation="Horizontal" Grid.Row="2">
             <Button x:Name="btnAddGroup" Margin="5,5,5,5" Content="Добавить новую группу" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnAddGroup" Foreground="White"/>
             <Button x:Name="btnUpdate" Margin="5,5,5,5" Content="Обновить отчеты" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnUpdate" Foreground="White">
@@ -254,5 +284,6 @@
                 </Button.ToolTip>
             </Button>
         </StackPanel>
+    
     </Grid>
 </Window>

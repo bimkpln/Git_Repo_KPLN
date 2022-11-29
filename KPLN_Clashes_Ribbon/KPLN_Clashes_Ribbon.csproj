@@ -71,8 +71,8 @@
       <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="KPLN_Library_SelectItem">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_SelectItem\KPLN_Library_SelectItem\bin\Release\KPLN_Library_SelectItem.dll</HintPath>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>

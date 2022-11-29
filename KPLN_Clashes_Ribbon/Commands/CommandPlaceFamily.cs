@@ -38,12 +38,17 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (app.ActiveUIDocument != null)
                 {
                     Document doc = app.ActiveUIDocument.Document;
+                    
+                    // Проверка на наличие элемента в файле
                     Element element1 = doc.GetElement(new ElementId(Id1));
                     Element element2 = doc.GetElement(new ElementId(Id2));
                     if (element1 == null && element2 == null)
                     {
+                        TaskDialog.Show("Внимание!", "Все элементы в связи. Метку необходимо расставлять в документах, где элемент присутсвует (см. информацию об элементах отчета)");
                         return Result.Cancelled;
                     }
+                    
+                    // Проверка на совпадение элемента в файле и элемента в отчете
                     bool el1 = true;
                     bool el2 = true;
                     if (element1 != null)
@@ -62,8 +67,11 @@ namespace KPLN_Clashes_Ribbon.Commands
                     }
                     if (!el1 && !el2)
                     {
+                        TaskDialog.Show("Внимание!", "Имя данного элемента в отчете не совпадает с именем элемента в проекте. " +
+                            "Произошла подмена id-элементов, коллизию нужно уточнить у проверяющего");
                         return Result.Cancelled;
                     }
+                    
                     Transaction t = new Transaction(doc, "Указатель");
                     XYZ transformed_location = doc.ActiveProjectLocation.GetTotalTransform().OfPoint(Point);
                     t.Start();

@@ -2,8 +2,8 @@
 using KPLN_Clashes_Ribbon.Common.Reports;
 using KPLN_Clashes_Ribbon.Tools;
 using KPLN_Library_DataBase.Collections;
-using KPLN_Library_SelectItem;
-using KPLN_Library_SelectItem.Forms;
+using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_Forms.UI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -63,9 +63,10 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (report.GroupId == group.Id)
                     {
                         if (group.Status != 1)
-                        { report.IsGroupEnabled = Visibility.Visible; }
+                            report.IsGroupEnabled = Visibility.Visible;
                         else
-                        { report.IsGroupEnabled = Visibility.Collapsed; }
+                            report.IsGroupEnabled = Visibility.Collapsed;
+                        
                         group.Reports.Add(report);
                     }
                 }
@@ -335,11 +336,11 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
                 else
                 {
-                    FormSinglePick selectedProjectForm = SelectProject.CreateForm();
+                    ElementPick selectedProjectForm = SelectDbProject.CreateForm();
                     bool? dialogResult = selectedProjectForm.ShowDialog();
                     if (dialogResult != false)
                     {
-                        currentDbProject = selectedProjectForm.SelectedDbProject;
+                        currentDbProject = selectedProjectForm.SelectedElement.Element as DbProject;
                     }
                     else
                     {
@@ -395,15 +396,15 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                 {
-                    ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = ((sender as System.Windows.Shapes.Rectangle).DataContext as Report)._Fill_Default;
+                    ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill_Default;
                 }
                 if (sender.GetType() == typeof(TextBlock))
                 {
-                    ((sender as TextBlock).DataContext as Report).Fill = ((sender as TextBlock).DataContext as Report)._Fill_Default;
+                    ((sender as TextBlock).DataContext as Report).Fill = ((sender as TextBlock).DataContext as Report).Fill_Default;
                 }
                 if (sender.GetType() == typeof(Image))
                 {
-                    ((sender as Image).DataContext as Report).Fill = ((sender as Image).DataContext as Report)._Fill_Default;
+                    ((sender as Image).DataContext as Report).Fill = ((sender as Image).DataContext as Report).Fill_Default;
                 }
             }
             catch (Exception)
@@ -498,6 +499,28 @@ namespace KPLN_Clashes_Ribbon.Forms
                 DbController.RemoveGroup(group);
                 UpdateGroups();
             }
+        }
+
+        private void SearchText_Changed(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
+            string _searchName = textBox.Text.ToLower();
+
+            System.Windows.Controls.TextBox tbOriginal = (System.Windows.Controls.TextBox)e.OriginalSource;
+            ReportGroup reportGroup = tbOriginal.DataContext as ReportGroup;
+
+            if (reportGroup != null)
+            {
+                foreach (Report report in reportGroup.Reports)
+                {
+                    if (!report.Name.ToLower().Contains(_searchName))
+                        report.IsReportVisible = false;
+                    else 
+                        report.IsReportVisible = true;
+
+                }
+            }
+
         }
     }
 }

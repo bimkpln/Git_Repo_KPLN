@@ -29,6 +29,8 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         private System.Windows.Visibility _isGroupEnabled = System.Windows.Visibility.Visible;
 
+        private bool _isReportVisible;
+
         private int _id;
 
         private int _groupId;
@@ -62,6 +64,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             UserCreated = userCreated;
             DateLast = dateLast;
             UserLast = userLast;
+            IsReportVisible = true;
         }
         
         public int Progress
@@ -90,16 +93,17 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
         }
 
-        public SolidColorBrush _Fill_Default
+        public SolidColorBrush Fill_Default
         {
             get
             {
                 if (IsGroupEnabled == System.Windows.Visibility.Visible)
-                { return new SolidColorBrush(Color.FromArgb(225, 255, 255, 255)); }
+                    return new SolidColorBrush(Color.FromArgb(225, 255, 255, 255));
+
                 return new SolidColorBrush(Color.FromArgb(255, 155, 155, 155));
             }
         }
-
+        
         public System.Windows.Visibility IsGroupEnabled
         {
             get
@@ -110,7 +114,20 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
-                _fill = _Fill_Default;
+                _fill = Fill_Default;
+            }
+        }
+
+        public bool IsReportVisible
+        {
+            get
+            {
+                return _isReportVisible;
+            }
+            set
+            {
+                _isReportVisible = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -152,7 +169,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
-                _fill = _Fill_Default;
+                _fill = Fill_Default;
             }
         }
 
