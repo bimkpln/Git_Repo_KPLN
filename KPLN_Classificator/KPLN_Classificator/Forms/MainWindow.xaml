@@ -1,0 +1,232 @@
+﻿<Window x:Class="KPLN_Classificator.Forms.MainWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_Classificator.Forms"
+             mc:Ignorable="d" 
+             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" WindowStyle="SingleBorderWindow"  Title="Редактор файла классификатора" Height="800" Width="850" 
+        Closing="MainWindow_Closing" WindowStartupLocation="CenterScreen" MinHeight="450" MinWidth="1000" Topmost="True" Background="#FF292D36">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Rectangle Fill="#FFFFD100"/>
+        <StackPanel Grid.Row="0" Orientation="Vertical">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Margin="5,0,0,0" Text="Параметры, в которых будет заполняться классификатор:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                <Button Width="Auto" Margin="0,5,5,5" Grid.Column="1" Padding="5,1" Content="Подтвердить изменения" Click="Accept_Classificator_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Background="White" BorderBrush="#FFAA8B00" ></Button>
+                <Button Width="Auto" Margin="0,5,5,5" Grid.Column="2" Padding="5,1" Content="Сортировать правила" Click="Sort_Classificator_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Background="White" BorderBrush="#FFAA8B00" >
+                    <Button.ToolTip>
+                        <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25">
+                            <StackPanel>
+                                <TextBlock>Отсортировать правила</TextBlock>
+                            </StackPanel>
+                        </ToolTip>
+                    </Button.ToolTip>
+                </Button>
+            </Grid>
+            <StackPanel Orientation="Vertical" Grid.Column="0" Grid.Row="0">
+                <ItemsControl x:Name="CollectionParamNames">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <GroupBox BorderThickness="0">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontWeight="Bold" Text="Параметр "></TextBlock>
+                                        <TextBlock FontWeight="Bold" Text="{Binding paramNumber, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"></TextBlock>
+                                    </StackPanel>
+                                </GroupBox.Header>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition />
+                                        <ColumnDefinition Width="30" />
+                                        <ColumnDefinition Width="30" />
+                                        <ColumnDefinition Width="30" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding paramName}"></TextBox>
+                                    <Button Grid.Column="1" Content="➕" Click="Add_ParamName_Click" Background="White" BorderBrush="#FFAA8B00" Margin="2,0,1,0"/>
+                                    <Button Grid.Column="2" Content="🗙" Click="Delete_ParamName_Click" Background="White" BorderBrush="#FFAA8B00" Margin="1,0,2,0"/>
+                                    <Button Grid.Column="3" Content="🔍" Click="Choose_ParamName_Click"  Background="White" BorderBrush="#FFAA8B00" Margin="1,0,2,0"/>
+                                </Grid>
+                            </GroupBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Margin="5,0,0,0" Text="Правила заполнения классификатора:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <RadioButton x:Name="InstanceRadioButton" Content="Параметры экземпляра" IsEnabled="True" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,20,0" Checked="RadioButton_Checked" FontWeight="Bold"/>
+                    <RadioButton x:Name="TypeRadioButton" Content="Параметры типа" IsEnabled="True" VerticalAlignment="Center" HorizontalAlignment="Center" Checked="RadioButton_Checked" FontWeight="Bold"/>
+                </StackPanel>
+                <Button Margin="0,5,5,5" Grid.Column="2" Content="Правило из модели" Padding="5,1" Click="Get_Rule_Click"  Background="White" BorderBrush="#FFAA8B00"></Button>
+                <Button Margin="0,5,5,5" Grid.Column="3" Content="Добавить правило" Padding="5,1" Click="Add_Rule_Click" Background="White" BorderBrush="#FFAA8B00"></Button>
+            </Grid>
+        </StackPanel>
+        <ScrollViewer Margin="5,5,5,5" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsDeferredScrollingEnabled="True">
+            <StackPanel Orientation="Vertical">
+                <ItemsControl x:Name="Collection">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <GroupBox BorderThickness="0" Foreground="White" Background="{Binding colourOfRule, UpdateSourceTrigger=PropertyChanged}">
+                                <GroupBox.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontWeight="Bold" Text="Правило "></TextBlock>
+                                        <TextBlock FontWeight="Bold" Text="{Binding ruleNumber, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"></TextBlock>
+                                    </StackPanel>
+                                </GroupBox.Header>
+                                <StackPanel Orientation="Vertical" Height="Auto">
+                                    <Grid ShowGridLines="False" >
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition></ColumnDefinition>
+                                            <ColumnDefinition Width="300 px"></ColumnDefinition>
+                                            <ColumnDefinition Width="20 px"></ColumnDefinition>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Orientation="Vertical" Grid.Column="0" Grid.Row="0">
+                                            <ItemsControl ItemsSource="{Binding valuesOfParams}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <GroupBox BorderThickness="0" Foreground="White">
+                                                            <GroupBox.Header>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock FontWeight="Bold" Text="Значение параметра "></TextBlock>
+                                                                    <TextBlock FontWeight="Bold" Text="{Binding valueNumber, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"></TextBlock>
+                                                                </StackPanel>
+                                                            </GroupBox.Header>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition />
+                                                                    <ColumnDefinition Width="30" />
+                                                                    <ColumnDefinition Width="30" />
+                                                                    <ColumnDefinition Width="30" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBox Name="txtBox" Grid.Column="0" Text="{Binding paramValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap" Background="{Binding colourOfValueBack, UpdateSourceTrigger=PropertyChanged}">
+                                                                    <TextBox.ToolTip>
+                                                                        <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25">
+                                                                            <StackPanel>
+                                                                                <TextBlock>В поле можно включить значение другого параметра синтаксисом: [имя_параметра], например:</TextBlock>
+                                                                                <TextBlock Foreground="Red">Стена толщиной [Толщина] мм</TextBlock>
+                                                                                <TextBlock>Результатом будет: "Стена толщиной 200 мм"</TextBlock>
+                                                                                <TextBlock>Если параметр - дробное число, то его можно округлить до необходимой дробной части синтаксисом: [имя_параметра * множитель D количество_знаков_после_запятой], например:</TextBlock>
+                                                                                <TextBlock Foreground="Red">Балка [Ширина*1D1]х[Высота*1D2] мм</TextBlock>
+                                                                                <TextBlock>Если необходимо перевести единицы измерения длины, можно умножить параметр на множитель: [имя_параметра * 308.4], например:</TextBlock>
+                                                                                <TextBlock Foreground="Red">Балка длиной [Длина*308.4] мм</TextBlock>
+                                                                                <TextBlock>Синтаксис чувствителен к пробелам!</TextBlock>
+                                                                            </StackPanel>
+                                                                        </ToolTip>
+                                                                    </TextBox.ToolTip>
+                                                                </TextBox>
+                                                                <Button Grid.Column="1" Content="➕" Click="Add_Value_Click" Background="White" Margin="2,0,1,0"/>
+                                                                <Button Grid.Column="2" Content="🗙" Click="Delete_Value_Click" Background="White" Margin="1,0,2,0"/>
+                                                                <Button Grid.Column="3" Content="🔍" Click="Insert_ParamName_Click"  Background="White" Margin="1,0,2,0" Visibility="{Binding visibleOfFindButton, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            </Grid>
+                                                        </GroupBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Vertical" Grid.Column="1" Grid.Row="0" >
+                                            <TextBlock Text="Критерии для поиска элемента в модели." Foreground="WhiteSmoke"></TextBlock>
+                                            <TextBlock Margin="8,4,0,0" Text="Категория элемента в модели:" Foreground="WhiteSmoke"></TextBlock>
+                                            <ComboBox ItemsSource="{Binding builtInCats}" SelectedValue="{Binding builtInCategoryName, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,5,5" x:Name="categoryFilter" Grid.ColumnSpan="4" IsEditable="True" StaysOpenOnEdit="True" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="15000">
+                                                <ComboBox.ToolTip>
+                                                    <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25" >
+                                                        <StackPanel>
+                                                            <TextBlock>В данном поле необходимо выбрать из списка</TextBlock>
+                                                            <TextBlock>внутреннюю категорию элемента (Built-In-Category)</TextBlock>
+                                                            <TextBlock>Категорию можно узнать с помощью плагина "Информация об элементе"</TextBlock>
+                                                        </StackPanel>
+                                                    </ToolTip>
+                                                </ComboBox.ToolTip>
+                                            </ComboBox>
+                                            <GroupBox Header="{Binding familyNameTextBox, UpdateSourceTrigger=PropertyChanged}"  BorderThickness="0" Foreground="White">
+                                                <TextBox Text="{Binding familyNameValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap">
+                                                    <TextBox.ToolTip>
+                                                        <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25" >
+                                                            <StackPanel>
+                                                                <TextBlock>В поле возможно использовать условия И (",") ИЛИ ("|") НЕ ("!"), например:</TextBlock>
+                                                                <TextBlock Foreground="Red">00,стена|пилон,внешний</TextBlock>
+                                                                <TextBlock>означает, что в названии должно содержаться "00" И ("стена" ИЛИ "пилон") И "внешний". Или:</TextBlock>
+                                                                <TextBlock Foreground="Red">00,плита,!покрытие,!площадка</TextBlock>
+                                                                <TextBlock>означает, что в названии должно содержаться "00" И "плита" И НЕ "покрытие" И НЕ "площадка".</TextBlock>
+                                                                <TextBlock>Если в найденном семействе выполнены все эти условия, оно будет обработано плагином</TextBlock>
+                                                                <TextBlock>Регистр букв значения не имеет</TextBlock>
+                                                            </StackPanel>
+                                                        </ToolTip>
+                                                    </TextBox.ToolTip>
+                                                </TextBox>
+                                            </GroupBox>
+                                            <GroupBox Header="{Binding typeNameTextBox, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Foreground="White">
+                                                <TextBox Text="{Binding typeNameValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap">
+                                                    <TextBox.ToolTip>
+                                                        <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25" >
+                                                            <StackPanel>
+                                                                <TextBlock>В поле возможно использовать условия И (",") ИЛИ ("|") НЕ ("!"), например:</TextBlock>
+                                                                <TextBlock Foreground="Red">00,стена|пилон,внешний</TextBlock>
+                                                                <TextBlock>означает, что в названии должно содержаться "00" И ("стена" ИЛИ "пилон") И "внешний". Или:</TextBlock>
+                                                                <TextBlock Foreground="Red">00,плита,!покрытие,!площадка</TextBlock>
+                                                                <TextBlock>означает, что в названии должно содержаться "00" И "плита" И НЕ "покрытие" И НЕ "площадка".</TextBlock>
+                                                                <TextBlock>Если в найденном семействе выполнены все эти условия, оно будет обработано плагином</TextBlock>
+                                                                <TextBlock>Регистр букв значения не имеет</TextBlock>
+                                                            </StackPanel>
+                                                        </ToolTip>
+                                                    </TextBox.ToolTip>
+                                                </TextBox>
+                                            </GroupBox>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Найдено элементов в модели: " Foreground="WhiteSmoke"></TextBlock>
+                                                <TextBlock Text="{Binding elemsCountInModel, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}" Foreground="WhiteSmoke"></TextBlock>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <Grid Grid.Column="2" Grid.Row="0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                                <RowDefinition Height="40"></RowDefinition>
+                                            </Grid.RowDefinitions>
+                                            <Button Content="🗙" Grid.Row="0" Click="Delete_Rule_Click" Background="White"/>
+                                            <Button Content="📑" Grid.Row="1" Click="CopyRule_Click" Background="White"/>
+                                            <Button Content="🔍" Grid.Row="2" Click="FindElementsByRule_Click" Background="White"/>
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </GroupBox>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+        <Rectangle Grid.Row="3" Fill="#FFFFD100"/>
+        <StackPanel Grid.Row="3" Orientation="Vertical">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="170"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="5,0,0,0" Text="Редактируется файл:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                    <TextBlock x:Name="fileName" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                    <TextBlock Margin="15,0,0,0" Text="Последнее сохранение:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                    <TextBlock x:Name="lastSaveOfFile" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                    <TextBlock Margin="15,0,0,0" Text="Правил в файле:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                    <TextBlock x:Name="rulesCount" Margin="5,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+                </StackPanel>
+                <Button Width="160" Margin="0,5,5,5" Grid.Column="1" Padding="5,1" Content="Выделить все элементы" Click="FindAllElementsByRule_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Background="White" BorderBrush="#FFAA8B00" ></Button>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>

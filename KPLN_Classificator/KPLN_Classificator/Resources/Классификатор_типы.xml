@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<InfosStorage>
+   <!-- debugMode определяет, будет ли выводиться в консоль лог выполнения плагина -->
+   <debugMode>true</debugMode>
+   <instanceOrType>1</instanceOrType>    <!-- 1 - instance, 2 - type -->   
+   <!-- ЗАПОЛНЕНИЕ КЛАССИФИКАТОРА -->   
+   <!-- Категории BuiltInCategory, которым будет присваиваться код по классификатору (в типоразмере) -->
+   <!-- Чтобы плагин не обрабатывал элементы, в constrCatsByInstanse нужно добавить один объект BuiltInCategory со значением INVALID -->
+   <instanseParams>
+   	  <string>ДИВ_RBS_Код по классификатору</string>   <!-- 0 -->
+	  <string>ДИВ_Имя_классификатора</string>   <!-- 1 -->
+	  <string>ДИВ_Наименование по классификатору</string>   <!-- 2 -->	  
+	  <string>ДИВ_Описание по классификатору</string>   <!-- 3 -->	  
+	  <string>ДИВ_Комплект_документации</string>   <!-- 4 -->	  
+	  <string></string>   <!-- 5 -->	  
+   </instanseParams>
+   <!-- Категории BuiltInCategory, которым будет присваиваться код по классификатору (в экземпляре) -->
+   <!-- Чтобы плагин не обрабатывал элементы, в constrCatsByInstanse нужно добавить один объект BuiltInCategory со значением INVALID -->
+   <constrCats>
+	  <BuiltInCategory>OST_Walls</BuiltInCategory>
+   </constrCats>
+   <!-- Правила для работы фильтра -->
+   <!-- В параметрах FamilyName и TypeName можно использовать условия И (',') и ИЛИ ('|') -->
+   <!-- В условии ИЛИ не должно быть вложенного условия И -->
+   <!-- В BuiltInName обязательно должно быть значение. Дефолтное значение = INVALID -->
+   <classificatorByInstanse>
+	  <ClassificatorByInstanse>
+		 <paramsValues>
+			<string>B5.01.01</string>   <!-- 0 -->
+			<string>Плитные фундаменты</string>   <!-- 1 -->
+			<string>Монолитная фундаментная плита ([Ширина*304.8] кг/м3)</string>   <!-- 2 -->
+			<string>ГОСТ 26633-2012. Толщина - [Высота перил]мм, предел огнестойкости - R90. Бетон: класс - В25. F150. W6.</string>   <!-- 3 -->
+			<string>КЖ01.5</string>   <!-- 4 -->
+			<string></string>   <!-- 5 -->
+		 </paramsValues>
+		 <BuiltInName>OST_Walls</BuiltInName>
+		 <FamilyName>стена</FamilyName>
+		 <TypeName>стена</TypeName>
+	  </ClassificatorByInstanse>
+   </classificatorByInstanse>
+</InfosStorage>

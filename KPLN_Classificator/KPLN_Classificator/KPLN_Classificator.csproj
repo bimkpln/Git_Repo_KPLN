@@ -1,0 +1,204 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{8FE2B971-0394-4113-8896-B96C3474D62A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KPLN_Classificator</RootNamespace>
+    <AssemblyName>KPLN_Classificator</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\BIM\CLASSC\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\CLASSC2018\</OutputPath>
+    <DefineConstants>Revit2018</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\CLASSC2020\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018Std|AnyCPU'">
+    <OutputPath>bin\Revit2018Std\</OutputPath>
+    <DefineConstants>Revit2018Std</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020Std|AnyCPU'">
+    <OutputPath>bin\Revit2020Std\</OutputPath>
+    <DefineConstants>Revit2020Std</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="KPLN_Loader">
+      <HintPath>..\..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Revit2018' " />
+    <When Condition=" '$(Configuration)'=='Revit2020' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_Loader\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2018Std' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2018\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2018\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2020Std' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="App.cs" />
+    <Compile Include="Availability\StaticAvailable.cs" />
+    <Compile Include="Commands\CommandFindAllElementsInModel.cs" />
+    <Compile Include="Commands\CommandFindElementsInModel.cs" />
+    <Compile Include="Commands\CommandGetElementInfo.cs" />
+    <Compile Include="Commands\CommandOpenClassificatorForm.cs" />
+    <Compile Include="Data\Classificator.cs" />
+    <Compile Include="Commands\CommandStartClassificator.cs" />
+    <Compile Include="Data\InfosStorage.cs" />
+    <Compile Include="Data\LastRunInfo.cs" />
+    <Compile Include="Data\UtilsStorage.cs" />
+    <Compile Include="ExecutableCommandTools\CommandEnvironment.cs" />
+    <Compile Include="ExecutableCommandTools\KplnCommandEnvironment.cs" />
+    <Compile Include="ExecutableCommandTools\StandartCommandEnvironment.cs" />
+    <Compile Include="Forms\ClassificatorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ClassificatorForm.Designer.cs">
+      <DependentUpon>ClassificatorForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ParameterSelectorForm.xaml.cs">
+      <DependentUpon>ParameterSelectorForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ViewModels\BaseViewModel.cs" />
+    <Compile Include="Forms\ViewModels\ParamNameItem.cs" />
+    <Compile Include="Forms\ViewModels\ParamValueItem.cs" />
+    <Compile Include="Forms\ViewModels\RuleItem.cs" />
+    <Compile Include="Forms\ViewModels\Settings.cs" />
+    <Compile Include="Module.cs" />
+    <Compile Include="ApplicationConfig.cs" />
+    <Compile Include="ExecutableCommandTools\MyExecutableCommand.cs" />
+    <Compile Include="Output\Output.cs" />
+    <Compile Include="Output\KplnOutput.cs" />
+    <Compile Include="Output\StubOutput.cs" />
+    <Compile Include="SystemTools\WindowHandleSearch.cs" />
+    <Compile Include="UserInfo\KplnUserInfo.cs" />
+    <Compile Include="UserInfo\StandartUserInfo.cs" />
+    <Compile Include="UserInfo\UserInfo.cs" />
+    <Compile Include="Utils\MyParameter.cs" />
+    <Compile Include="Utils\ParamUtils.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utils\ColourUtils.cs" />
+    <Compile Include="Utils\StorageUtils.cs" />
+    <Compile Include="Utils\ViewUtils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Forms\ClassificatorForm.resx">
+      <DependentUpon>ClassificatorForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Classificator.PNG" />
+    <EmbeddedResource Include="Resources\Classificator_large.PNG" />
+    <EmbeddedResource Include="Resources\icon_manager.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\Классификатор_типы.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Forms\MainWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ParameterSelectorForm.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

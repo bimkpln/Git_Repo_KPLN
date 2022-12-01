@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Classificator", "KPLN_Classificator\KPLN_Classificator.csproj", "{8FE2B971-0394-4113-8896-B96C3474D62A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Revit2018|Any CPU = Revit2018|Any CPU
+		Revit2018Std|Any CPU = Revit2018Std|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2020Std|Any CPU = Revit2020Std|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2018Std|Any CPU.ActiveCfg = Revit2018Std|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2018Std|Any CPU.Build.0 = Revit2018Std|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020Std|Any CPU.ActiveCfg = Revit2020Std|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020Std|Any CPU.Build.0 = Revit2020Std|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {92630FEA-80F2-47A3-841D-201B543908AE}
+	EndGlobalSection
+EndGlobal
