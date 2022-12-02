@@ -221,7 +221,7 @@ namespace KPLN_Scoper
             DocumentSet appDocsSet = app.Documents;
             foreach (Document doc in appDocsSet)
             {
-                if (doc.Title.Equals($"{familyName}"))
+                if (doc.Title.Equals($"{familyName}.rfa"))
                 {
                     if (doc.IsFamilyDocument)
                     {
@@ -477,7 +477,7 @@ namespace KPLN_Scoper
                 }
             }
 
-            Print($"Автоопределение кодов документов БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
+            Print($"Автоопределение кодов документов БД выполнено!", KPLN_Loader.Preferences.MessageType.Warning);
         }
         /*
         private void UpdateRoomDictKeys(Document doc)
@@ -582,6 +582,7 @@ namespace KPLN_Scoper
             List<SQLModuleInfo> modules = GetModules();
             foreach (SQLModuleInfo module in modules) 
             {
+                bool isEdit = false;
                 string moduleName = module.Name;
                 string modulePath = module.Path;
 
@@ -592,6 +593,10 @@ namespace KPLN_Scoper
                     {
                         FileVersionInfo moduleFileVersionInfo = FileVersionInfo.GetVersionInfo($"{modulePath}\\{file.Name}");
 
+                        string dllVersion = moduleFileVersionInfo.FileVersion;
+                        if (dllVersion == null)
+                            continue;
+
                         SQLiteConnection sql = new SQLiteConnection(
                             KPLN_Library_DataBase.DbControll.MainDBConnection);
                         
@@ -600,10 +605,11 @@ namespace KPLN_Scoper
                             sql.Open();
                             SQLiteCommand cmd = new SQLiteCommand(
                                 string.Format("UPDATE Modules SET Version = '{0}' WHERE Id = {1}",
-                                moduleFileVersionInfo.FileVersion, 
+                                dllVersion, 
                                 module.Id), sql);
                             
                             cmd.ExecuteNonQuery();
+                            isEdit = true;
                         }
                         catch (Exception ex) 
                         {
@@ -613,12 +619,17 @@ namespace KPLN_Scoper
                         {
                             sql.Close();
                         }
-                        break;
                     }
+                }
+
+                if (!isEdit && !moduleName.Contains("Test"))
+                {
+                    Print($"Проблемы с обновлением версии палгина " +
+                        $"Id: {module.Id}, Name: {moduleName}", KPLN_Loader.Preferences.MessageType.Error);
                 }
             }
 
-            Print($"Обновление версий модулей в БД выполнено успешно!", KPLN_Loader.Preferences.MessageType.Warning);
+            Print($"Обновление версий модулей в БД выполнено!", KPLN_Loader.Preferences.MessageType.Warning);
         }
 
         /// <summary>
