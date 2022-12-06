@@ -42,7 +42,7 @@
             
         </StackPanel>
         
-        <ScrollViewer Margin="0,0,0,17" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsDeferredScrollingEnabled="True">
+        <ScrollViewer Margin="0,0,0,17" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="ReportControll">
                     <ItemsControl.ItemTemplate>
@@ -204,43 +204,41 @@
 
                                 <!--Блок комментирования-->
                                 <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Комментарии:" Foreground="White"/>
-                                <ScrollViewer  Margin="0,20,4,0" Grid.Row="4" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                    <StackPanel Orientation="Vertical">
-                                        <ItemsControl ItemsSource="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="6, 5, 5, 5" HorizontalAlignment="Left">
-                                                        <Grid.RowDefinitions>
-                                                            <RowDefinition/>
-                                                            <RowDefinition/>
-                                                            <RowDefinition/>
-                                                        </Grid.RowDefinitions>
-                                                        <Rectangle Grid.RowSpan="3" Margin="-3" RadiusX="3" RadiusY="3" Stroke="White" StrokeThickness="2" Fill="#19FFFFFF"/>
-                                                        <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                            <TextBlock Text="От: " Foreground="White"/>
-                                                            <TextBlock Text="{Binding User}" Foreground="White"/>
-                                                            <TextBlock Text=" - " Foreground="White"/>
-                                                            <TextBlock Text="{Binding Time}" Foreground="White" Margin="0,0,25,0"/>
-                                                        </StackPanel>
-                                                        <Separator Grid.Row="1" Background="White" Foreground="White"/>
-                                                        <TextBlock TextWrapping="Wrap" Grid.Row="2"  Text="{Binding Message}" Foreground="White"/>
-                                                        <Button Visibility="{Binding VisibleIfUserComment}" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.ColumnSpan="3" Margin="3" Content="✖" Width="22" Height="22" FontSize="10" Foreground="White" Background="{x:Null}" BorderBrush="#33FFFFFF" Click="OnRemoveComment">
-                                                            <Button.ToolTip>
-                                                                <StackPanel MaxWidth="300">
-                                                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>
-                                                                    <TextBlock TextWrapping="Wrap" Text="Удалить комментарий"/>
-                                                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие доступно только для пользовательских комментариев" FontStyle="Italic"/>
-                                                                </StackPanel>
-                                                            </Button.ToolTip>
-                                                        </Button>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </ScrollViewer>
-                                
+                                <StackPanel Margin="0,20,4,0" Grid.Row="4" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Vertical">
+                                    <ItemsControl ItemsSource="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="6, 5, 5, 5" HorizontalAlignment="Left">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition/>
+                                                        <RowDefinition/>
+                                                        <RowDefinition/>
+                                                    </Grid.RowDefinitions>
+                                                    <Rectangle Grid.RowSpan="3" Margin="-3" RadiusX="3" RadiusY="3" Stroke="White" StrokeThickness="2" Fill="#19FFFFFF"/>
+                                                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                                        <TextBlock Text="От: " Foreground="White"/>
+                                                        <TextBlock Text="{Binding User}" Foreground="White"/>
+                                                        <TextBlock Text=" - " Foreground="White"/>
+                                                        <TextBlock Text="{Binding Time}" Foreground="White" Margin="0,0,25,0"/>
+                                                    </StackPanel>
+                                                    <Separator Grid.Row="1" Background="White" Foreground="White"/>
+                                                    <TextBlock TextWrapping="Wrap" Grid.Row="2"  Text="{Binding Message}" Foreground="White"/>
+                                                    <Button Visibility="{Binding VisibleIfUserComment}" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.ColumnSpan="3" Margin="3" Content="✖" Width="22" Height="22" FontSize="10" Foreground="White" Background="{x:Null}" BorderBrush="#33FFFFFF" Click="OnRemoveComment">
+                                                        <Button.ToolTip>
+                                                            <StackPanel MaxWidth="300">
+                                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>
+                                                                <TextBlock TextWrapping="Wrap" Text="Удалить комментарий"/>
+                                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие доступно только для пользовательских комментариев" FontStyle="Italic"/>
+                                                            </StackPanel>
+                                                        </Button.ToolTip>
+                                                    </Button>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
                                 <Button Grid.Row="5" Content="Комментировать" IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Top" Margin="2,0,0,4" Background="{x:Null}" BorderBrush="White" Foreground="White" BorderThickness="2" Click="OnAddComment"/>
                             </Grid>
                         </DataTemplate>

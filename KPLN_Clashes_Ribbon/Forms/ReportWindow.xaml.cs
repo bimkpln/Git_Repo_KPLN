@@ -110,7 +110,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             ((sender as System.Windows.Controls.Button).DataContext as ReportInstance).LoadImage();
         }
 
-
         /// <summary>
         /// Разделение вызываемых элементов по кнопке для конфликта №1
         /// </summary>
