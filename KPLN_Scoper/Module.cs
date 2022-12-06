@@ -221,7 +221,7 @@ namespace KPLN_Scoper
             DocumentSet appDocsSet = app.Documents;
             foreach (Document doc in appDocsSet)
             {
-                if (doc.Title.Equals($"{familyName}.rfa"))
+                if (doc.Title.Contains($"{familyName}"))
                 {
                     if (doc.IsFamilyDocument)
                     {
