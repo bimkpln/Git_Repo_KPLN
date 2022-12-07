@@ -50,23 +50,27 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         {
             List<Solid> solids = new List<Solid>();
 
-            foreach (GeometryObject geoObj in geoElem)
+            if (geoElem != null)
             {
-                if (geoObj is Solid)
+                foreach (GeometryObject geomObj in geoElem)
                 {
-                    Solid solid = geoObj as Solid;
-                    if (solid == null) continue;
-                    if (solid.Volume == 0) continue;
-                    solids.Add(solid);
-                    continue;
-                }
-                if (geoObj is GeometryInstance)
-                {
-                    GeometryInstance geomIns = geoObj as GeometryInstance;
-                    if (geomIns == null) continue;
-                    GeometryElement instGeoElement = geomIns.GetInstanceGeometry();
-                    List<Solid> solids2 = GetSolidsFromElement(instGeoElement);
-                    solids.AddRange(solids2);
+                    if (geomObj is Solid)
+                    {
+                        solids.Add((Solid)geomObj);
+                    }
+                    else if (geomObj is GeometryInstance geomInst)
+                    {
+                        if (geomInst.GetInstanceGeometry() is GeometryElement instGeomEl)
+                        {
+                            foreach (var instGeomObj in instGeomEl)
+                            {
+                                if (instGeomObj is Solid instanceGeometrySolid)
+                                {
+                                    solids.Add(instanceGeometrySolid);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             return solids;
