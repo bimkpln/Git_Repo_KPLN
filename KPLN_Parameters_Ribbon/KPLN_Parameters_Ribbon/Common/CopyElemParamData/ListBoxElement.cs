@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
-    public class ListBoxElement : INotifyPropertyChanged
+    public class ListBoxElement
     {
         public ObservableCollection<ListBoxElement> SubElements = new ObservableCollection<ListBoxElement>();
         
@@ -27,11 +27,5 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
             ToolTip = toolTip;
         }
         
-        public event PropertyChangedEventHandler PropertyChanged;
-        
-        public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 }

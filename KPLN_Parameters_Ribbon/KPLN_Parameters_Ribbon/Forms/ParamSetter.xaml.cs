@@ -1,25 +1,14 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Parameters_Ribbon.Command;
-using KPLN_Parameters_Ribbon.Common;
 using KPLN_Parameters_Ribbon.Common.CopyElemParamData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Forms;
-using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.Forms
@@ -27,8 +16,8 @@ namespace KPLN_Parameters_Ribbon.Forms
     public partial class ParamSetter : Window
     {
         private Document Doc { get; set; }
-        
-        private readonly ObservableCollection<ListBoxElement> _lBoxElems;
+
+        public ObservableCollection<ListBoxElement> BoxElemsList;
 
         public ParamSetter(Document doc)
         {
@@ -38,7 +27,7 @@ namespace KPLN_Parameters_Ribbon.Forms
             ObservableCollection<ListBoxElement> all_parameters = new ObservableCollection<ListBoxElement>();
             List<Category> categories = CategoriesList(Doc);
             Array bics = Enum.GetValues(typeof(BuiltInCategory));
-            
+
             int max = categories.Count;
             string format = "{0} из " + max.ToString() + " категорий проанализировано";
 
@@ -57,7 +46,7 @@ namespace KPLN_Parameters_Ribbon.Forms
                         FilteredElementCollector typeElemsColl = new FilteredElementCollector(Doc).OfCategoryId(catId).WhereElementIsElementType();
                         FilteredElementCollector instanceElemsColl = new FilteredElementCollector(Doc).OfCategoryId(catId).WhereElementIsNotElementType();
                         if (typeElemsColl.Count() + instanceElemsColl.Count() == 0) { continue; }
-                    
+
                         ListBoxElement lbElement = new ListBoxElement(cat, cat.Name); ;
 
                         // Обрабатываю параметры типа
@@ -120,16 +109,16 @@ namespace KPLN_Parameters_Ribbon.Forms
                     catch (Exception) { }
                 }
 
-                _lBoxElems = new ObservableCollection<ListBoxElement>(heapElemCats.OrderBy(x => x.Name));
+                BoxElemsList = new ObservableCollection<ListBoxElement>(heapElemCats.OrderBy(x => x.Name));
             }
 
             InitializeComponent();
             this.RulesControll.ItemsSource = new ObservableCollection<ParameterRuleElement>();
         }
-        
+
         public void AddRule()
         {
-            ParameterRuleElement rule = new ParameterRuleElement(_lBoxElems);
+            ParameterRuleElement rule = new ParameterRuleElement(BoxElemsList);
             (this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Add(rule);
             UpdateRunEnability();
         }
@@ -150,7 +139,7 @@ namespace KPLN_Parameters_Ribbon.Forms
 
             return catList;
         }
-        
+
         private void OnClickLoadTemplate(object sender, RoutedEventArgs args)
         {
             try
@@ -219,14 +208,14 @@ namespace KPLN_Parameters_Ribbon.Forms
 
         private void OnClickGoToHelp(object sender, RoutedEventArgs e)
         {
-            System.Diagnostics.Process.Start(@"http://moodle.stinproject.local/mod/page/view.php?id=189");
+            System.Diagnostics.Process.Start(@"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=992");
         }
 
         private void OnBtnAddRule(object sender, RoutedEventArgs e)
         {
             AddRule();
         }
-        
+
         private void Save()
         {
             try
@@ -287,7 +276,7 @@ namespace KPLN_Parameters_Ribbon.Forms
         {
             KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>));
         }
-        
+
         private void SelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
         {
             UpdateRunEnability();
@@ -302,30 +291,25 @@ namespace KPLN_Parameters_Ribbon.Forms
         {
             UpdateRunEnability();
         }
-        
+
         private void UpdateRunEnability()
         {
-            try
+            if ((this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Count == 0)
             {
-                if ((this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Count == 0)
+                BtnRun.IsEnabled = false;
+                return;
+            }
+            foreach (ParameterRuleElement el in this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)
+            {
+                if (el.SelectedSourceParameter == null || el.SelectedTargetParameter == null)
                 {
                     BtnRun.IsEnabled = false;
                     return;
                 }
-                foreach (ParameterRuleElement el in this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)
-                {
-                    if (el.SelectedSourceParameter == null || el.SelectedTargetParameter == null)
-                    {
-                        BtnRun.IsEnabled = false;
-                        return;
-                    }
-                }
-                BtnRun.IsEnabled = true;
             }
-            catch (Exception)
-            { }
+            BtnRun.IsEnabled = true;
         }
-        
+
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
         {
             IsEnabled = false;

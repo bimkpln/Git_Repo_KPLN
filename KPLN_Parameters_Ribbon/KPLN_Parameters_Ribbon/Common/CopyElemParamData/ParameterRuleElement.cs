@@ -56,9 +56,13 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
             for (int z = 0; z < dataparts.Count; z++)
             {
                 parent.AddRule();
-                System.Windows.Forms.Application.DoEvents();
                 List<string> parts = dataparts[z].Split(new string[] { Variables.separator_sub_element }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 ParameterRuleElement rule = (parent.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)[z];
+                System.Windows.Forms.Application.DoEvents();
+
+                bool source_found = false;
+                bool target_found = false;
+
                 foreach (ListBoxElement cat in rule.Categories)
                 {
                     if (cat.Name == parts[0])
@@ -68,6 +72,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                         break;
                     }
                 }
+                
                 foreach (ListBoxElement par in rule.SourceParameters)
                 {
 
@@ -75,34 +80,53 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                     {
                         rule.SelectedSourceParameter = par;
                         System.Windows.Forms.Application.DoEvents();
+                        source_found = true;
                         break;
                     }
+                    
                     if ((par.Data as Parameter).Id.ToString() == parts[1])
                     {
                         rule.SelectedSourceParameter = par;
                         System.Windows.Forms.Application.DoEvents();
+                        source_found = true;
                         break;
                     }
+                    
                 }
+                
                 foreach (ListBoxElement par in rule.TargetParameters)
                 {
                     if ((par.Data as Parameter).Definition.Name == parts[2])
                     {
                         rule.SelectedTargetParameter = par;
                         System.Windows.Forms.Application.DoEvents();
+                        target_found = true;
                         break;
                     }
+                    
                     if ((par.Data as Parameter).Id.ToString() == parts[2])
                     {
                         rule.SelectedTargetParameter = par;
                         System.Windows.Forms.Application.DoEvents();
+                        target_found = true;
                         break;
                     }
+
+                }
+
+                int num;
+                if (!int.TryParse(parts[1], out num) && !int.TryParse(parts[2], out num))
+                {
+                    if (!source_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[1]), KPLN_Loader.Preferences.MessageType.Error); }
+                    if (!target_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[2]), KPLN_Loader.Preferences.MessageType.Error); }
                 }
             }
         }
+        
         public Guid Guid = Guid.NewGuid();
+        
         private ObservableCollection<ListBoxElement> _categories = new ObservableCollection<ListBoxElement>();
+        
         public ObservableCollection<ListBoxElement> Categories
         {
             get
@@ -115,7 +139,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
+        
         private ObservableCollection<ListBoxElement> _sourceParameters = new ObservableCollection<ListBoxElement>();
+        
         public ObservableCollection<ListBoxElement> SourceParameters
         {
             get
@@ -128,7 +154,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
+        
         private ObservableCollection<ListBoxElement> _targetParameters = new ObservableCollection<ListBoxElement>();
+        
         public ObservableCollection<ListBoxElement> TargetParameters
         {
             get
@@ -141,7 +169,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
+        
         private ListBoxElement _selectedCategory;
+        
         public ListBoxElement SelectedCategory
         {
             get
@@ -151,14 +181,19 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
             set
             {
                 _selectedCategory = value;
+                
                 SourceParameters = new ObservableCollection<ListBoxElement>();
                 foreach (ListBoxElement element in _selectedCategory.SubElements) { SourceParameters.Add(element); }
+                
                 TargetParameters = new ObservableCollection<ListBoxElement>();
                 foreach (ListBoxElement element in _selectedCategory.SubElements) { TargetParameters.Add(element); }
+                
                 NotifyPropertyChanged();
             }
         }
+        
         private ListBoxElement _selectedSourceParameter;
+        
         public ListBoxElement SelectedSourceParameter
         {
             get
@@ -172,6 +207,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
             }
         }
         private ListBoxElement _selectedTargetParameter;
+       
         public ListBoxElement SelectedTargetParameter
         {
             get

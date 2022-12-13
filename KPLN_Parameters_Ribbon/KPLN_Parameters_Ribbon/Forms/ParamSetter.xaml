@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:KPLN_Parameters_Ribbon.Forms"
              mc:Ignorable="d" 
              Width="600" MaxHeight="800"
-             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" Title="KPLN: Перенос значений" ResizeMode="NoResize" Topmost="True" WindowStartupLocation="CenterOwner" WindowStyle="ToolWindow" SizeToContent="Height">
+             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" Title="KPLN: Перенос значений" ResizeMode="NoResize" WindowStyle="ToolWindow" SizeToContent="Height">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -81,7 +81,7 @@
                                     <ColumnDefinition Width="190"/>
                                     <ColumnDefinition Width="28"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox Name="CurrentCat" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged" SelectedIndex="0">
+                                <ComboBox Name="CurrentCat" VerticalAlignment="Center" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Name}"/>

@@ -15,10 +15,12 @@ namespace KPLN_Parameters_Ribbon.Command
     public class CommandWriteValues : IExecutableCommand
     {
         private List<ParameterRuleElement> Rules { get; set; }
+        
         public CommandWriteValues(ObservableCollection<ParameterRuleElement> rules)
         {
             Rules = rules.ToList();
         }
+        
         private Parameter GetParameterByElement(Element element, ListBoxElement rule)
         {
             foreach (Parameter p in element.Parameters)
@@ -28,9 +30,11 @@ namespace KPLN_Parameters_Ribbon.Command
                     return p;
                 }
             }
-            try
+
+            Element elemType = element.Document.GetElement(element.GetTypeId());
+            if (elemType != null)
             {
-                foreach (Parameter p in element.Document.GetElement(element.GetTypeId()).Parameters)
+                foreach (Parameter p in elemType.Parameters)
                 {
                     if (p.Definition.Name == (rule.Data as Parameter).Definition.Name)
                     {
@@ -38,10 +42,10 @@ namespace KPLN_Parameters_Ribbon.Command
                     }
                 }
             }
-            catch (Exception)
-            { }
+            
             return null;
         }
+        
         public Result Execute(UIApplication app)
         {
             try
