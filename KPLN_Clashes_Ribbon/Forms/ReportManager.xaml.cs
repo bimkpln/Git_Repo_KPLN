@@ -33,6 +33,8 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             InitializeComponent();
 
+            UpdateGroups();
+
             if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
             {
                 btnAddGroup.Visibility = Visibility.Visible;
@@ -41,8 +43,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 btnAddGroup.Visibility = Visibility.Collapsed;
             }
-
-            UpdateGroups();
         }
 
         public DbProject Project
@@ -54,21 +54,19 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             ObservableCollection<ReportGroup> groups = ReportGroup.GetReportGroups(_project);
             
-            ObservableCollection<Report> reports = Report.GetReports();
             
             foreach (ReportGroup group in groups)
             {
+                ObservableCollection<Report> reports = Report.GetReports(group.Id);
+                
                 foreach (Report report in reports)
                 {
-                    if (report.GroupId == group.Id)
-                    {
-                        if (group.Status != 1)
-                            report.IsGroupEnabled = Visibility.Visible;
-                        else
-                            report.IsGroupEnabled = Visibility.Collapsed;
+                    if (group.Status != 1)
+                        report.IsGroupEnabled = Visibility.Visible;
+                    else
+                        report.IsGroupEnabled = Visibility.Collapsed;
                         
-                        group.Reports.Add(report);
-                    }
+                    group.Reports.Add(report);
                 }
             }
             this.iControllGroups.ItemsSource = groups;
@@ -488,13 +486,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                 if (KPLN_Loader.Preferences.User.Department.Id != 4 && KPLN_Loader.Preferences.User.Department.Id != 6) { return; }
 
                 ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
-                foreach (Report report in Report.GetReports())
+                foreach (Report report in Report.GetReports(group.Id))
                 {
-                    if (report.GroupId == group.Id)
-                    {
-                        DbController.RemoveReport(report);
-                    }
-
+                    DbController.RemoveReport(report);
                 }
                 DbController.RemoveGroup(group);
                 UpdateGroups();

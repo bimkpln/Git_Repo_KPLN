@@ -74,7 +74,11 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             _reportInstancesColl = ReportInstance.GetReportInstances(_currentReport.Path);
 
-            if (_reportInstancesColl.All(c => c.Status == Status.Closed || c.Status == Status.Approved))
+            if (_reportInstancesColl.Any(c => c.Status == Status.Opened))
+            {
+                return Status.Opened;
+            }
+            else if (_reportInstancesColl.All(c => c.Status == Status.Closed || c.Status == Status.Approved))
             {
                 return Status.Closed;
             }
@@ -82,9 +86,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 return Status.Delegated;
             }
-            else if (_reportInstancesColl.Any(c => c.Status == Status.Opened || c.Status == Status.Delegated))
+            else if (_reportInstancesColl.All(c => c.Status == Status.Delegated || c.Status == Status.Approved || c.Status == Status.Closed))
             {
-                return Status.Opened;
+                return Status.Delegated;
             }
             else
             {

@@ -60,25 +60,18 @@ namespace KPLN_Clashes_Ribbon.Commands
         private bool ElementCheckErrorFromInfoParse(Document doc, Element element)
         {
             List<string> infosList = _elInfo.Split('➜').ToList();
-            
-            string nwcFileName = infosList.Where(i => i.Contains(".nwc")).FirstOrDefault();
-            if (nwcFileName != null)
+
+            // Тонкий отлов линков в отчете, при условии, что отчет идет в формате: xxx.nwc➜xxy.rvt (nwc всегда основной файл, rvt - это уже линк)
+            string rvtLinkFileName = infosList.Where(i => i.ToLower().Contains(".rvt")).FirstOrDefault();
+            if (rvtLinkFileName != null)
             {
-                string rvtFileName = doc.PathName.Split(new string[] { ".rvt" }, StringSplitOptions.None)[0];
-                nwcFileName = nwcFileName.Split(new string[] { ".nwc" }, StringSplitOptions.None)[0].Trim();
-                if (!rvtFileName.Contains(nwcFileName))
+                string rvtFileName = doc.PathName.ToLower().Split(new string[] { ".rvt" }, StringSplitOptions.None)[0];
+                rvtLinkFileName = rvtLinkFileName.ToLower().Split(new string[] { ".rvt" }, StringSplitOptions.None)[0].Trim();
+                if (!rvtFileName.Contains(rvtLinkFileName))
                 {
                     TaskDialog.Show("Внимание!", "Данный элемент находится в связи! Нельзя выбирать элементы из связи");
                     return true;
                 }
-            }
-
-            int rvtLinksCount = infosList.Where(i => i.Contains(".rvt")).Count();
-            if (rvtLinksCount > 0)
-            {
-                TaskDialog.Show("Внимание!", "Это элемент из связанного файла, который импортирован в ваш проект из другого ВАШЕГО файла" +
-                    " (т.е. проект был разделен на части в Revit согласно требованиям ВЕР)");
-                return true;
             }
 
             Category elCat = element.Category;
@@ -92,6 +85,9 @@ namespace KPLN_Clashes_Ribbon.Commands
                         "\nВид не будет соответвовать элементу из отчета");
             }
             
+            TaskDialog.Show("Внимание!", "Элемент не прошел проверку. Скинь скрин отчета с отображением имени файла, " +
+                "имени отчета и номером конфликта Куцко Тимофею. " +
+                "Чтобы не тормозить работу - используй поиск по id (Управление ➜ Выбрать по коду)");
             return false;
         }
     }

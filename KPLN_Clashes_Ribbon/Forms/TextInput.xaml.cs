@@ -40,5 +40,10 @@ namespace KPLN_Clashes_Ribbon.Forms
                 tbHeader.Foreground = Brushes.Red;
             }
         }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Keyboard.Focus(tbox);
+        }
     }
 }

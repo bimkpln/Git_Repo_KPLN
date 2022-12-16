@@ -131,6 +131,9 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
         }
 
+        /// <summary>
+        /// Вдимость прогресс-бара в instance
+        /// </summary>
         public System.Windows.Visibility PbEnabled
         {
             get
@@ -220,14 +223,20 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
             set
             {
-                if (value == 1)
-                { Source = new Source.Source(Collections.Icon.Instance_Closed); }
-                else if (value == 2)
-                { Source = new Source.Source(Collections.Icon.Instance_Delegated); }
-                else 
-                { Source = new Source.Source(Collections.Icon.Instance); }
-
                 _status = value;
+
+                switch (value)
+                {
+                    case 1:
+                        Source = new Source.Source(Collections.Icon.Instance_Closed);
+                        break;
+                    case 2:
+                        Source = new Source.Source(Collections.Icon.Instance_Delegated);
+                        break;
+                    default:
+                        Source = new Source.Source(Collections.Icon.Instance);
+                        break;
+                }
 
                 NotifyPropertyChanged();
             }
@@ -324,54 +333,50 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
         }
 
-        public static ObservableCollection<Report> GetReports()
+        public static ObservableCollection<Report> GetReports(int reportGroupId)
         {
             ObservableCollection<Report> reports = new ObservableCollection<Report>();
+            
+            SQLiteConnection db = new SQLiteConnection(
+                string.Format(
+                    @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;")
+                );
+
             try
             {
-                SQLiteConnection db = new SQLiteConnection(
-                    string.Format(
-                        @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;")
-                    );
-
-                try
+                db.Open();
+                using (SQLiteCommand cmd = new SQLiteCommand($"SELECT * From Reports where GroupId = {reportGroupId}", db))
                 {
-                    db.Open();
-                    using (SQLiteCommand cmd = new SQLiteCommand("SELECT * FROM Reports", db))
+                    using (SQLiteDataReader rdr = cmd.ExecuteReader())
                     {
-                        using (SQLiteDataReader rdr = cmd.ExecuteReader())
+                        while (rdr.Read())
                         {
-                            while (rdr.Read())
+                            if (rdr.GetInt32(0) == -1) { continue; }
+                            try
                             {
-                                if (rdr.GetInt32(0) == -1) { continue; }
-                                try
-                                {
-                                    reports.Add(new Report(rdr.GetInt32(0),
-                                        rdr.GetInt32(1),
-                                        rdr.GetString(2),
-                                        rdr.GetInt32(3),
-                                        rdr.GetString(4),
-                                        rdr.GetString(5),
-                                        rdr.GetString(6),
-                                        rdr.GetString(7),
-                                        rdr.GetString(8)));
-                                }
-                                catch (Exception e)
-                                {
-                                    PrintError(e);
-                                }
-
+                                reports.Add(new Report(rdr.GetInt32(0),
+                                    rdr.GetInt32(1),
+                                    rdr.GetString(2),
+                                    rdr.GetInt32(3),
+                                    rdr.GetString(4),
+                                    rdr.GetString(5),
+                                    rdr.GetString(6),
+                                    rdr.GetString(7),
+                                    rdr.GetString(8)));
+                            }
+                            catch (Exception e)
+                            {
+                                PrintError(e);
                             }
                         }
                     }
-                    db.Close();
-                }
-                catch (Exception)
-                {
-                    db.Close();
                 }
             }
-            catch (Exception) { }
+            finally
+            {
+                db.Close();
+            }
+
             return reports;
         }
 
@@ -385,11 +390,11 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 max++;
                 
                 if (ri.Status != Collections.Status.Opened && ri.Status != Collections.Status.Delegated)
-                { done++; }
+                    done++;
                 else if (ri.Status == Collections.Status.Delegated)
-                { delegated++; }
+                    delegated++;
             }
-            
+
             int doneCount = (int)Math.Round((double)(done * 100 / max));
             Progress = doneCount;
 
@@ -409,7 +414,9 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         public void GetProgress()
         {
             Task t2 = Task.Run(() =>
-            { UpdateProgress(); });
+            { 
+                UpdateProgress(); 
+            });
         }
 
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")

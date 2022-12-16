@@ -89,7 +89,6 @@ namespace KPLN_Clashes_Ribbon.Tools
                 //Вставляем данные
                 SQLiteCommand cmd_insert = new SQLiteCommand($"UPDATE Reports SET {parameter}={value} WHERE ID={id}", db);
                 cmd_insert.ExecuteNonQuery();
-                db.Close();
             }
             catch (Exception ex)
             {
@@ -100,7 +99,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static int GetGroupValueInteger(int id, string parameter)
         {
             int value = -1;
@@ -193,9 +192,8 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Open();
                 SQLiteCommand cmd_insert = new SQLiteCommand(string.Format("UPDATE Reports SET {0}={1} WHERE Id={2}", parameter, value.ToString(), id.ToString()), db);
                 cmd_insert.ExecuteNonQuery();
-                db.Close();
             }
-            catch (Exception)
+            finally
             {
                 db.Close();
             }
