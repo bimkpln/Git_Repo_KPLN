@@ -69,7 +69,14 @@ namespace KPLN_Publication.PdfWorker
 
                 if (_operators.TryGetValue(oper.ToString(), out operHandler))
                 {
-                    operands = operHandler(oper, operands);
+                    try
+                    {
+                        operands = operHandler(oper, operands);
+                    }
+                    catch (System.Runtime.InteropServices.ExternalException)
+                    {
+                        // Игнорирую элементы на листе, которые невозможно перекрасить (например печать организации)
+                    }
                 }
 
                 _contentStreamBuilderStack.Peek().Push(operands);
