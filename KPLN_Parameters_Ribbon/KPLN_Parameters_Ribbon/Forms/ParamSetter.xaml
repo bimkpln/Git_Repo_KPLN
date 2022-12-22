@@ -84,7 +84,7 @@
                                 <ComboBox Name="CurrentCat" VerticalAlignment="Center" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>

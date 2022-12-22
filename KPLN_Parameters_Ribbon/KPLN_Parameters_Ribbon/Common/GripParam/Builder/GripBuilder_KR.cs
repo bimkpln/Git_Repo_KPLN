@@ -111,7 +111,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_Walls)
                 .Cast<FamilyInstance>());
 
-            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + StairsElems.Count;
+            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + StairsElems.Count;
 
             if (AllElementsCount > 0)
             {
@@ -145,7 +145,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 byElem = SectionExcecuter.ExecuteByElement(Doc, ElemsOnLevel, "Орг.ОсьБлок", SectionParamName, pb);
             }
 
-            if (ElemsByHost.Count > 0)
+            if (ElemsUnderLevel.Count > 0)
             {
                 byUnderElem = SectionExcecuter.ExecuteByElement(Doc, ElemsUnderLevel, "Орг.ОсьБлок", SectionParamName, pb);
             }

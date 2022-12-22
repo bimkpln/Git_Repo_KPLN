@@ -133,6 +133,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             #endregion
 
             #region Этап №2 - анализ остатка
+            pb.Decrement(notIntersectedElems.Count);
             Print($"\nОсуществляю поиск ближайшей секции\n", KPLN_Loader.Preferences.MessageType.Regular);
             List<Element> notNearestSolidElems = notIntersectedElems;
             foreach (Element elem in notIntersectedElems)

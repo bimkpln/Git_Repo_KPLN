@@ -48,6 +48,25 @@ namespace KPLN_Parameters_Ribbon.Forms
             }
             System.Windows.Forms.Application.DoEvents();
         }
+
+        /// <summary>
+        /// Уменьшение значения на 1, или на определенное значение
+        /// </summary>
+        public void Decrement(int value = 1)
+        {
+            if (progressBar1.Value > value)
+                progressBar1.Value -= value;
+            else
+                progressBar1.Value = 0;
+            
+            if (null != _format)
+            {
+                Header_lbl.Text = string.Format(_format, progressBar1.Value);
+            }
+            System.Windows.Forms.Application.DoEvents();
+        }
+
+
         public void Update(int progressvalue, string value = null)
         {
             if (value != null)
