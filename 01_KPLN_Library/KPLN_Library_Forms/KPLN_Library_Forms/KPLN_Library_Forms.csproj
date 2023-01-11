@@ -94,6 +94,9 @@
   <ItemGroup>
     <Compile Include="Common\ElementEntity.cs" />
     <Compile Include="Common\UIStatus.cs" />
+    <Compile Include="UI\ProgressBar.xaml.cs">
+      <DependentUpon>ProgressBar.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\UserVerify.xaml.cs">
       <DependentUpon>UserVerify.xaml</DependentUpon>
     </Compile>
@@ -105,6 +108,10 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <Page Include="UI\ProgressBar.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="UI\UserVerify.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
