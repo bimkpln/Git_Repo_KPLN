@@ -43,7 +43,7 @@ namespace KPLN_ModelChecker_Debugger
                 typeof(ExternalCommands.Pinner).FullName,
                 pullDown,
                 "pinnerLarge.png",
-                "http://moodle.stinproject.local/mod/page/view.php?id=189"
+                "http://moodle/mod/page/view.php?id=189"
             );
 
             //Добавляю worksetter в выпадающий список pullDown
@@ -60,7 +60,7 @@ namespace KPLN_ModelChecker_Debugger
                 typeof(ExternalCommands.Worksetter).FullName,
                 pullDown,
                 "worksetLarge.png",
-                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=668"
+                "http://moodle/mod/book/view.php?id=502&chapterid=668"
             );
 
             //Добавляю LevelAndGridsParamCopier в выпадающий список pullDown
@@ -79,7 +79,7 @@ namespace KPLN_ModelChecker_Debugger
                 typeof(ExternalCommands.LevelAndGridsParamCopier).FullName,
                 pullDown,
                 "copyProjectParams.png",
-                "http://moodle.stinproject.local/"
+                "http://moodle/"
             );
 
             return Result.Succeeded;

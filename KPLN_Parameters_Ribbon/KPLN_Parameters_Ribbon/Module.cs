@@ -38,7 +38,7 @@ namespace KPLN_Parameters_Ribbon
                 typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
                 "paramSetter.png",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
 
             //Добавляю кнопку в панель
@@ -56,7 +56,7 @@ namespace KPLN_Parameters_Ribbon
                 typeof(ExternalCommands.CommandCopyProjectParams).FullName,
                 panel,
                 "copyProjectParams.png",
-                "https://clck.ru/32JbTX"
+                "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90%22-,%D0%9F%D0%A3%D0%A2%D0%AC,-%D0%9F%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C%20%E2%80%9C%D0%9F%D0%B0%D1%80%D0%B0%D0%BC%D0%B5%D1%82%D1%80%D1%8B%E2%80%9D"
             );
 
             //Добавляю выпадающий список в панель
@@ -79,7 +79,7 @@ namespace KPLN_Parameters_Ribbon
             typeof(ExternalCommands.CommandGripParam).FullName,
             pullDown,
             "gripParams.png",
-            "https://clck.ru/32JbSK"
+            "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90"
         );
             
 

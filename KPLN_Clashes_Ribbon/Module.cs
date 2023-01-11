@@ -35,7 +35,7 @@ namespace KPLN_Clashes_Ribbon
                 typeof(Commands.CommandShowManager).FullName,
                 panel,
                 "icon_default.png",
-                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=672",
+                "http://moodle/mod/book/view.php?id=502&chapterid=672",
                 true
             );
 

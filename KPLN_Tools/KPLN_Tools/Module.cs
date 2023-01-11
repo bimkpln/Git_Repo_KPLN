@@ -41,7 +41,7 @@ namespace KPLN_Tools
                 typeof(ExternalCommands.CommandAutonumber).FullName,
                 pullDown,
                 "autonumber.png",
-                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=687"
+                "http://moodle/mod/book/view.php?id=502&chapterid=687"
             );
 
             AddPushButtonDataInPullDown(
@@ -61,7 +61,7 @@ namespace KPLN_Tools
                 typeof(ExternalCommands.CommandTagWiper).FullName,
                 pullDown,
                 "wipe.png",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
 
             return Result.Succeeded;

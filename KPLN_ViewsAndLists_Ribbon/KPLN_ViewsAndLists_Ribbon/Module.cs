@@ -46,7 +46,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandCreate).FullName,
                 pullDown_Views,
                 "CommandCreate_small.png",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
 
             AddPushButtonDataInPullDown(
@@ -62,7 +62,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
                 pullDown_Views,
                 "CommandBatchDelete_small.png",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
 
             AddPushButtonDataInPullDown(
@@ -78,7 +78,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandViewColoring).FullName,
                 pullDown_Views,
                 "CommandViewColoring_small.png",
-                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=671l"
+                "http://moodle/mod/book/view.php?id=502&chapterid=671l"
             );
 
 
@@ -118,7 +118,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Lists.CommandListRename).FullName,
                 pullDown_Lists,
                 "CommandListRename.png",
-                "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=911"
+                "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
             #endregion
 

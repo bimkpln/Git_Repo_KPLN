@@ -67,7 +67,7 @@ namespace KPLN_Classificator
                 "Задание правил для параметризации элементов;\n" +
                 "Маппинг параметров (передача значений между параметрами элемента);\n" +
                 "Сохранение конфигурационного файла с возможностью повторного использования;\n";
-            btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=669"));
+            btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=669"));
             btnHostMark.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
             panel.AddItem(btnHostMark);

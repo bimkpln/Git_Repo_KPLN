@@ -30,7 +30,7 @@ namespace KPLN_Finishing
             button_A.ToolTip = "Определение помещений для каждого элемента отделки в проекте";
             button_A.LongDescription = "В элементах будут заполнены параметры : «О_Id помещения», «О_Номер помещений», «О_Имя помещения»";
             button_A.ItemText = "Рассчитать\nэлементы";
-            button_A.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"https://clck.ru/sct39"));
+            button_A.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=664#:~:text=%D0%B8%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D1%8B%20%D0%B0%D0%B2%D1%82%D0%BE%D0%BC%D0%B0%D1%82%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8%20R%D0%B5vit-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9E%D0%A2%D0%94%D0%95%D0%9B%D0%9A%D0%90%22,-%D0%A1%D0%BA%D1%80%D0%B8%D0%BF%D1%82%20%D0%BF%D0%BE%20%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82%D1%83"));
             SetIcon(button_A, "link_elements_large");
             BitmapImage toolTip0 = new BitmapImage(new Uri(string.Format(@"{0}\Source\{1}.png", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString(), "tool_tip_00")));
             button_A.ToolTipImage = toolTip0;
@@ -46,7 +46,7 @@ namespace KPLN_Finishing
             buttonData_B.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"https://www.youtube.com/watch?v=SR2YVR6bv8U&t=111s"));
 
             buttonData_C.ToolTip = "Подгрузка требуемых параметров в проект";
-            buttonData_C.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"https://clck.ru/sct8C"));
+            buttonData_C.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=664#:~:text=%D0%B8%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D1%8B%20%D0%B0%D0%B2%D1%82%D0%BE%D0%BC%D0%B0%D1%82%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D0%B8%20R%D0%B5vit-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9E%D0%A2%D0%94%D0%95%D0%9B%D0%9A%D0%90%22,-%D0%A1%D0%BA%D1%80%D0%B8%D0%BF%D1%82%20%D0%BF%D0%BE%20%D1%80%D0%B0%D1%81%D1%87%D0%B5%D1%82%D1%83"));
 
             buttonData_D.ToolTip = "Окрашивание элементов отделки по цветам согласно назначенному помещению";
             buttonData_D.LongDescription = "Необходимо пользоваться только на активном 3D виде";

@@ -20,7 +20,7 @@ namespace KPLN_ModelChecker_User
 {
     public class Module : IExternalModule
     {
-        private string _mainContextualHelp = "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=937";
+        private string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -62,7 +62,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckLevelOfInstances).FullName,
                 pullDown,
                 "checker_levels.png",
-                "https://clck.ru/32GG7V"
+                _mainContextualHelp
                 );
             AddPushButtonData(
                 "CheckMirrored", 
@@ -153,7 +153,7 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckListAnnotations).FullName,
                 pullDown,
                 "surch_list_annotation.png",
-                _mainContextualHelp
+                "http://moodle/mod/book/view.php?id=502&chapterid=991#:~:text=%D0%92%D0%AB%D0%9F%D0%90%D0%94%D0%90%D0%AE%D0%A9%D0%98%D0%99%20%D0%A1%D0%9F%D0%98%D0%A1%D0%9E%D0%9A%20%22%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%98%D0%A2%D0%AC%22-,%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%9A%D0%98%20%D0%9B%D0%98%D0%A1%D0%A2%D0%9E%D0%92%20%D0%9D%D0%90%20%D0%90%D0%9D%D0%9D%D0%9E%D0%A2%D0%90%D0%A6%D0%98%D0%98,-%D0%A2%D0%B5%D0%B3%D0%B8%3A"
                 );
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
             return Result.Succeeded;

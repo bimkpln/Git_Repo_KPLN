@@ -64,7 +64,7 @@ namespace KPLN_Publication
                 " - Печать листов из связанного файла;\n" +
                 " - Объединение листов в один PDF;\n" +
                 " - Авто именование PDF файлов по маске;\n\n";
-            btnCreate.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=667"));
+            btnCreate.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=667"));
             
             // Stacked items: Обновить спецификации, создание наборов публикаций и набор действий перед выдачей
             // Обновить спецификации
@@ -80,7 +80,7 @@ namespace KPLN_Publication
             btnPublSets.Image = PngImageSource("KPLN_Publication.Resources.SetsSmall.png");
             btnPublSets.LongDescription = "Пакетно создает наборы публикации по определенным условиям";
             btnPublSets.ToolTip = "Утилита для создания наборов видов и листов (для печати и экспорта DWG/BIM360)";
-            btnPublSets.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=666"));
+            btnPublSets.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=666"));
             
             // Набор действий перед выдачей
             PulldownButtonData pullDownData = new PulldownButtonData("Перед выдачей", "Перед выдачей");
@@ -99,7 +99,7 @@ namespace KPLN_Publication
                 "KPLN_Publication.Resources.DeleteLists.png", 
                 "Удаляет листы, которые не входят в параметры публикации",
                 "Выбираешь параметры публикации (можно несколько), которые будешь передавать Заказчику и все листы, которые в них не входят - удалятся",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
             AddPushButtonData(
                 pullDownPubl,
@@ -110,7 +110,7 @@ namespace KPLN_Publication
                 "KPLN_Publication.Resources.DeleteViews.png",
                 "Удаляет виды, которые НЕ расположены на листах",
                 "Скрипт выдаёт список НЕ размещенных на листы видов (план этажа/потолка, 3d-вид, чертежный вид, спецификации). Все позиции которые выберешь - удалятся",
-                "http://moodle.stinproject.local"
+                "http://moodle"
             );
 
             return Result.Succeeded;
