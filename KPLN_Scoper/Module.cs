@@ -227,7 +227,13 @@ namespace KPLN_Scoper
                     {
                         Family family = doc.OwnerFamily;
                         Category famCat = family.FamilyCategory;
-                        if (famCat.CategoryType.Equals(CategoryType.Annotation))
+                        BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
+                        if (famCat.CategoryType.Equals(CategoryType.Annotation) 
+                            || bic.Equals(BuiltInCategory.OST_ProfileFamilies)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponents)
+                            || bic.Equals(BuiltInCategory.OST_GenericAnnotation)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponentTags))
                             return;
                     }
                     else
