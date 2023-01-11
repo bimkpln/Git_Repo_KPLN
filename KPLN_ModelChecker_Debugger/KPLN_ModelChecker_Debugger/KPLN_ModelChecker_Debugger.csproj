@@ -61,9 +61,6 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_DataBase">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
-    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
@@ -71,9 +68,11 @@
     <Reference Include="PresentationCore" />
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
       <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

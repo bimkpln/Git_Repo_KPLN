@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_Debugger
         {
             //Добавляю кнопку в панель
             string currentPanelName = "Контроль качества";
-            RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().First();
+            RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
 
             //Добавляю выпадающий список pullDown
             PulldownButtonData pullDownData = new PulldownButtonData("Исправить", "Исправить");
