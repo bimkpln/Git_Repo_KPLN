@@ -21,33 +21,45 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
         public override bool Prepare()
         {
-            // Категория "Стены" над уровнем
+            // Категория "Стены" над уровнем (монолит)
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_") || x.Name.StartsWith("02_"))
+                .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => !x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк")));
 
-            // Категория "Стены" под уровнем
+            // Категория "Стены" под уровнем (монолит)
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_") || x.Name.StartsWith("02_"))
+                .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")));
 
-            // Категория "Перекрытия" над уровнем
+            // Категория "Стены" над уровнем (остальное)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>()
+                .Where(x => !x.Name.StartsWith("00_")));
+
+            // Категория "Перекрытия" над уровнем (монолит)
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => !x.Name.ToLower().Contains("площадка") && !x.Name.ToLower().Contains("фундамент") && !x.Name.ToLower().Contains("пандус")));
 
-            // Категория "Перекрытия" под уровнем
+            // Категория "Перекрытия" под уровнем (монолит)
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")));
+
+            // Категория "Перекрытия" над уровнем (остальное)
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Floor))
+                .Cast<Floor>()
+                .Where(x => x.Name.StartsWith("00_")));
 
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
