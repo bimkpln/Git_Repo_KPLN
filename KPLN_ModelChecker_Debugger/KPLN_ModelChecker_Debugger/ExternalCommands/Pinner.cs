@@ -8,7 +8,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Pinner : IExternalCommand
+    internal sealed class Pinner : IExternalCommand
     {
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -31,10 +31,9 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
             trans.Start("KPLN: Прикрепить элементы");
             foreach (BuiltInCategory curBuiltIn in builtInCatList)
             {
-                IList<Element> elemColl = new FilteredElementCollector(doc)
+                FilteredElementCollector elemColl = new FilteredElementCollector(doc)
                     .OfCategory(curBuiltIn)
-                    .WhereElementIsNotElementType()
-                    .ToElements();
+                    .WhereElementIsNotElementType();
 
                 foreach (Element curElem in elemColl)
                 {

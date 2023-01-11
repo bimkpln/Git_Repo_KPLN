@@ -108,10 +108,12 @@ namespace KPLN_ModelChecker_User
                 );
             AddPushButtonData(
                 "CheckNames", 
-                "Проверка\nимен", 
-                "Проверка семейств и типоразмеров на наличие дубликатов имен.",
+                "Проверка\nсемейств",
+                "Проверка семейств на:" +
+                    "\n1. Импорт семейств из разрешенных источников (диск Х);" +
+                    "\n2. На наличие дубликатов имен (проверяются и типоразмеры).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(ExternalCommands.CommandCheckNames).FullName,
+                typeof(ExternalCommands.CommandCheckFamilies).FullName,
                 pullDown,
                 "family_name.png",
                 _mainContextualHelp

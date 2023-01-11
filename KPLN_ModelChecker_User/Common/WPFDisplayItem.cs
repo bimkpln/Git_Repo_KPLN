@@ -24,7 +24,7 @@ namespace KPLN_ModelChecker_User.Common
         
         public string Icon { get; set; }
         
-        public Element Element { get; private set; }
+        public Element Element { get; set; }
 
         public string Name
         {

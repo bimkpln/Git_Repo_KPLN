@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Media.Imaging;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_ModelChecker_Debugger
 {
@@ -63,6 +61,25 @@ namespace KPLN_ModelChecker_Debugger
                 pullDown,
                 "worksetLarge.png",
                 "http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=668"
+            );
+
+            //Добавляю LevelAndGridsParamCopier в выпадающий список pullDown
+            AddPushButtonDataInPullDown(
+                "Копировать параметры сеток",
+                "Копировать параметры сеток",
+                "Копирует параметры и их значения для уровней и осей из разбивочного файла. ",
+                string.Format(
+                    "1. Возможности:\nКопирование занчения параметров 'На уровень выше';" +
+                    "\n2. Копирование параметров и их значений для заполнения захваток." +
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.LevelAndGridsParamCopier).FullName,
+                pullDown,
+                "copyProjectParams.png",
+                "http://moodle.stinproject.local/"
             );
 
             return Result.Succeeded;
