@@ -1,0 +1,140 @@
+﻿<Window x:Class="KPLN_Quantificator.Forms.ClashGroupsForm"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_Quantificator.Forms"
+             mc:Ignorable="d" 
+             MinHeight="380" Width="400" Title="Группировать коллизии" WindowStartupLocation="CenterScreen" Loaded="OnLoaded">
+    <Window.Resources>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="Button" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Width" Value="75"/>
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="ComboBox" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="23"/>
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="ProgressBar" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="GroupBox" />
+            </Style.TargetType>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="2.5" />
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="TextBox" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="23"/>
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="CheckBox" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="18"/>
+        </Style>
+        <Style>
+            <Style.TargetType>
+                <x:Type TypeName="RadioButton" />
+            </Style.TargetType>
+            <Setter Property="Height" Value="18"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel LastChildFill="True">
+            <TextBlock Text="Поиск:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
+            <TextBox x:Name="SearchText" Grid.Row="0" VerticalAlignment="Center" DockPanel.Dock="Right" 
+                         FontStretch="ExtraExpanded" TextChanged="SearchText_Changed" Margin="0, 0, 15, 0"/>
+        </DockPanel>
+
+        <GroupBox Grid.Row="1" x:Name="clashTestGroupBox" Header="Проверки">
+            <Grid Margin="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="70" />
+                </Grid.RowDefinitions>
+                <ListBox Grid.Row="0" x:Name="ClashTestListBox" 
+                         ItemsSource="{Binding Path=ClashTests}" SelectionMode="Extended">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="groupClashes:CustomClashTest">
+                            <Label Content="{Binding DisplayName}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Orientation="Vertical" Grid.Row="1" >
+                    <Label Grid.Column="0" Grid.Row="1" Name="TestName"  
+                       Content="{Binding ElementName=ClashTestListBox, Path=SelectedItem.DisplayName}" 
+                       ContentStringFormat="Проверка : {0}"/>
+                    <Label Grid.Column="0" Grid.Row="1" Name="selectionALabel"  
+                       Content="{Binding ElementName=ClashTestListBox, Path=SelectedItem.SelectionAName}"
+                       ContentStringFormat="Выбранные A : {0}"/>
+                    <Label Grid.Column="0" Grid.Row="1" Name="selectionBLabel"  
+                       Content="{Binding ElementName=ClashTestListBox, Path=SelectedItem.SelectionBName}"
+                       ContentStringFormat="Выбранные B : {0}"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        <GroupBox Grid.Row="2" x:Name="methodGroupBox" Header="Режим группировки">
+            <Grid Margin="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+                <Label Grid.Column="0" Grid.Row="0" Content="Группировать по: "/>
+                <ComboBox Grid.Column="1" Grid.Row="0" Name="comboBoxGroupBy"
+                          IsEnabled="False"
+                          ItemsSource="{Binding Path=GroupByList}"/>
+                <Label Grid.Column="0" Grid.Row="1" Content="Затем по: "/>
+                <ComboBox Grid.Column="1" Grid.Row="1" Name="comboBoxThenBy"
+                          IsEnabled="False"
+                          ItemsSource="{Binding Path=GroupThenList}"/>
+            </Grid>
+        </GroupBox>
+        <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="5,0,0,0">
+            <CheckBox Name="keepExistingGroupsCheckBox" IsChecked="True" VerticalAlignment="Center"/>
+            <Label Content="Сохранить существующие группы"/>
+        </StackPanel>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,5,-2,0">
+            <!--<ProgressBar></ProgressBar>-->
+            <Button Width="Auto" Content="Группировать" IsDefault="True" Name="Group_Button" Click="Group_Button_Click" IsEnabled="False"/>
+            <Button Width="Auto" Content="Разгруппировать" Name="Ungroup_Button" IsEnabled="False" Click="Ungroup_Button_Click"/>
+        </StackPanel>
+    </Grid>
+
+</Window>

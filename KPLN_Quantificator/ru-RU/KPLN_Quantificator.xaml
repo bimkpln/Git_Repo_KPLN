@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!-- BEGIN STANDARD SECTION DO NOT EDIT 
+    except for ensuring x:Uid="CustomRibbonTab" has a unique ID
+    -->
+<RibbonControl
+    x:Uid="Volumes" xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows"
+    xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:adwi="clr-namespace:Autodesk.Internal.Windows;assembly=AdWindows"
+    xmlns:system="clr-namespace:System;assembly=mscorlib"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Autodesk.Navisworks.Gui.Roamer.AIRLook;assembly=navisworks.gui.roamer"
+    Margin="0,0,0,0">
+    <!-- END STANDARD SECTION DO NOT EDIT -->
+    <RibbonTab Id="KPLN_Tab" KeyTip="K1">
+        <RibbonPanel x:Uid="KPLN_Tab">
+            <RibbonPanelSource x:Uid="KPLN_Tab" KeyTip="U1" Title="Рабочая книга Quantification">
+                <local:NWRibbonButton x:Uid="Button_A" Id="ID_Button_A"
+                            Size="Large"
+                            KeyTip="B1"
+                            ShowText="True"
+                            Text="Поисковые&#x0a;наборы"
+                            Orientation="Vertical"/>
+                <local:NWRibbonButton x:Uid="Button_B" Id="ID_Button_B"
+                            Size="Large"
+                            KeyTip="N1"
+                            ShowText="True"
+                            Text="Добавить&#x0a;элементы"
+                            Orientation="Vertical"/>
+                <local:NWRibbonButton x:Uid="Button_C" Id="ID_Button_C"
+                            Size="Large"
+                            KeyTip="C1"
+                            ShowText="True"
+                            Text="Добавить&#x0a;объекты"
+                            Orientation="Vertical"/>
+                <local:NWRibbonButton x:Uid="Button_D" Id="ID_Button_D"
+                            Size="Large"
+                            KeyTip="R1"
+                            ShowText="True"
+                            Text="Добавить&#x0a;ресурсы"
+                            Orientation="Vertical"/>
+            </RibbonPanelSource>
+        </RibbonPanel>
+        <RibbonPanel x:Uid="KPLN_Tab_Add">
+            <RibbonPanelSource x:Uid="KPLN_Tab_Add" KeyTip="U2" Title="Отчеты пересечений">
+                <local:NWRibbonButton x:Uid="Button_E" Id="ID_Button_E"
+                            Size="Large"
+                            KeyTip="T1"
+                            ShowText="True"
+                            Text="Сгруппировать&#x0a;коллизии"
+                            Orientation="Vertical"/>
+            </RibbonPanelSource>
+        </RibbonPanel>
+    </RibbonTab>
+</RibbonControl>

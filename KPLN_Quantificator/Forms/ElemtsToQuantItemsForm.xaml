@@ -1,0 +1,21 @@
+﻿<Window x:Class="KPLN_Quantificator.Forms.ElemtsToQuantItemsForm"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_Quantificator.Forms"
+             mc:Ignorable="d" 
+             d:DesignHeight="250" d:DesignWidth="400"
+             Title="Обновление Quantification"
+             Height="250"
+             Width="400" WindowStartupLocation="CenterScreen" IsManipulationEnabled="True" Topmost="True">
+    <Grid>
+        <StackPanel Orientation="Vertical" Margin="15">
+            <Label Content="Наименование исходного каталога:"/>
+            <ComboBox x:Name="cbx_folders" Margin="5" SelectionChanged="Selected_Index_Changed"/>
+            <Button x:Name="btn_ok" Content="Применить" Width="80" HorizontalAlignment="Left" Margin="5" Click="btn_ok_Click"/>
+            <CheckBox x:Name="remove_previous" Content="Предварительная очистка элементов" Margin="5, 15, 5, 5" IsChecked="True"/>
+            
+        </StackPanel>
+    </Grid>
+</Window>
