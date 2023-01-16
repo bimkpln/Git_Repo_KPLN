@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.checkBoxExcludeBorders = new System.Windows.Forms.CheckBox();
             this.checkBoxRefresh = new System.Windows.Forms.CheckBox();
             this.checkBoxOrientation = new System.Windows.Forms.CheckBox();
             this.checkBoxMergePdfs = new System.Windows.Forms.CheckBox();
@@ -64,6 +65,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.checkBoxExcludeBorders);
             this.groupBox1.Controls.Add(this.checkBoxRefresh);
             this.groupBox1.Controls.Add(this.checkBoxOrientation);
             this.groupBox1.Controls.Add(this.checkBoxMergePdfs);
@@ -80,41 +82,57 @@
             this.groupBox1.Controls.Add(this.comboBoxPrinters);
             this.groupBox1.Location = new System.Drawing.Point(250, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(277, 257);
+            this.groupBox1.Size = new System.Drawing.Size(277, 272);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Принтер";
+            // 
+            // checkBoxExcludeBorders
+            // 
+            this.checkBoxExcludeBorders.AutoSize = true;
+            this.checkBoxExcludeBorders.Location = new System.Drawing.Point(9, 251);
+            this.checkBoxExcludeBorders.Margin = new System.Windows.Forms.Padding(2);
+            this.checkBoxExcludeBorders.Name = "checkBoxExcludeBorders";
+            this.checkBoxExcludeBorders.Size = new System.Drawing.Size(271, 17);
+            this.checkBoxExcludeBorders.TabIndex = 14;
+            this.checkBoxExcludeBorders.Text = "Исключить границы листа (только для АР_КОН)";
+            this.checkBoxExcludeBorders.Checked = false;
+            this.checkBoxExcludeBorders.UseVisualStyleBackColor = true;
+            this.checkBoxExcludeBorders.MouseEnter += new System.EventHandler(this.cbx_Enter);
+            
+            this.checkBoxExcludeBorders.Enabled = false;
+            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+            if(userDepartment == 1 || userDepartment == 4 || userDepartment == 6)
+                this.checkBoxExcludeBorders.Enabled = true;
             // 
             // checkBoxRefresh
             // 
             this.checkBoxRefresh.AutoSize = true;
             this.checkBoxRefresh.Checked = true;
             this.checkBoxRefresh.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBoxRefresh.Location = new System.Drawing.Point(9, 232);
+            this.checkBoxRefresh.Location = new System.Drawing.Point(9, 230);
             this.checkBoxRefresh.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxRefresh.Name = "checkBoxRefresh";
             this.checkBoxRefresh.Size = new System.Drawing.Size(152, 17);
             this.checkBoxRefresh.TabIndex = 13;
             this.checkBoxRefresh.Text = "Обновить спецификации";
             this.checkBoxRefresh.UseVisualStyleBackColor = true;
-            this.checkBoxRefresh.CheckedChanged += new System.EventHandler(this.checkBoxMergePdfs_CheckedChanged);
             // 
             // checkBoxOrientation
             // 
             this.checkBoxOrientation.AutoSize = true;
-            this.checkBoxOrientation.Location = new System.Drawing.Point(9, 211);
+            this.checkBoxOrientation.Location = new System.Drawing.Point(9, 209);
             this.checkBoxOrientation.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxOrientation.Name = "checkBoxOrientation";
             this.checkBoxOrientation.Size = new System.Drawing.Size(219, 17);
             this.checkBoxOrientation.TabIndex = 13;
             this.checkBoxOrientation.Text = "Улучшенное определение ориентации";
             this.checkBoxOrientation.UseVisualStyleBackColor = true;
-            this.checkBoxOrientation.CheckedChanged += new System.EventHandler(this.checkBoxMergePdfs_CheckedChanged);
             // 
             // checkBoxMergePdfs
             // 
             this.checkBoxMergePdfs.AutoSize = true;
-            this.checkBoxMergePdfs.Location = new System.Drawing.Point(9, 190);
+            this.checkBoxMergePdfs.Location = new System.Drawing.Point(9, 188);
             this.checkBoxMergePdfs.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxMergePdfs.Name = "checkBoxMergePdfs";
             this.checkBoxMergePdfs.Size = new System.Drawing.Size(153, 17);
@@ -243,7 +261,7 @@
             this.groupBox2.Controls.Add(this.radioButtonRastr);
             this.groupBox2.Controls.Add(this.radioButtonVector);
             this.groupBox2.Controls.Add(this.comboBoxRasterQuality);
-            this.groupBox2.Location = new System.Drawing.Point(250, 275);
+            this.groupBox2.Location = new System.Drawing.Point(250, 285);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(278, 50);
             this.groupBox2.TabIndex = 0;
@@ -296,7 +314,7 @@
             this.groupBox3.Controls.Add(this.buttonExcludesColor);
             this.groupBox3.Controls.Add(this.comboBoxColors);
             this.groupBox3.Controls.Add(this.label2);
-            this.groupBox3.Location = new System.Drawing.Point(250, 331);
+            this.groupBox3.Location = new System.Drawing.Point(250, 340);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(278, 72);
             this.groupBox3.TabIndex = 1;
@@ -383,7 +401,7 @@
             this.treeView1.FullRowSelect = true;
             this.treeView1.Location = new System.Drawing.Point(12, 28);
             this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(232, 375);
+            this.treeView1.Size = new System.Drawing.Size(232, 382);
             this.treeView1.TabIndex = 9;
             // 
             // buttonHelp
@@ -456,6 +474,7 @@
         private System.Windows.Forms.CheckBox checkBoxOrientation;
         private System.Windows.Forms.Button buttonHelp;
         private System.Windows.Forms.CheckBox checkBoxRefresh;
+        private System.Windows.Forms.CheckBox checkBoxExcludeBorders;
         private System.Windows.Forms.Button buttonExcludesColor;
     }
 }

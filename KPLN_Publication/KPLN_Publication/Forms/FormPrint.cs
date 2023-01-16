@@ -27,6 +27,9 @@ namespace KPLN_Publication
     public partial class FormPrint : Form
     {
         private YayPrintSettings _printSettings;
+
+        private ToolTip _toolTip = new ToolTip();
+
         public YayPrintSettings printSettings
         {
             get { return _printSettings; }
@@ -72,7 +75,7 @@ namespace KPLN_Publication
             _printSettings = printSettings;
             textBoxNameConstructor.Text = printSettings.nameConstructor;
             txtBoxOutputFolder.Text = printSettings.outputFolder;
-            checkBoxMergePdfs.Checked = printSettings.mergePdfs;
+            checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
 
 
             List<string> printers = new List<string>();
@@ -130,6 +133,17 @@ namespace KPLN_Publication
             comboBoxColors.SelectedItem = _printSettings.colorsType;
         }
 
+        private void cbx_Enter(object sender, EventArgs e)
+        {
+            string tt_text = "Выбери галку, чтобы скрыть рамки листа." +
+                "\nВАЖНО:" +
+                "\n1. Скрывается цвет RGD '003,002,051', если он используется " +
+                "в проекте для документации - он тоже скроектся!" +
+                "\n2. Работает ТОЛЬКО с принтером PDFCreator.";
+            CheckBox cbx = sender as CheckBox;
+            _toolTip.Show(tt_text, cbx);
+        }
+
         private void btnOk_Click(object sender, EventArgs e)
         {
             this.DialogResult = DialogResult.OK;
@@ -183,18 +197,17 @@ namespace KPLN_Publication
             {
                 _printSettings.nameConstructor = "<Номер листа>_<Имя листа>.pdf";
             }
-            _printSettings.mergePdfs = checkBoxMergePdfs.Checked;
-            _printSettings.printToPaper = radioButtonPaper.Checked;
+            _printSettings.isMergePdfs = checkBoxMergePdfs.Checked;
+            _printSettings.isPrintToPaper = radioButtonPaper.Checked;
             this.printToFile = radioButtonPDF.Checked;
 
             //_printSettings.colorStamp = checkBoxColorStamp.Checked;
             //_printSettings.excludeColors = textBoxExcludeColors.Text;
 
             _printSettings.colorsType = (ColorType)comboBoxColors.SelectedItem;
-
-            _printSettings.useOrientation = checkBoxOrientation.Checked;
-
-            _printSettings.refreshSchedules = checkBoxRefresh.Checked;
+            _printSettings.isUseOrientation = checkBoxOrientation.Checked;
+            _printSettings.isRefreshSchedules = checkBoxRefresh.Checked;
+            _printSettings.isExcludeBorders = checkBoxExcludeBorders.Checked;
 
             this.Close();
         }
@@ -303,7 +316,7 @@ namespace KPLN_Publication
 
         private void buttonHelp_Click(object sender, EventArgs e)
         {
-            System.Diagnostics.Process.Start("http://bim-starter.com/plugins/batchprint");
+            System.Diagnostics.Process.Start("http://moodle/mod/book/view.php?id=502&chapterid=667");
         }
 
         private void radioButtonRastr_CheckedChanged(object sender, EventArgs e)

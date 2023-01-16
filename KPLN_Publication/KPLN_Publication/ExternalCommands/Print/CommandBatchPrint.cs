@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -149,20 +150,20 @@ namespace KPLN_Publication.ExternalCommands.Print
                 //Дополнительные возможности работают только с PDFCreator
                 if (printerName != "PDFCreator")
                 {
-                    if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.mergePdfs || printSettings.useOrientation)
+                    if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.isMergePdfs || printSettings.isUseOrientation)
                     {
                         string errmsg = "Объединение PDF и печать \"Штампа\" в цвете поддерживаются только  для PDFCreator.";
                         errmsg += "\nВо избежание ошибок эти настройки будут отключены.";
                         TaskDialog.Show("Предупреждение", errmsg);
-                        printSettings.mergePdfs = false;
+                        printSettings.isMergePdfs = false;
                         printSettings.excludeColors = new List<PdfColor>();
-                        printSettings.useOrientation = false;
+                        printSettings.isUseOrientation = false;
                         logger.Write("Выбранные настройки несовместимы с принтером " + printerName);
                     }
                 }
                 else
                 {
-                    if (!printSettings.useOrientation)
+                    if (!printSettings.isUseOrientation)
                     {
                         SupportRegistry.SetOrientationForPdfCreator(OrientationType.Automatic);
                         logger.Write("Установлена ориентация листа Automatic");
@@ -307,7 +308,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     {
                         logger.Write(" ");
                         logger.Write("Печатается лист: " + msheet.sheet.Name);
-                        if (printSettings.refreshSchedules)
+                        if (printSettings.isRefreshSchedules)
                         {
                             SchedulesRefresh.Start(openedDoc, msheet.sheet);
                             logger.Write("Спецификации обновлены успешно");
@@ -320,7 +321,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                             string fileName = msheet.NameByConstructor(printSettings.nameConstructor);
 
-                            if (printerName == "PDFCreator" && printSettings.useOrientation)
+                            if (printerName == "PDFCreator" && printSettings.isUseOrientation)
                             {
                                 if (msheet.IsVertical)
                                 {
@@ -369,7 +370,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                                 printedSheetCount++;
                             }
 
-                            if (printerName == "PDFCreator" && printSettings.useOrientation)
+                            if (printerName == "PDFCreator" && printSettings.isUseOrientation)
                             {
                                 System.Threading.Thread.Sleep(5000);
                             }
@@ -393,7 +394,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     }
                 }
                 //если требуется постобработка файлов - ждем, пока они напечатаются
-                if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.mergePdfs)
+                if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.isMergePdfs  || printSettings.isExcludeBorders)
                 {
                     logger.Write(" ");
                     logger.Write("Включена постобработка файлов; ожидание окончания печати. Требуемое число файлов " + printedSheetCount);
@@ -436,6 +437,25 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write("  " + pdfnameOut);
                 }
 
+                //преобразую файл с исключением границ при необходимости
+                if (printSettings.isExcludeBorders)
+                {
+                    logger.Write("Преобразование PDF файла со скрытием границ");
+                    foreach (MySheet msheet in printedSheets)
+                    {
+                        string file = msheet.PdfFileName;
+                        string outFile = file.Replace(".pdf", "_OUT_Border.pdf");
+                        logger.Write("Файл будет преобразован из " + file + " в " + outFile);
+
+                        PdfWorker.PdfWorker.SetHideColors(printSettings.excludeBorderColors);
+                        PdfWorker.PdfWorker.ConvertToBorderHide(file, outFile);
+
+                        System.IO.File.Delete(file);
+                        System.IO.File.Move(outFile, file);
+                        logger.Write("Лист успешно преобразован со скрытой рамкой цвета '3,2,51'");
+                    }
+                }
+
                 //преобразую файл в черно-белый при необходимости
                 if (printSettings.colorsType == ColorType.MonochromeWithExcludes)
                 {
@@ -449,7 +469,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                         }
 
                         string file = msheet.PdfFileName;
-                        string outFile = file.Replace(".pdf", "_OUT.pdf");
+                        string outFile = file.Replace(".pdf", "_OUT_Color.pdf");
                         logger.Write("Файл будет преобразован из " + file + " в " + outFile);
 
                         PdfWorker.PdfWorker.SetExcludeColors(printSettings.excludeColors);
@@ -459,14 +479,12 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                         System.IO.File.Delete(file);
                         System.IO.File.Move(outFile, file);
-                        logger.Write("Лист успешно преобразован");
+                        logger.Write("Лист успешно преобразован в ч/б");
                     }
                 }
 
-
-
                 //объединяю файлы при необходимости
-                if (printSettings.mergePdfs)
+                if (printSettings.isMergePdfs)
                 {
                     logger.Write(" ");
                     logger.Write("\nОбъединение PDF файлов");

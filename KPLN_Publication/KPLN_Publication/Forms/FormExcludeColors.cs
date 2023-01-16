@@ -25,12 +25,20 @@ namespace KPLN_Publication
 {
     public partial class FormExcludeColors : Form
     {
+        private Button _selectedBtn;
+
+        private Random rnd = new Random();
+
+        private ToolTip _toolTip = new ToolTip();
+
         public List<PdfColor> Colors;
+        
         public FormExcludeColors(List<PdfColor> colors)
         {
             InitializeComponent();
 
             Colors = colors;
+            this.label1.Text = $"Цвета ({Colors.Count} шт.), которые не будут преобразованы в черный:";
             foreach (PdfColor pdfc in colors)
             {
                 Button btn = new Button();
@@ -38,7 +46,8 @@ namespace KPLN_Publication
                 btn.Size = new Size(80, 25);
                 btn.Text = c.R.ToString() + " " + c.G.ToString() + " " + c.B.ToString();
                 btn.BackColor = c;
-                btn.Click += buttonColor_Click;
+                btn.MouseEnter += buttonColor_Enter;
+                btn.MouseDown += buttonColor_Down;
                 flowLayoutPanel1.Controls.Add(btn);
             }
         }
@@ -63,7 +72,6 @@ namespace KPLN_Publication
             this.Close();
         }
 
-        private Random rnd = new Random();
         private void buttonAdd_Click(object sender, EventArgs e)
         {
             Button btn = new Button();
@@ -71,24 +79,44 @@ namespace KPLN_Publication
             Color randomColor = Color.FromArgb(rnd.Next(256), rnd.Next(256), rnd.Next(256));
             btn.Text = randomColor.R.ToString() + " " + randomColor.G.ToString() + " " + randomColor.B.ToString();
             btn.BackColor = randomColor;
-            btn.Click += buttonColor_Click;
             flowLayoutPanel1.Controls.Add(btn);
         }
 
-        private void buttonColor_Click(object sender, EventArgs e)
+        private void buttonColor_Enter(object sender, EventArgs e)
+        {
+            string tt_text = "ЛМК - выделить для удаления, ПМК - изменить цвет";
+            Button btn = sender as Button;
+            _toolTip.Show(tt_text, btn);
+        }
+
+        private void buttonColor_Down(object sender, MouseEventArgs e)
         {
             Button btn = sender as Button;
-            ColorDialog dialog = new ColorDialog();
-            dialog.Color = btn.BackColor;
-            if (dialog.ShowDialog() != DialogResult.OK)
-                return;
-            btn.BackColor = dialog.Color;
-            btn.Text = dialog.Color.R.ToString() + " " + dialog.Color.G.ToString() + " " + dialog.Color.B.ToString();
+            switch (e.Button)
+            {
+                case MouseButtons.Left:
+                    _selectedBtn = btn;
+                    break;
+                case MouseButtons.Right:
+                    ColorDialog dialog = new ColorDialog();
+                    dialog.Color = btn.BackColor;
+                    if (dialog.ShowDialog() != DialogResult.OK)
+                        return;
+                    btn.BackColor = dialog.Color;
+                    btn.Text = dialog.Color.R.ToString() + " " + dialog.Color.G.ToString() + " " + dialog.Color.B.ToString();
+                    break;
+            }
         }
 
         private void buttonDelete_Click(object sender, EventArgs e)
         {
-            flowLayoutPanel1.Controls.RemoveAt(flowLayoutPanel1.Controls.Count - 1);
+            flowLayoutPanel1.Controls.Remove(_selectedBtn);
+        }
+
+        private void Window_Resize(object sender, EventArgs e)
+        {
+            Size currentSize = this.Size;
+            this.flowLayoutPanel1.Size = new Size(currentSize.Width - 150, currentSize.Height - 165);
         }
     }
 }

@@ -36,19 +36,15 @@ namespace KPLN_Publication
         public ColorType colorsType = ColorType.Monochrome;
         public RasterQualityType rasterQuality = RasterQualityType.High;
 
-        public bool mergePdfs = false;
-        public bool printToPaper = false;
+        public bool isMergePdfs = false;
+        public bool isPrintToPaper = false;
         //public bool colorStamp;
-        public bool useOrientation = false;
-        public bool refreshSchedules = true;
+        public bool isUseOrientation = false;
+        public bool isRefreshSchedules = true;
+        public bool isExcludeBorders = true;
 
-        public List<PdfColor> excludeColors = new List<PdfColor>
-                {
-                    new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
-                    new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
-                    new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
-                };
-
+        public List<PdfColor> excludeColors = new List<PdfColor>();
+        public List<PdfColor> excludeBorderColors = new List<PdfColor>();
 
         /// <summary>
         /// Получение параметров печати
@@ -75,7 +71,19 @@ namespace KPLN_Publication
             else
             {
                 ps = new YayPrintSettings();
+                ps.excludeColors = new List<PdfColor>
+                {
+                    new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
+                    new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
+                    new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
+                };
             }
+
+            ps.excludeBorderColors = new List<PdfColor>
+            {
+                // Цвет для исключения печати рамки штампа
+                new PdfColor(System.Drawing.Color.FromArgb(3,2,51))
+            };
 
             //PrintManager pManager = doc.PrintManager;
             //ps.printerName = pManager.PrinterName;
@@ -131,14 +139,14 @@ namespace KPLN_Publication
         //            new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
         //        },
         //        hiddenLineProcessing = HiddenLineViewsType.RasterProcessing,
-        //        mergePdfs = false,
+        //        isMergePdfs = false,
         //        nameConstructor = "<Номер листа>_<Имя листа>.pdf",
         //        outputFolder = @"C:\PDF_Print",
         //        printerName = winPrinterName, //doc.PrintManager.PrinterName,
-        //        printToPaper = false,
+        //        isPrintToPaper = false,
         //        rasterQuality = RasterQualityType.High,
-        //        refreshSchedules = true,
-        //        useOrientation = false
+        //        isRefreshSchedules = true,
+        //        isUseOrientation = false
         //    };
 
         //    return ps;

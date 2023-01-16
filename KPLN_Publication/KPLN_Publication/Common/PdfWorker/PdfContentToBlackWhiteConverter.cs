@@ -49,6 +49,7 @@ namespace KPLN_Publication.PdfWorker
         private PdfContentModifier _modifier = new PdfContentModifier();
         private List<int> _convertedIndirectList = new List<int>();
         public List<Color> _excludeColors = new List<Color>();
+        public List<Color> _hideColors = new List<Color>();
 
         #endregion
 
@@ -86,6 +87,15 @@ namespace KPLN_Publication.PdfWorker
             _modifier.Modify(reader, pageNumber);
         }
 
+        public void ConvertWithHide(PdfReader reader, int pageNumber, List<Color> hideColors)
+        {
+            _hideColors.Clear();
+            foreach (Color c in hideColors)
+                _hideColors.Add(c);
+
+            _modifier.Modify(reader, pageNumber);
+        }
+
         private bool IsKeepColor(BaseColor cr)
         {
             bool bKeep = false;
@@ -101,6 +111,20 @@ namespace KPLN_Publication.PdfWorker
 
             return bKeep;
         }
+
+        private bool IsHideColor(BaseColor cr)
+        {
+            foreach (Color c in _hideColors)
+            {
+                if (c.ToArgb() == cr.RGB)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private bool IsKeepColor(Color cr)
         {
             int nColor = cr.ToArgb();
@@ -171,7 +195,17 @@ namespace KPLN_Publication.PdfWorker
             {
                 return operands;
             }
-            else
+            else if (IsHideColor(color))
+            {
+                return new List<PdfObject>()
+                {
+                     new PdfNumber(255),
+                     new PdfNumber(255),
+                     new PdfNumber(255),
+                     new PdfLiteral("RG")
+                };
+            }
+            else if (_excludeColors.Count > 0)
             {
                 return new List<PdfObject>()
                 {
@@ -181,6 +215,8 @@ namespace KPLN_Publication.PdfWorker
                      new PdfLiteral("RG")
                 };
             }
+
+            return operands;
         }
 
         #endregion
