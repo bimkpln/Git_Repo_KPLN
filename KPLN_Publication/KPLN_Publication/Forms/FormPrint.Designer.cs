@@ -99,11 +99,7 @@
             this.checkBoxExcludeBorders.Checked = false;
             this.checkBoxExcludeBorders.UseVisualStyleBackColor = true;
             this.checkBoxExcludeBorders.MouseEnter += new System.EventHandler(this.cbx_Enter);
-            
             this.checkBoxExcludeBorders.Enabled = false;
-            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-            if(userDepartment == 1 || userDepartment == 4 || userDepartment == 6)
-                this.checkBoxExcludeBorders.Enabled = true;
             // 
             // checkBoxRefresh
             // 

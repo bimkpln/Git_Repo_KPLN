@@ -51,6 +51,10 @@ namespace KPLN_Publication
             InitializeComponent();
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
+            
+            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+            if (userDepartment == 1 || userDepartment == 4 || userDepartment == 6)
+                this.checkBoxExcludeBorders.Enabled = true;
 
             sheetsBaseToPrint = SheetsBase;
 
