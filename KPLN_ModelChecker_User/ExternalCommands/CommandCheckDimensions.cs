@@ -126,11 +126,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (Dimension dim in docDimensions)
             {
                 // Игнорирую чертежные виды
-                try
-                {
-                    if (dim.View.GetType().Equals(typeof(ViewDrafting))) { continue; }
-                }
-                catch (NullReferenceException) { continue; }
+                if (dim.View == null)
+                    continue;
+
+                if (dim.View.GetType().Equals(typeof(ViewDrafting)))
+                    continue;
 
                 double? currentValue = dim.Value;
                 
