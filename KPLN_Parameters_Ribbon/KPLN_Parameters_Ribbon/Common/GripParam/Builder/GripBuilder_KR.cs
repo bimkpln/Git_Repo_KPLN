@@ -28,38 +28,55 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => !x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк")));
 
-            // Категория "Стены" под уровнем (монолит)
+            // Категория "Стены" монолит под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")));
 
-            // Категория "Стены" над уровнем (остальное)
+            // Категория "Стены" монолит над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x => !x.Name.StartsWith("00_")));
 
-            // Категория "Перекрытия" над уровнем (монолит)
+            // Категория "Стены" утеплитель над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>()
+                .Where(x => !x.Name.StartsWith("01_")));
+
+            // Категория "Стены" гидроизоляция над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>()
+                .Where(x => !x.Name.StartsWith("02_")));
+
+            // Категория "Перекрытия" монолит над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("00_"))
-                .Where(x => !x.Name.ToLower().Contains("площадка") && !x.Name.ToLower().Contains("фундамент") && !x.Name.ToLower().Contains("пандус")));
+                .Where(x => x.Name.StartsWith("00_")));
 
-            // Категория "Перекрытия" под уровнем (монолит)
+            // Категория "Перекрытия" монолит под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x => x.Name.StartsWith("00_"))
                 .Where(x => x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")));
 
-            // Категория "Перекрытия" над уровнем (остальное)
+            // Категория "Перекрытия" утеплитель над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("00_")));
+                .Where(x => x.Name.StartsWith("01_")));
+
+            // Категория "Перекрытия" гидроизоляция над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Floor))
+                .Cast<Floor>()
+                .Where(x => x.Name.StartsWith("02_")));
 
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
