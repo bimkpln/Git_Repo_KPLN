@@ -8,6 +8,8 @@ using Autodesk.Navisworks.Api.Plugins;
 using Autodesk.Navisworks.Api.Data;
 using Autodesk.Navisworks.Api.Takeoff;
 using KPLN_Quantificator.Forms;
+using Autodesk.Navisworks.Api.DocumentParts;
+using KPLN_Quantificator.Services;
 
 namespace KPLN_Quantificator
 {
@@ -19,6 +21,7 @@ namespace KPLN_Quantificator
     [Command("ID_Button_C", DisplayName = "Добавить объекты", Icon = "Source\\create_items_small.png", LargeIcon = "Source\\create_items_big.png", ToolTip = "Наполнение каталогов Quantification объектами модели из выбранных поисковых наборов", CanToggle = true)]
     [Command("ID_Button_D", DisplayName = "Добавить ресурсы", Icon = "Source\\match_resources_small.png", LargeIcon = "Source\\match_resources_big.png", ToolTip = "Сопоставление ресурсов с элементами по выбранному параметру RBS", CanToggle = true)]
     [Command("ID_Button_E", DisplayName = "Сгруппировать коллизии", Icon = "Source\\group_c_small.png", LargeIcon = "Source\\group_c_big.png", ToolTip = "Группировка коллизий по выбранным параметрам. Сделано на основе «Group Clashes»", CanToggle = true)]
+    [Command("ID_Button_F", DisplayName = "Подсчет коллизий", Icon = "Source\\counter_small.png", LargeIcon = "Source\\counter_big.png", ToolTip = "Подсчет количества коллизий по разделам (раздел выделяется из имени)", CanToggle = true)]
     public class Main : CommandHandlerPlugin
     {
         public override int ExecuteCommand(string name, params string[] parameters)
@@ -26,11 +29,12 @@ namespace KPLN_Quantificator
             if (GlobalPreferences.state == 0)
             {
                 GlobalPreferences.state = 1;
-                switch (name)
+
+                try
                 {
-                    case "ID_Button_A":
-                        {
-                            try
+                    switch (name)
+                    {
+                        case "ID_Button_A":
                             {
                                 if (Autodesk.Navisworks.Api.Application.ActiveDocument.Models.Count != 0)
                                 {
@@ -38,17 +42,10 @@ namespace KPLN_Quantificator
                                     form1.Show();
                                 }
                                 else { GlobalPreferences.state = 0; }
+                                
+                                break;
                             }
-                            catch (Exception e)
-                            {
-                                Output.PrintError(e);
-                                GlobalPreferences.state = 0;
-                            }
-                            break;
-                        }
-                    case "ID_Button_B":
-                        {
-                            try
+                        case "ID_Button_B":
                             {
                                 if (Autodesk.Navisworks.Api.Application.ActiveDocument.SelectionSets.RootItem.Children.Count != 0)
                                 {
@@ -56,17 +53,10 @@ namespace KPLN_Quantificator
                                     form2.Show();
                                 }
                                 else { GlobalPreferences.state = 0; }
+                                
+                                break;
                             }
-                            catch (Exception e)
-                            {
-                                Output.PrintError(e);
-                                GlobalPreferences.state = 0;
-                            }
-                            break;
-                        }
-                    case "ID_Button_C":
-                        {
-                            try
+                        case "ID_Button_C":
                             {
                                 if (Autodesk.Navisworks.Api.Application.ActiveDocument.SelectionSets.RootItem.Children.Count != 0)
                                 {
@@ -74,53 +64,54 @@ namespace KPLN_Quantificator
                                     form3.Show();
                                 }
                                 else { GlobalPreferences.state = 0; }
+                                
+                                break;
                             }
-                            catch (Exception e)
-                            {
-                                Output.PrintError(e);
-                                GlobalPreferences.state = 0;
-                            }
-                            break;
-                        }
-                    case "ID_Button_D":
-                        {
-                            try
+                        case "ID_Button_D":
                             {
                                 GlobalPreferences.Update();
                                 ElementsToResourcesCompareForm form4 = new ElementsToResourcesCompareForm();
                                 form4.Show();
                                 GlobalPreferences.state = 0;
+                                
+                                break;
                             }
-                            catch (Exception e)
+                        case "ID_Button_E":
                             {
-                                Output.PrintError(e);
+                                ClashGroupsForm clashGroupsForm = new ClashGroupsForm();
+                                clashGroupsForm.ShowDialog();
                                 GlobalPreferences.state = 0;
+                                
+                                break;
                             }
-                            break;
-                        }
-                    case "ID_Button_E":
-                        {
-                            try
+                        case "ID_Button_F":
                             {
-                                ClashGroupsForm form = new ClashGroupsForm();
-                                form.ShowDialog();
+                                ClashesCounter.Prepare();
+                                ClashesCounter.Execute();
+                                ClashesCounter.PrintResult();
                                 GlobalPreferences.state = 0;
+
+                                break;
                             }
-                            catch (Exception e)
+                        default:
                             {
-                                Output.PrintError(e);
                                 GlobalPreferences.state = 0;
+                                break;
                             }
-                            break;
-                        }
-                    default:
-                        {
-                            GlobalPreferences.state = 0;
-                            break;
-                        }   
+                    }
+
+                    return 1;
                 }
-                return 1;
+
+                catch (Exception e)
+                {
+                    Output.PrintError(e);
+                    GlobalPreferences.state = 0;
+                    
+                    return 0;
+                }
             }
+
             return 0;
         }
     }

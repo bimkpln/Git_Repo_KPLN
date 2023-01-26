@@ -38,6 +38,12 @@
                             ShowText="True"
                             Text="Добавить&#x0a;ресурсы"
                             Orientation="Vertical"/>
+                <local:NWRibbonButton x:Uid="Button_F" Id="ID_Button_F"
+                            Size="Large"
+                            KeyTip="R1"
+                            ShowText="True"
+                            Text="Подсчет&#x0a;коллизий"
+                            Orientation="Vertical"/>
             </RibbonPanelSource>
         </RibbonPanel>
         <RibbonPanel x:Uid="KPLN_Tab_Add">

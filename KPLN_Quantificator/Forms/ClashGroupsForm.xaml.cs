@@ -18,6 +18,7 @@ using System.Windows.Shapes;
 using Application = Autodesk.Navisworks.Api.Application;
 using KPLN_Quantificator.Common;
 using static KPLN_Quantificator.Common.Collections;
+using Autodesk.Navisworks.Api.DocumentParts;
 
 namespace KPLN_Quantificator.Forms
 {
@@ -26,19 +27,20 @@ namespace KPLN_Quantificator.Forms
     /// </summary>
     public partial class ClashGroupsForm : Window
     {
+        public ClashGroupsForm()
+        {
+            InitializeComponent();
+            RegisterChanges();
+            
+            DataContext = this;
+        }
+
         public ObservableCollection<GroupingMode> GroupByList { get; set; } = new ObservableCollection<GroupingMode>();
         
         public ObservableCollection<GroupingMode> GroupThenList { get; set; } = new ObservableCollection<GroupingMode>();
         
         public ObservableCollection<CustomClashTest> ClashTests { get; set; } = new ObservableCollection<CustomClashTest>();
         //public ClashTest SelectedClashTest { get; set; }
-        
-        public ClashGroupsForm()
-        {
-            InitializeComponent();
-            RegisterChanges();
-            DataContext = this;
-        }
         
         public void GetClashTests()
         {
