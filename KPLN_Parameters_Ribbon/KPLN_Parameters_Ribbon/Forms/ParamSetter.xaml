@@ -56,18 +56,6 @@
                 <RowDefinition Height="28"/>
                 <RowDefinition Height="28"/>
             </Grid.RowDefinitions>
-            <Rectangle Grid.Row="0" Grid.Column="0" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="0" Grid.Column="1" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="0" Grid.Column="2" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="0" Grid.Column="3" Margin="4" Height="20" Fill="#FFFFE6E6" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="1" Grid.Column="0" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="1" Grid.Column="1" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="1" Grid.Column="2" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="1" Grid.Column="3" Margin="4" Height="20" Fill="#FFFFE6E6" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="2" Grid.Column="0" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="2" Grid.Column="1" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="2" Grid.Column="2" Margin="2" Height="24" Fill="#FFF7F7F7" RadiusX="5" RadiusY="5"/>
-            <Rectangle Grid.Row="2" Grid.Column="3" Margin="4" Height="20" Fill="#FFFFE6E6" RadiusX="5" RadiusY="5"/>
         </Grid>
         <ScrollViewer Margin="5,0,0,0" Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="RulesControll">
@@ -81,33 +69,34 @@
                                     <ColumnDefinition Width="190"/>
                                     <ColumnDefinition Width="28"/>
                                 </Grid.ColumnDefinitions>
-                                <ComboBox Name="CurrentCat" VerticalAlignment="Center" Height="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged">
+                                <ComboBox Name="CurrentCat" VerticalAlignment="Bottom" MinHeight="24" Grid.Column="0" Margin="2" SelectedItem="{Binding SelectedCategory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedCategoryChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <ComboBox Name="SourceParam" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="1" Margin="2" SelectedItem="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding SourceParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedSourceParamChanged">
+                                <ComboBox Name="SourceParam" VerticalAlignment="Bottom" IsSynchronizedWithCurrentItem="True" MinHeight="24" Grid.Column="1" Margin="2" SelectedItem="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding SourceParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedSourceParamChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <ListBoxItem ToolTip="{Binding ToolTip}">
-                                                <TextBlock Text="{Binding Name}"/>
+                                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
                                             </ListBoxItem>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <ComboBox Name="TargetParam" VerticalAlignment="Center" IsSynchronizedWithCurrentItem="True" Height="24" Grid.Column="2" Margin="2" SelectedItem="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding TargetParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedTargetParamChanged">
+                                <ComboBox Name="TargetParam" VerticalAlignment="Bottom" IsSynchronizedWithCurrentItem="True" MinHeight="24" Grid.Column="2" Margin="2" SelectedItem="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding TargetParameters, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="White" SelectionChanged="SelectedTargetParamChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
                                             <ListBoxItem ToolTip="{Binding ToolTip}">
-                                                <TextBlock Text="{Binding Name}"/>
+                                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
                                             </ListBoxItem>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
                                 <Button VerticalAlignment="Center" Grid.Column="3" Margin="2" Width="24" Height="24" Content="✖" Foreground="Red" Background="White" FontWeight="Bold" Click="OnBtnRemoveRule" BorderBrush="#FFE4E4E4"/>
                             </Grid>
+                            <Separator Margin="5,0,55,0" Height="5" Background="Gray"/>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
