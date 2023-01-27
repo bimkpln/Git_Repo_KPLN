@@ -56,7 +56,6 @@
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
@@ -70,11 +69,11 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPIUI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -143,7 +142,6 @@
     <Compile Include="Common\SQLDepartment.cs" />
     <Compile Include="Common\SQLDocument.cs" />
     <Compile Include="Common\SQLProject.cs" />
-    <Compile Include="Common\UserException.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

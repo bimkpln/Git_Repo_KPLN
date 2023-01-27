@@ -50,8 +50,6 @@ namespace KPLN_Scoper
             {
                 PrintError(ex);
             }
-            catch (Exception)
-            { }
             
             return Result.Succeeded;
         }
@@ -315,12 +313,14 @@ namespace KPLN_Scoper
                         Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
                             " - можете продолжить работу. Если же это файл новго проекта - напишите " +
                             "руководителю BIM-отдела",
-                            KPLN_Loader.Preferences.MessageType.Error);;
+                            KPLN_Loader.Preferences.MessageType.Error);
                     }
                 }
             }
-            catch (UserException ex) { Print(ex.Message, KPLN_Loader.Preferences.MessageType.Error); }
-            catch (Exception ex) { PrintError(ex); }
+            catch (Exception ex) 
+            { 
+                PrintError(ex); 
+            }
 
             try
             {
@@ -412,7 +412,6 @@ namespace KPLN_Scoper
                                 $"UPDATE Documents SET Project = '{pickedProject.Id}' WHERE Id = {doc.Id}; ", sql);
                             cmd.ExecuteNonQuery();
                             sql.Close();
-
                         }
 
                         // Назначение шифра проекта по коду и отделу
@@ -424,62 +423,20 @@ namespace KPLN_Scoper
                             cmd.ExecuteNonQuery();
                             sql.Close();
                         }
-
-
-
-                        //if (pickedProjectByPath == null || pickedDepartmentByName == null)
-                        //{
-                        //    Print($"Проблемы с привязкой к проекту и отделу в указанном документе (Documents): " +
-                        //        $"Id: {doc.Id}, Name: {doc.Name}, Department: {doc.Department}, Project: {doc.Project}, Code: {doc.Code}",
-                        //        KPLN_Loader.Preferences.MessageType.Error);
-                        //    continue;
-                        //}
-
-                        //// Проверка корректности заполнения отдела и имени проекта у файла и обновление их
-                        //if (doc.Department != pickedDepartmentByName.Id
-                        //    || doc.Project != pickedProjectByPath.Id)
-                        //{
-                        //    sql.Open();
-                        //    SQLiteCommand cmd = new SQLiteCommand($"UPDATE Documents SET Department = '{pickedDepartmentByName}' WHERE Id = {doc.Id}; " +
-                        //        $"UPDATE Documents SET Project = '{pickedProjectByPath}' WHERE Id = {doc.Id}; ", sql);
-                        //    cmd.ExecuteNonQuery();
-                        //    sql.Close();
-                        //}
-
-                        //// Назначение шифра проекта по коду и отделу
-                        //string code = $"{pickedProjectByPath.Code}_{pickedDepartmentByName.Code}";
-                        //if (doc.Code == "NONE" || doc.Code != code)
-                        //{
-                        //    sql.Open();
-                        //    SQLiteCommand cmd = new SQLiteCommand(string.Format("UPDATE Documents SET Code = '{0}' WHERE Id = {1};", 
-                        //        code, 
-                        //        doc.Id), sql);
-                                    
-                        //    cmd.ExecuteNonQuery();
-                        //    sql.Close();
-                        //}
                     }
-                    catch (Exception) { }
                     finally { sql.Close(); }
                 }
                 else
                 {
+                    SQLiteConnection db = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
                     try
                     {
-                        SQLiteConnection db = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
-                        try
-                        {
-                            db.Open();
-                            SQLiteCommand cmd_insert = new SQLiteCommand(string.Format("DELETE FROM Documents WHERE Path='{0}'", doc.Path), db);
-                            cmd_insert.ExecuteNonQuery();
-                            db.Close();
-                        }
-                        catch (Exception)
-                        {
-                            db.Close();
-                        }
+                        db.Open();
+                        SQLiteCommand cmd_insert = new SQLiteCommand(string.Format("DELETE FROM Documents WHERE Path='{0}'", doc.Path), db);
+                        cmd_insert.ExecuteNonQuery();
+                        db.Close();
                     }
-                    catch (Exception) { }
+                    finally { db.Close(); }
                 }
             }
 
