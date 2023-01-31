@@ -38,6 +38,38 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         }
 
         /// <summary>
+        /// Общие метод записи значения секции для изоляции ИОС
+        /// </summary>
+        /// <param name="elems">Коллекция элементов для обработки</param>
+        /// <param name="sectionParam">Имя параметра номера секции у заполняемых элементов</param>
+        /// <param name="levelParam">Имя параметра номера уровня у заполняемых элементов</param>
+        /// <param name="pb">Прогресс-бар для демонстрации динамики заполнения</param>
+        /// <returns></returns>
+        public bool ExecuteByElementInsulation(Document doc, List<Element> elems, string sectionParam, string levelParam, Progress_Single pb, int pbCount)
+        {
+
+            foreach (Element elem in elems)
+            {
+                InsulationLiningBase insulationLiningBase = elem as InsulationLiningBase;
+                if (insulationLiningBase != null)
+                {
+                    Element hostElem = doc.GetElement(insulationLiningBase.HostElementId);
+
+                    string hostElemSectParamValue = hostElem.LookupParameter(sectionParam).AsString();
+                    elem.LookupParameter(sectionParam).Set(hostElemSectParamValue);
+
+                    string hostElemLevParamValue = hostElem.LookupParameter(levelParam).AsString();
+                    elem.LookupParameter(levelParam).Set(hostElemLevParamValue);
+
+                    pb.Update(++pbCount, "Анализ изоляции по основам");
+                }
+                else
+                    throw new Exception($"У изоляции с id:{elem.Id} нет основы. Нужно удалить");
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Общие метод записи значения секции для вложенных общих семейств и вложенных семейств витражей
         /// </summary>
         /// <param name="elems">Коллекция элементов для обработки</param>
@@ -45,7 +77,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         /// <param name="levelParam">Имя параметра номера уровня у заполняемых элементов</param>
         /// <param name="pb">Прогресс-бар для демонстрации динамики заполнения</param>
         /// <returns></returns>
-        public bool ExecuteByHost_AR(List<Element> elems, string sectionParam, string levelParam, Progress_Single pb, int pbCount)
+        public bool ExecuteByHostFamily_AR(List<Element> elems, string sectionParam, string levelParam, Progress_Single pb, int pbCount)
         {
             foreach (Element elem in elems)
             {

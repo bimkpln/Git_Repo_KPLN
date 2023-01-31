@@ -19,7 +19,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
         }
 
-        public override bool Prepare()
+        public override void Prepare()
         {
             // Категория "Стены"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -87,18 +87,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilyInstance>()
                 .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
-
-
-            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + StairsElems.Count;
-
-            if (AllElementsCount > 0)
-            {
-                return true;
-            }
-            else
-            {
-                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
-            }
         }
 
         public override bool ExecuteGripParams(Progress_Single pb)
@@ -137,7 +125,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             bool byHost = false;
             if (ElemsByHost.Count > 0)
             {
-                byHost = new GripByHost().ExecuteByHost_AR(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
+                byHost = new GripByHost().ExecuteByHostFamily_AR(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
             }
 
             return byElem && byHost;

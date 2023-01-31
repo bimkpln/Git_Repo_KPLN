@@ -45,6 +45,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
         private List<Element> _elemsByHost = new List<Element>();
 
+        private List<Element> _elemsInsulation = new List<Element>();
+
         private List<Element> _elemsUnderLevel = new List<Element>();
 
         private List<Element> _stairsElems = new List<Element>();
@@ -67,6 +69,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             get { return _elemsByHost; }
             protected set { _elemsByHost = value; }
+        }
+
+        /// <summary>
+        /// Коллекция элементов изоляции
+        /// </summary>
+        public List<Element> ElemsInsulation
+        {
+            get { return _elemsInsulation; }
+            protected set { _elemsInsulation = value; }
         }
 
         /// <summary>
@@ -93,7 +104,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         public int AllElementsCount
         {
             get { return _allElementsCount; }
-            protected set { _allElementsCount = value; }
+            private set { _allElementsCount = value; }
         }
 
         public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName)
@@ -113,18 +124,27 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Метод подготовки элементов к обработке
         /// </summary>
-        public abstract bool Prepare();
+        public abstract void Prepare();
 
         /// <summary>
         /// Метод проверки элементов на заполняемость параметров и чистка списков от элементов, не подверженных чистке
         /// </summary>
-        public virtual bool Check()
+        public virtual void Check()
         {
-            return CheckElemParams(ElemsOnLevel)
-            && CheckElemParams(ElemsByHost)
-            && CheckElemParams(ElemsUnderLevel)
-            && CheckElemParams(StairsElems);
+            CheckElemParams(ElemsOnLevel);
+            CheckElemParams(ElemsByHost);
+            CheckElemParams(ElemsUnderLevel);
+            CheckElemParams(StairsElems);
+        }
 
+        /// <summary>
+        /// Подсчет элементов для обработки
+        /// </summary>
+        public virtual void CountElements()
+        {
+            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + ElemsInsulation.Count + StairsElems.Count;
+            if (AllElementsCount == 0)
+                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
         }
 
         /// <summary>
@@ -140,7 +160,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <param name="checkColl">Коллекция для проверки</param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private bool CheckElemParams(List<Element> checkColl)
+        private void CheckElemParams(List<Element> checkColl)
         {
             if (checkColl.Count > 0)
             {
@@ -155,18 +175,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     }
 
                     Parameter canReValueParam = elem.get_Parameter(new Guid("38157d2d-f952-41e5-8d05-2c962addfe56"));
-                    // Првоерка на возможность перезаписи по параметру "ПЗ_Перещаписать" и удаление нужных элементов 
+                    // Првоерка на возможность перезаписи по параметру "ПЗ_Перезаписать" и удаление нужных элементов 
                     if (canReValueParam != null && (canReValueParam.HasValue && canReValueParam.AsInteger() != 1))
                     {
                         checkColl.Remove(elem);
                     }
                 }
-
-                return true;
-            }
-            else
-            {
-                return true;
             }
         }
     }

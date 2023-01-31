@@ -31,6 +31,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             _builder.Check();
 
+            _builder.CountElements();
+
             // Заполняю уровни с учетом секций
             using (Transaction t = new Transaction(_builder.Doc))
             {

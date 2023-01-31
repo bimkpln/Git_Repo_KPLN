@@ -19,7 +19,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
         }
 
-        public override bool Prepare()
+        public override void Prepare()
         {
             // Категория "Стены" над уровнем (монолит)
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -139,17 +139,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Walls)
                 .Cast<FamilyInstance>());
-
-            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + StairsElems.Count;
-
-            if (AllElementsCount > 0)
-            {
-                return true;
-            }
-            else
-            {
-                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
-            }
         }
 
         public override bool ExecuteGripParams(Progress_Single pb)

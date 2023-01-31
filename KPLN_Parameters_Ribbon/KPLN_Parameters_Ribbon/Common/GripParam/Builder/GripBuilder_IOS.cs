@@ -1,11 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
-using Autodesk.Revit.DB.Electrical;
-using Autodesk.Revit.DB.Mechanical;
-using Autodesk.Revit.DB.Plumbing;
 using KPLN_Parameters_Ribbon.Common.Tools;
 using KPLN_Parameters_Ribbon.Forms;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Loader.Output.Output;
@@ -22,10 +17,11 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
         }
 
-        public override bool Prepare()
+        public override void Prepare()
         {
             List<BuiltInCategory> userCat = null;
             List<BuiltInCategory> revitCat = null;
+            List<BuiltInCategory> revitInsulCat = null;
             List<FamilyInstance> _dirtyElems = new List<FamilyInstance>();
 
             // Делю на ЭОМ СС
@@ -82,9 +78,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 {
                     BuiltInCategory.OST_DuctCurves,
                     BuiltInCategory.OST_FlexDuctCurves,
-                    BuiltInCategory.OST_DuctInsulations,
                     BuiltInCategory.OST_PipeCurves,
                     BuiltInCategory.OST_FlexPipeCurves,
+                };
+
+                // Категории системных семейств (изоляции), используемые в проектах ИОС
+                revitInsulCat = new List<BuiltInCategory>()
+                {
+                    BuiltInCategory.OST_DuctInsulations,
                     BuiltInCategory.OST_PipeInsulations,
                 };
             }
@@ -131,24 +132,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .WhereElementIsNotElementType());
             }
 
+            foreach (BuiltInCategory bic in revitInsulCat)
+            {
+                ElemsInsulation.AddRange(new FilteredElementCollector(Doc)
+                    .OfCategory(bic)
+                    .WhereElementIsNotElementType());
+            }
+
             ElemsOnLevel.AddRange(_dirtyElems
                 .Where(x => x.SuperComponent == null));
 
             ElemsByHost.AddRange(_dirtyElems
                 .Where(x => x.SuperComponent != null));
-
-            AllElementsCount = ElemsOnLevel.Count + ElemsByHost.Count;
-
-            if (AllElementsCount > 0)
-            {
-                return true;
-            }
-            else
-            {
-                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
-            }
         }
-
 
         public override bool ExecuteGripParams(Progress_Single pb)
         {
@@ -189,7 +185,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 byHost = new GripByHost().ExecuteByHostFamily(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
             }
 
-            return byElem && byHost;
+            bool byElemsInsulation = false;
+            if (ElemsInsulation.Count > 0)
+            {
+                byElemsInsulation = new GripByHost().ExecuteByElementInsulation(Doc, ElemsInsulation, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
+            }
+
+            return byElem && byHost && byElemsInsulation;
         }
     }
 }

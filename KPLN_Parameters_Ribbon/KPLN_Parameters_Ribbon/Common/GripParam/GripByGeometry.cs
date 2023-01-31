@@ -215,9 +215,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
 
             foreach (Element elem in notIntersectedElems)
             {
-                if (elem == null) continue;
+                if (elem == null) 
+                    continue;
+                
                 XYZ elemPointCenter = ElemPointCenter(elem);
-                if (elemPointCenter == null) continue;
+                if (elemPointCenter == null) 
+                    continue;
 
                 //Расстояние от центра элемента до центроида солида
                 List<MySolid> solidsList = mySolidsColl.ToList();
@@ -357,8 +360,31 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             }
             catch (Exception)
             {
-                BoundingBoxXYZ bbox = elem.get_BoundingBox(null);
-                elemPointCenter = SolidBoundingBox(bbox).ComputeCentroid();
+                BoundingBoxXYZ bbox;
+                
+                bbox = elem.get_BoundingBox(null);
+                if (bbox != null)
+                    elemPointCenter = SolidBoundingBox(bbox).ComputeCentroid();
+                else
+                {
+                    // Отлов гибких воздуховодов и труб, у которых нет возможности взять геометрию (такое бывает, когда эл-т простроен не корректно)
+                    LocationCurve locationCurve = elem.Location as LocationCurve;
+                    if (locationCurve != null)
+                    {
+                        Curve curve = locationCurve.Curve;
+                        XYZ pnt1 = curve.GetEndPoint(0);
+                        XYZ pnt2 = curve.GetEndPoint(1);
+
+                        bbox = new BoundingBoxXYZ();
+                        bbox.Max = pnt1.Z > pnt2.Z ? pnt1 : pnt2;
+                        bbox.Min = pnt1.Z < pnt2.Z ? pnt1 : pnt2;
+
+                        elemPointCenter = SolidBoundingBox(bbox).ComputeCentroid();
+                    }
+                }
+
+                if (bbox == null)
+                    throw new Exception($"У элемента с ID: {elem.Id} не найдена геометрия");
             }
 
             return elemPointCenter;
