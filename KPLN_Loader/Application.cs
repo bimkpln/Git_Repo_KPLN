@@ -257,11 +257,7 @@ namespace KPLN_Loader
             }
         }
 
-        private void UpdateModules(
-            DirectoryInfo currentDir,
-            UIControlledApplication application,
-            SQLModuleInfo module
-        )
+        private void UpdateModules(DirectoryInfo currentDir, UIControlledApplication application, SQLModuleInfo module)
         {
             foreach (FileInfo file in currentDir.GetFiles())
             {
@@ -270,39 +266,36 @@ namespace KPLN_Loader
                     Logger.Info($"Загружаю dll отсюда {file.FullName}");
                     Assembly assembly = Assembly.LoadFrom(file.FullName);
 
+                    // Беру тип. В случае ошибки - кидаю Exception
+                    Type implemnentationType;
                     try
                     {
-                        // Беру тип. В случае ошибки - кидаю Exception
-                        Type implemnentationType = assembly.GetType(file.Name.Split('.').First() + ".Module", true);
-                        implemnentationType.GetMember("Module");
-                        
-                        IExternalModule moduleInstance = Activator.CreateInstance(implemnentationType) as IExternalModule;
-
-                        Result loadingResult = moduleInstance.Execute(application, _RibbonName);
-                        if (loadingResult == Result.Succeeded && module != null)
-                        {
-                            LoadedModules.Add(moduleInstance);
-                            Print(string.Format("Модуль [{0}] успешно активирован!", module.Name), MessageType.System_OK);
-                        }
-                        else if (module != null)
-                        {
-                            Print(string.Format("С модулем [{0}] есть проблемы!", module.Name), MessageType.Warning);
-                        }
-                        else if (loadingResult != Result.Succeeded)
-                        {
-                            Print(string.Format("[{0}] - ошибка {1}", module.Name, loadingResult.ToString()), MessageType.Warning);
-                        }
+                        implemnentationType = assembly.GetType(file.Name.Split('.').First() + ".Module", true);
                     }
-                    // Обработка исключения при взятии типа implemnentationType
                     catch (TypeLoadException ex)
                     {
                         Logger.Info($"Ошибка при имплементации у файла {file.Name} - {ex}\n");
                         continue;
                     }
-                    
-                    catch (Exception ex)
+
+                    implemnentationType = assembly.GetType(file.Name.Split('.').First() + ".Module", true);
+                    implemnentationType.GetMember("Module");
+                        
+                    IExternalModule moduleInstance = Activator.CreateInstance(implemnentationType) as IExternalModule;
+
+                    Result loadingResult = moduleInstance.Execute(application, _RibbonName);
+                    if (loadingResult == Result.Succeeded && module != null)
                     {
-                        PrintError(ex);
+                        LoadedModules.Add(moduleInstance);
+                        Print(string.Format("Модуль [{0}] успешно активирован!", module.Name), MessageType.System_OK);
+                    }
+                    else if (module != null)
+                    {
+                        Print(string.Format("С модулем [{0}] есть проблемы!", module.Name), MessageType.Warning);
+                    }
+                    else if (loadingResult != Result.Succeeded)
+                    {
+                        Print(string.Format("[{0}] - ошибка {1}", module.Name, loadingResult.ToString()), MessageType.Warning);
                     }
                 }
             }
