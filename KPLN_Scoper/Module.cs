@@ -215,7 +215,7 @@ namespace KPLN_Scoper
                 || docPath.ToLower().Contains("конц"))
                 return;
 
-            // Отлов семейств марок (могут разрабатывать все)
+            // Отлов семейств которые могут редактировать проектировщики
             DocumentSet appDocsSet = app.Documents;
             foreach (Document doc in appDocsSet)
             {
@@ -226,6 +226,8 @@ namespace KPLN_Scoper
                         Family family = doc.OwnerFamily;
                         Category famCat = family.FamilyCategory;
                         BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
+                        
+                        // Отлов семейств марок (могут разрабатывать все)
                         if (famCat.CategoryType.Equals(CategoryType.Annotation) 
                             || bic.Equals(BuiltInCategory.OST_ProfileFamilies)
                             || bic.Equals(BuiltInCategory.OST_DetailComponents)
@@ -233,14 +235,18 @@ namespace KPLN_Scoper
                             || bic.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
                             || bic.Equals(BuiltInCategory.OST_DetailComponentTags))
                             return;
+
+                        // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
+                        if (bic.Equals(BuiltInCategory.OST_GenericModel)
+                            && (familyName.Contains("208_Монолитные лестничные марши") || familyName.Contains("209_Монолитные лестничные площадки")))
+                            return;
                     }
                     else
                         throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
-
                 }
             }
-            
-            // Отлов семейств, расположенных не на Х, не из плагинов
+
+            // Отлов семейств, расположенных не на Х, не из плагинов и не из исключений выше
             if (!familyPath.StartsWith("X:\\BIM") 
                 && !familyPath.Contains("KPLN_Loader"))
             {
