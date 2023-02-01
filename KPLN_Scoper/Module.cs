@@ -238,7 +238,7 @@ namespace KPLN_Scoper
 
                         // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
                         if (bic.Equals(BuiltInCategory.OST_GenericModel)
-                            && (familyName.Contains("208_Монолитные лестничные марши") || familyName.Contains("209_Монолитные лестничные площадки")))
+                            && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
                             return;
                     }
                     else

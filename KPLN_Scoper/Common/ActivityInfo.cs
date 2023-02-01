@@ -77,8 +77,8 @@ namespace KPLN_Scoper.Common
             ProjectId = -1;
             foreach (DbDocument docu in KPLN_Library_DataBase.DbControll.Documents)
             {
-                if (docu.Path == null)
-                    throw new Exception($"Отправь скрин этого сообщения разработчику:" +
+                if (docu.Path == String.Empty)
+                    throw new Exception($"Разработчик скоро это устранит, сообщение адресовано ему:" +
                         $"\n У элемента с id {docu.Id} - проблемы с определением пути. Проверь заполнение БД!");
                 
                 if (new FileInfo(docu.Path).FullName == filename)
