@@ -9,9 +9,9 @@ using System.Threading;
 using static KPLN_Scoper.Common.Collections;
 using static KPLN_Loader.Output.Output;
 
-namespace KPLN_Scoper.Tools
+namespace KPLN_Scoper.Services
 {
-    public static class ActivityManager
+    public static class FileActivityService
     {
         public static ConcurrentQueue<ActivityInfo> ActivityBag = new ConcurrentQueue<ActivityInfo>();
         public static ConcurrentQueue<ActivityInfo> ActivityApprovedBag = new ConcurrentQueue<ActivityInfo>();

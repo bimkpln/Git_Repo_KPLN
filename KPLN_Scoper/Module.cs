@@ -7,7 +7,7 @@ using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Loader.Common;
 using KPLN_Scoper.Common;
-using KPLN_Scoper.Tools;
+using KPLN_Scoper.Services;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -26,8 +26,6 @@ namespace KPLN_Scoper
         /// </summary>
         private SQLUserInfo _dbUserInfo;
 
-        private string _versionName;
-
         public Module()
         {
             _dbUserInfo = KPLN_Loader.Preferences.User;
@@ -35,16 +33,10 @@ namespace KPLN_Scoper
         
         public Result Close()
         {
-            bool overWriteIni = OverwriteIni(_versionName);
-            if (!overWriteIni)
-            {
-                throw new Exception($"Ошибка при перезаписи ini-файла");
-            }
-
             try
             {
-                ActivityManager.Synchronize(null);
-                ActivityManager.Destroy();
+                FileActivityService.Synchronize(null);
+                FileActivityService.Destroy();
             }
             catch (ArgumentNullException ex)
             {
@@ -56,19 +48,18 @@ namespace KPLN_Scoper
         
         public Result Execute(UIControlledApplication application, string tabName)
         {
-
             try
             {
-                // Обновление файлов в БД.
-                KPLN_Library_DataBase.DbControll.Update();
-                
-                _versionName = application.ControlledApplication.VersionNumber;
-                bool overWriteIni = OverwriteIni(_versionName);
-                if (!overWriteIni)
+                // Перезапись ini-файла
+                INIFileService iNIFileService = new INIFileService(_dbUserInfo, application.ControlledApplication.VersionNumber);
+                if (!iNIFileService.OverwriteINIFile())
                 {
                     throw new Exception($"Ошибка при перезаписи ini-файла");
                 }
-                
+
+                // Обновление файлов в БД.
+                KPLN_Library_DataBase.DbControll.Update();
+
                 UpdateAllDocumentInfo();
 
                 UpdateAllModuleInfo();
@@ -86,11 +77,11 @@ namespace KPLN_Scoper
 
                 try
                 {
-                    ActivityManager.Run();
+                    FileActivityService.Run();
                 }
                 catch (Exception e)
                 {
-                    Print($"Ошибка запуске ActivityManager: {e.Message}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Ошибка запуске FileActivityService: {e.Message}", KPLN_Loader.Preferences.MessageType.Error);
                 }
                 
                 return Result.Succeeded;
@@ -108,21 +99,20 @@ namespace KPLN_Scoper
             {
                 if (args.Document.Title != null && !args.Document.IsFamilyDocument )
                 {
-                    ActivityManager.ActiveDocument = args.Document;
+                    FileActivityService.ActiveDocument = args.Document;
                 }
             }
             catch (Exception)
             {
-                ActivityManager.ActiveDocument = null;
+                FileActivityService.ActiveDocument = null;
             }
         }
         
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            
             try
             {
-                #region Анализ вставляемых семейств из других проектов
+                #region Анализ триггерных изменений по проекту
                 Document doc = args.GetDocument();
                 // Игнорирую не для совместной работы
                 if (doc.IsWorkshared)
@@ -132,67 +122,76 @@ namespace KPLN_Scoper
                     if (docPath.Contains("stinproject.local\\project\\")
                         && !(docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
                     {
-                        string transName = args.GetTransactionNames().FirstOrDefault();
-                        if (transName.Contains("Начальная вставка"))
-                        {
-                            List<FamilySymbol> addedFamilySymbols = new List<FamilySymbol>();
-                            ICollection<ElementId> addedElems = args.GetAddedElementIds();
-                            if (addedElems.Count() > 0)
-                            {
-                                foreach (ElementId elemId in addedElems)
-                                {
-                                    if (doc.GetElement(elemId) is FamilySymbol familySymbol)
-                                    {
-                                        addedFamilySymbols.Add(familySymbol);
-                                    }
-                                }
-                            }
-
-                            if (addedFamilySymbols.Count() > 0)
-                            {
-                                FilteredElementCollector prjFamilies = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).WhereElementIsElementType();
-                                bool isFamilyInclude = false;
-                                bool isFamilyNew = false;
-                                foreach (FamilySymbol fs in addedFamilySymbols)
-                                {
-                                    string fsName = fs.FamilyName;
-                                    string digitEndTrimmer = Regex.Match(fsName, @"\d*$").Value;
-                                    // Осуществляю срез имени на найденные цифры в конце имени
-                                    string truePartOfName = fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray());
-                                    var includeFam = prjFamilies
-                                        .FirstOrDefault(f => f.Name.Equals(fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray())) && !f.Name.Equals(fsName));
-
-                                    if (includeFam == null)
-                                        isFamilyNew = true;
-                                    else
-                                        isFamilyInclude = true;
-                                }
-
-                                if (isFamilyInclude && isFamilyNew)
-                                    TaskDialog.Show("Предупреждение", 
-                                        "Только что были скопированы семейства, которые являются как новыми, так и уже имеющимися в проекте. " +
-                                        "Запусти плагин KPLN для проверки семейств");
-                                else if (isFamilyInclude)
-                                    TaskDialog.Show("Предупреждение", 
-                                        "Только что были скопированы семейства, которые уже имеющимися в проекте. " +
-                                        "Запусти плагин KPLN для проверки семейств, чтобы избежать дублирования семейств");
-                                else if (isFamilyNew)
-                                    TaskDialog.Show("Предупреждение", 
-                                        "Только что были скопированы семейства, которые являются новыми. " +
-                                        "Запусти плагин KPLN для проверки семейств, чтобы избежать наличия семейств из сторонних источников");
-                            }
-                        }
+                        IsFamilyLoadedFromOtherFile(args);
                     }
                 }
                 #endregion
 
-                if (ActivityManager.ActiveDocument != null && !ActivityManager.ActiveDocument.IsFamilyDocument && !ActivityManager.ActiveDocument.PathName.Contains(".rte"))
+                if (FileActivityService.ActiveDocument != null && !FileActivityService.ActiveDocument.IsFamilyDocument && !FileActivityService.ActiveDocument.PathName.Contains(".rte"))
                 {
-                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
-                    ActivityManager.ActivityBag.Enqueue(info);
+                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
+                    FileActivityService.ActivityBag.Enqueue(info);
                 }
             }
             catch (Exception) { }
+        }
+
+        /// <summary>
+        /// Проверка семейств на загрузку из другого проекта
+        /// </summary>
+        private void IsFamilyLoadedFromOtherFile(DocumentChangedEventArgs args)
+        {
+            Document doc = args.GetDocument();
+            string transName = args.GetTransactionNames().FirstOrDefault();
+            if (transName.Contains("Начальная вставка"))
+            {
+                List<FamilySymbol> addedFamilySymbols = new List<FamilySymbol>();
+                ICollection<ElementId> addedElems = args.GetAddedElementIds();
+                if (addedElems.Count() > 0)
+                {
+                    foreach (ElementId elemId in addedElems)
+                    {
+                        if (doc.GetElement(elemId) is FamilySymbol familySymbol)
+                        {
+                            addedFamilySymbols.Add(familySymbol);
+                        }
+                    }
+                }
+
+                if (addedFamilySymbols.Count() > 0)
+                {
+                    FilteredElementCollector prjFamilies = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).WhereElementIsElementType();
+                    bool isFamilyInclude = false;
+                    bool isFamilyNew = false;
+                    foreach (FamilySymbol fs in addedFamilySymbols)
+                    {
+                        string fsName = fs.FamilyName;
+                        string digitEndTrimmer = Regex.Match(fsName, @"\d*$").Value;
+                        // Осуществляю срез имени на найденные цифры в конце имени
+                        string truePartOfName = fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray());
+                        var includeFam = prjFamilies
+                            .FirstOrDefault(f => f.Name.Equals(fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray())) && !f.Name.Equals(fsName));
+
+                        if (includeFam == null)
+                            isFamilyNew = true;
+                        else
+                            isFamilyInclude = true;
+                    }
+
+                    if (isFamilyInclude && isFamilyNew)
+                        TaskDialog.Show("Предупреждение",
+                            "Только что были скопированы семейства, которые являются как новыми, так и уже имеющимися в проекте. " +
+                            "Запусти плагин KPLN для проверки семейств");
+                    else if (isFamilyInclude)
+                        TaskDialog.Show("Предупреждение",
+                            "Только что были скопированы семейства, которые уже имеющимися в проекте. " +
+                            "Запусти плагин KPLN для проверки семейств, чтобы избежать дублирования семейств");
+                    else if (isFamilyNew)
+                        TaskDialog.Show("Предупреждение",
+                            "Только что были скопированы семейства, которые являются новыми. " +
+                            "Запусти плагин KPLN для проверки семейств, чтобы избежать наличия семейств из сторонних источников");
+                }
+            }
         }
 
         /// <summary>
@@ -269,10 +268,10 @@ namespace KPLN_Scoper
         {
             try
             {
-                if (ActivityManager.ActiveDocument != null)
+                if (FileActivityService.ActiveDocument != null)
                 {
-                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
-                    ActivityManager.ActivityBag.Enqueue(info);
+                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
+                    FileActivityService.ActivityBag.Enqueue(info);
                 }
             }
             catch (Exception) { }
@@ -287,7 +286,7 @@ namespace KPLN_Scoper
             */
             try
             {
-                ActivityManager.Synchronize(null);
+                FileActivityService.Synchronize(null);
             }
             catch (ArgumentNullException ex)
             {
@@ -304,12 +303,12 @@ namespace KPLN_Scoper
         {
             try
             {
-                if (ActivityManager.ActiveDocument != null 
+                if (FileActivityService.ActiveDocument != null 
                     && !args.Document.IsFamilyDocument 
                     && !args.Document.PathName.Contains(".rte"))
                 {
-                    ActivityInfo info = new ActivityInfo(ActivityManager.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
-                    ActivityManager.ActivityBag.Enqueue(info);
+                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
+                    FileActivityService.ActivityBag.Enqueue(info);
 
                     // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
                     if (info.ProjectId == -1
@@ -889,73 +888,6 @@ namespace KPLN_Scoper
                 AddDocument(scopeDocument);
             }
         }
-
-        private bool IsCopy(string name)
-        {
-            List<string> parts = name.Split('.').ToList();
-            if (parts.Count <= 2) { return false; }
-            parts.RemoveAt(parts.Count - 1);
-            if (parts.Last().Length == 4 && parts.Last().StartsWith("0")) { return true; }
-            return false;
-        }
-        
-        private string OnlyName(string name)
-        {
-            List<string> parts = name.Split('.').ToList();
-            parts.RemoveAt(parts.Count - 1);
-            return string.Join(".", parts);
-        }
-        
-        private string GetTemplates()
-        {
-            List<string> parts = new List<string>();
-            DirectoryInfo templateFolder = new DirectoryInfo(@"X:\BIM\2_Шаблоны");
-            foreach (DirectoryInfo folder in templateFolder.GetDirectories())
-            {
-                if (_dbUserInfo.Department.Id == 1 && (folder.Name != "1_АР" && folder.Name != "0_Общие шаблоны")) { continue; }
-                if (_dbUserInfo.Department.Id == 2 && (folder.Name != "2_КР" && folder.Name != "0_Общие шаблоны")) { continue; }
-                if (_dbUserInfo.Department.Id == 3 && (folder.Name == "1_АР" || folder.Name == "2_КР" || folder.Name == "0_Общие шаблоны")) { continue; }
-                foreach (FileInfo file in folder.GetFiles())
-                {
-                    if (IsCopy(file.Name) || file.Extension.ToLower() != ".rte") { continue; }
-                    parts.Add(string.Format("{0} - {1}={2}", folder.Name.Split('_').Last(), OnlyName(file.Name), file.FullName));
-                }
-            }
-            return string.Join(",", parts);
-        }
-        
-        /// <summary>
-        /// Перезапись (добавление) ini-файла на определенные данные
-        /// </summary>
-        /// <param name="revitVersion"></param>
-        private bool OverwriteIni(string revitVersion)
-        {
-            string iniFilePath = string.Format(@"AppData\Roaming\Autodesk\Revit\Autodesk Revit {0}\Revit.ini", revitVersion);
-            
-            FileInfo iniLocation = new FileInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), iniFilePath));
-            
-            if (!iniLocation.Exists) 
-            {
-                throw new NullReferenceException($"По ссылке отсутсвует ini-файл: {iniFilePath}");
-            }
-            
-            INIManager manager = new INIManager(iniLocation.FullName);
-            
-            if (manager.WritePrivateString("Selection", "AllowPressAndDrag", "0")
-                && manager.WritePrivateString("Selection", "AllowFaceSelection", "0")
-                && manager.WritePrivateString("Selection", "AllowUnderlaySelection", "1"))
-            {
-                if (revitVersion == "2020"
-                    && manager.WritePrivateString("DirectoriesRUS", "DefaultTemplate", GetTemplates())
-                    && manager.WritePrivateString("DirectoriesENU", "DefaultTemplate", GetTemplates()))
-                {
-                    return true;
-                }
-                return true;
-            }
-
-            return false;
-        }
         
         private List<SQLProject> GetProjects()
         {
@@ -974,15 +906,14 @@ namespace KPLN_Scoper
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception) { }
+            catch (Exception ex)
             {
-                try
-                {
-                    sql.Close();
-                }
-                catch (Exception) { }
+                PrintError(ex);
+            }
+            finally
+            {
+                sql.Close();
             }
             return projects;
         }
@@ -1004,12 +935,14 @@ namespace KPLN_Scoper
                         }
                     }
                 }
-                sql.Close();
             }
-            catch (Exception) { }
+            catch (Exception ex)
             {
-                try { sql.Close(); }
-                catch (Exception) { }
+                PrintError(ex);
+            }
+            finally
+            {
+                sql.Close();
             }
             return departments;
         }
