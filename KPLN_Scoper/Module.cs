@@ -804,6 +804,9 @@ namespace KPLN_Scoper
         private void DocumentPreapre(Document document)
         {
             string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(document.GetWorksharingCentralModelPath());
+            if (path == null)
+                throw new Exception($"Проблемы с определением пути у файла {document.PathName}. Скинь скрин ошибки в BIM-отдел");
+
             string name = path.Split(new string[] { @"\" }, StringSplitOptions.None).Last();
             List<string> parts = new List<string>();
             SQLProject pickedProject = null;
