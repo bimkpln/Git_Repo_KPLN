@@ -85,9 +85,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                     }
                     List<XYZ> pointsOfGridsIntersect = GetPointsOfGridsIntersection(gridsOfSect);
                     pointsOfGridsIntersect.Sort(new ClockwiseComparerTool(GetCenterPointOfPoints(pointsOfGridsIntersect)));
-                
-                    Solid solid;
-                    DirectShape directShape = CreateSolidsInModel(doc, minMaxCoords, pointsOfGridsIntersect, out solid);
+
+                    DirectShape directShape = CreateSolidsInModel(doc, minMaxCoords, pointsOfGridsIntersect, out Solid solid);
                     sectionLevelSolids.Add(solid, levelIndex);
                     directShapes.Add(directShape);
                 
@@ -213,12 +212,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         public static string GetFloorNumberByLevel(Level lev, int floorTextPosition, char splitChar)
         {
             string levname = lev.Name;
+            if (levname.ToLower().Contains("кровля"))
+                return "99";
+
             string[] splitname = levname.Split(splitChar);
             if (splitname.Length < 2)
-            {
                 throw new Exception($"Некорректное имя уровня: {levname}");
-            }
+
             string floorNumber = splitname[floorTextPosition];
+            
+            // Это исключительно для Обыденского
+            if (floorNumber.Contains("0") && !floorNumber.EndsWith("0"))
+                floorNumber = floorNumber.Replace("0", "");
+
+            if (floorNumber.Contains("-"))
+                floorNumber = floorNumber.Replace("-", "м");
 
             return floorNumber;
         }
@@ -450,15 +458,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             Line edge2 = Line.CreateBound(pt2, pt3);
             Line edge3 = Line.CreateBound(pt3, pt0);
             //create loop, still in BBox coords
-            List<Curve> edges = new List<Curve>();
-            edges.Add(edge0);
-            edges.Add(edge1);
-            edges.Add(edge2);
-            edges.Add(edge3);
+            List<Curve> edges = new List<Curve>
+            {
+                edge0,
+                edge1,
+                edge2,
+                edge3
+            };
             Double height = bbox.Max.Z - bbox.Min.Z;
             CurveLoop baseLoop = CurveLoop.Create(edges);
-            List<CurveLoop> loopList = new List<CurveLoop>();
-            loopList.Add(baseLoop);
+            List<CurveLoop> loopList = new List<CurveLoop>
+            {
+                baseLoop
+            };
             Solid preTransformBox = GeometryCreationUtilities.CreateExtrusionGeometry(loopList, XYZ.BasisZ, height);
 
             Solid transformBox = SolidUtils.CreateTransformed(preTransformBox, bbox.Transform);

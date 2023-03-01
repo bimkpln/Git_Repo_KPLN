@@ -33,13 +33,11 @@ namespace KPLN_Parameters_Ribbon
                     "Есть возможность сохранения и выбора файлов настроек\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                    ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
                 "paramSetter.png",
-                "http://moodle"
-            );
+                "http://moodle");
 
             //Добавляю кнопку в панель
             AddPushButtonDataInPanel(
@@ -51,17 +49,17 @@ namespace KPLN_Parameters_Ribbon
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
+                    ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyProjectParams).FullName,
                 panel,
                 "copyProjectParams.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90%22-,%D0%9F%D0%A3%D0%A2%D0%AC,-%D0%9F%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C%20%E2%80%9C%D0%9F%D0%B0%D1%80%D0%B0%D0%BC%D0%B5%D1%82%D1%80%D1%8B%E2%80%9D"
-            );
+                "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90%22-,%D0%9F%D0%A3%D0%A2%D0%AC,-%D0%9F%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C%20%E2%80%9C%D0%9F%D0%B0%D1%80%D0%B0%D0%BC%D0%B5%D1%82%D1%80%D1%8B%E2%80%9D");
 
             //Добавляю выпадающий список в панель
-            PulldownButtonData pullDownData = new PulldownButtonData("Параметры под проект", "Параметры\nпод проект");
-            pullDownData.ToolTip = "Коллекция плагинов, для заполнения парамтеров под конкретный проект";
+            PulldownButtonData pullDownData = new PulldownButtonData("Параметры под проект", "Параметры\nпод проект")
+            {
+                ToolTip = "Коллекция плагинов, для заполнения парамтеров под конкретный проект"
+            };
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
             BtnImagine(pullDown, "paramPullDown.png");
 
@@ -74,14 +72,26 @@ namespace KPLN_Parameters_Ribbon
                 "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                 ModuleData.Date,
                 ModuleData.Version,
-                ModuleData.ModuleName
-            ),
+                ModuleData.ModuleName),
             typeof(ExternalCommands.CommandGripParam).FullName,
             pullDown,
             "gripParams.png",
-            "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90"
-        );
-            
+            "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90");
+
+            AddPushButtonDataInPullDown(
+            "Проверка параметров",
+            "Проверка параметров",
+            "Производит проверку факта (заполнено или нет) заполнения параметров по требованиям ВЕР под проект. Качество заполнения - зона ответсвенности проектировщика",
+            string.Format(
+                "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                ModuleData.Date,
+                ModuleData.Version,
+                ModuleData.ModuleName),
+            typeof(ExternalCommands.CommandCheckParamData).FullName,
+            pullDown,
+            "auditParams.png",
+            "http://moodle/");
+
 
             return Result.Succeeded;
         }

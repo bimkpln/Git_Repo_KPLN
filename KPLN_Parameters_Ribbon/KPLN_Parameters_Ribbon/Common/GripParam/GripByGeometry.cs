@@ -364,7 +364,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 
                 bbox = elem.get_BoundingBox(null);
                 if (bbox != null)
-                    elemPointCenter = SolidBoundingBox(bbox).ComputeCentroid();
+                    elemPointCenter = SolidBoundingBox(bbox, elem).ComputeCentroid();
                 else
                 {
                     // Отлов гибких воздуховодов и труб, у которых нет возможности взять геометрию (такое бывает, когда эл-т простроен не корректно)
@@ -379,7 +379,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                         bbox.Max = pnt1.Z > pnt2.Z ? pnt1 : pnt2;
                         bbox.Min = pnt1.Z < pnt2.Z ? pnt1 : pnt2;
 
-                        elemPointCenter = SolidBoundingBox(bbox).ComputeCentroid();
+                        elemPointCenter = SolidBoundingBox(bbox, elem).ComputeCentroid();
                     }
                 }
 
@@ -390,25 +390,32 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             return elemPointCenter;
         }
 
-        private static Solid SolidBoundingBox(BoundingBoxXYZ bbox)
+        private static Solid SolidBoundingBox(BoundingBoxXYZ bbox, Element elem)
         {
+            Double height = bbox.Max.Z - bbox.Min.Z;
+            if (height == 0)
+            {
+                throw new Exception($"Элемент с id: {elem.Id} не имеет геометрии. После устранения ошибки - перезапусти плагин");
+            }
+            
             // corners in BBox coords
             XYZ pt0 = new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z);
             XYZ pt1 = new XYZ(bbox.Max.X, bbox.Min.Y, bbox.Min.Z);
             XYZ pt2 = new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Min.Z);
             XYZ pt3 = new XYZ(bbox.Min.X, bbox.Max.Y, bbox.Min.Z);
+            
             //edges in BBox coords
             Line edge0 = Line.CreateBound(pt0, pt1);
             Line edge1 = Line.CreateBound(pt1, pt2);
             Line edge2 = Line.CreateBound(pt2, pt3);
             Line edge3 = Line.CreateBound(pt3, pt0);
+            
             //create loop, still in BBox coords
             List<Curve> edges = new List<Curve>();
             edges.Add(edge0);
             edges.Add(edge1);
             edges.Add(edge2);
             edges.Add(edge3);
-            Double height = bbox.Max.Z - bbox.Min.Z;
             CurveLoop baseLoop = CurveLoop.Create(edges);
             List<CurveLoop> loopList = new List<CurveLoop>();
             loopList.Add(baseLoop);

@@ -82,13 +82,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2")));
+                .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2") && i.SuperComponent == null));
 
             // Семейства "Окна" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => i.Symbol.FamilyName.StartsWith("23")));
+                .Where(i => i.Symbol.FamilyName.StartsWith("23") && i.SuperComponent == null));
 
             // Категория "Лестницы" над уровнем и в отдельный список
             IEnumerable<StairsRun> stairsRun = new FilteredElementCollector(Doc)
@@ -106,17 +106,20 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralColumns)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFoundation)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
 
             // Семейства "Колоны" под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
 
             // Категория "Кровля" под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
@@ -127,18 +130,47 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Floors)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
 
             // Семейства "Обобщенная модель" под уровнем
             ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
 
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Walls)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null));
+
+            #region Семейства как вложенные общие
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent != null));
+            
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_StructuralColumns)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent != null));
+
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_Rebar)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent != null));
+
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent != null));
+            #endregion
         }
 
         public override bool ExecuteGripParams(Progress_Single pb)
@@ -173,8 +205,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 byStairsElem = SectionExcecuter.ExecuteByElement(Doc, StairsElems, "Орг.ОсьБлок", SectionParamName, pb);
             }
 
+            bool byHost = false;
+            if (ElemsByHost.Count > 0)
+            {
+                byHost = new GripByHost().ExecuteByHostFamily(ElemsByHost, SectionParamName, LevelParamName, pb, ElemsOnLevel.Count + ElemsUnderLevel.Count + StairsElems.Count);
+            }
 
-            return byElem && byUnderElem && byStairsElem;
+            return byElem && byUnderElem && byStairsElem && byHost;
         }
 
         /// <summary>

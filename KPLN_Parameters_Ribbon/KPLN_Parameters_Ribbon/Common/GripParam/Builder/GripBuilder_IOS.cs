@@ -88,6 +88,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_DuctInsulations,
                     BuiltInCategory.OST_PipeInsulations,
                 };
+
+                foreach (BuiltInCategory bic in revitInsulCat)
+                {
+                    ElemsInsulation.AddRange(new FilteredElementCollector(Doc)
+                        .OfCategory(bic)
+                        .WhereElementIsNotElementType());
+                }
             }
 
             foreach (BuiltInCategory bic in userCat)
@@ -125,6 +132,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
             }
 
+            ElemsOnLevel.AddRange(_dirtyElems
+                .Where(x => x.SuperComponent == null));
+
+            ElemsByHost.AddRange(_dirtyElems
+                .Where(x => x.SuperComponent != null));
+
             foreach (BuiltInCategory bic in revitCat)
             {
                 ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -132,18 +145,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .WhereElementIsNotElementType());
             }
 
-            foreach (BuiltInCategory bic in revitInsulCat)
-            {
-                ElemsInsulation.AddRange(new FilteredElementCollector(Doc)
-                    .OfCategory(bic)
-                    .WhereElementIsNotElementType());
-            }
 
-            ElemsOnLevel.AddRange(_dirtyElems
-                .Where(x => x.SuperComponent == null));
-
-            ElemsByHost.AddRange(_dirtyElems
-                .Where(x => x.SuperComponent != null));
         }
 
         public override bool ExecuteGripParams(Progress_Single pb)
