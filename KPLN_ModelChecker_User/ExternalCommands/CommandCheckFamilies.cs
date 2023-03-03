@@ -259,11 +259,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             BuiltInCategory currentBIC;
             Category currentCat = currentFam.FamilyCategory;
-            if (currentCat != null)
-                currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
-            else
+            if (currentCat == null)
                 return;
 
+            currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
             if (currentFam.get_Parameter(BuiltInParameter.FAMILY_SHARED).AsInteger() != 1
                 && currentFam.IsEditable
                 && !currentCat.CategoryType.Equals(CategoryType.Annotation)
@@ -282,13 +281,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     throw new Exception($"Работа остановлена, т.к. семейство {currentFam.Name} не может быть открыто. Причина: {ex}");
                 }
-                
+                if (famDoc.IsFamilyDocument != true)
+                    return;
+
+                // Блок игнорирования семейств ostec (они плагином устанавливаются локально на диск С)
+                if (currentFam.Name.ToLower().Contains("ostec"))
+                    return;
+
                 string famPath = famDoc.PathName;
-                if (!famPath.StartsWith("X:\\")
-                    && !famPath.Contains("03_Скрипты")
-                    && !famPath.ToLower().Contains("ostec")
-                    && !famPath.Contains("KPLN_Loader")
-                    && famDoc.IsFamilyDocument == true)
+                if (!(famPath.StartsWith("X:\\")
+                    || famPath.Contains("03_Скрипты")
+                    || famPath.Contains("KPLN_Loader")))
                 {
                     WPFDisplayItem item = GetItemByElement(
                         currentFam,
