@@ -252,10 +252,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
                 if (baseLevel != null)
                 {
-                    string floorNumber = null;
-
                     double offsetFromLev = LevelTool.GetElementLevelGrip(elem, baseLevel);
 
+                    string floorNumber;
                     if (offsetFromLev < 0)
                     {
                         floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, LevelNumberIndex, SplitLevelChar);

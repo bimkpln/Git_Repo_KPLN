@@ -23,10 +23,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN
                 Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
                 if (baseLevel != null)
                 {
-                    string floorNumber = null; 
-
-                    floorNumber = LevelTool.GetFloorNumberDecrementLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
-
+                    string floorNumber = LevelTool.GetFloorNumberDecrementLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
                     if (floorNumber == null)
                     {
                         Print($"Не найден уровень выше, для уровня {baseLevel.Name} " +

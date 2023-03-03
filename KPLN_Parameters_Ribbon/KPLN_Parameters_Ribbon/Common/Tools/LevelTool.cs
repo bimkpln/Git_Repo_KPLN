@@ -57,7 +57,6 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <returns>Номер уровня</returns>
         public static string GetFloorNumberByLevel(Level lev, int floorTextPosition, char splitChar)
         {
-            
             if (_levelNumberMap.ContainsKey(lev.Id))
             {
                 return _levelNumberMap[lev.Id];
@@ -65,12 +64,24 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             else
             {
                 string levname = lev.Name;
+                if (levname.ToLower().Contains("кровля"))
+                {
+                    _levelNumberMap.Add(lev.Id, "99");
+                    return "99";
+                }
+
                 string[] splitname = levname.Split(splitChar);
                 if (splitname.Length < 2)
-                {
                     throw new Exception($"Некорректное имя уровня: {levname}");
-                }
+
                 string floorNumber = splitname[floorTextPosition];
+
+                // Это исключительно для Обыденского
+                if (floorNumber.Contains("0") && !floorNumber.EndsWith("0"))
+                    floorNumber = floorNumber.Replace("0", "");
+
+                if (floorNumber.Contains("-"))
+                    floorNumber = floorNumber.Replace("-", "м");
 
                 _levelNumberMap.Add(lev.Id, floorNumber);
                 return floorNumber;
@@ -101,13 +112,25 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
             }
 
             string levname = aboveLevel.Name;
+            if (levname.ToLower().Contains("кровля"))
+            {
+                _levelNumberMap.Add(lev.Id, "99");
+                return "99";
+            }
+
             string[] splitname = levname.Split(splitChar);
             if (splitname.Length < 2)
-            {
-                Print("Некорректное имя уровня: " + levname, KPLN_Loader.Preferences.MessageType.Error);
-                return null;
-            }
+                throw new Exception($"Некорректное имя уровня: {levname}");
+
             string floorNumber = splitname[floorTextPosition];
+
+            // Это исключительно для Обыденского
+            if (floorNumber.Contains("0") && !floorNumber.EndsWith("0"))
+                floorNumber = floorNumber.Replace("0", "");
+
+            if (floorNumber.Contains("-"))
+                floorNumber = floorNumber.Replace("-", "м");
+
             return floorNumber;
         }
 

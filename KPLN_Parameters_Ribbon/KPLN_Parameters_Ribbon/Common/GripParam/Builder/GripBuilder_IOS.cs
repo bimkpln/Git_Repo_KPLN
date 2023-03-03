@@ -46,7 +46,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_NurseCallDevices,
                     BuiltInCategory.OST_SecurityDevices,
                     BuiltInCategory.OST_FireAlarmDevices,
-                    BuiltInCategory.OST_GenericModel
+                    BuiltInCategory.OST_GenericModel,
+                    //Огнезащитное покрытие
+                    BuiltInCategory.OST_DuctFitting
                 };
 
                 // Категории системных семейств, используемые в проектах ИОС
@@ -54,6 +56,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 {
                     BuiltInCategory.OST_CableTray,
                     BuiltInCategory.OST_Conduit,
+                    //Огнезащитное покрытие
+                    BuiltInCategory.OST_DuctCurves
                 };
             }
             // Делю на ОВ ВК
