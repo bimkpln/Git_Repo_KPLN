@@ -227,12 +227,19 @@ namespace KPLN_Scoper
                         BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
                         
                         // Отлов семейств марок (могут разрабатывать все)
-                        if (famCat.CategoryType.Equals(CategoryType.Annotation) 
-                            || bic.Equals(BuiltInCategory.OST_ProfileFamilies)
+                        if (bic.Equals(BuiltInCategory.OST_ProfileFamilies)
                             || bic.Equals(BuiltInCategory.OST_DetailComponents)
                             || bic.Equals(BuiltInCategory.OST_GenericAnnotation)
                             || bic.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
                             || bic.Equals(BuiltInCategory.OST_DetailComponentTags))
+                            return;
+                        
+                        // Отлов семейств марок (могут разрабатывать все), за исключением штампов, подписей и жуков
+                        if (famCat.CategoryType.Equals(CategoryType.Annotation)
+                            && !familyName.StartsWith("020_")
+                            && !familyName.StartsWith("022_")
+                            && !familyName.StartsWith("023_")
+                            && !familyName.ToLower().Contains("жук"))
                             return;
 
                         // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)

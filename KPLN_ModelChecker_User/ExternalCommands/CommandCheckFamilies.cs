@@ -96,7 +96,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Наименование] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Семейства] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
                 }
 
                 return Result.Succeeded;
@@ -265,13 +265,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
             if (currentFam.get_Parameter(BuiltInParameter.FAMILY_SHARED).AsInteger() != 1
                 && currentFam.IsEditable
-                && !currentCat.CategoryType.Equals(CategoryType.Annotation)
                 && !currentBIC.Equals(BuiltInCategory.OST_ProfileFamilies)
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponents)
                 && !currentBIC.Equals(BuiltInCategory.OST_GenericAnnotation)
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentTags))
             {
+                
                 Document famDoc;
                 try
                 {
@@ -286,6 +286,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 // Блок игнорирования семейств ostec (они плагином устанавливаются локально на диск С)
                 if (currentFam.Name.ToLower().Contains("ostec"))
+                    return;
+
+                // Блок игнорирования семейств аннотаций, кроме штампов (остальное проектировщики могут создавать)
+                if (currentCat.CategoryType.Equals(CategoryType.Annotation)
+                    && !currentFam.Name.StartsWith("020_")
+                    && !currentFam.Name.StartsWith("022_")
+                    && !currentFam.Name.StartsWith("023_")
+                    && !currentFam.Name.ToLower().Contains("жук"))
                     return;
 
                 string famPath = famDoc.PathName;
