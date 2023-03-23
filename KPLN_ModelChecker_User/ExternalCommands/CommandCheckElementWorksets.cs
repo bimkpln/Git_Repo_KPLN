@@ -60,8 +60,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 }    
                             }
                             
-                            // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
-                            if (element.Category.CategoryType == CategoryType.Model && element.Category.Id.IntegerValue != -2000576)
+                            if (element.Category.CategoryType == CategoryType.Model
+                                // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
+                                && element.Category.Id.IntegerValue != -2000576
+                                // Игнор зон ОВК
+                                && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_HVAC_Zones)
                             {
                                 foreach (Workset w in worksets)
                                 {
