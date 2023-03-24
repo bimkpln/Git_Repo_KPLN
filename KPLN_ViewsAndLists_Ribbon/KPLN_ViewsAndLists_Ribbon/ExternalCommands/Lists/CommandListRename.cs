@@ -324,7 +324,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
         /// <summary>
         /// Метод преобразования номера с символами в число.
         /// <example> 
-        /// Например: АР/007.1 преобразуется в 7.1
+        /// Например: АР1/007.1 преобразуется в 7.1
         /// </example>
         /// </summary>
         private string UserNumber(string number)
@@ -346,7 +346,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 }
                 else if (Char.IsPunctuation(c))
                 {
-                    number = number.Trim(c);
+                    number = number.Split(c)[1];
                 }
             }
             number = number.Length > 1 ? number.TrimStart('0') : number;
