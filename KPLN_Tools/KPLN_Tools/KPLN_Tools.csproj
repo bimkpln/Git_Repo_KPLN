@@ -41,7 +41,16 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;Revit2020</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\AdWindows.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLNDataBase">
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_DataBase\KPLNDataBase.dll</HintPath>
       <Private>False</Private>
@@ -50,14 +59,17 @@
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_Loader\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPIUI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -72,6 +84,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="UIFramework">
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\UIFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="WindowsBase, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WindowsBase.4.6.1055.0\lib\WindowsBase.dll</HintPath>
       <SpecificVersion>False</SpecificVersion>
@@ -94,7 +110,15 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\HolesManager\ShaftDTO.cs" />
+    <Compile Include="Common\HolesManager\HoleDTO.cs" />
+    <Compile Include="Common\HolesManager\HolesPrepareManager.cs" />
+    <Compile Include="Common\HolesManager\ShaftPrepareManager.cs" />
+    <Compile Include="Common\RibbonItemExtensions.cs" />
+    <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
+    <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="Forms\FormRenamer.xaml.cs">
       <DependentUpon>FormRenamer.xaml</DependentUpon>
@@ -105,16 +129,34 @@
     <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Imagens\autonumberSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\dimHeplerSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\wipeSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\toolBoxBig.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\toolBoxSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\holesBig.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\holesSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\holesManagerBig.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\holesManagerSmall.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <Content Include="Source\autonumber.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\autonumber.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\toolBox.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\wipe.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -127,8 +169,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Common\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

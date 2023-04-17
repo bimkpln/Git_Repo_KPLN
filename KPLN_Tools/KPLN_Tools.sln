@@ -1,17 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30907.101
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Tools", "KPLN_Tools\KPLN_Tools.csproj", "{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Revit2018|Any CPU = Revit2018|Any CPU
 		Revit2020|Any CPU = Revit2020|Any CPU
 		Revit2022|Any CPU = Revit2022|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2018|Any CPU.ActiveCfg = Revit2018|Any CPU
 		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2018|Any CPU.Build.0 = Revit2018|Any CPU
 		{2E1CEC10-B809-4D6E-94CB-281DED0CA31C}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU

@@ -19,7 +19,7 @@ namespace KPLN_Tools
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2022/04/05";
+        public static string Date = "2023/04/05";
 
         /// <summary>
         /// Имя модуля
