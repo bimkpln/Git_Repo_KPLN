@@ -43,7 +43,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Мониторинг уровней] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Мониторинг уровней] Мониторинг назначен корректно! Не забудь вручную проверить ошибки мониторинга", KPLN_Loader.Preferences.MessageType.Success);
                 }
                 return Result.Succeeded;
             }

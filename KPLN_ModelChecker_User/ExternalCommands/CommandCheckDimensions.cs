@@ -296,7 +296,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             if (_errorList.Count == 0)
             {
-                TaskDialog.Show("Результат", "Проблемы не обнаружены :)", TaskDialogCommonButtons.Ok);
+                Print("[Проверка размеров] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
             }
             else
             {

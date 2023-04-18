@@ -98,31 +98,30 @@ namespace KPLN_ModelChecker_User.Common
                     foreach (ElementId i in element.GetMonitoredLinkElementIds())
                     {
                         link = commandData.Application.ActiveUIDocument.Document.GetElement(i) as RevitLinkInstance;
-                    }
-                    
-                    if (link == null)
-                    {
-                        outputCollection.Add(
-                            GetItemByElement(
-                                element,
-                                element.Name,
-                                $"Связь не найдена: «{element.Name}»",
-                                $"Элементу с ID {element.Id} необходимо исправить мониторинг",
-                                Status.Error,
-                                null)
-                            );
-                    }
-                    else if (!link.Name.ToLower().Contains("разб"))
-                    {
-                        outputCollection.Add(
-                            GetItemByElement(
-                                element,
-                                element.Name,
-                                $"Мониторинг не из разбивочного файла: «{element.Name}»",
-                                $"Элементу с ID {element.Id} необходимо исправить мониторинг",
-                                Status.Error,
-                                null)
-                            );
+                        if (link == null)
+                        {
+                            outputCollection.Add(
+                                GetItemByElement(
+                                    element,
+                                    element.Name,
+                                    $"Связь не найдена: «{element.Name}»",
+                                    $"Элементу с ID {element.Id} необходимо исправить мониторинг",
+                                    Status.Error,
+                                    null)
+                                );
+                        }
+                        else if (!link.Name.ToLower().Contains("разб"))
+                        {
+                            outputCollection.Add(
+                                GetItemByElement(
+                                    element,
+                                    element.Name,
+                                    $"Мониторинг не из разбивочного файла: «{element.Name}»",
+                                    $"Элементу с ID {element.Id} необходимо исправить мониторинг, сейчас он присвоен связи {link.Name}",
+                                    Status.Error,
+                                    null)
+                                );
+                        }
                     }
                 }
                 else
