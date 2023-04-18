@@ -73,13 +73,13 @@ namespace KPLN_ModelChecker_User.Common
                 if (name.Contains('_'))
                 {
                     string prefix = name.Split('_')[0];
-                    if (prefix.StartsWith("С"))
+                    if (prefix.StartsWith("С") && !(prefix.StartsWith("СТЛ")))
                     {
                         x.Add(0);
                     }
                     else
                     {
-                        if (prefix.StartsWith("К") | prefix.StartsWith("ПАР"))
+                        if (prefix.StartsWith("К") | prefix.StartsWith("ПАР") | prefix.StartsWith("СТЛ"))
                         {
                             x.Add(1);
                         }
