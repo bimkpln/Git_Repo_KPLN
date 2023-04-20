@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 namespace KPLN_Tools.Common.HolesManager
 {
     /// <summary>
-    /// Семейство-контейнер для объединения данных по шахтам
+    /// Класс-контейнер для объединения данных по шахтам
     /// </summary>
-    public class ShaftDTO
+    public class IOSShaftDTO
     {
         public FamilyInstance CurrentHole { get; set; }
 

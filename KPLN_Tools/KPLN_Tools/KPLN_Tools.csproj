@@ -110,12 +110,14 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\HolesManager\ShaftDTO.cs" />
-    <Compile Include="Common\HolesManager\HoleDTO.cs" />
-    <Compile Include="Common\HolesManager\HolesPrepareManager.cs" />
-    <Compile Include="Common\HolesManager\ShaftPrepareManager.cs" />
+    <Compile Include="Common\HolesManager\ARLinkData.cs" />
+    <Compile Include="Common\HolesManager\IOSShaftDTO.cs" />
+    <Compile Include="Common\HolesManager\IOSHoleDTO.cs" />
+    <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
+    <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="ExternalCommands\CommandHolesManagerAR.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
@@ -126,39 +128,32 @@
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\autonumberSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\dimHeplerSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\wipeSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\toolBoxBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\toolBoxSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\holesBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\holesSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\holesManagerBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Imagens\holesManagerSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Imagens\autonumberSmall.png" />
+    <EmbeddedResource Include="Imagens\dimHeplerSmall.png" />
+    <EmbeddedResource Include="Imagens\wipeSmall.png" />
+    <EmbeddedResource Include="Imagens\toolBoxBig.png" />
+    <EmbeddedResource Include="Imagens\toolBoxSmall.png" />
+    <EmbeddedResource Include="Imagens\holesBig.png" />
+    <EmbeddedResource Include="Imagens\holesSmall.png" />
+    <EmbeddedResource Include="Imagens\holesManagerBig.png" />
+    <EmbeddedResource Include="Imagens\holesManagerSmall.png" />
+    <EmbeddedResource Include="Imagens\checkHolesFlippingBig.png" />
+    <EmbeddedResource Include="Imagens\checkHolesFlippingSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

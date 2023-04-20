@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 namespace KPLN_Tools.Common.HolesManager
 {
     /// <summary>
-    /// Семейство-контейнер для объединения данных по отверстиям
+    /// Класс-контейнер для объединения данных по отверстиям
     /// </summary>
-    public class HoleDTO
+    public class IOSHoleDTO
     {
         public FamilyInstance CurrentHole { get; set; }
 

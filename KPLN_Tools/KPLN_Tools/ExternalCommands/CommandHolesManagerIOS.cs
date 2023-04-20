@@ -42,53 +42,46 @@ namespace KPLN_Tools.ExternalCommands
                     .FirstOrDefault();
                 double absoluteElevBasePnt = basePoint.SharedPosition.Z;
 
-                #region  Получаю и проверяю коллекцию семейств-отверстий в стенах
+                #region  Получаю и проверяю коллекцию классов-отверстий в стенах
                 IEnumerable<FamilyInstance> holesElems = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                     .Cast<FamilyInstance>()
-                    .Where(e => e.Symbol.FamilyName.StartsWith("501_ЗИ_Отверстие") || e.Symbol.FamilyName.StartsWith("501_MEP_"));
+                    .Where(e => 
+                        e.Symbol.FamilyName.StartsWith("501_ЗИ_Отверстие") 
+                        || e.Symbol.FamilyName.StartsWith("501_MEP_") 
+                        && !(e.Symbol.FamilyName.Contains("Перекрытие"))
+                    );
                 
                 CheckMainParamsError(holesElems, 2, 0);
                 CheckHolesExpandParamsError(holesElems);
                 #endregion
 
-                #region  Получаю и проверяю коллекцию семейств-шахт/отверстий в перекрытиях
-                IEnumerable<FamilyInstance> shaftElemsColl = new FilteredElementCollector(doc)
+                #region  Получаю и проверяю коллекцию классов-шахт/отверстий в перекрытиях
+                IEnumerable<FamilyInstance> shaftElems = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                     .Cast<FamilyInstance>()
-                    .Where(e => e.Symbol.FamilyName.StartsWith("501_ЗИ_Шахта"));
+                    .Where(e => 
+                    e.Symbol.FamilyName.StartsWith("501_ЗИ_Шахта")
+                    || (e.Symbol.FamilyName.StartsWith("501_") && e.Symbol.FamilyName.Contains("Перекрытие"))
+                );
                 
-                CheckMainParamsError(shaftElemsColl, 1, 1);
+                CheckMainParamsError(shaftElems, 1, 1);
                 #endregion
 
-                #region Параллельная подготовка спец. классов для последующей записи в проект
-                List<HoleDTO> holesDTOColl = new List<HoleDTO>();
-                Task taskHoles = Task.Run(() =>
-                {
-                    // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
-                    IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
-                        .OfClass(typeof(RevitLinkInstance))
-                        .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
-                        .Cast<RevitLinkInstance>();
-                    
-                    holesDTOColl = HolesPrepareManager.PrepareHolesDTO(holesElems, linkedModels, absoluteElevBasePnt);
-                });
+                #region Подготовка и обработка спец. классов для последующей записи в проект
+                // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
+                IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
+                    .Cast<RevitLinkInstance>().ToList();
 
-                List<ShaftDTO> shaftDTOElems = new List<ShaftDTO>();
-                Task taskShafts = Task.Run(() =>
-                {
-                    // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
-                    IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
-                        .OfClass(typeof(RevitLinkInstance))
-                        .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
-                        .Cast<RevitLinkInstance>();
-                    shaftDTOElems = ShaftPrepareManager.PrepareShaftDTO(shaftElemsColl, linkedModels, absoluteElevBasePnt);
-                });
+                IOSHolesPrepareManager iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels, absoluteElevBasePnt);
+                List<IOSHoleDTO> holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
 
-                taskHoles.Wait();
-                taskShafts.Wait();
+                IOSShaftPrepareManager iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels, absoluteElevBasePnt);
+                List<IOSShaftDTO> shaftDTOElems = iOSShaftPrepareManager.PrepareShaftDTO();
                 #endregion
 
                 #region Запись полученных данных в проект
@@ -153,7 +146,7 @@ namespace KPLN_Tools.ExternalCommands
             if (nullParamsFamilies.Any())
             {
                 foreach (Family f in nullParamsFamilies)
-                    throw new Exception($"KPLN: Ошибка - в семействе {f.Name} нет параметров экземпляра для записи абсолютной и относительной отметок");
+                    throw new Exception($"В семействе {f.Name} нет параметров экземпляра для записи абсолютной и относительной отметок");
             }
         }
 
@@ -175,7 +168,7 @@ namespace KPLN_Tools.ExternalCommands
             if (nullParamsFamilies.Any())
             {
                 foreach (Family f in nullParamsFamilies)
-                    throw new Exception($"KPLN: Ошибка - в семействе {f.Name} нет параметра экземпляра {_offsetUpParmaName}, или {_offsetDownParmaName}");
+                    throw new Exception($"В семействе {f.Name} нет параметра экземпляра {_offsetUpParmaName}, или {_offsetDownParmaName}");
             }
         }
 
@@ -183,9 +176,9 @@ namespace KPLN_Tools.ExternalCommands
         /// Задает значения для расширения границ и записывает значения парамтеров для отверстий из HoleDTO
         /// </summary>
         /// <param name="holesElems">Коллекция отверстий</param>
-        private void HolesParamsWriter(IEnumerable<HoleDTO> holesElems)
+        private void HolesParamsWriter(IEnumerable<IOSHoleDTO> holesElems)
         {
-            foreach (HoleDTO dto in holesElems)
+            foreach (IOSHoleDTO dto in holesElems)
             {
                 // Оффсеты
                 var revalueParam = dto.CurrentHole.get_Parameter(_revalueOffsetsParam);
@@ -215,9 +208,9 @@ namespace KPLN_Tools.ExternalCommands
         /// Запись значения парамтеров для шахт
         /// </summary>
         /// <param name="holesElems">Коллекция шахт</param>
-        private void ShaftParamsWriter(IEnumerable<ShaftDTO> shaftElems)
+        private void ShaftParamsWriter(IEnumerable<IOSShaftDTO> shaftElems)
         {
-            foreach (ShaftDTO dto in shaftElems)
+            foreach (IOSShaftDTO dto in shaftElems)
             {
                 // Отметки
                 dto.CurrentHole
