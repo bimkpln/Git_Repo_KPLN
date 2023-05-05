@@ -91,7 +91,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         }
                         else
                         {
-                            WPFDisplayItem item = GetItemByElement(link, link.Name, "Дублирование", "Несколько экземпляров одной и той же подгруженной связи", Status.Error, null);
+                            WPFDisplayItem item = GetItemByElement(link, link.FieldName, "Дублирование", "Несколько экземпляров одной и той же подгруженной связи", Status.Error, null);
                             item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Текущая позиция: ", Description = currentPosition });
                             outputCollection.Add(item);
                         }

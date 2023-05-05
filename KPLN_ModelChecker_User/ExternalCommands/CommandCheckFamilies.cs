@@ -2,7 +2,6 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using System;
@@ -21,13 +20,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandCheckFamilies : IExternalCommand
     {
-        private delegate void FormRunner(ProgressBar progressBar);
-
-        private void ProgressBarRun(ProgressBar progressBar)
-        {
-            progressBar.Show();
-        }
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Application app = commandData.Application.Application;

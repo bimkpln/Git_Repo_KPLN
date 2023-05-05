@@ -1,14 +1,8 @@
-﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using KPLN_ModelChecker_User.Forms;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Common;
-using static KPLN_Loader.Output.Output;
-using static KPLN_ModelChecker_User.Common.Collections;
+using KPLN_ModelChecker_User.Forms;
+using System.Collections.Generic;
 using System.Linq;
-using KPLN_ModelChecker_Lib.Common.ErrorTypes;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -40,8 +34,8 @@ namespace KPLN_ModelChecker_User.Common
                 }
 
                 List<ElementEntity> wpfFiltration = new List<ElementEntity>();
-                wpfFiltration.Add(new ElementEntity(null, "<Все>", null, null, null ));
-                
+                wpfFiltration.Add(new ElementEntity(null, "<Все>", null, null, null));
+
                 if (sortedOutputCollection.Count != 0)
                 {
                     OutputForm form = new OutputForm(sortedOutputCollection, wpfFiltration);

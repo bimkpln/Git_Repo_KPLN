@@ -33,18 +33,13 @@
     <OutputPath>bin\Debug\</OutputPath>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
+    <DefineConstants>
+    </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
-    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_ModelChecker_Lib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Release\KPLN_ModelChecker_Lib.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -57,7 +52,10 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
@@ -85,15 +83,19 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\Collections.cs" />
-    <Compile Include="Common\WPFItem.cs" />
+    <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFReport.cs" />
     <Compile Include="Common\GeometryBoundingBox.cs" />
     <Compile Include="Common\LevelChecker.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
     <Compile Include="Common\WPFElement.cs" />
     <Compile Include="Common\WPFDisplayItem.cs" />
+    <Compile Include="ExecutableCommand\CommandSetExtStr_TextLog.cs" />
+    <Compile Include="ExecutableCommand\CommandSetExrStr_TimeRunLog.cs" />
+    <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
+    <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckListAnnotations.cs" />
@@ -101,8 +103,11 @@
     <Compile Include="ExternalCommands\CommandCheckGrids.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandLinks.cs" />
-    <Compile Include="ExternalCommands\CommandZoomElement.cs" />
+    <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
     <Compile Include="ExternalCommands\NewCommandRun_Test.cs" />
+    <Compile Include="Forms\OutputMainForm.xaml.cs">
+      <DependentUpon>OutputMainForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ElementsOutput.xaml.cs">
       <DependentUpon>ElementsOutput.xaml</DependentUpon>
     </Compile>
@@ -112,50 +117,45 @@
     <Compile Include="Forms\ElementsOutputExtended.xaml.cs">
       <DependentUpon>ElementsOutputExtended.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\WPFEntityApproveBtnVisibilityConverter.cs" />
+    <Compile Include="Forms\WPFEntityApprCommentToGridRowHeightConverter.cs" />
+    <Compile Include="Forms\WPFEntityInfoToGridRowHeightConverter.cs" />
+    <Compile Include="Forms\WPFEntityApprCommentVisibilityConverter.cs" />
+    <Compile Include="Forms\WPFEntityInfoVisibilityConverter.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Tools\Extentions.cs" />
     <Compile Include="Tools\LevelTools.cs" />
     <Compile Include="Tools\LevelUtils.cs" />
     <Compile Include="Tools\WindowHandleSearch.cs" />
+    <Compile Include="WPFItems\WPFEntity.cs" />
+    <Compile Include="WPFItems\WPFReportCreator.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Source\checker_grids_monitor.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_levels.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_levels_monitor.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_locations.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_mirrored.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_pull.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_push.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\checker_worksets.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\dimensions.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\family_name.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Source\surch_list_annotation.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Source\checker_flatsArea.png" />
+    <EmbeddedResource Include="Source\checker_grids_monitor.png" />
+    <EmbeddedResource Include="Source\checker_levels.png" />
+    <EmbeddedResource Include="Source\checker_levels_monitor.png" />
+    <EmbeddedResource Include="Source\checker_locations.png" />
+    <EmbeddedResource Include="Source\checker_mirrored.png" />
+    <EmbeddedResource Include="Source\checker_pull.png" />
+    <EmbeddedResource Include="Source\checker_push.png" />
+    <EmbeddedResource Include="Source\checker_worksets.png" />
+    <EmbeddedResource Include="Source\dimensions.png" />
+    <EmbeddedResource Include="Source\family_name.png" />
+    <EmbeddedResource Include="Source\surch_list_annotation.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\OutputMainForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\ElementsOutput.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -168,6 +168,27 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage.csproj">
+      <Project>{372ce602-253d-427d-ace7-8798de5f3c04}</Project>
+      <Name>KPLN_Library_ExtensibleStorage</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\KPLN_Library_Forms.csproj">
+      <Project>{6dedaa32-33df-4ae2-8158-9d49798e2966}</Project>
+      <Name>KPLN_Library_Forms</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib.csproj">
+      <Project>{57caeffd-5880-4a89-a882-127729008cb1}</Project>
+      <Name>KPLN_ModelChecker_Lib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

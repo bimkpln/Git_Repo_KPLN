@@ -1,21 +1,10 @@
 ﻿using KPLN_ModelChecker_User.Common;
-using KPLN_ModelChecker_User.ExternalCommands;
+using KPLN_ModelChecker_User.ExecutableCommand;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_ModelChecker_User.Forms
@@ -26,7 +15,7 @@ namespace KPLN_ModelChecker_User.Forms
     public partial class ElementsOutputExtended : Window
     {
         private bool _isToggle = true;
-        
+
         public ElementsOutputExtended(ObservableCollection<WPFDisplayItem> collection, ObservableCollection<WPFDisplayItem> filtration)
         {
 #if Revit2020
@@ -47,7 +36,7 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 PrintError(e);
             }
-            
+
         }
         private void UpdateCollection(int itemCatId, int itemId)
         {

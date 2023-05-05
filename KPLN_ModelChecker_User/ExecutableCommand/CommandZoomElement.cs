@@ -5,47 +5,45 @@ using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static KPLN_Loader.Output.Output;
 
-namespace KPLN_ModelChecker_User.ExternalCommands
+namespace KPLN_ModelChecker_User.ExecutableCommand
 {
-    public class CommandZoomElement : IExecutableCommand
+    internal class CommandZoomElement : IExecutableCommand
     {
-        private Element Element { get; set; }
+        private Element _element;
 
-        private BoundingBoxXYZ Box { get; set; }
+        private BoundingBoxXYZ _box;
 
-        private XYZ Centroid { get; set; }
+        private XYZ _centroid;
 
         public CommandZoomElement(Element element)
         {
-            Element = element;
+            _element = element;
         }
 
         public CommandZoomElement(Element element, BoundingBoxXYZ box, XYZ centroid) : this(element)
         {
-            Box = box;
-            Centroid = centroid;
+            _box = box;
+            _centroid = centroid;
         }
 
         public Result Execute(UIApplication app)
         {
-            bool cutView = CutView(Box, Centroid, app.ActiveUIDocument, Element);
-            if (cutView)
+            if (CutView(_box, _centroid, app.ActiveUIDocument, _element))
             {
-                ICollection<ElementId> newSelection = new List<ElementId>() { Element.Id };
+                ICollection<ElementId> newSelection = new List<ElementId>() { _element.Id };
                 app.ActiveUIDocument.Selection.SetElementIds(newSelection);
             }
             else
             {
                 // Анализ размеров (только их!), размещенных на легенде
-                Dimension dim = Element as Dimension;
+                Dimension dim = _element as Dimension;
 
                 if (dim != null)
                 {
                     // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
                     app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
-                    app.ActiveUIDocument.ShowElements(Element);
+                    app.ActiveUIDocument.ShowElements(_element);
                     app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
 
                     View appView = app.ActiveUIDocument.ActiveView;
@@ -54,7 +52,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (appView == null && dimView == null)
                     {
                         TaskDialog.Show("KPLN", $"У размера с ID: {dim.Id} нет вида. Обратись в BIM-отдел!");
-                            
+
                         return Result.Cancelled;
                     }
 
@@ -80,13 +78,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         }
                     }
 
-                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { Element.Id });
+                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                 }
             }
 
             return Result.Succeeded;
         }
-        
+
         private bool CutView(BoundingBoxXYZ box, XYZ centroid, UIDocument uidoc, Element element)
         {
             XYZ offsetMin = new XYZ(-5, -5, -2);

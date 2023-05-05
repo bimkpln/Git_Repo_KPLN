@@ -61,7 +61,7 @@ namespace KPLN_ModelChecker_User.Common
                 UpperLevel = doc.GetElement(upperLevelId) as Level;
                 Max = UpperLevel.Elevation;
             }
-            //Print(string.Format("{0} ====> {1} ({2}mm:{3}mm)", Level.Name, UpperLevel != null ? UpperLevel.Name : "null", Math.Round(Min * 304.8, 2), Math.Round(Max * 304.8, 2)), KPLN_Loader.Preferences.MessageType.System_Regular);
+            //Print(string.Format("{0} ====> {1} ({2}mm:{3}mm)", Level.FieldName, UpperLevel != null ? UpperLevel.FieldName : "null", Math.Round(Min * 304.8, 2), Math.Round(Max * 304.8, 2)), KPLN_Loader.Preferences.MessageType.System_Regular);
         }
 
         public static CheckResult CheckLevels(Document doc)
