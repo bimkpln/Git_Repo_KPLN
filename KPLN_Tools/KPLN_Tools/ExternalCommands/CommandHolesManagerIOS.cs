@@ -6,10 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Tools.ExternalCommands
@@ -34,6 +30,14 @@ namespace KPLN_Tools.ExternalCommands
 
             try
             {
+                // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
+                IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
+                    .Cast<RevitLinkInstance>();
+                if (!linkedModels.Any())
+                    throw new Exception("Для работы обязателено нужно подгрузить все связи АР (кроме разбивочных файлов), которые являются подложкой для модели ИОС");
+
                 // Получаю абсолютную отметку базовой точки проекта (т.е. абс. отметка проекта)
                 var basePoint = new FilteredElementCollector(doc)
                     .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
@@ -47,12 +51,12 @@ namespace KPLN_Tools.ExternalCommands
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                     .Cast<FamilyInstance>()
-                    .Where(e => 
-                        e.Symbol.FamilyName.StartsWith("501_ЗИ_Отверстие") 
-                        || e.Symbol.FamilyName.StartsWith("501_MEP_") 
+                    .Where(e =>
+                        e.Symbol.FamilyName.StartsWith("501_ЗИ_Отверстие")
+                        || e.Symbol.FamilyName.StartsWith("501_MEP_")
                         && !(e.Symbol.FamilyName.Contains("Перекрытие"))
                     );
-                
+
                 CheckMainParamsError(holesElems, 2, 0);
                 CheckHolesExpandParamsError(holesElems);
                 #endregion
@@ -62,33 +66,49 @@ namespace KPLN_Tools.ExternalCommands
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                     .Cast<FamilyInstance>()
-                    .Where(e => 
+                    .Where(e =>
                     e.Symbol.FamilyName.StartsWith("501_ЗИ_Шахта")
                     || (e.Symbol.FamilyName.StartsWith("501_") && e.Symbol.FamilyName.Contains("Перекрытие"))
                 );
-                
+
                 CheckMainParamsError(shaftElems, 1, 1);
                 #endregion
 
                 #region Подготовка и обработка спец. классов для последующей записи в проект
-                // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
-                IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
-                    .OfClass(typeof(RevitLinkInstance))
-                    .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
-                    .Cast<RevitLinkInstance>().ToList();
-
-                IOSHolesPrepareManager iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels, absoluteElevBasePnt);
+                IOSHolesPrepareManager iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
                 List<IOSHoleDTO> holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
 
-                IOSShaftPrepareManager iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels, absoluteElevBasePnt);
+                IOSShaftPrepareManager iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
                 List<IOSShaftDTO> shaftDTOElems = iOSShaftPrepareManager.PrepareShaftDTO();
+                #endregion
+
+                #region Вывод ошибок пользователю
+                if (iOSHolesPrepareManager.ErrorFamInstColl.Any())
+                {
+                    Print("Ошибки определения основы у отверстий ↑", KPLN_Loader.Preferences.MessageType.Header);
+                    foreach (FamilyInstance fi in iOSHolesPrepareManager.ErrorFamInstColl)
+                    {
+                        Print($"KPLN: Ошибка - отверстие с id: {fi.Id} невозможно определить основу (уровень, на котором оно расположено). " +
+                            $"Отверстие должно быть в стене, а стена должна стоять на Жб перекрытии, расстояние до которой не больше 15 м", KPLN_Loader.Preferences.MessageType.Warning);
+                    }
+                }
+
+                if (iOSShaftPrepareManager.ErrorFamInstColl.Any())
+                {
+                    Print("Ошибки определения основы у шахт ↑", KPLN_Loader.Preferences.MessageType.Header);
+                    foreach (FamilyInstance fi in iOSShaftPrepareManager.ErrorFamInstColl)
+                    {
+                        Print($"KPLN: Ошибка - шахта с id: {fi.Id} невозможно определить основу (уровень, на котором оно расположено). " +
+                            $"Основание шахты должно быть либо в перекрытии, либо над ним не выше, чем на 0.300 м", KPLN_Loader.Preferences.MessageType.Warning);
+                    }
+                }
                 #endregion
 
                 #region Запись полученных данных в проект
                 using (Transaction t = new Transaction(doc))
                 {
                     t.Start("КП_Отверстия для АР: границы и отметки");
-                    
+
                     HolesParamsWriter(holesDTOColl);
                     ShaftParamsWriter(shaftDTOElems);
 
@@ -99,9 +119,9 @@ namespace KPLN_Tools.ExternalCommands
             catch (Exception ex)
             {
                 if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}\n StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
                 else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}\n StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
 
                 return Result.Cancelled;
             }
@@ -138,7 +158,7 @@ namespace KPLN_Tools.ExternalCommands
             //        }
             //    }
             //}
-            
+
             // Проверка на наличие параметра 00_Отметка_Абсолютная
             HashSet<Family> nullParamsFamilies = new HashSet<Family>(collElems
                 .Where(fi => fi.get_Parameter(_relativeElevParam) is null || fi.get_Parameter(_absoluteElevParam) is null)
@@ -187,20 +207,23 @@ namespace KPLN_Tools.ExternalCommands
                     dto.CurrentHole
                         .LookupParameter(_offsetDownParmaName)
                         .Set(dto.DownFloorDistance);
-                
+
                     dto.CurrentHole
                         .LookupParameter(_offsetUpParmaName)
                         .Set(dto.UpFloorDistance);
                 }
 
                 // Отметки
-                dto.CurrentHole
-                    .get_Parameter(_relativeElevParam)
-                    .Set($"[Отн]: {dto.BindingPrefixString} {Math.Round((dto.RlvElevation * 304.8 / 5), 0) * 5} отн. {Math.Round((dto.DownBindingElevation * 304.8 / 5), 0) * 5}");
-                
-                dto.CurrentHole
-                    .get_Parameter(_absoluteElevParam)
-                    .Set($"[Абс]: {dto.BindingPrefixString} {Math.Round((dto.AbsElevation * 304.8 / 5), 0) * 5}");
+                double rlvElev = RoundElevationData(dto.RlvElevation);
+                double rlvHostElev = RoundElevationData(dto.DownBindingElevation);
+                double absElev = RoundElevationData(dto.AbsElevation);
+
+                string rlvElevStr = PrepareStringData(rlvElev);
+                string rlvHostElevStr = PrepareStringData(rlvHostElev);
+                string absElevStr = PrepareStringData(absElev);
+
+                SetRlvElevation(dto.CurrentHole, dto.BindingPrefixString, rlvElevStr, rlvHostElevStr);
+                SetAbsElevation(dto.CurrentHole, dto.BindingPrefixString, absElevStr);
             }
         }
 
@@ -213,15 +236,27 @@ namespace KPLN_Tools.ExternalCommands
             foreach (IOSShaftDTO dto in shaftElems)
             {
                 // Отметки
-                dto.CurrentHole
-                    .get_Parameter(_relativeElevParam)
-                    .Set($"[Отн]: {dto.BindingPrefixString} {Math.Round((dto.RlvElevation * 304.8 / 5), 0) * 5} отн. {Math.Round((dto.DownBindingElevation * 304.8 / 5), 0) * 5}");
+                double rlvElev = RoundElevationData(dto.RlvElevation);
+                double rlvHostElev = RoundElevationData(dto.DownBindingElevation);
+                double absElev = RoundElevationData(dto.AbsElevation);
 
-                dto.CurrentHole
-                    .get_Parameter(_absoluteElevParam)
-                    .Set($"[Абс]: {dto.BindingPrefixString} {Math.Round((dto.AbsElevation * 304.8 / 5), 0) * 5}");
+                string rlvElevStr = PrepareStringData(rlvElev);
+                string rlvHostElevStr = PrepareStringData(rlvHostElev);
+                string absElevStr = PrepareStringData(absElev);
 
+                SetRlvElevation(dto.CurrentHole, dto.BindingPrefixString, rlvElevStr, rlvHostElevStr);
+                SetAbsElevation(dto.CurrentHole, dto.BindingPrefixString, absElevStr);
             }
         }
+
+        private double RoundElevationData(double elev) => (Math.Round((elev * 304.8 / 5), 0) * 5) / 1000;
+
+        private string PrepareStringData(double elev) => elev >= 0 ? string.Format("+{0:F3}", elev) : string.Format("{0:F3}", elev);
+
+        private void SetRlvElevation(FamilyInstance fi, string prefix, string elemElev, string hostElev) =>
+            fi.get_Parameter(_relativeElevParam).Set($"[Отн]: {prefix} {elemElev} отн. {hostElev}");
+
+        private void SetAbsElevation(FamilyInstance fi, string prefix, string elemElev) =>
+            fi.get_Parameter(_absoluteElevParam).Set($"[Абс]: {prefix} {elemElev} отн. нуля здания");
     }
 }

@@ -9,20 +9,23 @@ using static KPLN_Loader.Output.Output;
 namespace KPLN_Tools.Common.HolesManager
 {
     /// <summary>
-    /// Класс для обработки спец. класса HoleDTO
+    /// Класс для обработки спец. класса IOSHoleDTO
     /// </summary>
     internal class IOSHolesPrepareManager
     {
         private readonly IEnumerable<FamilyInstance> _holesElems;
         private readonly IEnumerable<RevitLinkInstance> _linkedModels;
-        private readonly double _absoluteElevBasePnt;
 
-        public IOSHolesPrepareManager(IEnumerable<FamilyInstance> holesElems, IEnumerable<RevitLinkInstance> linkedModels, double absoluteElevBasePnt)
+        public IOSHolesPrepareManager(IEnumerable<FamilyInstance> holesElems, IEnumerable<RevitLinkInstance> linkedModels)
         {
             _holesElems = holesElems;
             _linkedModels = linkedModels;
-            _absoluteElevBasePnt = absoluteElevBasePnt;
         }
+
+        /// <summary>
+        /// Коллекция ошибок, при генерации IOSHoleDTO
+        /// </summary>
+        public List<FamilyInstance> ErrorFamInstColl { get; private set; } = new List<FamilyInstance>();
         
         /// <summary>
         /// Подготовка спец. семейст для анализа
@@ -35,7 +38,8 @@ namespace KPLN_Tools.Common.HolesManager
             {
                 BoundingBoxXYZ fiBBox = PrepareHoleBBox(fi);
                 IOSHoleDTO holeDTO = PrepareHoleDTOData(fi, fiBBox);
-                result.Add(holeDTO);
+                if (holeDTO != null)
+                    result.Add(holeDTO);
             }
 
             return result;
@@ -117,14 +121,14 @@ namespace KPLN_Tools.Common.HolesManager
                     .WherePasses(filter)
                     .Where(fl => fl.Name.StartsWith("00_"))
                     .Cast<Floor>();
-                List<Floor> floorList = floorColl.ToList();
 
-                if (floorList.Any())
+                if (floorColl.Any())
                 {
                     // Обработка пересекающихся перекрытий
-                    foreach (Floor floor in floorList)
+                    foreach (Floor floor in floorColl)
                     {
                         XYZ upPrjPoint = floor.GetVerticalProjectionPoint(inversedFiBBox.Max, FloorFace.Bottom);
+                        if (upPrjPoint == null) continue;
                         double upDistance = inversedFiBBox.Max.DistanceTo(upPrjPoint);
                         if (Math.Round(inversedFiBBox.Max.Z, 1) <= Math.Round(upPrjPoint.Z, 1) && upDistance <= upMinDist)
                         {
@@ -137,6 +141,7 @@ namespace KPLN_Tools.Common.HolesManager
                         }
 
                         XYZ downPrjPoint = floor.GetVerticalProjectionPoint(inversedFiBBox.Min, FloorFace.Top);
+                        if (downPrjPoint == null) continue;
                         double downDistance = inversedFiBBox.Min.DistanceTo(downPrjPoint);
                         if (Math.Round(inversedFiBBox.Min.Z, 1) >= Math.Round(downPrjPoint.Z, 1) && downDistance <= downMinDist)
                         {
@@ -168,7 +173,14 @@ namespace KPLN_Tools.Common.HolesManager
             }
 
             if (downFloor is null)
-                throw new Exception($"KPLN: Ошибка - экземпляр с id: {fi.Id} невозможно определить основу (уровень, на котором оно расположено)");
+            {
+                ErrorFamInstColl.Add(fi);
+                return null;
+            }
+
+            // Для отверстий на кровле
+            if (upMinDist == double.MaxValue)
+                upMinDist = 0.0;
 
             // Генерация HoleDTO
             if (fiName.ToLower().Contains("прямоуг") || fiName.ToLower().Contains("tsw"))
@@ -183,7 +195,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownBindingElevation = downBindElev,
                     BindingPrefixString = "Низ на отм.",
                     RlvElevation = rlvDist,
-                    AbsElevation = _absoluteElevBasePnt + fiBBox.Min.Z,
+                    AbsElevation = fiBBox.Min.Z,
                 };
             }
             else if (fiName.ToLower().Contains("кругл") || fiName.ToLower().Contains("trw"))
@@ -198,7 +210,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownBindingElevation = downBindElev,
                     BindingPrefixString = "Центр на отм.",
                     RlvElevation = rlvDist + Math.Abs((Math.Abs(fiBBox.Max.Z) - Math.Abs(fiBBox.Min.Z)) / 2),
-                    AbsElevation = _absoluteElevBasePnt + ((fiBBox.Max.Z + fiBBox.Min.Z)) / 2,
+                    AbsElevation = ((fiBBox.Max.Z + fiBBox.Min.Z)) / 2,
                 };
             }
             else
