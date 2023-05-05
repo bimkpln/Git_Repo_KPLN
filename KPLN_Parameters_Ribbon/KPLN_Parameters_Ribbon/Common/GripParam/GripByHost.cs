@@ -27,10 +27,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 Element hostElem = instance.SuperComponent;
                 
                 string hostElemSectParamValue = hostElem.LookupParameter(sectionParam).AsString();
-                elem.LookupParameter(sectionParam).Set(hostElemSectParamValue);
+                Parameter elemSectParam = elem.LookupParameter(sectionParam);
+                // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
+                if (!elemSectParam.IsReadOnly)
+                    elemSectParam.Set(hostElemSectParamValue);
 
                 string hostElemLevParamValue = hostElem.LookupParameter(levelParam).AsString();
-                elem.LookupParameter(levelParam).Set(hostElemLevParamValue);
+                Parameter elemLevParam = elem.LookupParameter(sectionParam);
+                // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
+                if (!elemLevParam.IsReadOnly)
+                    elemLevParam.Set(hostElemLevParamValue);
 
                 pb.Update(++pbCount, "Анализ вложенных элементов");
             }
@@ -108,10 +114,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 }
 
                 string hostElemSectParamValue = hostElem.LookupParameter(sectionParam).AsString();
-                elem.LookupParameter(sectionParam).Set(hostElemSectParamValue);
+                Parameter elemSectParam = elem.LookupParameter(sectionParam);
+                // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
+                if (!elemSectParam.IsReadOnly)
+                    elemSectParam.Set(hostElemSectParamValue);
 
                 string hostElemLevParamValue = hostElem.LookupParameter(levelParam).AsString();
-                elem.LookupParameter(levelParam).Set(hostElemLevParamValue);
+                Parameter elemLevParam = elem.LookupParameter(sectionParam);
+                // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
+                if (!elemLevParam.IsReadOnly)
+                    elemLevParam.Set(hostElemLevParamValue);
 
                 pb.Update(++pbCount, "Анализ вложенных элементов");
             }
