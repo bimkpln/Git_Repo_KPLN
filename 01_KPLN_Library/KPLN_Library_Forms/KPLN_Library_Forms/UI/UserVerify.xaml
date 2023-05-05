@@ -6,7 +6,9 @@
         xmlns:local="clr-namespace:KPLN_Library_Forms.UI"
         mc:Ignorable="d" 
         Width="300" Height="200" MaxHeight="250" MaxWidth="350"
-        Title="KPLN: Авторизация специалиста BIM-отдела" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" WindowStyle="ToolWindow"  Topmost="False" WindowStartupLocation="CenterScreen" SizeToContent="Height" Closing="Window_Closing" Loaded="OnLoaded">
+        Title="KPLN: Авторизация специалиста BIM-отдела" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+            ResizeMode="CanResizeWithGrip" WindowStyle="ToolWindow"  Topmost="False" WindowStartupLocation="CenterScreen" 
+            SizeToContent="Height" Closing="Window_Closing" Loaded="OnLoaded">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>

@@ -94,8 +94,12 @@
   <ItemGroup>
     <Compile Include="Common\ElementEntity.cs" />
     <Compile Include="Common\UIStatus.cs" />
+    <Compile Include="UI\IntToBoolConverter.cs" />
     <Compile Include="UI\ProgressBar.xaml.cs">
       <DependentUpon>ProgressBar.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\UserTextInput.xaml.cs">
+      <DependentUpon>UserTextInput.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\UserVerify.xaml.cs">
       <DependentUpon>UserVerify.xaml</DependentUpon>
@@ -109,6 +113,10 @@
   <ItemGroup />
   <ItemGroup>
     <Page Include="UI\ProgressBar.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\UserTextInput.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
