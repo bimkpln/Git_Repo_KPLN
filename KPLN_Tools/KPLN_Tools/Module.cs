@@ -131,34 +131,12 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.holesManagerSmall.png",
                 "KPLN_Tools.Imagens.holesManagerBig.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1245");
-
-            PushButtonData holesFilling = CreateBtnData("АР: Проверить овтерстия",
-                "АР: Проверить овтерстия",
-                "Проверка на заполненность инженерными элементами отверстий АР",
-                string.Format(
-                    "Плагин выполняет следующие функции:\n" +
-                        "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
-                        "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandHolesManagerAR).FullName,
-                "KPLN_Tools.Imagens.checkHolesFlippingSmall.png",
-                "KPLN_Tools.Imagens.checkHolesFlippingBig.png",
-                "http://moodle");
             #endregion
 
             #region  Наполняю плагинами в зависимости от отдела
             if (_userDepartment == 3 || _userDepartment == 4)
             {
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
-            }
-
-            if (_userDepartment != 3)
-            {
-                holesPullDownBtn.AddPushButton(holesFilling);
             }
             #endregion
 

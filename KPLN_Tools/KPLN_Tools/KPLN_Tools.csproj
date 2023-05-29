@@ -110,14 +110,12 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\HolesManager\ARLinkData.cs" />
     <Compile Include="Common\HolesManager\IOSShaftDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHoleDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
-    <Compile Include="ExternalCommands\CommandHolesManagerAR.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />

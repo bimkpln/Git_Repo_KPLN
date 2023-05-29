@@ -33,7 +33,11 @@ namespace KPLN_Tools.ExternalCommands
                 // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
                 IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
                     .OfClass(typeof(RevitLinkInstance))
-                    .Where(lm => lm.Name.Contains("_AR_") || lm.Name.Contains("_АР_"))
+                    .Where(lm => 
+                        lm.Name.ToUpper().Contains("_AR_")
+                        || lm.Name.ToUpper().Contains("_АР_") 
+                        || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                        || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
                     .Cast<RevitLinkInstance>();
                 if (!linkedModels.Any())
                     throw new Exception("Для работы обязателено нужно подгрузить все связи АР (кроме разбивочных файлов), которые являются подложкой для модели ИОС");
@@ -67,8 +71,8 @@ namespace KPLN_Tools.ExternalCommands
                     .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                     .Cast<FamilyInstance>()
                     .Where(e =>
-                    e.Symbol.FamilyName.StartsWith("501_ЗИ_Шахта")
-                    || (e.Symbol.FamilyName.StartsWith("501_") && e.Symbol.FamilyName.Contains("Перекрытие"))
+                        e.Symbol.FamilyName.StartsWith("501_ЗИ_Шахта")
+                        || (e.Symbol.FamilyName.StartsWith("501_") && e.Symbol.FamilyName.Contains("Перекрытие"))
                 );
 
                 CheckMainParamsError(shaftElems, 1, 1);
