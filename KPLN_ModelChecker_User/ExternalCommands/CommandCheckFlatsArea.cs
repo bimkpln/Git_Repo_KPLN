@@ -3,8 +3,8 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
-using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
+using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
@@ -16,10 +16,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckFlatsArea : IExternalCommand
+    internal class CommandCheckFlatsArea : AbstrUserOutput, IExternalCommand
     {
-        private readonly string _name = "Проверка помещений";
-
+        #region Инициализация полей
         /// <summary>
         /// Коллекция параметров имени/номера (текст)
         /// </summary>
@@ -65,26 +64,35 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             new RoomParamData("ПОМ_Площадь", "Площадь"),
         };
 
-        private ExtensibleStorageBuilder _esBuildergMarker;
-        private Guid _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
-        private string _markerName = "kpln_ar_area";
+        
+        #endregion
 
-        private ExtensibleStorageBuilder _esBuilderRun;
-        private Guid _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
-        private string _lastRunFieldName = "kpln_ar_area";
-        private string _lastRunStorageName = "KPLN_AR";
-
-        private ExtensibleStorageBuilder _esLastText;
-        private Guid _lastTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
-        private string _lastTextFieldName = "kpln_ar_area";
-        private string _lastTextStorageName = "KPLN_AR";
-
-
+        /// <summary>
+        /// Реализация IExternalCommand
+        /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //Получение объектов приложения и документа
-            UIApplication uiapp = commandData.Application;
-            Document doc = uiapp.ActiveUIDocument.Document;
+            return Execute(commandData.Application);
+        }
+
+        internal override Result Execute(UIApplication uiapp)
+        {
+            _name = "Проверка помещений";
+            _application = uiapp;
+
+            _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
+            _markerFieldName = "kpln_ar_area";
+
+            _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
+            _lastRunFieldName = "kpln_ar_area";
+            _lastRunStorageName = "KPLN_AR";
+            
+            _userTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
+            _userTextFieldName = "kpln_ar_area";
+            _userTextStorageName = "KPLN_AR";
+
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Document doc = uidoc.Document;
 
             try
             {
@@ -96,11 +104,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 CheckRoomsParams(roomsColl);
 
-                _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerName);
-                ResultMessage esMsgMarker = _esBuildergMarker.GetResMessage_ProjectInfo(doc);
-
-                _esBuilderRun = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _lastRunStorageName);
-                _esLastText = new ExtensibleStorageBuilder(_lastTextGuid, _lastTextFieldName, _lastTextStorageName);
+                ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_ProjectInfo(doc);
 
                 switch (esMsgMarker.CurrentStatus)
                 {
@@ -117,8 +121,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                         if (entities.Count > 0)
                         {
-                            ResultMessage esMsgRun = _esBuilderRun.GetResMessage_ProjectInfo(doc);
-                            Show(entities, esMsgRun, esMsgMarker);
+                            CreateAndCheckReport(doc, entities, esMsgMarker);
                         }
                         else
                             Print($"[{_name}] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
@@ -262,23 +265,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return result;
         }
 
-        private void Show(List<WPFEntity> wpfEntityColl, ResultMessage esMsgRun, ResultMessage esMsgMarker)
-        {
-            WPFReportCreator report = new WPFReportCreator(
-                wpfEntityColl, 
-                null, 
-                _name,
-                esMsgRun.Description,
-                esMsgMarker.Description);
-            
-            OutputMainForm form = new OutputMainForm(
-                report,
-                _esBuilderRun,
-                _esLastText);
-            
-            form.Show();
-        }
-
         /// <summary>
         /// Поиск ошибок для помещений (в рамках допуска), у которых параметр должен определяться по сумме на квартиру
         /// </summary>
@@ -297,10 +283,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         Status currentStatus;
                         string approveComment = string.Empty;
-                        if (_esLastText.IsDataExists_Text((Element)room)) 
+                        if (ESBuilderUserText.IsDataExists_Text((Element)room)) 
                         {
                             currentStatus = Status.Approve;
-                            approveComment = _esLastText.GetResMessage_Element((Element)room).Description;
+                            approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                         }
                         else
                             currentStatus = Status.Error;
@@ -342,10 +328,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             Status currentStatus;
                             string approveComment = string.Empty;
-                            if (_esLastText.IsDataExists_Text((Element)room))
+                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
                                 currentStatus = Status.Approve;
-                                approveComment = _esLastText.GetResMessage_Element((Element)room).Description;
+                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
                                 currentStatus = Status.Error;
@@ -402,10 +388,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         Status currentStatus;
                         string approveComment = string.Empty;
-                        if (_esLastText.IsDataExists_Text((Element)room))
+                        if (ESBuilderUserText.IsDataExists_Text((Element)room))
                         {
                             currentStatus = Status.Approve;
-                            approveComment = _esLastText.GetResMessage_Element((Element)room).Description;
+                            approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                         }
                         else
                             currentStatus = Status.Error;
@@ -447,10 +433,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             Status currentStatus;
                             string approveComment = string.Empty;
-                            if (_esLastText.IsDataExists_Text((Element)room))
+                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
                                 currentStatus = Status.Approve;
-                                approveComment = _esLastText.GetResMessage_Element((Element)room).Description;
+                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
                                 currentStatus = Status.Error;
@@ -496,10 +482,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             Status currentStatus;
                             string approveComment = string.Empty;
-                            if (_esLastText.IsDataExists_Text((Element)room))
+                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
                                 currentStatus = Status.Approve;
-                                approveComment = _esLastText.GetResMessage_Element((Element)room).Description;
+                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
                                 currentStatus = Status.Error;

@@ -37,6 +37,13 @@
     </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_ExtensibleStorage">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Release\KPLN_Library_ExtensibleStorage.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
@@ -82,7 +89,11 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\CheckHolesEntity.cs" />
+    <Compile Include="Common\CheckHolesMEPData.cs" />
+    <Compile Include="Common\CheckHolesHoleData.cs" />
     <Compile Include="Common\Collections.cs" />
+    <Compile Include="Common\MEPElementData.cs" />
     <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFReport.cs" />
     <Compile Include="Common\GeometryBoundingBox.cs" />
@@ -90,12 +101,13 @@
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
     <Compile Include="Common\WPFElement.cs" />
     <Compile Include="Common\WPFDisplayItem.cs" />
-    <Compile Include="ExecutableCommand\CommandSetExtStr_TextLog.cs" />
-    <Compile Include="ExecutableCommand\CommandSetExrStr_TimeRunLog.cs" />
+    <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
+    <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
     <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
+    <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckListAnnotations.cs" />
@@ -118,10 +130,8 @@
       <DependentUpon>ElementsOutputExtended.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\WPFEntityApproveBtnVisibilityConverter.cs" />
-    <Compile Include="Forms\WPFEntityApprCommentToGridRowHeightConverter.cs" />
-    <Compile Include="Forms\WPFEntityInfoToGridRowHeightConverter.cs" />
-    <Compile Include="Forms\WPFEntityApprCommentVisibilityConverter.cs" />
-    <Compile Include="Forms\WPFEntityInfoVisibilityConverter.cs" />
+    <Compile Include="Forms\StringToVisibilityConverter.cs" />
+    <Compile Include="Forms\AbstrUserOutput.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -177,18 +187,14 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage.csproj">
-      <Project>{372ce602-253d-427d-ace7-8798de5f3c04}</Project>
-      <Name>KPLN_Library_ExtensibleStorage</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\KPLN_Library_Forms.csproj">
-      <Project>{6dedaa32-33df-4ae2-8158-9d49798e2966}</Project>
-      <Name>KPLN_Library_Forms</Name>
-    </ProjectReference>
     <ProjectReference Include="..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib.csproj">
       <Project>{57caeffd-5880-4a89-a882-127729008cb1}</Project>
       <Name>KPLN_ModelChecker_Lib</Name>
+      <Private>False</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checkHoles.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

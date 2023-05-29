@@ -4,6 +4,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
@@ -29,12 +30,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            if (CutView(_box, _centroid, app.ActiveUIDocument, _element))
-            {
-                ICollection<ElementId> newSelection = new List<ElementId>() { _element.Id };
-                app.ActiveUIDocument.Selection.SetElementIds(newSelection);
-            }
-            else
+            if (!CutView(_box, _centroid, app.ActiveUIDocument, _element))
             {
                 // Анализ размеров (только их!), размещенных на легенде
                 Dimension dim = _element as Dimension;
@@ -77,24 +73,21 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                             TaskDialog.Show("KPLN", $"Открой легенду ({dimView.Name}) вручную.");
                         }
                     }
-
-                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                 }
             }
+            
+            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
 
             return Result.Succeeded;
         }
 
         private bool CutView(BoundingBoxXYZ box, XYZ centroid, UIDocument uidoc, Element element)
         {
-            XYZ offsetMin = new XYZ(-5, -5, -2);
-            XYZ offsetMax = new XYZ(5, 5, 1);
             View3D activeView = uidoc.ActiveView as View3D;
             if (activeView != null)
             {
-                ViewFamily activeViewFamily = ViewFamily.Invalid;
                 ViewFamilyType viewFamilyType = uidoc.Document.GetElement(activeView.GetTypeId()) as ViewFamilyType;
-                activeViewFamily = viewFamilyType.ViewFamily;
+                ViewFamily activeViewFamily = viewFamilyType.ViewFamily;
                 if (activeViewFamily == ViewFamily.ThreeDimensional)
                 {
                     BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();

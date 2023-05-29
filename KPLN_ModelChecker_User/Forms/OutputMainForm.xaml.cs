@@ -1,77 +1,133 @@
-﻿using KPLN_ModelChecker_User.ExecutableCommand;
-using KPLN_ModelChecker_User.WPFItems;
+﻿using Autodesk.Revit.UI;
+using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_ModelChecker_User.ExecutableCommand;
+using KPLN_ModelChecker_User.WPFItems;
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using KPLN_Library_ExtensibleStorage;
+using System.Windows.Data;
 
 namespace KPLN_ModelChecker_User.Forms
 {
     public partial class OutputMainForm : Window
     {
+        /// <summary>
+        /// Extensible Storage: данные по последнему запуску
+        /// </summary>
         private ExtensibleStorageBuilder _esBuilderRun;
-        private ExtensibleStorageBuilder _esLastText;
+        /// <summary>
+        /// Extensible Storage: данные по пользовательскому комментарию
+        /// </summary>
+        private ExtensibleStorageBuilder _esBuilderUserText;
+        /// <summary>
+        /// Extensible Storage: данные по ключевому логу
+        /// </summary>
+        private ExtensibleStorageBuilder _esBuilderMarker;
+        /// <summary>
+        /// Revit-application
+        /// </summary>
+        private UIApplication _application;
+        /// <summary>
+        /// Ссылка на ExternalCommand, для перезапуска плагина
+        /// </summary>
+        private string _externalCommand;
+        /// <summary>
+        /// Коллеция WPFEntity, которая должна отображаться в отчете
+        /// </summary>
+        private List<WPFEntity> _entities;
+        private CollectionViewSource _entityViewSource;
 
-        public OutputMainForm(WPFReportCreator creator)
+        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
         {
+            _application = uiapp;
+            _externalCommand = externalCommand;
+            _entities = creator.WPFEntityCollection;
+
             InitializeComponent();
 
             this.Title = $"[KPLN]: {creator.CheckName}";
             LastRunData.Text = creator.LogLastRun;
+            cbxFiltration.ItemsSource = creator.FiltrationCollection;
 
-            #region Настраиваю видимость блока ключевого лога
-            if (creator.LogMarker is null)
-            {
-                MarkerRow.Height = new GridLength(0);
-                MarkerDataHeader.Visibility = Visibility.Collapsed;
-                MarkerData.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                MarkerRow.Height = GridLength.Auto;
-                MarkerData.Text = creator.LogMarker;
-            }
+            #region Скрываю видимость блока ключевого лога (он нужен только при использовании спец. конструктора)
+            MarkerRow.Height = new GridLength(0);
+            MarkerDataHeader.Visibility = Visibility.Collapsed;
+            MarkerData.Visibility = Visibility.Collapsed;
             #endregion
 
-            iControll.ItemsSource = creator.WPFEntityCollection;
-
-            cbxFiltration.ItemsSource = creator.WPFFiltration;
-            cbxFiltration.SelectedIndex = 0;
+            InitializeCollectionViewSource();
+            UpdateEntityList();
         }
 
-        public OutputMainForm(WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun) : this(creator)
+        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText) : this(uiapp, externalCommand, creator)
         {
             _esBuilderRun = esBuilderRun;
+            _esBuilderUserText = esBuilderUserText;
         }
 
-        public OutputMainForm(WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esLastText) : this(creator, esBuilderRun)
+        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator, esBuilderRun, esBuilderUserText)
         {
-            _esLastText = esLastText;
+            _esBuilderMarker = esBuilderMarker;
+
+            #region Настраиваю данные блока ключевого лога
+            MarkerRow.Height = GridLength.Auto;
+            MarkerData.Text = creator.LogMarker;
+            #endregion
+        }
+
+        /// <summary>
+        /// Генерация и настройка CollectionViewSource
+        /// </summary>
+        private void InitializeCollectionViewSource()
+        {
+            _entityViewSource = new CollectionViewSource();
+            _entityViewSource.Source = _entities;
+            _entityViewSource.Filter += EntityViewSource_Filtered;
+            iControll.ItemsSource = _entityViewSource.View;
+        }
+
+        /// <summary>
+        /// Событие фильтрации для CollectionViewSource
+        /// </summary>
+        private void EntityViewSource_Filtered(object sender, FilterEventArgs e)
+        {
+            var entity = e.Item as WPFEntity;
+            if (entity == null)
+                return;
+
+            var selectedContent = cbxFiltration.SelectedItem;
+            if (selectedContent != null)
+            {
+                string selectedName = selectedContent.ToString();
+                if (chbxApproveShow.IsChecked is true)
+                    e.Accepted = selectedName == "Все элементы" || entity.FiltrationDescription == selectedName;
+                else if (selectedName == "Все элементы")
+                    e.Accepted = entity.CurrentStatus != Common.Collections.Status.Approve;
+                else if (selectedName == "Допустимое")
+                    e.Accepted = entity.FiltrationDescription == selectedName;
+                else
+                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.Collections.Status.Approve;
+            }
+        }
+
+        /// <summary>
+        /// Обновление данных в окне (CollectionViewSource)
+        /// </summary>
+        private void UpdateEntityList()
+        {
+            if (_entityViewSource != null)
+                _entityViewSource.View.Refresh();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            ModuleData.CommandQueue.Enqueue(new CommandSetExrStr_TimeRunLog(_esBuilderRun, DateTime.Now));
+            ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
         }
 
-        private void UpdateCollection(int itemCatId, int itemId)
-        {
-            foreach (WPFEntity item in iControll.ItemsSource)
-            {
-                if (itemCatId == -1)
-                {
-                    item.Visibility = Visibility.Visible;
-                }
-                else
-                {
-
-                }
-            }
-        }
-
-        private void OnZoomClick(object sender, RoutedEventArgs e)
+        private void OnZoomClicked(object sender, RoutedEventArgs e)
         {
             WPFEntity wpfEntity = (sender as Button).DataContext as WPFEntity;
             if (wpfEntity != null)
@@ -83,7 +139,7 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
-        private void OnApproveClick(object sender, RoutedEventArgs e)
+        private void OnApproveClicked(object sender, RoutedEventArgs e)
         {
             WPFEntity wpfEntity = (sender as Button).DataContext as WPFEntity;
             if (wpfEntity != null)
@@ -92,10 +148,10 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
                     userTextInput.ShowDialog();
-                    
+
                     if (userTextInput.Status == UIStatus.RunStatus.Run)
                     {
-                        ModuleData.CommandQueue.Enqueue(new CommandSetExtStr_TextLog(wpfEntity.Element, _esLastText, userTextInput.UserInput));
+                        ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
                     }
                 }
             }
@@ -103,80 +159,21 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
         {
-            //int itemCatId = (cbxFiltration.SelectedItem as WPFEntity).CategoryId;
-            //int itemId = (cbxFiltration.SelectedItem as WPFEntity).ElementId;
-            //UpdateCollection(itemCatId, itemId);
+            UpdateEntityList();
+        }
+
+        private void RefreshBtn_Clicked(object sender, RoutedEventArgs e)
+        {
+            Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
+            AbstrUserOutput instance = Activator.CreateInstance(type) as AbstrUserOutput;
+            instance.Execute(_application);
+
+            this.Close();
+        }
+
+        private void chbxApproveShow_Clicked(object sender, RoutedEventArgs e)
+        {
+            UpdateEntityList();
         }
     }
-
-    ///// <summary>
-    ///// Класс для переопределения видимости высоты строк
-    ///// </summary>
-    //[ValueConversion(typeof(bool), typeof(GridLength))]
-    //public class BoolToGridRowHeightConverter_WPFEntityInfo : IValueConverter
-    //{
-    //    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        WPFEntity entity = value as WPFEntity;
-    //        if (entity != null)
-    //        {
-    //            if (entity.Info == null)
-    //                return ((bool)value == true) ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-    //        }
-
-    //        return value == null ? Visibility.Hidden : Visibility.Visible;
-    //    }
-
-    //    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-    ///// <summary>
-    ///// Класс для переопределения видимости полей WPFEntity в xml
-    ///// </summary>
-    //public class NullVisibilityConverter_WPFEntityInfo : IValueConverter
-    //{
-    //    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        WPFEntity entity = value as WPFEntity;
-    //        if (entity != null)
-    //        {
-    //            if (entity.Info == null)
-    //                return Visibility.Hidden;
-    //        }
-
-    //        return value == null ? Visibility.Hidden : Visibility.Visible;
-    //    }
-
-    //    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-    ///// <summary>
-    ///// Класс для переопределения видимости высоты строк
-    ///// </summary>
-    //[ValueConversion(typeof(bool), typeof(GridLength))]
-    //public class BoolToGridRowHeightConverter_Marker : IValueConverter
-    //{
-    //    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        WPFEntity entity = value as WPFEntity;
-    //        if (entity != null)
-    //        {
-    //            if (entity.Info == null)
-    //                return ((bool)value == true) ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-    //        }
-
-    //        return value == null ? Visibility.Hidden : Visibility.Visible;
-    //    }
-
-    //    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
 }

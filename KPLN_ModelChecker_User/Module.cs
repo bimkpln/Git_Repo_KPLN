@@ -67,6 +67,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 _userDepartment != 3
                 );
+            
             AddPushButtonData(
                 "CheckMirrored", 
                 "Проверка\nзеркальных", 
@@ -78,6 +79,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 _userDepartment != 2
                 );
+            
             AddPushButtonData(
                 "CheckCoordinates", 
                 "Проверка\nсвязей", 
@@ -92,6 +94,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckLevelMonitored", 
                 "Мониторинг\nуровней", "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
@@ -102,6 +105,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckGridMonitored",
                 "Мониторинг\nосей",
@@ -113,6 +117,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckNames", 
                 "Проверка\nсемейств",
@@ -126,6 +131,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckWorksets", 
                 "Проверка\nрабочих наборов", 
@@ -137,6 +143,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckDimensions",
                 "Проверка размеров",
@@ -150,6 +157,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
+            
             AddPushButtonData(
                 "CheckAnnotations", 
                 "Проверка листов на аннотации", 
@@ -166,9 +174,24 @@ namespace KPLN_ModelChecker_User
                 "http://moodle/mod/book/view.php?id=502&chapterid=991#:~:text=%D0%92%D0%AB%D0%9F%D0%90%D0%94%D0%90%D0%AE%D0%A9%D0%98%D0%99%20%D0%A1%D0%9F%D0%98%D0%A1%D0%9E%D0%9A%20%22%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%98%D0%A2%D0%AC%22-,%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%9A%D0%98%20%D0%9B%D0%98%D0%A1%D0%A2%D0%9E%D0%92%20%D0%9D%D0%90%20%D0%90%D0%9D%D0%9D%D0%9E%D0%A2%D0%90%D0%A6%D0%98%D0%98,-%D0%A2%D0%B5%D0%B3%D0%B8%3A",
                 true
                 );
+
+            AddPushButtonData(
+                "CheckHoles",
+                "АР: Проверить овтерстия",
+                "Плагин выполняет следующие функции:\n" +
+                        "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
+                        "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckHoles).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checkHoles.png",
+                _mainContextualHelp,
+                _userDepartment != 2 && _userDepartment != 3
+                );
+
             AddPushButtonData(
                 "CheckFlatsArea",
-                "Проверка площадей квартир",
+                "АР: Проверка площадей квартир",
                 "Сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
                     "\n1. Находит разницу имен и номеров помещений;" +
                     "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +

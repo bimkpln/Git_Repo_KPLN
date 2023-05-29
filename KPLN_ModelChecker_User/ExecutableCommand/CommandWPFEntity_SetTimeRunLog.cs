@@ -6,12 +6,12 @@ using System;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
-    internal class CommandSetExrStr_TimeRunLog : IExecutableCommand
+    internal class CommandWPFEntity_SetTimeRunLog : IExecutableCommand
     {
         private DateTime _closeTime;
         private ExtensibleStorageBuilder _esBuilderRun;
 
-        public CommandSetExrStr_TimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
+        public CommandWPFEntity_SetTimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
         {
             _esBuilderRun = esBuilderRun;
             _closeTime = closeTime;
@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         {
             // Игнорирую специалистов BIM-отдела
             int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-            if (_userDepartment == 4 || _userDepartment == 6)
+            if (_userDepartment == 4)
             {
                 return Result.Cancelled;
             }
