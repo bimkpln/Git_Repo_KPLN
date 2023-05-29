@@ -39,6 +39,10 @@
         </Grid.Resources>
         <TextBlock x:Name="tbHeader" Style="{StaticResource TXT}" Text="Задаётся через конструктор!" TextWrapping="Wrap" Margin="0,5,0,5" Grid.Row="0" FontWeight="Bold"/>
         <TextBox x:Name="tBox" Style="{StaticResource BX}" Grid.Row="1"/>
-        <Button x:Name="btnApply" Margin="0,5,0,0" Grid.Row="2" Style="{StaticResource BTN}" IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" ToolTip="Действие необходимо подтверждать развернутым комментарием" Content="Применить" HorizontalAlignment="Left" VerticalAlignment="Top" Click="OnBtnApply" IsDefault="True"/>
+        <Button x:Name="btnApply" Margin="0,5,0,0" Grid.Row="2" 
+                Style="{StaticResource BTN}" IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" 
+                HorizontalAlignment="Left" VerticalAlignment="Top" 
+                ToolTip="Действие необходимо подтверждать развернутым комментарием (более 5 символов)" Content="Применить"
+                Click="OnBtnApply" IsDefault="True"/>
     </Grid>
 </Window>
