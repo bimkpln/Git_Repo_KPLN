@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
+using KPLN_ModelChecker_User.Tools;
 using System;
 using System.IO;
 using System.Linq;
@@ -17,8 +18,8 @@ namespace KPLN_ModelChecker_User
 {
     public class Module : IExternalModule
     {
-        private string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
-        private int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+        private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
+        private readonly int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -45,8 +46,10 @@ namespace KPLN_ModelChecker_User
 #endif
             string assembly = _AssemblyPath.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Контроль качества");
-            PulldownButtonData pullDownData = new PulldownButtonData("Проверить", "Проверить");
-            pullDownData.ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки";
+            PulldownButtonData pullDownData = new PulldownButtonData("Проверить", "Проверить")
+            {
+                ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки"
+            };
             pullDownData.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, _mainContextualHelp));
             pullDownData.Image = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             pullDownData.LargeImage = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
@@ -211,7 +214,6 @@ namespace KPLN_ModelChecker_User
         private void OnIdling(object sender, IdlingEventArgs args)
         {
             UIApplication uiapp = sender as UIApplication;
-            UIControlledApplication controlledApplication = sender as UIControlledApplication;
             while (CommandQueue.Count != 0)
             {
                 using (Transaction t = new Transaction(uiapp.ActiveUIDocument.Document, ModuleName))

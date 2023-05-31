@@ -82,7 +82,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     hd.SetIntersectsData(mepBBoxData);
                 }
 
-                List<WPFEntity> wpfEntityList = PrepareHolesIntersectsWPFEntity(holesData);
+                List<WPFEntity> wpfEntityList = PrepareHolesIntersectsWPFEntity(doc, holesData);
                 if (CreateAndCheckReport(doc, wpfEntityList))
                 {
                     _report.SetWPFEntityFiltration_ByStatus();
@@ -269,13 +269,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                             #region Блок дополнения элементов геометрией
                             Location location = mepElementEntity.CurrentElement.Location;
-                            LocationPoint locationPoint = location as LocationPoint;
-                            LocationCurve locationCurve = location as LocationCurve;
-                            if (locationPoint != null)
-                            {
-                                mepElementEntity.CurrentLocationColl.Add(locationPoint.Point);
-                            }
-                            else if (locationCurve != null)
+                            if (location is LocationPoint locationPoint) mepElementEntity.CurrentLocationColl.Add(locationPoint.Point);
+                            else if (location is LocationCurve locationCurve)
                             {
                                 Curve curve = locationCurve.Curve;
                                 XYZ start = curve.GetEndPoint(0);
@@ -302,13 +297,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// Подготовка WPFEntity по отверстий, в зависимости от пересечений с элементами ИОС
         /// </summary>
         /// <param name="holesData">Коллеция спец. классов</param>
-        private List<WPFEntity> PrepareHolesIntersectsWPFEntity(List<CheckHolesHoleData> holesData)
+        private List<WPFEntity> PrepareHolesIntersectsWPFEntity(Document doc, List<CheckHolesHoleData> holesData)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
             foreach (CheckHolesHoleData holeData in holesData)
             {
                 Element hole = holeData.CurrentElement;
+                Level holeLevel = (Level)doc.GetElement(hole.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).AsElementId());
 
                 if (holeData.IntesectElementsColl.Count() == 0)
                 {
@@ -320,7 +316,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
                     zeroIOSElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;
@@ -337,7 +333,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
                     errorNoPipeAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorNoPipeAreaElem);
                     continue;
@@ -352,7 +348,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
                     errorOneElemAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorOneElemAreaElem);
                     continue;
@@ -367,14 +363,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
                     warnAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(warnAreaElem);
                     continue;
                 }
             }
 
-            return result;
+            return result
+                .OrderByDescending(e =>
+                    ((Level)doc.GetElement(e.Element.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).AsElementId())).Elevation)
+                .ToList();
         }
 
         /// <summary>

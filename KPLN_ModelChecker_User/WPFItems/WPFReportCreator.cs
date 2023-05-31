@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.WPFItems
@@ -11,7 +10,7 @@ namespace KPLN_ModelChecker_User.WPFItems
     {
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun)
         {
-            WPFEntityCollection = wpfEntityColl.OrderByDescending(w => (int)w.CurrentStatus).ToList();
+            WPFEntityCollection = wpfEntityColl;
             int counter = 0;
             foreach (WPFEntity w in WPFEntityCollection)
                 w.Header = $"#{++counter} {w.Header}";
@@ -25,7 +24,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             LogMarker = logMarker;
         }
 
-        public List<WPFEntity> WPFEntityCollection { get; private set; }
+        public IEnumerable<WPFEntity> WPFEntityCollection { get; private set; }
 
         /// <summary>
         /// Коллеция описаний для фильтрации (текстовые значения, по которым группируются элементы)

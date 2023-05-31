@@ -37,7 +37,7 @@ namespace KPLN_ModelChecker_User.Forms
         /// <summary>
         /// Коллеция WPFEntity, которая должна отображаться в отчете
         /// </summary>
-        private readonly List<WPFEntity> _entities;
+        private readonly IEnumerable<WPFEntity> _entities;
         private CollectionViewSource _entityViewSource;
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
@@ -83,8 +83,7 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void InitializeCollectionViewSource()
         {
-            _entityViewSource = new CollectionViewSource();
-            _entityViewSource.Source = _entities;
+            _entityViewSource = new CollectionViewSource { Source = _entities };
             _entityViewSource.Filter += EntityViewSource_Filtered;
             iControll.ItemsSource = _entityViewSource.View;
         }
@@ -94,9 +93,7 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void EntityViewSource_Filtered(object sender, FilterEventArgs e)
         {
-            var entity = e.Item as WPFEntity;
-            if (entity == null)
-                return;
+            if (!(e.Item is WPFEntity entity)) return;
 
             var selectedContent = cbxFiltration.SelectedItem;
             if (selectedContent != null)
@@ -129,8 +126,7 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void OnZoomClicked(object sender, RoutedEventArgs e)
         {
-            WPFEntity wpfEntity = (sender as Button).DataContext as WPFEntity;
-            if (wpfEntity != null)
+            if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 if (wpfEntity.IsZoomElement)
                     ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
@@ -141,8 +137,7 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void OnApproveClicked(object sender, RoutedEventArgs e)
         {
-            WPFEntity wpfEntity = (sender as Button).DataContext as WPFEntity;
-            if (wpfEntity != null)
+            if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 if (wpfEntity.IsApproveElement)
                 {
@@ -174,7 +169,7 @@ namespace KPLN_ModelChecker_User.Forms
             this.Close();
         }
 
-        private void chbxApproveShow_Clicked(object sender, RoutedEventArgs e)
+        private void ChbxApproveShow_Clicked(object sender, RoutedEventArgs e)
         {
             UpdateEntityList();
         }

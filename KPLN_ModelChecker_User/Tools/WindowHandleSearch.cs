@@ -56,8 +56,7 @@ namespace KPLN_ModelChecker_User.Tools
         /// handle</param>
         public void SetAsOwner(Window childWindow)
         {
-            var helper = new WindowInteropHelper(childWindow)
-            { Owner = Handle };
+            _ = new WindowInteropHelper(childWindow) { Owner = Handle };
         }
 
         // User32.dll calls used to get the Main Window for a Process Id (PID)
@@ -107,8 +106,7 @@ namespace KPLN_ModelChecker_User.Tools
                     if (hWnd == shellWindow) return true;
                     if (!IsWindowVisible(hWnd)) return true;
 
-                    uint windowPid = 0;
-                    GetWindowThreadProcessId(hWnd, out windowPid);
+                    GetWindowThreadProcessId(hWnd, out uint windowPid);
 
                     // if window is from Pid of interest, 
                     // see if it's the Main Window

@@ -224,7 +224,7 @@
             <CheckBox x:Name="chbxApproveShow"
                 Style="{StaticResource CHBX_D}"
                 Content="Включить элементы со статусом 'Допустимое'"
-                Click="chbxApproveShow_Clicked"/>
+                Click="ChbxApproveShow_Clicked"/>
         </StackPanel>
 
     </Grid>
