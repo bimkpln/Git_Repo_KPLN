@@ -219,7 +219,7 @@
                 Style="{StaticResource BTN}" 
                 Content="Перезапустить" 
                 ToolTip="Нажми, чтобы перезапустить плагин и обновить отчет"
-                Click="RefreshBtn_Clicked"/>
+                Click="RestartBtn_Clicked"/>
         <StackPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
             <CheckBox x:Name="chbxApproveShow"
                 Style="{StaticResource CHBX_D}"

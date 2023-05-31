@@ -104,7 +104,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 CheckRoomsParams(roomsColl);
 
-                ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_ProjectInfo(doc);
+                ProjectInfo pi = doc.ProjectInformation;
+                Element piElem = pi as Element;
+                ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_Element(piElem);
 
                 switch (esMsgMarker.CurrentStatus)
                 {
@@ -145,6 +147,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             return Result.Failed;
+        }
+
+        internal override void CheckElements(Document doc, IEnumerable<Element> elemColl)
+        {
+            throw new NotImplementedException();
         }
 
         private void CheckRoomsParams(IEnumerable<Room> roomsColl)

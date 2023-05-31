@@ -7,9 +7,9 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandWPFEntity_SetApprComm : IExecutableCommand
     {
-        private WPFEntity _wpfEntity;
-        private ExtensibleStorageBuilder _esText;
-        private string _description;
+        private readonly WPFEntity _wpfEntity;
+        private readonly ExtensibleStorageBuilder _esText;
+        private readonly string _description;
 
         public CommandWPFEntity_SetApprComm(WPFEntity wpfEntity, ExtensibleStorageBuilder esText, string description)
         {
@@ -22,7 +22,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         {
             //Получение объектов приложения и документа
             ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esText.Guid, _esText.FieldName, _esText.StorageName);
-            esBuilder.SetStorageData_TextLog(_wpfEntity.Element, app.Application.Username, _description);
+            esBuilder.SetStorageDataWithSeparator_TextLog(_wpfEntity.Element, app.Application.Username, _description);
 
             //Обновление данных на wpf-элементе
             _wpfEntity.UpdateMainFieldByStatus(Common.Collections.Status.Approve);

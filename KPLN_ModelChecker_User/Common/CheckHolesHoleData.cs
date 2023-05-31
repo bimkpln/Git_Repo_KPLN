@@ -9,7 +9,7 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckHolesHoleData : CheckHolesEntity
     {
-        private double _maxHoleFaceArea;
+        private Face _mainHoleFace;
 
         public CheckHolesHoleData(Element elem) : base(elem)
         {
@@ -26,30 +26,31 @@ namespace KPLN_ModelChecker_User.Common
         public double SumIntersectArea { get; private set; }
 
         /// <summary>
-        /// Максимальная площадь поверхности отверстия
+        /// Основная поверхность отверстия (та, которая пересекается с элементами ИОС)
         /// </summary>
-        public double MaxHoleFaceArea
+        public Face MainHoleFace
         {
             get
             {
-                if (_maxHoleFaceArea == 0)
-                    _maxHoleFaceArea = GetHoleMaxFaceArea();
-                return _maxHoleFaceArea;
+                if (_mainHoleFace == null)
+                    _mainHoleFace = GetMainFace(this.CurrentSolid);
+                return _mainHoleFace;
             }
         }
 
         /// <summary>
-        ///  Поиск максимальной по площади плоскости солида
+        ///  Поиск основной поверхности отверстия
         /// </summary>
-        private double GetHoleMaxFaceArea()
+        private Face GetMainFace(Solid solid)
         {
-            double tempArea = 0.0;
-            FaceArray faces = this.CurrentSolid.Faces;
+            FaceArray faces = solid.Faces;
             foreach (Face face in faces)
             {
-                if (face.Area > tempArea) tempArea = face.Area;
+                PlanarFace planarFace = face as PlanarFace;
+                if (planarFace.XVector.Z == 1) return face;
             }
-            return tempArea;
+            
+            throw new Exception($"Ошибка с получением основной поверхности отверстия или результата пересечений у отверстия с id: {this.CurrentElement.Id}. Отправь разработчику!");
         }
 
         /// <summary>
@@ -65,7 +66,6 @@ namespace KPLN_ModelChecker_User.Common
                 {
                     if (locPoint.DistanceTo(currentCentroid) < 10)
                     {
-                        double tempArea = 0.0;
                         mepData.SetGeometryData(ViewDetailLevel.Fine);
                         if (mepData.CurrentSolid == null) continue;
                         try
@@ -74,12 +74,8 @@ namespace KPLN_ModelChecker_User.Common
                             if (intersectionSolid != null && intersectionSolid.Volume > 0)
                             {
                                 this.IntesectElementsColl.Add(mepData);
-                                FaceArray faces = intersectionSolid.Faces;
-                                foreach (Face face in faces)
-                                {
-                                    if (face.Area > tempArea) tempArea = face.Area;
-                                }
-                                SumIntersectArea += tempArea;
+                                Face mainIntersectFace = GetMainFace(intersectionSolid);
+                                SumIntersectArea += mainIntersectFace.Area;
                             }
                             break;
                         }

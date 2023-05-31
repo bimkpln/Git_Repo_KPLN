@@ -3,19 +3,15 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
-using static KPLN_ModelChecker_User.ModuleData;
-using static KPLN_Loader.Output.Output;
-using System.Windows.Interop;
 using System.Windows;
-using KPLN_ModelChecker_User.Tools;
-using System.IO;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using static KPLN_Loader.Output.Output;
+using static KPLN_ModelChecker_User.ModuleData;
 
 namespace KPLN_ModelChecker_User
 {
@@ -55,10 +51,10 @@ namespace KPLN_ModelChecker_User
             pullDownData.Image = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             pullDownData.LargeImage = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
-            
+
             AddPushButtonData(
-                "CheckLevels", 
-                "Проверка\nуровней", 
+                "CheckLevels",
+                "Проверка\nуровней",
                 "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckLevelOfInstances).FullName,
@@ -67,10 +63,10 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 _userDepartment != 3
                 );
-            
+
             AddPushButtonData(
-                "CheckMirrored", 
-                "Проверка\nзеркальных", 
+                "CheckMirrored",
+                "Проверка\nзеркальных",
                 "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckMirroredInstances).FullName,
@@ -79,10 +75,10 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 _userDepartment != 2
                 );
-            
+
             AddPushButtonData(
-                "CheckCoordinates", 
-                "Проверка\nсвязей", 
+                "CheckCoordinates",
+                "Проверка\nсвязей",
                 "Проверка подгруженных rvt-связей:" +
                 "\n1. Корректность настройки общей площадки Revit;" +
                 "\n2. Корректность заданного рабочего набора;" +
@@ -94,9 +90,9 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
-                "CheckLevelMonitored", 
+                "CheckLevelMonitored",
                 "Мониторинг\nуровней", "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckLevels).FullName,
@@ -105,7 +101,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
                 "CheckGridMonitored",
                 "Мониторинг\nосей",
@@ -117,9 +113,9 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
-                "CheckNames", 
+                "CheckNames",
                 "Проверка\nсемейств",
                 "Проверка семейств на:" +
                     "\n1. Импорт семейств из разрешенных источников (диск Х);" +
@@ -131,10 +127,10 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
-                "CheckWorksets", 
-                "Проверка\nрабочих наборов", 
+                "CheckWorksets",
+                "Проверка\nрабочих наборов",
                 "Проверка элементов на корректность рабочих наборов.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckElementWorksets).FullName,
@@ -143,7 +139,7 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
                 "CheckDimensions",
                 "Проверка размеров",
@@ -157,13 +153,13 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 true
                 );
-            
+
             AddPushButtonData(
-                "CheckAnnotations", 
-                "Проверка листов на аннотации", 
+                "CheckAnnotations",
+                "Проверка листов на аннотации",
                 "Анализирует все элементы на листах и ищет аннотации следующих типов:" +
-                    "\n1. Линии детализации;" + 
-                    "\n2. Элементы узлов;" + 
+                    "\n1. Линии детализации;" +
+                    "\n2. Элементы узлов;" +
                     "\n3. Текст;" +
                     "\n4. Типовые аннотации;" +
                     "\n5. Изображения.",
@@ -171,16 +167,17 @@ namespace KPLN_ModelChecker_User
                 typeof(ExternalCommands.CommandCheckListAnnotations).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.surch_list_annotation.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=991#:~:text=%D0%92%D0%AB%D0%9F%D0%90%D0%94%D0%90%D0%AE%D0%A9%D0%98%D0%99%20%D0%A1%D0%9F%D0%98%D0%A1%D0%9E%D0%9A%20%22%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%98%D0%A2%D0%AC%22-,%D0%9F%D0%A0%D0%9E%D0%92%D0%95%D0%A0%D0%9A%D0%98%20%D0%9B%D0%98%D0%A1%D0%A2%D0%9E%D0%92%20%D0%9D%D0%90%20%D0%90%D0%9D%D0%9D%D0%9E%D0%A2%D0%90%D0%A6%D0%98%D0%98,-%D0%A2%D0%B5%D0%B3%D0%B8%3A",
+                _mainContextualHelp,
                 true
                 );
 
             AddPushButtonData(
                 "CheckHoles",
-                "АР: Проверить овтерстия",
-                "Плагин выполняет следующие функции:\n" +
-                        "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
-                        "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.",
+                "АР: Проверка овтерстий",
+                "Плагин выполняет следующие функции:" +
+                    "\n1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;" +
+                    "\n2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС." +
+                    "\n ВАЖНО: Перед запуском, убедитесь что все необходимые связи ИОС подгружены в проект.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(ExternalCommands.CommandCheckHoles).FullName,
                 pullDown,
@@ -191,7 +188,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckFlatsArea",
-                "АР: Проверка площадей квартир",
+                "АР: Проверка площадей",
                 "Сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
                     "\n1. Находит разницу имен и номеров помещений;" +
                     "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +

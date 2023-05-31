@@ -30,7 +30,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Коллеция описаний для фильтрации (текстовые значения, по которым группируются элементы)
         /// </summary>
-        public HashSet<string> FiltrationCollection { get; private set; } = new HashSet<string>() { "Все элементы" };
+        public HashSet<string> FiltrationCollection { get; private set; } = new HashSet<string>() { "Необработанные предупреждения" };
 
         /// <summary>
         /// Имя проверки

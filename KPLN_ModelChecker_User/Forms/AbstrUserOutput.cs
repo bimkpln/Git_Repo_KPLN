@@ -11,7 +11,7 @@ using static KPLN_ModelChecker_User.Common.Collections;
 namespace KPLN_ModelChecker_User.Forms
 {
     /// <summary>
-    /// Абстрактный класс для вывода подготовленного отчета пользователю
+    /// Абстрактный класс для создания и вывода подготовленного отчета пользователю
     /// </summary>
     internal abstract class AbstrUserOutput
     {
@@ -82,6 +82,18 @@ namespace KPLN_ModelChecker_User.Forms
         }
 
         /// <summary>
+        /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
+        /// </summary>
+        internal abstract Result Execute(UIApplication uiapp);
+
+        /// <summary>
+        /// Проверка и подготовка (при необходиомости) элементов перед запуском
+        /// </summary>
+        /// <param name="doc">Revit-документ</param>
+        /// <param name="elemColl">Коллеция элементов для проверки</param>
+        internal abstract void CheckElements(Document doc, IEnumerable<Element> elemColl);
+
+        /// <summary>
         /// Установить статус по комментарию пользователя
         /// </summary>
         /// <param name="elem">Элемент Revit</param>
@@ -121,7 +133,9 @@ namespace KPLN_ModelChecker_User.Forms
         {
             if (wpfEntityColl.Any())
             {
-                ResultMessage esMsgRun = ESBuilderRun.GetResMessage_ProjectInfo(doc);
+                ProjectInfo pi = doc.ProjectInformation;
+                Element piElem = pi as Element;
+                ResultMessage esMsgRun = ESBuilderRun.GetResMessage_Element(piElem);
 
                 _report = new WPFReportCreator(
                     wpfEntityColl,
@@ -147,7 +161,9 @@ namespace KPLN_ModelChecker_User.Forms
         {
             if (wpfEntityColl.Any())
             {
-                ResultMessage esMsgRun = ESBuilderRun.GetResMessage_ProjectInfo(doc);
+                ProjectInfo pi = doc.ProjectInformation;
+                Element piElem = pi as Element;
+                ResultMessage esMsgRun = ESBuilderRun.GetResMessage_Element(piElem);
 
                 _report = new WPFReportCreator(
                     wpfEntityColl,
@@ -162,10 +178,5 @@ namespace KPLN_ModelChecker_User.Forms
                 return false;
             }
         }
-
-        /// <summary>
-        /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
-        /// </summary>
-        internal abstract Result Execute(UIApplication uiapp);
     }
 }

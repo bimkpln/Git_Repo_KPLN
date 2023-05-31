@@ -146,15 +146,6 @@ namespace KPLN_ModelChecker_User.WPFItems
         public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
-        /// Реализация INotifyPropertyChanged
-        /// </summary>
-        private void OnPropertyChanged(string propName)
-        {
-            if (PropertyChanged != null)
-                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propName));
-        }
-
-        /// <summary>
         /// Обновление основных визуальных разделителей единицы отчета
         /// </summary>
         /// <param name="status"></param>
@@ -163,12 +154,8 @@ namespace KPLN_ModelChecker_User.WPFItems
             CurrentStatus = status;
             switch (status)
             {
-                case Status.AllmostOk:
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 240, 240, 135));
-                    Header = "Почти хорошо: " + Header;
-                    break;
                 case Status.LittleWarning:
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 220, 90));
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 240, 90));
                     Header = "Обрати внимание: " + Header;
                     break;
                 case Status.Warning:
@@ -180,7 +167,7 @@ namespace KPLN_ModelChecker_User.WPFItems
                     Header = "Ошибка: " + Header;
                     break;
                 case Status.Approve:
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 123, 104, 238));
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 125, 105, 240));
                     Header = "Допустимое: " + Header;
                     break;
             }
@@ -193,6 +180,15 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             Box = box;
             Centroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
+        }
+
+        /// <summary>
+        /// Реализация INotifyPropertyChanged
+        /// </summary>
+        private void OnPropertyChanged(string propName)
+        {
+            if (PropertyChanged != null)
+                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propName));
         }
     }
 }

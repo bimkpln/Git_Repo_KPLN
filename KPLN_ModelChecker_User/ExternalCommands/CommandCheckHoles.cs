@@ -9,8 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
-using KPLN_Library_ExtensibleStorage;
-using System.Diagnostics;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -18,6 +16,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckHoles : AbstrUserOutput, IExternalCommand
     {
+        /// <summary>
+        /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
+        /// </summary>
         private readonly List<BuiltInCategory> _builtInCategories = new List<BuiltInCategory>()
         { 
             // ОВВК
@@ -70,10 +71,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             #region Проверяю и обрабатываю отверстия
             try
             {
-                CheckFamilies(holesFamInsts);
-
-                var timer = new Stopwatch();
-                timer.Start();
+                CheckElements(doc, holesFamInsts);
 
                 List<CheckHolesHoleData> holesData = PrepareHoleData(holesFamInsts);
                 BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);
@@ -84,15 +82,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     hd.SetIntersectsData(mepBBoxData);
                 }
 
-                timer.Stop();
-                TimeSpan timeTaken = timer.Elapsed;
-                Print($"Time taken: {timeTaken.TotalSeconds}", KPLN_Loader.Preferences.MessageType.Success);
-
                 List<WPFEntity> wpfEntityList = PrepareHolesIntersectsWPFEntity(holesData);
                 if (CreateAndCheckReport(doc, wpfEntityList))
                 {
                     _report.SetWPFEntityFiltration_ByStatus();
-                    OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText, ESBuildergMarker);
+                    OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText);
                     form.Show();
                 }
             }
@@ -110,13 +104,36 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        /// <summary>
-        /// Проверка отверстий перед запуском
-        /// </summary>
-        private void CheckFamilies(IEnumerable<FamilyInstance> elems)
+        internal override void CheckElements(Document doc, IEnumerable<Element> elemColl)
         {
-            if (!(elems.Any()))
+            if (!(elemColl.Any()))
                 throw new Exception("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
+
+            List<Element> errorEtStrDataColl = new List<Element>(); 
+            foreach (var elem in elemColl)
+            {
+                bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
+                bool checkTrueExtStrData = ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
+                if (isDataExist && !checkTrueExtStrData)
+                {
+                    errorEtStrDataColl.Add(elem);
+                }
+            }
+
+            if (errorEtStrDataColl.Any())
+            {
+                using (Transaction t = new Transaction(doc))
+                {
+                    t.Start($"{ModuleData.ModuleName}: Очистка ExtStr");
+
+                    foreach (Element elem in errorEtStrDataColl)
+                    {
+                        ESBuilderUserText.DropStorageData_TextLog(elem);
+                    }
+
+                    t.Commit();
+                }
+            }
         }
 
         /// <summary>
@@ -303,32 +320,31 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        $"Ошибка может быть ложной, если связь не загружена в проект");
+                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
                     zeroIOSElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;
                 }
 
-                double intersectPersent = holeData.SumIntersectArea / holeData.MaxHoleFaceArea;
-
-                if (intersectPersent < 0.101)
+                double intersectPersent = holeData.SumIntersectArea / holeData.MainHoleFace.Area;
+                if (intersectPersent < 0.301 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
                 {
-                    WPFEntity errorArealem = new WPFEntity(
+                    WPFEntity errorNoPipeAreaElem = new WPFEntity(
                         hole,
                         SetApproveStatusByUserComment(hole, Status.Error),
                         "Отверстие избыточное по размерам",
-                        $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) *100}%.",
+                        $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) *100}%.",
                         true,
                         true,
                         GetUserComment(hole),
-                        $"Ошибка может быть ложной, если связь не загружена в проект");
-                    errorArealem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
-                    result.Add(errorArealem);
+                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                    errorNoPipeAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                    result.Add(errorNoPipeAreaElem);
                     continue;
                 }
-                else if (intersectPersent < 0.201 && holeData.IntesectElementsColl.Count() == 1)
+                else if (intersectPersent < 0.401 && holeData.IntesectElementsColl.Count() == 1)
                 {
-                    WPFEntity warnArealem = new WPFEntity(
+                    WPFEntity errorOneElemAreaElem = new WPFEntity(
                         hole,
                         SetApproveStatusByUserComment(hole, Status.Error),
                         "Отверстие избыточное по размерам",
@@ -336,14 +352,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        $"Ошибка может быть ложной, если связь не загружена в проект");
-                    warnArealem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
-                    result.Add(warnArealem);
+                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                    errorOneElemAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                    result.Add(errorOneElemAreaElem);
                     continue;
                 }
-                else if (intersectPersent < 0.151)
+                else if (intersectPersent < 0.201)
                 {
-                    WPFEntity warnArealem = new WPFEntity(
+                    WPFEntity warnAreaElem = new WPFEntity(
                         hole,
                         SetApproveStatusByUserComment(hole, Status.Warning),
                         "Отверстие избыточное по размерам",
@@ -351,9 +367,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        $"Ошибка может быть ложной, если связь не загружена в проект");
-                    warnArealem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
-                    result.Add(warnArealem);
+                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                    warnAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                    result.Add(warnAreaElem);
                     continue;
                 }
             }
