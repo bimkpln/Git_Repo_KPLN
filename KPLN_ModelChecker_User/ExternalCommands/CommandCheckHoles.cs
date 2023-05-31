@@ -320,7 +320,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
                     zeroIOSElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;
@@ -337,7 +337,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
                     errorNoPipeAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorNoPipeAreaElem);
                     continue;
@@ -352,7 +352,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
                     errorOneElemAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorOneElemAreaElem);
                     continue;
@@ -367,7 +367,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         true,
                         true,
                         GetUserComment(hole),
-                        "Ошибка может быть ложной, если не все связи ИОС загружена в проект");
+                        "Ошибка может быть ложной, если не все связи ИОС загружены в проект");
                     warnAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(warnAreaElem);
                     continue;
