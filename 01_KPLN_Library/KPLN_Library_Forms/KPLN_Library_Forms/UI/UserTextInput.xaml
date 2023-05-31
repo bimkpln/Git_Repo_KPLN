@@ -38,7 +38,7 @@
             <local:IntToBoolConverter x:Key="IntToBoolConverter"/>
         </Grid.Resources>
         <TextBlock x:Name="tbHeader" Style="{StaticResource TXT}" Text="Задаётся через конструктор!" TextWrapping="Wrap" Margin="0,5,0,5" Grid.Row="0" FontWeight="Bold"/>
-        <TextBox x:Name="tBox" Style="{StaticResource BX}" Grid.Row="1"/>
+        <TextBox x:Name="tBox" Style="{StaticResource BX}" Grid.Row="1" TextWrapping="Wrap"/>
         <Button x:Name="btnApply" Margin="0,5,0,0" Grid.Row="2" 
                 Style="{StaticResource BTN}" IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" 
                 HorizontalAlignment="Left" VerticalAlignment="Top" 
