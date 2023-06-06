@@ -24,6 +24,9 @@ namespace KPLN_ModelChecker_User.WPFItems
             LogMarker = logMarker;
         }
 
+        /// <summary>
+        /// Коллекция элементов отчета (WPFEntity)
+        /// </summary>
         public IEnumerable<WPFEntity> WPFEntityCollection { get; private set; }
 
         /// <summary>
@@ -88,6 +91,42 @@ namespace KPLN_ModelChecker_User.WPFItems
                         w.FiltrationDescription = "Допустимое";
                         break;
                 }
+                FiltrationCollection.Add(w.FiltrationDescription);
+            }
+        }
+
+        /// <summary>
+        /// Обновить коллекцию WPFEntity с указанием параметра для фильтрации по заголовку в ошибке
+        /// </summary>
+        public void SetWPFEntityFiltration_ByErrorHeader()
+        {
+            foreach (WPFEntity w in WPFEntityCollection)
+            {
+                w.FiltrationDescription = w.ErrorHeader;
+                FiltrationCollection.Add(w.FiltrationDescription);
+            }
+        }
+
+        /// <summary>
+        /// Обновить коллекцию WPFEntity с указанием параметра для фильтрации по Id-элемента
+        /// </summary>
+        public void SetWPFEntityFiltration_ByElementId()
+        {
+            foreach (WPFEntity w in WPFEntityCollection)
+            {
+                w.FiltrationDescription = w.ElementId.IntegerValue.ToString();
+                FiltrationCollection.Add(w.FiltrationDescription);
+            }
+        }
+
+        /// <summary>
+        /// Обновить коллекцию WPFEntity с указанием параметра для фильтрации по имени элемента
+        /// </summary>
+        public void SetWPFEntityFiltration_ByElementName()
+        {
+            foreach (WPFEntity w in WPFEntityCollection)
+            {
+                w.FiltrationDescription = w.ElementName;
                 FiltrationCollection.Add(w.FiltrationDescription);
             }
         }

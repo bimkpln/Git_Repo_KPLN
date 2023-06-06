@@ -23,7 +23,7 @@ namespace KPLN_ModelChecker_User
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2022/07/29";
+        public static string Date = "2023/06/01";
 
         /// <summary>
         /// Имя модуля

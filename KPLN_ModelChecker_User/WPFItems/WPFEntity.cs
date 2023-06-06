@@ -28,8 +28,8 @@ namespace KPLN_ModelChecker_User.WPFItems
             Element = element;
             ElementId = element.Id;
             CategoryName = element.Category.Name;
-            ElementName = element.Name;
             CurrentStatus = status;
+            ErrorHeader = header;
             _header = header;
             Description = description;
             IsZoomElement = isZoomElement;
@@ -50,9 +50,20 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// </summary>
         public ElementId ElementId { get; }
 
+        /// <summary>
+        /// Изображение поиска в WPF
+        /// </summary>
         public string SearchIcon { get; } = "🔍";
 
+        /// <summary>
+        /// Изображение для смены статуса в WPF
+        /// </summary>
         public string ApproveIcon { get; } = "🔓";
+
+        /// <summary>
+        /// Пользовательский заголовок ошибки (для генерации Header - элемента)
+        /// </summary>
+        public string ErrorHeader { get; }
 
         /// <summary>
         /// Заголовок элемента
@@ -75,7 +86,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Спец. имя элемента в отчете
         /// </summary>
-        public string ElementName { get; }
+        public string ElementName { get; set; }
 
         /// <summary>
         /// Описание элемента

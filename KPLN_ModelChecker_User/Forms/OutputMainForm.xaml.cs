@@ -75,6 +75,8 @@ namespace KPLN_ModelChecker_User.Forms
             #region Настраиваю данные блока ключевого лога
             MarkerRow.Height = GridLength.Auto;
             MarkerData.Text = creator.LogMarker;
+            MarkerDataHeader.Visibility = Visibility.Visible;
+            MarkerData.Visibility = Visibility.Visible;
             #endregion
         }
 

@@ -44,6 +44,7 @@ namespace KPLN_ModelChecker_User.Forms
         private ExtensibleStorageBuilder _esBuildergMarker;
         private protected Guid _markerGuid;
         private protected string _markerFieldName;
+        private protected string _markerStorageName;
 
         /// <summary>
         /// Extensible Storage для последнего запуска
@@ -76,7 +77,7 @@ namespace KPLN_ModelChecker_User.Forms
         {
             get
             {
-                if (_esBuildergMarker == null) _esBuildergMarker = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _lastRunStorageName);
+                if (_esBuildergMarker == null) _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, _markerStorageName);
                 return _esBuildergMarker;
             }
         }

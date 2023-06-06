@@ -89,6 +89,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText);
                     form.Show();
                 }
+                else
+                    Print($"[{_name}] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
             }
             catch (Exception ex)
             {

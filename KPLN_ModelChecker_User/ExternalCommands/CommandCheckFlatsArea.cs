@@ -82,6 +82,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
             _markerFieldName = "kpln_ar_area";
+            _markerStorageName = "storage";
 
             _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
             _lastRunFieldName = "kpln_ar_area";
@@ -120,10 +121,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                         Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
                         entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
-
-                        if (entities.Count > 0)
+                        if (CreateAndCheckReport(doc, entities.OrderBy(e => e.ElementId.IntegerValue).ToList(), esMsgMarker))
                         {
-                            CreateAndCheckReport(doc, entities, esMsgMarker);
+                            _report.SetWPFEntityFiltration_ByErrorHeader();
+                            OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText, ESBuildergMarker);
+                            form.Show();
                         }
                         else
                             Print($"[{_name}] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
@@ -220,6 +222,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return (flatRoomResult, otherRoomResult);
         }
 
+        /// <summary>
+        /// Набор проверок для квартир
+        /// </summary>
         private List<WPFEntity> CheckFlatRoomsDataParams(Dictionary<string, List<Room>> roomsDict)
         {
             List<WPFEntity> result = new List<WPFEntity>();
@@ -250,6 +255,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return result;
         }
 
+        /// <summary>
+        /// Набор проверок для помещений, кроме квартир
+        /// </summary>
         private List<WPFEntity> CheckOtherRoomsDataParams(Dictionary<string, List<Room>> roomsDict)
         {
             List<WPFEntity> result = new List<WPFEntity>();
@@ -388,29 +396,29 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         sParamToString = sParam.AsValueString();
 
                         if (fParamToString == null || sParamToString == null)
-                            throw new Exception("Ошибка определения типа данных. Обратись к разработчику");
+                        {
+                            result.Add(new WPFEntity(
+                                room,
+                                SetApproveStatusByUserComment(room, Status.Error),
+                                "Нарушение анализа данных",
+                                $"Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
+                                false,
+                                true,
+                                GetUserComment(room)));
+                            break;
+                        }
                     }
 
-                    if (!fParamToString.Equals(sParamToString))
+                    else if (!fParamToString.Equals(sParamToString))
                     {
-                        Status currentStatus;
-                        string approveComment = string.Empty;
-                        if (ESBuilderUserText.IsDataExists_Text((Element)room))
-                        {
-                            currentStatus = Status.Approve;
-                            approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
-                        }
-                        else
-                            currentStatus = Status.Error;
-
                         result.Add(new WPFEntity(
                             room,
-                            currentStatus,
+                            SetApproveStatusByUserComment(room, Status.Error),
                             "Нарушение имени/номера помещения",
                             $"Параметр \"{fpc.SecondParam}\" на стадии П был \"{fParamToString}\", сейчас - \"{sParamToString}\"",
                             false,
                             true,
-                            approveComment,
+                            GetUserComment(room),
                             $"Id помещения: \"{room.Id}\".\nДанные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"."));
                     }
                 }
