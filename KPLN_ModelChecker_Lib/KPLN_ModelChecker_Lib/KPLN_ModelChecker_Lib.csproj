@@ -30,6 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
     <OutputPath>bin\Revit2018\</OutputPath>
@@ -60,10 +61,6 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_DataBase">
-      <HintPath>..\..\KPLN_DataBase\KPLN_DataBase\bin\Default\KPLN_DataBase.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
