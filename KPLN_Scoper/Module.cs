@@ -24,7 +24,7 @@ namespace KPLN_Scoper
         /// <summary>
         /// Информация о пользователе (кэширование)
         /// </summary>
-        private SQLUserInfo _dbUserInfo;
+        private readonly SQLUserInfo _dbUserInfo;
 
         public Module()
         {
@@ -371,17 +371,8 @@ namespace KPLN_Scoper
             List<SQLDocument> documents = GetDocuments();
             foreach (SQLDocument doc in documents)
             {
-                bool isExist = false;
-                try
-                {
-                    isExist = new FileInfo(doc.Path).Exists;
-                }
-                catch (Exception)
-                {
-                    Print($"Проблемы в указнном пути для документа (Documents) Id: {doc.Id}, Name: {doc.Name}", KPLN_Loader.Preferences.MessageType.Error);
-                    continue;
-                }
-                
+                // Проверка на присутсвие файла на сервере. Игнорируется revit-server, пустые имена
+                bool isExist = true && (doc.Path.Contains("RSN") || (!doc.Path.Equals(String.Empty) && new FileInfo(doc.Path).Exists));
                 if (isExist)
                 {
                     SQLiteConnection sql = new SQLiteConnection(KPLN_Library_DataBase.DbControll.MainDBConnection);
