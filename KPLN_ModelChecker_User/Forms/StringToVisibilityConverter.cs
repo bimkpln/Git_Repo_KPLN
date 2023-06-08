@@ -14,8 +14,10 @@ namespace KPLN_ModelChecker_User.Forms
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value == null) return Visibility.Collapsed;
-            
-            if (string.IsNullOrEmpty((string)value)) return Visibility.Collapsed;
+
+            if (value is WPFEntity wpfEntity && (wpfEntity.ElementCollection != null)) return Visibility.Visible;
+
+            if (value is String str && string.IsNullOrEmpty(str)) return Visibility.Collapsed;
             else return Visibility.Visible;
         }
 

@@ -3,6 +3,7 @@ using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_User.ExecutableCommand;
+using KPLN_ModelChecker_User.ExternalCommands;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
@@ -62,21 +63,20 @@ namespace KPLN_ModelChecker_User.Forms
             UpdateEntityList();
         }
 
-        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText) : this(uiapp, externalCommand, creator)
+        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
         {
             _esBuilderRun = esBuilderRun;
             _esBuilderUserText = esBuilderUserText;
-        }
-
-        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator, esBuilderRun, esBuilderUserText)
-        {
-            _esBuilderMarker = esBuilderMarker;
-
+            
             #region Настраиваю данные блока ключевого лога
-            MarkerRow.Height = GridLength.Auto;
-            MarkerData.Text = creator.LogMarker;
-            MarkerDataHeader.Visibility = Visibility.Visible;
-            MarkerData.Visibility = Visibility.Visible;
+            _esBuilderMarker = esBuilderMarker;
+            if (_esBuilderMarker.StorageName != null)
+            {
+                MarkerRow.Height = GridLength.Auto;
+                MarkerData.Text = creator.LogMarker;
+                MarkerDataHeader.Visibility = System.Windows.Visibility.Visible;
+                MarkerData.Visibility = System.Windows.Visibility.Visible;
+            }
             #endregion
         }
 
@@ -131,9 +131,13 @@ namespace KPLN_ModelChecker_User.Forms
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 if (wpfEntity.IsZoomElement)
-                    ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                {
+                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                    else ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
+                }
                 else
-                    ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                    else ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
             }
         }
 
@@ -165,7 +169,7 @@ namespace KPLN_ModelChecker_User.Forms
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
             Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
-            AbstrUserOutput instance = Activator.CreateInstance(type) as AbstrUserOutput;
+            AbstrCheckCommand instance = Activator.CreateInstance(type) as AbstrCheckCommand;
             instance.Execute(_application);
 
             this.Close();

@@ -16,7 +16,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckFlatsArea : AbstrUserOutput, IExternalCommand
+    internal class CommandCheckFlatsArea : AbstrCheckCommand, IExternalCommand
     {
         #region Инициализация полей
         /// <summary>
@@ -63,8 +63,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             new RoomParamData("ПОМ_Площадь", "Площадь"),
         };
-
-        
         #endregion
 
         /// <summary>
@@ -97,46 +95,20 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             try
             {
+                // Получаю коллекцию элементов для анализа
                 IEnumerable<Room> roomsColl = new FilteredElementCollector(doc)
                         .OfCategory(BuiltInCategory.OST_Rooms)
                         .WhereElementIsNotElementType()
                         .Cast<Room>()
                         .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0);
 
-                CheckRoomsParams(roomsColl);
+                #region Проверяю и обрабатываю элементы
+                IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, roomsColl);
 
-                ProjectInfo pi = doc.ProjectInformation;
-                Element piElem = pi as Element;
-                ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_Element(piElem);
-
-                switch (esMsgMarker.CurrentStatus)
-                {
-                    case MessageStatus.Ok:
-                        List<WPFEntity> entities = new List<WPFEntity>();
-
-                        var roomDictTuple = PrepareRoomsDict(roomsColl);
-
-                        Dictionary<string, List<Room>> flatRoomsDict = roomDictTuple.Item1;
-                        entities.AddRange(CheckFlatRoomsDataParams(flatRoomsDict));
-
-                        Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
-                        entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
-                        if (CreateAndCheckReport(doc, entities.OrderBy(e => e.ElementId.IntegerValue).ToList(), esMsgMarker))
-                        {
-                            _report.SetWPFEntityFiltration_ByErrorHeader();
-                            OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText, ESBuildergMarker);
-                            form.Show();
-                        }
-                        else
-                            Print($"[{_name}] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
-                        return Result.Succeeded;
-
-                    case MessageStatus.Error:
-                        TaskDialog taskDialog = new TaskDialog("[ОШИБКА]");
-                        taskDialog.MainInstruction = esMsgMarker.Description;
-                        taskDialog.Show();
-                        return Result.Cancelled;
-                }
+                OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl, true);
+                if (form != null) form.Show();
+                else return Result.Cancelled;
+                #endregion
             }
             catch (Exception ex)
             {
@@ -151,30 +123,51 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Failed;
         }
 
-        internal override void CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
         {
-            throw new NotImplementedException();
-        }
-
-        private void CheckRoomsParams(IEnumerable<Room> roomsColl)
-        {
-            if (!roomsColl.Any())
+            if (!(elemColl.Any()))
                 throw new Exception("В проекте нет помещений.");
 
-            foreach (Room room in roomsColl)
+            foreach (Element elem in elemColl)
             {
-                List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
-                tempColl.AddRange(_flatAreaParamDataColl);
-                tempColl.AddRange(_roomAreaParamDataColl);
-
-                foreach (RoomParamData rpc in tempColl)
+                if (!(elem is Room room)) _errorElemCollection.Add(new CheckCommandError(elem, "Не помещение! Обратись к разработчику"));
+                else
                 {
-                    if (rpc.FirstParam != null)
-                        CheckParam(room, rpc.FirstParam);
-                    if (rpc.SecondParam != null)
-                        CheckParam(room, rpc.SecondParam);
+                    List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
+                    tempColl.AddRange(_flatAreaParamDataColl);
+                    tempColl.AddRange(_roomAreaParamDataColl);
+
+                    foreach (RoomParamData rpc in tempColl)
+                    {
+                        if (rpc.FirstParam != null)
+                            CheckParam(room, rpc.FirstParam);
+                        if (rpc.SecondParam != null)
+                            CheckParam(room, rpc.SecondParam);
+                    }
                 }
             }
+
+            return null;
+        }
+
+        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
+        {
+            report.SetWPFEntityFiltration_ByErrorHeader();
+        }
+
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        {
+            List<WPFEntity> entities = new List<WPFEntity>();
+
+            var roomDictTuple = PrepareRoomsDict(elemColl);
+
+            Dictionary<string, List<Room>> flatRoomsDict = roomDictTuple.Item1;
+            entities.AddRange(CheckFlatRoomsDataParams(flatRoomsDict));
+
+            Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
+            entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
+
+            return entities.OrderBy(e => e.ElementId.IntegerValue);
         }
 
         private void CheckParam(Room room, string paramName)
@@ -187,11 +180,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Подготовка помещений квартир [0] и всех остальных помещений [1]
         /// </summary>
-        private (Dictionary<string, List<Room>>, Dictionary<string, List<Room>>) PrepareRoomsDict(IEnumerable<Room> roomsColl)
+        private (Dictionary<string, List<Room>>, Dictionary<string, List<Room>>) PrepareRoomsDict(IEnumerable<Element> elemsColl)
         {
             Dictionary<string, List<Room>> flatRoomResult = new Dictionary<string, List<Room>>();
             Dictionary<string, List<Room>> otherRoomResult = new Dictionary<string, List<Room>>();
-            foreach (Room room in roomsColl)
+            foreach (Room room in elemsColl)
             {
                 // Утверждаю, что все квартиры имеют заполненный параметр "КВ_Номер"
                 var paramData = room.LookupParameter("КВ_Номер").AsString();
@@ -314,7 +307,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             false,
                             true,
                             approveComment,
-                            $"Id помещения: {room.Id}.\nДанные для сравнения со стадией П получены из параметра: \"{_flatAreaSumParamData.FirstParam}\".\nДопустимая разница внутри квартиры - 1 м²"));
+                            $"Данные для сравнения со стадией П получены из параметра: \"{_flatAreaSumParamData.FirstParam}\".\nДопустимая разница внутри квартиры - 1 м²"));
                     }
                 }
             }
@@ -359,7 +352,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 false,
                                 true,
                                 approveComment,
-                                $"Id помещения: {room.Id}.\nДанные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
+                                $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
                                     $"\nДопустимая разница внутри помещения - 1 м².\nВыделено только ОДНО помещение квартиры"));
                             continue;
                         }
@@ -419,7 +412,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             false,
                             true,
                             GetUserComment(room),
-                            $"Id помещения: \"{room.Id}\".\nДанные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"."));
+                            $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"."));
                     }
                 }
             }
@@ -464,7 +457,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 false,
                                 true,
                                 approveComment,
-                                $"Id помещения: {room.Id}.\nДанные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
+                                $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
                                     $"\nДопустимая разница внутри помещения - 1 м²"));
                         }
 

@@ -14,7 +14,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckHoles : AbstrUserOutput, IExternalCommand
+    internal class CommandCheckHoles : AbstrCheckCommand, IExternalCommand
     {
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
@@ -58,7 +58,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Получаю коллекцию отверстий в стенах
+            // Получаю коллекцию элементов для анализа
             IEnumerable<FamilyInstance> holesFamInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
@@ -68,29 +68,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     && e.GetSubComponentIds().Count == 0)
                 .ToList();
 
-            #region Проверяю и обрабатываю отверстия
+            #region Проверяю и обрабатываю элементы
             try
             {
-                CheckElements(doc, holesFamInsts);
+                IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, holesFamInsts);
 
-                List<CheckHolesHoleData> holesData = PrepareHoleData(holesFamInsts);
-                BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);
-                List<CheckHolesMEPData> mepBBoxData = PrepareMEPData(doc, sumBBox);
-
-                foreach (var hd in holesData)
-                {
-                    hd.SetIntersectsData(mepBBoxData);
-                }
-
-                List<WPFEntity> wpfEntityList = PrepareHolesIntersectsWPFEntity(doc, holesData);
-                if (CreateAndCheckReport(doc, wpfEntityList))
-                {
-                    _report.SetWPFEntityFiltration_ByStatus();
-                    OutputMainForm form = new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText);
-                    form.Show();
-                }
-                else
-                    Print($"[{_name}] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+                if (form != null) form.Show();
+                else return Result.Cancelled;
             }
             catch (Exception ex)
             {
@@ -106,53 +91,48 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        internal override void CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
         {
             if (!(elemColl.Any()))
                 throw new Exception("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
+            
+            return null;
+        }
 
-            List<Element> errorEtStrDataColl = new List<Element>(); 
-            foreach (var elem in elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        {
+            List<CheckHolesHoleData> holesData = PrepareHoleData(elemColl);
+            BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);
+            List<CheckHolesMEPData> mepBBoxData = PrepareMEPData(doc, sumBBox);
+            
+            foreach (var hd in holesData)
             {
-                bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
-                bool checkTrueExtStrData = ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
-                if (isDataExist && !checkTrueExtStrData)
-                {
-                    errorEtStrDataColl.Add(elem);
-                }
+                hd.SetIntersectsData(mepBBoxData);
             }
 
-            if (errorEtStrDataColl.Any())
-            {
-                using (Transaction t = new Transaction(doc))
-                {
-                    t.Start($"{ModuleData.ModuleName}: Очистка ExtStr");
+            return PrepareHolesIntersectsWPFEntity(doc, holesData);
+        }
 
-                    foreach (Element elem in errorEtStrDataColl)
-                    {
-                        ESBuilderUserText.DropStorageData_TextLog(elem);
-                    }
-
-                    t.Commit();
-                }
-            }
+        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
+        {
+            report.SetWPFEntityFiltration_ByStatus();
         }
 
         /// <summary>
         /// Подготовка спец. класса с данными по каждому отверстию
         /// </summary>
         /// <param name="holesFamInsts">Коллекция отверстий</param>
-        private List<CheckHolesHoleData> PrepareHoleData(IEnumerable<FamilyInstance> holesFamInsts)
+        private List<CheckHolesHoleData> PrepareHoleData(IEnumerable<Element> holesColl)
         {
             List<CheckHolesHoleData> result = new List<CheckHolesHoleData>();
 
-            foreach (FamilyInstance holeFI in holesFamInsts)
+            foreach (Element hole in holesColl)
             {
-                CheckHolesHoleData holeData = new CheckHolesHoleData(holeFI);
+                CheckHolesHoleData holeData = new CheckHolesHoleData(hole);
                 holeData.SetGeometryData(ViewDetailLevel.Coarse);
                 if (holeData.CurrentSolid != null) result.Add(holeData);
                 else
-                    Print($"У элемента с id: {holeFI.Id} не удалось получить Solid. Проверь отверстие вручную", KPLN_Loader.Preferences.MessageType.Warning);
+                    Print($"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную", KPLN_Loader.Preferences.MessageType.Warning);
             }
 
             return result;

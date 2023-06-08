@@ -89,6 +89,7 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\CheckCommandError.cs" />
     <Compile Include="Common\CheckHolesEntity.cs" />
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="ExternalCommands\CommandLinks.cs" />
     <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
     <Compile Include="ExternalCommands\NewCommandRun_Test.cs" />
+    <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
     </Compile>
@@ -131,7 +133,7 @@
     </Compile>
     <Compile Include="Forms\WPFEntityApproveBtnVisibilityConverter.cs" />
     <Compile Include="Forms\StringToVisibilityConverter.cs" />
-    <Compile Include="Forms\AbstrUserOutput.cs" />
+    <Compile Include="ExternalCommands\AbstrCheckCommand.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

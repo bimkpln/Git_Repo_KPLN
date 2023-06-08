@@ -148,6 +148,10 @@
                                     ToolTip="{Binding Description}"/>
                                 
                                 <Grid Grid.Row="1" Grid.Column="1">
+                                    <Grid.Resources>
+                                        <local:ElementIdListToStringConverter x:Key="ElementIdListToStringConverter"/>
+                                        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+                                    </Grid.Resources>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition/>
@@ -167,8 +171,12 @@
                                         TextWrapping="Wrap" Text="{Binding ElementName}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="2" Grid.Column="0" 
                                         Text="Id: " HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="Bold" />
+                                    <!--В одном месте - два варианта заполнения данными. Видимость управляется наличием-->
                                     <TextBlock Grid.Row="2" Grid.Column="1" 
                                         TextWrapping="Wrap" Text="{Binding ElementId}" VerticalAlignment="Center" />
+                                    <!--В одном месте - два варианта заполнения данными. Видимость управляется наличием-->
+                                    <TextBlock Grid.Row="2" Grid.Column="1" 
+                                        TextWrapping="Wrap" Text="{Binding ElementIdCollection, Converter={StaticResource ElementIdListToStringConverter}}" VerticalAlignment="Center" Visibility="{Binding Converter={StaticResource StringToVisibilityConverter}}" />
                                 </Grid>
 
                                 <Separator Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2" 

@@ -1,5 +1,8 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows.Media;
 using static KPLN_ModelChecker_User.Common.Collections;
 
@@ -27,15 +30,39 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             Element = element;
             ElementId = element.Id;
+            if (Element is Room room) ElementName = room.Name;
+            else ElementName = element.Name;
             CategoryName = element.Category.Name;
+            
             CurrentStatus = status;
             ErrorHeader = header;
             _header = header;
             Description = description;
-            IsZoomElement = isZoomElement;
-            IsApproveElement = isApproveElement;
             _approveComment = approveComment;
             Info = info;
+            
+            IsZoomElement = isZoomElement;
+            IsApproveElement = isApproveElement;
+
+            UpdateMainFieldByStatus(status);
+        }
+
+        public WPFEntity(IEnumerable<Element> elements, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string approveComment = null, string info = null)
+        {
+            ElementCollection = elements;
+            ElementIdCollection = elements.Select(e => e.Id);
+            ElementName = "<Набор элементов>";
+            CategoryName = "<Набор категорий>";
+
+            CurrentStatus = status;
+            ErrorHeader = header;
+            _header = header;
+            Description = description;
+            _approveComment = approveComment;
+            Info = info;
+
+            IsZoomElement = isZoomElement;
+            IsApproveElement = isApproveElement;
 
             UpdateMainFieldByStatus(status);
         }
@@ -46,9 +73,19 @@ namespace KPLN_ModelChecker_User.WPFItems
         public Element Element { get; }
 
         /// <summary>
+        /// Коллекция Revit-элементов, объединенных одной ошибкой
+        /// </summary>
+        public IEnumerable<Element> ElementCollection { get; }
+
+        /// <summary>
         /// Id Revit-элемента
         /// </summary>
         public ElementId ElementId { get; }
+
+        /// <summary>
+        /// Коллекция Id Revit-элементов, объединенных одной ошибкой
+        /// </summary>
+        public IEnumerable<ElementId> ElementIdCollection { get; }
 
         /// <summary>
         /// Изображение поиска в WPF

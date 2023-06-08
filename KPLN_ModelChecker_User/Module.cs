@@ -216,7 +216,7 @@ namespace KPLN_ModelChecker_User
             UIApplication uiapp = sender as UIApplication;
             while (CommandQueue.Count != 0)
             {
-                using (Transaction t = new Transaction(uiapp.ActiveUIDocument.Document, ModuleName))
+                using (Transaction t = new Transaction(uiapp.ActiveUIDocument.Document, $"{ModuleName}_Фиксация"))
                 {
                     t.Start();
                     try

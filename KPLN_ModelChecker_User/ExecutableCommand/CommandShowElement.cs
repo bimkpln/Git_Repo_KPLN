@@ -2,22 +2,28 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandShowElement : IExecutableCommand
     {
-        private Element _element;
+        private readonly IEnumerable<Element> _elementCollection;
+
+        public CommandShowElement(IEnumerable<Element> elemColl)
+        {
+            _elementCollection = elemColl;
+        }
 
         public CommandShowElement(Element element)
         {
-            _element = element;
+            _elementCollection = new List<Element>(1) { element };
         }
 
         public Result Execute(UIApplication app)
         {
-            app.ActiveUIDocument.ShowElements(_element);
-            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
+            app.ActiveUIDocument.ShowElements(_elementCollection.FirstOrDefault());
+            app.ActiveUIDocument.Selection.SetElementIds(_elementCollection.Select(e => e.Id).ToList());
 
             return Result.Succeeded;
         }

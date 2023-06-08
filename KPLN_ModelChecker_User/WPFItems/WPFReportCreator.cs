@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Autodesk.Revit.DB;
+using System.Collections.Generic;
+using System.Linq;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.WPFItems
@@ -114,7 +116,17 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             foreach (WPFEntity w in WPFEntityCollection)
             {
-                w.FiltrationDescription = w.ElementId.IntegerValue.ToString();
+                if (w.ElementId != null) w.FiltrationDescription = w.ElementId.ToString();
+                else
+                {
+                    string idColl;
+                    IEnumerable<ElementId> ids = w.ElementIdCollection.ToList();
+                    if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection);
+                    else idColl = ids.FirstOrDefault().ToString();
+
+                    w.FiltrationDescription = idColl;
+                }
+
                 FiltrationCollection.Add(w.FiltrationDescription);
             }
         }

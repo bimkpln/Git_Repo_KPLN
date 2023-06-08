@@ -11,11 +11,13 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandZoomElement : IExecutableCommand
     {
-        private Element _element;
+        private readonly Element _element;
 
-        private BoundingBoxXYZ _box;
+        private readonly IEnumerable<Element> _elementCollection;
 
-        private XYZ _centroid;
+        private readonly BoundingBoxXYZ _box;
+
+        private readonly XYZ _centroid;
 
         public CommandZoomElement(Element element)
         {
@@ -28,14 +30,18 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
             _centroid = centroid;
         }
 
+        public CommandZoomElement(IEnumerable<Element> elemColl)
+        {
+            _elementCollection = elemColl;
+        }
+
         public Result Execute(UIApplication app)
         {
-            if (!CutView(_box, _centroid, app.ActiveUIDocument, _element))
+            if (_elementCollection != null) PrepareAndSetView(app, _elementCollection);
+            else
             {
-                // Анализ размеров (только их!), размещенных на легенде
-                Dimension dim = _element as Dimension;
-
-                if (dim != null)
+                // Анлиз размеров (только их!), размещенных на легенде
+                if (_element is Dimension dim)
                 {
                     // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
                     app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
@@ -74,49 +80,104 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                         }
                     }
                 }
+                else PrepareAndSetView(app, _element, _box, _centroid);
             }
-            
-            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
 
             return Result.Succeeded;
         }
 
-        private bool CutView(BoundingBoxXYZ box, XYZ centroid, UIDocument uidoc, Element element)
+        /// <summary>
+        /// Подготовка и подрезка вида по коллеции элементов
+        /// </summary>
+        /// <returns>True, если вид удачно установлен</returns>
+        private void PrepareAndSetView(UIApplication app, IEnumerable<Element> elemColl)
         {
-            View3D activeView = uidoc.ActiveView as View3D;
-            if (activeView != null)
+            UIDocument uidoc = app.ActiveUIDocument;
+            if (uidoc.ActiveView is View3D activeView)
             {
                 ViewFamilyType viewFamilyType = uidoc.Document.GetElement(activeView.GetTypeId()) as ViewFamilyType;
                 ViewFamily activeViewFamily = viewFamilyType.ViewFamily;
                 if (activeViewFamily == ViewFamily.ThreeDimensional)
                 {
-                    BoundingBoxXYZ sectionBox = new BoundingBoxXYZ();
-                    sectionBox.Min = box.Min + new XYZ(-1, -1, -5);
-                    sectionBox.Max = box.Max + new XYZ(1, 1, 5);
+                    // Создание и применение подрезки
+                    BoundingBoxXYZ sectionBox = PrepareElemsSumBBox(elemColl);
                     activeView.SetSectionBox(sectionBox);
+
+                    // Создание и применение ориентации вида
+                    XYZ bboxCenterPnt = new XYZ(
+                        (sectionBox.Max.X + sectionBox.Min.X) / 2,
+                        (sectionBox.Max.Y + sectionBox.Min.Y) / 2,
+                        (sectionBox.Max.Z + sectionBox.Min.Z) / 2);
+                    XYZ forward_direction = VectorFromHorizVertAngles(135, -30);
+                    XYZ up_direction = VectorFromHorizVertAngles(135, -30 + 90);
+                    ViewOrientation3D orientation = new ViewOrientation3D(bboxCenterPnt, up_direction, forward_direction);
+                    activeView.SetOrientation(orientation);
+
+                    IList<UIView> views = uidoc.GetOpenUIViews();
+                    foreach (UIView uvView in views)
+                    {
+                        if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
+                        {
+                            uvView.ZoomAndCenterRectangle(sectionBox.Min, sectionBox.Max);
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    uidoc.ShowElements(elemColl.Select(e => e.Id).ToList());
+                    return;
+                }
+            }
+
+            app.ActiveUIDocument.Selection.SetElementIds(elemColl.Select(e => e.Id).ToList());
+        }
+
+        /// <summary>
+        /// Подготовка и подрезка вида по для одиночного элемента, с преднастройкой геометрии
+        /// </summary>
+        /// <returns>True, если вид удачно установлен</returns>
+        private void PrepareAndSetView(UIApplication app, Element element, BoundingBoxXYZ box, XYZ centroid)
+        {
+            UIDocument uidoc = app.ActiveUIDocument;
+            if (uidoc.ActiveView is View3D activeView)
+            {
+                ViewFamilyType viewFamilyType = uidoc.Document.GetElement(activeView.GetTypeId()) as ViewFamilyType;
+                ViewFamily activeViewFamily = viewFamilyType.ViewFamily;
+                if (activeViewFamily == ViewFamily.ThreeDimensional)
+                {
+                    // Создание и применение подрезки
+                    BoundingBoxXYZ sectionBox = new BoundingBoxXYZ
+                    {
+                        Min = box.Min + new XYZ(-1, -1, -5),
+                        Max = box.Max + new XYZ(1, 1, 5)
+                    };
+                    activeView.SetSectionBox(sectionBox);
+
+                    // Создание и применение ориентации вида
                     XYZ forward_direction = VectorFromHorizVertAngles(135, -30);
                     XYZ up_direction = VectorFromHorizVertAngles(135, -30 + 90);
                     ViewOrientation3D orientation = new ViewOrientation3D(centroid, up_direction, forward_direction);
                     activeView.SetOrientation(orientation);
+
                     IList<UIView> views = uidoc.GetOpenUIViews();
                     foreach (UIView uvView in views)
                     {
                         if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
                         {
                             uvView.ZoomAndCenterRectangle(box.Min, box.Max);
-                            break;
+                            return;
                         }
                     }
                 }
                 else
                 {
                     uidoc.ShowElements(element);
+                    return;
                 }
-
-                return true;
             }
 
-            return false;
+            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
         }
 
         private XYZ VectorFromHorizVertAngles(double angleHorizD, double angleVertD)
@@ -129,6 +190,89 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
             double c = Math.Sin(angleHorizR);
             double d = Math.Sin(angleVertR);
             return new XYZ(a * b, a * c, d);
+        }
+
+        /// <summary>
+        /// Создаю максимальный BBox из набора элементов
+        /// </summary>
+        private BoundingBoxXYZ PrepareElemsSumBBox(IEnumerable<Element> elemColl)
+        {
+            double minX = double.MaxValue;
+            double minY = double.MaxValue;
+            double minZ = double.MaxValue;
+            double maxX = double.MinValue;
+            double maxY = double.MinValue;
+            double maxZ = double.MinValue;
+            foreach (Element elem in elemColl)
+            {
+                BoundingBoxXYZ elemBbox = PrepareElemBBox(elem);
+                if (elemBbox != null)
+                {
+                    #region Получаю минимальную точку в каждой плоскости
+                    XYZ bboxmim = elemBbox.Min;
+                    double tminX = Math.Min(minX, bboxmim.X);
+                    double tminY = Math.Min(minY, bboxmim.Y);
+                    double tminZ = Math.Min(minZ, bboxmim.Z);
+                    if (tminX < minX) minX = tminX;
+                    if (tminY < minY) minY = tminY;
+                    if (tminZ < minZ) minZ = tminZ;
+                    #endregion
+
+                    #region Получаю максимальную точку в каждой плоскости
+                    XYZ bboxMax = elemBbox.Max;
+                    double tmaxX = Math.Max(maxX, bboxMax.X);
+                    double tmaxY = Math.Max(maxY, bboxMax.Y);
+                    double tmaxZ = Math.Max(maxZ, bboxMax.Z);
+                    if (tmaxX > maxX) maxX = tmaxX;
+                    if (tmaxY > maxY) maxY = tmaxY;
+                    if (tmaxZ > maxZ) maxZ = tmaxZ;
+                    #endregion
+                }
+            }
+
+            if (minX == minY || minX == minZ || maxX == maxY || maxX == maxZ) return null;
+
+            return new BoundingBoxXYZ
+            {
+                Min = new XYZ(minX, minY, minZ) + new XYZ(-1, -1, -5),
+                Max = new XYZ(maxX, maxY, maxZ) + new XYZ(1, 1, 5)
+            };
+        }
+
+        /// <summary>
+        /// Создание BBox для элемента
+        /// </summary>
+        private BoundingBoxXYZ PrepareElemBBox(Element elem)
+        {
+            GeometryElement geomElem = elem
+                    .get_Geometry(new Options()
+                    {
+                        DetailLevel = ViewDetailLevel.Fine,
+                    });
+
+            foreach (GeometryInstance inst in geomElem)
+            {
+                //Transform transform = inst.Transform;
+                GeometryElement instGeomElem = inst.GetInstanceGeometry();
+                foreach (GeometryObject obj in instGeomElem)
+                {
+                    Solid solid = obj as Solid;
+                    if (solid != null && solid.Volume != 0)
+                    {
+                        BoundingBoxXYZ bbox = solid.GetBoundingBox();
+                        Transform transform = bbox.Transform;
+                        BoundingBoxXYZ result = new BoundingBoxXYZ()
+                        {
+                            Max = transform.OfPoint(bbox.Max),
+                            Min = transform.OfPoint(bbox.Min),
+                        };
+
+                        return result;
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

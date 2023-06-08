@@ -1,15 +1,13 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
+using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
@@ -17,13 +15,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class CommandCheckListAnnotations : IExternalCommand
+    internal class CommandCheckListAnnotations : AbstrCheckCommand, IExternalCommand
     {
 
         /// <summary>
-        /// Список категорий для поиска
+        /// Список категорий для анализа
         /// </summary>
-        private List<BuiltInCategory> _bicErrorSearch = new List<BuiltInCategory>
+        private readonly List<BuiltInCategory> _bicErrorSearch = new List<BuiltInCategory>
         {
             BuiltInCategory.OST_Lines,
             BuiltInCategory.OST_TextNotes,
@@ -33,37 +31,56 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         };
 
         /// <summary>
-        /// Список исключений в именах семейств
+        /// Список исключений в именах семейств для генерации исключений в выбранных категориях
         /// </summary>
-        private List<string> _familyNames = new List<string>
+        private readonly List<string> _exceptionFamilyNameList = new List<string>
         {
+            "011_",
+            "012_",
             "022_",
-            "023_"
+            "023_",
+            "024_",
         };
 
         /// <summary>
         /// Список элементов, которые относятся к ошибкам
         /// </summary>
         private List<ElementId> _errorList = new List<ElementId>();
-        
+
         /// <summary>
         /// Словарь элементов, где ключ - имя листа, значения - аннотации на листе
         /// </summary>
-        private Dictionary<ViewSheet, List<ElementId> > _errorDict = new Dictionary<ViewSheet, List<ElementId>>();
-        
+        private Dictionary<ViewSheet, List<ElementId>> _errorDict = new Dictionary<ViewSheet, List<ElementId>>();
+
+
+        /// <summary>
+        /// Реализация IExternalCommand
+        /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //Get application and documnet objects
-            UIApplication uiapp = commandData.Application;
+            return Execute(commandData.Application);
+        }
+
+        internal override Result Execute(UIApplication uiapp)
+        {
+            _name = "Проверка листов на аннотации";
+            _application = uiapp;
+
+            _lastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2798");
+            _lastRunFieldName = "kpln_annotations";
+            _lastRunStorageName = "KPLN";
+
+            _userTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2799");
+            _userTextFieldName = "kpln_annotations";
+            _userTextStorageName = "KPLN";
+
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
             View activeView = uidoc.ActiveView;
 
-            
-            
             // Обрабатываю пользовательскую выборку листов
             List<ViewSheet> sheetsList = new List<ViewSheet>();
-            List<ElementId> selIds = uidoc.Selection.GetElementIds().ToList(); 
+            List<ElementId> selIds = uidoc.Selection.GetElementIds().ToList();
             if (selIds.Count > 0)
             {
                 foreach (ElementId selId in selIds)
@@ -83,39 +100,107 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            // Поиск аннотаций
-            try 
-            { 
-                // Анализирую выбранные листы на количество аннотаций
+            #region Проверяю и обрабатываю элементы
+            try
+            {
+                // Анализирую выбранные листы на количество аннотаций (с общим выводом в спец. окно)
                 if (sheetsList.Count > 0)
                 {
+                    List<WPFEntity> wpfColl = new List<WPFEntity>();
                     foreach (ViewSheet viewSheet in sheetsList)
                     {
-                        FindAllAnnotationsOnList(doc, viewSheet, _errorDict.GetType());
+                        IEnumerable<WPFEntity> annColl = CheckCommandRunner(doc, FindAllAnnotationsOnList(doc, viewSheet));
+                        if (annColl != null)
+                            wpfColl.AddRange(annColl);
                     }
-                    ShowResult(doc);
+                    OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+                    if (form != null)
+                    {
+                        form.Show();
+                        return Result.Succeeded;
+                    }
                 }
-                
+
                 // Анализирую все видовые экраны активного листа
                 else if (activeView.Category.Id.IntegerValue.Equals((int)BuiltInCategory.OST_Sheets))
                 {
                     ViewSheet viewSheet = activeView as ViewSheet;
-                    FindAllAnnotationsOnList(doc, viewSheet, _errorList.GetType());
-                    ShowResult(uidoc);
+                    IEnumerable<Element> annColl = FindAllAnnotationsOnList(doc, viewSheet);
+                    QuickShowResult(uidoc, annColl);
+
+                    // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
+                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
                 }
 
                 // Анализирую вид
                 else
                 {
-                    FindAllAnnotations(doc, activeView.Id);
-                    ShowResult(uidoc);
+                    IEnumerable<Element> annColl = FindAllAnnotations(doc, activeView.Id);
+                    QuickShowResult(uidoc, annColl);
+
+                    // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
+                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
                 }
             }
             catch (Exception ex)
             {
-                PrintError(ex);
+                if (ex.InnerException != null)
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                else
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+
+                return Result.Cancelled;
             }
+            #endregion
+
             return Result.Succeeded;
+        }
+
+        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl) => null;
+
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        {
+            if (elemColl.Any())
+            {
+                List<WPFEntity> result = new List<WPFEntity>();
+
+                string wpfInfoRow = string.Empty;
+                foreach (Element elem in elemColl)
+                {
+                    if (doc.GetElement(elem.OwnerViewId) is ViewSheet viewSheet)
+                    {
+                        wpfInfoRow = $"Лист: {viewSheet.SheetNumber} - {viewSheet.Name}";
+                        break;
+                    }
+                    else if (doc.GetElement(elem.OwnerViewId) is View view)
+                    {
+                        Parameter listNumberParam = view.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NUMBER);
+                        Parameter listNameParam = view.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NAME);
+                        if (listNumberParam == null || listNumberParam == null) wpfInfoRow = $"Вид: {view.Name}";
+                        else wpfInfoRow = $"Лист: {listNumberParam.AsString()} - {listNameParam.AsString()}";
+                        break;
+                    }
+                }
+
+                result.Add(new WPFEntity(
+                    elemColl,
+                    Status.Error,
+                    "Недопустимые аннотации",
+                    "Данные элементы запрещено использовать на моделируемых видах",
+                    false,
+                    false,
+                    null,
+                    wpfInfoRow));
+
+                return result;
+            }
+
+            return null;
+        }
+
+        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
+        {
+            report.SetWPFEntityFiltration_ByStatus();
         }
 
         /// <summary>
@@ -123,7 +208,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private FilteredElementCollector FilteredByStringColl(FilteredElementCollector currentColl)
         {
-            foreach (string currentName in _familyNames)
+            foreach (string currentName in _exceptionFamilyNameList)
             {
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
                 ElementParameterFilter eFilter = new ElementParameterFilter(fRule);
@@ -135,14 +220,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на единице выбранного элемента и записи в коллекцию
         /// </summary>
-        private void FindAllAnnotations(Document doc, ElementId viewId)
+        private IEnumerable<Element> FindAllAnnotations(Document doc, ElementId viewId)
         {
+            List<Element> result = new List<Element>();
+
             foreach (BuiltInCategory bic in _bicErrorSearch)
             {
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc, viewId).OfCategory(bic).WhereElementIsNotElementType();
-                ICollection<ElementId> collection = FilteredByStringColl(bicColl).ToElementIds();
-                _errorList.AddRange(collection);
-            }        
+                ICollection<Element> collection = FilteredByStringColl(bicColl).ToElements();
+                result.AddRange(collection);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -171,17 +260,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на листах и записи в коллекцию или словарь (в зависимости от количества выбранных листов)
         /// </summary>
-        private void FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet, Type containerType)
+        private IEnumerable<Element> FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet)
         {
+            List<Element> result = new List<Element>();
+
             // Анализирую аннотации на листе
-            if (containerType.Equals(typeof(Dictionary<ViewSheet, List<ElementId>>)))
-            {
-                FindAllAnnotations(doc, viewSheet.Id, viewSheet);
-            }
-            else
-            {
-                FindAllAnnotations(doc, viewSheet.Id);
-            }
+            result.AddRange(FindAllAnnotations(doc, viewSheet.Id));
 
             // Анализирую размещенные виды
             ICollection<ElementId> allViewPorts = viewSheet.GetAllViewports();
@@ -193,117 +277,23 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 // Анализирую все виды, кроме чертежных видов и легенд
                 if (!currentElement.GetType().Equals(typeof(ViewDrafting)) & !currentElement.GetType().Equals(typeof(View)))
                 {
-                    if (containerType.Equals(typeof(Dictionary<ViewSheet, List<ElementId>>)))
-                    { 
-                        FindAllAnnotations(doc, viewId, viewSheet);
-                    }
-                    else
-                    {
-                        FindAllAnnotations(doc, viewId);
-                    }
+                    result.AddRange(FindAllAnnotations(doc, viewId));
                 }
             }
+
+            return result;
         }
 
         /// <summary>
-        /// Метод для вывода результатов пользователю, а также для выделения элементов в модели
+        /// Метод для вывода микроотчета пользователю, а также для выделения элементов в модели
         /// </summary>
-        private void ShowResult(UIDocument uidoc)
+        private void QuickShowResult(UIDocument uidoc, IEnumerable<Element> elemColl)
         {
-            if (_errorList.Count == 0)
-            {
-                TaskDialog.Show("Результат", "Аннотации не обнаружены :)", TaskDialogCommonButtons.Ok);
-            }
-            else
-            {
-                TaskDialog.Show("Результат", $"Аннотации выделены. Количество - {_errorList.Count}", TaskDialogCommonButtons.Ok);
-            }
-            
+            if (elemColl.Count() == 0) TaskDialog.Show("Результат", "Аннотации не обнаружены :)", TaskDialogCommonButtons.Ok);
+            else TaskDialog.Show("Результат", $"Аннотации выделены. Количество - {elemColl.Count()}", TaskDialogCommonButtons.Ok);
+
             // Выделяю элементы в модели
-            uidoc.Selection.SetElementIds(_errorList);
-        }
-
-        /// <summary>
-        /// Метод для вывода результатов пользователю
-        /// </summary>
-        private void ShowResult(Document doc)
-        {
-            if (_errorDict.Count == 0 && _errorList.Count == 0)
-            {
-                TaskDialog.Show("Результат", "Аннотации не обнаружены :)", TaskDialogCommonButtons.Ok);
-            }
-            else
-            {
-                // Настраиваю сортировку в окне и генерирую экземпляры ошибок
-                ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
-                ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>();
-                wpfFiltration.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
-                foreach (KeyValuePair<ViewSheet, List<ElementId> > kvp in _errorDict)
-                {
-                    foreach (ElementId elementId in kvp.Value)
-                    {
-                        Element element = doc.GetElement(elementId);
-                        WPFDisplayItem item = GetItemByElement(element, element.Name, kvp.Key.Id.IntegerValue, $"Лист номер {kvp.Key.SheetNumber}", "Данные элементы запрещено использовать на моделируемых видах", Status.Error);
-                        item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Id элемента: ", Description = element.Id.ToString() });
-                        outputCollection.Add(item);
-                    }
-                    // Добавляю критерии сортировки
-                    wpfFiltration.Add(new WPFDisplayItem(-2, StatusExtended.Critical, kvp.Key.Id.IntegerValue) { Name = $"Лист номер {kvp.Key.SheetNumber}"});
-                }
-                List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
-                
-                // Вывожу результат
-                int counter = 1;
-                ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
-                foreach (WPFDisplayItem e in sortedOutputCollection)
-                {
-                    e.Header = string.Format("{0}# {1}", (counter++).ToString(), e.Header);
-                    wpfElements.Add(e);
-                }
-                if (wpfElements.Count != 0)
-                {
-                    ElementsOutputExtended form = new ElementsOutputExtended(wpfElements, wpfFiltration);
-                    form.Show();
-                }
-            }
-        }
-        
-        private WPFDisplayItem GetItemByElement(Element element, string name, int listId, string header, string description, Status status)
-        {
-            StatusExtended exstatus;
-            switch (status)
-            {
-                case Status.Error:
-                    exstatus = StatusExtended.Critical;
-                    break;
-                default:
-                    exstatus = StatusExtended.Warning;
-                    break;
-            }
-            WPFDisplayItem item = new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus, listId);
-            try
-            {
-                item.SetZoomParams(element, null);
-                item.Name = name;
-                item.Header = header;
-                item.Description = description;
-                item.Category = string.Format("<{0}>", element.Category.Name);
-                item.Visibility = System.Windows.Visibility.Visible;
-                item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
-                HashSet<string> values = new HashSet<string>();
-            }
-            catch (Exception e)
-            {
-                try
-                {
-                    PrintError(e.InnerException);
-                }
-                catch (Exception) { }
-                PrintError(e);
-            }
-            return item;
+            uidoc.Selection.SetElementIds(elemColl.Select(e => e.Id).ToList());
         }
     }
 }
