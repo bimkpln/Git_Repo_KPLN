@@ -12,20 +12,12 @@ namespace KPLN_Library_ExtensibleStorage
         /// <summary>
         /// Основной разделитель между данными, которые пишуться в ExtensibleStorage
         /// </summary>
-        private string _mainDataSeparator = "~ZhvBlr~";
+        private readonly string _mainDataSeparator = "~ZhvBlr~";
 
-        /// <summary>
-        /// Конструктор для плагинов на python (там своя библиотека, и имя там дефолтное)
-        /// </summary>
-        public ExtensibleStorageBuilder(Guid guid, string name)
+        public ExtensibleStorageBuilder(Guid guid, string name, string storageName)
         {
             Guid = guid;
             FieldName = name;
-            StorageName = "storage";
-        }
-
-        public ExtensibleStorageBuilder(Guid guid, string name, string storageName) : this(guid, name)
-        {
             StorageName = storageName;
         }
 
@@ -112,7 +104,7 @@ namespace KPLN_Library_ExtensibleStorage
                 sch = CreateSchema();
                 entity = new Entity(sch);
             }
-
+            
             entity.Set<string>(FieldName, $"{elem.Id}{_mainDataSeparator}{userName}: {descr}");
             elem.SetEntity(entity);
         }
