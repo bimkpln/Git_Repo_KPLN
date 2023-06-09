@@ -37,50 +37,57 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            if (_elementCollection != null) PrepareAndSetView(app, _elementCollection);
-            else
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Фиксация"))
             {
-                // Анлиз размеров (только их!), размещенных на легенде
-                if (_element is Dimension dim)
+                t.Start();
+
+                if (_elementCollection != null) PrepareAndSetView(app, _elementCollection);
+                else
                 {
-                    // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
-                    app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
-                    app.ActiveUIDocument.ShowElements(_element);
-                    app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
-
-                    View appView = app.ActiveUIDocument.ActiveView;
-                    View dimView = dim.View;
-
-                    if (appView == null && dimView == null)
+                    // Анлиз размеров (только их!), размещенных на легенде
+                    if (_element is Dimension dim)
                     {
-                        TaskDialog.Show("KPLN", $"У размера с ID: {dim.Id} нет вида. Обратись в BIM-отдел!");
+                        // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
+                        app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
+                        app.ActiveUIDocument.ShowElements(_element);
+                        app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
 
-                        return Result.Cancelled;
-                    }
+                        View appView = app.ActiveUIDocument.ActiveView;
+                        View dimView = dim.View;
 
-                    if (appView.Id != dimView.Id)
-                    {
-                        ViewPlan viewPlan = dim.View as ViewPlan;
-                        if (viewPlan != null)
+                        if (appView == null && dimView == null)
                         {
-                            ReferenceArray refArray = dim.References;
-                            StringBuilder stringBuilder = new StringBuilder(refArray.Size);
-                            foreach (Reference refItem in refArray)
+                            TaskDialog.Show("KPLN", $"У размера с ID: {dim.Id} нет вида. Обратись в BIM-отдел!");
+
+                            return Result.Cancelled;
+                        }
+
+                        if (appView.Id != dimView.Id)
+                        {
+                            ViewPlan viewPlan = dim.View as ViewPlan;
+                            if (viewPlan != null)
                             {
-                                stringBuilder.Append($"{refItem.ElementId}/");
-                            }
+                                ReferenceArray refArray = dim.References;
+                                StringBuilder stringBuilder = new StringBuilder(refArray.Size);
+                                foreach (Reference refItem in refArray)
+                                {
+                                    stringBuilder.Append($"{refItem.ElementId}/");
+                                }
 
-                            TaskDialog.Show("KPLN", $"Размер скрыт из-за скрытия элементов, на которые он размещен. " +
-                                $"Чтобы его найти, нужно чтобы основы размера были видны на плане: {viewPlan.Name}." +
-                                $"\nId элементов основы: {stringBuilder.ToString().TrimEnd('/')}");
-                        }
-                        else
-                        {
-                            TaskDialog.Show("KPLN", $"Открой легенду ({dimView.Name}) вручную.");
+                                TaskDialog.Show("KPLN", $"Размер скрыт из-за скрытия элементов, на которые он размещен. " +
+                                    $"Чтобы его найти, нужно чтобы основы размера были видны на плане: {viewPlan.Name}." +
+                                    $"\nId элементов основы: {stringBuilder.ToString().TrimEnd('/')}");
+                            }
+                            else
+                            {
+                                TaskDialog.Show("KPLN", $"Открой легенду ({dimView.Name}) вручную.");
+                            }
                         }
                     }
+                    else PrepareAndSetView(app, _element, _box, _centroid);
                 }
-                else PrepareAndSetView(app, _element, _box, _centroid);
+
+                t.Commit();
             }
 
             return Result.Succeeded;
@@ -119,6 +126,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                         if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
                         {
                             uvView.ZoomAndCenterRectangle(sectionBox.Min, sectionBox.Max);
+                            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                             return;
                         }
                     }
@@ -126,6 +134,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 else
                 {
                     uidoc.ShowElements(elemColl.Select(e => e.Id).ToList());
+                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                     return;
                 }
             }
@@ -166,6 +175,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                         if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
                         {
                             uvView.ZoomAndCenterRectangle(box.Min, box.Max);
+                            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                             return;
                         }
                     }
@@ -173,6 +183,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 else
                 {
                     uidoc.ShowElements(element);
+                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
                     return;
                 }
             }

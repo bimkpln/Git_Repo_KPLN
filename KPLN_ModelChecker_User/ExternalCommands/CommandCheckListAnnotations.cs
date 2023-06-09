@@ -17,7 +17,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckListAnnotations : AbstrCheckCommand, IExternalCommand
     {
-
         /// <summary>
         /// Список категорий для анализа
         /// </summary>
@@ -43,17 +42,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         };
 
         /// <summary>
-        /// Список элементов, которые относятся к ошибкам
-        /// </summary>
-        private List<ElementId> _errorList = new List<ElementId>();
-
-        /// <summary>
-        /// Словарь элементов, где ключ - имя листа, значения - аннотации на листе
-        /// </summary>
-        private Dictionary<ViewSheet, List<ElementId>> _errorDict = new Dictionary<ViewSheet, List<ElementId>>();
-
-
-        /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -66,13 +54,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             _name = "Проверка листов на аннотации";
             _application = uiapp;
 
-            _lastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2798");
-            _lastRunFieldName = "kpln_annotations";
-            _lastRunStorageName = "KPLN";
-
-            _userTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2799");
-            _userTextFieldName = "kpln_annotations";
-            _userTextStorageName = "KPLN";
+            _allStorageName = "KPLN_CheckAnnotation";
+            
+            _lastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898");
+            _userTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2899");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -189,7 +174,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     "Данные элементы запрещено использовать на моделируемых видах",
                     false,
                     false,
-                    null,
                     wpfInfoRow));
 
                 return result;
@@ -204,9 +188,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Метод для создания фильтра, для игнорирования элементов по имени семейства
+        /// Метод для создания фильтра, для игнорирования элементов по имени семейства (НАЧИНАЕТСЯ С)
         /// </summary>
-        private FilteredElementCollector FilteredByStringColl(FilteredElementCollector currentColl)
+        private FilteredElementCollector FilteredByNotBeginsStringColl(FilteredElementCollector currentColl)
         {
             foreach (string currentName in _exceptionFamilyNameList)
             {
@@ -227,34 +211,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (BuiltInCategory bic in _bicErrorSearch)
             {
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc, viewId).OfCategory(bic).WhereElementIsNotElementType();
-                ICollection<Element> collection = FilteredByStringColl(bicColl).ToElements();
-                result.AddRange(collection);
+                result.AddRange(FilteredByNotBeginsStringColl(bicColl).ToElements());
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Метод для поиска в модели элементов аннотаций на листе и записи в словарь
-        /// </summary>
-        private void FindAllAnnotations(Document doc, ElementId viewId, ViewSheet viewSheet)
-        {
-            foreach (BuiltInCategory bic in _bicErrorSearch)
-            {
-                FilteredElementCollector bicColl = new FilteredElementCollector(doc, viewId).OfCategory(bic).WhereElementIsNotElementType();
-                ICollection<ElementId> collection = FilteredByStringColl(bicColl).ToElementIds();
-                if (collection.Count > 0)
-                {
-                    if (_errorDict.ContainsKey(viewSheet))
-                    {
-                        _errorDict[viewSheet].AddRange(collection as List<ElementId>);
-                    }
-                    else
-                    {
-                        _errorDict.Add(viewSheet, collection as List<ElementId>);
-                    }
-                }
-            }
         }
 
         /// <summary>

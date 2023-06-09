@@ -26,7 +26,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// </summary>
         private string _header;
 
-        public WPFEntity(Element element, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string approveComment = null, string info = null)
+        public WPFEntity(Element element, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
         {
             Element = element;
             ElementId = element.Id;
@@ -47,7 +47,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             UpdateMainFieldByStatus(status);
         }
 
-        public WPFEntity(IEnumerable<Element> elements, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string approveComment = null, string info = null)
+        public WPFEntity(IEnumerable<Element> elements, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
         {
             ElementCollection = elements;
             ElementIdCollection = elements.Select(e => e.Id);

@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_User.WPFItems;
@@ -20,13 +21,20 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            //Получение объектов приложения и документа
-            ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esText.Guid, _esText.FieldName, _esText.StorageName);
-            esBuilder.SetStorageDataWithSeparator_TextLog(_wpfEntity.Element, app.Application.Username, _description);
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Фиксация"))
+            {
+                t.Start();
 
-            //Обновление данных на wpf-элементе
-            _wpfEntity.UpdateMainFieldByStatus(Common.Collections.Status.Approve);
-            _wpfEntity.ApproveComment = _description;
+                //Получение объектов приложения и документа
+                ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esText.Guid, _esText.FieldName, _esText.StorageName);
+                esBuilder.SetStorageDataWithSeparator_TextLog(_wpfEntity.Element, app.Application.Username, _description);
+
+                //Обновление данных на wpf-элементе
+                _wpfEntity.UpdateMainFieldByStatus(Common.Collections.Status.Approve);
+                _wpfEntity.ApproveComment = _description;
+
+                t.Commit();
+            }
 
             return Result.Succeeded;
         }

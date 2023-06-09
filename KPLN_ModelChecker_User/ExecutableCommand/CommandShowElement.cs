@@ -22,8 +22,15 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            app.ActiveUIDocument.ShowElements(_elementCollection.FirstOrDefault());
-            app.ActiveUIDocument.Selection.SetElementIds(_elementCollection.Select(e => e.Id).ToList());
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Фиксация"))
+            {
+                t.Start();
+
+                app.ActiveUIDocument.ShowElements(_elementCollection.FirstOrDefault());
+                app.ActiveUIDocument.Selection.SetElementIds(_elementCollection.Select(e => e.Id).ToList());
+                
+                t.Commit();
+            }
 
             return Result.Succeeded;
         }

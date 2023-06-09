@@ -38,23 +38,22 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private protected IEnumerable<Element> _trueElemCollection;
 
+        private protected string _allStorageName;
+
         // Последний запуск
-        private ExtensibleStorageBuilder _esBuilderRun;
+        private protected ExtensibleStorageBuilder _esBuilderRun;
         private protected Guid _lastRunGuid;
-        private protected string _lastRunFieldName;
-        private protected string _lastRunStorageName;
+        private protected readonly string _lastRunFieldName = "Last_Run";
 
         // Комментарий по внесению в допустимое
-        private ExtensibleStorageBuilder _esBuilderUserText;
+        private protected ExtensibleStorageBuilder _esBuilderUserText;
         private protected Guid _userTextGuid;
-        private protected string _userTextFieldName;
-        private protected string _userTextStorageName;
+        private protected readonly string _userTextFieldName = "Approve_Comment";
 
         // Ключевой комментарий - маркер
-        private ExtensibleStorageBuilder _esBuildergMarker;
+        private protected ExtensibleStorageBuilder _esBuildergMarker;
         private protected Guid _markerGuid;
-        private protected string _markerFieldName;
-        private protected string _markerStorageName;
+        private protected string _markerFieldName = "Main_Marker";
 
         /// <summary>
         /// Extensible Storage для последнего запуска
@@ -63,7 +62,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             get
             {
-                if (_esBuilderRun == null) _esBuilderRun = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _lastRunStorageName);
+                if (_esBuilderRun == null) _esBuilderRun = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _allStorageName);
                 return _esBuilderRun;
             }
         }
@@ -75,7 +74,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             get
             {
-                if (_esBuilderUserText == null) _esBuilderUserText = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _lastRunStorageName);
+                if (_esBuilderUserText == null) _esBuilderUserText = new ExtensibleStorageBuilder(_lastRunGuid, _lastRunFieldName, _allStorageName);
                 return _esBuilderUserText;
             }
         }
@@ -87,7 +86,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             get
             {
-                if (_esBuildergMarker == null) _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, _markerStorageName);
+                if (_esBuildergMarker == null) _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, _allStorageName);
                 return _esBuildergMarker;
             }
         }
@@ -212,10 +211,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="elemColl">Коллеция элементов для анализа</param>
         private void CheckAndDropExtStrApproveComment(Document doc, IEnumerable<Element> elemColl)
         {
-            using (Transaction t = new Transaction(doc))
+            try
             {
-                t.Start($"{ModuleData.ModuleName}: Очистка ExtStr");
+                using (Transaction t = new Transaction(doc))
+                {
+                    t.Start($"{ModuleData.ModuleName}: Очистка ExtStr");
 
+                    foreach (var elem in elemColl)
+                    {
+                        bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
+                        bool checkTrueExtStrData = ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
+                        if (isDataExist && !checkTrueExtStrData)
+                            ESBuilderUserText.DropStorageData_TextLog(elem);
+                    }
+
+                    t.Commit();
+                }
+            }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+            {
                 foreach (var elem in elemColl)
                 {
                     bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
@@ -223,8 +237,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (isDataExist && !checkTrueExtStrData)
                         ESBuilderUserText.DropStorageData_TextLog(elem);
                 }
-
-                t.Commit();
             }
         }
 

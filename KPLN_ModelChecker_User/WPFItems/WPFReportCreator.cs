@@ -19,6 +19,9 @@ namespace KPLN_ModelChecker_User.WPFItems
 
             CheckName = checkName;
             LogLastRun = logLastRun;
+
+            FiltrationCollection = new HashSet<string>() { "Необработанные предупреждения" };
+            if (wpfEntityColl.FirstOrDefault(w => w.CurrentStatus == Status.Approve) != null) FiltrationCollection.Add("Допустимое");
         }
 
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun, string logMarker) : this(wpfEntityColl, checkName, logLastRun)
@@ -34,7 +37,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Коллеция описаний для фильтрации (текстовые значения, по которым группируются элементы)
         /// </summary>
-        public HashSet<string> FiltrationCollection { get; private set; } = new HashSet<string>() { "Необработанные предупреждения" };
+        public HashSet<string> FiltrationCollection { get; private set; }
 
         /// <summary>
         /// Имя проверки

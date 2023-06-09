@@ -47,13 +47,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             _name = "Проверка отверстий";
             _application = uiapp;
 
-            _lastRunGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA150");
-            _lastRunFieldName = "kpln_holes";
-            _lastRunStorageName = "KPLN";
+            _allStorageName = "KPLN_CheckHoles";
 
-            _userTextGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA151");
-            _userTextFieldName = "kpln_holes";
-            _userTextStorageName = "KPLN";
+            _lastRunGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA160");
+            _userTextGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA161");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -297,8 +294,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Отверстие должно быть заполнено элементами ИОС, иначе оно лишнее",
                         true,
                         true,
-                        GetUserComment(hole),
-                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
+                        GetUserComment(hole));
                     zeroIOSElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;
@@ -311,11 +308,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         hole,
                         SetApproveStatusByUserComment(hole, Status.Error),
                         "Отверстие избыточное по размерам",
-                        $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) *100}%.",
+                        $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
                         true,
-                        GetUserComment(hole),
-                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
+                        GetUserComment(hole));
                     errorNoPipeAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorNoPipeAreaElem);
                     continue;
@@ -329,8 +326,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено 1 элементом ИОС на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
                         true,
-                        GetUserComment(hole),
-                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
+                        GetUserComment(hole));
                     errorOneElemAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorOneElemAreaElem);
                     continue;
@@ -344,8 +341,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Возможно стоит пересмотреть размеры, т.к. отверстие заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
                         true,
-                        GetUserComment(hole),
-                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}");
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
+                        GetUserComment(hole));
                     warnAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(warnAreaElem);
                     continue;
@@ -353,7 +350,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             return result
-                .OrderByDescending(e =>
+                .OrderBy(e =>
                     ((Level)doc.GetElement(e.Element.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).AsElementId())).Elevation)
                 .ToList();
         }

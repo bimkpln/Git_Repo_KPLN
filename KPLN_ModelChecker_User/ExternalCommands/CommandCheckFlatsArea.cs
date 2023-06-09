@@ -78,17 +78,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             _name = "Проверка помещений";
             _application = uiapp;
 
-            _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
+            _allStorageName = "KPLN_CheckFlatsArea";
             _markerFieldName = "kpln_ar_area";
-            _markerStorageName = "storage";
 
+            _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
             _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
-            _lastRunFieldName = "kpln_ar_area";
-            _lastRunStorageName = "KPLN_AR";
-            
             _userTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
-            _userTextFieldName = "kpln_ar_area";
-            _userTextStorageName = "KPLN_AR";
+
+            // Из-за сторонней библиотеки - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
+            _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, "storage");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -306,8 +304,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             $"Параметр \"{_flatAreaSumParamData.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
                             false,
                             true,
-                            approveComment,
-                            $"Данные для сравнения со стадией П получены из параметра: \"{_flatAreaSumParamData.FirstParam}\".\nДопустимая разница внутри квартиры - 1 м²"));
+                            $"Данные для сравнения со стадией П получены из параметра: \"{_flatAreaSumParamData.FirstParam}\".\nДопустимая разница внутри квартиры - 1 м²",
+                            approveComment));
                     }
                 }
             }
@@ -351,9 +349,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 $"Параметр \"{fpc.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
                                 false,
                                 true,
-                                approveComment,
                                 $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
-                                    $"\nДопустимая разница внутри помещения - 1 м².\nВыделено только ОДНО помещение квартиры"));
+                                    $"\nДопустимая разница внутри помещения - 1 м².\nВыделено только ОДНО помещение квартиры",
+                                approveComment));
                             continue;
                         }
 
@@ -397,6 +395,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 $"Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
                                 false,
                                 true,
+                                null,
                                 GetUserComment(room)));
                             break;
                         }
@@ -411,8 +410,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             $"Параметр \"{fpc.SecondParam}\" на стадии П был \"{fParamToString}\", сейчас - \"{sParamToString}\"",
                             false,
                             true,
-                            GetUserComment(room),
-                            $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"."));
+                            $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\".",
+                            GetUserComment(room)));
                     }
                 }
             }
@@ -456,9 +455,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 $"Параметр \"{fpc.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
                                 false,
                                 true,
-                                approveComment,
                                 $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
-                                    $"\nДопустимая разница внутри помещения - 1 м²"));
+                                    $"\nДопустимая разница внутри помещения - 1 м²",
+                                approveComment));
                         }
 
                     }
@@ -505,8 +504,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 $"Рельаная площадь помещения (\"{fpc.SecondParam}\") {sParam.AsValueString()}, а в марке (\"{fpc.FirstParam}\") - {fParam.AsValueString()}",
                                 false,
                                 true,
-                                approveComment,
-                                $"По согласованию с ГАПом - необходимо запустить квартирографию"));
+                                $"По согласованию с ГАПом - необходимо запустить квартирографию",
+                                approveComment));
                         }
 
                     }

@@ -42,7 +42,7 @@
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
-      <Private>False</Private>
+      <Private>True</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
@@ -117,7 +117,6 @@
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandLinks.cs" />
     <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
-    <Compile Include="ExternalCommands\NewCommandRun_Test.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>

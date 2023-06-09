@@ -214,32 +214,7 @@ namespace KPLN_ModelChecker_User
         private void OnIdling(object sender, IdlingEventArgs args)
         {
             UIApplication uiapp = sender as UIApplication;
-            while (CommandQueue.Count != 0)
-            {
-                using (Transaction t = new Transaction(uiapp.ActiveUIDocument.Document, $"{ModuleName}_Фиксация"))
-                {
-                    t.Start();
-                    try
-                    {
-                        Result result = CommandQueue.Dequeue().Execute(uiapp);
-                        if (result != Result.Succeeded)
-                        {
-                            t.RollBack();
-                            break;
-                        }
-                        else
-                        {
-                            t.Commit();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        PrintError(e);
-                        t.RollBack();
-                        break;
-                    }
-                }
-            }
+            while (CommandQueue.Count != 0) CommandQueue.Dequeue().Execute(uiapp);
         }
 
         /// <summary>

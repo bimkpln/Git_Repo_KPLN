@@ -70,12 +70,12 @@ namespace KPLN_ModelChecker_User.Forms
             
             #region Настраиваю данные блока ключевого лога
             _esBuilderMarker = esBuilderMarker;
-            if (_esBuilderMarker.StorageName != null)
+            if (_esBuilderMarker.Guid != new Guid("00000000-0000-0000-0000-000000000000"))
             {
                 MarkerRow.Height = GridLength.Auto;
                 MarkerData.Text = creator.LogMarker;
-                MarkerDataHeader.Visibility = System.Windows.Visibility.Visible;
-                MarkerData.Visibility = System.Windows.Visibility.Visible;
+                MarkerDataHeader.Visibility = Visibility.Visible;
+                MarkerData.Visibility = Visibility.Visible;
             }
             #endregion
         }
@@ -101,12 +101,12 @@ namespace KPLN_ModelChecker_User.Forms
             if (selectedContent != null)
             {
                 string selectedName = selectedContent.ToString();
-                if (chbxApproveShow.IsChecked is true)
+                if (selectedName == "Допустимое")
+                    e.Accepted = entity.CurrentStatus == Common.Collections.Status.Approve;
+                else if (chbxApproveShow.IsChecked is true)
                     e.Accepted = selectedName == "Необработанные предупреждения" || entity.FiltrationDescription == selectedName;
                 else if (selectedName == "Необработанные предупреждения")
                     e.Accepted = entity.CurrentStatus != Common.Collections.Status.Approve;
-                else if (selectedName == "Допустимое")
-                    e.Accepted = entity.FiltrationDescription == selectedName;
                 else
                     e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.Collections.Status.Approve;
             }

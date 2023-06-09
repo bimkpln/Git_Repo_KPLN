@@ -8,8 +8,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandWPFEntity_SetTimeRunLog : IExecutableCommand
     {
-        private DateTime _closeTime;
-        private ExtensibleStorageBuilder _esBuilderRun;
+        private readonly DateTime _closeTime;
+        private readonly ExtensibleStorageBuilder _esBuilderRun;
 
         public CommandWPFEntity_SetTimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
         {
@@ -19,19 +19,23 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            // Игнорирую специалистов BIM-отдела
-            int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-            if (_userDepartment == 4)
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Фиксация"))
             {
-                return Result.Cancelled;
-            }
+                t.Start();
 
-            //Получение объектов приложения и документа
-            Document doc = app.ActiveUIDocument.Document;
-            ProjectInfo pi = doc.ProjectInformation;
-            Element piElem = pi as Element;
-            ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
-            esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);
+                // Игнорирую специалистов BIM-отдела
+                int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+                if (_userDepartment == 4) return Result.Cancelled;
+
+                //Получение объектов приложения и документа
+                Document doc = app.ActiveUIDocument.Document;
+                ProjectInfo pi = doc.ProjectInformation;
+                Element piElem = pi as Element;
+                ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
+                esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);
+
+                t.Commit();
+            }
 
             return Result.Succeeded;
         }
