@@ -80,6 +80,9 @@ namespace KPLN_Scoper.Common
                 if (docu.Path == String.Empty)
                     throw new Exception($"Разработчик скоро это устранит, сообщение адресовано ему:" +
                         $"\n У элемента с id {docu.Id} - проблемы с определением пути. Проверь заполнение БД!");
+
+                // Игнорирую файлы с revit-server
+                if (docu.Path.Contains("RSN://")) continue;
                 
                 if (new FileInfo(docu.Path).FullName == filename)
                 {

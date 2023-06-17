@@ -206,15 +206,11 @@ namespace KPLN_Tools.ExternalCommands
             {
                 // Оффсеты
                 var revalueParam = dto.CurrentHole.get_Parameter(_revalueOffsetsParam);
-                if (revalueParam == null || revalueParam.AsInteger() == 1)
+                if (revalueParam == null || !revalueParam.HasValue || revalueParam.AsInteger() == 1)
                 {
-                    dto.CurrentHole
-                        .LookupParameter(_offsetDownParmaName)
-                        .Set(dto.DownFloorDistance);
+                    dto.CurrentHole.LookupParameter(_offsetDownParmaName).Set(dto.DownFloorDistance);
 
-                    dto.CurrentHole
-                        .LookupParameter(_offsetUpParmaName)
-                        .Set(dto.UpFloorDistance);
+                    dto.CurrentHole.LookupParameter(_offsetUpParmaName).Set(dto.UpFloorDistance);
                 }
 
                 // Отметки
