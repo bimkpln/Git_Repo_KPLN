@@ -2,6 +2,7 @@
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.ExternalCommands;
 using KPLN_ModelChecker_User.WPFItems;
@@ -39,13 +40,15 @@ namespace KPLN_ModelChecker_User.Forms
         /// Коллеция WPFEntity, которая должна отображаться в отчете
         /// </summary>
         private readonly IEnumerable<WPFEntity> _entities;
+        private readonly WPFReportCreator _creator;
         private CollectionViewSource _entityViewSource;
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
         {
             _application = uiapp;
             _externalCommand = externalCommand;
-            _entities = creator.WPFEntityCollection;
+            _creator = creator;
+            _entities = _creator.WPFEntityCollection;
 
             InitializeComponent();
 
@@ -61,6 +64,9 @@ namespace KPLN_ModelChecker_User.Forms
 
             InitializeCollectionViewSource();
             UpdateEntityList();
+
+            // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит)
+            if (_externalCommand == nameof(CommandCheckLinks)) this.RestartBtn.Visibility = Visibility.Collapsed;
         }
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
@@ -130,6 +136,8 @@ namespace KPLN_ModelChecker_User.Forms
         {
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
+                wpfEntity.BackgroundLightening();
+                
                 if (wpfEntity.IsZoomElement)
                 {
                     if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
@@ -168,11 +176,21 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
+
             Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
             AbstrCheckCommand instance = Activator.CreateInstance(type) as AbstrCheckCommand;
             instance.Execute(_application);
 
             this.Close();
+        }
+
+        /// <summary>
+        /// Экспортировать отчет в Excel
+        /// </summary>
+        private void ExportBtn_Clicked(object sender, RoutedEventArgs e)
+        {
+            string path = WPFEntity_ExportToExcel.SetPath();
+            if (!string.IsNullOrEmpty(path)) WPFEntity_ExportToExcel.Run(path, _creator.CheckName, _entities);
         }
 
         private void ChbxApproveShow_Clicked(object sender, RoutedEventArgs e)

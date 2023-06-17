@@ -22,7 +22,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Фиксация"))
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Демонстрация"))
             {
                 t.Start();
 

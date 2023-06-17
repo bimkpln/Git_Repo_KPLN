@@ -31,7 +31,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             Element = element;
             ElementId = element.Id;
             if (Element is Room room) ElementName = room.Name;
-            else ElementName = element.Name;
+            else ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
             CategoryName = element.Category.Name;
             
             CurrentStatus = status;
@@ -95,7 +95,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Изображение для смены статуса в WPF
         /// </summary>
-        public string ApproveIcon { get; } = "🔓";
+        public string ApproveIcon { get; } = "✔️";
 
         /// <summary>
         /// Пользовательский заголовок ошибки (для генерации Header - элемента)
@@ -228,6 +228,26 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             Box = box;
             Centroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
+        }
+
+        /// <summary>
+        /// Осветляет фон элемента
+        /// </summary>
+        public void BackgroundLightening()
+        {
+            double lightenPercentage = 0.20;
+            System.Windows.Media.Color lightenedColor = LightenColor(Background.Color, lightenPercentage);
+            Background = new SolidColorBrush(lightenedColor);
+        }
+
+        private static System.Windows.Media.Color LightenColor(System.Windows.Media.Color color, double lightenPercentage)
+        {
+            // Calculate the lighten amount for each channel (R, G, B)
+            byte r = (byte)(color.R + (255 - color.R) * lightenPercentage);
+            byte g = (byte)(color.G + (255 - color.G) * lightenPercentage);
+            byte b = (byte)(color.B + (255 - color.B) * lightenPercentage);
+
+            return System.Windows.Media.Color.FromRgb(r, g, b);
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace KPLN_ModelChecker_User.Common
 {
     /// <summary>
-    /// Обертка для ошибок, выявленных при работе скриптов
+    /// Обертка для элементов, используется при выявлении ошибок в работе скриптов
     /// </summary>
     internal class CheckCommandError
     {

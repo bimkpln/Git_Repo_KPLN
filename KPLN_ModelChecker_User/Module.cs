@@ -87,7 +87,7 @@ namespace KPLN_ModelChecker_User
                 "\n2. Корректность заданного рабочего набора;" +
                 "\n3. Прикрепление экземпляра связи.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(ExternalCommands.CommandLinks).FullName,
+                typeof(ExternalCommands.CommandCheckLinks).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_locations.png",
                 _mainContextualHelp,
@@ -214,7 +214,8 @@ namespace KPLN_ModelChecker_User
         private void OnIdling(object sender, IdlingEventArgs args)
         {
             UIApplication uiapp = sender as UIApplication;
-            while (CommandQueue.Count != 0) CommandQueue.Dequeue().Execute(uiapp);
+            while (CommandQueue.Count != 0) 
+                CommandQueue.Dequeue().Execute(uiapp);
         }
 
         /// <summary>

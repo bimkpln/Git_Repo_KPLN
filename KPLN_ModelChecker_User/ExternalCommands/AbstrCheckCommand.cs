@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
@@ -104,17 +105,38 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns>Коллекция WPFEntity для передачи в отчет пользовател</returns>
         internal IEnumerable<WPFEntity> CheckCommandRunner(Document doc, IEnumerable<Element> elemColl)
         {
-            _errorElemCollection = CheckElements(doc, elemColl);
-            if (_errorElemCollection != null && _errorElemCollection.Count() > 0)
+            try
             {
-                CreateAndShowElementCheckingErrorReport(_errorElemCollection);
-                _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement));
+                _errorElemCollection = CheckElements(doc, elemColl);
+                if (_errorElemCollection != null && _errorElemCollection.Count() > 0)
+                {
+                    CreateAndShowElementCheckingErrorReport(_errorElemCollection);
+                    _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement));
+                }
+                else _trueElemCollection = elemColl;
+
+                CheckAndDropExtStrApproveComment(doc, _trueElemCollection);
+
+                return PreapareElements(doc, _trueElemCollection);
             }
-            else _trueElemCollection = elemColl;
+            catch (Exception ex)
+            {
+                if (ex is UserException userException)
+                {
+                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                    {
+                        MainContent = ex.Message
+                    };
+                    taskDialog.Show();
+                }
+                
+                else if (ex.InnerException != null)
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
+                else
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
 
-            CheckAndDropExtStrApproveComment(doc, _trueElemCollection);
-
-            return PreapareElements(doc, _trueElemCollection);
+                return null;
+            }
         }
 
         /// <summary>
@@ -254,7 +276,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 ResultMessage esMsgRun = ESBuilderRun.GetResMessage_Element(piElem);
                 ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_Element(piElem);
                 #endregion
-                
+
                 if (esMsgMarker == null) return new WPFReportCreator(wpfEntityColl, _name, esMsgRun.Description);
                 else
                 {
@@ -275,7 +297,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                 }
             }
-            else Print($"[{_name}] Предупреждений не найдено :)", KPLN_Loader.Preferences.MessageType.Success);
+            else 
+            { 
+                Print($"[{_name}] Предупреждений не найдено :)", KPLN_Loader.Preferences.MessageType.Success);
+
+                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+                ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+            } 
 
             return null;
         }

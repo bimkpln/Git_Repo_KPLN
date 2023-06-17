@@ -1,12 +1,18 @@
 ﻿<Window x:Class="KPLN_ModelChecker_User.Forms.OutputMainForm"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:KPLN_ModelChecker_User.Forms"
-             mc:Ignorable="d" 
-             Height="600" Width="500"
-             FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" Title="Задаётся через конструктор" WindowStyle="ToolWindow" Topmost="True" WindowStartupLocation="CenterOwner" Closing="Window_Closing">
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_ModelChecker_User.Forms"
+        mc:Ignorable="d" 
+        Height="600" Width="600"
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        ResizeMode="CanResizeWithGrip" 
+        Title="Задаётся через конструктор" 
+        WindowStyle="ToolWindow" 
+        Topmost="False" 
+        WindowStartupLocation="CenterOwner" 
+        Closing="Window_Closing">
 
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">
@@ -81,16 +87,18 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.25*"/>
+            <ColumnDefinition Width="0.20*"/>
             <ColumnDefinition Width="0.75*"/>
         </Grid.ColumnDefinitions>
 
         <TextBlock x:Name="LastRunDataHeader" Style="{StaticResource TXT_H}" Grid.Row="0" Grid.Column="0" Text="Последний запуск:" />
-        <TextBlock x:Name="LastRunData" Style="{StaticResource TXT_D}" Grid.Row="0" Grid.Column="1"
+        <TextBlock x:Name="LastRunData" Style="{StaticResource TXT_D}" 
+                Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left"
                 Text="Информация по последнему запуску, которая устанавливается через конструктор" />
 
         <TextBlock x:Name="MarkerDataHeader" Style="{StaticResource TXT_H}" Grid.Row="1" Grid.Column="0" Text="Маркер допуска:" />
-        <TextBlock x:Name="MarkerData" Style="{StaticResource TXT_D}" Grid.Row="1" Grid.Column="1"
+        <TextBlock x:Name="MarkerData" Style="{StaticResource TXT_D}" 
+                Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left"
                 Text="Информация по маркеру допуска устанавливается через конструктор" />
 
         <StackPanel Orientation="Vertical" Grid.Row="2" Grid.ColumnSpan="2">
@@ -223,14 +231,26 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Button Grid.Row="4" Grid.Column="0"
-                Style="{StaticResource BTN}" 
-                Content="Перезапустить" 
-                ToolTip="Нажми, чтобы перезапустить плагин и обновить отчет"
-                Click="RestartBtn_Clicked"/>
+        <Grid Grid.Row="4" Grid.Column="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.5*"/>
+                <ColumnDefinition Width="0.5*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" 
+                    Name="RestartBtn"
+                    DockPanel.Dock="Left" Margin="1"
+                    Style="{StaticResource BTN}" 
+                    Content="🔄" ToolTip="Нажми, чтобы перезапустить плагин и обновить отчет"
+                    Click="RestartBtn_Clicked"/>
+            <Button Grid.Column="1" 
+                    DockPanel.Dock="Right" Margin="1"
+                    Style="{StaticResource BTN}" 
+                    Content="💾" ToolTip="Нажми, чтобы экспортировать отчет в Excel"
+                    Click="ExportBtn_Clicked"/>
+        </Grid>
         <StackPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
             <CheckBox x:Name="chbxApproveShow"
-                Style="{StaticResource CHBX_D}"
+                Style="{StaticResource CHBX_D}" HorizontalAlignment="Left"
                 Content="Включить элементы со статусом 'Допустимое'"
                 Click="ChbxApproveShow_Clicked"/>
         </StackPanel>

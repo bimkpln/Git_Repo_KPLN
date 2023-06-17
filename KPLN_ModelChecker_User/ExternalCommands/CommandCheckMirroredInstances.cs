@@ -72,23 +72,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             #region Проверяю и обрабатываю элементы
-            try
-            {
-                IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, checkElemColl);
-
-                OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-                if (form != null) form.Show();
-                else return Result.Cancelled;
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
-                else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
-
-                return Result.Cancelled;
-            }
+            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, checkElemColl);
+            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+            if (form != null) form.Show();
+            else return Result.Cancelled;
             #endregion
 
             return Result.Succeeded;

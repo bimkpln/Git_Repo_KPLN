@@ -66,23 +66,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 .ToList();
 
             #region Проверяю и обрабатываю элементы
-            try
-            {
-                IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, holesFamInsts);
-
-                OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-                if (form != null) form.Show();
-                else return Result.Cancelled;
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
-                else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
-
-                return Result.Cancelled;
-            }
+            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, holesFamInsts);
+            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+            if (form != null) form.Show();
+            else return Result.Cancelled;
             #endregion
 
             return Result.Succeeded;
@@ -91,7 +78,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
         {
             if (!(elemColl.Any()))
-                throw new Exception("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
+                throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
             
             return null;
         }

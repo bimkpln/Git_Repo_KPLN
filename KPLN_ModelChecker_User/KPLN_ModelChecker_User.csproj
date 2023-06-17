@@ -42,11 +42,15 @@
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
-      <Private>True</Private>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -96,6 +100,8 @@
     <Compile Include="Common\Collections.cs" />
     <Compile Include="Common\MEPElementData.cs" />
     <Compile Include="Common\RoomParamData.cs" />
+    <Compile Include="Common\UserException.cs" />
+    <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
     <Compile Include="Common\WPFReport.cs" />
     <Compile Include="Common\GeometryBoundingBox.cs" />
     <Compile Include="Common\LevelChecker.cs" />
@@ -115,7 +121,7 @@
     <Compile Include="ExternalCommands\CommandCheckLevels.cs" />
     <Compile Include="ExternalCommands\CommandCheckGrids.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
-    <Compile Include="ExternalCommands\CommandLinks.cs" />
+    <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputMainForm.xaml.cs">
@@ -196,6 +202,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checkHoles.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
