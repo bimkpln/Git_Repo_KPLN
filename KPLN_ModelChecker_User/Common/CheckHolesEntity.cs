@@ -20,7 +20,7 @@ namespace KPLN_ModelChecker_User.Common
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
 
         /// <summary>
-        /// Заполнить поля CurrentSolid и CurrentBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
+        /// Заполнить поля CurrentRoomSolid и CurrentRoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
         /// </summary>
         /// <param name="detailLevel">Уровень детализации</param>
         public void SetGeometryData(ViewDetailLevel detailLevel)

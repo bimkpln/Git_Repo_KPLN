@@ -68,7 +68,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 // У оборудования нужно брать только элементы из списка
                 if (bic == BuiltInCategory.OST_MechanicalEquipment) checkElemColl.AddRange(FilteredByStringContainsColl(bicColl).ToElements());
                 // У остального - берем все, кроме семейств проемов
-                else checkElemColl.AddRange(bicColl.Cast<FamilyInstance>().Where(e => !e.Symbol.FamilyName.StartsWith("100_Проем")));
+                else checkElemColl.AddRange(
+                    bicColl
+                    .Cast<Element>()
+                    .Where(e => !(doc.GetElement(e.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsElementId()) as ElementType).FamilyName.StartsWith("100_Проем")));
             }
 
             #region Проверяю и обрабатываю элементы
@@ -91,20 +94,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 if (!(element is FamilyInstance instance))
                 {
-                    Print($"У элемента с id: {element.Id} - невозможно взять FamilyInstance. Обратись к разработчику!", KPLN_Loader.Preferences.MessageType.Error);
-                    continue;
+                    // Стены могут выступать в качестве панелей витража. Зеркальность тут проверять не нужно
+                    if (element is Wall wall) continue;
+                    else throw new Exception($"У элемента с id: {element.Id} - невозможно взять FamilyInstance.");
                 }
 
                 // Для панелей витража анализируются ТОЛЬКО окна и двери. Также для них нужно брать основание - host.
                 // Основание дополнительно проверятся на поворот - flip
                 if ((BuiltInCategory)element.Category.Id.IntegerValue == BuiltInCategory.OST_CurtainWallPanels)
                 {
-                    string elName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
-                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер") | elName.ToLower().Contains("створк"))
+                    string elName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM).AsValueString();
+                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер") 
+                        || (elName.ToLower().Contains("створк") && !elName.ToLower().Contains("глух")))
                     {
                         Wall panelHostWall = instance.Host as Wall;
                         if (panelHostWall.Flipped)
                         {
+                            BoundingBoxXYZ bbox = instance.get_BoundingBox(null);
+                            // У панелей витража при моделировании возникают фантомы. Они не идут в спеку, их можно не анализировать
+                            if (bbox == null) continue;
+
                             WPFEntity hostEntity = new WPFEntity(
                                 element,
                                 SetApproveStatusByUserComment(element, Status.Error),
@@ -112,14 +121,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 true,
                                 true);
-                            hostEntity.PrepareZoomGeometryExtension(instance.get_BoundingBox(null));
+
+                            hostEntity.PrepareZoomGeometryExtension(bbox);
                             result.Add(hostEntity);
                         }
                     }
                 }
                 else
                 {
-                    if (instance.Mirrored)
+                    if (instance.Mirrored && instance.SuperComponent == null)
                     {
                         WPFEntity elemEntity = new WPFEntity(
                             element,

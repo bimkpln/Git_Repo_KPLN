@@ -51,8 +51,20 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             ElementCollection = elements;
             ElementIdCollection = elements.Select(e => e.Id);
-            ElementName = "<Набор элементов>";
-            CategoryName = "<Набор категорий>";
+            
+            if (ElementCollection.Count() > 1)
+            {
+                ElementName = "<Набор элементов>";
+                HashSet<string> uniqueElemCatNames = new HashSet<string>(ElementCollection.Select(e => e.Category.Name));
+                if (uniqueElemCatNames.Count() > 1) CategoryName = "<Набор категорий>";
+                else CategoryName = uniqueElemCatNames.FirstOrDefault();
+            }
+            else if (ElementCollection.Count() == 1)
+            {
+                Element currentElem = ElementCollection.FirstOrDefault();
+                ElementName = !(currentElem is FamilyInstance familyInstance) ? currentElem.Name : $"{familyInstance.Symbol.FamilyName}: {currentElem.Name}";
+                CategoryName = currentElem.Category.Name;
+            }
 
             CurrentStatus = status;
             ErrorHeader = header;

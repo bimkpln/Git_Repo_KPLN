@@ -288,8 +288,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         case MessageStatus.Error:
                             if (isMarkered)
                             {
-                                TaskDialog taskDialog = new TaskDialog("[ОШИБКА]");
-                                taskDialog.MainInstruction = esMsgMarker.Description;
+                                TaskDialog taskDialog = new TaskDialog("[ОШИБКА]")
+                                {
+                                    MainInstruction = esMsgMarker.Description
+                                };
                                 taskDialog.Show();
                                 return null;
                             }

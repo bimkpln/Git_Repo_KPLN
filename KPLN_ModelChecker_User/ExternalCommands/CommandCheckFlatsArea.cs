@@ -9,7 +9,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands

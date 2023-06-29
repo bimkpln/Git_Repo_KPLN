@@ -97,6 +97,8 @@
     <Compile Include="Common\CheckHolesEntity.cs" />
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
+    <Compile Include="Common\CheckMEPHeightARData.cs" />
+    <Compile Include="Common\CheckMEPHeightMEPData.cs" />
     <Compile Include="Common\Collections.cs" />
     <Compile Include="Common\MEPElementData.cs" />
     <Compile Include="Common\RoomParamData.cs" />
@@ -116,6 +118,7 @@
     <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
     <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckListAnnotations.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevels.cs" />
@@ -205,6 +208,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checker_mepHeigtheight.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

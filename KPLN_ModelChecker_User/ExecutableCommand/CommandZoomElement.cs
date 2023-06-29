@@ -64,7 +64,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
                         if (appView.Id != dimView.Id)
                         {
-                            ViewPlan viewPlan = dim.View as ViewPlan;
+                            if (dim.View is ViewPlan viewPlan)
                             if (viewPlan != null)
                             {
                                 ReferenceArray refArray = dim.References;
@@ -126,7 +126,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                         if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
                         {
                             uvView.ZoomAndCenterRectangle(sectionBox.Min, sectionBox.Max);
-                            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
+                            app.ActiveUIDocument.Selection.SetElementIds(elemColl.Select(e => e.Id).ToList());
                             return;
                         }
                     }
@@ -134,7 +134,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 else
                 {
                     uidoc.ShowElements(elemColl.Select(e => e.Id).ToList());
-                    app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId>() { _element.Id });
+                    app.ActiveUIDocument.Selection.SetElementIds(elemColl.Select(e => e.Id).ToList());
                     return;
                 }
             }
@@ -261,26 +261,38 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                         DetailLevel = ViewDetailLevel.Fine,
                     });
 
-            foreach (GeometryInstance inst in geomElem)
+            Solid currentSolid = null;
+            foreach (GeometryObject gObj in geomElem)
             {
-                //Transform transform = inst.Transform;
-                GeometryElement instGeomElem = inst.GetInstanceGeometry();
-                foreach (GeometryObject obj in instGeomElem)
+                if (gObj is Solid solid1 && solid1.Volume != 0)
                 {
-                    Solid solid = obj as Solid;
-                    if (solid != null && solid.Volume != 0)
+                    currentSolid = solid1;
+                }
+                else if (gObj is GeometryInstance gInst)
+                {
+                    GeometryElement instGeomElem = gInst.GetInstanceGeometry();
+                    double tempVolume = 0;
+                    foreach (GeometryObject gObj2 in instGeomElem)
                     {
-                        BoundingBoxXYZ bbox = solid.GetBoundingBox();
-                        Transform transform = bbox.Transform;
-                        BoundingBoxXYZ result = new BoundingBoxXYZ()
+                        if (gObj2 is Solid solid2 && solid2.Volume > tempVolume)
                         {
-                            Max = transform.OfPoint(bbox.Max),
-                            Min = transform.OfPoint(bbox.Min),
-                        };
-
-                        return result;
+                            tempVolume = solid2.Volume;
+                            currentSolid = solid2;
+                        }
                     }
                 }
+                else 
+                    throw new Exception($"Не удалось получить геометрию у элемента с id: {elem.Id}");
+
+                BoundingBoxXYZ bbox = currentSolid.GetBoundingBox();
+                Transform transform = bbox.Transform;
+                BoundingBoxXYZ result = new BoundingBoxXYZ()
+                {
+                    Max = transform.OfPoint(bbox.Max),
+                    Min = transform.OfPoint(bbox.Min),
+                };
+
+                return result;
             }
 
             return null;

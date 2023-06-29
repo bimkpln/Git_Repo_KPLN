@@ -7,7 +7,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -38,7 +37,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<Element> rvtLinks = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_RvtLinks).WhereElementIsNotElementType();
+            IEnumerable<Element> rvtLinks = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_RvtLinks)
+                .WhereElementIsNotElementType()
+                // Фильтрация по имени от вложенных прикрепленных связей
+                .Where(e => e.Name.Split(new string[] { ".rvt : " }, StringSplitOptions.None).Length < 3);
 
             #region Проверяю и обрабатываю элементы
             IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, rvtLinks);
@@ -52,11 +55,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
         {
-            if(!doc.IsWorkshared) throw new UserException("Проект не для совместной работы.");
+            if (!doc.IsWorkshared) throw new UserException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
 
             if (!(elemColl.Any())) throw new UserException("В проекте отсутсвуют связи");
 
-            foreach(Element element in elemColl)
+            foreach (Element element in elemColl)
             {
                 if (element is RevitLinkInstance revitLink)
                 {
@@ -75,7 +78,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             result.AddRange(CheckWorkSets(elemColl));
             result.AddRange(CheckLocation(doc, elemColl));
-            if(CheckPin(elemColl) is WPFEntity checkPin) result.Add(checkPin);
+            if (CheckPin(elemColl) is WPFEntity checkPin) result.Add(checkPin);
 
             return result;
         }
@@ -174,7 +177,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 if (!link.Pinned) errorElems.Add(link);
             }
-            
+
             if (errorElems.Any())
             {
                 return new WPFEntity(
@@ -188,5 +191,5 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             return null;
         }
-    } 
+    }
 }

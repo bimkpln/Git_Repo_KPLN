@@ -206,6 +206,18 @@ namespace KPLN_ModelChecker_User
                 _userDepartment != 2 && _userDepartment != 3
                 );
 
+            AddPushButtonData(
+                "CheckMEPHeight",
+                "ИОС: Проверка высоты эл-в",
+                "Найти элементы, которые расположены в границах помещений на высоте, меньше 2.2 м:",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckMEPHeight).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
+                _mainContextualHelp,
+                _userDepartment != 1 && _userDepartment != 2
+                );
+
 
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
             return Result.Succeeded;
