@@ -37,12 +37,12 @@ namespace KPLN_Publication.ExternalCommands.Print
                 //получаю выбранные листы в диспетчере проекта
                 List<ElementId> selIds = sel.GetElementIds().ToList();
                 bool sheetsIsChecked = false;
-                List<string> errorListNames = new List<string>();
+                List<string> listErrors = new List<string>();
                 foreach (ElementId id in selIds)
                 {
                     Element elem = mainDoc.GetElement(id);
-                    ViewSheet sheet = elem as ViewSheet;
-                    if (sheet == null) continue;
+                    if (!(elem is ViewSheet sheet)) continue;
+                    
                     sheetsIsChecked = true;
 
                     MySheet sheetInBase = allSheets[mainDocTitle].Where(i => i.sheet.Id.IntegerValue == sheet.Id.IntegerValue).First();
@@ -50,40 +50,43 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                     // Анализирую листы на наличие 2х основных надписей в одном месте
                     List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>(); 
-                    FilteredElementCollector tBlocksColl = new FilteredElementCollector(mainDoc)
+                    FilteredElementCollector tBlocksColl = new FilteredElementCollector(mainDoc, sheet.Id)
                         .OfCategory(BuiltInCategory.OST_TitleBlocks)
                         .WhereElementIsNotElementType();
 
                     foreach(FamilyInstance tBlock in tBlocksColl)
                     {
+                        if (listErrors.Contains(sheet.Name)) break;
+
                         List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
                         BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet);
-                        if (boxXYZ == null) continue;
-                        
-                        if (tBlockLocations.Count == 0)
-                        {
-                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
-                            continue;
-                        }
-                        // Equals не даёт нужный результат
-                        foreach(var tbl in tBlockLocations)
-                        {
-                            if (tbl.Item1.DistanceTo(boxXYZ.Max) == 0
-                                && tbl.Item2.DistanceTo(boxXYZ.Min) == 0
-                                && !errorListNames.Contains(sheet.Name))
-                            {
-                                errorListNames.Add($"{sheet.SheetNumber}-{sheet.Name}");
-                            }
-                            else
-                            {
-                                templList.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
-                            }
-                        }
+                        if (boxXYZ == null) throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
 
-                        tBlockLocations.AddRange(templList);
+                        // Проверяю на дубликаты
+                        if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
+                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
+                        
+                        // Добавляю в коллекцию проверенных элементов
+                        tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
+                    }
+
+                    // Проверяю на смещение
+                    int tBlocksCount = tBlockLocations.Count();
+                    if (tBlocksCount > 1)
+                    {
+                        int cnt = 0;
+                        int cntXShift = 0;
+                        while (cnt < tBlocksCount)
+                        {
+                            cntXShift += tBlockLocations.Where(tbl => new XYZ(tbl.Item1.X, tbl.Item2.Y, tbl.Item2.Z).IsAlmostEqualTo(tBlockLocations[cnt].Item2, 0.02)).Count();
+                            cnt++;
+                        }
+                        
+                        if (cntXShift != tBlocksCount - 1)
+                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Рамки выставлены со смещением. Необходимо выронять в последовательную цепь без зазоров");
                     }
                 }
-                
+
                 if (!sheetsIsChecked)
                 {
                     message = "Не выбраны листы. Выберите листы в Диспетчере проекта через Shift.";
@@ -91,11 +94,11 @@ namespace KPLN_Publication.ExternalCommands.Print
                     return Result.Failed;
                 }
 
-                if (errorListNames.Count != 0)
+                if (listErrors.Count != 0)
                 {
-                    foreach(string listName in errorListNames)
+                    foreach(string listError in listErrors)
                     {
-                        KPLN_Loader.Output.Output.Print($"На листе {listName} несколько экземпляров основной надписи в одном месте. Печать остановлена", KPLN_Loader.Preferences.MessageType.Error);
+                        KPLN_Loader.Output.Output.Print($"Ошибка: {listError}. Печать остановлена", KPLN_Loader.Preferences.MessageType.Error);
                     }
                     return Result.Failed;
                 }
@@ -247,7 +250,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             }
                         }
                         logger.Write("Файл-ссылка успешно открыт");
-                    } //
+                    }
 
 
                     List<MySheet> mSheets = allSheets[docTitle];
@@ -525,6 +528,31 @@ namespace KPLN_Publication.ExternalCommands.Print
                 PrintError(e, "Произошла ошибка во время запуска скрипта");
                 return Result.Failed;
             }
+        }
+
+        /// <summary>
+        /// Поиск ближайшей точки в формате - Max.X текущей основной надписи == 
+        /// </summary>
+        /// <param name="xyzTuplePoints">Коллекция для проверки</param>
+        /// <param name="checkPoint">Точка для проверки</param>
+        /// <returns></returns>
+        private XYZ FindNearestTitleMaxPointBySpecialPoint(List<Tuple<XYZ, XYZ>> xyzTuplePoints, XYZ checkPoint)
+        {
+            double minDistance = double.MaxValue;
+            XYZ nearestPoint = null;
+
+            foreach (var point in xyzTuplePoints)
+            {
+                double distance = point.Item1.DistanceTo(checkPoint);
+
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    nearestPoint = point.Item1;
+                }
+            }
+
+            return nearestPoint;
         }
     }
 }

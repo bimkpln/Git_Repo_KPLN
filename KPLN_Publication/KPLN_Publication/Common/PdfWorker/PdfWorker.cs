@@ -102,7 +102,6 @@ namespace KPLN_Publication.PdfWorker
             // временные файлы создаются в папке приложения
             PdfContentToBlackWhiteConverter grayscaleConverter = new PdfContentToBlackWhiteConverter();
             PdfReader reader = new PdfReader(pdfPathIn);
-            var a = 1;
 
             using (FileStream fsOutput = new FileStream(pdfPathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
             {
