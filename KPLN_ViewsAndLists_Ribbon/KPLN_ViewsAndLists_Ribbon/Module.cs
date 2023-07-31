@@ -21,14 +21,18 @@ namespace KPLN_ViewsAndLists_Ribbon
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Виды и листы");
 
             // Добавляю выпадающие списки pullDown для видов
-            PulldownButtonData pullDownData_Views = new PulldownButtonData("Views", "Виды");
-            pullDownData_Views.ToolTip = "Пакетная работа с видами";
+            PulldownButtonData pullDownData_Views = new PulldownButtonData("Views", "Виды")
+            {
+                ToolTip = "Пакетная работа с видами"
+            };
             PulldownButton pullDown_Views = panel.AddItem(pullDownData_Views) as PulldownButton;
             BtnImagine(pullDown_Views, "mainViews.png");
 
             // Добавляю выпадающие списки pullDown для листов
-            PulldownButtonData pullDownData_Lists = new PulldownButtonData("Lists", "Листы");
-            pullDownData_Lists.ToolTip = "Пакетная работа с листами";
+            PulldownButtonData pullDownData_Lists = new PulldownButtonData("Lists", "Листы")
+            {
+                ToolTip = "Пакетная работа с листами"
+            };
             PulldownButton pullDown_Lists = panel.AddItem(pullDownData_Lists) as PulldownButton;
             BtnImagine(pullDown_Lists, "mainLists.png");
 

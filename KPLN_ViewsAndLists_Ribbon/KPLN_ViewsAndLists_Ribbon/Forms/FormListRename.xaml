@@ -111,15 +111,15 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2">
-            <RadioButton GroupName="RenameType" x:Name="isClearRenumb" Style="{StaticResource MainRB}" IsChecked="False" Click="UseClearRenumb" Content="Перенумеровать без приставок и Юникодов?">
+            <RadioButton GroupName="RenameType" x:Name="isClearRenumb" Style="{StaticResource MainRB}" IsChecked="False" Click="UseClearRenumb" Content="Очистить от приставок и Юникодов?">
                 <RadioButton.ToolTip>
                     <TextBlock Text="Включи, чтобы изменить нумерацию листов без использования префиксов или Юникодов"/>
                 </RadioButton.ToolTip>
             </RadioButton>
-            <Expander x:Name="ExpClearRenumb" Style="{StaticResource EXP}" Header="Обновляем нумерацию!" IsEnabled="False">
+            <Expander x:Name="ExpClearRenumb" Style="{StaticResource EXP}" Header="Чистим и обновляем нумерацию!" IsEnabled="False">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource TXT}" Text="Укажи стартовый номер:" Opacity="0.5"></TextBlock>
-                    <TextBox x:Name="strClearNumTextBox" Text="1"></TextBox>
+                    <TextBlock Style="{StaticResource TXT}" Text="Укажи значение, на которое необходимо изменить нумерацию:" Opacity="0.5"></TextBlock>
+                    <TextBox x:Name="strClearNumTextBox" Text="0"></TextBox>
                 </StackPanel>
             </Expander>
         </StackPanel>

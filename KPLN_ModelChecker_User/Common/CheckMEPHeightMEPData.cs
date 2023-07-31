@@ -29,11 +29,12 @@ namespace KPLN_ModelChecker_User.Common
 
         public Element CurrentElement { get; }
 
-        public Solid CurrentSolid {
+        public Solid CurrentSolid
+        {
             get
             {
                 if (_currentSolid == null)
-                {   
+                {
                     GeometryElement geomElem = CurrentElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
 
                     foreach (GeometryObject gObj in geomElem)
@@ -60,7 +61,7 @@ namespace KPLN_ModelChecker_User.Common
                         }
                     }
 
-                    if (_currentSolid == null) 
+                    if (_currentSolid == null)
                         throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}"); ;
                 }
 
@@ -166,16 +167,31 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
+        /// Проверка на нахождение элемента в указанном помещинии
+        /// </summary>
+        /// <param name="mepData">Спец. класс для проверки</param>
+        /// <param name="arData">Спец. класс для проверки</param>
+        public static bool IsElemInCurrentRoomCheck(CheckMEPHeightMEPData mepData, CheckMEPHeightARData arData)
+        {
+            if (mepData.CurrentBBox.Max.X < arData.CurrentRoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.CurrentRoomBBox.Max.X)
+                return false;
+
+            if (mepData.CurrentBBox.Max.Y < arData.CurrentRoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.CurrentRoomBBox.Max.Y)
+                return false;
+
+            if (mepData.CurrentBBox.Max.Z < arData.CurrentRoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.CurrentRoomBBox.Max.Z)
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
         /// Проверить элемент на факт нарушения высоты
         /// </summary>
         /// <param name="faceArrayToCheck">Коллекция плоскостей, на которые необходимо проецировать координаты элемента</param>
         /// <param name="minDistance">Значение минимального расстояния для проверки</param>
         public bool CheckMinDistance(CheckMEPHeightARData arData)
         {
-            // Проверяю элемент на нахождение в помещении
-            if (!IsElemInCurrentRoom(arData))
-                return false;
-
             // Проверка элементов на предмет пространственного положения выше 1.5 м болле чем на 1 часть
             if (CurrentBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
             {
@@ -208,7 +224,7 @@ namespace KPLN_ModelChecker_User.Common
 
                     foreach (XYZ point in pointsToCheck)
                     {
-                        foreach(Face face in arData.CurrentDownFacesArray)
+                        foreach (Face face in arData.CurrentDownFacesArray)
                         {
                             IntersectionResult intRes = face.Project(point);
                             if (intRes != null && intRes.Distance < tempIntDist)
@@ -222,21 +238,6 @@ namespace KPLN_ModelChecker_User.Common
                     }
                     #endregion
                 }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Проверка на нахождение элемента в указанном помещинии
-        /// </summary>
-        /// <param name="arData">Спец. класс для проверки</param>
-        private bool IsElemInCurrentRoom(CheckMEPHeightARData arData)
-        {
-            Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(this.CurrentSolid, arData.CurrentRoomSolid, BooleanOperationsType.Intersect);
-            if (intersectionSolid != null && intersectionSolid.Volume > 0)
-            {
-                return true;
             }
 
             return false;

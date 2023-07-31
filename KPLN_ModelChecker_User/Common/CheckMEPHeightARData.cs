@@ -12,7 +12,6 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckMEPHeightARData
     {
-        public Solid _currentSolid;
         public BoundingBoxXYZ _currentBBox;
         /// <summary>
         /// Список части имен помещений, которые НЕ являются ошибками
@@ -22,7 +21,7 @@ namespace KPLN_ModelChecker_User.Common
             "итп",
             "пространство",
             "насосная",
-            "камера"
+            "камера",
         };
         /// <summary>
         /// Минимальная высота для проверки остальных помещений
@@ -48,37 +47,9 @@ namespace KPLN_ModelChecker_User.Common
         public Room CurrentRoom { get; private set; }
 
         /// <summary>
-        /// Solid помещения
-        /// </summary>
-        public Solid CurrentRoomSolid
-        {
-            get
-            {
-                if (_currentSolid == null)
-                {
-                    if (CurrentRoom == null) throw new Exception("Не определно помещение для анализа");
-                    
-                    GeometryElement roomShell = CurrentRoom.ClosedShell;
-                    foreach (GeometryObject obj in roomShell)
-                    {
-                        Solid flSolid = obj as Solid;
-                        if (flSolid != null && flSolid.Volume != 0)
-                        {
-                            _currentSolid = flSolid;
-                            return _currentSolid;
-                        }
-                    }
-                    throw new Exception($"Не удалось получить геометрию у помещения с id: {CurrentRoom.Id}"); ;
-                }
-
-                return _currentSolid;
-            }
-        }
-
-        /// <summary>
         /// BoundingBoxXYZ помещения
         /// </summary>
-        public BoundingBoxXYZ CurrentRoomBBox 
+        public BoundingBoxXYZ CurrentRoomBBox
         {
             get
             {
@@ -105,7 +76,7 @@ namespace KPLN_ModelChecker_User.Common
 
                 if (_arRoomStairsNames.Any(i => CurrentRoom.Name.ToLower().Contains(i)))
                     return _minStairsDistance;
-                
+
                 return _minRoomDistance;
             }
         }
@@ -133,12 +104,35 @@ namespace KPLN_ModelChecker_User.Common
             foreach (RevitLinkInstance rli in linkInsts)
             {
                 Document linkDoc = rli.GetLinkDocument();
-                
+
+                // Коллекция помещений
                 IEnumerable<Room> roomsColl = new FilteredElementCollector(linkDoc)
                     .OfCategory(BuiltInCategory.OST_Rooms)
                     .WhereElementIsNotElementType()
                     .Cast<Room>();
-                
+
+                // Коллекция элемнтов для проекции
+                List<Element> downElemsColl = new List<Element>();
+
+                // Добавляю лестницы
+                downElemsColl.AddRange(new FilteredElementCollector(linkDoc)
+                    .OfCategory(BuiltInCategory.OST_Stairs)
+                    .WhereElementIsNotElementType()
+                    .ToList());
+
+                // Добавляю полы
+                downElemsColl.AddRange(new FilteredElementCollector(linkDoc)
+                    .OfCategory(BuiltInCategory.OST_Floors)
+                    .WhereElementIsNotElementType()
+                    .ToList());
+
+                // Генерирую коллекцию поверхностей для анализа
+                Dictionary<Element, FaceArray> arElemFaceArrayDict = new Dictionary<Element, FaceArray>(downElemsColl.Count());
+                foreach (Element elem in downElemsColl)
+                {
+                    arElemFaceArrayDict.Add(elem, GetElemsFaces(elem));
+                }
+
                 foreach (Room room in roomsColl)
                 {
                     // Игнорирую исключения
@@ -147,46 +141,48 @@ namespace KPLN_ModelChecker_User.Common
 
                     // Получаю АР - элементы согласно фильтрам и генерирую объекты
                     CheckMEPHeightARData arData = new CheckMEPHeightARData(room);
-                
-                    // Фильтр для поиска элементов, пересекающихся с Solid помещения
-                    ElementIntersectsSolidFilter solidFilter = new ElementIntersectsSolidFilter(arData.CurrentRoomSolid);
-                
-                    // Фильтр для поиска элементов, входящих в BoundingBox помещения
-                    BoundingBoxIntersectsFilter bboxFilter = arData.CreateFilter(-5);
-                
-                    // Объединяю фильтры
-                    LogicalOrFilter finalFilter = new LogicalOrFilter(solidFilter, bboxFilter);
-
-                    // Генерирую коллекцию элементов элементов в помещениях: Добавляю лестницы
-                    arData.CurrentDownFaceElemsColl.AddRange(new FilteredElementCollector(linkDoc)
-                        .OfCategory(BuiltInCategory.OST_Stairs)
-                        .WhereElementIsNotElementType()
-                        .WherePasses(finalFilter));
-
-                    // Генерирую коллекцию элементов элементов в помещениях: Добавляю полы
-                    arData.CurrentDownFaceElemsColl.AddRange(new FilteredElementCollector(linkDoc)
-                        .OfCategory(BuiltInCategory.OST_Floors)
-                        .WhereElementIsNotElementType()
-                        .WherePasses(finalFilter));
-
-                    if (arData.CurrentDownFaceElemsColl.Count == 0)
-                    {
-                        Print($"Для помещения {arData.CurrentRoom.Name} - не удалось найти основания. Проверь элементы вручную", KPLN_Loader.Preferences.MessageType.Warning);
-                        continue;
-                    }
 
                     // Генерирую коллекцию поверхностей для анализа
-                    foreach (Element elem in arData.CurrentDownFaceElemsColl)
+                    foreach (KeyValuePair<Element, FaceArray> kvp in arElemFaceArrayDict)
                     {
-                        FaceArray elemFaceArray = arData.GetElemsFaces(elem);
-                        foreach (Face face in elemFaceArray)
+                        if (arData.IsFloorInRoom(kvp.Key))
                         {
-                            arData.CurrentDownFacesArray.Append(face);
+                            foreach (Face face in kvp.Value)
+                            {
+                                arData.CurrentDownFacesArray.Append(face);
+                            }
                         }
+
                     }
 
                     if (arData.CurrentDownFacesArray.IsEmpty)
-                        throw new Exception($"Не удалось получить поверхности для анализа у помещения {arData.CurrentRoom.Id}");
+                        Print($"Для помещения {arData.CurrentRoom.Name} - не удалось найти основания. Проверь элементы вручную", KPLN_Loader.Preferences.MessageType.Warning);
+
+
+                    //// Фильтр для поиска элементов, пересекающихся с BoundingBox помещения
+                    //BoundingBoxIntersectsFilter bboxIntersectsFilter = new BoundingBoxIntersectsFilter(arData.CreateOutlineForFilter(-5));
+
+                    //// Фильтр для поиска элементов, входящих в BoundingBox помещения
+                    //BoundingBoxIsInsideFilter bboxIsInsideFilter = new BoundingBoxIsInsideFilter(arData.CreateOutlineForFilter(-5));
+
+                    //// Объединяю фильтры
+                    //LogicalOrFilter finalFilter = new LogicalOrFilter(bboxIntersectsFilter, bboxIsInsideFilter);
+
+                    //// Генерирую коллекцию элементов элементов в помещениях: Добавляю лестницы
+                    //arData.CurrentDownFaceElemsColl.AddRange(new FilteredElementCollector(linkDoc)
+                    //    .OfCategory(BuiltInCategory.OST_Stairs)
+                    //    .WhereElementIsNotElementType()
+                    //    .WherePasses(finalFilter));
+
+                    //// Генерирую коллекцию элементов элементов в помещениях: Добавляю полы
+                    //arData.CurrentDownFaceElemsColl.AddRange(new FilteredElementCollector(linkDoc)
+                    //    .OfCategory(BuiltInCategory.OST_Floors)
+                    //    .WhereElementIsNotElementType()
+                    //    .WherePasses(finalFilter));
+
+                    //if (arData.CurrentDownFaceElemsColl.Count == 0)
+                    //    Print($"Для помещения {arData.CurrentRoom.Name} - не удалось найти основания. Проверь элементы вручную", KPLN_Loader.Preferences.MessageType.Warning);
+
 
                     result.Add(arData);
                 }
@@ -195,37 +191,77 @@ namespace KPLN_ModelChecker_User.Common
             return result;
         }
 
-        /// <summary>
-        /// Создание фильтра по BoundingBox
-        /// </summary>
-        /// <param name="Z_tolerance">Погрешность по оси Z </param>
-        /// <returns></returns>
-        private BoundingBoxIntersectsFilter CreateFilter(double Z_tolerance)
+        private bool IsFloorInRoom(Element floor)
         {
-            double minX = CurrentRoomBBox.Min.X;
-            double minY = CurrentRoomBBox.Min.Y;
+            SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions();
+            options.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish;
 
-            double maxX = CurrentRoomBBox.Max.X;
-            double maxY = CurrentRoomBBox.Max.Y;
+            foreach (BoundarySegment segment in GetRoomBoundarySegments(CurrentRoom, options))
+            {
+                Curve curve = segment.GetCurve();
+                XYZ pointOnFloor = curve.GetEndPoint(0);
 
-            double sminX = Math.Min(minX, maxX);
-            double sminY = Math.Min(minY, maxY);
+                if (IsPointInsideFloor(floor, pointOnFloor))
+                    return true;
+            }
 
-            double smaxX = Math.Max(minX, maxX);
-            double smaxY = Math.Max(minY, maxY);
+            return false;
+        }
 
-            XYZ pntMax = new XYZ(smaxX, smaxY, CurrentRoomBBox.Max.Z);
-            XYZ pntMin = new XYZ(sminX, sminY, CurrentRoomBBox.Min.Z + Z_tolerance);
+        private IEnumerable<BoundarySegment> GetRoomBoundarySegments(Room room, SpatialElementBoundaryOptions options)
+        {
+            IList<IList<BoundarySegment>> segments = room.GetBoundarySegments(options);
+            List<BoundarySegment> allSegments = new List<BoundarySegment>();
 
-            Outline outline = new Outline(pntMin, pntMax);
+            foreach (IList<BoundarySegment> boundarySegments in segments)
+            {
+                foreach (BoundarySegment segment in boundarySegments)
+                {
+                    allSegments.Add(segment);
+                }
+            }
 
-            return new BoundingBoxIntersectsFilter(outline);
+            return allSegments;
+        }
+
+        private bool IsPointInsideFloor(Element floor, XYZ point)
+        {
+            BoundingBoxXYZ bbox = floor.get_BoundingBox(null);
+            if (bbox != null)
+            {
+                XYZ min = bbox.Min;
+                XYZ max = bbox.Max;
+
+                if (point.X >= min.X && point.X <= max.X &&
+                    point.Y >= min.Y && point.Y <= max.Y &&
+                    point.Z >= min.Z - 5 && point.Z - 5 <= max.Z)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
+        private bool IsElemInCurrentRoom(BoundingBoxXYZ bbox)
+        {
+            if (this.CurrentRoomBBox.Max.X > bbox.Min.X || this.CurrentRoomBBox.Min.X < bbox.Max.X)
+                return false;
+
+            if (this.CurrentRoomBBox.Max.Y > bbox.Min.Y || this.CurrentRoomBBox.Min.Y < bbox.Max.Y)
+                return false;
+
+            if (this.CurrentRoomBBox.Max.Z > bbox.Min.Z || this.CurrentRoomBBox.Min.Z < bbox.Max.Z + 5)
+                return false;
+
+            return true;
         }
 
         /// <summary>
         /// Получить массив FaceArray
         /// </summary>
-        private FaceArray GetElemsFaces(Element elem)
+        private static FaceArray GetElemsFaces(Element elem)
         {
             FaceArray result = new FaceArray();
 
@@ -256,7 +292,7 @@ namespace KPLN_ModelChecker_User.Common
             return result;
         }
 
-        private void GetSolidsFromGeomElem(GeometryElement geometryElement, Transform transformation, IList<Solid> solids)
+        private static void GetSolidsFromGeomElem(GeometryElement geometryElement, Transform transformation, IList<Solid> solids)
         {
             foreach (GeometryObject geomObject in geometryElement)
             {
@@ -276,5 +312,31 @@ namespace KPLN_ModelChecker_User.Common
                 }
             }
         }
+
+        /// <summary>
+        /// Создание Outline для фиьлтров типа ElementQuickFilter
+        /// </summary>
+        /// <param name="Z_tolerance">Погрешность по оси Z </param>
+        /// <returns></returns>
+        private Outline CreateOutlineForFilter(double Z_tolerance)
+        {
+            double minX = CurrentRoomBBox.Min.X;
+            double minY = CurrentRoomBBox.Min.Y;
+
+            double maxX = CurrentRoomBBox.Max.X;
+            double maxY = CurrentRoomBBox.Max.Y;
+
+            double sminX = Math.Min(minX, maxX);
+            double sminY = Math.Min(minY, maxY);
+
+            double smaxX = Math.Max(minX, maxX);
+            double smaxY = Math.Max(minY, maxY);
+
+            XYZ pntMax = new XYZ(smaxX, smaxY, CurrentRoomBBox.Max.Z);
+            XYZ pntMin = new XYZ(sminX, sminY, CurrentRoomBBox.Min.Z + Z_tolerance);
+
+            return new Outline(pntMin, pntMax);
+        }
+
     }
 }

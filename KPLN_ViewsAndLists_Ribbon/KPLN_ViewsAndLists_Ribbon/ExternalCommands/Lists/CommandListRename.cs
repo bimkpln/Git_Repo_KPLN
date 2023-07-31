@@ -1,20 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 using KPLN_ViewsAndLists_Ribbon.Forms;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
+    internal class NumericStringComparer : IComparer<string>
+    {
+        public int Compare(string x, string y)
+        {
+            if (double.TryParse(x, NumberStyles.Any, CultureInfo.InvariantCulture, out double xValue) &&
+                double.TryParse(y, NumberStyles.Any, CultureInfo.InvariantCulture, out double yValue))
+            {
+                return xValue.CompareTo(yValue);
+            }
+
+            return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-
     internal class CommandListRename : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -42,7 +54,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                     falseElemList.Add(elem);
                 }
             }
-            List<ViewSheet> sortedSheets = mixedSheetsList.OrderBy(s => s.SheetNumber.ToString()).ToList();
+            List<ViewSheet> sortedSheets = mixedSheetsList.OrderBy(s => s.SheetNumber, new NumericStringComparer()).ToList();
 
             //Main part of code
             if (mixedSheetsList.Count != 0)
@@ -68,12 +80,12 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                                 isRun = UseUniCodes(sortedSheets, cmbSelUni, uniNumber, (bool)inputForm.isEditToUni.IsChecked);
                             }
                         }
-                    
+
                         //Меняю номер листа с использованием префиксов
                         else if ((bool)inputForm.isPrefix.IsChecked && inputForm.IsRun)
                         {
                             string userPrefix = inputForm.prfTextBox.Text;
-                            userPrefix = userPrefix.Length > 0 ? userPrefix = userPrefix + "/" : userPrefix;
+                            userPrefix = userPrefix.Length > 0 ? userPrefix += "/" : userPrefix;
                             int userNumber = Convert.ToInt32(inputForm.strNumTextBox.Text) - 1;
                             if ((bool)inputForm.isRenumbering.IsChecked)
                             {
@@ -137,7 +149,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             DockablePaneId dpId = DockablePanes.BuiltInDockablePanes.ProjectBrowser;
             DockablePane dP = new DockablePane(dpId);
             dP.Show();
-            
+
             return Result.Succeeded;
         }
 
@@ -236,7 +248,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             {
                 throw new Exception("Сначала очисти от приставок, а потом запускай нумерацию");
             }
-            
+
             // Задаю нумерацию с учетом стартовой разницы
             string constPartOfNumber;
             string varPartOfNumber;
@@ -249,7 +261,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                     varPartOfNumber = curVSheet.SheetNumber.Split('.').Skip(1).Aggregate((x, y) => x + y);
                     if (Int32.TryParse(UserNumber(constPartOfNumber), out int constNumber))
                     {
-                        curVSheet.SheetNumber = (constNumber + deltaNumber).ToString() + "." + varPartOfNumber;
+                        curVSheet.SheetNumber = (constNumber + startNumber).ToString() + "." + varPartOfNumber;
                     }
                     else
                     {
@@ -260,7 +272,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 {
                     if (Int32.TryParse(UserNumber(curVSheet.SheetNumber), out int constNumber))
                     {
-                        curVSheet.SheetNumber = (constNumber + deltaNumber).ToString();
+                        curVSheet.SheetNumber = (constNumber + startNumber).ToString();
                     }
                     else
                     {
@@ -349,7 +361,9 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                     number = number.Split(c)[1];
                 }
             }
-            number = number.Length > 1 ? number.TrimStart('0') : number;
+            if (number.All(c => c.Equals('0'))) return "0";
+            else number = number.Length > 1 ? number.TrimStart('0') : number;
+
             return number;
         }
 

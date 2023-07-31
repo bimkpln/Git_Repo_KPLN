@@ -41,7 +41,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     foreach (Element element in new FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements())
                     {
                         if (element.Category == null) { continue; }
-                        
+
                         try
                         {
                             if (element.GetType() == typeof(RevitLinkInstance) || element.GetType() == typeof(ImportInstance))
@@ -64,7 +64,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
                                 && element.Category.Id.IntegerValue != -2000576
                                 // Игнор зон ОВК
-                                && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_HVAC_Zones)
+                                && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_HVAC_Zones
+                                // Игнор эскизов
+                                && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_SketchLines)
                             {
                                 foreach (Workset w in worksets)
                                 {

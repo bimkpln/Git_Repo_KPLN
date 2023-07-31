@@ -135,9 +135,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Анализ элементов ИОС на элемены АР
             foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
             {
-                IEnumerable<CheckMEPHeightMEPData> higherRoomMEPDataColl = mepDataColl.Where(mdc => mdc.CurrentBBox.Min.Z > arData.CurrentRoomBBox.Min.Z);
+                IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl = mepDataColl.Where((mep, ar) => CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData));
+
                 List<CheckMEPHeightMEPData> errorMEPDataColl = new List<CheckMEPHeightMEPData>();
-                foreach (CheckMEPHeightMEPData mepData in higherRoomMEPDataColl)
+                foreach (CheckMEPHeightMEPData mepData in currentRoomMEPDataColl)
                 {
                     if (mepData.CheckMinDistance(arData))
                         errorMEPDataColl.Add(mepData);
