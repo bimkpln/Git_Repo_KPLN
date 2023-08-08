@@ -152,8 +152,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
                     {
-                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model.")) continue;
-                        else throw new Exception($"Ошибка проверки связей: {ioe.Message}");
+                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model.")) 
+                            continue;
+                        else if (ioe.Message.Contains("Cannot acquire coordinates from a model placed multiple times."))
+                        {
+                            result.Add(new WPFEntity(
+                                link,
+                                Status.Warning,
+                                "Ошибка размещения",
+                                "Экземпляры данной связи размещены несколько раз",
+                                false,
+                                false,
+                                "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку"));
+                        }
+                        else 
+                            throw new Exception($"Ошибка проверки связей: {ioe.Message}");
                     }
                     finally
                     {
