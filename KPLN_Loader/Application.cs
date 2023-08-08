@@ -16,6 +16,9 @@ using System.Diagnostics;
 
 namespace KPLN_Loader
 {
+    /// <summary>
+    /// Тест gita
+    /// </summary>
     public class Application : IExternalApplication
     {
         
