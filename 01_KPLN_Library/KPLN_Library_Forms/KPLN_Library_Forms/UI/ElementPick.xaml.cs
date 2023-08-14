@@ -1,13 +1,9 @@
-﻿using KPLN_Library_DataBase.Collections;
-using System.Collections;
+﻿using KPLN_Library_Forms.Common;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Linq;
-using static KPLN_Loader.Output.Output;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using KPLN_Library_Forms.Common;
 using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
@@ -24,7 +20,7 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         public RunStatus Status { get; private set; }
 
-        private IEnumerable<ElementEntity> _collection;
+        private readonly IEnumerable<ElementEntity> _collection;
 
         private ElementEntity _selectedElement;
 
@@ -45,12 +41,12 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Выбранный элемент
         /// </summary>
-        public ElementEntity SelectedElement 
-        { 
+        public ElementEntity SelectedElement
+        {
             get
-                { return _selectedElement; }
+            { return _selectedElement; }
             set
-                { _selectedElement = value; }
+            { _selectedElement = value; }
         }
 
         private void HandleEsc(object sender, KeyEventArgs e)

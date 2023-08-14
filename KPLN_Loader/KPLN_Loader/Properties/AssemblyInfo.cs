@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("KPLN_ModelChecker_Debugger")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("KPLN_Loader")]
+[assembly: AssemblyDescription("Plugin for load other users plugins to Revit")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("KPLN_ModelChecker_Debugger")]
-[assembly: AssemblyCopyright("KPLN ©  2022")]
+[assembly: AssemblyCompany("KPLN")]
+[assembly: AssemblyProduct("KPLN_Loader")]
+[assembly: AssemblyCopyright("Copyright ©  2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("9612f06c-8fdd-443e-86e3-9d4b175389a1")]
+[assembly: Guid("0d980054-7ea6-49aa-b184-1306e56695ea")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.3.0.0")]
-[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyVersion("2.1.0.0")]
+[assembly: AssemblyFileVersion("2.1.0.0")]

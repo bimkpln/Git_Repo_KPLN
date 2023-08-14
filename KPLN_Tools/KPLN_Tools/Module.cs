@@ -11,7 +11,8 @@ namespace KPLN_Tools
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+        // ЗАБЛОКИРОВАНО ИЗ-ЗА ПЕРЕХОДА НА KPLN_LOADER V.2
+        //private int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
 
         public Result Close()
         {
@@ -21,7 +22,7 @@ namespace KPLN_Tools
         public Result Execute(UIControlledApplication application, string tabName)
         {
             // Техническая подмена разделов для режима тестирования
-            if (_userDepartment == 6) { _userDepartment = 4; }
+            //if (_userDepartment == 6) { _userDepartment = 4; }
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
@@ -134,10 +135,11 @@ namespace KPLN_Tools
             #endregion
 
             #region  Наполняю плагинами в зависимости от отдела
-            if (_userDepartment == 3 || _userDepartment == 4)
-            {
-                holesPullDownBtn.AddPushButton(holesManagerIOS);
-            }
+            //if (_userDepartment == 3 || _userDepartment == 4)
+            //{
+            //    holesPullDownBtn.AddPushButton(holesManagerIOS);
+            //}
+            holesPullDownBtn.AddPushButton(holesManagerIOS);
             #endregion
 
             return Result.Succeeded;

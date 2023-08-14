@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -103,7 +102,13 @@ namespace KPLN_Tools.ExternalCommands
             }
             catch (Exception ex)
             {
-                PrintError(ex);
+                //PrintError(ex);
+                TaskDialog td = new TaskDialog("ОШИБКА")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                    MainInstruction = ex.Message,
+                };
+                td.Show();
             }
             return Result.Succeeded;
         }

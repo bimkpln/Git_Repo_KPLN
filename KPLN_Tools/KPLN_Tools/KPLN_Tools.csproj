@@ -43,8 +43,17 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;Revit2020</DefineConstants>
+    <DefineConstants>DEBUG;Revit2023</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2023\</OutputPath>
+    <DefineConstants>Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -55,12 +64,17 @@
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_DataBase\KPLNDataBase.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_Loader\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Release\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

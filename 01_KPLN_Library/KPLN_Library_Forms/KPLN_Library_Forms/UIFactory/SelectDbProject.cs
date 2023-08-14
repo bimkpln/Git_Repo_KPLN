@@ -1,12 +1,10 @@
 ﻿using KPLN_Library_DataBase;
 using KPLN_Library_DataBase.Collections;
-using KPLN_Library_DataBase.Controll;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Windows;
 
 namespace KPLN_Library_Forms.UIFactory
 {
@@ -23,7 +21,7 @@ namespace KPLN_Library_Forms.UIFactory
         public static ElementPick CreateForm()
         {
             DbControll.Update();
-            
+
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
             foreach (DbProject prj in DbControll.Projects)
             {

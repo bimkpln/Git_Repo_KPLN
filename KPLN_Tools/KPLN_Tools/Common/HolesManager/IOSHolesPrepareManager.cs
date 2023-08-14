@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Tools.Common.HolesManager
 {
@@ -26,7 +23,7 @@ namespace KPLN_Tools.Common.HolesManager
         /// Коллекция ошибок, при генерации IOSHoleDTO
         /// </summary>
         public List<FamilyInstance> ErrorFamInstColl { get; private set; } = new List<FamilyInstance>();
-        
+
         /// <summary>
         /// Подготовка спец. семейст для анализа
         /// </summary>
@@ -89,7 +86,7 @@ namespace KPLN_Tools.Common.HolesManager
         private IOSHoleDTO PrepareHoleDTOData(FamilyInstance fi, BoundingBoxXYZ fiBBox)
         {
             string fiName = fi.Symbol.FamilyName;
-            
+
             // Считаю отметки и привязываю HoleDTO
             IOSHoleDTO holesDTO;
             double upMinDist = double.MaxValue;
@@ -104,7 +101,7 @@ namespace KPLN_Tools.Common.HolesManager
                 Document linkDoc = linkedModel.GetLinkDocument();
                 if (linkDoc == null)
                     continue;
-                
+
                 Transform trans = linkedModel.GetTotalTransform();
                 BoundingBoxIntersectsFilter filter = CreateFilter(fiBBox, trans);
 

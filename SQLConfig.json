@@ -1,14 +1,6 @@
 [
-    {
-        "Name": "UsersDB",
-        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_UsersDB.db"
-    },
-    {
-        "Name": "ModulesDB",
-        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_ModulesDB.db"
-    },
-    {
-        "Name": "ProjectsDB",
-        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_ProjectsDB.db"
-    }
+  {
+    "Name": "KPLN_Loader_MainDB",
+    "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Loader_MainDB.db"
+  }
 ]
