@@ -4,16 +4,14 @@ using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using KPLN_Loader.Core.SQLiteData;
 using KPLN_Loader.Forms;
+using KPLN_Loader.Forms.Common;
 using KPLN_Loader.Services;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Windows.Threading;
 
 namespace KPLN_Loader
 {
@@ -31,13 +29,17 @@ namespace KPLN_Loader
         private const string _ribbonName = "KPLN";
         private string _revitVersion;
 
+        internal delegate void RiseStepProgress(MainStatus mainStatus, string toolTip, System.Windows.Media.Brush brush);
+        /// <summary>
+        /// Событие, которое посылает сигналы в форму статуса загрузки
+        /// </summary>
+        internal event RiseStepProgress Progress;
 
-        
-        public delegate void LoadModulesProgress(int progress, string msg);
-        public event LoadModulesProgress Progress;
-        public UIControlledApplication App { get; private set; }
-
-
+        internal delegate void RiseModuleStatus(LoadModule lModule, System.Windows.Media.Brush brush);
+        /// <summary>
+        /// Событие, которое посылает сигналы в форму статуса загрузки
+        /// </summary>
+        internal event RiseModuleStatus ModuleStatus;
 
         public Result OnShutdown(UIControlledApplication application)
         {
@@ -52,9 +54,7 @@ namespace KPLN_Loader
 
         public Result OnStartup(UIControlledApplication application)
         {
-            ProgressForm progressForm = new ProgressForm(this, "asdas", 6);
-
-            App = application;
+            LoaderStatusForm loaderStatusForm = new LoaderStatusForm(this);
 
             _revitVersion = application.ControlledApplication.VersionNumber;
 
@@ -76,12 +76,18 @@ namespace KPLN_Loader
                 _envService = new EnvironmentService(_logger, _revitVersion, _diteTime);
                 _envService.SQLFilesExistChecker(_sqlConfigPath);
                 _envService.PreparingAndCliningDirectories();
+
+                Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
                 #endregion
 
                 #region Подготовка/создание пользователя
                 string dbPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("Main")).Path;
                 _dbService = new SQLiteService(_logger, dbPath);
                 CurrentRevitUser = _dbService.Authorization();
+                LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
+                loaderStatusForm.SetInstruction(loaderDescription);
+
+                Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
                 #endregion
 
                 // Создание панели Revit
@@ -89,57 +95,71 @@ namespace KPLN_Loader
 
                 #region Подготовка, копирование и активация модулей для пользователя
                 _logger.Info("Подготовка, копирование и активация модулей для пользователя:");
-                
+
                 // Коллекция модулей из БД
                 IEnumerable<Module> userAllModules = _dbService.GetModulesForCurrentUser(CurrentRevitUser);
                 // Модули-библиотеки
                 IEnumerable<Module> userLibModules = userAllModules.Where(m => m.IsLibraryModule.ToLower().Equals("true"));
                 // Пользовательские загружаемые в ревит модули
                 IEnumerable<Module> userModules = userAllModules.Where(m => m.IsLibraryModule.ToLower().Equals("false"));
-                
-                string userDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
-                progressForm.Start();
 
-                //try
-                //{
-                //    foreach (Module lib in userLibModules)
-                //    {
-                //        DirectoryInfo targetDirInfo = _envService.CopyModule(lib);
-                //        if (targetDirInfo != null)
-                //        {
-                //            foreach (FileInfo file in targetDirInfo.GetFiles())
-                //            {
-                //                String[] spearator = { ".dll" };
-                //                if (file.Name.Split(spearator, StringSplitOptions.None).Count() > 1)
-                //                {
-                //                    // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
-                //                    // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
-                //                    _ = System.Reflection.Assembly.LoadFrom(file.FullName);
-                //                }
-                //            }
+                int uploadModules = 0;
+                try
+                {
+                    foreach (Module lib in userLibModules)
+                    {
+                        DirectoryInfo targetDirInfo = _envService.CopyModule(lib);
+                        if (targetDirInfo != null)
+                        {
+                            foreach (FileInfo file in targetDirInfo.GetFiles())
+                            {
+                                String[] spearator = { ".dll" };
+                                if (file.Name.Split(spearator, StringSplitOptions.None).Count() > 1)
+                                {
+                                    // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
+                                    // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
+                                    _ = System.Reflection.Assembly.LoadFrom(file.FullName);
+                                }
+                            }
 
-                //            _logger.Info($"Модуль-библиотека [{lib.Name}] успешно скопирован!");
-                //        }
-                //        else
-                //            _logger.Error($"Модуль-библиотека {lib.Name} - не скопировался!");
+                            string msg = $"Модуль-библиотека [{lib.Name}] успешно скопирован!";
+                            _logger.Info(msg);
+                            ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Black);
+                            uploadModules++;
+                        }
+                        else
+                        {
+                            string msg = $"Модуль-библиотека {lib.Name} - не скопировался!";
+                            _logger.Error(msg);
+                            ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Red);
+                        }
 
-                //    }
+                    }
 
-                //    foreach (Module userModule in userModules)
-                //    {
-                //        DirectoryInfo targetDirInfo = _envService.CopyModule(userModule);
-                //        if (targetDirInfo != null && ActivationModule(targetDirInfo, application, userModule))
-                //        {
-                //            //progressForm.Increment();
-                //        }
-                //        else
-                //            _logger.Error($"Модуль {userModule.Name} - не скопировался!");
-                //    }
-                //}
-                //catch (Exception ex)
-                //{
-                //    _logger.Error($"Локальная ошибка загрузки модуля: \n{ex}");
-                //}
+                    foreach (Module userModule in userModules)
+                    {
+                        DirectoryInfo targetDirInfo = _envService.CopyModule(userModule);
+                        if (targetDirInfo != null && ActivationModule(targetDirInfo, application, userModule))
+                            uploadModules++;
+                        else
+                        {
+                            string msg = $"Модуль {userModule.Name} - не скопировался!";
+                            _logger.Error(msg);
+                            ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Red);
+                        }
+                    }
+
+                    if (uploadModules == userAllModules.Count())
+                        Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", System.Windows.Media.Brushes.Green);
+                    else
+                        Progress?.Invoke(MainStatus.ModulesActivation, "С замечаниями. Смотри файл логов KPLN_Loader: c:\\temp\\KPLN_Logs\\", System.Windows.Media.Brushes.Orange);
+                }
+                catch (Exception ex)
+                {
+                    string msg = $"Локальная ошибка загрузки модуля!";
+                    _logger.Error(msg + $" \n{ex}");
+                    ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Red);
+                }
                 #endregion
             }
             catch (Exception ex)
@@ -157,65 +177,9 @@ namespace KPLN_Loader
             application.ControlledApplication.DocumentOpened += new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
             #endregion
 
+            loaderStatusForm.Start_WindowClose();
+
             return Result.Succeeded;
-        }
-
-        public void DoWork()
-        {
-            int progress = 0;
-
-            // Коллекция модулей из БД
-            IEnumerable<Module> userAllModules = _dbService.GetModulesForCurrentUser(CurrentRevitUser);
-            // Модули-библиотеки
-            IEnumerable<Module> userLibModules = userAllModules.Where(m => m.IsLibraryModule.ToLower().Equals("true"));
-            // Пользовательские загружаемые в ревит модули
-            IEnumerable<Module> userModules = userAllModules.Where(m => m.IsLibraryModule.ToLower().Equals("false"));
-
-            try
-            {
-                foreach (Module lib in userLibModules)
-                {
-                    DirectoryInfo targetDirInfo = _envService.CopyModule(lib);
-                    if (targetDirInfo != null)
-                    {
-                        foreach (FileInfo file in targetDirInfo.GetFiles())
-                        {
-                            String[] spearator = { ".dll" };
-                            if (file.Name.Split(spearator, StringSplitOptions.None).Count() > 1)
-                            {
-                                // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
-                                // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
-                                _ = System.Reflection.Assembly.LoadFrom(file.FullName);
-                                progress++;
-                                Progress?.Invoke(progress, $"Загружаю. Получил {progress} из {userAllModules.Count()} модулей");
-                            }
-                        }
-
-                        _logger.Info($"Модуль-библиотека [{lib.Name}] успешно скопирован!");
-                    }
-                    else
-                        _logger.Error($"Модуль-библиотека {lib.Name} - не скопировался!");
-
-                }
-
-                foreach (Module userModule in userModules)
-                {
-                    DirectoryInfo targetDirInfo = _envService.CopyModule(userModule);
-                    if (targetDirInfo != null && ActivationModule(targetDirInfo, App, userModule))
-                    {
-                        progress++;
-                        Progress?.Invoke(progress, $"Загружаю. Получил {progress} из {userAllModules.Count()} модулей");
-                        //progressForm.Increment();
-                    }
-                    else
-                        _logger.Error($"Модуль {userModule.Name} - не скопировался!");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Локальная ошибка загрузки модуля: \n{ex}");
-            }
-
         }
 
         /// <summary>
@@ -274,16 +238,22 @@ namespace KPLN_Loader
                         if (loadingResult == Result.Succeeded && userModule != null)
                         {
                             FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
-                            _logger.Info($"Модуль [{userModule.Name}] версии {fvi.FileVersion} успешно активирован!");
+                            string msg = $"Модуль [{userModule.Name}] версии {fvi.FileVersion} успешно активирован!";
+                            _logger.Info(msg);
+                            ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Black);
                             return true;
                         }
                         else if (userModule != null)
                         {
-                            _logger.Error($"Модуль [{userModule.Name}] не найден!");
+                            string msg = $"Модуль [{userModule.Name}] не найден!";
+                            _logger.Error(msg);
+                            ModuleStatus?.Invoke(new LoadModule(msg), System.Windows.Media.Brushes.Red);
                         }
                         else if (loadingResult != Result.Succeeded)
                         {
-                            _logger.Error($"Модуль [{userModule.Name}] не активирован. Проблема: \n{loadingResult}");
+                            string msg = $"Модуль [{userModule.Name}] не активирован.";
+                            _logger.Error(msg + $" Проблема: \n{loadingResult}");
+                            ModuleStatus?.Invoke(new LoadModule(msg + "Подробнее - см. файл логов"), System.Windows.Media.Brushes.Red);
                         }
                     }
                 }

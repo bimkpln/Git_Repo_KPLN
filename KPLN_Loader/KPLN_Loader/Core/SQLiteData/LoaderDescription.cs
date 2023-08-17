@@ -20,6 +20,11 @@ namespace KPLN_Loader.Core.SQLiteData
         /// Тело подсказки
         /// </summary>
         public string Description { get; set; }
+        
+        /// <summary>
+        /// Ссылка подсказки
+        /// </summary>
+        public string InstructionURL { get; set; }
 
         /// <summary>
         /// Id отдела, для которого подходят подсказки

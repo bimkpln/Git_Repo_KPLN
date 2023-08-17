@@ -104,17 +104,13 @@
     <Compile Include="Core\SQLiteData\Module.cs" />
     <Compile Include="Core\SQLiteData\SubDepartment.cs" />
     <Compile Include="Core\SQLiteData\User.cs" />
+    <Compile Include="Forms\Common\LoaderStatusEntity.cs" />
+    <Compile Include="Forms\Common\LoadModule.cs" />
     <Compile Include="Forms\LoginForm.xaml.cs">
       <DependentUpon>LoginForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ProgressForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\ProgressForm.Designer.cs">
-      <DependentUpon>ProgressForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ProgressBar.xaml.cs">
-      <DependentUpon>ProgressBar.xaml</DependentUpon>
+    <Compile Include="Forms\LoaderStatusForm.xaml.cs">
+      <DependentUpon>LoaderStatusForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\EnvironmentService.cs" />
@@ -130,16 +126,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Forms\ProgressForm.resx">
-      <DependentUpon>ProgressForm.cs</DependentUpon>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
     <Page Include="Forms\LoginForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ProgressBar.xaml">
+    <Page Include="Forms\LoaderStatusForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

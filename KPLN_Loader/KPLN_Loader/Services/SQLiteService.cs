@@ -100,7 +100,7 @@ namespace KPLN_Loader.Services
         /// </summary>
         /// <param name="currentUser">Пользователь для из БД</param>
         /// <returns>Строка из БД</returns>
-        public string GetDescriptionForCurrentUser(User currentUser) 
+        public LoaderDescription GetDescriptionForCurrentUser(User currentUser) 
         {
             IEnumerable<LoaderDescription> loaderDescriptions;
             SubDepartment bimDep = _subDepartments.Where(s => s.Code.ToLower().Contains("bim")).FirstOrDefault();
@@ -116,7 +116,7 @@ namespace KPLN_Loader.Services
             
             Random rand = new Random();
             int index = rand.Next(loaderDescriptions.Count() + 1);
-            return loaderDescriptions.ElementAt(index).Description;
+            return loaderDescriptions.ElementAt(index);
 
         }
 
