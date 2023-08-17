@@ -17,6 +17,10 @@ namespace KPLN_Loader.Services
     {
         private readonly Logger _logger;
         private readonly string _dbPath;
+        /// <summary>
+        /// Кэширование коллекции отделов из БД
+        /// </summary>
+        private IEnumerable<SubDepartment> _subDepartments;
 
         public SQLiteService(Logger logger, string dbPath)
         {
@@ -25,31 +29,22 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
-        /// Текущий пользователь из БД
-        /// </summary>
-        public User CurrentUser { get; private set; }
-
-        /// <summary>
-        /// Коллекция отделов из БД
-        /// </summary>
-        public IEnumerable<SubDepartment> SubDepartments { get; private set; }
-
-        /// <summary>
         /// Авторизация пользователя KPLN
         /// </summary>
-        public void Authorization()
+        /// <returns>Текущий пользователь</returns>
+        public User Authorization()
         {
             string currentDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
             string sysUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
-            CurrentUser = ExecuteQuery<User>($"SELECT * FROM Users WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
-            SubDepartments = ExecuteQuery<SubDepartment>("SELECT * FROM SubDepartments;");
+            User currentUser = ExecuteQuery<User>($"SELECT * FROM Users WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
+            _subDepartments = ExecuteQuery<SubDepartment>("SELECT * FROM SubDepartments;");
 
-            if (CurrentUser == null)
+            if (currentUser == null)
             {
-                LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled.ToLower().Equals("true")));
+                LoginForm loginForm = new LoginForm(_subDepartments.Where(s => s.IsAuthEnabled.ToLower().Equals("true")));
                 if ((bool)loginForm.ShowDialog())
                 {
-                    User user = new User()
+                    currentUser = new User()
                     {
                         SystemName = sysUserName,
                         Name = loginForm.UserName,
@@ -60,27 +55,33 @@ namespace KPLN_Loader.Services
                     
                     ExecuteNonQuery($"INSERT INTO Users " +
                             $"({nameof(User.SystemName)}, {nameof(User.Name)}, {nameof(User.Surname)}, {nameof(User.SubDepartmentId)}, {nameof(User.RegistrationDate)}) " +
-                            $"VALUES (@{nameof(User.SystemName)}, @{nameof(User.Name)}, @{nameof(User.Surname)}, @{nameof(User.SubDepartmentId)}, @{nameof(User.RegistrationDate)});", 
-                        user);
+                            $"VALUES (@{nameof(User.SystemName)}, @{nameof(User.Name)}, @{nameof(User.Surname)}, @{nameof(User.SubDepartmentId)}, @{nameof(User.RegistrationDate)});",
+                        currentUser);
 
-                    CurrentUser = user;
-                    _logger.Info($"Пользователь {CurrentUser.SystemName} успешно создан и записан в БД!");
+                    _logger.Info($"Пользователь {currentUser.SystemName} успешно создан и записан в БД!");
                 }
             }
             else
-                _logger.Info($"Пользователь {CurrentUser.SystemName} успешно определен!");
+            {
+                _logger.Info($"Пользователь {currentUser.SystemName} успешно определен!");
+
+            }
             
-            CurrentUser.LastConnectionDate = currentDate;
-            ExecuteNonQuery($"UPDATE Users SET {nameof(User.LastConnectionDate)}='{CurrentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{CurrentUser.SystemName}';");
+            currentUser.LastConnectionDate = currentDate;
+            ExecuteNonQuery($"UPDATE Users SET {nameof(User.LastConnectionDate)}='{currentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+
+            return currentUser;
         }
 
         /// <summary>
         /// Получить коллекцию модулей из БД
         /// </summary>
-        public IEnumerable<Module> GetModulesForCurrentUser()
+        /// <param name="currentUser">Пользователь для из БД</param>
+        /// /// <returns>Коллекция модулей</returns>
+        public IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
         {
             IEnumerable<Module> modules;
-            if (CurrentUser.IsDebugMode.ToLower().Equals("true"))
+            if (currentUser.IsDebugMode.ToLower().Equals("true"))
             {
                 modules = ExecuteQuery<Module>($"SELECT * FROM Modules " +
                     $"WHERE {nameof(Module.IsDebugMode)}='True';");
@@ -89,7 +90,7 @@ namespace KPLN_Loader.Services
             {
                 modules = ExecuteQuery<Module>($"SELECT * FROM Modules " +
                         $"WHERE {nameof(Module.IsEnabled)}='True' " +
-                        $"AND ({nameof(Module.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={CurrentUser.SubDepartmentId});");
+                        $"AND ({nameof(Module.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={currentUser.SubDepartmentId});");
             }
             return modules;
         }
@@ -97,35 +98,37 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Получить описание окна загрузки из БД
         /// </summary>
-        /// <returns></returns>
-        public string GetDescriptionForCurrentUser() 
+        /// <param name="currentUser">Пользователь для из БД</param>
+        /// <returns>Строка из БД</returns>
+        public string GetDescriptionForCurrentUser(User currentUser) 
         {
             IEnumerable<LoaderDescription> loaderDescriptions;
-            SubDepartment bimDep = SubDepartments.Where(s => s.Code.ToLower().Contains("bim")).FirstOrDefault();
-            if (CurrentUser.SubDepartmentId == bimDep.Id)
+            SubDepartment bimDep = _subDepartments.Where(s => s.Code.ToLower().Contains("bim")).FirstOrDefault();
+            if (currentUser.SubDepartmentId == bimDep.Id)
             {
                 loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM LoaderDescriptions;");
             }
             else
             {
                 loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM LoaderDescriptions " +
-                        $"WHERE ({nameof(LoaderDescription.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={CurrentUser.SubDepartmentId});");
+                        $"WHERE ({nameof(LoaderDescription.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={currentUser.SubDepartmentId});");
             }
             
             Random rand = new Random();
             int index = rand.Next(loaderDescriptions.Count() + 1);
             return loaderDescriptions.ElementAt(index).Description;
 
-        } 
+        }
 
         /// <summary>
         /// Обновление имени Revit-пользователя в БД
         /// </summary>
-        /// <param name="userName"></param>
-        public void SetRevitUserName(string userName)
+        /// <param name="userName">Текущее имя в Ревит</param>
+        /// <param name="currentUser">Пользователь для проверки из БД</param>
+        public void SetRevitUserName(string userName, User currentUser)
         {
-            if (!CurrentUser.RevitUserName.Equals(userName))
-                ExecuteNonQuery($"UPDATE Users SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{CurrentUser.SystemName}';");
+            if (!currentUser.RevitUserName.Equals(userName))
+                ExecuteNonQuery($"UPDATE Users SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
         }
 
         private void ExecuteNonQuery(string query, object parameters = null)

@@ -2,16 +2,14 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.Tools;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_ModelChecker_User.Common.Collections;
-using static KPLN_Loader.Output.Output;
 using System.Collections.ObjectModel;
-using KPLN_ModelChecker_User.Forms;
+using System.Linq;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using static KPLN_ModelChecker_User.Common.Collections;
 using static KPLN_ModelChecker_User.Tools.Extentions;
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -19,7 +17,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandCheckLevelOfInstances : IExternalCommand
     {
-        public static BuiltInCategory[] CategoriesToCheck = new BuiltInCategory[] {
+        public readonly BuiltInCategory[] CategoriesToCheck = new BuiltInCategory[] {
             BuiltInCategory.OST_Windows,
             BuiltInCategory.OST_Doors,
             BuiltInCategory.OST_MechanicalEquipment,
@@ -29,8 +27,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_Furniture,
             BuiltInCategory.OST_GenericModel };
 
-        private BuiltInParameter[] parameters = new BuiltInParameter[] { 
-            BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM, 
+        private readonly BuiltInParameter[] parameters = new BuiltInParameter[] {
+            BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM,
             BuiltInParameter.WALL_BASE_OFFSET,
             BuiltInParameter.WALL_TOP_OFFSET,
             BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM,
@@ -39,7 +37,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInParameter.CEILING_HEIGHTABOVELEVEL_PARAM,
             BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM,
             BuiltInParameter.STAIRS_RAILING_HEIGHT_OFFSET };
-        
+
         private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, string currentlevel, string attachedlevel, Status status, BoundingBoxXYZ box)
         {
             StatusExtended exstatus;
@@ -62,10 +60,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 item.Category = string.Format("<{0}>", element.Category.Name);
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Связанный уровень: ", Description = string.Format("«{0}»", currentlevel) });
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Предложенный уровень: ", Description = string.Format("«{0}»", attachedlevel) });
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Связанный уровень: ", Description = string.Format("«{0}»", currentlevel) },
+                    new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Предложенный уровень: ", Description = string.Format("«{0}»", attachedlevel) },
+                    new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
                 foreach (BuiltInParameter p in parameters)
                 {
@@ -82,7 +82,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 Element host = familyInstance.Host;
                                 if (host != null)
                                 {
-                                    if (host.GetType() == typeof(Floor)) 
+                                    if (host.GetType() == typeof(Floor))
                                     {
                                         item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Стоит перенести на корректный уровень", Description = "" });
                                         break;
@@ -126,10 +126,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         code = null;
                         break;
                     case CheckResult.Error:
-                        TaskDialog TD = new TaskDialog("KPLN: Ошибка");
-                        TD.TitleAutoPrefix = false;
-                        TD.MainInstruction = "Уровни либо отсутствуют, либо (все либо некоторые из) имеют некорректное наименование.";
-                        TD.FooterText = "см. актуальный регламент (обращаться в BIM отдел)";
+                        TaskDialog TD = new TaskDialog("KPLN: Ошибка")
+                        {
+                            TitleAutoPrefix = false,
+                            MainInstruction = "Уровни либо отсутствуют, либо (все либо некоторые из) имеют некорректное наименование.",
+                            FooterText = "см. актуальный регламент (обращаться в BIM отдел)"
+                        };
                         TD.Show();
                         return Result.Failed;
                     case CheckResult.Corpus:
@@ -139,14 +141,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         code = "С";
                         break;
                 }
-                
+
                 LevelChecker.LevelCheckers.Clear();
-                
+
                 foreach (Element element in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements())
                 {
                     LevelChecker.AddLevel(element as Level, doc, code);
                 }
-                
+
                 List<List<object>> aCats = new List<List<object>>();
                 foreach (BuiltInCategory cat in CategoriesToCheck)
                 {
@@ -154,13 +156,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     foreach (Element element in new FilteredElementCollector(doc).OfCategory(cat).WhereElementIsNotElementType())
                     {
                         if (!element.ElementPassesConditions()) continue;
-                        
+
                         if (element.GetType() == typeof(FamilyInstance))
                         {
                             // Игнорирование вложенных экземпляров в семейство
                             if ((element as FamilyInstance).SuperComponent != null) continue;
                         }
-                        
+
                         try
                         {
                             string Name;
@@ -185,7 +187,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                     {
                                         if (element.GetType() == typeof(Ceiling))
                                         {
-                                            Name = string.Format("{0}: <{1}>", (doc.GetElement((element as Ceiling).GetTypeId()) as CeilingType).Name , element.Id.ToString());
+                                            Name = string.Format("{0}: <{1}>", (doc.GetElement((element as Ceiling).GetTypeId()) as CeilingType).Name, element.Id.ToString());
                                         }
                                         else
                                         {
@@ -195,10 +197,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 }
                             }
                             #endregion
-                            
+
                             CalculateType linkType = CalculateType.Default;
                             Level level = doc.GetElement(element.LevelId) as Level;
-                            
+
                             #region Category and level
                             if (level == null)
                             {
@@ -208,7 +210,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 }
                                 catch (Exception) { }
                             }
-                            
+
                             if (element.GetType() == typeof(FamilyInstance))
                             {
                                 FamilyInstance familyInstance = (FamilyInstance)element;
@@ -228,9 +230,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             {
                                 if (element.GetType() == typeof(Floor)) linkType = CalculateType.Floor;
                             }
-                            
+
                             if (level == null) { continue; }
-                             
+
                             #endregion
                             BoundingBoxXYZ box = element.get_BoundingBox(null);
                             // Игнорирование элементов, у которых нет геометрии (например - панели витражей)
@@ -243,15 +245,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                             LevelChecker checker = LevelChecker.GetLevelById(level.Id);
                             LevelCheckResult result = linkType == CalculateType.Default ? checker.GetLevelIntersection(boxAnalitical) : checker.GetFloorLevelIntersection(boxAnalitical);
-                            LevelChecker c;
                             switch (result)
                             {
                                 case LevelCheckResult.NotInside:
-                                    if (Check(linkType, LevelCheckResult.NotInside, level, boxAnalitical, doc, out c))
+                                    LevelChecker c;
+                                    if (Check(linkType, level, boxAnalitical, doc, out c))
                                     {
                                         outputCollection.Add(GetItemByElement(
                                             element,
-                                            Name, 
+                                            Name,
                                             "[0]: Ошибка",
                                             "Найден более подходящий уровень",
                                             checker.Level.get_Parameter(BuiltInParameter.DATUM_TEXT).AsString(),
@@ -270,17 +272,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     aCats.Add(new List<object> { ammount, cat });
                 }
-                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
-                wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
+                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" }
+                };
                 foreach (List<object> cat in aCats)
                 {
                     if ((int)cat[0] == 0) { continue; }
                     Category category = Category.GetCategory(doc, (BuiltInCategory)cat[1]);
-                    wpfCategories.Add(new WPFDisplayItem(category.Id.IntegerValue, StatusExtended.Critical) 
-                    { 
-                        Name = string.Format("{0} ({1})", 
-                        category.Name, 
-                        ((int)cat[0]).ToString()) 
+                    wpfCategories.Add(new WPFDisplayItem(category.Id.IntegerValue, StatusExtended.Critical)
+                    {
+                        Name = string.Format("{0} ({1})",
+                        category.Name,
+                        ((int)cat[0]).ToString())
                     });
                 }
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
@@ -298,7 +302,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Уровни] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Уровни] Предупреждений не найдено!", MessageType.Success);
                 }
                 return Result.Succeeded;
             }
@@ -309,12 +313,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
         }
 
-        public static bool Check(CalculateType linkType, LevelCheckResult result, Level level, BoundingBoxXYZ box, Document doc, out LevelChecker checker)
+        public static bool Check(CalculateType linkType, Level level, BoundingBoxXYZ box, Document doc, out LevelChecker checker)
         {
             foreach (LevelChecker c in LevelChecker.GetOtherLevelById(level.Id))
             {
                 LevelCheckResult rslt = linkType == CalculateType.Default ? c.GetLevelIntersection(box) : c.GetFloorLevelIntersection(box);
-                
+
                 if (rslt == LevelCheckResult.FullyInside)
                 {
                     // Игнорирую для КР привязку элементов к уровню выше (так выдаются спеки)

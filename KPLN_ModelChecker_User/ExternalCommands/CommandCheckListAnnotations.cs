@@ -8,7 +8,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -131,9 +131,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             catch (Exception ex)
             {
                 if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", MessageType.Header);
                 else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", MessageType.Header);
 
                 return Result.Cancelled;
             }

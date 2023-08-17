@@ -7,9 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -26,8 +24,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Document doc = commandData.Application.ActiveUIDocument.Document;
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
                 MonitoringAndPinnerSearcher.GetLinks(commandData, doc, BuiltInCategory.OST_Levels, ref outputCollection);
-                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
-                wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
+                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" }
+                };
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
                 ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
                 int counter = 1;
@@ -43,7 +43,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Мониторинг уровней] Мониторинг назначен корректно! Не забудь вручную проверить ошибки мониторинга", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Мониторинг уровней] Мониторинг назначен корректно! Не забудь вручную проверить ошибки мониторинга", MessageType.Success);
                 }
                 return Result.Succeeded;
             }

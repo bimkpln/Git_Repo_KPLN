@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static KPLN_ModelChecker_User.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -86,9 +86,9 @@ namespace KPLN_ModelChecker_User.Common
                         else
                         {
                             if (prefix.StartsWith("C") || prefix.StartsWith("c") || prefix.StartsWith("K") || prefix.StartsWith("k"))
-                            { Print(string.Format("Не допускается использование латинницы в наименовании уровней\nсм.уровень «{0}»", name), KPLN_Loader.Preferences.MessageType.Error); }
+                            { Print(string.Format("Не допускается использование латинницы в наименовании уровней\nсм.уровень «{0}»", name), MessageType.Error); }
                             if (prefix.StartsWith("с") || prefix.StartsWith("к"))
-                            { Print(string.Format("Некорректный регистр\nсм.уровень «{0}»", name), KPLN_Loader.Preferences.MessageType.Error); }
+                            { Print(string.Format("Некорректный регистр\nсм.уровень «{0}»", name), MessageType.Error); }
                             x.Add(2);
                         }
                     }

@@ -10,7 +10,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -27,7 +27,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
         /// </summary>
-        private string[] _separArr = new string[]
+        private readonly string[] _separArr = new string[]
         {
             "...",
             "до",
@@ -78,8 +78,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 item.Category = "Размеры";
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(-20000260, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-20000260, exstatus) { Header = "Подсказка: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)
@@ -219,9 +221,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Нахожу значения без диапозона и игнорирую небольшие округления - больше 10 мм, при условии, что это не составляет 5% от размера
             else
             {
-                double overrideDouble = 0.0;
                 string onlyNumbMin = new string(overrideValue.Where(x => Char.IsDigit(x)).ToArray());
-                Double.TryParse(onlyNumbMin, out overrideDouble);
+                Double.TryParse(onlyNumbMin, out double overrideDouble);
                 if (overrideDouble == 0.0)
                 {
                     _errorList.Add(new WPFElement(
@@ -260,11 +261,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private void CheckAccuracy(Document doc)
         {
-            string docTitle = doc.Title;
             FilteredElementCollector docDimensionTypes = new FilteredElementCollector(doc).OfClass(typeof(DimensionType)).WhereElementIsElementType();
             foreach (DimensionType dimType in docDimensionTypes)
             {
-                if (dimType.UnitType == UnitType.UT_Length)
+                DimensionStyleType dimStyleType = dimType.StyleType;
+                if (dimStyleType == DimensionStyleType.Linear 
+                    || dimStyleType == DimensionStyleType.Diameter 
+                    || dimStyleType == DimensionStyleType.ArcLength 
+                    || dimStyleType == DimensionStyleType.LinearFixed)
                 {
                     FormatOptions typeOpt = dimType.GetUnitsFormatOptions();
                     try
@@ -296,14 +300,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             if (_errorList.Count == 0)
             {
-                Print("[Проверка размеров] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                Print("[Проверка размеров] Предупреждений не найдено!", MessageType.Success);
             }
             else
             {
                 // Настраиваю сортировку в окне и генерирую экземпляры ошибок
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
-                ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>();
-                wpfFiltration.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
+                ObservableCollection<WPFDisplayItem> wpfFiltration = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" }
+                };
                 foreach (WPFElement wpfElem in _errorList)
                 {
                     Element element = wpfElem.Element;

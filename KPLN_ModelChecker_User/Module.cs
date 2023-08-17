@@ -11,7 +11,6 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.ModuleData;
 
 namespace KPLN_ModelChecker_User
@@ -19,7 +18,7 @@ namespace KPLN_ModelChecker_User
     public class Module : IExternalModule
     {
         private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
-        private readonly int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+        private readonly int _userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -44,8 +43,10 @@ namespace KPLN_ModelChecker_User
                 PrintError(e);
             }
 #endif
-            string assembly = _AssemblyPath.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Контроль качества");
+            //Добавляю кнопку в панель
+            string currentPanelName = "Контроль качества";
+            RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
+
             PulldownButtonData pullDownData = new PulldownButtonData("Проверить", "Проверить")
             {
                 ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки"
@@ -53,7 +54,7 @@ namespace KPLN_ModelChecker_User
             pullDownData.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, _mainContextualHelp));
             pullDownData.Image = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             pullDownData.LargeImage = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
-            PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
+            PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
 
             AddPushButtonData(
                 "CheckLevels",
@@ -243,7 +244,7 @@ namespace KPLN_ModelChecker_User
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonData(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp, bool isVisible)
         {
-            PushButtonData data = new PushButtonData(name, text, Assembly.GetExecutingAssembly().Location, className);
+            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
             PushButton button = pullDown.AddPushButton(data) as PushButton;
             button.ToolTip = description;
             button.LongDescription = longDescription;

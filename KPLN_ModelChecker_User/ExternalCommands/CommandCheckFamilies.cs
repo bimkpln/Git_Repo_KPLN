@@ -9,9 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -31,45 +29,43 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 List<Element> famColl = new FilteredElementCollector(doc).OfClass(typeof(Family)).ToList();
                 ObservableCollection<WPFDisplayItem> outputCollection = new ObservableCollection<WPFDisplayItem>();
 
-                //ProgressBar progressBar = new ProgressBar(
-                //    famColl.Count,
-                //    "Проверка семейств",
-                //    "Проверка семейств и типоразмеров на дубликаты, а также проверка расположения семейств",
-                //    true,
-                //    "Подсказка",
-                //    "Дубликаты семейств приводят к утяжелению файла, а также к сложностям в администрировании и редактировании проекта в целом." +
-                //    "Семейства с запрещенных источников приводят к сложностям в администрировании и создании проекта в целом");
-                
-                //progressBar.Show();
                 foreach (Family currentFam in famColl)
                 {
-                    //progressBar.CurrentProgress++;
-
                     CheckFamilyName(currentFam, famColl, ref outputCollection);
                     CheckFamilyPath(doc, currentFam, ref outputCollection);
                 }
-                //progressBar.Close();
 
-                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
-                wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
+                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" }
+                };
 
                 IEnumerable<WPFDisplayItem> distCategories = outputCollection.GroupBy(w => w.CategoryId).Select(g => g.First());
                 foreach (WPFDisplayItem item in distCategories)
                 {
                     int count = outputCollection.Where(x => x.Category.Equals(item.Category)).Count();
 
-                    Family entity = outputCollection.FirstOrDefault(x => x.Equals(item)).Element as Family;
-                    if (entity == null)
+                    Element element = outputCollection.FirstOrDefault(x => x.Equals(item)).Element;
+                    Family family = null;
+                    if (element is Family familyEntity)
                     {
-                        FamilySymbol fSymbol = outputCollection.FirstOrDefault(x => x.Equals(item)).Element as FamilySymbol;
-                        entity = fSymbol.Family;
+                        family = familyEntity;
                     }
-                    Category category = entity.FamilyCategory;
-
-                    wpfCategories.Add(new WPFDisplayItem(category.Id.IntegerValue, StatusExtended.Critical)
+                    else if (element is FamilySymbol familySymbol)
                     {
-                        Name = $"{category.Name} ({count})"
-                    });
+                        family = familySymbol.Family;
+                    }
+
+                    if (family != null)
+                    {
+                        Category category = family.FamilyCategory;
+                        wpfCategories.Add(new WPFDisplayItem(category.Id.IntegerValue, StatusExtended.Critical)
+                        {
+                            Name = $"{category.Name} ({count})"
+                        });
+                    }
+                    else
+                        throw new Exception($"У элемента с id {element.Id} - не удалось определить семейство! Обратись к разработчику");
                 }
 
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
@@ -88,7 +84,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Семейства] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Семейства] Предупреждений не найдено!", MessageType.Success);
                 }
 
                 return Result.Succeeded;
@@ -143,7 +139,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         fAcc.DeleteElements(elemsToDelete);
                     }
-                    catch (Autodesk.Revit.Exceptions.ArgumentException) 
+                    catch (Autodesk.Revit.Exceptions.ArgumentException)
                     {
                         e.SetProcessingResult(FailureProcessingResult.Continue);
                         return;
@@ -174,8 +170,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     $"{currentFamName}",
                     "Предупреждение семейства",
                     $"Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
-                    Status.Error,
-                    null);
+                    Status.Error);
 
                 item.Collection.Add(
                     new WPFDisplayItem(-1, StatusExtended.Critical)
@@ -195,8 +190,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     $"{currentFamName}",
                     "Предупреждение семейства",
                     $"Возможно семейство является копией семейства «{similarFamilyName}»",
-                    Status.Error,
-                    null);
+                    Status.Error);
 
                 item.Collection.Add(
                     new WPFDisplayItem(-1, StatusExtended.Critical)
@@ -226,8 +220,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"{currentFamName}: {currentSymName}",
                         "Предупреждение типоразмера",
                         $"Возможно тип является копией типоразмера «{similarSymbolName}»",
-                        Status.Error,
-                        null);
+                        Status.Error);
 
                     item.Collection.Add(
                         new WPFDisplayItem(-1, StatusExtended.Critical)
@@ -263,7 +256,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentTags))
             {
-                
+
                 Document famDoc;
                 try
                 {
@@ -298,10 +291,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"{currentFam.Name}",
                         "Предупреждение источника семейства",
                         $"Данное семейство - не с диска Х. Запрещено использовать сторонние источники!",
-                        Status.Error,
-                        null);
+                        Status.Error);
 
-                    string descr = string.Empty;
+                    string descr;
                     if (!string.IsNullOrEmpty(famPath)
                         && !famPath.Contains("KPLN_Loader"))
                         descr = $"Текущий путь к семейству: {famPath}. Использовать в проекте данное семейство можно только по согласованию в BIM-отделе.";
@@ -322,7 +314,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
         }
 
-        private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status, BoundingBoxXYZ box)
+        private WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status)
         {
             StatusExtended exstatus;
             switch (status)
@@ -336,8 +328,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             int catId;
-            string catName = string.Empty;
             Category cat = element.Category;
+            string catName;
             if (cat != null)
             {
                 catId = element.Category.Id.IntegerValue;
@@ -360,8 +352,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 item.Category = string.Format("<{0}>", catName);
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(catId, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(catId, exstatus) { Header = "Подсказка: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)
@@ -374,19 +368,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 PrintError(e);
             }
             return item;
-        }
-
-        private bool CatInList(List<List<object>> aCats, Category cat)
-        {
-            foreach (List<object> c in aCats)
-            {
-                Category ca = c[1] as Category;
-                if (ca.Id.IntegerValue == cat.Id.IntegerValue)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         /// <summary>

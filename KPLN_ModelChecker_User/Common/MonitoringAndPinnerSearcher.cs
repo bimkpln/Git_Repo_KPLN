@@ -3,53 +3,13 @@ using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.Common
 {
     internal static class MonitoringAndPinnerSearcher
     {
-        private static WPFDisplayItem GetItemByElement(string name, string header, string description, Status status)
-        {
-            StatusExtended exstatus;
-            switch (status)
-            {
-                case Status.Error:
-                    exstatus = StatusExtended.Critical;
-                    break;
-                default:
-                    exstatus = StatusExtended.Warning;
-                    break;
-            }
-            WPFDisplayItem item = new WPFDisplayItem(-1, exstatus, "✔");
-            try
-            {
-                item.Name = name;
-                item.Header = header;
-                item.Description = description;
-                item.Category = string.Format("<{0}>", "Документ");
-                item.Visibility = System.Windows.Visibility.Visible;
-                item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(-1, exstatus) { Header = "Подсказка: ", Description = description });
-                HashSet<string> values = new HashSet<string>();
-            }
-            catch (Exception e)
-            {
-                try
-                {
-                    PrintError(e.InnerException);
-                }
-                catch (Exception) { }
-                PrintError(e);
-            }
-            return item;
-        }
-
         private static WPFDisplayItem GetItemByElement(Element element, string name, string header, string description, Status status, BoundingBoxXYZ box)
         {
             StatusExtended exstatus;
@@ -72,8 +32,10 @@ namespace KPLN_ModelChecker_User.Common
                 item.Category = string.Format("<{0}>", element.Category.Name);
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)

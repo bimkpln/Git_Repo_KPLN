@@ -1,13 +1,13 @@
 ﻿using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
+using KPLN_ModelChecker_User.Forms.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using static KPLN_Loader.Output.Output;
-using KPLN_ModelChecker_Lib.Common;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_User.Forms
 {

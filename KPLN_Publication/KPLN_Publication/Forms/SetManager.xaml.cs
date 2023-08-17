@@ -1,28 +1,18 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Publication.ExternalCommands.BeforePublication;
-using KPLN_Publication.ExternalCommands.Print;
-using KPLN_Publication.ExternalCommands.PublicationSet;
 using KPLN_Publication.Common;
 using KPLN_Publication.Common.Filters;
+using KPLN_Publication.ExternalCommands.PublicationSet;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Publication.Forms
 {
@@ -36,23 +26,23 @@ namespace KPLN_Publication.Forms
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        private ObservableCollection<ComboBoxSet> _DocumentSets { get; set; } = new ObservableCollection<ComboBoxSet>();
+        private ObservableCollection<ComboBoxSet> _documentSets = new ObservableCollection<ComboBoxSet>();
         public ObservableCollection<ComboBoxSet> DocumentSets
         {
             get
             {
-                return _DocumentSets;
+                return _documentSets;
             }
             set
             {
-                _DocumentSets = value;
+                _documentSets = value;
                 NotifyPropertyChanged();
             }
         }
         //
         private Document Doc { get; set; }
         private ObservableCollection<ListBoxParameter> Parameters = new ObservableCollection<ListBoxParameter>();
-        private ObservableCollection<string> Types = new ObservableCollection<string>() { "Равно", "Не равно", "Содержит", "Не содержит", "Начиается с", "Заканчивается на" };
+        private readonly ObservableCollection<string> Types = new ObservableCollection<string>() { "Равно", "Не равно", "Содержит", "Не содержит", "Начиается с", "Заканчивается на" };
         /*
         public void AddSet(Document doc, ViewSheetSet set)
         {
@@ -158,6 +148,7 @@ namespace KPLN_Publication.Forms
             newFilter.SetParameters(Parameters);
             NumerateFilters();
         }
+        
         private void OnBtnCreateSet(object sender, RoutedEventArgs e)
         {
             List<View> views = new List<View>();
@@ -174,26 +165,30 @@ namespace KPLN_Publication.Forms
             IsEnabled = true;
             Refresh();
         }
+        
         private void OnBtnRemoveSet(object sender, RoutedEventArgs e)
         {
             ComboBoxSet set = comboBoxDocumentSets.SelectedItem as ComboBoxSet;
-            KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandRemoveSet(set.Set));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandRemoveSet(set.Set));
             OpenWaitTab();
             comboBoxDocumentSets.SelectedIndex = 0;
             DocumentSets.Remove(set);
             OpenHomeTab();
             Refresh();
         }
+        
         public void OpenWaitTab()
         {
             //Print("OpenWaitTab", KPLN_Loader.Preferences.MessageType.System_Regular);
             tb.SelectedIndex = 1;
         }
+        
         public void OpenHomeTab()
         {
             //Print("OpenHomeTab", KPLN_Loader.Preferences.MessageType.System_Regular);
             tb.SelectedIndex = 0;
         }
+        
         private void UpdateSheetsVisibility(ObservableCollection<WPFFilterElement> filters)
         {
             //Print("UpdateSheetsVisibility", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -242,6 +237,7 @@ namespace KPLN_Publication.Forms
                 PrintError(e);
             }
         }
+        
         private void OnSelectedSetChanged(object sender, SelectionChangedEventArgs e)
         {
             //Print("OnSelectedSetChanged", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -281,10 +277,11 @@ namespace KPLN_Publication.Forms
             }
             this.btnAddSet.IsEnabled = false;
         }
+        
         private void UpdateRemoveEnability()
         {
-            ComboBoxSet set = comboBoxDocumentSets.SelectedItem as ComboBoxSet;
-            if (set == null) { return; }
+            if (!(comboBoxDocumentSets.SelectedItem is ComboBoxSet set)) { return; }
+            
             if (set.IsUserCreated)
             {
                 this.btnRemoveSet.IsEnabled = true;
@@ -294,10 +291,11 @@ namespace KPLN_Publication.Forms
                 this.btnRemoveSet.IsEnabled = false;
             }
         }
+        
         private void UpdateApplyEnability()
         {
-            ComboBoxSet set = comboBoxDocumentSets.SelectedItem as ComboBoxSet;
-            if (set == null) { return; }
+            if (!(comboBoxDocumentSets.SelectedItem is ComboBoxSet set)) { return; }
+            
             if (set.IsUserCreated)
             {
                 foreach (ListBoxElement i in this.listBoxElements.ItemsSource)
@@ -312,6 +310,7 @@ namespace KPLN_Publication.Forms
             }
             this.btnApplyChanges.Visibility = System.Windows.Visibility.Collapsed;
         }
+        
         private void OnUnchecked(object sender, RoutedEventArgs e)
         {
             //Print("OnUnchecked", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -322,6 +321,7 @@ namespace KPLN_Publication.Forms
                 i.IsChecked = false;
             }
         }
+        
         private void OnChecked(object sender, RoutedEventArgs e)
         {
             UpdateApplyEnability();
@@ -331,6 +331,7 @@ namespace KPLN_Publication.Forms
                 i.IsChecked = true;
             }
         }
+        
         public void PickSet(Document doc, ViewSheetSet pickedSet)
         {
             if (comboBoxDocumentSets.SelectedIndex == -1)
@@ -361,6 +362,7 @@ namespace KPLN_Publication.Forms
             CollectionViewSource.GetDefaultView(listBoxElements.ItemsSource).Refresh();
             OpenHomeTab();
         }
+        
         private void OnBtnApplyChanges(object sender, RoutedEventArgs e)
         {
             //Print("OnBtnApplyChanges", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -373,11 +375,12 @@ namespace KPLN_Publication.Forms
                 }
             }
             ComboBoxSet set = comboBoxDocumentSets.SelectedItem as ComboBoxSet;
-            KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandApplySet(views, set.Set));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandApplySet(views, set.Set));
             OpenWaitTab();
             comboBoxDocumentSets.SelectedIndex = 0;
             DocumentSets.Remove(set);
         }
+        
         private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
         {
             //Print("OnItemDoubleClick", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -386,11 +389,12 @@ namespace KPLN_Publication.Forms
                 View view = (listBoxElements.SelectedItem as ListBoxElement).View;
                 if (view != null)
                 {
-                    KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandSetActiveView(view));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSetActiveView(view));
                 }
             }
             catch (Exception) { }
         }
+        
         private ObservableCollection<string> GetValues(WPFFilterElement filter)
         {
             //Print("GetValues", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -442,6 +446,7 @@ namespace KPLN_Publication.Forms
                 return new ObservableCollection<string>();
             }
         }
+        
         private void OnSelectedParameterChanged(object sender, SelectionChangedEventArgs e)
         {
             //Print("OnSelectedParameterChanged", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -459,6 +464,7 @@ namespace KPLN_Publication.Forms
             UpdateApplyEnability();
             UpdateAddEnability();
         }
+        
         private void OnSelectedValueChanged(object sender, SelectionChangedEventArgs e)
         {
             //Print("OnSelectedValueChanged", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -466,6 +472,7 @@ namespace KPLN_Publication.Forms
             UpdateApplyEnability();
             UpdateAddEnability();
         }
+        
         private void OnSelectedTypeChanged(object sender, SelectionChangedEventArgs e)
         {
             //Print("OnSelectedTypeChanged", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -473,15 +480,11 @@ namespace KPLN_Publication.Forms
             UpdateApplyEnability();
             UpdateAddEnability();
         }
+        
         private void Refresh()
         {
             CollectionViewSource.GetDefaultView(comboBoxDocumentSets.ItemsSource).Refresh();
             CollectionViewSource.GetDefaultView(listBoxElements.ItemsSource).Refresh();
-        }
-
-        private void tb_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-
         }
     }
 }

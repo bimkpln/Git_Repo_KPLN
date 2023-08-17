@@ -7,7 +7,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -116,7 +116,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 holeData.SetGeometryData(ViewDetailLevel.Coarse);
                 if (holeData.CurrentSolid != null) result.Add(holeData);
                 else
-                    Print($"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную", KPLN_Loader.Preferences.MessageType.Warning);
+                    Print($"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную", MessageType.Warning);
             }
 
             return result;

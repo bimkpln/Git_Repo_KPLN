@@ -7,7 +7,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -64,7 +63,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc)
                     .OfCategory(bic)
                     .WhereElementIsNotElementType();
-                
+
                 // У оборудования нужно брать только элементы из списка
                 if (bic == BuiltInCategory.OST_MechanicalEquipment) checkElemColl.AddRange(FilteredByStringContainsColl(bicColl).ToElements());
                 // У остального - берем все, кроме семейств проемов
@@ -104,7 +103,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if ((BuiltInCategory)element.Category.Id.IntegerValue == BuiltInCategory.OST_CurtainWallPanels)
                 {
                     string elName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM).AsValueString();
-                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер") 
+                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер")
                         || (elName.ToLower().Contains("створк") && !elName.ToLower().Contains("глух")))
                     {
                         Wall panelHostWall = instance.Host as Wall;

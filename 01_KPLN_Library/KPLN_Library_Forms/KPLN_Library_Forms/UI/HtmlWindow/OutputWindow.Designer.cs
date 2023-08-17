@@ -1,6 +1,6 @@
 ﻿namespace KPLN_Library_Forms.UI.HtmlWindow
 {
-    partial class OutputWindow
+    public partial class OutputWindow
     {
         /// <summary>
         /// Required designer variable.

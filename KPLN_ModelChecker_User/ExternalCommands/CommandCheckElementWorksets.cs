@@ -3,14 +3,11 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
-using KPLN_ModelChecker_User.Tools;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -33,7 +30,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (!w.IsOpen)
                         {
-                            Print("Необходимо открыть все рабочие наборы!", KPLN_Loader.Preferences.MessageType.Error);
+                            Print("Необходимо открыть все рабочие наборы!", MessageType.Error);
                             return Result.Cancelled;
                         }
                         worksets.Add(w);
@@ -48,7 +45,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             {
                                 continue;
                             }
-                            
+
                             if ((element.Category.CategoryType == CategoryType.Annotation) & (element.GetType() == typeof(Grid) | element.GetType() == typeof(Level)))
                             {
                                 string wsName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
@@ -57,9 +54,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                     WPFDisplayItem item = GetItemByElement(element, element.Name, "Ошибка рабочего набора", string.Format("Ось или уровень с ID {0} находится не в специальном рабочем наборе", element.Id), Status.Error, null);
                                     item.Collection.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Header = "Подсказка: ", Description = "Имя рабочего набора для осей и уровней - <..._Оси и уровни>" });
                                     outputCollection.Add(item);
-                                }    
+                                }
                             }
-                            
+
                             if (element.Category.CategoryType == CategoryType.Model
                                 // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
                                 && element.Category.Id.IntegerValue != -2000576
@@ -86,7 +83,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                                 continue;
                                             }
                                         }
-                                        
+
                                         // Проверка остальных моделируемых элементов на рабочий набор связей 
                                         else if (w.Name.StartsWith("00")
                                             | w.Name.StartsWith("#")
@@ -100,7 +97,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                                             continue;
                                         }
-                                        
+
                                         // Проверка остальных моделируемых элементов на рабочий набор для сеток
                                         else if (w.Name.ToLower().Contains("оси и уровни")
                                             | w.Name.ToLower().Contains("общие уровни и сетки"))
@@ -113,14 +110,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                                             continue;
                                         }
-                                        
+
                                         // Проверка остальных моделируемых элементов на рабочий набор для связей
                                         else if (w.Name.StartsWith("02"))
                                         {
                                             UpdateOutputCollection(
-                                                element, 
+                                                element,
                                                 w,
-                                                "Только элементы с мониторингом должны быть в рабочих наборах с приставкой '02'", 
+                                                "Только элементы с мониторингом должны быть в рабочих наборах с приставкой '02'",
                                                 ref outputCollection);
 
                                             continue;
@@ -138,8 +135,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     WPFDisplayItem item = GetItemByElement(doc.Title, "Ошибка проекта", "Файл не настроен для совместной работы", Status.Error);
                     outputCollection.Add(item);
                 }
-                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>();
-                wpfCategories.Add(new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" });
+                ObservableCollection<WPFDisplayItem> wpfCategories = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, StatusExtended.Critical) { Name = "<Все>" }
+                };
                 List<WPFDisplayItem> sortedOutputCollection = outputCollection.OrderBy(o => o.Header).ToList();
                 ObservableCollection<WPFDisplayItem> wpfElements = new ObservableCollection<WPFDisplayItem>();
                 int counter = 1;
@@ -155,7 +154,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 else
                 {
-                    Print("[Рабочие наборы] Предупреждений не найдено!", KPLN_Loader.Preferences.MessageType.Success);
+                    Print("[Рабочие наборы] Предупреждений не найдено!", MessageType.Success);
                 }
                 return Result.Succeeded;
             }
@@ -165,8 +164,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 return Result.Failed;
             }
         }
-        
-        private void UpdateOutputCollection (Element element, Workset w, string description, ref ObservableCollection<WPFDisplayItem> outputCollection)
+
+        private void UpdateOutputCollection(Element element, Workset w, string description, ref ObservableCollection<WPFDisplayItem> outputCollection)
         {
             WPFDisplayItem item = GetItemByElement(element, element.Name, "Ошибка рабочего набора", string.Format("Элемент модели с ID {0} находится не в своем рабочем наборе «{1}»", element.Id, w.Name), Status.Error, null);
 
@@ -201,8 +200,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 item.Category = string.Format("<{0}>", "Документ");
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(-1, exstatus) { Header = "Описание: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(-1, exstatus) { Header = "Описание: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)
@@ -239,8 +240,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 item.Category = string.Format("<{0}>", element.Category.Name);
                 item.Visibility = System.Windows.Visibility.Visible;
                 item.IsEnabled = true;
-                item.Collection = new ObservableCollection<WPFDisplayItem>();
-                item.Collection.Add(new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description });
+                item.Collection = new ObservableCollection<WPFDisplayItem>
+                {
+                    new WPFDisplayItem(element.Category.Id.IntegerValue, exstatus) { Header = "Подсказка: ", Description = description }
+                };
                 HashSet<string> values = new HashSet<string>();
             }
             catch (Exception e)

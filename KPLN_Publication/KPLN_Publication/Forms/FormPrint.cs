@@ -13,12 +13,8 @@ Zuev Aleksandr, 2020, all rigths reserved.*/
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 
@@ -51,8 +47,8 @@ namespace KPLN_Publication
             InitializeComponent();
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
-            
-            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+
+            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
             if (userDepartment == 1 || userDepartment == 4 || userDepartment == 6)
                 this.checkBoxExcludeBorders.Enabled = true;
 
@@ -107,7 +103,7 @@ namespace KPLN_Publication
             radioButtonPaper.Checked = !radioButtonPDF.Checked;
 
 
-            if (_printSettings.hiddenLineProcessing == Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing)                
+            if (_printSettings.hiddenLineProcessing == Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing)
             {
                 radioButtonVector.Checked = true;
                 radioButtonRastr.Checked = false;
@@ -125,7 +121,7 @@ namespace KPLN_Publication
             comboBoxRasterQuality.DataSource = rasterTypes;
             try
             {
-                comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality; 
+                comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality;
                 //rasterQualityTypes.Where(i => Enum.GetName(typeof(Autodesk.Revit.DB.RasterQualityType), i).Equals()).First();
             }
             catch { }
@@ -181,7 +177,7 @@ namespace KPLN_Publication
             //Enum.GetName(typeof(Autodesk.Revit.DB.HiddenLineViewsType), Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing);
 
             _printSettings.rasterQuality = (Autodesk.Revit.DB.RasterQualityType)comboBoxRasterQuality.SelectedValue;
-                //Enum.GetName(typeof(Autodesk.Revit.DB.RasterQualityType), comboBoxRasterQuality.SelectedValue);
+            //Enum.GetName(typeof(Autodesk.Revit.DB.RasterQualityType), comboBoxRasterQuality.SelectedValue);
             _printSettings.outputFolder = txtBoxOutputFolder.Text;
             _printSettings.printerName = comboBoxPrinters.SelectedItem.ToString();
 

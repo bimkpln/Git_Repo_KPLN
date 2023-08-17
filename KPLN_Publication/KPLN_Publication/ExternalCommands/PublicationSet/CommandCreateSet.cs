@@ -1,13 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_Publication.Forms;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Publication.ExternalCommands.PublicationSet
 {
@@ -26,7 +22,7 @@ namespace KPLN_Publication.ExternalCommands.PublicationSet
             Document doc = app.ActiveUIDocument.Document;
             try
             {
-                using ( Transaction t = new Transaction(doc, "Изменить набор листов"))
+                using (Transaction t = new Transaction(doc, "Изменить набор листов"))
                 {
                     t.Start();
                     PrintManager pm = doc.PrintManager;
@@ -56,9 +52,11 @@ namespace KPLN_Publication.ExternalCommands.PublicationSet
             {
                 PrintError(e);
                 ModuleData.Form.Hide();
-                TaskDialog TD = new TaskDialog("Ошибка");
-                TD.TitleAutoPrefix = false;
-                TD.MainContent = "Имя занято! Попробуйте создать набор с другим именем.";
+                TaskDialog TD = new TaskDialog("Ошибка")
+                {
+                    TitleAutoPrefix = false,
+                    MainContent = "Имя занято! Попробуйте создать набор с другим именем."
+                };
                 TD.Show();
                 ModuleData.Form.OpenHomeTab();
                 ModuleData.Form.Show();

@@ -1,15 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Media;
-using static KPLN_Loader.Output.Output;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.Common
@@ -17,13 +11,13 @@ namespace KPLN_ModelChecker_User.Common
     public class WPFDisplayItem : INotifyPropertyChanged
     {
         public BoundingBoxXYZ Box { get; private set; }
-        
+
         public XYZ Centroid { get; private set; }
-        
+
         public int CategoryId { get; }
-        
+
         public string Icon { get; set; }
-        
+
         public Element Element { get; set; }
 
         public string Name
@@ -36,7 +30,7 @@ namespace KPLN_ModelChecker_User.Common
             }
         }
 
-        public int ElementId 
+        public int ElementId
         {
             get { return _elementId; }
             set
@@ -127,26 +121,26 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         private ObservableCollection<WPFDisplayItem> _collection;
-        
+
         private int _elementId;
 
         private string _toolTip;
 
         private string _header;
-        
+
         private string _description;
-        
+
         private string _category;
 
         private string _name;
 
         private SolidColorBrush _background;
-        
+
         private bool _isEnabled;
-        
+
         private System.Windows.Visibility _visibility;
-        
-        public WPFDisplayItem(int categoryId, StatusExtended status, string icon= "🔍")
+
+        public WPFDisplayItem(int categoryId, StatusExtended status, string icon = "🔍")
         {
             CategoryId = categoryId;
             switch (status)
@@ -164,7 +158,7 @@ namespace KPLN_ModelChecker_User.Common
             Icon = icon;
         }
 
-        public WPFDisplayItem(int categoryId, StatusExtended status, int elementId) : this (categoryId, status)
+        public WPFDisplayItem(int categoryId, StatusExtended status, int elementId) : this(categoryId, status)
         {
             ElementId = elementId;
         }

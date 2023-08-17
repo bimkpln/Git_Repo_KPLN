@@ -24,8 +24,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 t.Start();
 
                 // Игнорирую специалистов BIM-отдела
-                int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-                if (_userDepartment == 4) return Result.Cancelled;
+                int _userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
+                if (_userDepartment == 8) return Result.Cancelled;
 
                 //Получение объектов приложения и документа
                 Document doc = app.ActiveUIDocument.Document;

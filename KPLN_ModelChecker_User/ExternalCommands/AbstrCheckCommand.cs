@@ -8,7 +8,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -131,9 +131,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
                 
                 else if (ex.InnerException != null)
-                    Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
                 else
-                    Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
 
                 return null;
             }
@@ -222,7 +222,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             foreach (CheckCommandError elem in elemErrorColl)
             {
-                Print($"Элемент id {elem.ErrorElement.Id} не прошел проверку! Ошибка: {elem.ErrorMessage}", KPLN_Loader.Preferences.MessageType.Error);
+                Print($"Элемент id {elem.ErrorElement.Id} не прошел проверку! Ошибка: {elem.ErrorMessage}", MessageType.Error);
             }
         }
 
@@ -301,7 +301,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             else 
             { 
-                Print($"[{_name}] Предупреждений не найдено :)", KPLN_Loader.Preferences.MessageType.Success);
+                Print($"[{_name}] Предупреждений не найдено :)", MessageType.Success);
 
                 // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
                 ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));

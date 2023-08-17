@@ -11,6 +11,7 @@ Global
 		Revit2018|Any CPU = Revit2018|Any CPU
 		Revit2020|Any CPU = Revit2020|Any CPU
 		Revit2022|Any CPU = Revit2022|Any CPU
+		Revit2023|Any CPU = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -21,6 +22,8 @@ Global
 		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
 		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Revit2022|Any CPU.ActiveCfg = Revit2022|Any CPU
 		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Revit2022|Any CPU.Build.0 = Revit2022|Any CPU
+		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
+		{A666B372-13FA-442A-8A18-FCE286C19CCF}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

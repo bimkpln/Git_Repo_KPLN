@@ -3,7 +3,7 @@ using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -156,7 +156,7 @@ namespace KPLN_ModelChecker_User.Common
                     }
 
                     if (arData.CurrentDownFacesArray.IsEmpty)
-                        Print($"Для помещения {arData.CurrentRoom.Name} - не удалось найти основания. Проверь элементы вручную", KPLN_Loader.Preferences.MessageType.Warning);
+                        Print($"Для помещения {arData.CurrentRoom.Name} - не удалось найти основания. Проверь элементы вручную", MessageType.Warning);
 
 
                     //// Фильтр для поиска элементов, пересекающихся с BoundingBox помещения
@@ -193,8 +193,10 @@ namespace KPLN_ModelChecker_User.Common
 
         private bool IsFloorInRoom(Element floor)
         {
-            SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions();
-            options.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish;
+            SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions
+            {
+                SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
+            };
 
             foreach (BoundarySegment segment in GetRoomBoundarySegments(CurrentRoom, options))
             {
@@ -241,21 +243,6 @@ namespace KPLN_ModelChecker_User.Common
             }
 
             return false;
-        }
-
-
-        private bool IsElemInCurrentRoom(BoundingBoxXYZ bbox)
-        {
-            if (this.CurrentRoomBBox.Max.X > bbox.Min.X || this.CurrentRoomBBox.Min.X < bbox.Max.X)
-                return false;
-
-            if (this.CurrentRoomBBox.Max.Y > bbox.Min.Y || this.CurrentRoomBBox.Min.Y < bbox.Max.Y)
-                return false;
-
-            if (this.CurrentRoomBBox.Max.Z > bbox.Min.Z || this.CurrentRoomBBox.Min.Z < bbox.Max.Z + 5)
-                return false;
-
-            return true;
         }
 
         /// <summary>
@@ -312,31 +299,5 @@ namespace KPLN_ModelChecker_User.Common
                 }
             }
         }
-
-        /// <summary>
-        /// Создание Outline для фиьлтров типа ElementQuickFilter
-        /// </summary>
-        /// <param name="Z_tolerance">Погрешность по оси Z </param>
-        /// <returns></returns>
-        private Outline CreateOutlineForFilter(double Z_tolerance)
-        {
-            double minX = CurrentRoomBBox.Min.X;
-            double minY = CurrentRoomBBox.Min.Y;
-
-            double maxX = CurrentRoomBBox.Max.X;
-            double maxY = CurrentRoomBBox.Max.Y;
-
-            double sminX = Math.Min(minX, maxX);
-            double sminY = Math.Min(minY, maxY);
-
-            double smaxX = Math.Max(minX, maxX);
-            double smaxY = Math.Max(minY, maxY);
-
-            XYZ pntMax = new XYZ(smaxX, smaxY, CurrentRoomBBox.Max.Z);
-            XYZ pntMin = new XYZ(sminX, sminY, CurrentRoomBBox.Min.Z + Z_tolerance);
-
-            return new Outline(pntMin, pntMax);
-        }
-
     }
 }

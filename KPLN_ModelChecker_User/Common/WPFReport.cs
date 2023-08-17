@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Forms;
+using KPLN_ModelChecker_User.Forms.Core;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -33,8 +33,10 @@ namespace KPLN_ModelChecker_User.Common
                     e.Title = string.Format("{0}# {1}", (counter++).ToString(), e.Title);
                 }
 
-                List<ElementEntity> wpfFiltration = new List<ElementEntity>();
-                wpfFiltration.Add(new ElementEntity(null, "<Все>", null, null, null));
+                List<ElementEntity> wpfFiltration = new List<ElementEntity>
+                {
+                    new ElementEntity(null, "<Все>", null, null, null)
+                };
 
                 if (sortedOutputCollection.Count != 0)
                 {
