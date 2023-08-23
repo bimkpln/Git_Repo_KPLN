@@ -59,6 +59,7 @@
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style x:Key="TXT_D" TargetType="TextBlock">
@@ -87,8 +88,9 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.20*"/>
+            <ColumnDefinition Width="0.15*"/>
             <ColumnDefinition Width="0.75*"/>
+            <ColumnDefinition Width="0.15*"/>
         </Grid.ColumnDefinitions>
 
         <TextBlock x:Name="LastRunDataHeader" Style="{StaticResource TXT_H}" Grid.Row="0" Grid.Column="0" Text="Последний запуск:" />
@@ -101,16 +103,15 @@
                 Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left"
                 Text="Информация по маркеру допуска устанавливается через конструктор" />
 
-        <StackPanel Orientation="Vertical" Grid.Row="2" Grid.ColumnSpan="2">
+        <StackPanel Orientation="Vertical" Grid.Row="2" Grid.ColumnSpan="3">
             <TextBlock Style="{StaticResource TXT_H}" Text="Фильтрация:" />
             <ComboBox x:Name="cbxFiltration"
                     SelectedIndex="0" Background="White" 
-                    SelectionChanged="OnSelectedCategoryChanged">
-            </ComboBox>
+                    SelectionChanged="OnSelectedCategoryChanged"/>
         </StackPanel>
 
-        <ScrollViewer Grid.Row="3"  Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" 
-                VerticalScrollBarVisibility="Visible">
+        <ScrollViewer Grid.Row="3" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" 
+                VerticalScrollBarVisibility="Visible" Margin="0,3,0,0">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="iControll">
                     <ItemsControl.ItemTemplate>
@@ -231,7 +232,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Grid Grid.Row="4" Grid.Column="0">
+        <Grid Grid.Row="4" Grid.Column="0" Margin="0,3,0,3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.5*"/>
                 <ColumnDefinition Width="0.5*"/>
@@ -248,12 +249,22 @@
                     Content="💾" ToolTip="Нажми, чтобы экспортировать отчет в Excel"
                     Click="ExportBtn_Clicked"/>
         </Grid>
-        <StackPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
+        <DockPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
             <CheckBox x:Name="chbxApproveShow"
                 Style="{StaticResource CHBX_D}" HorizontalAlignment="Left"
-                Content="Включить элементы со статусом 'Допустимое'"
                 Click="ChbxApproveShow_Clicked"/>
-        </StackPanel>
+            <TextBlock Text="Включить элементы со статусом 'Допустимое'" TextWrapping="Wrap"/>
+        </DockPanel>
+
+        <Grid Grid.Row="4" Grid.Column="3" Margin="0,0,10,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Style="{StaticResource TXT_D}" FontWeight="Bold" HorizontalAlignment="Left" Text="Итого:"/>
+            <TextBlock x:Name="txbCount" Grid.Column="1" Style="{StaticResource TXT_D}" HorizontalAlignment="Right" Text="х"/>
+            
+        </Grid>
 
     </Grid>
 </Window>

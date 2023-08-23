@@ -8,6 +8,7 @@ using KPLN_ModelChecker_User.ExternalCommands;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -55,6 +56,7 @@ namespace KPLN_ModelChecker_User.Forms
             this.Title = $"[KPLN]: {creator.CheckName}";
             LastRunData.Text = creator.LogLastRun;
             cbxFiltration.ItemsSource = creator.FiltrationCollection;
+            txbCount.Text = _entities.Count().ToString();
 
             #region Скрываю видимость блока ключевого лога (он нужен только при использовании спец. конструктора)
             MarkerRow.Height = new GridLength(0);
@@ -124,7 +126,11 @@ namespace KPLN_ModelChecker_User.Forms
         private void UpdateEntityList()
         {
             if (_entityViewSource != null)
+            {
                 _entityViewSource.View.Refresh();
+                txbCount.Text = _entityViewSource.View.Cast<WPFEntity>().Count().ToString();
+            }
+
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
