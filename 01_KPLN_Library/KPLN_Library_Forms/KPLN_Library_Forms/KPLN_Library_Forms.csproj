@@ -63,11 +63,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Library_DataBase">
-      <HintPath>..\..\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
+      <HintPath>..\..\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Revit2022\KPLN_Library_DataBase.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\..\KPLN_Loader\bin\Revit2018\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\..\KPLN_Loader\bin\Revit2022\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />

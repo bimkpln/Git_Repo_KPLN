@@ -61,8 +61,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="KPLN_Library_DataBase">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Revit2022\KPLN_Library_DataBase.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
