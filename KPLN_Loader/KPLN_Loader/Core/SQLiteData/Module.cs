@@ -9,37 +9,37 @@ namespace KPLN_Loader.Core.SQLiteData
         /// Id модуля
         /// </summary>
         [Key]
-        public int Id { get; set; }
+        internal int Id { get; set; }
 
         /// <summary>
         /// Id отдела
         /// </summary>
         [ForeignKey(nameof(SubDepartment))]
-        public int SubDepartmentId { get; set; }
+        internal int SubDepartmentId { get; set; }
 
         /// <summary>
         /// Путь к модулю
         /// </summary>
-        public string Path { get; set; }
+        internal string Path { get; set; }
 
         /// <summary>
         /// Имя модуля
         /// </summary>
-        public string Name { get; set; }
+        internal string Name { get; set; }
 
         /// <summary>
-        /// Модуль влк/выкл (True/False) для загрузки
+        /// Модуль влк/выкл (True/False) для загрузки. В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        public string IsEnabled { get; set; }
+        internal bool IsEnabled { get; set; }
 
         /// <summary>
-        /// Тестовый режим вкл/выкл (True/False)
+        /// Тестовый режим вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper. Для модулей библиотек - он всегда False
         /// </summary>
-        public string IsDebugMode { get; set; }
+        internal bool IsDebugMode { get; set; }
 
         /// <summary>
-        /// Скрытая загрузка библиотек вкл/выкл (True/False)
+        /// Скрытая загрузка библиотек вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        public string IsLibraryModule { get; set; }
+        internal bool IsLibraryModule { get; set; }
     }
 }

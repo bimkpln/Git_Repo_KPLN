@@ -5,7 +5,7 @@ using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -269,7 +269,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         Print($"Не найден уровень выше, для уровня {baseLevel.Name} " +
                             $"при обработке элемента: {elem.Name} c id: {elem.Id.IntegerValue}." +
                             "\nДля уровней необходимо заполнить параметр: На уровень выше, за исключением последнего этажа",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
 
                         continue;
                     }
@@ -281,7 +281,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
                 else
                 {
-                    Print($"Не найден уровень у элемента с Id: {elem.Id}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Не найден уровень у элемента с Id: {elem.Id}", MessageType.Error);
                 }
             }
         }

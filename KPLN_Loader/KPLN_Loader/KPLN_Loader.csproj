@@ -105,7 +105,7 @@
     <Compile Include="Core\SQLiteData\SubDepartment.cs" />
     <Compile Include="Core\SQLiteData\User.cs" />
     <Compile Include="Forms\Common\LoaderStatusEntity.cs" />
-    <Compile Include="Forms\Common\LoadModule.cs" />
+    <Compile Include="Forms\Common\LoaderEvantEntity.cs" />
     <Compile Include="Forms\LoginForm.xaml.cs">
       <DependentUpon>LoginForm.xaml</DependentUpon>
     </Compile>

@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Core;
 using KPLN_Loader.Core.SQLiteData;
+using KPLN_Loader.Forms;
 using Newtonsoft.Json;
 using NLog;
 using System;
@@ -36,10 +37,12 @@ namespace KPLN_Loader.Services
         ///</summary>
         private readonly string _revitVersion;
         private readonly Logger _logger;
+        private readonly LoaderStatusForm _loaderStatusForm;
 
-        public EnvironmentService(Logger logger, string revitVersion, string diteTime)
+        internal EnvironmentService(Logger logger, LoaderStatusForm loaderStatusForm, string revitVersion, string diteTime)
         {
             _logger = logger;
+            _loaderStatusForm = loaderStatusForm;
             _revitVersion = revitVersion;
             _applicationLocation = new DirectoryInfo(Path.Combine(_userLocation.FullName, "KPLN_Loader"));
             _sessionLocation = new DirectoryInfo(Path.Combine(_applicationLocation.FullName, $"{_revitVersion}_{diteTime}"));
@@ -49,12 +52,12 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Коллекция десерилизованныйх данных по БД
         /// </summary>
-        public List<DatabasePaths> DatabasesPaths { get; private set; }
+        internal List<DatabasePaths> DatabasesPaths { get; private set; }
 
         ///<summary>
         ///Путь, по которому будет создана папка со скопироваными модулями
         ///</summary>
-        public DirectoryInfo ModulesLocation 
+        internal DirectoryInfo ModulesLocation 
         {
             get { return _modulesLocation; }
         }
@@ -63,7 +66,7 @@ namespace KPLN_Loader.Services
         /// Подготовка и очистка старых директорий для копирования
         /// </summary>
         /// <returns></returns>
-        public void PreparingAndCliningDirectories()
+        internal void PreparingAndCliningDirectories()
         {
             DirectoryInfo appDirInfo = Directory.CreateDirectory(_applicationLocation.FullName);
             int delDirCount = 0;
@@ -77,7 +80,7 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Проверка наличия необходимых БД
         /// </summary>
-        public void SQLFilesExistChecker(string sqlConfigPath)
+        internal void SQLFilesExistChecker(string sqlConfigPath)
         {
             string userErrorMsg = string.Empty;
             if (File.Exists(sqlConfigPath))
@@ -115,6 +118,7 @@ namespace KPLN_Loader.Services
                 td.Show();
 
                 _logger.Error(userErrorMsg);
+                _loaderStatusForm.Close();
                 throw new Exception(userErrorMsg);
             }
         }
@@ -124,7 +128,7 @@ namespace KPLN_Loader.Services
         /// </summary>
         /// <param name="userModule">Модуль для копирования</param>
         /// <returns>DirectoryInfo скопированного модуля</returns>
-        public DirectoryInfo CopyModule(Module userModule)
+        internal DirectoryInfo CopyModule(Module userModule)
         {
             string targetDir = Path.Combine(_modulesLocation.FullName, userModule.Name);
             DirectoryInfo moduleRevitVersionDirInfo = new DirectoryInfo(Path.Combine(userModule.Path, _revitVersion));

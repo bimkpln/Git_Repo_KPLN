@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using KPLN_Parameters_Ribbon.Common.Tools;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using Autodesk.Revit.UI;
 using KPLN_Parameters_Ribbon.Forms;
 
@@ -125,7 +125,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
 
             duplicatesWriteElems = duplicatesWriteElems.Where(x => x.Value.Count > 1).ToDictionary(x => x.Key, x => x.Value);
             Print($"Количество элементов, которые подверглись перезаписи параметра на этапе №1 (поиск внутри пересечения осей): {duplicatesWriteElems.Keys.Count}." +
-                $"\nОни подвеграются вторичному анализу", KPLN_Loader.Preferences.MessageType.Regular);
+                $"\nОни подвеграются вторичному анализу", MessageType.Regular);
             // Осуществляю поиск ближайшего ОДНОГО солида для элементов с двойной записью парамтеров
             foreach (KeyValuePair<Element, List<string>> item in duplicatesWriteElems)
             {
@@ -148,7 +148,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 }
             }
 
-            Print($"Количество необработанных элементов после 1-ого этапа (поиск внутри пересечения осей): {notIntersectedElems.Count}", KPLN_Loader.Preferences.MessageType.Warning);
+            Print($"Количество необработанных элементов после 1-ого этапа (поиск внутри пересечения осей): {notIntersectedElems.Count}", MessageType.Warning);
             if (notIntersectedElems.Count == 0)
             {
                 return true;
@@ -157,7 +157,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
 
             #region Этап №2 - анализ остатка
             pb.Decrement(notIntersectedElems.Count);
-            Print($"\nОсуществляю поиск ближайшей секции\n", KPLN_Loader.Preferences.MessageType.Regular);
+            Print($"\nОсуществляю поиск ближайшей секции\n", MessageType.Regular);
             List<Element> notNearestSolidElems = notIntersectedElems;
             foreach (Element elem in notIntersectedElems)
             {
@@ -185,10 +185,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             }
             if(notNearestSolidElems.Count > 0)
             {
-                Print($"Количество необработанных элементов после 2-ого этапа (поиск ближайшей секции): {notNearestSolidElems.Count}", KPLN_Loader.Preferences.MessageType.Warning);
+                Print($"Количество необработанных элементов после 2-ого этапа (поиск ближайшей секции): {notNearestSolidElems.Count}", MessageType.Warning);
                 foreach(Element element in notNearestSolidElems)
                 {
-                    Print($"Проверь вручную элемент с id: {element.Id}", KPLN_Loader.Preferences.MessageType.Warning);
+                    Print($"Проверь вручную элемент с id: {element.Id}", MessageType.Warning);
                 }
 
             }

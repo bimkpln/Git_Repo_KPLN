@@ -7,7 +7,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
@@ -114,11 +114,10 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
                 }
 
-                int num;
-                if (!int.TryParse(parts[1], out num) && !int.TryParse(parts[2], out num))
+                if (!int.TryParse(parts[1], out _) && !int.TryParse(parts[2], out _))
                 {
-                    if (!source_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[1]), KPLN_Loader.Preferences.MessageType.Error); }
-                    if (!target_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[2]), KPLN_Loader.Preferences.MessageType.Error); }
+                    if (!source_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[1]), MessageType.Error); }
+                    if (!target_found) { Print(string.Format("[Параметр не найден:] <{0}>", parts[2]), MessageType.Error); }
                 }
             }
         }

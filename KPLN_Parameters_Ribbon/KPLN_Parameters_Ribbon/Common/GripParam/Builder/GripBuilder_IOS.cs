@@ -3,7 +3,7 @@ using KPLN_Parameters_Ribbon.Common.Tools;
 using KPLN_Parameters_Ribbon.Forms;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -176,7 +176,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 {
                     foreach (Element element in gripByGeometry.DuplicatesWriteParamElems.Keys)
                     {
-                        Print($"Проверь вручную элемент с id: {element.Id}", KPLN_Loader.Preferences.MessageType.Warning);
+                        Print($"Проверь вручную элемент с id: {element.Id}", MessageType.Warning);
                     }
                 }
 

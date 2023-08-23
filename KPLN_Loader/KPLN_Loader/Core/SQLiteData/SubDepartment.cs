@@ -21,8 +21,8 @@ namespace KPLN_Loader.Core.SQLiteData
         public string Name { get; set; }
 
         /// <summary>
-        /// Отображение влк/выкл (True/False) для окна авторизации
+        /// Отображение влк/выкл (True/False) для окна авторизации. В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        public string IsAuthEnabled { get; set; }
+        public bool IsAuthEnabled { get; set; }
     }
 }

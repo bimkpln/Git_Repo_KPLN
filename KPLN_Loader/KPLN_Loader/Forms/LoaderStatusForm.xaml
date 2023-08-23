@@ -46,6 +46,20 @@
         </Grid.ColumnDefinitions>
 
         <TextBlock 
+            x:Name="DebugModeTxt"
+            Grid.Row="0" 
+            Grid.Column="0"
+            Margin="5,0,0,0"
+            Text="DEBUG" 
+            Foreground="Red"
+            FontSize="10"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Left"
+            TextWrapping="Wrap"
+            DockPanel.Dock="Top"
+            Visibility="Hidden"/>
+        
+        <TextBlock 
             x:Name="versionTxt"
             Grid.Row="0" 
             Grid.Column="1"
@@ -109,7 +123,7 @@
                    TextWrapping="Wrap" 
                    DockPanel.Dock="Top"
                    MouseLeftButtonDown="Instruction_MouseLeftButtonDown"
-                   ToolTip="Нажми ЛМК, чтобы пройти по ссылке. Если есть на что ссылаться:)"/>
+                   ToolTip="Если текст подчеркнут - значет есть ссылка на web-ресурс. Нажми ЛМК, чтобы пройти по ссылке :)"/>
 
         <GridSplitter 
             Grid.Row="5" 

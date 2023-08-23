@@ -2,7 +2,7 @@
 using KPLN_Parameters_Ribbon.Common.Tools;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN

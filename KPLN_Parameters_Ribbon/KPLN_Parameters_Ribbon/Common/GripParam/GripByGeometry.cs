@@ -4,7 +4,7 @@ using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam
 {
@@ -377,16 +377,17 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
                 else
                 {
                     // Отлов гибких воздуховодов и труб, у которых нет возможности взять геометрию (такое бывает, когда эл-т простроен не корректно)
-                    LocationCurve locationCurve = elem.Location as LocationCurve;
-                    if (locationCurve != null)
+                    if (elem.Location is LocationCurve locationCurve)
                     {
                         Curve curve = locationCurve.Curve;
                         XYZ pnt1 = curve.GetEndPoint(0);
                         XYZ pnt2 = curve.GetEndPoint(1);
 
-                        bbox = new BoundingBoxXYZ();
-                        bbox.Max = pnt1.Z > pnt2.Z ? pnt1 : pnt2;
-                        bbox.Min = pnt1.Z < pnt2.Z ? pnt1 : pnt2;
+                        bbox = new BoundingBoxXYZ
+                        {
+                            Max = pnt1.Z > pnt2.Z ? pnt1 : pnt2,
+                            Min = pnt1.Z < pnt2.Z ? pnt1 : pnt2
+                        };
 
                         elemPointCenter = SolidBoundingBox(bbox, elem).ComputeCentroid();
                     }
@@ -418,16 +419,20 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
             Line edge1 = Line.CreateBound(pt1, pt2);
             Line edge2 = Line.CreateBound(pt2, pt3);
             Line edge3 = Line.CreateBound(pt3, pt0);
-            
+
             //create loop, still in BBox coords
-            List<Curve> edges = new List<Curve>();
-            edges.Add(edge0);
-            edges.Add(edge1);
-            edges.Add(edge2);
-            edges.Add(edge3);
+            List<Curve> edges = new List<Curve>
+            {
+                edge0,
+                edge1,
+                edge2,
+                edge3
+            };
             CurveLoop baseLoop = CurveLoop.Create(edges);
-            List<CurveLoop> loopList = new List<CurveLoop>();
-            loopList.Add(baseLoop);
+            List<CurveLoop> loopList = new List<CurveLoop>
+            {
+                baseLoop
+            };
             Solid preTransformBox = GeometryCreationUtilities.CreateExtrusionGeometry(loopList, XYZ.BasisZ, height);
 
             Solid transformBox = SolidUtils.CreateTransformed(preTransformBox, bbox.Transform);
@@ -529,25 +534,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
 
             }
             return curvesList;
-        }
-
-        /// <summary>
-        /// Минимально нижняя точка и максимально верхняя точка у коллекции элементов
-        /// </summary>
-        /// <param name="elems">Список элементов</param>
-        /// <returns></returns>
-        private static double[] GetMinMaxZCoordOfModel(List<Element> elems)
-        {
-            List<BoundingBoxXYZ> elemsBox = new List<BoundingBoxXYZ>();
-            foreach (Element item in elems)
-            {
-                BoundingBoxXYZ itemBox = item.get_BoundingBox(null);
-                if (itemBox == null) continue;
-                elemsBox.Add(itemBox);
-            }
-            double maxPointOfModel = elemsBox.Select(x => x.Max.Z).Max();
-            double minPointOfModel = elemsBox.Select(x => x.Min.Z).Min();
-            return new double[] { minPointOfModel, maxPointOfModel };
         }
 
         /// <summary>

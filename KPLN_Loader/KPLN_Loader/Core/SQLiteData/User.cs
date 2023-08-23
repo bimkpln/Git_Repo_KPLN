@@ -48,8 +48,8 @@ namespace KPLN_Loader.Core.SQLiteData
         public string RevitUserName { get; set; }
 
         /// <summary>
-        /// Режим отладки вкл/выкл (True/False)
+        /// Режим отладки вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        public string IsDebugMode { get; set; }
+        public bool IsDebugMode { get; set; }
     }
 }

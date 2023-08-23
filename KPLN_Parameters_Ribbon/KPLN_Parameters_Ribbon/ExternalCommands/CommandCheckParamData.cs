@@ -3,7 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Parameters_Ribbon.Common.CheckParam.Builder;
 using System;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
 {
@@ -13,7 +13,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, Autodesk.Revit.DB.ElementSet elements)
         {
-#if Revit2020 || Revit2018
+#if Revit2023 || Revit2022 || Revit2020 || Revit2018
             TaskDialog.Show("упс....", "Ата-та... Еще работаем над этим!");
             return Result.Succeeded;
 #endif
@@ -24,7 +24,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
 
-            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
             // Техническая подмена разделов для режима тестирования
             if (userDepartment == 6) { userDepartment = 4; }
 
@@ -65,7 +65,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             }
             catch (Exception e)
             {
-                Print($"Прервано с ошибкой: {e}", KPLN_Loader.Preferences.MessageType.Error);
+                Print($"Прервано с ошибкой: {e}", MessageType.Error);
 
                 return Result.Failed;
             }

@@ -3,7 +3,6 @@ using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.Common.Tools
 {
@@ -31,7 +30,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 _maxLevel = value;
             }
         }
-        
+
         private static IEnumerable<Level> _levels = null;
 
         /// <summary>
@@ -98,7 +97,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// <returns>Номер уровня</returns>
         public static string GetFloorNumberIncrementLevel(Level lev, int floorTextPosition, Document doc, char splitChar)
         {
-            SetMaxLevel(doc);
+            SetMaxLevel();
 
             ElementId aboveLevelId = lev.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL).AsElementId();
             Level aboveLevel = (Level)doc.GetElement(aboveLevelId);
@@ -146,7 +145,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         {
             List<char> resultFloorNumber = new List<char>();
             string floorNumber = GetFloorNumberByLevel(lev, floorTextPosition, splitChar);
-            foreach(char c in floorNumber)
+            foreach (char c in floorNumber)
             {
                 if (c == '0' || c == '-')
                 {
@@ -246,7 +245,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
                 .Where(i => i.IsShared == false)
                 .First();
             double projectPointElevation = projectBasePoint.get_BoundingBox(null).Min.Z;
-            
+
             Level nearestLevel = null;
 
             double offset = 10000;
@@ -298,12 +297,11 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// Поиск уровня, ближайшего к уровню и выше его
         /// </summary>
         /// <param name="point">Точка в пространстве</param>
-        /// <param name="doc">Документ для анализа</param>
         /// <returns>Id уровня</returns>
-        private static Level GetNearestUpperLevel(Level level, Document doc)
+        private static Level GetNearestUpperLevel(Level level)
         {
             double zValue = level.Elevation;
-            
+
             return Levels
                 .Where(x => x.Elevation > zValue || x.Elevation == zValue)
                 .OrderBy(x => x.Elevation)
@@ -359,7 +357,7 @@ namespace KPLN_Parameters_Ribbon.Common.Tools
         /// Поиск верхнего уровня
         /// </summary>
         /// <returns></returns>
-        private static Level SetMaxLevel (Document doc)
+        private static Level SetMaxLevel()
         {
             if (MaxLevel == null)
             {

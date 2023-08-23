@@ -1,26 +1,24 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_Parameters_Ribbon.Common;
 using KPLN_Parameters_Ribbon.Common.CopyElemParamData;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.Command
 {
     public class CommandWriteValues : IExecutableCommand
     {
         private List<ParameterRuleElement> Rules { get; set; }
-        
+
         public CommandWriteValues(ObservableCollection<ParameterRuleElement> rules)
         {
             Rules = rules.ToList();
         }
-        
+
         private Parameter GetParameterByElement(Element element, ListBoxElement rule)
         {
             foreach (Parameter p in element.Parameters)
@@ -42,10 +40,10 @@ namespace KPLN_Parameters_Ribbon.Command
                     }
                 }
             }
-            
+
             return null;
         }
-        
+
         public Result Execute(UIApplication app)
         {
             try

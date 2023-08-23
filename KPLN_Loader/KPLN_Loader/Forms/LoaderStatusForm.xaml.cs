@@ -17,7 +17,7 @@ namespace KPLN_Loader.Forms
         private readonly string _statusError = "❌";
         private readonly string _statusDone = "✔️";
         private readonly IEnumerable<LoaderStatusEntity> _loaderStatusEntitys;
-        private readonly List<LoadModule> _loadModules;
+        private readonly List<LoaderEvantEntity> _loadModules;
         private readonly System.Windows.Forms.Timer _closeTimer;
         private string _loaderDescriptionURL;
 
@@ -27,7 +27,7 @@ namespace KPLN_Loader.Forms
         internal LoaderStatusForm(Application application)
         {
             application.Progress += Application_Progress;
-            application.ModuleStatus += Application_ModuleStatus;
+            application.LoadStatus += Application_ModuleStatus;
 
             _closeTimer = new System.Windows.Forms.Timer();
             _closeTimer.Tick += CloseTimer_Tick;
@@ -38,7 +38,7 @@ namespace KPLN_Loader.Forms
                 new LoaderStatusEntity("Подключение к базам данных", _statusError, MainStatus.DbConnection),
                 new LoaderStatusEntity("Активация модулей", _statusError, MainStatus.ModulesActivation)
             };
-            _loadModules = new List<LoadModule>();
+            _loadModules = new List<LoaderEvantEntity>();
 
             InitializeComponent();
 
@@ -49,7 +49,40 @@ namespace KPLN_Loader.Forms
             Show();
         }
 
-        private void Application_ModuleStatus(LoadModule lModule, System.Windows.Media.Brush brush)
+        /// <summary>
+        /// Текстовое описание
+        /// </summary>
+        internal void SetInstruction(LoaderDescription loaderDescription)
+        {
+            tblInstruction.Text = loaderDescription.Description;
+            _loaderDescriptionURL = loaderDescription.InstructionURL;
+            if (_loaderDescriptionURL != null)
+            {
+                tblInstruction.TextDecorations = TextDecorations.Underline;
+            }
+        }
+
+        /// <summary>
+        /// Добавляет маркер при дебаге модулей
+        /// </summary>
+        /// <param name="user"></param>
+        internal void CheckAndSetDebugStatusByUser(User user)
+        {
+            if (user.IsDebugMode)
+                DebugModeTxt.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Устанавливает таймер на автозакрытие
+        /// </summary>
+        internal void Start_WindowClose()
+        {
+            // Запускаем таймер при загрузке формы, чтобы окно провисело гарантировано 15 сек.
+            _closeTimer.Interval = 15000;
+            _closeTimer.Start();
+        }
+
+        private void Application_ModuleStatus(LoaderEvantEntity lModule, System.Windows.Media.Brush brush)
         {
             lModule.LoadColor = brush;
             _loadModules.Add(lModule);
@@ -69,26 +102,6 @@ namespace KPLN_Loader.Forms
                 stEntity.CurrentToolTip = toolTip;
                 stEntity.CurrentStrStatusColor = brush;
             };
-        }
-
-        /// <summary>
-        /// Текстовое описание
-        /// </summary>
-        internal void SetInstruction(LoaderDescription loaderDescription)
-        {
-            tblInstruction.Text = loaderDescription.Description;
-            _loaderDescriptionURL = loaderDescription.InstructionURL;
-        }
-
-
-        /// <summary>
-        /// Устанавливает таймер на автозакрытие
-        /// </summary>
-        internal void Start_WindowClose()
-        {
-            // Запускаем таймер при загрузке формы, чтобы окно провисело гарантировано 15 сек.
-            _closeTimer.Interval = 15000;
-            _closeTimer.Start();
         }
 
         private void CloseTimer_Tick(object sender, EventArgs e)

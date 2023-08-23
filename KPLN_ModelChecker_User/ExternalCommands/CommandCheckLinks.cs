@@ -145,15 +145,30 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             link,
                             Status.Error,
                             "Ошибка размещения",
-                            "У связи не указана общая площадка",
+                            "У связи и проекта - разные системы координат",
                             false,
                             false,
                             "Запрещено размещать связи без общих площадок"));
                     }
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
                     {
-                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model.")) 
-                            continue;
+                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model."))
+                        {
+                            // Слабоватый метод, т.к. имена со временем могут поменяться, но на текущий момент - другого не вижу
+                            if (link.Name.ToLower().Contains("<not shared>") || link.Name.ToLower().Contains("не общедоступное"))
+                            {
+                                result.Add(new WPFEntity(
+                                    link,
+                                    Status.Error,
+                                    "Ошибка размещения",
+                                    "У связи не выбрана общая площадка",
+                                    false,
+                                    false,
+                                    "Запрещено размещать связи без общих площадок"));
+                            }
+                            else
+                                continue;
+                        }
                         else if (ioe.Message.Contains("Cannot acquire coordinates from a model placed multiple times."))
                         {
                             result.Add(new WPFEntity(

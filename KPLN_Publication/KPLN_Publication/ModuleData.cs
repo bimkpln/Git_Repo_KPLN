@@ -1,6 +1,5 @@
-﻿using KPLN_Loader.Common;
-using KPLN_Publication.Forms;
-using System.Collections.Generic;
+﻿using KPLN_Publication.Forms;
+using System.IO;
 using System.Reflection;
 using System.Windows;
 
@@ -32,7 +31,7 @@ namespace KPLN_Publication
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2023/06/01";
+        public static string Date = GetModuleCreationDate();
 
         /// <summary>
         /// Имя модуля
@@ -40,5 +39,17 @@ namespace KPLN_Publication
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
         //public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
         public static SetManager Form { get; set; }
+
+        private static string GetModuleCreationDate()
+        {
+            string filePath = Assembly.GetExecutingAssembly().Location;
+            if (File.Exists(filePath))
+            {
+                FileInfo fileInfo = new FileInfo(filePath);
+                return fileInfo.CreationTime.ToString("yyyy/MM/dd");
+            }
+
+            return "Дата не определена";
+        }
     }
 }

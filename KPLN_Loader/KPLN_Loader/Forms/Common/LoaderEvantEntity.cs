@@ -5,14 +5,14 @@ using System.Runtime.CompilerServices;
 namespace KPLN_Loader.Forms.Common
 {
     /// <summary>
-    /// Описание модуля для окна LoaderStatusForm
+    /// Описание события для окна LoaderStatusForm
     /// </summary>
-    internal class LoadModule : INotifyPropertyChanged
+    internal class LoaderEvantEntity : INotifyPropertyChanged
     {
         private System.Windows.Media.Brush _loadColor;
         private string _loadDescription;
 
-        public LoadModule(string descr)
+        public LoaderEvantEntity(string descr)
         {
             _loadDescription = descr;
         }

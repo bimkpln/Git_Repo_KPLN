@@ -1,13 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
 {
@@ -15,7 +12,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class CommandCopyProjectParams : IExternalCommand
     {
-        private readonly List<string> _parametersName = new List<string>() 
+        private readonly List<string> _parametersName = new List<string>()
         {
             "SHT_Вид строительства",
             "SHT_Абсолютная отметка",
@@ -26,7 +23,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             "Наименование проекта",
             "Номер проекта",
         };
-        
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
@@ -79,7 +76,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 {
                     t.Start("Копирование параметров");
 
-                    Print(string.Format("Копирование параметров из файла: \"{0}\" в файл: \"{1}\" ↑", baseDoc.Title, currentDoc.Title), KPLN_Loader.Preferences.MessageType.Header);
+                    Print(string.Format("Копирование параметров из файла: \"{0}\" в файл: \"{1}\" ↑", baseDoc.Title, currentDoc.Title), MessageType.Header);
 
                     foreach (KeyValuePair<string, Parameter> kvp in paramsDict)
                     {
@@ -92,7 +89,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                             falseCounter++;
                         }
                     }
-                    Print(string.Format("Скопировано параметров: {0}, не скопировано: {1}", counter, falseCounter), KPLN_Loader.Preferences.MessageType.Success);
+                    Print(string.Format("Скопировано параметров: {0}, не скопировано: {1}", counter, falseCounter), MessageType.Success);
                     t.Commit();
                 }
                 return Result.Succeeded;
@@ -117,18 +114,18 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 ParameterValue paramValue = param.GetValue();
                 if (paramValue == null)
                 {
-                    Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", KPLN_Loader.Preferences.MessageType.Code);
+                    Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", MessageType.Code);
                     return check;
                 }
                 ElementId targetGlobalParamId = GlobalParametersManager.FindByName(currentDoc, paramName);
                 GlobalParameter targetGlobalParam = currentDoc.GetElement(targetGlobalParamId) as GlobalParameter;
                 targetGlobalParam.SetValue(paramValue);
-                Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, Math.Round((paramValue as DoubleParameterValue).Value * 57.2957795D)), KPLN_Loader.Preferences.MessageType.Code);
+                Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, Math.Round((paramValue as DoubleParameterValue).Value * 57.2957795D)), MessageType.Code);
                 check = true;
             }
             catch (Exception)
             {
-                Print(string.Format("Не удалось присвоить значение параметру: \"{0}\". Возможно, в файле: \"{1}\" данный параметр отсутствует.", paramName, currentDoc.Title), KPLN_Loader.Preferences.MessageType.Error);
+                Print(string.Format("Не удалось присвоить значение параметру: \"{0}\". Возможно, в файле: \"{1}\" данный параметр отсутствует.", paramName, currentDoc.Title), MessageType.Error);
             }
             return check;
         }
@@ -140,12 +137,12 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             Parameter param = kvp.Value;
             if (param == null)
             {
-                Print("Не скопирован параметр: " + paramName + ", т.к. он отсутсвует. Обратись к норм. контроллеру.", KPLN_Loader.Preferences.MessageType.Warning);
+                Print("Не скопирован параметр: " + paramName + ", т.к. он отсутсвует. Обратись к норм. контроллеру.", MessageType.Warning);
                 return check;
             }
             if (!param.HasValue)
             {
-                Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", KPLN_Loader.Preferences.MessageType.Code);
+                Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", MessageType.Code);
                 return check;
             }
             Parameter currentParam = currentInfo.LookupParameter(paramName);
@@ -154,24 +151,24 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 if (param.StorageType == StorageType.String)
                 {
                     currentParam.Set(param.AsString());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsString()), KPLN_Loader.Preferences.MessageType.Code);
+                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsString()), MessageType.Code);
                     check = true;
                 }
                 else if (param.StorageType == StorageType.Double)
                 {
                     currentParam.Set(param.AsDouble());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsDouble()), KPLN_Loader.Preferences.MessageType.Code);
+                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsDouble()), MessageType.Code);
                     check = true;
                 }
                 else if (param.StorageType == StorageType.Integer)
                 {
                     currentParam.Set(param.AsInteger());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsInteger()), KPLN_Loader.Preferences.MessageType.Code);
+                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsInteger()), MessageType.Code);
                     check = true;
                 }
                 else
                 {
-                    Print("Не удалось определить тип параметра: " + paramName, KPLN_Loader.Preferences.MessageType.Error);
+                    Print("Не удалось определить тип параметра: " + paramName, MessageType.Error);
                 }
             }
             catch (Exception e)
