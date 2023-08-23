@@ -22,7 +22,7 @@ namespace KPLN_Loader
         /// </summary>
         public static Queue<IExecutableCommand> OnIdling_CommandQueue = new Queue<IExecutableCommand>();
         private readonly static string _diteTime = DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss");
-        private readonly static string _sqlConfigPath = @"X:\BIM\5_Scripts\Git_Repo_KPLN\SQLConfig.json";
+        private readonly static string _sqlConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\SQLConfig.json";
         private SQLiteService _dbService;
         private EnvironmentService _envService;
         private Logger _logger;

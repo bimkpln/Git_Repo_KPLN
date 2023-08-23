@@ -21,11 +21,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private readonly List<BuiltInCategory> _builtInCategories = new List<BuiltInCategory>()
         { 
-            // ОВВК
+            // ОВВК (ЭОМСС - огнезащита)
             BuiltInCategory.OST_DuctCurves,
+            BuiltInCategory.OST_DuctInsulations,
             BuiltInCategory.OST_DuctFitting,
             BuiltInCategory.OST_DuctAccessory,
             BuiltInCategory.OST_PipeCurves,
+            BuiltInCategory.OST_PipeInsulations,
             BuiltInCategory.OST_PipeFitting,
             BuiltInCategory.OST_PipeAccessory,
             BuiltInCategory.OST_MechanicalEquipment,
@@ -206,10 +208,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
                         {
                             #region Блок дополнительной фильтрации
-                            if (bic != BuiltInCategory.OST_DuctCurves & bic != BuiltInCategory.OST_PipeCurves & bic != BuiltInCategory.OST_CableTray)
+                            if (mepElementEntity.CurrentElement is FamilyInstance mepFI)
                             {
-                                FamilyInstance mepFI = mepElementEntity.CurrentElement as FamilyInstance;
-
                                 // Общий фильтр на вложенные семейства, и на семейства отверстий ЗИ ИОС
                                 if (mepFI.Symbol.FamilyName.StartsWith("501_") || mepFI.SuperComponent != null) continue;
 
@@ -289,11 +289,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
 
                 double intersectPersent = holeData.SumIntersectArea / holeData.MainHoleFace.Area;
-                if (intersectPersent < 0.301 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
+                if (intersectPersent < 0.201 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
                 {
                     WPFEntity errorNoPipeAreaElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Error),
+                        SetApproveStatusByUserComment(hole, Status.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
@@ -304,11 +304,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     result.Add(errorNoPipeAreaElem);
                     continue;
                 }
-                else if (intersectPersent < 0.401 && holeData.IntesectElementsColl.Count() == 1)
+                else if (intersectPersent < 0.301 && holeData.IntesectElementsColl.Count() == 1)
                 {
                     WPFEntity errorOneElemAreaElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Error),
+                        SetApproveStatusByUserComment(hole, Status.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено 1 элементом ИОС на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,

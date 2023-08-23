@@ -153,7 +153,7 @@ namespace KPLN_Loader.Services
         /// <param name="currentUser">Пользователь для проверки из БД</param>
         internal void SetRevitUserName(string userName, User currentUser)
         {
-            if (!currentUser.RevitUserName.Equals(userName))
+            if (currentUser.RevitUserName == null || !currentUser.RevitUserName.Equals(userName))
                 ExecuteNonQuery($"UPDATE Users SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
         }
 
