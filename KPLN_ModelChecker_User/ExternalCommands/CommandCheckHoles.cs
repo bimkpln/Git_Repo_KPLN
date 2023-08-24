@@ -289,7 +289,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
 
                 double intersectPersent = holeData.SumIntersectArea / holeData.MainHoleFace.Area;
-                if (intersectPersent < 0.150 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
+                if (intersectPersent < 0.200 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
                 {
                     WPFEntity errorNoPipeAreaElem = new WPFEntity(
                         hole,
@@ -319,7 +319,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     result.Add(errorOneElemAreaElem);
                     continue;
                 }
-                else if (intersectPersent < 0.200)
+                else if (intersectPersent < 0.150)
                 {
                     WPFEntity warnAreaElem = new WPFEntity(
                         hole,
