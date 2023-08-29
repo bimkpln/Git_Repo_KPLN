@@ -18,6 +18,8 @@ namespace KPLN_Clashes_Ribbon
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            ModuleData.RevitVersion = application.ControlledApplication.VersionNumber;
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Clashes");
 
@@ -40,28 +42,6 @@ namespace KPLN_Clashes_Ribbon
             );
 
             return Result.Succeeded;
-        }
-
-        /// <summary>
-        /// Метод для добавления кнопки в выпадающий список
-        /// </summary>
-        /// <param name="name">Внутреннее имя кнопки</param>
-        /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
-        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
-        /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="pullDownButton">Выпадающий список, в который добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки</param>
-        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp)
-        {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
-            PushButton button = pullDownButton.AddPushButton(data) as PushButton;
-            button.ToolTip = shortDescription;
-            button.LongDescription = longDescription;
-            button.ItemText = text;
-            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            BtnImagine(button, imageName);
         }
 
         /// <summary>

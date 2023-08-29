@@ -14,7 +14,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Tools.HTMLTools;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using Image = System.Windows.Controls.Image;
 using Path = System.IO.Path;
 
@@ -25,7 +25,7 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportManager : Window
     {
-        private DbProject _project;
+        private readonly DbProject _project;
 
         public ReportManager(DbProject project)
         {
@@ -35,7 +35,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             UpdateGroups();
 
-            if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
             {
                 btnAddGroup.Visibility = Visibility.Visible;
             }
@@ -78,7 +78,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             dialog.ShowDialog();
             if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 {
                     try
                     {
@@ -100,17 +100,19 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
-            if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
             {
                 try
                 {
                     ObservableCollection<ReportInstance> ReportInstances = new ObservableCollection<ReportInstance>();
-                    OpenFileDialog dialog = new OpenFileDialog();
-                    dialog.Filter = "html report (*.html)|*.html";
-                    dialog.Title = "Выберите отчет(ы) NavisWorks в формате .html";
-                    dialog.CheckFileExists = true;
-                    dialog.CheckPathExists = true;
-                    dialog.Multiselect = true;
+                    OpenFileDialog dialog = new OpenFileDialog
+                    {
+                        Filter = "html report (*.html)|*.html",
+                        Title = "Выберите отчет(ы) NavisWorks в формате .html",
+                        CheckFileExists = true,
+                        CheckPathExists = true,
+                        Multiselect = true
+                    };
                     DialogResult result = dialog.ShowDialog();
                     if (result == System.Windows.Forms.DialogResult.OK)
                     {
@@ -147,8 +149,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                                     ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
                                     if (class_name == "headerRow" && headers.Count == 0)
                                     {
-                                        bool todecode;
-                                        if (IsMainHeader(node, out out_headers, out todecode))
+                                        if (IsMainHeader(node, out out_headers, out bool todecode))
                                         {
                                             headers = out_headers;
                                             decode = todecode;
@@ -219,13 +220,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                                         FileInfo img = new FileInfo(image);
                                         if (!img.Exists)
                                         {
-                                            Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), KPLN_Loader.Preferences.MessageType.Error);
+                                            Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
                                             continue;
                                         }
                                     }
                                     catch (Exception)
                                     {
-                                        Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), KPLN_Loader.Preferences.MessageType.Error);
+                                        Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
                                         continue;
                                     }
                                     if (addInstance)
@@ -281,7 +282,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                                         "«Путь (Элемент 1)»",
                                         "«Идентификатор элемента (Элемент 2)»",
                                         "«Путь (Элемент 2)»" };
-                                    Print(string.Format("Не удалось создать отчет на основе файла: «{0}»;\nУбедитесь, что файл является отчетом NavisWorks и содержит следующую информацию: {1}", file.Name, string.Join(", ", parts)), KPLN_Loader.Preferences.MessageType.Error);
+                                    Print(string.Format("Не удалось создать отчет на основе файла: «{0}»;\nУбедитесь, что файл является отчетом NavisWorks и содержит следующую информацию: {1}", file.Name, string.Join(", ", parts)),
+                                        MessageType.Error);
                                 }
                             }
                         }
@@ -304,7 +306,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             dialog.ShowDialog();
             if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6) 
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 { 
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     try
@@ -323,7 +325,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
-            if (KPLN_Loader.Preferences.User.Department.Id != 4 && KPLN_Loader.Preferences.User.Department.Id != 6) { return; }
+            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId != 8) { return; }
             try
             {
                 DbProject currentDbProject;
@@ -471,7 +473,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
                 catch (Exception e)
                 {
-                    Print(sender.GetType().FullName, KPLN_Loader.Preferences.MessageType.Code);
+                    Print(sender.GetType().FullName, MessageType.Code);
                     PrintError(e);
                 }
             }
@@ -483,7 +485,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             dialog.ShowDialog();
             if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Preferences.User.Department.Id != 4 && KPLN_Loader.Preferences.User.Department.Id != 6) { return; }
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId != 8) { return; }
 
                 ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                 foreach (Report report in Report.GetReports(group.Id))
@@ -501,15 +503,14 @@ namespace KPLN_Clashes_Ribbon.Forms
             string _searchName = textBox.Text.ToLower();
 
             System.Windows.Controls.TextBox tbOriginal = (System.Windows.Controls.TextBox)e.OriginalSource;
-            ReportGroup reportGroup = tbOriginal.DataContext as ReportGroup;
 
-            if (reportGroup != null)
+            if (tbOriginal.DataContext is ReportGroup reportGroup)
             {
                 foreach (Report report in reportGroup.Reports)
                 {
                     if (!report.Name.ToLower().Contains(_searchName))
                         report.IsReportVisible = false;
-                    else 
+                    else
                         report.IsReportVisible = true;
 
                 }

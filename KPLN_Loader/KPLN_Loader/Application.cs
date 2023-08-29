@@ -21,13 +21,10 @@ namespace KPLN_Loader
         /// Queue для команд на выполнение по событию "OnIdling"
         /// </summary>
         public static Queue<IExecutableCommand> OnIdling_CommandQueue = new Queue<IExecutableCommand>();
-        private readonly static string _diteTime = DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss");
-        private readonly static string _sqlConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\SQLConfig.json";
-        private SQLiteService _dbService;
-        private EnvironmentService _envService;
-        private Logger _logger;
-        private const string _ribbonName = "KPLN";
-        private string _revitVersion;
+        /// <summary>
+        /// Основной путь к конфигу БД, которые используются всеми плагинами
+        /// </summary>
+        public readonly static string SQLMainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\SQLConfig.json";
 
         internal delegate void RiseStepProgress(MainStatus mainStatus, string toolTip, System.Windows.Media.Brush brush);
         /// <summary>
@@ -41,6 +38,13 @@ namespace KPLN_Loader
         /// </summary>
         internal event RiseLoadEvant LoadStatus;
 
+        private readonly static string _diteTime = DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss");
+        private SQLiteService _dbService;
+        private EnvironmentService _envService;
+        private Logger _logger;
+        private const string _ribbonName = "KPLN";
+        private string _revitVersion;
+        
         public Result OnShutdown(UIControlledApplication application)
         {
             application.ControlledApplication.DocumentOpened -= new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
@@ -74,15 +78,15 @@ namespace KPLN_Loader
             {
                 #region Подготовка и проверка окружения
                 _envService = new EnvironmentService(_logger, loaderStatusForm, _revitVersion, _diteTime);
-                _envService.SQLFilesExistChecker(_sqlConfigPath);
+                _envService.SQLFilesExistChecker(SQLMainConfigPath);
                 _envService.PreparingAndCliningDirectories();
 
                 Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
                 #endregion
 
                 #region Подготовка/создание пользователя
-                string dbPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("Main")).Path;
-                _dbService = new SQLiteService(_logger, dbPath);
+                string mainDBPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("KPLN_Loader_MainDB")).Path;
+                _dbService = new SQLiteService(_logger, mainDBPath);
                 CurrentRevitUser = _dbService.Authorization();
                 loaderStatusForm.CheckAndSetDebugStatusByUser(CurrentRevitUser);
                 SubDepartment userSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
@@ -120,6 +124,7 @@ namespace KPLN_Loader
                     try
                     {
                         DirectoryInfo targetDirInfo = _envService.CopyModule(module);
+                        String[] spearator = { ".dll" };
                         if (targetDirInfo != null)
                         {
                             // Копирование и активация библиотек (без имплементации IExternalModule)
@@ -127,8 +132,7 @@ namespace KPLN_Loader
                             {
                                 foreach (FileInfo file in targetDirInfo.GetFiles())
                                 {
-                                    String[] spearator = { ".dll" };
-                                    if (file.Name.Split(spearator, StringSplitOptions.None).Count() > 1)
+                                    if (CheckModuleName(file.Name, spearator))
                                     {
                                         // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
                                         // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
@@ -147,8 +151,7 @@ namespace KPLN_Loader
                             {
                                 foreach (FileInfo file in targetDirInfo.GetFiles())
                                 {
-                                    String[] spearator = { ".dll" };
-                                    if (file.Name.Split(spearator, StringSplitOptions.None).Count() > 1)
+                                    if (CheckModuleName(file.Name, spearator))
                                     {
                                         System.Reflection.Assembly moduleAssembly = System.Reflection.Assembly.LoadFrom(file.FullName);
                                         Type implemnentationType = moduleAssembly.GetType(file.Name.Split(spearator, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() + ".Module", false);
@@ -225,6 +228,14 @@ namespace KPLN_Loader
 
             return Result.Succeeded;
         }
+
+        /// <summary>
+        /// Проверка имени dll-модуля на возможность корректной подгрузки
+        /// </summary>
+        /// <param name="fileName">Имя файла dll-модуля</param>
+        /// <param name="spearator">Разделитель имени dll-модуля</param>
+        /// <returns></returns>
+        private bool CheckModuleName(string fileName, String[] spearator) => fileName.Split(spearator, StringSplitOptions.None).Count() > 1 && !fileName.Contains(".config");
 
         /// <summary>
         /// Очистка от старых логов

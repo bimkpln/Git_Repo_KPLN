@@ -6,7 +6,7 @@ using System.Data.SQLite;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
@@ -195,7 +195,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         {
             get
             {
-                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 {
                     return System.Windows.Visibility.Visible;
                 }
@@ -241,7 +241,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
             set
             {
-                DBUserCreated = ModuleData.GetUserBySystemName(value);
+                DBUserCreated = $"{KPLN_Loader.Application.CurrentRevitUser.Name} {KPLN_Loader.Application.CurrentRevitUser.Surname}";
                 _userCreated = value;
                 NotifyPropertyChanged();
             }
@@ -268,7 +268,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
             set
             {
-                DBUserLast = ModuleData.GetUserBySystemName(value);
+                DBUserLast = $"{KPLN_Loader.Application.CurrentRevitUser.Name} {KPLN_Loader.Application.CurrentRevitUser.Surname}";
                 _userLast = value;
                 NotifyPropertyChanged();
             }

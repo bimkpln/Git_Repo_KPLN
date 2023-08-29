@@ -4,26 +4,21 @@ using KPLN_Library_DataBase.Collections;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
-using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Tools
 {
     internal static class DbController
     {
-        private static string _dbConnection = @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;";
+        private static readonly string _dbConnection = @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;";
 
         public static void UpdateReportLastChange(int report, Collections.Status mainStatus)
         {
-            string name = KPLN_Loader.Preferences.User.SystemName;
-            
+            string name = KPLN_Loader.Application.CurrentRevitUser.SystemName;
+
             if (mainStatus == Collections.Status.Delegated)
             {
                 SetReportValue(report, "Status", 2);
@@ -40,10 +35,10 @@ namespace KPLN_Clashes_Ribbon.Tools
             SetReportValue(report, "DateLast", DateTime.Now.ToString());
             SetReportValue(report, "UserLast", name);
         }
-        
+
         public static void UpdateGroupLastChange(int group)
         {
-            string name = KPLN_Loader.Preferences.User.SystemName;
+            string name = KPLN_Loader.Application.CurrentRevitUser.SystemName;
             if (GetGroupValueInteger(group, "Status") == -1)
             {
                 SetGroupValue(group, "Status", 0);
@@ -51,7 +46,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             SetGroupValue(group, "DateLast", DateTime.Now.ToString());
             SetGroupValue(group, "UserLast", name);
         }
-        
+
         public static void SetInstanceValue(string path, int id, string parameter, string value)
         {
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path));
@@ -67,7 +62,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void SetInstanceValue(string path, int id, string parameter, int value)
         {
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path));
@@ -78,8 +73,8 @@ namespace KPLN_Clashes_Ribbon.Tools
                 // Добавление столбца для делегирования для старых отчетов, если его ранее не было
                 if (parameter == "DEPARTMENT")
                 {
-                    try 
-                    { 
+                    try
+                    {
                         SQLiteCommand cmd_check = new SQLiteCommand("ALTER TABLE Reports ADD COLUMN DEPARTMENT INTEGER", db);
                         cmd_check.ExecuteNonQuery();
                     }
@@ -92,7 +87,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             catch (Exception ex)
             {
-                Print(ex.Message, KPLN_Loader.Preferences.MessageType.Error);
+                Print(ex.Message, MessageType.Error);
             }
             finally
             {
@@ -125,7 +120,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             return value;
         }
-        
+
         public static int GetReportValueInteger(int id, string parameter)
         {
             int value = -1;
@@ -151,7 +146,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             return value;
         }
-        
+
         public static void SetGroupValue(int id, string parameter, string value)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -167,7 +162,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void SetGroupValue(int id, string parameter, int value)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -183,7 +178,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void SetReportValue(int id, string parameter, int value)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -198,7 +193,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void SetReportValue(int id, string parameter, string value)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -214,7 +209,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void RemoveGroup(ReportGroup group)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -231,7 +226,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static void RemoveReport(Report report)
         {
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
@@ -253,7 +248,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                                 }
                                 catch (Exception) { }
                             }
-                            
+
                         }
                     }
                 }
@@ -267,7 +262,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         public static ObservableCollection<ReportComment> GetComments(FileInfo path, ReportInstance instance)
         {
             string value = string.Empty;
@@ -290,7 +285,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             db.Close();
             return ReportComment.ParseComments(value, instance);
         }
-        
+
         public static void AddComment(string message, FileInfo path, ReportInstance instance, int type)
         {
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path.FullName));
@@ -310,7 +305,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             catch (Exception) { }
             db.Close();
         }
-        
+
         public static void RemoveComment(ReportComment comment_to_remove, FileInfo path, ReportInstance instance)
         {
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path.FullName));
@@ -320,7 +315,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             {
                 foreach (ReportComment comment in instance.Comments)
                 {
-                    if (comment.Message != comment_to_remove.Message || comment.Time != comment_to_remove.Time || comment.User != comment_to_remove.User)
+                    if (comment.Message != comment_to_remove.Message || comment.Time != comment_to_remove.Time || comment.UserFullName != comment_to_remove.UserFullName)
                     {
                         value_parts.Add(comment.ToString());
                     }
@@ -332,10 +327,10 @@ namespace KPLN_Clashes_Ribbon.Tools
             catch (Exception) { }
             db.Close();
         }
-        
+
         public static void AddGroup(string name, DbProject project)
         {
-            string user = KPLN_Loader.Preferences.User.SystemName;
+            string user = KPLN_Loader.Application.CurrentRevitUser.SystemName;
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
             try
             {
@@ -356,9 +351,9 @@ namespace KPLN_Clashes_Ribbon.Tools
                         "@DateCreated, " +
                         "@UserCreated, " +
                         "@DateLast, " +
-                        "@UserLast)", 
+                        "@UserLast)",
                     db);
-                
+
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "ProjectId", Value = project.Id });
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "Name", Value = name });
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "Status", Value = -1 });
@@ -374,7 +369,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 db.Close();
             }
         }
-        
+
         /// <summary>
         /// Генерация пути для хранения файла БД
         /// </summary>
@@ -416,9 +411,9 @@ namespace KPLN_Clashes_Ribbon.Tools
                                 "STATUS INTEGER, " +
                                 "COMMENTS TEXT, " +
                                 "GROUPID INTEGER, " +
-                                "DEPARTMENT INTEGER)", 
+                                "DEPARTMENT INTEGER)",
                             db);
-                        
+
                         cmd_create.ExecuteNonQuery();
                         db.Close();
                     }
@@ -427,14 +422,16 @@ namespace KPLN_Clashes_Ribbon.Tools
                         PrintError(e);
                         db.Close();
                     }
-                });
-                thread.IsBackground = true;
-                thread.Name = "sql_insert_data";
+                })
+                {
+                    IsBackground = true,
+                    Name = "sql_insert_data"
+                };
                 thread.Start();
             }
             catch (Exception) { }
         }
-        
+
         /// <summary>
         /// Заполнить отчет данными
         /// </summary>
@@ -470,9 +467,9 @@ namespace KPLN_Clashes_Ribbon.Tools
                             "@POINT, " +
                             "@STATUS, " +
                             "@COMMENTS, " +
-                            "@GROUPID)", 
+                            "@GROUPID)",
                         db);
-                    
+
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "ID", Value = report.Id });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "NAME", Value = report.Name });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "IMAGE", Value = report.ImageData, DbType = System.Data.DbType.Binary });
@@ -499,14 +496,14 @@ namespace KPLN_Clashes_Ribbon.Tools
         /// <param name="reports">Коллекция экземпляров класса-отчета</param>
         public static void AddReport(string name, ReportGroup group, ObservableCollection<ReportInstance> reports)
         {
-            string user = KPLN_Loader.Preferences.User.SystemName;
+            string user = KPLN_Loader.Application.CurrentRevitUser.SystemName;
             SQLiteConnection db = new SQLiteConnection(_dbConnection);
             try
             {
                 FileInfo path = GenerateNewPath();
-                
+
                 CreateDbFile(path);
-                
+
                 db.Open();
                 SQLiteCommand cmd_insert = new SQLiteCommand(
                     "INSERT INTO Reports (" +
@@ -526,9 +523,9 @@ namespace KPLN_Clashes_Ribbon.Tools
                         "@DateCreated, " +
                         "@UserCreated, " +
                         "@DateLast, " +
-                        "@UserLast)", 
+                        "@UserLast)",
                     db);
-                
+
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "GroupId", Value = group.Id });
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "Name", Value = name });
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "Status", Value = -1 });
@@ -539,7 +536,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "UserLast", Value = user });
                 cmd_insert.ExecuteNonQuery();
                 db.Close();
-                
+
                 FillReports(path, reports);
             }
             catch (Exception e)

@@ -1,16 +1,12 @@
 ﻿using KPLN_Clashes_Ribbon.Tools;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data.SQLite;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
@@ -20,7 +16,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
     public sealed class Report : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        
+
         private int _progress = 0;
 
         private int _delegationProgress = 0;
@@ -34,11 +30,11 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         private int _id;
 
         private int _groupId;
-        
+
         private string _name;
-        
+
         private int _status;
-        
+
         private string _path;
 
         private string _dateCreated;
@@ -66,7 +62,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             UserLast = userLast;
             IsReportVisible = true;
         }
-        
+
         public int Progress
         {
             get
@@ -86,10 +82,10 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             {
                 return _delegationProgress;
             }
-            set 
+            set
             {
-                _delegationProgress = value; 
-                NotifyPropertyChanged(); 
+                _delegationProgress = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -103,7 +99,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 return new SolidColorBrush(Color.FromArgb(255, 155, 155, 155));
             }
         }
-        
+
         public System.Windows.Visibility IsGroupEnabled
         {
             get
@@ -151,7 +147,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         {
             get
             {
-                if (KPLN_Loader.Preferences.User.Department.Id == 4 || KPLN_Loader.Preferences.User.Department.Id == 6)
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 {
                     return IsGroupEnabled;
                 }
@@ -336,7 +332,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         public static ObservableCollection<Report> GetReports(int reportGroupId)
         {
             ObservableCollection<Report> reports = new ObservableCollection<Report>();
-            
+
             SQLiteConnection db = new SQLiteConnection(
                 string.Format(
                     @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NwcReports.db;Version=3;")
@@ -388,7 +384,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             foreach (ReportInstance ri in ReportInstance.GetReportInstances(Path))
             {
                 max++;
-                
+
                 if (ri.Status != Collections.Status.Opened && ri.Status != Collections.Status.Delegated)
                     done++;
                 else if (ri.Status == Collections.Status.Delegated)
@@ -414,8 +410,8 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         public void GetProgress()
         {
             Task t2 = Task.Run(() =>
-            { 
-                UpdateProgress(); 
+            {
+                UpdateProgress();
             });
         }
 

@@ -14,26 +14,28 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public ReportComment(string message, int type)
         {
-            UserName = KPLN_Loader.Preferences.User.SystemName;
+            UserSystemName = KPLN_Loader.Application.CurrentRevitUser.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
             Type = type;
-            if (Type == 0 && UserName == KPLN_Loader.Preferences.User.SystemName)
-            { VisibleIfUserComment = System.Windows.Visibility.Visible; }
+            
+            if (Type == 0)
+                VisibleIfUserComment = System.Windows.Visibility.Visible;
             else
-            { VisibleIfUserComment = System.Windows.Visibility.Collapsed; }
+                VisibleIfUserComment = System.Windows.Visibility.Collapsed;
         }
 
         public ReportComment(string user, string date, string message, int type)
         {
-            UserName = user;
+            UserSystemName = user;
             Time = date;
             Message = message;
             Type = type;
-            if (Type == 0 && UserName == KPLN_Loader.Preferences.User.SystemName)
-            { VisibleIfUserComment = System.Windows.Visibility.Visible; }
+            
+            if (Type == 0 )
+                VisibleIfUserComment = System.Windows.Visibility.Visible; 
             else
-            { VisibleIfUserComment = System.Windows.Visibility.Collapsed; }
+                VisibleIfUserComment = System.Windows.Visibility.Collapsed;
         }
 
         public static ObservableCollection<ReportComment> ParseComments(string value, ReportInstance instance)
@@ -51,26 +53,19 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         public ReportInstance Parent { get; set; }
 
         /// <summary>
-        /// Имя фамилия из общей БД KPLN в формате "Фамилия Имя"
+        /// Фамилия имя из общей БД KPLN в формате "Фамилия Имя"
         /// </summary>
-        public string User
+        public string UserFullName
         {
-            get
-            {
-                foreach (SQLUserInfo user in KPLN_Loader.Preferences.Users)
-                {
-                    if (user.SystemName == UserName)
-                    {
-                        return string.Format("{0} {1}", user.Family, user.Name);
-                    }
-                }
-                return UserName;
-            }
+            get => $"{KPLN_Loader.Application.CurrentRevitUser.Surname} {KPLN_Loader.Application.CurrentRevitUser.Name}";
         }
         
         public System.Windows.Visibility VisibleIfUserComment { get; set; }
-        
-        public string UserName { get; set; }
+
+        /// <summary>
+        /// Имя учетной записи Windows ( из общей БД KPLN)
+        /// </summary>
+        public string UserSystemName { get; private set; }
         
         public string Time { get; set; }
         
@@ -85,7 +80,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public override string ToString()
         {
-            return string.Join(Collections.separator_sub_element, new string[] { UserName, Time, Message, Type.ToString() });
+            return string.Join(Collections.separator_sub_element, new string[] { UserSystemName, Time, Message, Type.ToString() });
         }
     }
 }

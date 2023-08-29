@@ -24,7 +24,7 @@ namespace KPLN_Clashes_Ribbon.Tools
 			}
 		}
 		
-		public static Image byteArrayToImage(byte[] byteArrayIn)
+		public static Image ByteArrayToImage(byte[] byteArrayIn)
 		{
 			Image result = null;
 			try

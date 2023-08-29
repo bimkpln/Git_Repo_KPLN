@@ -7,7 +7,7 @@ using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using System;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {

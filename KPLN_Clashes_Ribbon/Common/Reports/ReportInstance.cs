@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Common.Reports
 {
@@ -36,7 +36,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private string _path;
+        private readonly string _path;
 
         private int _id;
 
@@ -574,18 +574,6 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             }
             db.Close();
             return null;
-        }
-        private Stream StreamFromBitmapSource(BitmapSource writeBmp)
-        {
-            Stream bmp;
-            using (bmp = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(writeBmp));
-                enc.Save(bmp);
-            }
-
-            return bmp;
         }
     }
 }

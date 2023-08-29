@@ -11,7 +11,7 @@ namespace KPLN_Clashes_Ribbon.Source
 {
     public class Source
     {
-        private static string AssemblyPath = new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName;
+        private static readonly string AssemblyPath = new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName;
         
         public Source(Icon icon)
         {

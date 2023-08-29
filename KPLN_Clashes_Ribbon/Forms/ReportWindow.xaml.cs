@@ -16,7 +16,7 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -28,11 +28,11 @@ namespace KPLN_Clashes_Ribbon.Forms
         
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
-        private Report _currentReport;
+        private readonly Report _currentReport;
 
         private ObservableCollection<ReportInstance> _reportInstancesColl;
 
-        private ReportManager _reportManager;
+        private readonly ReportManager _reportManager;
 
         public ReportWindow(Report report, bool isEnabled, ReportManager reportManager)
         {
@@ -102,7 +102,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 try
                 {
-                    KPLN_Loader.Preferences.CommandQueue.Enqueue(cmd);
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(cmd);
                 }
                 catch (Exception)
                 { }
@@ -120,7 +120,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void SelectIdElement_1(object sender, RoutedEventArgs e)
         {
             ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            SelectId(sender, e, report.Element_1_Info);
+            SelectId(sender, report.Element_1_Info);
         }
 
         /// <summary>
@@ -129,14 +129,14 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void SelectIdElement_2(object sender, RoutedEventArgs e)
         {
             ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            SelectId(sender, e, report.Element_2_Info);
+            SelectId(sender, report.Element_2_Info);
         }
 
-        private void SelectId(object sender, RoutedEventArgs e, string elInfo)
+        private void SelectId(object sender, string elInfo)
         {
             if (int.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
             {
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
             }
             else
                 throw new Exception("Проблемы с отчетом: параметр id не парсится");
@@ -169,7 +169,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 )
             {
                 XYZ point = new XYZ(pointX, pointY, pointZ);
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
             }
             else
                 throw new Exception("Проблемы с CultureInfo");
@@ -432,16 +432,17 @@ namespace KPLN_Clashes_Ribbon.Forms
                     rows.Add(GetExportRow(subInstance, instance));
                 }
             }
-            string data = string.Join(Environment.NewLine, rows);
-            SaveFileDialog dialog = new SaveFileDialog();
-            dialog.Title = "Сохранить отчет";
-            dialog.Filter = "txt file (*.txt)|*.txt";
-            dialog.RestoreDirectory = true;
-            dialog.FileName = string.Format("{0}_{1}-{2}-{3}.txt", _currentReport.Name.Replace('.', '_'), DateTime.Now.Year.ToString(),
-                DateTime.Now.Month.ToString(), DateTime.Now.Day.ToString());
-            dialog.CreatePrompt = false;
-            dialog.OverwritePrompt = true;
-            dialog.SupportMultiDottedExtensions = false;
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                Title = "Сохранить отчет",
+                Filter = "txt file (*.txt)|*.txt",
+                RestoreDirectory = true,
+                FileName = string.Format("{0}_{1}-{2}-{3}.txt", _currentReport.Name.Replace('.', '_'), DateTime.Now.Year.ToString(),
+                DateTime.Now.Month.ToString(), DateTime.Now.Day.ToString()),
+                CreatePrompt = false,
+                OverwritePrompt = true,
+                SupportMultiDottedExtensions = false
+            };
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 StreamWriter writer = new StreamWriter(dialog.OpenFile());
@@ -491,17 +492,19 @@ namespace KPLN_Clashes_Ribbon.Forms
         private static string GetExportRow(ReportInstance instance, ReportInstance parent = null)
         {
 
-            List<string> parts = new List<string>();
-            parts.Add(Optimize(instance.Id.ToString()));
-            parts.Add(Optimize(instance.GroupId.ToString()));
-            parts.Add(Optimize(instance.Name));
+            List<string> parts = new List<string>
+            {
+                Optimize(instance.Id.ToString()),
+                Optimize(instance.GroupId.ToString()),
+                Optimize(instance.Name)
+            };
             if (parent != null)
             {
                 parts.Add(Optimize(parent.Status.ToString("G")));
                 if (parent.Comments.Count != 0)
                 {
                     ReportComment comment = parent.Comments.Last();
-                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.User), Optimize(comment.Message)));
+                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else
                 {
@@ -514,7 +517,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 if (instance.Comments.Count != 0)
                 {
                     ReportComment comment = instance.Comments.Last();
-                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.User), Optimize(comment.Message)));
+                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else
                 {

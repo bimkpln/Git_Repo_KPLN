@@ -11,8 +11,7 @@ namespace KPLN_Tools
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        // ЗАБЛОКИРОВАНО ИЗ-ЗА ПЕРЕХОДА НА KPLN_LOADER V.2
-        //private int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+        private readonly int _userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
 
         public Result Close()
         {
@@ -21,9 +20,6 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            // Техническая подмена разделов для режима тестирования
-            //if (_userDepartment == 6) { _userDepartment = 4; }
-
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
 
@@ -44,6 +40,24 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
+
+            PushButtonData searchUser = CreateBtnData(
+                "Найти пользователя",
+                "Найти пользователя",
+                "Выдает данные KPLN-пользователя Revit",
+                string.Format(
+                    "Для поиска введи имя Revit-пользователя.\n" +
+                    "Доступно для пользователей KPLN_v.2.\n" +
+                    "\n"+
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandSearchRevitUser).FullName,
+                "KPLN_Tools.Imagens.searchUserBig.png",
+                "KPLN_Tools.Imagens.searchUserSmall.png",
+                "http://moodle");
 
             PushButtonData tagWiper = CreateBtnData(
                 "Очистить марки помещений",
@@ -97,9 +111,9 @@ namespace KPLN_Tools
                 panel,
                 false);
 
-            sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(autonumber);
-
+            sharedPullDownBtn.AddPushButton(searchUser);
+            sharedPullDownBtn.AddPushButton(tagWiper);
             #endregion
 
             #region Отверстия
@@ -135,11 +149,10 @@ namespace KPLN_Tools
             #endregion
 
             #region  Наполняю плагинами в зависимости от отдела
-            //if (_userDepartment == 3 || _userDepartment == 4)
-            //{
-            //    holesPullDownBtn.AddPushButton(holesManagerIOS);
-            //}
-            holesPullDownBtn.AddPushButton(holesManagerIOS);
+            if (_userDepartment != 2 && _userDepartment != 3)
+            {
+                holesPullDownBtn.AddPushButton(holesManagerIOS);
+            }
             #endregion
 
             return Result.Succeeded;
