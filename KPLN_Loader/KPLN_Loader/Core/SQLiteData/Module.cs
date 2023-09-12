@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Loader.Core.SQLiteData
 {
-    internal class Module
+    internal sealed class Module
     {
         /// <summary>
         /// Id модуля

@@ -2,7 +2,7 @@
 
 namespace KPLN_Loader.Core.SQLiteData
 {
-    public class SubDepartment
+    public sealed class SubDepartment
     {
         /// <summary>
         /// Id отдела

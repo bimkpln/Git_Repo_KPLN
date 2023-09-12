@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Loader.Core.SQLiteData
 {
-    public class User
+    public sealed class User
     {
         /// <summary>
         /// Id пользователя

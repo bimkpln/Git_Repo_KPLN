@@ -14,7 +14,7 @@ namespace KPLN_Loader.Forms.Common
     /// <summary>
     /// Описание статусов для основных маркеров событий для окна LoaderStatusForm
     /// </summary>
-    internal class LoaderStatusEntity: INotifyPropertyChanged
+    internal sealed class LoaderStatusEntity: INotifyPropertyChanged
     {
         private string _strStatus;
         private string _currentToolTip  = "Не реализовано!";

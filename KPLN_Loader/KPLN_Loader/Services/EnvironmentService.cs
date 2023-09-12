@@ -14,7 +14,7 @@ namespace KPLN_Loader.Services
     /// <summary>
     /// Сервис для подготовки окружения для копируемых плагинов (директории, папки и т.п.)
     /// </summary>
-    internal class EnvironmentService
+    internal sealed class EnvironmentService
     {
         ///<summary>
         ///Путь до локальной папки пользователя

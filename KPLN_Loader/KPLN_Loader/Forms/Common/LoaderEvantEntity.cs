@@ -7,7 +7,7 @@ namespace KPLN_Loader.Forms.Common
     /// <summary>
     /// Описание события для окна LoaderStatusForm
     /// </summary>
-    internal class LoaderEvantEntity : INotifyPropertyChanged
+    internal sealed class LoaderEvantEntity : INotifyPropertyChanged
     {
         private System.Windows.Media.Brush _loadColor;
         private string _loadDescription;

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         mc:Ignorable="d" 
         Width="350" Height="150" MaxHeight="250" MaxWidth="350"
-        Title="KPLN: Поиск пользоватлеля" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        Title="KPLN: Поиск пользователя" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
             ResizeMode="CanResizeWithGrip" WindowStyle="ToolWindow"  Topmost="False" WindowStartupLocation="CenterScreen" 
             SizeToContent="Height" Loaded="OnLoaded">
     <Window.Resources>
@@ -68,10 +68,11 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
+            <ColumnDefinition Width="64*"/>
+            <ColumnDefinition Width="111*"/>
         </Grid.ColumnDefinitions>
 
-        <DockPanel Background="Orange" LastChildFill="True">
+        <DockPanel Background="Orange" LastChildFill="True" Grid.ColumnSpan="2">
             <TextBlock Text="Введи имя Revit-пользователя:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
             <TextBox 
                 x:Name="UserInput" 
@@ -83,13 +84,15 @@
                 TextChanged="UserInput_TextChanged"/>
         </DockPanel>
 
-        <GridSplitter Grid.Row="1" Height="3" Grid.ColumnSpan ="2" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"/>
+        <GridSplitter Grid.Row="1" Height="3" Grid.ColumnSpan ="2" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,3,0,0" Grid.RowSpan="2">
             <ScrollViewer x:Name="ScrollViewer" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
                 <ListBox x:Name="Users"
-                     HorizontalAlignment="Stretch" 
-                     VerticalAlignment="Stretch">
+                         HorizontalAlignment="Stretch" 
+                         VerticalAlignment="Stretch" 
+                         MouseLeftButtonUp="Users_MouseLeftButtonUp"
+                         ToolTip="Нажми ЛМК, чтобы открыть карточку пользователя в Bitrix24">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid>
@@ -110,25 +113,25 @@
                                 <TextBlock Grid.Row="0" Grid.Column="0" 
                                            Text="Учетка Windows:" Style="{StaticResource M_TXT}" 
                                            HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" 
                                            Text="{Binding Path=SystemName, Converter={StaticResource EmptyStringToDashConverter}}" Style="{StaticResource TXT}" 
                                            HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="1" Grid.Column="0" 
                                            Text="ФИО: " Style="{StaticResource M_TXT}" HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="1" Grid.Column="1" 
                                            Text="{Binding Path=Surname, Converter={StaticResource EmptyStringToDashConverter}}" Style="{StaticResource TXT}" 
                                            HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="1" Grid.Column="2" 
                                            Text="{Binding Path=Name, Converter={StaticResource EmptyStringToDashConverter}}" Style="{StaticResource TXT}" 
                                            HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="2" Grid.Column="0" 
                                            Text="Учетка Revit:" Style="{StaticResource M_TXT}" HorizontalAlignment="Left" Margin="0,5,5,5"/>
-                                
+
                                 <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" 
                                            Text="{Binding Path=RevitUserName, Converter={StaticResource EmptyStringToDashConverter}}" Style="{StaticResource TXT}" 
                                            HorizontalAlignment="Left" Margin="0,5,5,5"/>

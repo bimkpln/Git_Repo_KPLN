@@ -13,7 +13,7 @@ namespace KPLN_Loader.Services
     /// <summary>
     /// Сервис для работы с БД
     /// </summary>
-    internal class SQLiteService
+    internal sealed class SQLiteService
     {
         private IEnumerable<SubDepartment> _subDepartments;
         private readonly Logger _logger;

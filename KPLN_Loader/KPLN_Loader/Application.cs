@@ -110,9 +110,14 @@ namespace KPLN_Loader
 
                 // Коллекция модулей из БД
                 IEnumerable<Module> userAllModules = _dbService.GetModulesForCurrentUser(CurrentRevitUser);
+                // Подсчет загруженных модулей
                 int uploadModules = 0;
+                // Флаг на факт загрузки модуля
+                bool isModuleLoad = false;
                 foreach (Module module in userAllModules)
                 {
+                    isModuleLoad = false;
+                    
                     if (module == null)
                     {
                         string msg = $"Модуль [{module.Name}] не найден!";
@@ -137,6 +142,7 @@ namespace KPLN_Loader
                                         // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
                                         // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
                                         _ = System.Reflection.Assembly.LoadFrom(file.FullName);
+                                        isModuleLoad = true;
                                     }
                                 }
 
@@ -171,6 +177,7 @@ namespace KPLN_Loader
                                                 _logger.Info(msg);
                                                 LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Black);
                                                 uploadModules++;
+                                                isModuleLoad = true;
                                             }
                                             else
                                             {
@@ -188,6 +195,14 @@ namespace KPLN_Loader
                         {
                             // Вывод в окно пользователя и лог
                             string msg = $"Модуль/библиотека {module.Name} - не скопировался по подготовленному пути";
+                            _logger.Error(msg);
+                            LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Red);
+                        }
+
+                        if (!isModuleLoad)
+                        {
+                            // Вывод в окно пользователя и лог
+                            string msg = $"Модуль/библиотека {module.Name} - не активирован. Отсутсвует dll для активации";
                             _logger.Error(msg);
                             LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Red);
                         }
