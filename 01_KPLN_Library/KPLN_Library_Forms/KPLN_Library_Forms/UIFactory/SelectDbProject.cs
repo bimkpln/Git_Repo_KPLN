@@ -1,7 +1,7 @@
-﻿using KPLN_Library_DataBase;
-using KPLN_Library_DataBase.Collections;
-using KPLN_Library_Forms.Common;
+﻿using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -20,23 +20,18 @@ namespace KPLN_Library_Forms.UIFactory
         /// <exception cref="Exception"></exception>
         public static ElementPick CreateForm()
         {
-            DbControll.Update();
+            CreatorProjectDbService creatorProjectDbService = new CreatorProjectDbService();
+            ProjectDbService projectDbService = (ProjectDbService)creatorProjectDbService.CreateService();
 
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
-            foreach (DbProject prj in DbControll.Projects)
+            foreach (DBProject prj in projectDbService.GetDBProjects())
             {
                 if (prj.Name.Equals(null))
-                {
-                    throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта нет имена");
-                }
+                    throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта с id: {prj.Id} нет имени");
                 else if (prj.Code.Equals(null))
-                {
-                    throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта нет имена");
-                }
+                    throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта с id: {prj.Id} нет имени");
                 else if (prj.Code != "BIM")
-                {
                     projects.Add(new ElementEntity(prj));
-                }
             }
 
             ElementPick _pickForm = new ElementPick(projects.OrderBy(p => p.Name));

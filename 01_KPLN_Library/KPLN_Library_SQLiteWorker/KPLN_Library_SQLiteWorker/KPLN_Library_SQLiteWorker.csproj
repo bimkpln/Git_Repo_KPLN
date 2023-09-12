@@ -55,6 +55,10 @@
       <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\..\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2023\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
@@ -87,12 +91,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\DatabasePaths.cs" />
+    <Compile Include="Core\SQLiteData\Abstractions\IDBEntity.cs" />
+    <Compile Include="Core\SQLiteData\DB_Enumerator.cs" />
+    <Compile Include="Core\SQLiteData\DBDocument.cs" />
     <Compile Include="Core\SQLiteData\DBModule.cs" />
+    <Compile Include="Core\SQLiteData\DBProject.cs" />
+    <Compile Include="Core\SQLiteData\DBProjectMatrix.cs" />
     <Compile Include="Core\SQLiteData\DBSubDepartment.cs" />
     <Compile Include="Core\SQLiteData\DBUser.cs" />
-    <Compile Include="FactoryParts\Abstractions\AbsDbService.cs" />
-    <Compile Include="FactoryParts\Abstractions\AbsCreatorDbService.cs" />
+    <Compile Include="FactoryParts\Common\DbService.cs" />
+    <Compile Include="FactoryParts\Common\AbsCreatorDbService.cs" />
+    <Compile Include="FactoryParts\CreatorProjectDbService.cs" />
+    <Compile Include="FactoryParts\CreatorDocumentDbService.cs" />
     <Compile Include="FactoryParts\CreatorUserDbService.cs" />
+    <Compile Include="FactoryParts\DocumentDbService.cs" />
+    <Compile Include="FactoryParts\ProjectDbService.cs" />
     <Compile Include="FactoryParts\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

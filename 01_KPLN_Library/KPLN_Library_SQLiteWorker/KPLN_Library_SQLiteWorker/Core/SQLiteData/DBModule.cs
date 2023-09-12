@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData.Abstractions;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
@@ -6,43 +7,42 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     /// <summary>
     /// Класс модуля KPLN
     /// </summary>
-    public class DBModule
+    public class DBModule : IDBEntity
     {
-        /// <summary>
-        /// Id модуля
-        /// </summary>
         [Key]
-        internal int Id { get; set; }
+        public int Id { get; set; }
+
+        public DB_Enumerator CurrentDB { get; set; }
 
         /// <summary>
         /// Id отдела
         /// </summary>
         [ForeignKey(nameof(DBSubDepartment))]
-        internal int SubDepartmentId { get; set; }
+        public int SubDepartmentId { get; set; }
 
         /// <summary>
         /// Путь к модулю
         /// </summary>
-        internal string Path { get; set; }
+        public string Path { get; set; }
 
         /// <summary>
         /// Имя модуля
         /// </summary>
-        internal string Name { get; set; }
+        public string Name { get; set; }
 
         /// <summary>
         /// Модуль влк/выкл (True/False) для загрузки. В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        internal bool IsEnabled { get; set; }
+        public bool IsEnabled { get; set; }
 
         /// <summary>
         /// Тестовый режим вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper. Для модулей библиотек - он всегда False
         /// </summary>
-        internal bool IsDebugMode { get; set; }
+        public bool IsDebugMode { get; set; }
 
         /// <summary>
         /// Скрытая загрузка библиотек вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        internal bool IsLibraryModule { get; set; }
+        public bool IsLibraryModule { get; set; }
     }
 }

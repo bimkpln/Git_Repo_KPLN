@@ -43,7 +43,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>Revit2020</DefineConstants>
+    <DefineConstants>Debug</DefineConstants>
     <Optimize>false</Optimize>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
@@ -89,6 +89,10 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
+    <Reference Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Dapper.2.0.151\lib\net461\Dapper.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
       <Private>False</Private>
@@ -101,12 +105,12 @@
       <HintPath>packages\HtmlAgilityPack.1.11.51\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_DataBase">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2023\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Revit2023\KPLN_Library_SQLiteWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
@@ -174,12 +178,12 @@
     <Compile Include="Commands\CommandRemoveInstance.cs" />
     <Compile Include="Commands\CommandShowManager.cs" />
     <Compile Include="Commands\CommandZoomSelectElement.cs" />
-    <Compile Include="Common\Collections.cs" />
-    <Compile Include="Common\SubDepartmentBtn.cs" />
-    <Compile Include="Common\Reports\Report.cs" />
-    <Compile Include="Common\Reports\ReportComment.cs" />
-    <Compile Include="Common\Reports\ReportGroup.cs" />
-    <Compile Include="Common\Reports\ReportInstance.cs" />
+    <Compile Include="Core\ClashesMainCollection.cs" />
+    <Compile Include="Core\SubDepartmentBtn.cs" />
+    <Compile Include="Core\Reports\Report.cs" />
+    <Compile Include="Core\Reports\ReportComment.cs" />
+    <Compile Include="Core\Reports\ReportGroup.cs" />
+    <Compile Include="Core\Reports\ReportItem.cs" />
     <Compile Include="Forms\ConfirmDialog.xaml.cs">
       <DependentUpon>ConfirmDialog.xaml</DependentUpon>
     </Compile>
@@ -190,13 +194,16 @@
     <Compile Include="Forms\ReportWindow.xaml.cs">
       <DependentUpon>ReportWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\TextInput.xaml.cs">
-      <DependentUpon>TextInput.xaml</DependentUpon>
+    <Compile Include="Forms\TextInputForm.xaml.cs">
+      <DependentUpon>TextInputForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\TextInputDialog.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\MainDB_Enumerator.cs" />
+    <Compile Include="Services\AbsSQLiteService.cs" />
+    <Compile Include="Services\SQLiteService_ReportItemsDB.cs" />
+    <Compile Include="Services\SQLiteService_MainDB.cs" />
     <Compile Include="Source\Source.cs" />
     <Compile Include="Tools\DbController.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
@@ -239,7 +246,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\TextInput.xaml">
+    <Page Include="Forms\TextInputForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -3,27 +3,36 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using static KPLN_Clashes_Ribbon.Common.Collections;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
-namespace KPLN_Clashes_Ribbon.Common.Reports
+namespace KPLN_Clashes_Ribbon.Core.Reports
 {
     /// <summary>
     /// Данные по каждому отчету в отдельности из таблиц отдельных отчетов
     /// </summary>
-    public sealed class ReportInstance : INotifyPropertyChanged
+    public sealed class ReportItem : INotifyPropertyChanged
     {
-        public ObservableCollection<ReportComment> _comments = new ObservableCollection<ReportComment>();
+        public event PropertyChangedEventHandler PropertyChanged;
 
-        public ObservableCollection<ReportInstance> _subElements = new ObservableCollection<ReportInstance>();
-
-        public ObservableCollection<SubDepartmentBtn> _subDepartmentBtns = new ObservableCollection<SubDepartmentBtn>()
+        private readonly string _path;
+        private KPItemStatus _status;
+        private int _delegatedDepartmentId;
+        private System.Windows.Visibility _isControllsVisible = System.Windows.Visibility.Visible;
+        private bool _isControllsEnabled = true;
+        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
+        private Stream _imageStream;
+        private BitmapImage _bitmapImage;
+        private ObservableCollection<ReportComment> _comments = new ObservableCollection<ReportComment>();
+        private ObservableCollection<ReportItem> _subElements = new ObservableCollection<ReportItem>();
+        private ObservableCollection<SubDepartmentBtn> _subDepartmentBtns = new ObservableCollection<SubDepartmentBtn>()
         {
             new SubDepartmentBtn(1, "АР", "Разделы АР"),
             new SubDepartmentBtn(2, "КР", "Разделы КР"),
@@ -34,56 +43,19 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             new SubDepartmentBtn(7, "✖", "Сбросить делегирование и вернуть статус пересечения «Открытое»"),
         };
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        private readonly string _path;
-
-        private int _id;
-
-        private string _name;
-
-        private byte[] _imageData;
-
-        private byte[] _imageData_Preview;
-
-        private ImageSource _imageSource;
-
-        private int _element_1_Id;
-
-        private int _element_2_Id;
-
-        private string _element_1_Info;
-
-        private string _element_2_Info;
-
-        private string _point;
-
-        private Status _status;
-
-        private int _delegatedDepartmentId;
-
-        private System.Windows.Visibility _isControllsVisible = System.Windows.Visibility.Visible;
-
-        private bool _isControllsEnabled = true;
-
-        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
-        
-        private Stream _imageStream;
-
-        private BitmapImage _bitmapImage;
-
         /// <summary>
         /// Конструктор для генерации отчетов из БД
         /// </summary>
-        public ReportInstance(
+        public ReportItem(
             int id,
+            int repGroupId,
             string name,
             string element_1_id,
             string element_2_id,
             string element_1_info,
             string element_2_info,
             string point,
-            Status status,
+            KPItemStatus status,
             string path,
             int groupId,
             int delegatedDepartmentId,
@@ -92,6 +64,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             _path = path;
 
             Id = id;
+            ReportGroupId = repGroupId;
             Name = name;
             GroupId = groupId;
             Element_1_Id = int.Parse(element_1_id, System.Globalization.NumberStyles.Integer);
@@ -103,7 +76,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             Comments = DbController.GetComments(new FileInfo(_path), this);
             DelegatedDepartmentId = delegatedDepartmentId;
 
-            if (loadImage && status == Status.Opened)
+            if (loadImage && status == KPItemStatus.Opened)
             { LoadImage(); }
 
             // Генерация кнопок делегирования
@@ -120,8 +93,9 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
         /// <summary>
         /// Конструктор для генерации отчетов из html-отчетов
         /// </summary>
-        public ReportInstance(
+        public ReportItem(
             int id,
+            int repGroupId,
             string name,
             string element_1_id,
             string element_2_id,
@@ -129,11 +103,12 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             string element_2_info,
             string image,
             string point,
-            Status status,
+            KPItemStatus status,
             int groupId,
             ObservableCollection<ReportComment> comments)
         {
             Id = id;
+            ReportGroupId = repGroupId;
             Name = name;
             GroupId = groupId;
             Comments = comments;
@@ -153,7 +128,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
             using (Stream image_stream = File.Open(image, FileMode.Open))
             {
-                ImageData = SystemTools.ReadFully(image_stream);
+                Image = SystemTools.ReadFully(image_stream);
             }
 
             using (Stream image_stream = File.Open(image, FileMode.Open))
@@ -170,15 +145,71 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             Status = status;
         }
 
-        public int Id
+        #region Данные из БД
+        [Key]
+        public int Id { get; set; }
+
+        public int ReportGroupId { get; set; }
+        
+        public string Name { get; set; }
+
+        public byte[] Image { get; set; }
+
+        public string Element_1_Info { get; set; }
+
+        public string Element_2_Info { get; set; }
+
+        public string Point { get; set; }
+
+        public KPItemStatus Status
         {
-            get { return _id; }
+            get => _status;
             set
             {
-                _id = value;
+                switch (value)
+                {
+                    case KPItemStatus.Closed:
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 0, 190, 104));
+                        break;
+                    case KPItemStatus.Approved:
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
+                        break;
+                    case KPItemStatus.Delegated:
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 75, 0, 130));
+                        break;
+                    case KPItemStatus.Opened:
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 255, 84, 42));
+                        break;
+                }
+
+                _status = value;
+
                 NotifyPropertyChanged();
             }
         }
+        public int GroupId { get; set; }
+
+        public int DelegatedDepartmentId
+        {
+            get => _delegatedDepartmentId;
+            private set { _delegatedDepartmentId = value; }
+        }
+
+        public ObservableCollection<ReportComment> Comments
+        {
+            get => _comments;
+            set
+            {
+                _comments = value;
+                NotifyPropertyChanged();
+            }
+        }
+        #endregion
+
+        #region Дополнительная визуализация
+        public int Element_1_Id { get; set; }
+
+        public int Element_2_Id { get; set; }
 
         public System.Windows.Visibility IsGroup
         {
@@ -194,7 +225,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public bool IsControllsEnabled
         {
-            get { return _isControllsEnabled; }
+            get => _isControllsEnabled;
             set
             {
                 _isControllsEnabled = value;
@@ -204,73 +235,10 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public System.Windows.Visibility IsControllsVisible
         {
-            get
-            {
-                return _isControllsVisible;
-            }
+            get => _isControllsVisible;
             set
             {
                 _isControllsVisible = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public string Name
-        {
-            get { return _name; }
-            set
-            {
-                _name = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public int Element_1_Id
-        {
-            get { return _element_1_Id; }
-            set
-            {
-                _element_1_Id = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public int Element_2_Id
-        {
-            get { return _element_2_Id; }
-            set
-            {
-                _element_2_Id = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public string Element_1_Info
-        {
-            get { return _element_1_Info; }
-            set
-            {
-                _element_1_Info = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public string Element_2_Info
-        {
-            get { return _element_2_Info; }
-            set
-            {
-                _element_2_Info = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public string Point
-        {
-            get { return _point; }
-            set
-            {
-                _point = value;
                 NotifyPropertyChanged();
             }
         }
@@ -280,85 +248,13 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             get
             {
                 if (Point == "NONE")
-                { return System.Windows.Visibility.Collapsed; }
+                    return System.Windows.Visibility.Collapsed; 
+                
                 return System.Windows.Visibility.Visible;
             }
         }
 
-        public ImageSource ImageSource
-        {
-            get { return _imageSource; }
-            set
-            {
-                _imageSource = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public byte[] ImageData
-        {
-            get { return _imageData; }
-            set
-            {
-                _imageData = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public byte[] ImageData_Preview
-        {
-            get { return _imageData_Preview; }
-            set
-            {
-                _imageData_Preview = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public int GroupId { get; set; }
-
-        public Status Status
-        {
-            get { return _status; }
-            set
-            {
-                switch (value)
-                {
-                    case Status.Closed:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 0, 190, 104));
-                        break;
-                    case Status.Approved:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
-                        break;
-                    case Status.Delegated:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 75, 0, 130));
-                        break;
-                    case Status.Opened:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 255, 84, 42));
-                        break;
-                }
-
-                _status = value;
-
-                NotifyPropertyChanged();
-            }
-        }
-
-        public int DelegatedDepartmentId
-        {
-            get { return _delegatedDepartmentId; }
-            private set { _delegatedDepartmentId = value; }
-        }
-
-        public ObservableCollection<ReportComment> Comments
-        {
-            get { return _comments; }
-            set
-            {
-                _comments = value;
-                NotifyPropertyChanged();
-            }
-        }
+        public ImageSource ImageSource { get; set; }
 
         public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns
         {
@@ -366,7 +262,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             private set { _subDepartmentBtns = value; }
         }
 
-        public ObservableCollection<ReportInstance> SubElements
+        public ObservableCollection<ReportItem> SubElements
         {
             get { return _subElements; }
             set { _subElements = value; }
@@ -381,10 +277,11 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 NotifyPropertyChanged();
             }
         }
+        #endregion
 
-        public static ObservableCollection<ReportInstance> GetReportInstances(string path)
+        public static ObservableCollection<ReportItem> GetReportInstances(string path)
         {
-            ObservableCollection<ReportInstance> reports = new ObservableCollection<ReportInstance>();
+            ObservableCollection<ReportItem> reports = new ObservableCollection<ReportItem>();
             try
             {
                 SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path));
@@ -418,14 +315,14 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                                     string el1_id = rdr.GetString(4).Split('|').First();
                                     string el2_id = rdr.GetString(5).Split('|').First();
                                     string point = rdr.GetString(6);
-                                    Status status = Status.Opened;
+                                    KPItemStatus status = KPItemStatus.Opened;
                                     int status_int = rdr.GetInt32(7);
                                     if (status_int == 0)
-                                    { status = Status.Closed; }
+                                    { status = KPItemStatus.Closed; }
                                     if (status_int == 1)
-                                    { status = Status.Approved; }
+                                    { status = KPItemStatus.Approved; }
                                     if (status_int == 2)
-                                    { status = Status.Delegated; }
+                                    { status = KPItemStatus.Delegated; }
                                     int groupId = rdr.GetInt32(9);
 
                                     // Исключение необходимо для старых отчетов, до добавления делегирования
@@ -435,8 +332,10 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                                     catch (InvalidCastException) { }
                                     catch (IndexOutOfRangeException) { }
 
-                                    reports.Add(new ReportInstance(
+                                    reports.Add(new ReportItem(
                                         id,
+                                        //Это заглушка. Нужен ReportId
+                                        1,
                                         name,
                                         el1_id,
                                         el2_id,
@@ -465,19 +364,19 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 }
             }
             catch (Exception) { }
-            ObservableCollection<ReportInstance> result_reports = new ObservableCollection<ReportInstance>();
-            foreach (ReportInstance i in reports)
+            ObservableCollection<ReportItem> result_reports = new ObservableCollection<ReportItem>();
+            foreach (ReportItem i in reports)
             {
                 if (i.GroupId == -1)
                 {
                     result_reports.Add(i);
                 }
             }
-            foreach (ReportInstance i in reports)
+            foreach (ReportItem i in reports)
             {
                 if (i.GroupId != -1)
                 {
-                    foreach (ReportInstance z in result_reports)
+                    foreach (ReportItem z in result_reports)
                     {
                         if (i.GroupId == z.Id)
                         {
@@ -496,7 +395,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
             {
                 value_parts.Add(comment.ToString());
             }
-            string value = string.Join(Collections.separator_element, value_parts);
+            string value = string.Join(ClashesMainCollection.separator_element, value_parts);
             return value;
         }
 

@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_DataBase.Collections;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 
 namespace KPLN_Library_Forms.Common
 {
@@ -10,20 +10,12 @@ namespace KPLN_Library_Forms.Common
             Element = elem;
 
             // Анбоксинг на Element Revit
-            if (elem is Element)
-            {
-                Element element = (Element)elem;
+            if (elem is Element element)
                 Name = element.Name;
-                return;
-            }
 
             // Анбоксинг на DbProject KPLN_Library_DataBase
-            if (elem is DbProject)
-            {
-                DbProject dbProject = (DbProject)elem;
+            if (elem is DBProject dbProject)
                 Name = dbProject.Name;
-                return;
-            }
         }
 
         public object Element { get; private set; }

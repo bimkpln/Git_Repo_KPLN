@@ -6,7 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_Clashes_Ribbon.Common.Reports
+namespace KPLN_Clashes_Ribbon.Core.Reports
 {
     public sealed class ReportComment : INotifyPropertyChanged
     {
@@ -38,19 +38,19 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
                 VisibleIfUserComment = System.Windows.Visibility.Collapsed;
         }
 
-        public static ObservableCollection<ReportComment> ParseComments(string value, ReportInstance instance)
+        public static ObservableCollection<ReportComment> ParseComments(string value, ReportItem instance)
         {
             ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
-            foreach (string comment_data in value.Split(new string[] { Collections.separator_element }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (string comment_data in value.Split(new string[] { ClashesMainCollection.separator_element }, StringSplitOptions.RemoveEmptyEntries))
             {
-                List<string> parts = comment_data.Split(new string[] { Collections.separator_sub_element }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                List<string> parts = comment_data.Split(new string[] { ClashesMainCollection.separator_sub_element }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 if (parts.Count != 4) { continue; }
                 comments.Add(new ReportComment(parts[0], parts[1], parts[2], int.Parse(parts[3])) { Parent = instance });
             }
             return comments;
         }
 
-        public ReportInstance Parent { get; set; }
+        public ReportItem Parent { get; set; }
 
         /// <summary>
         /// Фамилия имя из общей БД KPLN в формате "Фамилия Имя"
@@ -80,7 +80,7 @@ namespace KPLN_Clashes_Ribbon.Common.Reports
 
         public override string ToString()
         {
-            return string.Join(Collections.separator_sub_element, new string[] { UserSystemName, Time, Message, Type.ToString() });
+            return string.Join(ClashesMainCollection.separator_sub_element, new string[] { UserSystemName, Time, Message, Type.ToString() });
         }
     }
 }

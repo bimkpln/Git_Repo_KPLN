@@ -1,13 +1,13 @@
 ﻿using HtmlAgilityPack;
-using KPLN_Clashes_Ribbon.Common.Reports;
+using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
-using KPLN_Library_DataBase.Collections;
-using KPLN_Library_Forms.UIFactory;
-using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -25,86 +25,87 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportManager : Window
     {
-        private readonly DbProject _project;
+        private readonly DBProject _project;
+        private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
 
-        public ReportManager(DbProject project)
+        public ReportManager(DBProject project)
         {
-            _project = project;
+            _project = project ?? throw new ArgumentNullException("\n[KPLN]: Попытка передачи пустого проекта\n");
 
             InitializeComponent();
-
             UpdateGroups();
 
             if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
-            {
                 btnAddGroup.Visibility = Visibility.Visible;
-            }
             else
-            {
                 btnAddGroup.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        public DbProject Project
-        {
-            get { return _project; }
         }
 
         public void UpdateGroups()
         {
-            ObservableCollection<ReportGroup> groups = ReportGroup.GetReportGroups(_project);
-            
-            
-            foreach (ReportGroup group in groups)
+            ObservableCollection<ReportGroup> groups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project);
+            if (groups != null)
             {
-                ObservableCollection<Report> reports = Report.GetReports(group.Id);
-                
-                foreach (Report report in reports)
+                foreach (ReportGroup group in groups)
                 {
-                    if (group.Status != 1)
-                        report.IsGroupEnabled = Visibility.Visible;
-                    else
-                        report.IsGroupEnabled = Visibility.Collapsed;
-                        
-                    group.Reports.Add(report);
+                    ObservableCollection<Report> reports = _sqliteService_MainDB.GetReports_ByReportGroupId(group.Id);
+                    foreach (Report report in reports)
+                    {
+                        if (group.Status != Core.ClashesMainCollection.KPItemStatus.Closed)
+                            report.IsGroupEnabled = Visibility.Visible;
+                        else
+                            report.IsGroupEnabled = Visibility.Collapsed;
+
+                        group.Reports.Add(report);
+                    }
                 }
+
+                this.iControllGroups.ItemsSource = groups;
             }
-            this.iControllGroups.ItemsSource = groups;
         }
 
         private void OnBtnRemoveReport(object sender, RoutedEventArgs args)
         {
-            KPTaskDialog dialog = new KPTaskDialog(this, "Удалить отчет", "Необходимо подтверждение", "Вы уверены, что хотите удалить данный отчет?", Common.Collections.KPTaskDialogIcon.Question, true, "После удаления данные о статусе и комментарии будут безвозвратно потеряны!");
+            KPTaskDialog dialog = new KPTaskDialog(
+                this, 
+                "Удалить отчет", 
+                "Необходимо подтверждение", 
+                "Вы уверены, что хотите удалить данный отчет?", 
+                Core.ClashesMainCollection.KPTaskDialogIcon.Question, 
+                true, 
+                "После удаления данные о статусе и комментарии будут безвозвратно потеряны!");
             dialog.ShowDialog();
-            if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
+            
+            if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
                 if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 {
-                    try
-                    {
-                        DbController.RemoveReport((sender as System.Windows.Controls.Button).DataContext as Report);
-                    }
-                    catch (Exception e)
-                    {
-                        PrintError(e);
-                    }
+                    Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
+                    _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
                     UpdateGroups();
                 }
                 else
                 {
-                    return;
+                    KPTaskDialog dialogError = new KPTaskDialog(
+                        this, 
+                        "Удалить отчет", 
+                        "Ошибка удаления", 
+                        "Удалить может только сотрудник BIM-отдела", 
+                        Core.ClashesMainCollection.KPTaskDialogIcon.Question, 
+                        true);
+                    dialogError.ShowDialog();
                 }
             }
-
         }
 
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
             if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
             {
+                ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
+                int repInstIndex = 0;
                 try
                 {
-                    ObservableCollection<ReportInstance> ReportInstances = new ObservableCollection<ReportInstance>();
                     OpenFileDialog dialog = new OpenFileDialog
                     {
                         Filter = "html report (*.html)|*.html",
@@ -114,163 +115,32 @@ namespace KPLN_Clashes_Ribbon.Forms
                         Multiselect = true
                     };
                     DialogResult result = dialog.ShowDialog();
+
                     if (result == System.Windows.Forms.DialogResult.OK)
                     {
+                        int taskCount = 0;
+                        Task[] riWorkerTasks = new Task[dialog.FileNames.Length];
                         foreach (string file_name in dialog.FileNames)
                         {
                             FileInfo file = new FileInfo(file_name);
-                            if (file.Extension == ".html")
+                            ObservableCollection<ReportItem> reportInstances = ParseHtmlToRepInstColelction(file, group);
+                            if (reportInstances != null)
                             {
-                                ReportInstances.Clear();
-                                HtmlAgilityPack.HtmlDocument htmlSnippet = new HtmlAgilityPack.HtmlDocument();
-                                using (FileStream stream = file.OpenRead())
+                                if (reportInstances.Count != 0)
                                 {
-                                    htmlSnippet.Load(stream);
-                                }
-                                int num_id = 0;
-                                List<string> headers = new List<string>();
-                                List<string> out_headers = new List<string>();
-                                int group_id = -1;
-                                bool decode = false;
-                                foreach (HtmlNode node in htmlSnippet.DocumentNode.SelectNodes("//tr"))
-                                {
-                                    bool resetgroupid = false;
-                                    bool isGroupInstance = false;
-                                    bool addInstance = false;
-                                    string class_name = node.GetAttributeValue("class", "NONE");
-                                    //
-                                    string name = string.Empty;
-                                    string image = string.Empty;
-                                    string point = string.Empty;
-                                    string id1 = string.Empty;
-                                    string id2 = string.Empty;
-                                    string name1 = string.Empty;
-                                    string name2 = string.Empty;
-                                    ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
-                                    if (class_name == "headerRow" && headers.Count == 0)
+                                    FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
+
+                                    //Создаю БД под item и публикую в него данные
+                                    SQLiteService_ReportItemsDB sqliteService_ReportItemsDB = new SQLiteService_ReportItemsDB(db_FI.FullName);
+                                    Task fiWorkTask = Task.Run(() =>
                                     {
-                                        if (IsMainHeader(node, out out_headers, out bool todecode))
-                                        {
-                                            headers = out_headers;
-                                            decode = todecode;
-                                        }
-                                    }
-                                    if (headers.Count == 0)
-                                    {
-                                        continue;
-                                    }
-                                    if (class_name == "clashGroupRow")
-                                    {
-                                        isGroupInstance = true;
-                                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
-                                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
-                                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
-                                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
-                                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
-                                        num_id++;
-                                        group_id = num_id;
-                                        addInstance = true;
-                                    }
-                                    if (class_name == "childRow")
-                                    {
-                                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
-                                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
-                                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
-                                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
-                                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
-                                        num_id++;
-                                        addInstance = true;
-                                    }
-                                    if (class_name == "childRowLast")
-                                    {
-                                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
-                                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
-                                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
-                                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
-                                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
-                                        num_id++;
-                                        resetgroupid = true;
-                                        addInstance = true;
-                                    }
-                                    if (class_name == "contentRow")
-                                    {
-                                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
-                                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
-                                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
-                                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
-                                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
-                                        num_id++;
-                                        addInstance = true;
-                                    }
-                                    if (name == string.Empty) { continue; }
-                                    try
-                                    {
-                                        FileInfo img = new FileInfo(image);
-                                        if (!img.Exists)
-                                        {
-                                            Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
-                                            continue;
-                                        }
-                                    }
-                                    catch (Exception)
-                                    {
-                                        Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
-                                        continue;
-                                    }
-                                    if (addInstance)
-                                    {
-                                        if (isGroupInstance)
-                                        {
-                                            ReportInstances.Add(new ReportInstance(
-                                                num_id, 
-                                                name, 
-                                                id1, 
-                                                id2, 
-                                                name1, 
-                                                name2, 
-                                                image, 
-                                                point, 
-                                                Common.Collections.Status.Opened, 
-                                                -1, 
-                                                comments));
-                                        }
-                                        else
-                                        {
-                                            ReportInstances.Add(new ReportInstance(
-                                                num_id, 
-                                                name, 
-                                                id1, 
-                                                id2, 
-                                                name1, 
-                                                name2, 
-                                                image, 
-                                                point, 
-                                                Common.Collections.Status.Opened, 
-                                                group_id, 
-                                                comments));
-                                        }
-                                    }
-                                    if (resetgroupid)
-                                    {
-                                        group_id = -1;
-                                    }
-                                }
-                                ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
-                                if (ReportInstances.Count != 0)
-                                {
-                                    DbController.AddReport(file.Name.Replace(".html", ""), group, ReportInstances);
+                                        sqliteService_ReportItemsDB.CreateDbFile_ByReports();
+                                        sqliteService_ReportItemsDB.PostNewItems_ByReports(reportInstances);
+                                    });
+                                    riWorkerTasks[taskCount++] = fiWorkTask;
+
+                                    // Публикую запись о новом репорте
+                                    _sqliteService_MainDB.PostReport_NewReport_ByNameAndReportGroup(file.Name.Replace(".html", ""), group, db_FI);
                                 }
                                 else
                                 {
@@ -287,38 +157,230 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 }
                             }
                         }
+                        Task.WaitAll(riWorkerTasks);
                         UpdateGroups();
                     }
-                    else
-                    { }
                 }
                 catch (Exception e)
                 {
                     PrintError(e);
                 }
-
             }
+        }
+
+        /// <summary>
+        /// Генерация пути БД для хранения данных по ReportInstance
+        /// </summary>
+        private FileInfo GenerateNewPath_DBForReportInstance(ReportGroup group, int index)
+        {
+            // Проверка на наличие файла с таким именем.
+            while (File.Exists(Path.Combine(@"Z:\Отдел BIM\03_Скрипты\08_Базы данных\Clashes_ReportItems", $"Clashes_RG_{group.Id}_RI_{index}.db")))
+                index++;
+
+            return new FileInfo(Path.Combine(@"Z:\Отдел BIM\03_Скрипты\08_Базы данных\Clashes_ReportItems", $"Clashes_RG_{group.Id}_RI_{index}.db"));
+        }
+
+        /// <summary>
+        /// Разложить html-файл на коллекцию ReportInstance
+        /// </summary>
+        /// <param name="file">Html-файл для парсинга</param>
+        /// <returns></returns>
+        private ObservableCollection<ReportItem> ParseHtmlToRepInstColelction(FileInfo file, ReportGroup repGroup)
+        {
+            ObservableCollection<ReportItem> reportInstances = new ObservableCollection<ReportItem>();
+            if (file.Extension == ".html")
+            {
+                HtmlAgilityPack.HtmlDocument htmlSnippet = new HtmlAgilityPack.HtmlDocument();
+                using (FileStream stream = file.OpenRead())
+                {
+                    htmlSnippet.Load(stream);
+                }
+                int num_id = 0;
+                List<string> headers = new List<string>();
+                int group_id = -1;
+                bool decode = false;
+                foreach (HtmlNode node in htmlSnippet.DocumentNode.SelectNodes("//tr"))
+                {
+                    bool resetgroupid = false;
+                    bool isGroupInstance = false;
+                    bool addInstance = false;
+                    string class_name = node.GetAttributeValue("class", "NONE");
+                    //
+                    string name = string.Empty;
+                    string image = string.Empty;
+                    string point = string.Empty;
+                    string id1 = string.Empty;
+                    string id2 = string.Empty;
+                    string name1 = string.Empty;
+                    string name2 = string.Empty;
+                    ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
+                    if (class_name == "headerRow" && headers.Count == 0)
+                    {
+                        if (IsMainHeader(node, out List<string> out_headers, out bool todecode))
+                        {
+                            headers = out_headers;
+                            decode = todecode;
+                        }
+                    }
+                    if (headers.Count == 0)
+                        continue;
+                    
+                    if (class_name == "clashGroupRow")
+                    {
+                        isGroupInstance = true;
+                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
+                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
+                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
+                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
+                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        num_id++;
+                        group_id = num_id;
+                        addInstance = true;
+                    }
+                    
+                    if (class_name == "childRow")
+                    {
+                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
+                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
+                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
+                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
+                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        num_id++;
+                        addInstance = true;
+                    }
+                    
+                    if (class_name == "childRowLast")
+                    {
+                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
+                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
+                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
+                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
+                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        num_id++;
+                        resetgroupid = true;
+                        addInstance = true;
+                    }
+                    
+                    if (class_name == "contentRow")
+                    {
+                        name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
+                        image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
+                        point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
+                        name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
+                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        num_id++;
+                        addInstance = true;
+                    }
+
+                    if (name == string.Empty) 
+                        continue;
+                    
+                    try
+                    {
+                        FileInfo img = new FileInfo(image);
+                        if (!img.Exists)
+                        {
+                            Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
+                            continue;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Print(string.Format("Элемент «{0}» не будет добавлен в отчет! - Изображение не найдено! ({1})", name, image), MessageType.Error);
+                        continue;
+                    }
+
+                    if (addInstance)
+                    {
+                        if (isGroupInstance)
+                        {
+                            reportInstances.Add(new ReportItem(
+                                num_id,
+                                repGroup.Id,
+                                name,
+                                id1,
+                                id2,
+                                name1,
+                                name2,
+                                image,
+                                point,
+                                Core.ClashesMainCollection.KPItemStatus.Opened,
+                                -1,
+                                comments));
+                        }
+                        else
+                        {
+                            reportInstances.Add(new ReportItem(
+                                num_id,
+                                repGroup.Id,
+                                name,
+                                id1,
+                                id2,
+                                name1,
+                                name2,
+                                image,
+                                point,
+                                Core.ClashesMainCollection.KPItemStatus.Opened,
+                                group_id,
+                                comments));
+                        }
+                    }
+
+                    if (resetgroupid)
+                    {
+                        group_id = -1;
+                    }
+                }
+
+                return reportInstances;
+            }
+
+            return null;
         }
 
         private void OnButtonCloseReportGroup(object sender, RoutedEventArgs args)
         {
-            KPTaskDialog dialog = new KPTaskDialog(this, "Закрыть группу", "Необходимо подтверждение", "Вы уверены, что хотите закрыть данную группу отчетов?", Common.Collections.KPTaskDialogIcon.Ooo, true, "После закрытия все действия с отчетами будут заморожены!");
+            KPTaskDialog dialog = new KPTaskDialog(
+                this, 
+                "Закрыть группу", 
+                "Необходимо подтверждение", 
+                "Вы уверены, что хотите закрыть данную группу отчетов?", 
+                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo, 
+                true, 
+                "После закрытия все действия с отчетами будут заморожены!");
             dialog.ShowDialog();
-            if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
+            
+            if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
                 if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
-                { 
+                {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
-                    try
-                    {
-                        group.Status = 1;
-                        DbController.SetGroupValue(group.Id, "Status", 1);
-                    }
-                    catch (Exception e)
-                    {
-                        PrintError(e);
-                    }
+                    group.Status = Core.ClashesMainCollection.KPItemStatus.Closed;
+                    _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(group.Status, MainDB_Enumerator.ReportGroups, group.Id);
                     UpdateGroups();
+                }
+                else
+                {
+                    KPTaskDialog dialogError = new KPTaskDialog(
+                        this,
+                        "Закрыть группу",
+                        "Ошибка",
+                        "Закрыть может только сотрудник BIM-отдела",
+                        Core.ClashesMainCollection.KPTaskDialogIcon.Ooo,
+                        true);
+                    dialogError.ShowDialog();
                 }
             }
         }
@@ -326,40 +388,13 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
             if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId != 8) { return; }
-            try
+            
+            TextInputForm textInputForm = new TextInputForm(this, "Введите наименование отчета:");
+            textInputForm.ShowDialog();
+            if (textInputForm.IsConfirmed)
             {
-                DbProject currentDbProject;
-
-                if (_project != null)
-                {
-                    currentDbProject = _project;
-                }
-                else
-                {
-                    ElementPick selectedProjectForm = SelectDbProject.CreateForm();
-                    bool? dialogResult = selectedProjectForm.ShowDialog();
-                    if (dialogResult != false)
-                    {
-                        currentDbProject = selectedProjectForm.SelectedElement.Element as DbProject;
-                    }
-                    else
-                    {
-                        currentDbProject = _project;
-                    }
-                }
-
-                TextInputDialog inputName = new TextInputDialog(this, "Введите наименование отчета:");
-                inputName.ShowDialog();
-                if (inputName.IsConfirmed())
-                {
-                    DbController.AddGroup(inputName.GetLastPickedValue(), currentDbProject);
-                }
-
+                _sqliteService_MainDB.PostReportGroups_NewGroupByProjectAndName(_project, textInputForm.UserComment);
                 UpdateGroups();
-            }
-            catch (Exception e)
-            {
-                PrintError(e);
             }
         }
 
@@ -370,45 +405,35 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void RecEnter(object sender, System.Windows.Input.MouseEventArgs args)
         {
-            SolidColorBrush color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 255, 115));
-            try
+            SolidColorBrush color = new SolidColorBrush(Color.FromArgb(255, 0, 255, 115));
+            switch (sender.GetType().Name)
             {
-                if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
-                {
+                case nameof(System.Windows.Shapes.Rectangle):
                     ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = color;
-                }
-                if (sender.GetType() == typeof(TextBlock))
-                {
+                    break;
+                case nameof(TextBlock):
                     ((sender as TextBlock).DataContext as Report).Fill = color;
-                }
-                if (sender.GetType() == typeof(Image))
-                {
+                    break;
+                case nameof(Image):
                     ((sender as Image).DataContext as Report).Fill = color;
-                }
+                    break;
             }
-            catch (Exception)
-            { }
         }
 
         private void RecLeave(object sender, System.Windows.Input.MouseEventArgs args)
         {
-            try
+            switch (sender.GetType().Name)
             {
-                if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
-                {
+                case nameof(System.Windows.Shapes.Rectangle):
                     ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill_Default;
-                }
-                if (sender.GetType() == typeof(TextBlock))
-                {
+                    break;
+                case nameof(TextBlock):
                     ((sender as TextBlock).DataContext as Report).Fill = ((sender as TextBlock).DataContext as Report).Fill_Default;
-                }
-                if (sender.GetType() == typeof(Image))
-                {
+                    break;
+                case nameof(Image):
                     ((sender as Image).DataContext as Report).Fill = ((sender as Image).DataContext as Report).Fill_Default;
-                }
+                    break;
             }
-            catch (Exception)
-            { }
         }
 
         private ReportGroup GetGroupById(int groupid)
@@ -427,26 +452,21 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             if (args.ChangedButton == MouseButton.Right)
             {
-                try
+                if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                 {
-                    if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
-                    {
-                        Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        report.GetProgress();
-                    }
-                    if (sender.GetType() == typeof(TextBlock))
-                    {
-                        Report report = (sender as TextBlock).DataContext as Report;
-                        report.GetProgress();
-                    }
-                    if (sender.GetType() == typeof(Image))
-                    {
-                        Report report = (sender as Image).DataContext as Report;
-                        report.GetProgress();
-                    }
+                    Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
+                    report.GetProgress();
                 }
-                catch (Exception)
-                { }
+                if (sender.GetType() == typeof(TextBlock))
+                {
+                    Report report = (sender as TextBlock).DataContext as Report;
+                    report.GetProgress();
+                }
+                if (sender.GetType() == typeof(Image))
+                {
+                    Report report = (sender as Image).DataContext as Report;
+                    report.GetProgress();
+                }
             }
             if (args.ChangedButton == MouseButton.Left)
             {
@@ -455,19 +475,19 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.GroupId).IsEnabled, this);
+                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.GroupId).IsEnabled, this);
+                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.GroupId).IsEnabled, this);
+                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
                         form.Show();
                     }
                 }
@@ -481,19 +501,35 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnRemoveGroup(object sender, RoutedEventArgs e)
         {
-            KPTaskDialog dialog = new KPTaskDialog(this, "Удалить группу", "Необходимо подтверждение", "Вы уверены, что хотите удалить данную группу отчетов?", Common.Collections.KPTaskDialogIcon.Ooo, true, "После удаления данные будут безвозвратно потеряны!");
+            KPTaskDialog dialog = new KPTaskDialog(
+                this, 
+                "Удалить группу", 
+                "Необходимо подтверждение", 
+                "Вы уверены, что хотите удалить данную группу отчетов?", 
+                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo, 
+                true, 
+                "После удаления данные будут безвозвратно потеряны!");
             dialog.ShowDialog();
-            if (dialog.DialogResult == Common.Collections.KPTaskDialogResult.Ok)
+            
+            if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId != 8) { return; }
-
-                ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
-                foreach (Report report in Report.GetReports(group.Id))
+                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
                 {
-                    DbController.RemoveReport(report);
+                    ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
+                    _sqliteService_MainDB.DeleteReportGroupAndReportsAndReportItems_ByReportGroupId(group.Id);
+                    UpdateGroups();
                 }
-                DbController.RemoveGroup(group);
-                UpdateGroups();
+                else
+                {
+                    KPTaskDialog dialogError = new KPTaskDialog(
+                        this,
+                        "Удалить группу",
+                        "Ошибка",
+                        "Удалить может только сотрудник BIM-отдела",
+                        Core.ClashesMainCollection.KPTaskDialogIcon.Ooo,
+                        true);
+                    dialogError.ShowDialog();
+                }
             }
         }
 

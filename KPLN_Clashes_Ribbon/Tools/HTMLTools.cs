@@ -1,5 +1,5 @@
 ﻿using HtmlAgilityPack;
-using KPLN_Clashes_Ribbon.Common.Reports;
+using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

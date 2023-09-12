@@ -1,5 +1,4 @@
 ﻿using KPLN_Library_SQLiteWorker.Core;
-using KPLN_Library_SQLiteWorker.FactoryParts.Abstractions;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -7,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace KPLN_Library_SQLiteWorker.Abstractions
+namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
 {
     /// <summary>
     /// Абстрактный создатель сервисов работы с БД
@@ -21,7 +20,7 @@ namespace KPLN_Library_SQLiteWorker.Abstractions
         /// Создать инстанс необходимого сервиса
         /// </summary>
         /// <returns></returns>
-        public abstract AbsDbService CreateService();
+        public abstract DbService CreateService();
 
         /// <summary>
         /// Проверка наличия файла конфига и самих файлов БД

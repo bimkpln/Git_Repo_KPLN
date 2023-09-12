@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData.Abstractions;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
@@ -6,13 +7,12 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     /// <summary>
     /// Класс пользователя KPLN
     /// </summary>
-    public class DBUser
+    public class DBUser : IDBEntity
     {
-        /// <summary>
-        /// Id пользователя
-        /// </summary>
         [Key]
         public int Id { get; set; }
+
+        public DB_Enumerator CurrentDB { get; set; }
 
         /// <summary>
         /// Системное имя пользователя (Windows)

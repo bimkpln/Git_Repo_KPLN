@@ -1,11 +1,11 @@
-﻿using KPLN_Clashes_Ribbon.Common.Reports;
+﻿using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
-namespace KPLN_Clashes_Ribbon.Common
+namespace KPLN_Clashes_Ribbon.Core
 {
     /// <summary>
     /// Коллекция кнопок основных подотделов КПЛН
@@ -32,7 +32,7 @@ namespace KPLN_Clashes_Ribbon.Common
         /// <summary>
         /// Привязка к экземпляру отчета
         /// </summary>
-        public ReportInstance Parent { get; private set; }
+        public ReportItem Parent { get; private set; }
 
         public Brush DelegateBtnBackground
         {
@@ -52,7 +52,7 @@ namespace KPLN_Clashes_Ribbon.Common
         /// <summary>
         /// Установка привязок к инстансам отчетов и установка цвета
         /// </summary>
-        public void SetBinding(ReportInstance reportInstance, Brush delegateBtnBackground)
+        public void SetBinding(ReportItem reportInstance, Brush delegateBtnBackground)
         {
             this.Parent = reportInstance;
             this.DelegateBtnBackground = delegateBtnBackground;

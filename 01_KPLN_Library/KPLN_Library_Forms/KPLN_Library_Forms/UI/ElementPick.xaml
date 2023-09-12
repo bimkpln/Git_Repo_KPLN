@@ -86,7 +86,15 @@
 
         <GridSplitter  Grid.Row="1" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"></GridSplitter>
 
-        <Button x:Name="RunWithoutFilter" Style="{StaticResource BTN}" Background="Orange" Grid.Row="2" Content="Выбрать все проекты без фильтрации" ToolTip="Нажми сюда, если хочешь увидеть все отчеты" Click="OnRunWithoutFilterClick"/>
+        <Button 
+            x:Name="RunWithoutFilter" 
+            Grid.Row="2" 
+            Style="{StaticResource BTN}" 
+            Margin="2"
+            Background="Orange" 
+            Content="Выбрать все проекты без фильтрации" 
+            ToolTip="Нажми сюда, если хочешь увидеть все отчеты" 
+            Click="OnRunWithoutFilterClick"/>
 
     </Grid>
 </Window>

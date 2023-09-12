@@ -1,31 +1,33 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData.Abstractions;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
 {
     /// <summary>
-    /// Класс отдела KPLN
+    /// Класс файла (документа) Revit
     /// </summary>
-    public class DBSubDepartment : IDBEntity
+    public class DBDocument : IDBEntity
     {
         [Key]
         public int Id { get; set; }
-
+        
         public DB_Enumerator CurrentDB { get; set; }
 
         /// <summary>
-        /// Код отдела
+        /// Проект, к которому файл относится
         /// </summary>
-        public string Code { get; set; }
+        [ForeignKey(nameof(DBProject))]
+        public int ProjectId { get; set; }
 
         /// <summary>
-        /// Имя отдела
+        /// Имя файла
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// Отображение влк/выкл (True/False) для окна авторизации. В БД тип данных текст, преобразование происходит в Dapper
+        /// Полный путь к файлу
         /// </summary>
-        public bool IsAuthEnabled { get; set; }
+        public string FullPath { get; set; }
     }
 }
