@@ -291,7 +291,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             int max = 0;
             int done = 0;
             int delegated = 0;
-            foreach (ReportItem ri in ReportItem.GetReportInstances(PathToReportInstance))
+            SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new SQLiteService_ReportItemsDB(PathToReportInstance);
+            foreach (ReportItem ri in sqliteService_ReportInstanceDB.GetAllReporItems())
             {
                 max++;
 

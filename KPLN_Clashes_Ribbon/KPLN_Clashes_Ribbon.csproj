@@ -181,7 +181,7 @@
     <Compile Include="Core\ClashesMainCollection.cs" />
     <Compile Include="Core\SubDepartmentBtn.cs" />
     <Compile Include="Core\Reports\Report.cs" />
-    <Compile Include="Core\Reports\ReportComment.cs" />
+    <Compile Include="Core\Reports\ReportItemComment.cs" />
     <Compile Include="Core\Reports\ReportGroup.cs" />
     <Compile Include="Core\Reports\ReportItem.cs" />
     <Compile Include="Forms\ConfirmDialog.xaml.cs">

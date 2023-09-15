@@ -1,9 +1,9 @@
-﻿using Dapper;
+﻿using Autodesk.Revit.UI;
+using Dapper;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
 {
@@ -33,7 +33,16 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
                     connection.Execute(query, parameters);
                 }
             }
-            catch (Exception ex) { PrintError(ex); }
+            catch (Exception ex) 
+            {
+                TaskDialog errorTd = new TaskDialog("[KPLN]: Ошибка работы с БД")
+                {
+                    MainContent = ex.Message,
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                errorTd.Show();
+            }
         }
 
         private protected IEnumerable<T> ExecuteQuery<T>(string query, object parameters = null)
@@ -48,7 +57,14 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
             }
             catch (Exception ex)
             {
-                PrintError(ex);
+                TaskDialog errorTd = new TaskDialog("[KPLN]: Ошибка работы с БД")
+                {
+                    MainContent = ex.Message,
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                errorTd.Show();
+
                 return null;
             }
         }

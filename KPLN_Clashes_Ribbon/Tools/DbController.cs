@@ -263,7 +263,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
         }
 
-        public static ObservableCollection<ReportComment> GetComments(FileInfo path, ReportItem instance)
+        public static ObservableCollection<ReportItemComment> GetComments(FileInfo path, ReportItem instance)
         {
             string value = string.Empty;
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path.FullName));
@@ -283,7 +283,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             catch (Exception) { }
             db.Close();
-            return ReportComment.ParseComments(value, instance);
+            return ReportItemComment.ParseComments(value, instance);
         }
 
         public static void AddComment(string message, FileInfo path, ReportItem instance, int type)
@@ -293,12 +293,12 @@ namespace KPLN_Clashes_Ribbon.Tools
             List<string> value_parts = new List<string>();
             try
             {
-                value_parts.Add(new ReportComment(message, type).ToString());
-                foreach (ReportComment comment in instance.Comments)
+                value_parts.Add(new ReportItemComment(message, type).ToString());
+                foreach (ReportItemComment comment in instance.Comments)
                 {
                     value_parts.Add(comment.ToString());
                 }
-                string value = string.Join(ClashesMainCollection.separator_element, value_parts);
+                string value = string.Join(ClashesMainCollection.StringSeparatorItem, value_parts);
                 SQLiteCommand cmd_insert = new SQLiteCommand(string.Format("UPDATE Reports SET COMMENTS='{0}' WHERE ID={1}", value, instance.Id.ToString()), db);
                 cmd_insert.ExecuteNonQuery();
             }
@@ -306,21 +306,21 @@ namespace KPLN_Clashes_Ribbon.Tools
             db.Close();
         }
 
-        public static void RemoveComment(ReportComment comment_to_remove, FileInfo path, ReportItem instance)
+        public static void RemoveComment(ReportItemComment comment_to_remove, FileInfo path, ReportItem instance)
         {
             SQLiteConnection db = new SQLiteConnection(string.Format(@"Data Source={0};Version=3;", path.FullName));
             db.Open();
             List<string> value_parts = new List<string>();
             try
             {
-                foreach (ReportComment comment in instance.Comments)
+                foreach (ReportItemComment comment in instance.Comments)
                 {
                     if (comment.Message != comment_to_remove.Message || comment.Time != comment_to_remove.Time || comment.UserFullName != comment_to_remove.UserFullName)
                     {
                         value_parts.Add(comment.ToString());
                     }
                 }
-                string value = string.Join(ClashesMainCollection.separator_element, value_parts);
+                string value = string.Join(ClashesMainCollection.StringSeparatorItem, value_parts);
                 SQLiteCommand cmd_insert = new SQLiteCommand(string.Format("UPDATE Reports SET COMMENTS='{0}' WHERE ID={1}", value, instance.Id.ToString()), db);
                 cmd_insert.ExecuteNonQuery();
             }
@@ -479,7 +479,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "POINT", Value = report.Point });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "STATUS", Value = -1 });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "COMMENTS", Value = ReportItem.GetCommentsString(report.Comments) }); ;
-                    cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "GROUPID", Value = report.GroupId }); ;
+                    cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "GROUPID", Value = report.ParentGroupId }); ;
                     cmd_insert.ExecuteNonQuery();
                 }
             }

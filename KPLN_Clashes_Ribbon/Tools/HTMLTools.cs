@@ -40,9 +40,9 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             return result;
         }
-        public static ObservableCollection<ReportComment> TryGetComments(string row)
+        public static ObservableCollection<ReportItemComment> TryGetComments(string row)
         {
-            ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
+            ObservableCollection<ReportItemComment> comments = new ObservableCollection<ReportItemComment>();
             try
             {
                 string[] lines = row.Split('#');
@@ -72,7 +72,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                                 i++;
                             }
                             string msg = string.Join(" ", msgParts);
-                            ReportComment comment = new ReportComment(user, time, msg, 1);
+                            ReportItemComment comment = new ReportItemComment(user, time, msg, 1);
                             comments.Add(comment);
 
                         }

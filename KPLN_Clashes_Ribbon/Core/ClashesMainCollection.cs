@@ -2,9 +2,9 @@
 {
     public static class ClashesMainCollection
     {
-        public static readonly string separator_element = "~SE00~";
+        public static readonly string StringSeparatorItem = "~SE00~";
 
-        public static readonly string separator_sub_element = "~SE01~";
+        public static readonly string StringSeparatorSubItem = "~SE01~";
 
         public enum KPIcon { Default, Report, Report_New, Report_Closed, Instance, Instance_Closed, Instance_Delegated }
 

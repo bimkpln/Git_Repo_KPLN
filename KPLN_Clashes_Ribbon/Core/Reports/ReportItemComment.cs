@@ -8,44 +8,34 @@ using System.Runtime.CompilerServices;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
-    public sealed class ReportComment : INotifyPropertyChanged
+    public sealed class ReportItemComment : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public ReportComment(string message, int type)
+        public ReportItemComment(string message, int type)
         {
             UserSystemName = KPLN_Loader.Application.CurrentRevitUser.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
-            Type = type;
-            
-            if (Type == 0)
-                VisibleIfUserComment = System.Windows.Visibility.Visible;
-            else
-                VisibleIfUserComment = System.Windows.Visibility.Collapsed;
+            VisibleIfUserComment = System.Windows.Visibility.Visible;
         }
 
-        public ReportComment(string user, string date, string message, int type)
+        public ReportItemComment(string user, string date, string message, int type)
         {
             UserSystemName = user;
             Time = date;
             Message = message;
-            Type = type;
-            
-            if (Type == 0 )
-                VisibleIfUserComment = System.Windows.Visibility.Visible; 
-            else
-                VisibleIfUserComment = System.Windows.Visibility.Collapsed;
+            VisibleIfUserComment = System.Windows.Visibility.Visible;
         }
 
-        public static ObservableCollection<ReportComment> ParseComments(string value, ReportItem instance)
+        public static ObservableCollection<ReportItemComment> ParseComments(string value, ReportItem instance)
         {
-            ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
-            foreach (string comment_data in value.Split(new string[] { ClashesMainCollection.separator_element }, StringSplitOptions.RemoveEmptyEntries))
+            ObservableCollection<ReportItemComment> comments = new ObservableCollection<ReportItemComment>();
+            foreach (string comment_data in value.Split(new string[] { ClashesMainCollection.StringSeparatorItem }, StringSplitOptions.RemoveEmptyEntries))
             {
-                List<string> parts = comment_data.Split(new string[] { ClashesMainCollection.separator_sub_element }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                List<string> parts = comment_data.Split(new string[] { ClashesMainCollection.StringSeparatorSubItem }, StringSplitOptions.RemoveEmptyEntries).ToList();
                 if (parts.Count != 4) { continue; }
-                comments.Add(new ReportComment(parts[0], parts[1], parts[2], int.Parse(parts[3])) { Parent = instance });
+                comments.Add(new ReportItemComment(parts[0], parts[1], parts[2], int.Parse(parts[3])) { Parent = instance });
             }
             return comments;
         }
@@ -69,8 +59,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         
         public string Time { get; set; }
         
-        public int Type { get; set; }
-        
         public string Message { get; set; }
 
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
@@ -80,7 +68,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
         public override string ToString()
         {
-            return string.Join(ClashesMainCollection.separator_sub_element, new string[] { UserSystemName, Time, Message, Type.ToString() });
+            return string.Join(ClashesMainCollection.StringSeparatorSubItem, new string[] { UserSystemName, Time, Message });
         }
     }
 }

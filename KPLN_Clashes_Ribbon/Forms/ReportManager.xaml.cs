@@ -197,7 +197,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
                 int num_id = 0;
                 List<string> headers = new List<string>();
-                int group_id = -1;
+                int parentGroupId = -1;
                 bool decode = false;
                 foreach (HtmlNode node in htmlSnippet.DocumentNode.SelectNodes("//tr"))
                 {
@@ -213,7 +213,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     string id2 = string.Empty;
                     string name1 = string.Empty;
                     string name2 = string.Empty;
-                    ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
+                    ObservableCollection<ReportItemComment> comments = new ObservableCollection<ReportItemComment>();
                     if (class_name == "headerRow" && headers.Count == 0)
                     {
                         if (IsMainHeader(node, out List<string> out_headers, out bool todecode))
@@ -237,7 +237,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
                         comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
                         num_id++;
-                        group_id = num_id;
+                        parentGroupId = num_id;
                         addInstance = true;
                     }
                     
@@ -333,14 +333,14 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 image,
                                 point,
                                 Core.ClashesMainCollection.KPItemStatus.Opened,
-                                group_id,
+                                parentGroupId,
                                 comments));
                         }
                     }
 
                     if (resetgroupid)
                     {
-                        group_id = -1;
+                        parentGroupId = -1;
                     }
                 }
 
@@ -548,7 +548,6 @@ namespace KPLN_Clashes_Ribbon.Forms
                         report.IsReportVisible = false;
                     else
                         report.IsReportVisible = true;
-
                 }
             }
 

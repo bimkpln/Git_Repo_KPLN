@@ -1,7 +1,9 @@
 ﻿using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Services
@@ -34,7 +36,7 @@ namespace KPLN_Clashes_Ribbon.Services
                         $"{nameof(ReportItem.Point)} TEXT, " +
                         $"{nameof(ReportItem.Status)} TEXT NOT NULL DEFAULT 'Opened', " +
                         $"{nameof(ReportItem.Comments)} TEXT, " +
-                        $"{nameof(ReportItem.GroupId)} INTEGER, " +
+                        $"{nameof(ReportItem.ParentGroupId)} INTEGER NOT NULL DEFAULT -1, " +
                         $"{nameof(ReportItem.DelegatedDepartmentId)} INTEGER)");
 
         /// <summary>
@@ -51,44 +53,108 @@ namespace KPLN_Clashes_Ribbon.Services
                     $"{nameof(ReportItem.Element_1_Info)}, " +
                     $"{nameof(ReportItem.Element_2_Info)}, " +
                     $"{nameof(ReportItem.Point)}, " +
-                    $"{nameof(ReportItem.Status)}) " +
+                    $"{nameof(ReportItem.Status)}, " +
+                    $"{nameof(ReportItem.ParentGroupId)}) " +
                 "VALUES " +
                     "(@Id, @ReportGroupId, @Name, @Image, " +
-                    "@Element_1_Info, @Element_2_Info, @Point, @Status)",
+                    "@Element_1_Info, @Element_2_Info, @Point, @Status, @ParentGroupId)",
                 reports);
         #endregion
 
         #region Read
+        /// <summary>
+        /// Получить коллекцию всех ReportItem
+        /// </summary>
+        public ObservableCollection<ReportItem> GetAllReporItems()
+        {
+            ObservableCollection<ReportItem> reports = new ObservableCollection<ReportItem>(
+                ExecuteQuery<ReportItem>(
+                    $"SELECT * FROM {_dbTableName}"));
+
+            // Уточняю данные по группам (SubElements)
+            var result_reports = new ObservableCollection<ReportItem>(reports.Where(i => i.ParentGroupId == -1));
+            foreach (var i in reports.Where(i => i.ParentGroupId != -1))
+            {
+                var parent = result_reports.FirstOrDefault(z => z.Id == i.ParentGroupId);
+                parent?.SubElements.Add(i);
+            }
+            return result_reports;
+        }
+
+        /// <summary>
+        /// Получить массив байт изображения ReportItem
+        /// </summary>
+        /// <param name="reportItem">ReportItem для поиска</param>
+        /// <returns></returns>
+        public byte[] GetImageBytes_ByItem(ReportItem reportItem) =>
+            ExecuteQuery<byte[]>(
+                $"SELECT {nameof(ReportItem.Image)} FROM {_dbTableName} " +
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}")
+            .FirstOrDefault();
+
+        /// <summary>
+        /// Получить комментарии для ReportItem
+        /// </summary>
+        /// <param name="reportItem">ReportItem для поиска</param>
+        /// <returns></returns>
+        public string GetComment_ByReportItem(ReportItem reportItem) =>
+            ExecuteQuery<string>(
+                $"SELECT {nameof(ReportItem.Comments)} FROM {_dbTableName} " +
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}")
+            .FirstOrDefault();
         #endregion
 
         #region Update
         /// <summary>
-        /// Записать статус и отдел по Id-отчета (ReportInstance)
+        /// Записать статус и отдел по Id-отчета (ReportItem)
         /// </summary>
         /// <param name="status">Статус для записи</param>
         /// <param name="departmentId">Id-отдела</param>
-        /// <param name="itemId">Id элемента (ReportInstance)</param>
-        public void SetStatusAndDepartment_ByReportItemId(ClashesMainCollection.KPItemStatus status, int departmentId, int itemId) =>
+        /// <param name="reportItem">ReportItem для поиска</param>
+        public void SetStatusAndDepartment_ByReportItem(ClashesMainCollection.KPItemStatus status, int departmentId, ReportItem reportItem) =>
             ExecuteNonQuery(
                 $"UPDATE {_dbTableName} " +
                 $"SET {nameof(ReportItem.Status)}={status}, {nameof(ReportItem.DelegatedDepartmentId)}={departmentId} " +
-                $"WHERE Id={itemId}");
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
 
         /// <summary>
-        /// Записать статус по Id-отчета (ReportInstance)
+        /// Записать статус по Id-отчета (ReportItem)
         /// </summary>
         /// <param name="status">Статус для записи</param>
-        /// <param name="itemId">Id элемента (ReportInstance)</param>
-        public void SetStatus_ByReportItemId(ClashesMainCollection.KPItemStatus status, int itemId) =>
+        /// <param name="reportItem">ReportItem для поиска</param>
+        public void SetStatus_ByReportItem(ClashesMainCollection.KPItemStatus status, ReportItem reportItem) =>
             ExecuteNonQuery(
                 $"UPDATE {_dbTableName} " +
                 $"SET {nameof(ReportItem.Status)}={status}" +
-                $"WHERE Id={itemId}");
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
+
+        /// <summary>
+        /// Добавить комментарий для отчета (ReportItem)
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="reportItem">ReportItem для поиска</param>
+        public void SetComment_ByReportItem(string message, ReportItem reportItem) 
+        {
+            List<string> value_parts = new List<string>
+            {
+                // Type=1 тут ЗАГЛУШКА. Нужно уточнить
+                new ReportItemComment(message, 1).ToString()
+            };
+            foreach (ReportItemComment comment in reportItem.Comments)
+            {
+                value_parts.Add(comment.ToString());
+            }
+            string decorateMsg = string.Join(ClashesMainCollection.StringSeparatorItem, value_parts);
+
+            ExecuteNonQuery(
+                $"UPDATE {_dbTableName} " +
+                $"SET {nameof(ReportItem.Comments)}='{decorateMsg}'" +
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
+        
+        }
         #endregion
 
         #region Delete
         #endregion
-
-
     }
 }
