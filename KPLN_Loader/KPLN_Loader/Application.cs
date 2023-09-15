@@ -59,6 +59,7 @@ namespace KPLN_Loader
         public Result OnStartup(UIControlledApplication application)
         {
             LoaderStatusForm loaderStatusForm = new LoaderStatusForm(this);
+            loaderStatusForm.Show();
 
             _revitVersion = application.ControlledApplication.VersionNumber;
 
@@ -90,6 +91,7 @@ namespace KPLN_Loader
                 CurrentRevitUser = _dbService.Authorization();
                 loaderStatusForm.CheckAndSetDebugStatusByUser(CurrentRevitUser);
                 SubDepartment userSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+                loaderStatusForm.UpdateLayout();
                 
                 // Добавление пользовательской инструкции
                 LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
@@ -100,6 +102,7 @@ namespace KPLN_Loader
                 LoadStatus?.Invoke(
                     new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{userSubDepartment.Code}]"), 
                     System.Windows.Media.Brushes.OrangeRed);
+                loaderStatusForm.UpdateLayout();
                 #endregion
 
                 // Создание панели Revit
@@ -221,6 +224,7 @@ namespace KPLN_Loader
                     Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", System.Windows.Media.Brushes.Green);
                 else
                     Progress?.Invoke(MainStatus.ModulesActivation, "С замечаниями. Смотри файл логов KPLN_Loader: c:\\temp\\KPLN_Logs\\", System.Windows.Media.Brushes.Orange);
+                loaderStatusForm.UpdateLayout();
                 #endregion
             }
             catch (Exception ex)

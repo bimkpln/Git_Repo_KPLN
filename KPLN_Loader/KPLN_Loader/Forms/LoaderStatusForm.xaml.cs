@@ -45,8 +45,6 @@ namespace KPLN_Loader.Forms
             versionTxt.Text = "v." + Assembly.GetExecutingAssembly().GetName().Version.ToString();
             stepListBox.ItemsSource = _loaderStatusEntitys;
             DataContext = this;
-
-            Show();
         }
 
         /// <summary>
@@ -56,6 +54,7 @@ namespace KPLN_Loader.Forms
         {
             tblInstruction.Text = loaderDescription.Description;
             _loaderDescriptionURL = loaderDescription.InstructionURL;
+
             if (_loaderDescriptionURL != null)
             {
                 tblInstruction.TextDecorations = TextDecorations.Underline;
