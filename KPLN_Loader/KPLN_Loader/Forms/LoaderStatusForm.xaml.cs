@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Media;
 
 namespace KPLN_Loader.Forms
 {
@@ -58,6 +59,7 @@ namespace KPLN_Loader.Forms
             if (_loaderDescriptionURL != null)
             {
                 tblInstruction.TextDecorations = TextDecorations.Underline;
+                tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
             }
         }
 
