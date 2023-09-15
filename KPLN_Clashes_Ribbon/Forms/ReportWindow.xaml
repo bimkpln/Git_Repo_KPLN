@@ -205,7 +205,7 @@
                                 <!--Блок комментирования-->
                                 <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Комментарии:" Foreground="White"/>
                                 <StackPanel Margin="0,20,4,0" Grid.Row="4" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Vertical">
-                                    <ItemsControl ItemsSource="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                    <ItemsControl ItemsSource="{Binding CommentCollection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="6, 5, 5, 5" HorizontalAlignment="Left">
@@ -217,7 +217,7 @@
                                                     <Rectangle Grid.RowSpan="3" Margin="-3" RadiusX="3" RadiusY="3" Stroke="White" StrokeThickness="2" Fill="#19FFFFFF"/>
                                                     <StackPanel Grid.Row="0" Orientation="Horizontal">
                                                         <TextBlock Text="От: " Foreground="White"/>
-                                                        <TextBlock Text="{Binding User}" Foreground="White"/>
+                                                        <TextBlock Text="{Binding UserFullName}" Foreground="White"/>
                                                         <TextBlock Text=" - " Foreground="White"/>
                                                         <TextBlock Text="{Binding Time}" Foreground="White" Margin="0,0,25,0"/>
                                                     </StackPanel>

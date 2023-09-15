@@ -293,8 +293,8 @@ namespace KPLN_Clashes_Ribbon.Tools
             List<string> value_parts = new List<string>();
             try
             {
-                value_parts.Add(new ReportItemComment(message, type).ToString());
-                foreach (ReportItemComment comment in instance.Comments)
+                value_parts.Add(new ReportItemComment(message).ToString());
+                foreach (ReportItemComment comment in instance.CommentCollection)
                 {
                     value_parts.Add(comment.ToString());
                 }
@@ -313,7 +313,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             List<string> value_parts = new List<string>();
             try
             {
-                foreach (ReportItemComment comment in instance.Comments)
+                foreach (ReportItemComment comment in instance.CommentCollection)
                 {
                     if (comment.Message != comment_to_remove.Message || comment.Time != comment_to_remove.Time || comment.UserFullName != comment_to_remove.UserFullName)
                     {
@@ -478,7 +478,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "ELEMENT02", Value = string.Join("|", new string[] { report.Element_2_Id.ToString(), report.Element_2_Info }) });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "POINT", Value = report.Point });
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "STATUS", Value = -1 });
-                    cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "COMMENTS", Value = ReportItem.GetCommentsString(report.Comments) }); ;
+                    cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "COMMENTS", Value = ReportItem.GetCommentsString(report.CommentCollection) }); ;
                     cmd_insert.Parameters.Add(new SQLiteParameter() { ParameterName = "GROUPID", Value = report.ParentGroupId }); ;
                     cmd_insert.ExecuteNonQuery();
                 }

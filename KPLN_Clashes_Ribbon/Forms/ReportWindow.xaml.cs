@@ -224,18 +224,30 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
         }
 
-        private void OnCorrected(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Метод для записи данных в окно и БД для текущего ReportItem
+        /// </summary>
+        /// <param name="report">ReportItem для анализа</param>
+        /// <param name="itemStatus">Присаваиваемый статус замечания</param>
+        /// <param name="msg">Сообщение при смене статуса</param>
+        private void ItemManagerWorker(ReportItem report, KPItemStatus itemStatus, string msg)
         {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            _sqliteService_ReportInstanceDB.SetStatusId_ByReportItem(itemStatus, report);
+            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, report);
 
-            _sqliteService_ReportInstanceDB.SetStatusAndDepartment_ByReportItem(KPItemStatus.Closed, -1, report);
             _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
             _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
 
-            report.Status = KPItemStatus.Closed;
-            report.AddComment("Статус изменен: <Исправлено>\n", 1);
+            report.Status = itemStatus;
+            report.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(report), report);
 
             ResetDelegateBtnBrush(report);
+        }
+
+        private void OnCorrected(object sender, RoutedEventArgs e)
+        {
+            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ItemManagerWorker(report, KPItemStatus.Closed, "Статус изменен: <Допустимое>\n");
         }
 
         private void OnApproved(object sender, RoutedEventArgs e)
@@ -245,31 +257,13 @@ namespace KPLN_Clashes_Ribbon.Forms
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
 
-            _sqliteService_ReportInstanceDB.SetStatus_ByReportItem(KPItemStatus.Approved, report);
-            _sqliteService_ReportInstanceDB.SetComment_ByReportItem($"Статус изменен: <Допустимое>\n{textInputForm.UserComment}", report);
-            
-            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
-            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
-            
-            report.Status = KPItemStatus.Approved;
-            report.Comments = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(report), report);
-
-            ResetDelegateBtnBrush(report);
+            ItemManagerWorker(report, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{textInputForm.UserComment}");
         }
 
         private void OnReset(object sender, RoutedEventArgs e)
         {
             ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            try
-            {
-                DbController.SetInstanceValue(_currentReport.PathToReportInstance, report.Id, "STATUS", -1);
-                report.Status = ClashesMainCollection.KPItemStatus.Opened;
-                report.AddComment(string.Format("Статус изменен: <Открытое>\n"), 1);
-                DbController.UpdateGroupLastChange(_currentReport.ReportGroupId);
-                DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-            }
-            catch (Exception ex)
-            { PrintError(ex); }
+            ItemManagerWorker(report, KPItemStatus.Opened, $"Статус изменен: <Открытое>\n");
         }
 
         /// <summary>
@@ -467,9 +461,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             if (parent != null)
             {
                 parts.Add(Optimize(parent.Status.ToString("G")));
-                if (parent.Comments.Count != 0)
+                if (parent.CommentCollection.Count != 0)
                 {
-                    ReportItemComment comment = parent.Comments.Last();
+                    ReportItemComment comment = parent.CommentCollection.Last();
                     parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else
@@ -480,9 +474,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             else
             {
                 parts.Add(Optimize(instance.Status.ToString("G")));
-                if (instance.Comments.Count != 0)
+                if (instance.CommentCollection.Count != 0)
                 {
-                    ReportItemComment comment = instance.Comments.Last();
+                    ReportItemComment comment = instance.CommentCollection.Last();
                     parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else

@@ -4,14 +4,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Data.SQLite;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -23,6 +20,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public event PropertyChangedEventHandler PropertyChanged;
 
         private readonly string _path;
+        private int _statusId;
         private KPItemStatus _status;
         private int _delegatedDepartmentId;
         private System.Windows.Visibility _isControllsVisible = System.Windows.Visibility.Visible;
@@ -31,7 +29,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private ImageSource _imageSource;
         private Stream _imageStream;
         private BitmapImage _bitmapImage;
-        private ObservableCollection<ReportItemComment> _comments = new ObservableCollection<ReportItemComment>();
+        private ObservableCollection<ReportItemComment> _сommentCollection = new ObservableCollection<ReportItemComment>();
 
         /// <summary>
         /// Конструктор-заглушка для Dapper (он по-умолчанию использует его, когда мапит данные из БД)
@@ -61,7 +59,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             ReportGroupId = repGroupId;
             Name = name;
             ParentGroupId = parentGroupId;
-            Comments = comments;
+            CommentCollection = comments;
 
             try
             { Element_1_Id = int.Parse(element_1_id, System.Globalization.NumberStyles.Integer); }
@@ -100,7 +98,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public int Id { get; set; }
 
         public int ReportGroupId { get; set; }
-        
+
         public string Name { get; set; }
 
         public byte[] Image { get; set; }
@@ -110,6 +108,55 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public string Element_2_Info { get; set; }
 
         public string Point { get; set; }
+
+        /// <summary>
+        /// ID статуса. Нужен для маппинга внутри Dapper. Set влияет на параметр Status
+        /// </summary>
+        public int StatusId
+        {
+            get
+            {
+                _statusId = (int)Status;
+                return _statusId;
+            }
+            set
+            {
+                _statusId = value;
+                Status = (KPItemStatus)_statusId;
+            }
+        }
+
+        /// <summary>
+        /// Если коллизия в группе - ссылка на id данной группы, иначе значение -1 (приходит из настроек БД)
+        /// </summary>
+        public int ParentGroupId { get; set; }
+
+        public int DelegatedDepartmentId
+        {
+            get => _delegatedDepartmentId;
+            private set { _delegatedDepartmentId = value; }
+        }
+
+        private string _comments;
+
+        /// <summary>
+        /// Закодированный коммент из БД. Нужен для маппинга внутри Dapper. Set влияет на отображение в окне (ReportItemCommentCollection)
+        /// </summary>
+        public string Comments
+        {
+            get => _comments;
+            set
+            {
+                _comments = value;
+                CommentCollection = ReportItemComment.ParseComments(_comments, this);
+            }
+        }
+        #endregion
+
+        #region Дополнительная визуализация
+        public int Element_1_Id { get; set; }
+
+        public int Element_2_Id { get; set; }
 
         public KPItemStatus Status
         {
@@ -137,33 +184,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 NotifyPropertyChanged();
             }
         }
-        
-        /// <summary>
-        /// Если коллизия в группе - ссылка на id данной группы, иначе значение -1 (приходит из настроек БД)
-        /// </summary>
-        public int ParentGroupId { get; set; }
-
-        public int DelegatedDepartmentId
-        {
-            get => _delegatedDepartmentId;
-            private set { _delegatedDepartmentId = value; }
-        }
-
-        public ObservableCollection<ReportItemComment> Comments
-        {
-            get => _comments;
-            set
-            {
-                _comments = value;
-                NotifyPropertyChanged();
-            }
-        }
-        #endregion
-
-        #region Дополнительная визуализация
-        public int Element_1_Id { get; set; }
-
-        public int Element_2_Id { get; set; }
 
         public System.Windows.Visibility IsGroup
         {
@@ -202,15 +222,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get
             {
                 if (Point == "NONE")
-                    return System.Windows.Visibility.Collapsed; 
-                
+                    return System.Windows.Visibility.Collapsed;
+
                 return System.Windows.Visibility.Visible;
             }
         }
 
         public ImageSource ImageSource
         {
-            get => _imageSource; 
+            get => _imageSource;
             set
             {
                 if (_imageSource != value)
@@ -218,6 +238,19 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                     _imageSource = value;
                     NotifyPropertyChanged();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Визуализация комментариев в окне
+        /// </summary>
+        public ObservableCollection<ReportItemComment> CommentCollection
+        {
+            get => _сommentCollection;
+            set
+            {
+                _сommentCollection = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -262,14 +295,14 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public void LoadImage(byte[] image_buffer)
         {
             ImageSource = null;
-            
+
             _imageStream = new MemoryStream(image_buffer);
             _bitmapImage = new BitmapImage();
             _bitmapImage.BeginInit();
             _bitmapImage.StreamSource = _imageStream;
             _bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
             _bitmapImage.EndInit();
-            
+
             ImageSource = _bitmapImage;
         }
 
@@ -291,7 +324,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             try
             {
                 DbController.AddComment(message, new FileInfo(_path), this, type);
-                Comments = DbController.GetComments(new FileInfo(_path), this);
+                CommentCollection = DbController.GetComments(new FileInfo(_path), this);
             }
             catch (Exception)
             { }
@@ -302,7 +335,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             try
             {
                 DbController.RemoveComment(comment, new FileInfo(_path), this);
-                Comments = DbController.GetComments(new FileInfo(_path), this);
+                CommentCollection = DbController.GetComments(new FileInfo(_path), this);
             }
             catch (Exception)
             { }

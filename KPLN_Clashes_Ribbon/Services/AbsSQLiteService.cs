@@ -14,8 +14,8 @@ namespace KPLN_Clashes_Ribbon.Services
         /// <summary>
         /// Текущее время в формате 'yyyy/MM/dd_HH:mm'
         /// </summary>
-        private protected string CurrentTime 
-        { 
+        private protected string CurrentTime
+        {
             get => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
         }
 
@@ -27,6 +27,22 @@ namespace KPLN_Clashes_Ribbon.Services
                 {
                     connection.Open();
                     connection.Execute(query, parameters);
+                }
+            }
+            catch (Exception ex) { PrintError(ex); }
+        }
+
+        private protected void ExecuteNonQuery_Parameters(string query, IEnumerable<object> parameters)
+        {
+            try
+            {
+                using (IDbConnection connection = new SQLiteConnection(_dbConnectionPath))
+                {
+                    connection.Open();
+                    foreach (object parameter in parameters)
+                    {
+                        connection.Execute(query, parameter);
+                    }
                 }
             }
             catch (Exception ex) { PrintError(ex); }
@@ -46,8 +62,8 @@ namespace KPLN_Clashes_Ribbon.Services
                     return null;
                 }
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 PrintError(ex);
                 return null;
             }

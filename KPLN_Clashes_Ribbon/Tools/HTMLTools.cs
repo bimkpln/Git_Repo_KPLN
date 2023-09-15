@@ -72,7 +72,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                                 i++;
                             }
                             string msg = string.Join(" ", msgParts);
-                            ReportItemComment comment = new ReportItemComment(user, time, msg, 1);
+                            ReportItemComment comment = new ReportItemComment(user, time, msg);
                             comments.Add(comment);
 
                         }

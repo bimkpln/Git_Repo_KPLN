@@ -2,9 +2,7 @@
 using KPLN_Clashes_Ribbon.Core.Reports;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Services
 {
@@ -34,7 +32,7 @@ namespace KPLN_Clashes_Ribbon.Services
                         $"{nameof(ReportItem.Element_1_Info)} TEXT, " +
                         $"{nameof(ReportItem.Element_2_Info)} TEXT, " +
                         $"{nameof(ReportItem.Point)} TEXT, " +
-                        $"{nameof(ReportItem.Status)} TEXT NOT NULL DEFAULT 'Opened', " +
+                        $"{nameof(ReportItem.StatusId)} INTEGER NOT NULL DEFAULT 1, " +
                         $"{nameof(ReportItem.Comments)} TEXT, " +
                         $"{nameof(ReportItem.ParentGroupId)} INTEGER NOT NULL DEFAULT -1, " +
                         $"{nameof(ReportItem.DelegatedDepartmentId)} INTEGER)");
@@ -53,11 +51,11 @@ namespace KPLN_Clashes_Ribbon.Services
                     $"{nameof(ReportItem.Element_1_Info)}, " +
                     $"{nameof(ReportItem.Element_2_Info)}, " +
                     $"{nameof(ReportItem.Point)}, " +
-                    $"{nameof(ReportItem.Status)}, " +
+                    $"{nameof(ReportItem.StatusId)}, " +
                     $"{nameof(ReportItem.ParentGroupId)}) " +
                 "VALUES " +
                     "(@Id, @ReportGroupId, @Name, @Image, " +
-                    "@Element_1_Info, @Element_2_Info, @Point, @Status, @ParentGroupId)",
+                    "@Element_1_Info, @Element_2_Info, @Point, @StatusId, @ParentGroupId)",
                 reports);
         #endregion
 
@@ -122,10 +120,10 @@ namespace KPLN_Clashes_Ribbon.Services
         /// </summary>
         /// <param name="status">Статус для записи</param>
         /// <param name="reportItem">ReportItem для поиска</param>
-        public void SetStatus_ByReportItem(ClashesMainCollection.KPItemStatus status, ReportItem reportItem) =>
+        public void SetStatusId_ByReportItem(ClashesMainCollection.KPItemStatus status, ReportItem reportItem) =>
             ExecuteNonQuery(
                 $"UPDATE {_dbTableName} " +
-                $"SET {nameof(ReportItem.Status)}={status}" +
+                $"SET {nameof(ReportItem.StatusId)}={(int)status} " +
                 $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
 
         /// <summary>
@@ -133,14 +131,14 @@ namespace KPLN_Clashes_Ribbon.Services
         /// </summary>
         /// <param name="message"></param>
         /// <param name="reportItem">ReportItem для поиска</param>
-        public void SetComment_ByReportItem(string message, ReportItem reportItem) 
+        public void SetComment_ByReportItem(string message, ReportItem reportItem)
         {
             List<string> value_parts = new List<string>
             {
-                // Type=1 тут ЗАГЛУШКА. Нужно уточнить
-                new ReportItemComment(message, 1).ToString()
+                new ReportItemComment(message).ToString()
             };
-            foreach (ReportItemComment comment in reportItem.Comments)
+
+            foreach (ReportItemComment comment in reportItem.CommentCollection)
             {
                 value_parts.Add(comment.ToString());
             }
@@ -150,7 +148,7 @@ namespace KPLN_Clashes_Ribbon.Services
                 $"UPDATE {_dbTableName} " +
                 $"SET {nameof(ReportItem.Comments)}='{decorateMsg}'" +
                 $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
-        
+
         }
         #endregion
 

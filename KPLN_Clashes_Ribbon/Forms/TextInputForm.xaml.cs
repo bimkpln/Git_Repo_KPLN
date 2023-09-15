@@ -71,6 +71,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                 || char.IsWhiteSpace(c)
                 || char.IsDigit(c)
                 || c == '-'
+                || c == '?'
+                || c == ','
+                || c == '.'
                 || c == '_';
         }
 
