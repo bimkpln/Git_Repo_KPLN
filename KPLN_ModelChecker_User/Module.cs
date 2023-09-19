@@ -65,7 +65,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_levels.png",
                 _mainContextualHelp,
-                _userDepartment != 3
+                _userDepartment == 2 || _userDepartment == 8
                 );
 
             AddPushButtonData(
@@ -77,7 +77,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mirrored.png",
                 _mainContextualHelp,
-                _userDepartment != 2
+                _userDepartment == 2 || _userDepartment == 4 || _userDepartment == 8
                 );
 
             AddPushButtonData(
@@ -187,7 +187,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkHoles.png",
                 _mainContextualHelp,
-                _userDepartment != 2 && _userDepartment != 3
+                _userDepartment == 2 || _userDepartment == 8
                 );
 
             AddPushButtonData(
@@ -204,7 +204,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
                 _mainContextualHelp,
-                _userDepartment != 2 && _userDepartment != 3
+                _userDepartment == 2 || _userDepartment == 8
                 );
 
             //AddPushButtonData(
