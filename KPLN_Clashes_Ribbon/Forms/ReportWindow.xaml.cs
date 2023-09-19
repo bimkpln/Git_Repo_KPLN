@@ -225,45 +225,70 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
 
         /// <summary>
-        /// Метод для записи данных в окно и БД для текущего ReportItem
+        /// Метод для записи данных (комментарии) в окно и БД для текущего ReportItem
         /// </summary>
-        /// <param name="report">ReportItem для анализа</param>
-        /// <param name="itemStatus">Присаваиваемый статус замечания</param>
+        /// <param name="item">ReportItem для анализа</param>
         /// <param name="msg">Сообщение при смене статуса</param>
-        private void ItemManagerWorker(ReportItem report, KPItemStatus itemStatus, string msg)
+        private void ItemMessageWorker(ReportItem item, string msg)
         {
-            _sqliteService_ReportInstanceDB.SetStatusId_ByReportItem(itemStatus, report);
-            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, report);
+            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
 
             _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
             _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
 
-            report.Status = itemStatus;
-            report.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(report), report);
+            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
+        }
 
-            ResetDelegateBtnBrush(report);
+        /// <summary>
+        /// Метод для записи данных (комментарии, статус) в окно и БД для текущего ReportItem
+        /// </summary>
+        /// <param name="item">ReportItem для анализа</param>
+        /// <param name="itemStatus">Присаваиваемый статус замечания</param>
+        /// <param name="msg">Сообщение при смене статуса</param>
+        private void ItemMessageWorker(ReportItem item, KPItemStatus itemStatus, string msg)
+        {
+            _sqliteService_ReportInstanceDB.SetStatusId_ByReportItem(itemStatus, item);
+            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
+
+            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
+            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
+
+            item.Status = itemStatus;
+            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
+
+            ResetDelegateBtnBrush(item);
         }
 
         private void OnCorrected(object sender, RoutedEventArgs e)
         {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            ItemManagerWorker(report, KPItemStatus.Closed, "Статус изменен: <Допустимое>\n");
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ItemMessageWorker(item, KPItemStatus.Closed, "Статус изменен: <Устранено>\n");
         }
 
         private void OnApproved(object sender, RoutedEventArgs e)
         {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
 
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
 
-            ItemManagerWorker(report, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{textInputForm.UserComment}");
+            ItemMessageWorker(item, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{textInputForm.UserComment}");
         }
 
         private void OnReset(object sender, RoutedEventArgs e)
         {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            ItemManagerWorker(report, KPItemStatus.Opened, $"Статус изменен: <Открытое>\n");
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Открытое>\n");
+        }
+
+        private void OnAddComment(object sender, RoutedEventArgs e)
+        {
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+
+            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
+            textInputForm.ShowDialog();
+
+            ItemMessageWorker(item, $"{textInputForm.UserComment}");
         }
 
         /// <summary>
@@ -273,35 +298,18 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             SubDepartmentBtn subDepartmentBtn = button.DataContext as SubDepartmentBtn;
-            ReportItem report = subDepartmentBtn.Parent;
-            try
+            ReportItem item = subDepartmentBtn.Parent;
+            if (subDepartmentBtn.Id == 7)
             {
-                if (subDepartmentBtn.Id == 7)
-                {
-                    // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
-                    DbController.SetInstanceValue(_currentReport.PathToReportInstance, report.Id, "STATUS", -1);
-                    DbController.SetInstanceValue(_currentReport.PathToReportInstance, report.Id, "DEPARTMENT", -1);
-                    report.Status = Core.ClashesMainCollection.KPItemStatus.Opened;
-                    report.AddComment(string.Format($"Статус изменен: <Возвращен в работу>\n"), 1);
-                    DbController.UpdateGroupLastChange(_currentReport.ReportGroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                    ResetDelegateBtnBrush(report);
-                }
-                else 
-                {
-                    // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
-                    DbController.SetInstanceValue(_currentReport.PathToReportInstance, report.Id, "STATUS", 2);
-                    DbController.SetInstanceValue(_currentReport.PathToReportInstance, report.Id, "DEPARTMENT", subDepartmentBtn.Id);
-                    report.Status = Core.ClashesMainCollection.KPItemStatus.Delegated;
-                    report.AddComment(string.Format($"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n"), 1);
-                    DbController.UpdateGroupLastChange(_currentReport.ReportGroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                    SetDelegateBtnBrush(report, subDepartmentBtn);
-                }
-                
+                // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
+                ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу>\n");
             }
-            catch (Exception ex)
-            { PrintError(ex); }
+            else 
+            {
+                // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
+                SetDelegateBtnBrush(item, subDepartmentBtn);
+                ItemMessageWorker(item, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
+            }
         }
 
         /// <summary>
@@ -332,28 +340,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
         }
 
-        private void OnAddComment(object sender, RoutedEventArgs e)
-        {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-
-            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
-            textInputForm.ShowDialog();
-
-            report.AddComment(textInputForm.UserComment, 0);
-            
-            DbController.UpdateGroupLastChange(_currentReport.ReportGroupId);
-            DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-        }
-
-        private void OnRemoveComment(object sender, RoutedEventArgs e)
-        {
-            ReportItemComment comment = (sender as System.Windows.Controls.Button).DataContext as ReportItemComment;
-            comment.Parent.RemoveComment(comment);
-            
-            DbController.UpdateGroupLastChange(_currentReport.ReportGroupId);
-            DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-        }
-
         private void OnBtnUpdate(object sender, RoutedEventArgs args)
         {
             _reportManager.UpdateGroups();
@@ -380,7 +366,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                     break;
             }
         }
-       private void OnExport(object sender, RoutedEventArgs e)
+       
+        private void OnExport(object sender, RoutedEventArgs e)
         {
             List<string> rows = new List<string>();
             ObservableCollection<ReportItem> visibleCollection = ReportControll.ItemsSource as ObservableCollection<ReportItem>;

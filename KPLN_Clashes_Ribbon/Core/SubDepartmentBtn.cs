@@ -52,9 +52,9 @@ namespace KPLN_Clashes_Ribbon.Core
         /// <summary>
         /// Установка привязок к инстансам отчетов и установка цвета
         /// </summary>
-        public void SetBinding(ReportItem reportInstance, Brush delegateBtnBackground)
+        public void SetBinding(ReportItem reportItem, Brush delegateBtnBackground)
         {
-            this.Parent = reportInstance;
+            this.Parent = reportItem;
             this.DelegateBtnBackground = delegateBtnBackground;
         }
     }

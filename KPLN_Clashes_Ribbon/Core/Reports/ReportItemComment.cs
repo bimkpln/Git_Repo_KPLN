@@ -1,10 +1,7 @@
-﻿using KPLN_Loader.Common;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -45,14 +42,14 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get => $"{KPLN_Loader.Application.CurrentRevitUser.Surname} {KPLN_Loader.Application.CurrentRevitUser.Name}";
         }
-        
+
         /// <summary>
         /// Имя учетной записи Windows (из общей БД KPLN)
         /// </summary>
         public string UserSystemName { get; private set; }
-        
+
         public string Time { get; set; }
-        
+
         public string Message { get; set; }
 
         public override string ToString()

@@ -205,7 +205,6 @@
     <Compile Include="Services\SQLiteService_ReportItemsDB.cs" />
     <Compile Include="Services\SQLiteService_MainDB.cs" />
     <Compile Include="Source\Source.cs" />
-    <Compile Include="Tools\DbController.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
     <Compile Include="Tools\SystemTools.cs" />
     <Compile Include="Tools\ZoomTools.cs" />

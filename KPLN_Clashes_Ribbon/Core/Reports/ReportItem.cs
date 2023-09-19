@@ -19,7 +19,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private readonly string _path;
         private int _statusId;
         private KPItemStatus _status;
         private int _delegatedDepartmentId;
@@ -32,10 +31,18 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private ObservableCollection<ReportItemComment> _сommentCollection = new ObservableCollection<ReportItemComment>();
 
         /// <summary>
-        /// Конструктор-заглушка для Dapper (он по-умолчанию использует его, когда мапит данные из БД)
+        /// Конструктор для Dapper (он по-умолчанию использует его, когда мапит данные из БД)
         /// </summary>
         public ReportItem()
         {
+            // Генерация кнопок делегирования
+            foreach (SubDepartmentBtn sdBtn in SubDepartmentBtns)
+            {
+                if (sdBtn.Id == DelegatedDepartmentId)
+                    sdBtn.SetBinding(this, Brushes.Aqua);
+                else
+                    sdBtn.SetBinding(this, Brushes.Transparent);
+            }
         }
 
         /// <summary>
@@ -317,28 +324,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        public void AddComment(string message, int type)
-        {
-            try
-            {
-                DbController.AddComment(message, new FileInfo(_path), this, type);
-                CommentCollection = DbController.GetComments(new FileInfo(_path), this);
-            }
-            catch (Exception)
-            { }
-        }
-
-        public void RemoveComment(ReportItemComment comment)
-        {
-            try
-            {
-                DbController.RemoveComment(comment, new FileInfo(_path), this);
-                CommentCollection = DbController.GetComments(new FileInfo(_path), this);
-            }
-            catch (Exception)
-            { }
         }
     }
 }

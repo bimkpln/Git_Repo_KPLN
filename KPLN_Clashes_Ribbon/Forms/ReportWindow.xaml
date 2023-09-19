@@ -192,7 +192,18 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                                <Button Height="25" Width="50" Padding="5,0,5,0" x:Name="btn_delegate" Margin="3,10,0,0" Content="{Binding Name}" Background="{Binding DelegateBtnBackground}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnDelegate">
+                                                <Button x:Name="btn_delegate" 
+                                                        Height="25" 
+                                                        Width="50" 
+                                                        Padding="5,0,5,0" 
+                                                        Margin="3,10,0,0" 
+                                                        Content="{Binding Name}" 
+                                                        Background="{Binding DelegateBtnBackground}" 
+                                                        BorderBrush="White" 
+                                                        Foreground="White" 
+                                                        FontWeight="Bold" 
+                                                        BorderThickness="2" 
+                                                        Click="OnDelegate">
                                                     <Button.ToolTip>
                                                         <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Description}"/>
                                                     </Button.ToolTip>
@@ -223,16 +234,6 @@
                                                     </StackPanel>
                                                     <Separator Grid.Row="1" Background="White" Foreground="White"/>
                                                     <TextBlock TextWrapping="Wrap" Grid.Row="2"  Text="{Binding Message}" Foreground="White"/>
-                                                    <Button Visibility="{Binding VisibleIfUserComment}" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.ColumnSpan="3" Margin="3" Content="✖" Width="22" Height="22" FontSize="10" Foreground="White" Background="{x:Null}" BorderBrush="#33FFFFFF" Click="OnRemoveComment">
-                                                        <Button.ToolTip>
-                                                            <StackPanel MaxWidth="300">
-                                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>
-                                                                <TextBlock TextWrapping="Wrap" Text="Удалить комментарий"/>
-                                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие доступно только для пользовательских комментариев" FontStyle="Italic"/>
-                                                            </StackPanel>
-                                                        </Button.ToolTip>
-                                                    </Button>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
