@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace KPLN_Loader.Forms
@@ -66,11 +67,22 @@ namespace KPLN_Loader.Forms
         /// <summary>
         /// Добавляет маркер при дебаге модулей
         /// </summary>
-        /// <param name="user"></param>
+        /// <param name="user">Пользователь</param>
         internal void CheckAndSetDebugStatusByUser(User user)
         {
             if (user.IsDebugMode)
                 DebugModeTxt.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Событие наведения мыши в окно ScrollViewer. Связано с потеряй фокуса на колесо мыши
+        /// </summary>
+        private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            // Выполните здесь нужное вам поведение при прокрутке колесом мыши
+            ScrollViewer.ScrollToVerticalOffset(ScrollViewer.VerticalOffset - e.Delta);
+            // Пометьте событие как обработанное, чтобы оно не передалось другим элементам
+            e.Handled = true;
         }
 
         /// <summary>

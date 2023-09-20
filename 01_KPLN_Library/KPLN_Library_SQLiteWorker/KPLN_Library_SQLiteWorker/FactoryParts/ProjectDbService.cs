@@ -18,14 +18,19 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// Получить коллекцию ВСЕХ проектов
         /// </summary>
         /// <returns>Коллекция пользователей</returns>
-        public IEnumerable<DBProject> GetDBProjects() => 
-            ExecuteQuery<DBProject>($"SELECT * FROM {_dbTableName};");
+        public IEnumerable<DBProject> GetDBProjects() =>
+            ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBProject.IsBlocked)}='False';");
 
         /// <summary>
         /// Получить проект по Id
         /// </summary>
         /// <returns>Коллекция пользователей</returns>
         public DBProject GetDBProject_ByProjectId(int id) => 
-            ExecuteQuery<DBProject>($"SELECT * FROM {_dbTableName} WHERE {nameof(DBProject.Id)}='{id}';").FirstOrDefault();
+            ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBProject.Id)}='{id}';")
+            .FirstOrDefault();
     }
 }

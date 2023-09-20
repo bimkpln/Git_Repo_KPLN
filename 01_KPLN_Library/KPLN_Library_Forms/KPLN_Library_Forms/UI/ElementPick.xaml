@@ -5,9 +5,18 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Library_Forms.UI"
         mc:Ignorable="d" 
-        Width="300" Height="400"
+        Width="300" 
+        Height="400"
         MaxHeight="750"
-        Title="KPLN: Окно выбора" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" ResizeMode="CanResizeWithGrip" WindowStyle="ToolWindow"  Topmost="False" WindowStartupLocation="CenterScreen" Closing="Window_Closing" SizeToContent="Height" Loaded="OnLoaded">
+        Title="KPLN: Окно выбора" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        ResizeMode="CanResizeWithGrip" 
+        WindowStyle="ToolWindow" 
+        Topmost="False" 
+        WindowStartupLocation="CenterScreen" 
+        Closing="Window_Closing" 
+        SizeToContent="Height" 
+        Loaded="OnLoaded">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
@@ -18,9 +27,24 @@
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border CornerRadius="5" Background="{TemplateBinding Background}">
                             <Grid>
-                                <Rectangle RadiusX="5" RadiusY="5" Fill="{TemplateBinding Background}"/>
-                                <Path x:Name="PathIcon" Width="15" Height="25" Stretch="Fill" Fill="#4C87B3" HorizontalAlignment="Left" Margin="17,0,0,0"/>
-                                <ContentPresenter x:Name="MyContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
+                                <Rectangle 
+                                    RadiusX="5" 
+                                    RadiusY="5" 
+                                    Fill="{TemplateBinding Background}"/>
+                                <Path 
+                                    x:Name="PathIcon" 
+                                    Width="15" 
+                                    Height="25" 
+                                    Stretch="Fill" 
+                                    Fill="#4C87B3" 
+                                    HorizontalAlignment="Left" 
+                                    Margin="17,0,0,0"/>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center" 
+                                    Margin="0,0,0,0" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -65,26 +89,55 @@
         </Grid.ColumnDefinitions>
 
         <DockPanel Background="Orange" LastChildFill="True">
-            <TextBlock Text="Поиск:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
-            <TextBox x:Name="SearchText" Style="{StaticResource TXTBX}" Grid.Row="0" TextChanged="SearchText_Changed"
-                     TextAlignment="Left" VerticalAlignment="Center" DockPanel.Dock="Right" FontStretch="ExtraExpanded"/>
+            <TextBlock 
+                Text="Поиск:" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5"/>
+            <TextBox 
+                x:Name="SearchText"
+                Style="{StaticResource TXTBX}" 
+                Grid.Row="0" TextChanged="SearchText_Changed"
+                TextAlignment="Left" 
+                VerticalAlignment="Center" 
+                DockPanel.Dock="Right" 
+                FontStretch="ExtraExpanded"/>
         </DockPanel>
 
-        <GridSplitter  Grid.Row="0" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"></GridSplitter>
+        <GridSplitter 
+            Grid.Row="0" 
+            Height="5" 
+            Grid.ColumnSpan ="1" 
+            VerticalAlignment="Bottom" 
+            HorizontalAlignment="Stretch"/>
 
-        <ScrollViewer  Grid.Row="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Visible">
+        <ScrollViewer 
+            Grid.Row="1" 
+            Margin="0, 0, 0, 5"
+            HorizontalScrollBarVisibility="Hidden" 
+            VerticalScrollBarVisibility="Visible">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="Elements">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Style="{StaticResource BTN}" Content="{Binding Name}" ToolTip="{Binding Code}" Visibility="{Binding IsVisible}" Click="OnElementClick"/>
+                            <Button 
+                                Style="{StaticResource BTN}" 
+                                Content="{Binding Name}" 
+                                ToolTip="{Binding Code}" 
+                                Visibility="{Binding IsVisible}" 
+                                Click="OnElementClick"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 
-        <GridSplitter  Grid.Row="1" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"></GridSplitter>
+        <GridSplitter 
+            Grid.Row="1" 
+            Height="5" 
+            Grid.ColumnSpan ="1" 
+            VerticalAlignment="Bottom" 
+            HorizontalAlignment="Stretch"/>
 
         <Button 
             x:Name="RunWithoutFilter" 

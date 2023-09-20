@@ -109,7 +109,7 @@ namespace KPLN_Loader
                 application.CreateRibbonTab(_ribbonName);
 
                 #region Подготовка, копирование и активация модулей для пользователя
-                _logger.Info("Подготовка, копирование и активация модулей для пользователя:");
+                _logger.Info("Подготовка, копирование библиотек и активация модулей для пользователя:");
 
                 // Коллекция модулей из БД
                 IEnumerable<Module> userAllModules = _dbService.GetModulesForCurrentUser(CurrentRevitUser);
@@ -120,10 +120,11 @@ namespace KPLN_Loader
                 foreach (Module module in userAllModules)
                 {
                     isModuleLoad = false;
+                    string moduleVersion = "-";
                     
                     if (module == null)
                     {
-                        string msg = $"Модуль [{module.Name}] не найден!";
+                        string msg = $"Модуль/библиотека [{module.Name}] не найден/а!";
                         _logger.Error(msg);
                         LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Red);
                         continue;
@@ -144,13 +145,17 @@ namespace KPLN_Loader
                                     {
                                         // Каждую dll библиотеки - нужно прогрузить в текущее приложение, чтобы появилась связь в проекте.
                                         // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
-                                        _ = System.Reflection.Assembly.LoadFrom(file.FullName);
+                                        System.Reflection.Assembly moduleAssembly = System.Reflection.Assembly.LoadFrom(file.FullName);
+                                        FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
+                                        if (fvi.FileName.Contains("KPLN"))
+                                            moduleVersion = fvi.FileVersion;
+
                                         isModuleLoad = true;
                                     }
                                 }
 
                                 // Вывод в окно пользователя и лог
-                                string msg = $"Модуль-библиотека [{module.Name}] успешно скопирован!";
+                                string msg = $"Модуль-библиотека [{module.Name}] версии {moduleVersion} успешно скопирован!";
                                 _logger.Info(msg);
                                 LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Black);
                                 uploadModules++;
@@ -174,9 +179,10 @@ namespace KPLN_Loader
                                             if (loadingResult == Result.Succeeded)
                                             {
                                                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
+                                                moduleVersion = fvi.FileVersion;
 
                                                 // Вывод в окно пользователя и лог
-                                                string msg = $"Модуль [{module.Name}] версии {fvi.FileVersion} успешно активирован!";
+                                                string msg = $"Модуль [{module.Name}] версии {moduleVersion} успешно активирован!";
                                                 _logger.Info(msg);
                                                 LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Black);
                                                 uploadModules++;

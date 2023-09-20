@@ -20,13 +20,17 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <param name="sysUserName">Имя Revit-пользователя</param>
         /// <returns>Пользователь</returns>
         public DBUser GetDBUser_ByRevitUserName(string sysUserName) => 
-            ExecuteQuery<DBUser>($"SELECT * FROM {_dbTableName} WHERE {nameof(DBUser.SystemName)}='{sysUserName}';").FirstOrDefault();
+            ExecuteQuery<DBUser>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBUser.SystemName)}='{sysUserName}';")
+            .FirstOrDefault();
         
         /// <summary>
         /// Получить коллекцию ВСЕХ пользователей
         /// </summary>
         /// <returns>Коллекция пользователей</returns>
         public IEnumerable<DBUser> GetDBUsers() => 
-            ExecuteQuery<DBUser>($"SELECT * FROM {_dbTableName};");
+            ExecuteQuery<DBUser>(
+                $"SELECT * FROM {_dbTableName};");
     }
 }
