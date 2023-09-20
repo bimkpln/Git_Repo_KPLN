@@ -78,8 +78,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get => _status;
             set
             {
-                UpdatePropertiesBasedOnStatus();
                 _status = value;
+                UpdatePropertiesBasedOnStatus();
                 NotifyPropertyChanged();
             }
         }
@@ -285,7 +285,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
 
         /// <summary>
-        /// Обновление свойств отюъекта, в зависимости от стаутса ReportGroup
+        /// Обновление свойств отбъекта, в зависимости от стаутса ReportGroup
         /// </summary>
         private void UpdatePropertiesBasedOnStatus()
         {

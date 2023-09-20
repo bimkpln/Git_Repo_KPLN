@@ -75,25 +75,22 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get => _status;
             set
             {
-                if (_status != value)
+                _status = value;
+
+                switch (value)
                 {
-                    _status = value;
-
-                    switch (value)
-                    {
-                        case ClashesMainCollection.KPItemStatus.Closed:
-                            Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Closed);
-                            break;
-                        case ClashesMainCollection.KPItemStatus.Delegated:
-                            Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Delegated);
-                            break;
-                        default:
-                            Source = new Source.Source(ClashesMainCollection.KPIcon.Instance);
-                            break;
-                    }
-
-                    NotifyPropertyChanged();
+                    case ClashesMainCollection.KPItemStatus.Closed:
+                        Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Closed);
+                        break;
+                    case ClashesMainCollection.KPItemStatus.Delegated:
+                        Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Delegated);
+                        break;
+                    default:
+                        Source = new Source.Source(ClashesMainCollection.KPIcon.Instance);
+                        break;
                 }
+
+                NotifyPropertyChanged();
             }
         }
 

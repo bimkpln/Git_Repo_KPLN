@@ -50,13 +50,26 @@ namespace KPLN_Clashes_Ribbon.Forms
                 foreach (ReportGroup group in groups)
                 {
                     ObservableCollection<Report> reports = _sqliteService_MainDB.GetReports_ByReportGroupId(group.Id);
+                    
+                    // Настройка визуализации ReportGroup если по отчетам Report была активность
+                    if (group.Status == Core.ClashesMainCollection.KPItemStatus.New)
+                    {
+                        IEnumerable<Report> notNewReports = reports.Where(r => r.Status != Core.ClashesMainCollection.KPItemStatus.New);
+                        if (notNewReports.Any())
+                        {
+                            group.Status = Core.ClashesMainCollection.KPItemStatus.Opened;
+                            _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Core.ClashesMainCollection.KPItemStatus.Opened, MainDB_Enumerator.ReportGroups, group.Id);
+                        }
+                    }
+                    
                     foreach (Report report in reports)
                     {
+                        // Настройка визуализации Report если отчеты закрыты (смена картинки)
                         if (group.Status != Core.ClashesMainCollection.KPItemStatus.Closed)
                             report.IsGroupEnabled = Visibility.Visible;
                         else
                             report.IsGroupEnabled = Visibility.Collapsed;
-
+                        
                         group.Reports.Add(report);
                     }
                 }

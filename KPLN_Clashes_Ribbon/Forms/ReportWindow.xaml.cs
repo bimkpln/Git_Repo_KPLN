@@ -3,7 +3,6 @@ using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.Services;
-using KPLN_Clashes_Ribbon.Tools;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -15,9 +14,9 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -58,13 +57,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                     instance.IsControllsEnabled = false;
                 }
             }
-            
+
             InitializeComponent();
-            
+
             Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
-            
+
             UpdateCollection(KPItemStatus.Opened);
-            
+
             Closing += RemoveOnClose;
         }
 
@@ -86,7 +85,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             else
                 return KPItemStatus.Opened;
         }
-        
+
         private void RemoveOnClose(object sender, CancelEventArgs args)
         {
             foreach (IExecutableCommand cmd in OnClosingActions)
@@ -94,7 +93,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(cmd);
             }
         }
- 
+
         private void OnLoadImage(object sender, RoutedEventArgs e)
         {
             if ((sender as System.Windows.Controls.Button).DataContext is ReportItem reportItem)
@@ -136,12 +135,12 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
             ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            
+
             string pt = report.Point;
             pt = pt.Replace("X:", "");
             pt = pt.Replace("Y:", "");
             pt = pt.Replace("Z:", "");
-            
+
             string pts = string.Empty;
             foreach (char c in pt)
             {
@@ -150,7 +149,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     pts += c;
                 }
             }
-            
+
             string[] parts = pts.Split(',');
             //var temp = double.Parse(parts[0].Replace(".", ","), NumberStyles.Float);
             if (
@@ -195,12 +194,12 @@ namespace KPLN_Clashes_Ribbon.Forms
                         filtered_collection.Add(report);
                     }
                 }
-                    
+
             }
             if (ReportControll != null)
             { ReportControll.ItemsSource = filtered_collection; }
         }
-        
+
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             int i = this.cbxFilter.SelectedIndex;
@@ -271,14 +270,15 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
-
-            ItemMessageWorker(item, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{textInputForm.UserComment}");
+            string msg = textInputForm.UserComment;
+            if (msg != null)
+                ItemMessageWorker(item, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
         }
 
         private void OnReset(object sender, RoutedEventArgs e)
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Открытое>\n");
+            ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\n");
         }
 
         private void OnAddComment(object sender, RoutedEventArgs e)
@@ -287,8 +287,9 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
-
-            ItemMessageWorker(item, $"{textInputForm.UserComment}");
+            string msg = textInputForm.UserComment;
+            if (msg != null)
+                ItemMessageWorker(item, $"{msg}");
         }
 
         /// <summary>
@@ -302,9 +303,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             if (subDepartmentBtn.Id == 7)
             {
                 // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
-                ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу>\n");
+                ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
             }
-            else 
+            else
             {
                 // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
                 SetDelegateBtnBrush(item, subDepartmentBtn);
@@ -336,7 +337,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 { btn.DelegateBtnBackground = Brushes.Aqua; }
                 else
                 { sdBtn.DelegateBtnBackground = Brushes.Transparent; }
-                
+
             }
         }
 
@@ -366,7 +367,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     break;
             }
         }
-       
+
         private void OnExport(object sender, RoutedEventArgs e)
         {
             List<string> rows = new List<string>();
@@ -401,7 +402,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 writer.Close();
             }
         }
-        
+
         private static string Optimize(string value)
         {
             string final = string.Empty;
@@ -435,7 +436,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             return final;
         }
-        
+
         private static string GetExportRow(ReportItem instance, ReportItem parent = null)
         {
 

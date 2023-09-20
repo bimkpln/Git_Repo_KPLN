@@ -38,7 +38,7 @@ namespace KPLN_Clashes_Ribbon.Services
                 "VALUES " +
                     $"({project.Id}, " +
                     $"'{name}', " +
-                    $"'{KPItemStatus.Opened}', " +
+                    $"'{KPItemStatus.New}', " +
                     $"'{CurrentTime}', " +
                     $"'{_userSystemName}', " +
                     $"'{CurrentTime}', " +
@@ -64,7 +64,7 @@ namespace KPLN_Clashes_Ribbon.Services
                 "VALUES " +
                     $"({group.Id}, " +
                     $"'{name}', " +
-                    $"'{KPItemStatus.Opened}', " +
+                    $"'{KPItemStatus.New}', " +
                     $"'{groupDbFi.FullName}', " +
                     $"'{CurrentTime}', " +
                     $"'{_userSystemName}', " +
