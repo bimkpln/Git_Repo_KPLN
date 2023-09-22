@@ -37,8 +37,10 @@
     </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_ExtensibleStorage">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Release\KPLN_Library_ExtensibleStorage.dll</HintPath>
+    <Reference Include="KPLN_Library_ExtensibleStorage, Version=1.1.2.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Revit2020\KPLN_Library_ExtensibleStorage.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2020\KPLN_Library_Forms.dll</HintPath>
@@ -46,6 +48,10 @@
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2020\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
@@ -195,13 +201,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib.csproj">
-      <Project>{57caeffd-5880-4a89-a882-127729008cb1}</Project>
-      <Name>KPLN_ModelChecker_Lib</Name>
-      <Private>False</Private>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checkHoles.png" />

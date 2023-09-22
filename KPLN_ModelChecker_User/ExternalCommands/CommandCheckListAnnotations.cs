@@ -36,6 +36,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             "011_",
             "012_",
+            "020_Эквив",
             "022_",
             "023_",
             "024_",
