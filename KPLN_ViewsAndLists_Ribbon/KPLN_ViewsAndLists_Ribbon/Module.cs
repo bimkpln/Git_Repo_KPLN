@@ -7,10 +7,6 @@ using System.Windows.Media.Imaging;
 
 namespace KPLN_ViewsAndLists_Ribbon
 {
-    [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
-    [Autodesk.Revit.Attributes.Regeneration(Autodesk.Revit.Attributes.RegenerationOption.Manual)]
-    [Autodesk.Revit.Attributes.Journaling(Autodesk.Revit.Attributes.JournalingMode.NoCommandData)]
-
     public class Module : IExternalModule
     {
         public static string AssemblyPath = Assembly.GetExecutingAssembly().Location;

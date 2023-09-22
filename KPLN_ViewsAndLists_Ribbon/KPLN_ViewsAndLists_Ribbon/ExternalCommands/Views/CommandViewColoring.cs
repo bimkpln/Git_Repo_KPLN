@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ViewsAndLists_Ribbon.Views.FilterUtils;
 using KPLN_ViewsAndLists_Ribbon.Views.Colorize;
 using KPLN_ViewsAndLists_Ribbon.Views.Colorize.FilterData;
-using static KPLN_Loader.Output.Output;
+using KPLN_ViewsAndLists_Ribbon.Views.FilterUtils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
@@ -44,8 +42,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 List<MyParameter> mparams = ViewUtils.GetAllFilterableParameters(doc, elems);
 
 
-                FormSelectParameterForFilters form1 = new FormSelectParameterForFilters();
-                form1.parameters = mparams;
+                FormSelectParameterForFilters form1 = new FormSelectParameterForFilters
+                {
+                    parameters = mparams
+                };
                 if (form1.ShowDialog() != System.Windows.Forms.DialogResult.OK) return Result.Cancelled;
 
 

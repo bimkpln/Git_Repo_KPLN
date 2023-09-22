@@ -10,7 +10,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 {
     public static class FilterCreator
     {
-        public static ParameterFilterElement createSimpleFilter(Document doc, List<ElementId> catsIds, string filterName, MyParameter mp, CriteriaType ctype)
+        public static ParameterFilterElement CreateSimpleFilter(Document doc, List<ElementId> catsIds, string filterName, MyParameter mp, CriteriaType ctype)
         {
             List<ParameterFilterElement> filters = new FilteredElementCollector(doc)
                  .OfClass(typeof(ParameterFilterElement))
@@ -202,7 +202,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                     return stringRule;
 
                 case StorageType.Integer:
-                    int intValue = 0;
+                    int intValue;
                     if (Value.Equals("Да") || Value.Equals("да"))
                     {
                         intValue = 1;
@@ -213,8 +213,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                         intValue = 0;
                         goto Create;
                     }
-                    int i = 0;
-                    bool check = int.TryParse(Value, out i);
+
+                    bool check = int.TryParse(Value, out _);
                     if (!check)
                     {
                         throw new Exception("Ошибка при обработке параметра: " + Param.Definition.Name + " = " + Value);

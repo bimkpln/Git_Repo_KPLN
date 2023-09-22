@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ViewsAndLists_Ribbon.Views.FilterUtils;
-using static KPLN_Loader.Output.Output;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
@@ -42,8 +40,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 List<Wall> walls = new List<Wall>();
                 foreach (ElementId id in sel.GetElementIds())
                 {
-                    Wall w = doc.GetElement(id) as Wall;
-                    if (w == null) continue;
+                    if (!(doc.GetElement(id) is Wall w)) continue;
                     walls.Add(w);
                 }
 
@@ -109,7 +106,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
                         MyParameter mp = new MyParameter(curWalls.First().LookupParameter("Рзм.ОтметкаВерха"));
                         ParameterFilterElement filter =
-                            FilterCreator.createSimpleFilter(doc, catsIds, filterName, mp, CriteriaType.Equals);
+                            FilterCreator.CreateSimpleFilter(doc, catsIds, filterName, mp, CriteriaType.Equals);
 
                         curView.AddFilter(filter.Id);
                         OverrideGraphicSettings ogs = new OverrideGraphicSettings();
@@ -174,12 +171,12 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
         private ElementId GetHatchIdByNumber(Document doc, int number)
         {
-            string hatchName = GetHatchNameByNumber(doc, number);
+            string hatchName = GetHatchNameByNumber(number);
             ElementId hatchId = GetHatchIdByName(doc, hatchName);
             return hatchId;
         }
 
-        private string GetHatchNameByNumber(Document doc, int number)
+        private string GetHatchNameByNumber(int number)
         {
             if (number == 1) return "Грунт естественный";
             if (number == 2) return "08.Грунт.Гравий";

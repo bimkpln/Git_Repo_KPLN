@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Windows.Forms;
 using KPLN_ViewsAndLists_Ribbon.Views.CsvReaders;
 using KPLN_ViewsAndLists_Ribbon.Views.FilterUtils;
-using static KPLN_Loader.Output.Output;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows.Forms;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
@@ -26,11 +24,13 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 Document doc = commandData.Application.ActiveUIDocument.Document;
                 string dllPath = Path.GetDirectoryName(Module.AssemblyPath);
 
-                OpenFileDialog openCsvDialog = new OpenFileDialog();
-                openCsvDialog.Filter = "CSV file|*.csv";
-                openCsvDialog.Title = "Выберите файл CSV (v2018.10.17)";
-                openCsvDialog.Multiselect = false;
-                openCsvDialog.InitialDirectory = dllPath;
+                OpenFileDialog openCsvDialog = new OpenFileDialog
+                {
+                    Filter = "CSV file|*.csv",
+                    Title = "Выберите файл CSV (v2018.10.17)",
+                    Multiselect = false,
+                    InitialDirectory = dllPath
+                };
 
                 if (openCsvDialog.ShowDialog() != DialogResult.OK)
                     return Result.Cancelled; ;
