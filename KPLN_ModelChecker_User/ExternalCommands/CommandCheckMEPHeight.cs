@@ -74,26 +74,28 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка высоты эл-в ИОС";
-            _application = uiapp;
+            
+            
+            //_name = "Проверка высоты эл-в ИОС";
+            //_application = uiapp;
 
-            _allStorageName = "KPLN_CheckMEPHeight";
+            //_allStorageName = "KPLN_CheckMEPHeight";
 
-            _lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
-            _userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
+            //_lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
+            //_userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
 
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
+            //UIDocument uidoc = uiapp.ActiveUIDocument;
+            //Document doc = uidoc.Document;
 
-            // Получаю коллекцию элементов для анализа
-            IEnumerable<Element> mepELems = PreapareIOSElements(doc);
+            //// Получаю коллекцию элементов для анализа
+            //IEnumerable<Element> mepELems = PreapareIOSElements(doc);
 
-            #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
-            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            if (form != null) form.Show();
-            else return Result.Cancelled;
-            #endregion
+            //#region Проверяю и обрабатываю элементы
+            //IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
+            //OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+            //if (form != null) form.Show();
+            //else return Result.Cancelled;
+            //#endregion
 
             return Result.Succeeded;
         }

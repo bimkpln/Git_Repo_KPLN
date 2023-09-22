@@ -28,12 +28,9 @@ namespace KPLN_ModelChecker_User
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-#if Revit2020
             MainWindowHandle = application.MainWindowHandle;
             HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
             RevitWindow = hwndSource.RootVisual as Window;
-#endif
-#if Revit2018
             try
             {
                 MainWindowHandle = WindowHandleSearch.MainWindowHandle.Handle;
@@ -42,7 +39,6 @@ namespace KPLN_ModelChecker_User
             {
                 PrintError(e);
             }
-#endif
             //Добавляю кнопку в панель
             string currentPanelName = "Контроль качества";
             RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
@@ -207,17 +203,17 @@ namespace KPLN_ModelChecker_User
                 _userDepartment == 2 || _userDepartment == 8
                 );
 
-            //AddPushButtonData(
-            //    "CheckMEPHeight",
-            //    "ИОС: Проверка высоты эл-в",
-            //    "Найти элементы, которые расположены в границах помещений на высоте, меньше 2.2 м:",
-            //    $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-            //    typeof(ExternalCommands.CommandCheckMEPHeight).FullName,
-            //    pullDown,
-            //    "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
-            //    _mainContextualHelp,
-            //    _userDepartment != 1 && _userDepartment != 2
-            //    );
+            AddPushButtonData(
+                "CheckMEPHeight",
+                "ИОС: Проверка высоты эл-в",
+                "Найти элементы, которые расположены в границах помещений на высоте, меньше 2.2 м:",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckMEPHeight).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
+                _mainContextualHelp,
+                _userDepartment == 8
+                );
 
 
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
