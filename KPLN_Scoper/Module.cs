@@ -246,6 +246,11 @@ namespace KPLN_Scoper
                         if (bic.Equals(BuiltInCategory.OST_GenericModel)
                             && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
                             return;
+
+                        // Отлов семейств соед. деталей каб. лотков производителей: Ostec, Dkc
+                        if (bic.Equals(BuiltInCategory.OST_CableTrayFitting)
+                            && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc")))
+                            return;
                     }
                     else
                         throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
