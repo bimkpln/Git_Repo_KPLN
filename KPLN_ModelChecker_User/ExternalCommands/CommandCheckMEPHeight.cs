@@ -7,6 +7,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -74,28 +75,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            
-            
-            //_name = "Проверка высоты эл-в ИОС";
-            //_application = uiapp;
+            _name = "Проверка высоты эл-в ИОС";
+            _application = uiapp;
 
-            //_allStorageName = "KPLN_CheckMEPHeight";
+            _allStorageName = "KPLN_CheckMEPHeight";
 
-            //_lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
-            //_userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
+            _lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
+            _userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
 
-            //UIDocument uidoc = uiapp.ActiveUIDocument;
-            //Document doc = uidoc.Document;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Document doc = uidoc.Document;
 
-            //// Получаю коллекцию элементов для анализа
-            //IEnumerable<Element> mepELems = PreapareIOSElements(doc);
+            // Получаю коллекцию элементов для анализа
+            IEnumerable<Element> mepELems = PreapareIOSElements(doc);
 
-            //#region Проверяю и обрабатываю элементы
-            //IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
-            //OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            //if (form != null) form.Show();
-            //else return Result.Cancelled;
-            //#endregion
+            #region Проверяю и обрабатываю элементы
+            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
+            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+            if (form != null) form.Show();
+            else return Result.Cancelled;
+            #endregion
 
             return Result.Succeeded;
         }
@@ -114,6 +113,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             #region Подготовка элементов АР
             //Подготовка связей АР
+
             IEnumerable<RevitLinkInstance> arLinkInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 // Слабое место - имена файлов могут отличаться из-за требований Заказчика
@@ -127,54 +127,81 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
                 throw new UserException("Перед запуском - открой все связи АР");
 
+            #if Debug
+            List<CheckMEPHeightARData> checkMEPHeightARData = DebugMeasure.MeasureExecutionTime(
+                arLinkInsts, 
+                CheckMEPHeightARData.PreapareMEPHeightARDataColl);
+            #else
             List<CheckMEPHeightARData> checkMEPHeightARData = CheckMEPHeightARData.PreapareMEPHeightARDataColl(arLinkInsts);
+            #endif
             #endregion
-
+            
             #region Обработка элементов ИОС
-            // Подготовка элементов ИОС
-            IEnumerable<CheckMEPHeightMEPData> mepDataColl = elemColl.Select(e => new CheckMEPHeightMEPData(e));
+            //// Подготовка элементов ИОС
+            //IEnumerable<CheckMEPHeightMEPData> mepDataColl = elemColl.Select(e => new CheckMEPHeightMEPData(e));
 
-            // Анализ элементов ИОС на элемены АР
-            foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
-            {
-                IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl = mepDataColl.Where((mep, ar) => CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData));
+            //// Анализ элементов ИОС на элемены АР
+            //foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
+            //{
+            //    IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl = mepDataColl.Where((mep, ar) => 
+            //        CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData));
 
-                List<CheckMEPHeightMEPData> errorMEPDataColl = new List<CheckMEPHeightMEPData>();
-                foreach (CheckMEPHeightMEPData mepData in currentRoomMEPDataColl)
-                {
-                    if (mepData.CheckMinDistance(arData))
-                        errorMEPDataColl.Add(mepData);
-                }
+            //    #if Debug
+            //    List<CheckMEPHeightMEPData> errorMEPDataColl = DebugMeasure.MeasureExecutionTime(
+            //        currentRoomMEPDataColl, 
+            //        arData,
+            //        CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR);
+            //    #else
+            //    List<CheckMEPHeightMEPData> errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistanceError(currentRoomMEPDataColl, arData);
+            //    #endif
 
-                List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
-                if (errorMEPDataColl.Any())
-                {
-                    foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
-                    {
-                        if (mepData.CurrentElement is InsulationLiningBase insLining)
-                        {
-                            if (CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl))
-                                verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-                        }
-                        else if (CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl))
-                        {
-                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-                        }
-                    }
+            //    List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
+            //    if (errorMEPDataColl.Any())
+            //    {
+            //        foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
+            //        {
+            //            bool isVerticalElem = false;
+            //            if (mepData.CurrentElement is InsulationLiningBase insLining)
+            //            {
+            //                #if Debug1
+            //                isVerticalElem = DebugMeasure.MeasureExecutionTime(
+            //                    doc.GetElement(insLining.HostElementId),
+            //                    errorMEPDataColl,
+            //                    CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance);
+            //                #else
+            //                isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl);
+            //                #endif
+            //                if (isVerticalElem)
+            //                    verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+            //            }
+            //            else
+            //            {
+            //                #if Debug1
+            //                isVerticalElem = DebugMeasure.MeasureExecutionTime(
+            //                    mepData.CurrentElement,
+            //                    errorMEPDataColl,
+            //                    CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance);
+            //                #else
+            //                isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl);
+            //                #endif
+            //                if (isVerticalElem)
+            //                    verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+            //            }
+            //        }
 
-                    if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
-                    {
-                        result.Add(new WPFEntity(
-                            verticalCurveElemsFiltered_ErrorElemsColl,
-                            Status.Error,
-                            $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
-                            $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
-                            true,
-                            false));
-                    }
-                }
-            }
-            #endregion
+            //        if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
+            //        {
+            //            result.Add(new WPFEntity(
+            //                verticalCurveElemsFiltered_ErrorElemsColl,
+            //                Status.Error,
+            //                $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
+            //                $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
+            //                true,
+            //                false));
+            //        }
+            //    }
+            //}
+#endregion
 
             return result;
         }

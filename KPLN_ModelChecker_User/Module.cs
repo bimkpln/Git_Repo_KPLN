@@ -1,14 +1,10 @@
-﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
-using KPLN_ModelChecker_User.Tools;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_ModelChecker_User.ModuleData;
@@ -28,17 +24,6 @@ namespace KPLN_ModelChecker_User
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            MainWindowHandle = application.MainWindowHandle;
-            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
-            RevitWindow = hwndSource.RootVisual as Window;
-            try
-            {
-                MainWindowHandle = WindowHandleSearch.MainWindowHandle.Handle;
-            }
-            catch (Exception e)
-            {
-                PrintError(e);
-            }
             //Добавляю кнопку в панель
             string currentPanelName = "Контроль качества";
             RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
@@ -223,7 +208,7 @@ namespace KPLN_ModelChecker_User
         private void OnIdling(object sender, IdlingEventArgs args)
         {
             UIApplication uiapp = sender as UIApplication;
-            while (CommandQueue.Count != 0) 
+            while (CommandQueue.Count != 0)
                 CommandQueue.Dequeue().Execute(uiapp);
         }
 

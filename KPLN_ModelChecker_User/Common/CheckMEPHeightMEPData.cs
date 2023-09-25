@@ -186,11 +186,27 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
+        /// Проверить коллекцию эл-в ИОС нарушение высоты в помещении АР 
+        /// </summary>
+        /// <param name="currentRoomMEPDataColl">Коллекция спец. классов ИОС для проверки</param>
+        /// <param name="arData">Спец. класс АР для проверки</param>
+        public static List<CheckMEPHeightMEPData> CheckIOSElemsForMinDistErrorByAR(IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl, CheckMEPHeightARData arData)
+        {
+            List<CheckMEPHeightMEPData> errorMEPDataColl = new List<CheckMEPHeightMEPData>();
+            foreach (CheckMEPHeightMEPData mepData in currentRoomMEPDataColl)
+            {
+                if (mepData.IsHeigtError(arData))
+                    errorMEPDataColl.Add(mepData);
+            }
+
+            return errorMEPDataColl;
+        }
+
+        /// <summary>
         /// Проверить элемент на факт нарушения высоты
         /// </summary>
-        /// <param name="faceArrayToCheck">Коллекция плоскостей, на которые необходимо проецировать координаты элемента</param>
-        /// <param name="minDistance">Значение минимального расстояния для проверки</param>
-        public bool CheckMinDistance(CheckMEPHeightARData arData)
+        /// <param name="arData">Спец. класс для проверки</param>
+        private bool IsHeigtError(CheckMEPHeightARData arData)
         {
             // Проверка элементов на предмет пространственного положения выше 1.5 м болле чем на 1 часть
             if (CurrentBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
