@@ -123,6 +123,7 @@
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
     <Compile Include="Common\CheckMEPHeightARData.cs" />
+    <Compile Include="Common\CheckMEPHeightARElemData.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
     <Compile Include="Common\DebugMeasure.cs" />
     <Compile Include="Common\Collections.cs" />

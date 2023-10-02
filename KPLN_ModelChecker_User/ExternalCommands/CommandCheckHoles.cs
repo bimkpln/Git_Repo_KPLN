@@ -58,17 +58,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<FamilyInstance> holesFamInsts = new FilteredElementCollector(doc)
+            FamilyInstance[] holesFamInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
                 .Where(e => 
                     e.Symbol.FamilyName.StartsWith("199_Отверстие")
                     && e.GetSubComponentIds().Count == 0)
-                .ToList();
+                .ToArray();
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, holesFamInsts);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, holesFamInsts);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -77,7 +77,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!(elemColl.Any()))
                 throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
@@ -85,7 +85,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return null;
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<CheckHolesHoleData> holesData = PrepareHoleData(elemColl);
             BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);

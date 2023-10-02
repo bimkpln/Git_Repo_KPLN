@@ -37,14 +37,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<Element> rvtLinks = new FilteredElementCollector(doc)
+            Element[] rvtLinks = new FilteredElementCollector(doc)
                 .OfCategory(BuiltInCategory.OST_RvtLinks)
                 .WhereElementIsNotElementType()
                 // Фильтрация по имени от вложенных прикрепленных связей
-                .Where(e => e.Name.Split(new string[] { ".rvt : " }, StringSplitOptions.None).Length < 3);
+                .Where(e => e.Name.Split(new string[] { ".rvt : " }, StringSplitOptions.None).Length < 3)
+                .ToArray();
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, rvtLinks);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, rvtLinks);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -53,7 +54,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!doc.IsWorkshared) throw new UserException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
 
@@ -72,7 +73,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return null;
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 

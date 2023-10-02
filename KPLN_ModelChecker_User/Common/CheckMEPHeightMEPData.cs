@@ -50,19 +50,19 @@ namespace KPLN_ModelChecker_User.Common
                             double tempVolume = 0;
                             foreach (GeometryObject gObj2 in instGeomElem)
                             {
-                                if (gObj2 is Solid solid2 && instGeomElem.Count() == 1)
+                                if (gObj2 is Solid solid2 && solid2.Volume > tempVolume)
                                     _currentSolid = solid2;
-                                else if (gObj2 is Solid solid3 && solid3.Volume > tempVolume)
-                                {
-                                    tempVolume = solid3.Volume;
-                                    _currentSolid = solid3;
-                                }
+                                //else if (gObj2 is Solid solid3 && solid3.Volume > tempVolume)
+                                //{
+                                //    tempVolume = solid3.Volume;
+                                //    _currentSolid = solid3;
+                                //}
                             }
                         }
                     }
 
-                    if (_currentSolid == null)
-                        throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}"); ;
+                    //if (_currentSolid == null)
+                        //throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}");
                 }
 
                 return _currentSolid;
@@ -75,6 +75,10 @@ namespace KPLN_ModelChecker_User.Common
             {
                 if (_currentBBox == null)
                 {
+
+                    if (_currentSolid == null)
+                        throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}");
+                    
                     BoundingBoxXYZ bbox = CurrentSolid.GetBoundingBox();
                     Transform transform = bbox.Transform;
                     _currentBBox = new BoundingBoxXYZ()
@@ -136,18 +140,21 @@ namespace KPLN_ModelChecker_User.Common
                                 {
                                     MEPModel mepModel = famInst.MEPModel;
                                     ConnectorManager conManager = mepModel.ConnectorManager;
-                                    foreach (Connector connector in conManager.Connectors)
+                                    if (conManager != null)
                                     {
-                                        XYZ famInstOrigin = connector.Origin;
-                                        double distance = origin.DistanceTo(famInstOrigin);
-                                        if (distance < _toleranceToCheck)
+                                        foreach (Connector connector in conManager.Connectors)
                                         {
-                                            conCount--;
-                                            if (conCount == 0)
-                                                // Проверка пройдена: Элемент линеен, и ограничен 2мя соседями, которые уже находятся в отчете
-                                                return true;
-                                        }
+                                            XYZ famInstOrigin = connector.Origin;
+                                            double distance = origin.DistanceTo(famInstOrigin);
+                                            if (distance < _toleranceToCheck)
+                                            {
+                                                conCount--;
+                                                if (conCount == 0)
+                                                    // Проверка пройдена: Элемент линеен, и ограничен 2мя соседями, которые уже находятся в отчете
+                                                    return true;
+                                            }
 
+                                        }
                                     }
                                 }
                             }
@@ -173,16 +180,38 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="arData">Спец. класс для проверки</param>
         public static bool IsElemInCurrentRoomCheck(CheckMEPHeightMEPData mepData, CheckMEPHeightARData arData)
         {
-            if (mepData.CurrentBBox.Max.X < arData.CurrentRoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.CurrentRoomBBox.Max.X)
-                return false;
+            SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions
+            {
+                SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
+            };
 
-            if (mepData.CurrentBBox.Max.Y < arData.CurrentRoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.CurrentRoomBBox.Max.Y)
-                return false;
+            IList<BoundarySegment> segments = arData.CurrentRoom.GetBoundarySegments(options).SelectMany(bs => bs).ToList();
+            
+            foreach (BoundarySegment segment in segments)
+            {
+                Curve curve = segment.GetCurve();
+                var solidIntResult = mepData.CurrentSolid.IntersectWithCurve(curve, new SolidCurveIntersectionOptions() { ResultType = SolidCurveIntersectionMode.CurveSegmentsInside});
+                if (solidIntResult != null && solidIntResult.SegmentCount > 0)
+                {
+                    return true;
+                }
+            }
 
-            if (mepData.CurrentBBox.Max.Z < arData.CurrentRoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.CurrentRoomBBox.Max.Z)
-                return false;
+            return false;
 
-            return true;
+            //if (mepData.CurrentSolid.Volume == 0)
+            //    return false;
+            
+            //if (mepData.CurrentBBox.Max.X < arData.CurrentRoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.CurrentRoomBBox.Max.X)
+            //    return false;
+
+            //if (mepData.CurrentBBox.Max.Y < arData.CurrentRoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.CurrentRoomBBox.Max.Y)
+            //    return false;
+
+            //if (mepData.CurrentBBox.Max.Z < arData.CurrentRoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.CurrentRoomBBox.Max.Z)
+            //    return false;
+
+            //return true;
         }
 
         /// <summary>
@@ -190,17 +219,9 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         /// <param name="currentRoomMEPDataColl">Коллекция спец. классов ИОС для проверки</param>
         /// <param name="arData">Спец. класс АР для проверки</param>
-        public static List<CheckMEPHeightMEPData> CheckIOSElemsForMinDistErrorByAR(IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl, CheckMEPHeightARData arData)
-        {
-            List<CheckMEPHeightMEPData> errorMEPDataColl = new List<CheckMEPHeightMEPData>();
-            foreach (CheckMEPHeightMEPData mepData in currentRoomMEPDataColl)
-            {
-                if (mepData.IsHeigtError(arData))
-                    errorMEPDataColl.Add(mepData);
-            }
-
-            return errorMEPDataColl;
-        }
+        public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(CheckMEPHeightMEPData[] currentRoomMEPDataColl, CheckMEPHeightARData arData) =>
+            currentRoomMEPDataColl.Where(m => m.IsHeigtError(arData)).ToArray();
+        
 
         /// <summary>
         /// Проверить элемент на факт нарушения высоты
@@ -229,6 +250,19 @@ namespace KPLN_ModelChecker_User.Common
                     #endregion
 
                     #region Проверка на минимальную дистанцию до поверхности
+                    //XYZ point = GetCurrentBBoxZMin_Center(checkBBox);
+                    //foreach (Face face in arData.CurrentDownFacesArray)
+                    //{
+                    //    IntersectionResult intRes = face.Project(point);
+                    //    if (intRes != null && intRes.Distance < tempIntDist)
+                    //    {
+                    //        tempIntDist = intRes.Distance;
+                    //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
+                    //        if (iosDistance < arData.CurrentRoomMinDistance)
+                    //            return true;
+                    //    }
+                    //}
+
                     XYZ[] pointsToCheck = new XYZ[5]
                     {
                         GetCurrentBBoxZMin_HRight(checkBBox),
@@ -240,17 +274,17 @@ namespace KPLN_ModelChecker_User.Common
 
                     foreach (XYZ point in pointsToCheck)
                     {
-                        foreach (Face face in arData.CurrentDownFacesArray)
-                        {
-                            IntersectionResult intRes = face.Project(point);
-                            if (intRes != null && intRes.Distance < tempIntDist)
-                            {
-                                tempIntDist = intRes.Distance;
-                                double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                                if (iosDistance < arData.CurrentRoomMinDistance)
-                                    return true;
-                            }
-                        }
+                        //foreach (Face face in arData.CurrentDownFacesArray)
+                        //{
+                        //    IntersectionResult intRes = face.Project(point);
+                        //    if (intRes != null && intRes.Distance < tempIntDist)
+                        //    {
+                        //        tempIntDist = intRes.Distance;
+                        //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
+                        //        if (iosDistance < arData.CurrentRoomMinDistance)
+                        //            return true;
+                        //    }
+                        //}
                     }
                     #endregion
                 }

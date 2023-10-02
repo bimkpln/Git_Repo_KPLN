@@ -96,11 +96,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     List<WPFEntity> wpfColl = new List<WPFEntity>();
                     foreach (ViewSheet viewSheet in sheetsList)
                     {
-                        IEnumerable<WPFEntity> annColl = CheckCommandRunner(doc, FindAllAnnotationsOnList(doc, viewSheet));
+                        WPFEntity[] annColl = CheckCommandRunner(doc, FindAllAnnotationsOnList(doc, viewSheet));
                         if (annColl != null)
                             wpfColl.AddRange(annColl);
                     }
-                    OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+                    OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl.ToArray());
                     if (form != null)
                     {
                         form.Show();
@@ -112,7 +112,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 else if (activeView.Category.Id.IntegerValue.Equals((int)BuiltInCategory.OST_Sheets))
                 {
                     ViewSheet viewSheet = activeView as ViewSheet;
-                    IEnumerable<Element> annColl = FindAllAnnotationsOnList(doc, viewSheet);
+                    Element[] annColl = FindAllAnnotationsOnList(doc, viewSheet);
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
@@ -143,9 +143,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl) => null;
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => null;
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             if (elemColl.Any())
             {
@@ -223,7 +223,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на листах и записи в коллекцию или словарь (в зависимости от количества выбранных листов)
         /// </summary>
-        private IEnumerable<Element> FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet)
+        private Element[] FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet)
         {
             List<Element> result = new List<Element>();
 
@@ -244,7 +244,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            return result;
+            return result.ToArray();
         }
 
         /// <summary>

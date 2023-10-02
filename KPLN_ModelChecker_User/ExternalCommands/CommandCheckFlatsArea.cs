@@ -91,14 +91,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<Room> roomsColl = new FilteredElementCollector(doc)
+            Room[] roomsColl = new FilteredElementCollector(doc)
                     .OfCategory(BuiltInCategory.OST_Rooms)
                     .WhereElementIsNotElementType()
                     .Cast<Room>()
-                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0);
+                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0)
+                    .ToArray();
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, roomsColl);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, roomsColl);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl, true);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -108,7 +109,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Failed;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!(elemColl.Any()))
                 throw new UserException("В проекте нет помещений.");
@@ -140,7 +141,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             report.SetWPFEntityFiltration_ByErrorHeader();
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> entities = new List<WPFEntity>();
 
@@ -152,7 +153,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
             entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
 
-            return entities.OrderBy(e => e.ElementId.IntegerValue);
+            return entities.OrderBy(e => e.ElementId.IntegerValue).ToList();
         }
 
         private void CheckParam(Room room, string paramName)

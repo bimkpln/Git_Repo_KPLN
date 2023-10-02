@@ -37,7 +37,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список элементов, которые прошли проверку перед запуском
         /// </summary>
-        private protected IEnumerable<Element> _trueElemCollection;
+        private protected Element[] _trueElemCollection;
 
         private protected string _allStorageName;
 
@@ -103,7 +103,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для полного анализа</param>
         /// <returns>Коллекция WPFEntity для передачи в отчет пользовател</returns>
-        internal IEnumerable<WPFEntity> CheckCommandRunner(Document doc, IEnumerable<Element> elemColl)
+        internal WPFEntity[] CheckCommandRunner(Document doc, Element[] elemColl)
         {
             try
             {
@@ -111,13 +111,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (_errorElemCollection != null && _errorElemCollection.Count() > 0)
                 {
                     CreateAndShowElementCheckingErrorReport(_errorElemCollection);
-                    _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement));
+                    _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement)).ToArray();
                 }
                 else _trueElemCollection = elemColl;
 
                 CheckAndDropExtStrApproveComment(doc, _trueElemCollection);
 
-                return PreapareElements(doc, _trueElemCollection);
+                return PreapareElements(doc, _trueElemCollection).ToArray();
             }
             catch (Exception ex)
             {
@@ -146,7 +146,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="wpfEntityColl">Коллеция WPFEntity элементов для генерации отчета</param>
         /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
         /// <returns>Окно для вывода пользователю</returns>
-        internal OutputMainForm ReportCreatorAndDemonstrator(Document doc, IEnumerable<WPFEntity> wpfEntityColl, bool isMarkered = false)
+        internal OutputMainForm ReportCreatorAndDemonstrator(Document doc, WPFEntity[] wpfEntityColl, bool isMarkered = false)
         {
             if (wpfEntityColl != null)
             {
@@ -168,7 +168,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для проверки</param>
         /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
-        private protected abstract List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl);
+        private protected abstract List<CheckCommandError> CheckElements(Document doc, Element[] elemColl);
 
         /// <summary>
         /// Анализ элементов
@@ -176,7 +176,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
         /// <returns>Коллекция WPFEntity, содержащая выявленные ошибки проектирования в Revit</returns>
-        private protected abstract IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl);
+        private protected abstract List<WPFEntity> PreapareElements(Document doc, Element[] elemColl);
         
         /// <summary>
         /// Установить фильтрацию элементов в отчете
@@ -218,7 +218,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов, котоыре проваили проверку ПЕРЕД запуском</param>
-        private void CreateAndShowElementCheckingErrorReport(IEnumerable<CheckCommandError> elemErrorColl)
+        private void CreateAndShowElementCheckingErrorReport(List<CheckCommandError> elemErrorColl)
         {
             foreach (CheckCommandError elem in elemErrorColl)
             {
@@ -231,7 +231,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для анализа</param>
-        private void CheckAndDropExtStrApproveComment(Document doc, IEnumerable<Element> elemColl)
+        private void CheckAndDropExtStrApproveComment(Document doc, Element[] elemColl)
         {
             try
             {
@@ -267,7 +267,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="wpfEntityColl">Коллекция WPFEntity для вывода</param>
-        private WPFReportCreator CreateReport(Document doc, IEnumerable<WPFEntity> wpfEntityColl, bool isMarkered)
+        private WPFReportCreator CreateReport(Document doc, WPFEntity[] wpfEntityColl, bool isMarkered)
         {
             if (wpfEntityColl.Any())
             {

@@ -74,7 +74,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, checkElemColl);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, checkElemColl.ToArray());
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -83,9 +83,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl) => null;
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => null;
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 

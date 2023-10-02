@@ -7,7 +7,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -87,10 +86,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<Element> mepELems = PreapareIOSElements(doc);
+            Element[] mepELems = PreapareIOSElements(doc);
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, mepELems);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -99,7 +98,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!elemColl.Any())
                 throw new UserException("В проекте отсутсвуют необходимые элементы ИОС");
@@ -107,7 +106,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return null;
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -127,81 +126,60 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
                 throw new UserException("Перед запуском - открой все связи АР");
 
-            #if Debug
-            List<CheckMEPHeightARData> checkMEPHeightARData = DebugMeasure.MeasureExecutionTime(
-                arLinkInsts, 
-                CheckMEPHeightARData.PreapareMEPHeightARDataColl);
-            #else
             List<CheckMEPHeightARData> checkMEPHeightARData = CheckMEPHeightARData.PreapareMEPHeightARDataColl(arLinkInsts);
-            #endif
+            return null;
             #endregion
-            
+
             #region Обработка элементов ИОС
-            //// Подготовка элементов ИОС
-            //IEnumerable<CheckMEPHeightMEPData> mepDataColl = elemColl.Select(e => new CheckMEPHeightMEPData(e));
+            // Подготовка элементов ИОС
+            CheckMEPHeightMEPData[] mepDataColl = elemColl
+                .Select(e => new CheckMEPHeightMEPData(e))
+                .Where(m => m.CurrentSolid != null)
+                .ToArray();
 
-            //// Анализ элементов ИОС на элемены АР
-            //foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
-            //{
-            //    IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl = mepDataColl.Where((mep, ar) => 
-            //        CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData));
+            // Анализ элементов ИОС на элементы АР
+            int cnt = 0;
+            foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
+            {
+                cnt++;
 
-            //    #if Debug
-            //    List<CheckMEPHeightMEPData> errorMEPDataColl = DebugMeasure.MeasureExecutionTime(
-            //        currentRoomMEPDataColl, 
-            //        arData,
-            //        CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR);
-            //    #else
-            //    List<CheckMEPHeightMEPData> errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistanceError(currentRoomMEPDataColl, arData);
-            //    #endif
+                CheckMEPHeightMEPData[] currentRoomMEPDataColl = mepDataColl
+                    .Where(mep => CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData))
+                    .ToArray();
 
-            //    List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
-            //    if (errorMEPDataColl.Any())
-            //    {
-            //        foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
-            //        {
-            //            bool isVerticalElem = false;
-            //            if (mepData.CurrentElement is InsulationLiningBase insLining)
-            //            {
-            //                #if Debug1
-            //                isVerticalElem = DebugMeasure.MeasureExecutionTime(
-            //                    doc.GetElement(insLining.HostElementId),
-            //                    errorMEPDataColl,
-            //                    CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance);
-            //                #else
-            //                isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl);
-            //                #endif
-            //                if (isVerticalElem)
-            //                    verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-            //            }
-            //            else
-            //            {
-            //                #if Debug1
-            //                isVerticalElem = DebugMeasure.MeasureExecutionTime(
-            //                    mepData.CurrentElement,
-            //                    errorMEPDataColl,
-            //                    CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance);
-            //                #else
-            //                isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl);
-            //                #endif
-            //                if (isVerticalElem)
-            //                    verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-            //            }
-            //        }
+                CheckMEPHeightMEPData[] errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR(currentRoomMEPDataColl, arData);
 
-            //        if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
-            //        {
-            //            result.Add(new WPFEntity(
-            //                verticalCurveElemsFiltered_ErrorElemsColl,
-            //                Status.Error,
-            //                $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
-            //                $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
-            //                true,
-            //                false));
-            //        }
-            //    }
-            //}
-#endregion
+                List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
+                foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
+                {
+                    bool isVerticalElem = false;
+                    if (mepData.CurrentElement is InsulationLiningBase insLining)
+                    {
+                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl);
+                        if (isVerticalElem)
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+                    }
+                    else
+                    {
+
+                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl);
+                        if (isVerticalElem)
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+                    }
+                }
+
+                if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
+                {
+                    result.Add(new WPFEntity(
+                        verticalCurveElemsFiltered_ErrorElemsColl,
+                        Status.Error,
+                        $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
+                        $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
+                        true,
+                        false));
+                }
+            }
+            #endregion
 
             return result;
         }
@@ -214,21 +192,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Получение элементов ИОС по списку категорий, с учетом фильтрации
         /// </summary>
-        private IEnumerable<Element> PreapareIOSElements(Document doc)
+        private Element[] PreapareIOSElements(Document doc)
         {
             List<Element> result = new List<Element>();
-            List<FilteredElementCollector> bicColl = new List<FilteredElementCollector>();
+
+            // Генерация фильтров
+            List<FilterRule> filtRules = new List<FilterRule>(_exceptionFamilyStartNameList.Count);
+            foreach (string currentName in _exceptionFamilyStartNameList)
+            {
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
+                filtRules.Add(fRule);
+            }
+            ElementParameterFilter eFilter = new ElementParameterFilter(filtRules);
+
             // Генерация и фильтрация FilteredElementCollector
+            List<FilteredElementCollector> bicColl = new List<FilteredElementCollector>(_mepBICColl.Count);
             foreach (BuiltInCategory bic in _mepBICColl)
             {
                 FilteredElementCollector fic = new FilteredElementCollector(doc).OfCategory(bic);
-                foreach (string currentName in _exceptionFamilyStartNameList)
-                {
-                    FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
-                    ElementParameterFilter eFilter = new ElementParameterFilter(fRule);
-                    fic.WherePasses(eFilter).WhereElementIsNotElementType();
-                }
-
+                fic.WherePasses(eFilter).WhereElementIsNotElementType();
                 bicColl.Add(fic);
             }
 
@@ -238,7 +220,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 result.AddRange(coll.ToElements());
             }
 
-            return result;
+            return result.ToArray();
         }
     }
 }
