@@ -65,7 +65,7 @@
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_DataBase\KPLN_Library_DataBase\bin\Release\KPLN_Library_DataBase.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
