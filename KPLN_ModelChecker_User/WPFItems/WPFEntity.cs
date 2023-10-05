@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -238,8 +239,17 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// </summary>
         public void PrepareZoomGeometryExtension(BoundingBoxXYZ box)
         {
-            Box = box;
-            Centroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
+            try
+            {
+                Box = box;
+                Centroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
+            }
+            catch (Exception ex)
+            {
+                var a = 1;
+                var b = ElementId;
+
+            }
         }
 
         /// <summary>
