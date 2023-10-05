@@ -40,6 +40,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "020_Эквив",
             "023_",
             "024_",
+            "070_",
             "099_"
         };
 
