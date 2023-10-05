@@ -37,13 +37,13 @@
     </DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_ExtensibleStorage">
+    <Reference Include="KPLN_Library_ExtensibleStorage, Version=1.1.2.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Revit2020\KPLN_Library_ExtensibleStorage.dll</HintPath>
-      <Private>True</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2020\KPLN_Library_Forms.dll</HintPath>
-      <Private>True</Private>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>

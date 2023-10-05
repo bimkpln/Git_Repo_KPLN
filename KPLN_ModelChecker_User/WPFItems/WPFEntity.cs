@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media;
 using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_Loader.Output.Output;
 
 namespace KPLN_ModelChecker_User.WPFItems
 {
@@ -239,16 +240,10 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// </summary>
         public void PrepareZoomGeometryExtension(BoundingBoxXYZ box)
         {
-            try
+            if (box != null)
             {
                 Box = box;
                 Centroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
-            }
-            catch (Exception ex)
-            {
-                var a = 1;
-                var b = ElementId;
-
             }
         }
 

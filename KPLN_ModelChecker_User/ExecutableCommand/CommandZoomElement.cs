@@ -148,6 +148,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         /// <returns>True, если вид удачно установлен</returns>
         private void PrepareAndSetView(UIApplication app, Element element, BoundingBoxXYZ box, XYZ centroid)
         {
+            if (box == null || centroid == null) return;
+            
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc.ActiveView is View3D activeView)
             {

@@ -724,7 +724,11 @@ namespace KPLN_Scoper
                     if (docName.Contains($"_{department.Code}") 
                         || docName.Contains($"_{department.CodeUs}")
                         || docName.Contains($"{department.Code}_") 
-                        || docName.Contains($"{department.CodeUs}_"))
+                        || docName.Contains($"{department.CodeUs}_")
+                        || docName.Contains($"-{department.Code}")
+                        || docName.Contains($"-{department.CodeUs}")
+                        || docName.Contains($"{department.Code}-")
+                        || docName.Contains($"{department.CodeUs}-"))
                     {
                         return department;
                     }
