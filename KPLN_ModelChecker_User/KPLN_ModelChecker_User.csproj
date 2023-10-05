@@ -122,8 +122,9 @@
     <Compile Include="Common\CheckHolesEntity.cs" />
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
-    <Compile Include="Common\CheckMEPHeightARData.cs" />
+    <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
     <Compile Include="Common\CheckMEPHeightARElemData.cs" />
+    <Compile Include="Common\CheckMEPHeightManager.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
     <Compile Include="Common\DebugMeasure.cs" />
     <Compile Include="Common\Collections.cs" />

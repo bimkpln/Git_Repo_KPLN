@@ -113,20 +113,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             #region Подготовка элементов АР
             //Подготовка связей АР
 
-            IEnumerable<RevitLinkInstance> arLinkInsts = new FilteredElementCollector(doc)
+            List<RevitLinkInstance> arLinkInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 // Слабое место - имена файлов могут отличаться из-за требований Заказчика
                 .Where(lm =>
                     (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
                     || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
                     || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                .Cast<RevitLinkInstance>();
+                .Cast<RevitLinkInstance>()
+                .ToList();
 
             // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
             if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
                 throw new UserException("Перед запуском - открой все связи АР");
 
-            List<CheckMEPHeightARData> checkMEPHeightARData = CheckMEPHeightARData.PreapareMEPHeightARDataColl(arLinkInsts);
+            List<CheckMEPHeightARRoomData> checkMEPHeightARData = CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts);
             return null;
             #endregion
 
@@ -139,7 +140,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             // Анализ элементов ИОС на элементы АР
             int cnt = 0;
-            foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
+            foreach (CheckMEPHeightARRoomData arData in checkMEPHeightARData)
             {
                 cnt++;
 
@@ -174,7 +175,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         verticalCurveElemsFiltered_ErrorElemsColl,
                         Status.Error,
                         $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
-                        $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
+                        $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.RoomMinDistance * 304.8), 0)}",
                         true,
                         false));
                 }

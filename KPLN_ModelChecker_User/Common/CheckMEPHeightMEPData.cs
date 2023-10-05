@@ -178,7 +178,7 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         /// <param name="mepData">Спец. класс для проверки</param>
         /// <param name="arData">Спец. класс для проверки</param>
-        public static bool IsElemInCurrentRoomCheck(CheckMEPHeightMEPData mepData, CheckMEPHeightARData arData)
+        public static bool IsElemInCurrentRoomCheck(CheckMEPHeightMEPData mepData, CheckMEPHeightARRoomData arData)
         {
             SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions
             {
@@ -202,13 +202,13 @@ namespace KPLN_ModelChecker_User.Common
             //if (mepData.CurrentSolid.Volume == 0)
             //    return false;
             
-            //if (mepData.CurrentBBox.Max.X < arData.CurrentRoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.CurrentRoomBBox.Max.X)
+            //if (mepData.CurrentBBox.Max.X < arData.RoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.RoomBBox.Max.X)
             //    return false;
 
-            //if (mepData.CurrentBBox.Max.Y < arData.CurrentRoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.CurrentRoomBBox.Max.Y)
+            //if (mepData.CurrentBBox.Max.Y < arData.RoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.RoomBBox.Max.Y)
             //    return false;
 
-            //if (mepData.CurrentBBox.Max.Z < arData.CurrentRoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.CurrentRoomBBox.Max.Z)
+            //if (mepData.CurrentBBox.Max.Z < arData.RoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.RoomBBox.Max.Z)
             //    return false;
 
             //return true;
@@ -219,7 +219,7 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         /// <param name="currentRoomMEPDataColl">Коллекция спец. классов ИОС для проверки</param>
         /// <param name="arData">Спец. класс АР для проверки</param>
-        public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(CheckMEPHeightMEPData[] currentRoomMEPDataColl, CheckMEPHeightARData arData) =>
+        public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(CheckMEPHeightMEPData[] currentRoomMEPDataColl, CheckMEPHeightARRoomData arData) =>
             currentRoomMEPDataColl.Where(m => m.IsHeigtError(arData)).ToArray();
         
 
@@ -227,7 +227,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Проверить элемент на факт нарушения высоты
         /// </summary>
         /// <param name="arData">Спец. класс для проверки</param>
-        private bool IsHeigtError(CheckMEPHeightARData arData)
+        private bool IsHeigtError(CheckMEPHeightARRoomData arData)
         {
             // Проверка элементов на предмет пространственного положения выше 1.5 м болле чем на 1 часть
             if (CurrentBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
@@ -258,7 +258,7 @@ namespace KPLN_ModelChecker_User.Common
                     //    {
                     //        tempIntDist = intRes.Distance;
                     //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                    //        if (iosDistance < arData.CurrentRoomMinDistance)
+                    //        if (iosDistance < arData.RoomMinDistance)
                     //            return true;
                     //    }
                     //}
@@ -281,7 +281,7 @@ namespace KPLN_ModelChecker_User.Common
                         //    {
                         //        tempIntDist = intRes.Distance;
                         //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                        //        if (iosDistance < arData.CurrentRoomMinDistance)
+                        //        if (iosDistance < arData.RoomMinDistance)
                         //            return true;
                         //    }
                         //}
