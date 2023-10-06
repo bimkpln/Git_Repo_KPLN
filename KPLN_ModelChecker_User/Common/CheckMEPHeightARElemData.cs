@@ -145,17 +145,6 @@ namespace KPLN_ModelChecker_User.Common
             }
         }
 
-        private BoundingBoxXYZ GetBoundingBoxXYZ(GeometryElement geomElem)
-        {
-            foreach (GeometryObject obj in geomElem)
-            {
-                Solid solid = obj as Solid;
-                return GetBoundingBoxXYZ(solid);
-            }
-
-            return null;
-        }
-
         private List<BoundingBoxXYZ> GetBoundingBoxXYZColl(GeometryElement geomElem)
         {
             List<BoundingBoxXYZ> result = new List<BoundingBoxXYZ>();

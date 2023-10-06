@@ -7,6 +7,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using static KPLN_ModelChecker_User.Common.Collections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -91,7 +92,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             #region Проверяю и обрабатываю элементы
             WPFEntity[] wpfColl = CheckCommandRunner(doc, mepELems);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            if (form != null) form.Show();
+            if (form != null) 
+            {
+                form.Show(); 
+                while (!form.IsLoaded)
+                {
+                    var a = 1;
+                }
+            }
+
             else return Result.Cancelled;
             #endregion
 
@@ -110,9 +119,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
+            // Подготовливаю спец. классы отдельным потоком
+            CheckMEPHeightMEPData[] mepDataColl = null;
+            Task prepearMEPDataTask = Task.Run(() =>
+            {
+                mepDataColl = elemColl
+                .Select(e => new CheckMEPHeightMEPData(e))
+                .Where(m => m.MEPElemSolids.Count != 0)
+                .ToArray();
+            });
+
             #region Подготовка элементов АР
             //Подготовка связей АР
-
             List<RevitLinkInstance> arLinkInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 // Слабое место - имена файлов могут отличаться из-за требований Заказчика
@@ -128,24 +146,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 throw new UserException("Перед запуском - открой все связи АР");
 
             List<CheckMEPHeightARRoomData> checkMEPHeightARData = CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts);
-            return null;
             #endregion
 
-            #region Обработка элементов ИОС
-            // Подготовка элементов ИОС
-            CheckMEPHeightMEPData[] mepDataColl = elemColl
-                .Select(e => new CheckMEPHeightMEPData(e))
-                .Where(m => m.CurrentSolid != null)
-                .ToArray();
+            Task.WaitAll(prepearMEPDataTask);
 
+            #region Обработка элементов ИОС
             // Анализ элементов ИОС на элементы АР
-            int cnt = 0;
             foreach (CheckMEPHeightARRoomData arData in checkMEPHeightARData)
             {
-                cnt++;
+                if (arData.CurrentRoom.Id.IntegerValue == 3154180)
+                {
+                    var a = 1;
+                }
 
                 CheckMEPHeightMEPData[] currentRoomMEPDataColl = mepDataColl
-                    .Where(mep => CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData))
+                    .Where(mep => mep.IsElemInCurrentRoom(arData))
                     .ToArray();
 
                 CheckMEPHeightMEPData[] errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR(currentRoomMEPDataColl, arData);
@@ -154,18 +169,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
                 {
                     bool isVerticalElem = false;
-                    if (mepData.CurrentElement is InsulationLiningBase insLining)
+                    if (mepData.MEPElement is InsulationLiningBase insLining)
                     {
                         isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl);
                         if (isVerticalElem)
-                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.MEPElement);
                     }
                     else
                     {
 
-                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl);
+                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.MEPElement, errorMEPDataColl);
                         if (isVerticalElem)
-                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.MEPElement);
                     }
                 }
 

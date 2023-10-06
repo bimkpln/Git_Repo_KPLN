@@ -14,8 +14,8 @@ namespace KPLN_ModelChecker_User.Common
         /// От данного парамтера зависит точность опредления помещений для линейных элементов
         /// </summary>
         private const int _bboxArrayCount = 3;
-        private BoundingBoxXYZ _currentBBox;
-        public Solid _currentSolid;
+        private readonly List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
+        public List<Solid> _mepElemSolids = new List<Solid>();
         private BoundingBoxXYZ[] _currentBBoxArray;
         /// <summary>
         /// Точность в проверке при анализе положения элементов
@@ -24,85 +24,76 @@ namespace KPLN_ModelChecker_User.Common
 
         public CheckMEPHeightMEPData(Element elem)
         {
-            CurrentElement = elem;
+            MEPElement = elem;
         }
 
-        public Element CurrentElement { get; }
+        public Element MEPElement { get; }
 
-        public Solid CurrentSolid
+        public List<Solid> MEPElemSolids
         {
             get
             {
-                if (_currentSolid == null)
+                if (_mepElemSolids.Count == 0)
                 {
-                    GeometryElement geomElem = CurrentElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
 
-                    foreach (GeometryObject gObj in geomElem)
+                    GeometryElement geomElem = MEPElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+                    if (geomElem != null)
                     {
-                        if (gObj is Solid solid1)
-                        {
-                            _currentSolid = solid1;
-                            break;
-                        }
-                        else if (gObj is GeometryInstance gInst)
-                        {
-                            GeometryElement instGeomElem = gInst.GetInstanceGeometry();
-                            double tempVolume = 0;
-                            foreach (GeometryObject gObj2 in instGeomElem)
-                            {
-                                if (gObj2 is Solid solid2 && solid2.Volume > tempVolume)
-                                    _currentSolid = solid2;
-                                //else if (gObj2 is Solid solid3 && solid3.Volume > tempVolume)
-                                //{
-                                //    tempVolume = solid3.Volume;
-                                //    _currentSolid = solid3;
-                                //}
-                            }
-                        }
+                        GetSolidsFromGeomElem(geomElem, Transform.Identity, _mepElemSolids);
                     }
 
-                    //if (_currentSolid == null)
-                        //throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}");
+                    // Нужно отфильтровать на безсолидные элементы (изоляция отводов, элементы без геометрии и т.п.)
+                    //if (_mepElemSolids == null || _mepElemSolids.Count == 0)
+                    //    throw new Exception($"Не удалось получить полноценную коллекцию Solid у элемента с id: {MEPElement.Id}");
                 }
 
-                return _currentSolid;
+                return _mepElemSolids;
             }
         }
 
-        public BoundingBoxXYZ CurrentBBox
+        public List<BoundingBoxXYZ> MEPElemBBoxes
         {
             get
             {
-                if (_currentBBox == null)
+                if (_mepElemBBoxes.Count == 0)
                 {
-
-                    if (_currentSolid == null)
-                        throw new Exception($"Не удалось получить геометрию у элемента с id: {CurrentElement.Id}");
-                    
-                    BoundingBoxXYZ bbox = CurrentSolid.GetBoundingBox();
-                    Transform transform = bbox.Transform;
-                    _currentBBox = new BoundingBoxXYZ()
+                    GeometryElement geometryElement = MEPElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+                    foreach (GeometryObject geomObject in geometryElement)
                     {
-                        Max = transform.OfPoint(bbox.Max),
-                        Min = transform.OfPoint(bbox.Min),
-                    };
+                        switch (geomObject)
+                        {
+                            case Solid solid:
+                                _mepElemBBoxes.Add(GetBoundingBoxXYZ(solid));
+                                break;
+                            case GeometryInstance geomInstance:
+                                GeometryElement instGeomElem = geomInstance.GetInstanceGeometry();
+                                _mepElemBBoxes.AddRange(GetBoundingBoxXYZColl(instGeomElem));
+                                break;
+
+                            case GeometryElement geomElem:
+                                _mepElemBBoxes.AddRange(GetBoundingBoxXYZColl(geomElem));
+                                break;
+                        }
+                        if (_mepElemBBoxes.Count == 0)
+                            throw new Exception($"Не удалось получить BoundingBoxXYZ у элемента с id: {MEPElement.Id}");
+                    }
                 }
 
-                return _currentBBox;
+                return _mepElemBBoxes;
             }
         }
 
         /// <summary>
         /// Массив равнозначных в плоскости XY BoundingBoxXYZ (для проверки по всем типам помещений)
         /// </summary>
-        public BoundingBoxXYZ[] CurrentBBoxArray
+        public BoundingBoxXYZ[] SplitedBBoxArray
         {
             get
             {
                 if (_currentBBoxArray == null)
                 {
-                    if (CurrentElement.Location is LocationCurve _) _currentBBoxArray = SetCurrentBBoxArray(_bboxArrayCount);
-                    else _currentBBoxArray = new BoundingBoxXYZ[1] { CurrentBBox };
+                    if (MEPElement.Location is LocationCurve _) _currentBBoxArray = SetCurrentBBoxArray(_bboxArrayCount * MEPElemBBoxes.Count);
+                    else _currentBBoxArray = MEPElemBBoxes.ToArray();
                 }
 
                 return _currentBBoxArray;
@@ -133,10 +124,10 @@ namespace KPLN_ModelChecker_User.Common
                             int conCount = 2;
                             foreach (CheckMEPHeightMEPData mepData in finallyCheckColl)
                             {
-                                if (mepData.CurrentElement.Id.IntegerValue == elemToCheck.Id.IntegerValue)
+                                if (mepData.MEPElement.Id.IntegerValue == elemToCheck.Id.IntegerValue)
                                     continue;
 
-                                if (mepData.CurrentElement is FamilyInstance famInst)
+                                if (mepData.MEPElement is FamilyInstance famInst)
                                 {
                                     MEPModel mepModel = famInst.MEPModel;
                                     ConnectorManager conManager = mepModel.ConnectorManager;
@@ -174,44 +165,49 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
-        /// Проверка на нахождение элемента в указанном помещинии
+        /// Определение находиться ли элемент в границах помещения
         /// </summary>
-        /// <param name="mepData">Спец. класс для проверки</param>
         /// <param name="arData">Спец. класс для проверки</param>
-        public static bool IsElemInCurrentRoomCheck(CheckMEPHeightMEPData mepData, CheckMEPHeightARRoomData arData)
+        public bool IsElemInCurrentRoom(CheckMEPHeightARRoomData arData)
         {
-            SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions
+            if (MEPElement.Id.IntegerValue == 9714093)
             {
-                SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
-            };
-
-            IList<BoundarySegment> segments = arData.CurrentRoom.GetBoundarySegments(options).SelectMany(bs => bs).ToList();
+                var a = 1;
+            }
             
-            foreach (BoundarySegment segment in segments)
+            foreach (BoundingBoxXYZ bbox in SplitedBBoxArray)
             {
-                Curve curve = segment.GetCurve();
-                var solidIntResult = mepData.CurrentSolid.IntersectWithCurve(curve, new SolidCurveIntersectionOptions() { ResultType = SolidCurveIntersectionMode.CurveSegmentsInside});
-                if (solidIntResult != null && solidIntResult.SegmentCount > 0)
+                // Быстрая и неточная проверка на BoundingBoxXYZ
+                if ((arData.RoomBBox.Max.X >= bbox.Min.X && arData.RoomBBox.Min.X <= bbox.Max.X)
+                    && (arData.RoomBBox.Max.Y >= bbox.Min.Y && arData.RoomBBox.Min.Y <= bbox.Max.Y)
+                    && (arData.RoomBBox.Max.Z + 5 >= bbox.Min.Z && arData.RoomBBox.Min.Z <= bbox.Max.Z))
                 {
+                    if (arData.CurrentRoom.IsPointInRoom(bbox.Min) || arData.CurrentRoom.IsPointInRoom(bbox.Max))
+                    
+                    //// Более точная и длительная проверка на вхождение элемента в помещение
+                    //foreach(Solid mepSolid in MEPElemSolids)
+                    //{
+                    //    EdgeArray edgeArray = mepSolid.Edges;
+                    //    foreach(Edge edge in edgeArray)
+                    //    {
+                    //        Curve curve = edge.AsCurve();
+                    //        if (curve != null)
+                    //        {
+                    //            SolidCurveIntersection intRes = arData
+                    //                .RoomSolid
+                    //                .IntersectWithCurve(curve, new SolidCurveIntersectionOptions(){ ResultType = SolidCurveIntersectionMode.CurveSegmentsInside });
+                    //            int segmCount = intRes.SegmentCount;
+                    //            if (intRes != null && segmCount > 0)
+                    //                return true;
+                    //        }
+                    //    }
+
+                    //}
                     return true;
                 }
             }
 
             return false;
-
-            //if (mepData.CurrentSolid.Volume == 0)
-            //    return false;
-            
-            //if (mepData.CurrentBBox.Max.X < arData.RoomBBox.Min.X || mepData.CurrentBBox.Min.X > arData.RoomBBox.Max.X)
-            //    return false;
-
-            //if (mepData.CurrentBBox.Max.Y < arData.RoomBBox.Min.Y || mepData.CurrentBBox.Min.Y > arData.RoomBBox.Max.Y)
-            //    return false;
-
-            //if (mepData.CurrentBBox.Max.Z < arData.RoomBBox.Min.Z || mepData.CurrentBBox.Min.Z > arData.RoomBBox.Max.Z)
-            //    return false;
-
-            //return true;
         }
 
         /// <summary>
@@ -221,7 +217,65 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="arData">Спец. класс АР для проверки</param>
         public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(CheckMEPHeightMEPData[] currentRoomMEPDataColl, CheckMEPHeightARRoomData arData) =>
             currentRoomMEPDataColl.Where(m => m.IsHeigtError(arData)).ToArray();
-        
+
+        /// <summary>
+        /// Получить солид из элементов
+        /// </summary>
+        private void GetSolidsFromGeomElem(GeometryElement geometryElement, Transform transformation, IList<Solid> solids)
+        {
+            foreach (GeometryObject geomObject in geometryElement)
+            {
+                switch (geomObject)
+                {
+                    case Solid solid:
+                        if (solid.Volume > 0) solids.Add(solid);
+                        break;
+
+                    case GeometryInstance geomInstance:
+                        GetSolidsFromGeomElem(geomInstance.GetInstanceGeometry(), geomInstance.Transform.Multiply(transformation), solids);
+                        break;
+
+                    case GeometryElement geomElem:
+                        GetSolidsFromGeomElem(geomElem, transformation, solids);
+                        break;
+                }
+            }
+        }
+
+        private List<BoundingBoxXYZ> GetBoundingBoxXYZColl(GeometryElement geomElem)
+        {
+            List<BoundingBoxXYZ> result = new List<BoundingBoxXYZ>();
+            foreach (GeometryObject obj in geomElem)
+            {
+                Solid solid = obj as Solid;
+                BoundingBoxXYZ bbox = GetBoundingBoxXYZ(solid);
+                if (bbox != null)
+                {
+                    result.Add(bbox);
+                }
+            }
+
+            return result;
+        }
+
+
+        private BoundingBoxXYZ GetBoundingBoxXYZ(Solid solid)
+        {
+            if (solid != null && solid.Volume != 0)
+            {
+                BoundingBoxXYZ bbox = solid.GetBoundingBox();
+                Transform transform = bbox.Transform;
+                Transform resultTrans = transform;
+                return new BoundingBoxXYZ()
+                {
+                    Max = resultTrans.OfPoint(bbox.Max),
+                    Min = resultTrans.OfPoint(bbox.Min),
+                };
+            }
+
+            return null;
+        }
+
 
         /// <summary>
         /// Проверить элемент на факт нарушения высоты
@@ -230,13 +284,13 @@ namespace KPLN_ModelChecker_User.Common
         private bool IsHeigtError(CheckMEPHeightARRoomData arData)
         {
             // Проверка элементов на предмет пространственного положения выше 1.5 м болле чем на 1 часть
-            if (CurrentBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
+            if (SplitedBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
             {
                 double tempIntDist = Double.MaxValue;
-                foreach (BoundingBoxXYZ checkBBox in CurrentBBoxArray)
+                foreach (BoundingBoxXYZ checkBBox in SplitedBBoxArray)
                 {
                     #region Проверка вертикальных участков на вертикальную проходку между этажами (стояк). К ним отношу все участки, которые больше 1.5 м
-                    if (CurrentElement.Location is LocationCurve locCurve)
+                    if (MEPElement.Location is LocationCurve locCurve)
                     {
                         if (locCurve.Curve is Line locLine)
                         {
@@ -245,21 +299,24 @@ namespace KPLN_ModelChecker_User.Common
                                 return false;
                         }
                         else
-                            throw new Exception($"Не удалось проанализировать Location элемента ИОС с id: {CurrentElement.Id}");
+                            throw new Exception($"Не удалось проанализировать Location элемента ИОС с id: {MEPElement.Id}");
                     }
                     #endregion
 
                     #region Проверка на минимальную дистанцию до поверхности
                     //XYZ point = GetCurrentBBoxZMin_Center(checkBBox);
-                    //foreach (Face face in arData.CurrentDownFacesArray)
+                    //foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
                     //{
-                    //    IntersectionResult intRes = face.Project(point);
-                    //    if (intRes != null && intRes.Distance < tempIntDist)
+                    //    foreach (Face face in arElemData.ARElemDownFacesArray)
                     //    {
-                    //        tempIntDist = intRes.Distance;
-                    //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                    //        if (iosDistance < arData.RoomMinDistance)
-                    //            return true;
+                    //        IntersectionResult intRes = face.Project(point);
+                    //        if (intRes != null && intRes.Distance < tempIntDist)
+                    //        {
+                    //            tempIntDist = intRes.Distance;
+                    //            double iosDistance = point.DistanceTo(intRes.XYZPoint);
+                    //            if (iosDistance < arData.RoomMinDistance)
+                    //                return true;
+                    //        }
                     //    }
                     //}
 
@@ -274,17 +331,20 @@ namespace KPLN_ModelChecker_User.Common
 
                     foreach (XYZ point in pointsToCheck)
                     {
-                        //foreach (Face face in arData.CurrentDownFacesArray)
-                        //{
-                        //    IntersectionResult intRes = face.Project(point);
-                        //    if (intRes != null && intRes.Distance < tempIntDist)
-                        //    {
-                        //        tempIntDist = intRes.Distance;
-                        //        double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                        //        if (iosDistance < arData.RoomMinDistance)
-                        //            return true;
-                        //    }
-                        //}
+                        foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
+                        {
+                            foreach (Face face in arElemData.ARElemDownFacesArray)
+                            {
+                                IntersectionResult intRes = face.Project(point);
+                                if (intRes != null && intRes.Distance < tempIntDist)
+                                {
+                                    tempIntDist = intRes.Distance;
+                                    double iosDistance = point.DistanceTo(intRes.XYZPoint);
+                                    if (iosDistance < arData.RoomMinDistance)
+                                        return true;
+                                }
+                            }
+                        }
                     }
                     #endregion
                 }
@@ -348,26 +408,29 @@ namespace KPLN_ModelChecker_User.Common
         {
             BoundingBoxXYZ[] bboxArray = new BoundingBoxXYZ[count];
 
-            // Calculate width and height of the bounding box in the XY plane
-            double width = CurrentBBox.Max.X - CurrentBBox.Min.X;
-            double height = CurrentBBox.Max.Y - CurrentBBox.Min.Y;
-
-            // Calculate the size of each piece
-            double pieceWidth = width / count;
-            double pieceHeight = height / count;
-
-            for (int i = 0; i < count; i++)
+            foreach (BoundingBoxXYZ bbox in MEPElemBBoxes)
             {
-                double minX = CurrentBBox.Min.X + (i * pieceWidth);
-                double minY = CurrentBBox.Min.Y + (i * pieceHeight);
-                double maxX = minX + pieceWidth;
-                double maxY = minY + pieceHeight;
+                // Calculate width and height of the bounding box in the XY plane
+                double width = bbox.Max.X - bbox.Min.X;
+                double height = bbox.Max.Y - bbox.Min.Y;
 
-                bboxArray[i] = new BoundingBoxXYZ
+                // Calculate the size of each piece
+                double pieceWidth = width / count;
+                double pieceHeight = height / count;
+
+                for (int i = 0; i < count; i++)
                 {
-                    Min = new XYZ(minX, minY, CurrentBBox.Min.Z),
-                    Max = new XYZ(maxX, maxY, CurrentBBox.Max.Z)
-                };
+                    double minX = bbox.Min.X + (i * pieceWidth);
+                    double minY = bbox.Min.Y + (i * pieceHeight);
+                    double maxX = minX + pieceWidth;
+                    double maxY = minY + pieceHeight;
+
+                    bboxArray[i] = new BoundingBoxXYZ
+                    {
+                        Min = new XYZ(minX, minY, bbox.Min.Z),
+                        Max = new XYZ(maxX, maxY, bbox.Max.Z)
+                    };
+                }
             }
 
             return bboxArray;

@@ -292,7 +292,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Определение находиться ли элемент (BoundingBoxXYZ) в границах (BoundingBoxXYZ) помещения
         /// </summary>
-        /// <param name="bbox">BoundingBoxXYZ элементы для проверки</param>
+        /// <param name="bboxColl">BoundingBoxXYZ элементы для проверки</param>
         private bool IsElemInCurrentRoom_QuickFilter(List<BoundingBoxXYZ> bboxColl)
         {
             foreach(BoundingBoxXYZ bbox in bboxColl)

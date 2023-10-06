@@ -62,11 +62,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Library_ExtensibleStorage">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Release\KPLN_Library_ExtensibleStorage.dll</HintPath>
+      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Revit2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Release\KPLN_Library_Forms.dll</HintPath>
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2023\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
@@ -124,7 +124,6 @@
     <Compile Include="Common\CheckHolesHoleData.cs" />
     <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
     <Compile Include="Common\CheckMEPHeightARElemData.cs" />
-    <Compile Include="Common\CheckMEPHeightManager.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
     <Compile Include="Common\DebugMeasure.cs" />
     <Compile Include="Common\Collections.cs" />

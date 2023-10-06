@@ -33,6 +33,9 @@ namespace KPLN_ModelChecker_User.Forms
             }
 
         }
+
+        public bool IsLoaded { get; private set; } = false;
+
         private void UpdateCollection(int itemCatId, int itemId)
         {
             foreach (WPFDisplayItem item in iControll.ItemsSource as ObservableCollection<WPFDisplayItem>)
@@ -102,6 +105,11 @@ namespace KPLN_ModelChecker_User.Forms
                 element.Background = new SolidColorBrush(Color.FromArgb(255, 218, 247, 166));
                 _isToggle = true;
             }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            IsLoaded = true;
         }
 
     }
