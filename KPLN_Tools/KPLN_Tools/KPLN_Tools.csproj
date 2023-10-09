@@ -119,7 +119,11 @@
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
+    <Compile Include="ExternalCommands\CommandTitleBlockChanger.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="Forms\UserSelectAlgoritm.xaml.cs">
+      <DependentUpon>UserSelectAlgoritm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormRenamer.xaml.cs">
       <DependentUpon>FormRenamer.xaml</DependentUpon>
     </Compile>
@@ -157,6 +161,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\UserSelectAlgoritm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\FormRenamer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

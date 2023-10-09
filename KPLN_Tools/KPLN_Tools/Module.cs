@@ -63,6 +63,25 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
 
+            PushButtonData sh825TitleBlockChanger = CreateBtnData(
+                "Замена форматов",
+                "Замена форматов",
+                "АСТЕРУС_ШК825: подгружает параметры для штампа, и меняет форматы",
+                string.Format(
+                    "Алгоритм запуска:\n" +
+                        "1. Запускаем плагин для фиксации размеров штампов;\n" +
+                        "2. Меняем семейство на согласованное с BIM-отделом;\n" +
+                        "3. Запускаем плагин для установки размеров листов и добавления параметров.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandTitleBlockChanger).FullName,
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "http://moodle");
+
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
                 "Восстановить размеры",
@@ -96,6 +115,7 @@ namespace KPLN_Tools
                 panel,
                 false);
 
+            sharedPullDownBtn.AddPushButton(sh825TitleBlockChanger);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(autonumber);
 
