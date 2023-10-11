@@ -259,7 +259,9 @@ namespace KPLN_Scoper
 
             // Отлов семейств, расположенных не на Х, не из плагинов и не из исключений выше
             if (!familyPath.StartsWith("X:\\BIM") 
-                && !familyPath.Contains("KPLN_Loader"))
+                && !familyPath.Contains("KPLN_Loader")
+                // Отлов проекта Школа 825. Его дорабатываем за другой организацией
+                && !docPath.ToLower().Contains("sh1-"))
             {
                 UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
                 userVerify.ShowDialog();

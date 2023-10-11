@@ -214,8 +214,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (BuiltInCategory bic in _bicErrorSearch)
             {
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc, viewId).OfCategory(bic).WhereElementIsNotElementType();
+                result.AddRange(FilteredByNotBeginsStringColl(bicColl).ToElements());
                 // Очищаю коллецию от DetailLine - Последовательность компонентов узлов. Используется для разных визуальных маскировок, или докрутки видимости (УГО)
-                result.AddRange(FilteredByNotBeginsStringColl(bicColl).ToElements().Where(e => e.GetType().Name != nameof(DetailLine)));
+                //result.AddRange(FilteredByNotBeginsStringColl(bicColl).ToElements().Where(e => e.GetType().Name != nameof(DetailLine)));
             }
 
             return result;
