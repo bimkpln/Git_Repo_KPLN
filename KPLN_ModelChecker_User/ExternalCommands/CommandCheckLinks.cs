@@ -212,7 +212,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     errorElems,
                     Status.Error,
                     "Ошибка прикрепления",
-                    "Связи необходимо прикрепить",
+                    "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin'). Не путать с настройкой типа связи 'Прикрепление' ('Attachment'))",
                     false,
                     false);
             }
