@@ -13,7 +13,11 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// От данного парамтера зависит точность опредления помещений для линейных элементов
         /// </summary>
-        private const int _bboxArrayCount = 3;
+        private const int _bboxArrayCount = 5;
+        /// <summary>
+        /// От данного парамтера зависит точность опредления привязки элемента к помещению
+        /// </summary>
+        private const int _bboxExpanded = 10;
         private readonly List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
         public List<Solid> _mepElemSolids = new List<Solid>();
         private BoundingBoxXYZ[] _currentBBoxArray;
@@ -36,7 +40,9 @@ namespace KPLN_ModelChecker_User.Common
                 if (_mepElemSolids.Count == 0)
                 {
 
-                    GeometryElement geomElem = MEPElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+                    opt.ComputeReferences = true;
+                    GeometryElement geomElem = MEPElement.get_Geometry(opt);
                     if (geomElem != null)
                     {
                         GetSolidsFromGeomElem(geomElem, Transform.Identity, _mepElemSolids);
@@ -170,19 +176,28 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="arData">Спец. класс для проверки</param>
         public bool IsElemInCurrentRoom(CheckMEPHeightARRoomData arData)
         {
-            if (MEPElement.Id.IntegerValue == 9714093)
-            {
-                var a = 1;
-            }
-            
             foreach (BoundingBoxXYZ bbox in SplitedBBoxArray)
             {
+                if (MEPElement.Id.IntegerValue == 13064543)
+                {
+                    var a = 1;
+                }
+
                 // Быстрая и неточная проверка на BoundingBoxXYZ
                 if ((arData.RoomBBox.Max.X >= bbox.Min.X && arData.RoomBBox.Min.X <= bbox.Max.X)
                     && (arData.RoomBBox.Max.Y >= bbox.Min.Y && arData.RoomBBox.Min.Y <= bbox.Max.Y)
-                    && (arData.RoomBBox.Max.Z + 5 >= bbox.Min.Z && arData.RoomBBox.Min.Z <= bbox.Max.Z))
+                    && (arData.RoomBBox.Max.Z + _bboxExpanded >= bbox.Min.Z && arData.RoomBBox.Min.Z <= bbox.Max.Z))
                 {
-                    if (arData.CurrentRoom.IsPointInRoom(bbox.Min) || arData.CurrentRoom.IsPointInRoom(bbox.Max))
+                    // Более точная и длительная проверка на вхождение элемента в помещение (или над помещением, для органиченных помещений)
+                    if (arData.CurrentRoom.IsPointInRoom(bbox.Min) 
+                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 5))
+                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 2))
+                        || arData.CurrentRoom.IsPointInRoom(bbox.Max)
+                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 5))
+                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 2)))
+                    {
+                        return true;
+                    }
                     
                     //// Более точная и длительная проверка на вхождение элемента в помещение
                     //foreach(Solid mepSolid in MEPElemSolids)
@@ -201,9 +216,7 @@ namespace KPLN_ModelChecker_User.Common
                     //                return true;
                     //        }
                     //    }
-
                     //}
-                    return true;
                 }
             }
 
@@ -283,71 +296,60 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="arData">Спец. класс для проверки</param>
         private bool IsHeigtError(CheckMEPHeightARRoomData arData)
         {
-            // Проверка элементов на предмет пространственного положения выше 1.5 м болле чем на 1 часть
-            if (SplitedBBoxArray.Where(b => b.Max.Z > 5).Count() > 0)
+            if(MEPElement.Id.IntegerValue== 13064543)
             {
-                double tempIntDist = Double.MaxValue;
-                foreach (BoundingBoxXYZ checkBBox in SplitedBBoxArray)
+                var a = 1;
+            }
+            
+            // Зада. мин длину, при которой элемент считается с потенциальным нарушением - выше 1.5 м
+            double minIntDist = 5;
+            double tempIntDist = Double.MaxValue;
+            foreach (BoundingBoxXYZ checkBBox in SplitedBBoxArray)
+            {
+                #region Проверка вертикальных участков на вертикальную проходку между этажами (стояк). К ним отношу все участки, которые больше 1.5 м
+                if (MEPElement.Location is LocationCurve locCurve)
                 {
-                    #region Проверка вертикальных участков на вертикальную проходку между этажами (стояк). К ним отношу все участки, которые больше 1.5 м
-                    if (MEPElement.Location is LocationCurve locCurve)
+                    if (locCurve.Curve is Line locLine)
                     {
-                        if (locCurve.Curve is Line locLine)
-                        {
-                            XYZ direction = locLine.Direction;
-                            if (Math.Abs(direction.X) < _toleranceToCheck && Math.Abs(direction.Y) < _toleranceToCheck && locCurve.Curve.ApproximateLength > 5)
-                                return false;
-                        }
-                        else
-                            throw new Exception($"Не удалось проанализировать Location элемента ИОС с id: {MEPElement.Id}");
+                        XYZ direction = locLine.Direction;
+                        if (Math.Abs(direction.X) < _toleranceToCheck && Math.Abs(direction.Y) < _toleranceToCheck && locCurve.Curve.ApproximateLength > 5)
+                            return false;
                     }
-                    #endregion
+                    else
+                        throw new Exception($"Не удалось проанализировать Location элемента ИОС с id: {MEPElement.Id}");
+                }
+                #endregion
 
-                    #region Проверка на минимальную дистанцию до поверхности
-                    //XYZ point = GetCurrentBBoxZMin_Center(checkBBox);
-                    //foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
-                    //{
-                    //    foreach (Face face in arElemData.ARElemDownFacesArray)
-                    //    {
-                    //        IntersectionResult intRes = face.Project(point);
-                    //        if (intRes != null && intRes.Distance < tempIntDist)
-                    //        {
-                    //            tempIntDist = intRes.Distance;
-                    //            double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                    //            if (iosDistance < arData.RoomMinDistance)
-                    //                return true;
-                    //        }
-                    //    }
-                    //}
+                #region Проверка на минимальную дистанцию до поверхности
+                XYZ[] pointsToCheck = new XYZ[5]
+                {
+                    GetCurrentBBoxZMin_HRight(checkBBox),
+                    GetCurrentBBoxZMin_HLeft(checkBBox),
+                    GetCurrentBBoxZMin_Center(checkBBox),
+                    GetCurrentBBoxZMin_LRight(checkBBox),
+                    GetCurrentBBoxZMin_LLeft(checkBBox),
+                };
 
-                    XYZ[] pointsToCheck = new XYZ[5]
+                foreach (XYZ point in pointsToCheck)
+                {
+                    foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
                     {
-                        GetCurrentBBoxZMin_HRight(checkBBox),
-                        GetCurrentBBoxZMin_HLeft(checkBBox),
-                        GetCurrentBBoxZMin_Center(checkBBox),
-                        GetCurrentBBoxZMin_LRight(checkBBox),
-                        GetCurrentBBoxZMin_LLeft(checkBBox),
-                    };
-
-                    foreach (XYZ point in pointsToCheck)
-                    {
-                        foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
+                        foreach (Face face in arElemData.ARElemDownFacesArray)
                         {
-                            foreach (Face face in arElemData.ARElemDownFacesArray)
+                            // Делаю инверсию точки элемента ИОС на координаты АР. Плоскость не подвергается трансформации координат, или созданию (нет конструктора)
+                            XYZ inversedPoint = arElemData.ARElemLinkTrans.Inverse.OfPoint(point);
+                            IntersectionResult intRes = face.Project(inversedPoint);
+                            if (intRes != null && intRes.Distance < tempIntDist && intRes.Distance > minIntDist)
                             {
-                                IntersectionResult intRes = face.Project(point);
-                                if (intRes != null && intRes.Distance < tempIntDist)
-                                {
-                                    tempIntDist = intRes.Distance;
-                                    double iosDistance = point.DistanceTo(intRes.XYZPoint);
-                                    if (iosDistance < arData.RoomMinDistance)
-                                        return true;
-                                }
+                                tempIntDist = intRes.Distance;
+                                double iosDistance = inversedPoint.DistanceTo(intRes.XYZPoint);
+                                if (iosDistance < arData.RoomMinDistance)
+                                    return true;
                             }
                         }
                     }
-                    #endregion
                 }
+                #endregion
             }
 
             return false;

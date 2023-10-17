@@ -41,7 +41,9 @@ namespace KPLN_ModelChecker_User.Common
             {
                 if (_arSolids.Count == 0)
                 {
-                    GeometryElement geomElem = ARElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+                    opt.ComputeReferences = true;
+                    GeometryElement geomElem = ARElement.get_Geometry(opt);
                     if (geomElem != null)
                     {
                         GetSolidsFromGeomElem(geomElem, Transform.Identity, _arSolids);
@@ -64,7 +66,9 @@ namespace KPLN_ModelChecker_User.Common
             {
                 if (_arBBoxes.Count == 0)
                 {
-                    GeometryElement geometryElement = ARElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+                    opt.ComputeReferences = true;
+                    GeometryElement geometryElement = ARElement.get_Geometry(opt);
                     foreach (GeometryObject geomObject in geometryElement)
                     {
                         switch (geomObject)
@@ -104,12 +108,12 @@ namespace KPLN_ModelChecker_User.Common
                         FaceArray faceArray = solid.Faces;
                         foreach (Face face in faceArray)
                         {
-                            // Фильтрация PlanarFace, которые являются боковыми гранями
-                            if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1))
+                            // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
+                            if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z < 0))
                                 continue;
 
-                            // Фильтрация CylindricalFace, которые являются боковыми гранями
-                            if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1))
+                            // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
+                            if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z < 0))
                                 continue;
 
                             _arElementDownFacesArray.Append(face);

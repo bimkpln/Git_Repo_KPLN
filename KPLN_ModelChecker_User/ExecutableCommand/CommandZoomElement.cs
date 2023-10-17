@@ -255,11 +255,9 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         /// </summary>
         private BoundingBoxXYZ PrepareElemBBox(Element elem)
         {
-            GeometryElement geomElem = elem
-                    .get_Geometry(new Options()
-                    {
-                        DetailLevel = ViewDetailLevel.Fine,
-                    });
+            Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+            opt.ComputeReferences = true;
+            GeometryElement geomElem = elem.get_Geometry(opt);
 
             Solid currentSolid = null;
             foreach (GeometryObject gObj in geomElem)
