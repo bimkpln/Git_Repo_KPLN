@@ -1,14 +1,32 @@
-﻿using HtmlAgilityPack;
+﻿using Autodesk.Revit.UI;
+using HtmlAgilityPack;
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace KPLN_Library_Forms.UI.HtmlWindow
 {
     public static class HtmlOutput
     {
-        private static readonly string _outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), $"KPLN_htmlPrint_{DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss")}.html");
+        /// <summary>
+        /// Маска для имени файлов (приставка)
+        /// </summary>
+        private static readonly string _fileNameMask = "KPLN_htmlPrint";
+        /// <summary>
+        /// Путь к папке для хранения файлов
+        /// </summary>
+        private static readonly string _fileDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        /// <summary>
+        /// Путь для сохранения файлов
+        /// </summary>
+        private static readonly string _outputPath = Path.Combine(_fileDirectory,  $"{_fileNameMask}_{DateTime.Now:dd/MM/yyyy_HH/mm/ss}.html");
         private static readonly string HTML_Output_DocType = "<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' 'http://www.w3.org/TR/html4/loose.dtd'>";
+        /// <summary>
+        /// Флаг для индикации запуска чистки предыдущих версий документов в текущей сессии
+        /// </summary>
+        private static bool _isCleared = false;
         private static string _html_Output_Head ;
         private static HtmlDocument _htmlDocument = new HtmlDocument();
 
@@ -46,6 +64,13 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
         /// <param name="cssclass">Стиль css</param>
         private static void OutputPrint(string value, string cssclass)
         {
+            // Предварительная чистка старых файлов
+            if (!_isCleared)
+            {
+                Task clearingTask = Task.Run(() => ClearOldFiles());
+            }
+            
+            // Печать
             string insertablevalue = string.Join("<b>«", value.Split('«'));
             insertablevalue = string.Join("»</b>", insertablevalue.Split('»'));
             insertablevalue = string.Join("<b>[", insertablevalue.Split('['));
@@ -93,6 +118,40 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
             {
                 _htmlDocument.Save(streamWriter);
                 streamWriter.Close();
+            }
+        }
+
+        /// <summary>
+        /// Метод очистки от файлов пердыдущего запуска
+        /// </summary>
+        private static void ClearOldFiles()
+        {
+            // Перевожу в сигнальное состояние, чтобы больше чистку не запускать
+            _isCleared = true;
+
+            // Провожу чистку
+            string[] htmlOutputFilesFullPath = Directory.GetFiles(_fileDirectory).Where(s => s.Contains(_fileNameMask)).ToArray();
+            foreach (string fullPath in htmlOutputFilesFullPath)
+            {
+                FileInfo file = new FileInfo(fullPath);
+                if (file.CreationTime.Date < DateTime.Now.AddDays(-3))
+                {
+                    try
+                    {
+                        file.Delete();
+                    }
+                    // Ошибка будет только если файл занят
+                    catch (UnauthorizedAccessException) { }
+                    catch (Exception ex)
+                    {
+                        TaskDialog td = new TaskDialog("KPLN")
+                        {
+                            MainInstruction = "Скинь скрин ошибки в BIM-отдел",
+                            MainContent = $"При очистке старых файлов - произошла ошика: {ex.Message}"
+                        };
+                        td.Show();
+                    }
+                }
             }
         }
 
