@@ -176,8 +176,7 @@ namespace KPLN_Library_ExtensibleStorage
         {
             SchemaBuilder builder = new SchemaBuilder(Guid);
             builder.SetReadAccessLevel(AccessLevel.Public);
-
-            FieldBuilder fbName = builder.AddSimpleField(FieldName, typeof(string));
+            _ = builder.AddSimpleField(FieldName, typeof(string));
             builder.SetSchemaName(StorageName);
 
             Schema sch = builder.Finish();
