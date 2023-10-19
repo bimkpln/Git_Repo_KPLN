@@ -52,7 +52,7 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Коллекция десерилизованныйх данных по БД
         /// </summary>
-        internal List<DatabasePaths> DatabasesPaths { get; private set; }
+        internal List<DB_Paths> DatabasesPaths { get; private set; }
 
         ///<summary>
         ///Путь, по которому будет создана папка со скопироваными модулями
@@ -88,9 +88,9 @@ namespace KPLN_Loader.Services
                 StringBuilder stringBuilder = new StringBuilder();
 
                 string jsonConfig = File.ReadAllText(sqlConfigPath);
-                DatabasesPaths = JsonConvert.DeserializeObject<List<DatabasePaths>>(jsonConfig);
+                DatabasesPaths = JsonConvert.DeserializeObject<List<DB_Paths>>(jsonConfig);
 
-                foreach (DatabasePaths db in DatabasesPaths)
+                foreach (DB_Paths db in DatabasesPaths)
                 {
                     string fullPath = db.Path;
                     if (!File.Exists(fullPath))

@@ -16,12 +16,19 @@ namespace KPLN_Loader.Forms
     /// </summary>
     public partial class LoaderStatusForm : Window
     {
+
+        internal delegate void RiseLikeEvant(int rate, LoaderDescription loaderDescription);
+        /// <summary>
+        /// Событие, которое посылает сигналы из формы, в случае активности пользователя
+        /// </summary>
+        internal event RiseLikeEvant LikeStatus;
+
         private readonly string _statusError = "❌";
         private readonly string _statusDone = "✔️";
         private readonly IEnumerable<LoaderStatusEntity> _loaderStatusEntitys;
         private readonly List<LoaderEvantEntity> _loadModules;
         private readonly System.Windows.Forms.Timer _closeTimer;
-        private string _loaderDescriptionURL;
+        private LoaderDescription _loaderDescription;
 
         /// <summary>
         /// Окно с демонстрацией прогресса
@@ -54,10 +61,11 @@ namespace KPLN_Loader.Forms
         /// </summary>
         internal void SetInstruction(LoaderDescription loaderDescription)
         {
-            tblInstruction.Text = loaderDescription.Description;
-            _loaderDescriptionURL = loaderDescription.InstructionURL;
-
-            if (_loaderDescriptionURL != null)
+            _loaderDescription = loaderDescription;
+            tblInstruction.Text = _loaderDescription.Description;
+            
+            string loaderDescriptionURL = _loaderDescription.InstructionURL;
+            if (loaderDescriptionURL != null)
             {
                 tblInstruction.TextDecorations = TextDecorations.Underline;
                 tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
@@ -95,7 +103,7 @@ namespace KPLN_Loader.Forms
             _closeTimer.Start();
         }
 
-        private void Application_ModuleStatus(LoaderEvantEntity lModule, System.Windows.Media.Brush brush)
+        private void Application_ModuleStatus(LoaderEvantEntity lModule, Brush brush)
         {
             lModule.LoadColor = brush;
             _loadModules.Add(lModule);
@@ -106,7 +114,7 @@ namespace KPLN_Loader.Forms
         /// <summary>
         /// Обработчик события RiseStepProgress
         /// </summary>
-        private void Application_Progress(MainStatus mainStatus, string toolTip, System.Windows.Media.Brush brush)
+        private void Application_Progress(MainStatus mainStatus, string toolTip, Brush brush)
         {
             LoaderStatusEntity stEntity = _loaderStatusEntitys.Where(x => x.CurrentMainStatus == mainStatus).FirstOrDefault();
             if (stEntity != null)
@@ -124,10 +132,34 @@ namespace KPLN_Loader.Forms
             Close();
         }
 
-        private void Instruction_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void Instruction_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_loaderDescriptionURL != null)
-                Process.Start(new ProcessStartInfo(_loaderDescriptionURL) { UseShellExecute = true });
+            string loaderDescriptionURL = _loaderDescription.InstructionURL;
+            if (loaderDescriptionURL != null)
+                Process.Start(new ProcessStartInfo(loaderDescriptionURL) { UseShellExecute = true });
+        }
+
+        private void BtnLike_Click(object sender, RoutedEventArgs e)
+        {
+            SetUnclickableRateBtns();
+            LikeStatus?.Invoke(1, _loaderDescription);
+        }
+
+        private void BtnDislike_Click(object sender, RoutedEventArgs e)
+        {
+            SetUnclickableRateBtns();
+            LikeStatus?.Invoke(-1, _loaderDescription);
+        }
+
+        /// <summary>
+        /// Установить кнопки рейтинга не нажимаемыми
+        /// </summary>
+        private void SetUnclickableRateBtns()
+        {
+            btnLike.IsEnabled = false;
+            btnLike.Foreground = Brushes.Gray;
+            btnDislike.IsEnabled = false;
+            btnDislike.Foreground = Brushes.Gray;
         }
     }
 }

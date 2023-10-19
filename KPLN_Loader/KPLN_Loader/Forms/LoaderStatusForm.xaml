@@ -36,6 +36,7 @@
             <RowDefinition Height="0.15*"/>
             <RowDefinition Height="0.1*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
             <RowDefinition Height="0.1*"/>
             <RowDefinition Height="0.2*"/>
         </Grid.RowDefinitions>
@@ -134,15 +135,45 @@
                    MouseLeftButtonDown="Instruction_MouseLeftButtonDown"
                    ToolTip="Если текст подчеркнут - значит есть ссылка на web-ресурс. Нажми ЛМК, чтобы пройти по ссылке :)"/>
 
+        <Grid 
+            Grid.Row="5"
+            Grid.Column="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.5*" />
+                <ColumnDefinition Width="0.5*" />
+            </Grid.ColumnDefinitions>
+
+            <Button 
+                x:Name="btnLike"
+                VerticalAlignment="Center"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Content="👍"
+                Foreground="Green"
+                ToolTip="Проголосуй, если подсказка тебе помогла"
+                Click="BtnLike_Click"/>
+            <Button 
+                Grid.Column="2"
+                x:Name="btnDislike"
+                VerticalAlignment="Center"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Content="👎"
+                Foreground="Red"
+                ToolTip="Проголосуй, если подсказка не имеет смысла"
+                Click="BtnDislike_Click"/>
+        </Grid>
+
+
         <GridSplitter 
-            Grid.Row="5" 
+            Grid.Row="6" 
             Grid.ColumnSpan="2"
             Width="Auto" 
             Height="2"
             HorizontalAlignment="Stretch" />
         <Expander 
             x:Name="expHeader" 
-            Grid.Row="6" 
+            Grid.Row="7" 
             Grid.ColumnSpan="2"
             Header="Полученные модули">
             <Grid>

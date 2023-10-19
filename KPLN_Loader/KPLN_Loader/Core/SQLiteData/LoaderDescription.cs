@@ -26,5 +26,10 @@ namespace KPLN_Loader.Core.SQLiteData
         /// </summary>
         [ForeignKey(nameof(SubDepartment))]
         internal int SubDepartmentId { get; set; }
+
+        /// <summary>
+        /// Счётчик "лайков", для чистки мёртвых подсказок
+        /// </summary>
+        internal int ApprovalRate { get; set; }
     }
 }

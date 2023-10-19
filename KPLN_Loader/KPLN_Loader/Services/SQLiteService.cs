@@ -34,12 +34,13 @@ namespace KPLN_Loader.Services
             {
                 if (_subDepartments == null)
                 {
-                    _subDepartments = ExecuteQuery<SubDepartment>("SELECT * FROM SubDepartments;");
+                    _subDepartments = ExecuteQuery<SubDepartment>($"SELECT * FROM {MainDB_Tables.SubDepartments};");
                 }
                 return _subDepartments;
             }
         }
 
+        #region Create
         /// <summary>
         /// Авторизация пользователя KPLN
         /// </summary>
@@ -48,7 +49,7 @@ namespace KPLN_Loader.Services
         {
             string currentDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
             string sysUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
-            User currentUser = ExecuteQuery<User>($"SELECT * FROM Users WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
+            User currentUser = ExecuteQuery<User>($"SELECT * FROM {MainDB_Tables.Users} WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
 
             if (currentUser == null)
             {
@@ -64,7 +65,7 @@ namespace KPLN_Loader.Services
                         RegistrationDate = currentDate,
                     };
                     
-                    ExecuteNonQuery($"INSERT INTO Users " +
+                    ExecuteNonQuery($"INSERT INTO {MainDB_Tables.Users} " +
                             $"({nameof(User.SystemName)}, {nameof(User.Name)}, {nameof(User.Surname)}, {nameof(User.SubDepartmentId)}, {nameof(User.RegistrationDate)}) " +
                             $"VALUES (@{nameof(User.SystemName)}, @{nameof(User.Name)}, @{nameof(User.Surname)}, @{nameof(User.SubDepartmentId)}, @{nameof(User.RegistrationDate)});",
                         currentUser);
@@ -86,29 +87,32 @@ namespace KPLN_Loader.Services
                 _logger.Info("ВЫБРАН СТАТУС ЗАПУСКА - DEBUG");
             
             currentUser.LastConnectionDate = currentDate;
-            ExecuteNonQuery($"UPDATE Users SET {nameof(User.LastConnectionDate)}='{currentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+            ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
+                $"SET {nameof(User.LastConnectionDate)}='{currentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
 
             return currentUser;
         }
+        #endregion
 
-        /// <summary>
-        /// Получить коллекцию модулей из БД
-        /// </summary>
-        /// <param name="currentUser">Пользователь для из БД</param>
-        /// <returns>Коллекция модулей</returns>
-        internal IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
+            #region Read
+            /// <summary>
+            /// Получить коллекцию модулей из БД
+            /// </summary>
+            /// <param name="currentUser">Пользователь для из БД</param>
+            /// <returns>Коллекция модулей</returns>
+            internal IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
         {
             IEnumerable<Module> modules;
             // Модули-библиотеки нужны при любом режиме, для них статус IsDebugMode - не играет роли
             if (currentUser.IsDebugMode)
             {
-                modules = ExecuteQuery<Module>("SELECT * FROM Modules " +
+                modules = ExecuteQuery<Module>($"SELECT * FROM {MainDB_Tables.Modules} " +
                     $"WHERE {nameof(Module.IsEnabled)}='True'" +
                     $"AND ({nameof(Module.IsLibraryModule)}='True' OR {nameof(Module.IsDebugMode)}='True');");
             }
             else
             {
-                modules = ExecuteQuery<Module>("SELECT * FROM Modules " +
+                modules = ExecuteQuery<Module>($"SELECT * FROM {MainDB_Tables.Modules} " +
                         $"WHERE {nameof(Module.IsEnabled)}='True' " +
                         $"AND ({nameof(Module.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={currentUser.SubDepartmentId}) " +
                         $"AND ({nameof(Module.IsLibraryModule)}='True' OR {nameof(Module.IsDebugMode)}='False');");
@@ -127,23 +131,39 @@ namespace KPLN_Loader.Services
         /// </summary>
         /// <param name="currentUser">Пользователь для из БД</param>
         /// <returns>Строка из БД</returns>
-        internal LoaderDescription GetDescriptionForCurrentUser(User currentUser) 
+        internal LoaderDescription GetDescriptionForCurrentUser(User currentUser)
         {
             IEnumerable<LoaderDescription> loaderDescriptions;
             SubDepartment subDepartment = GetSubDepartmentForCurrentUser(currentUser);
             if (subDepartment.Code.ToLower().Contains("bim"))
             {
-                loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM LoaderDescriptions;");
+                loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM {MainDB_Tables.LoaderDescriptions};");
             }
             else
             {
-                loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM LoaderDescriptions " +
+                loaderDescriptions = ExecuteQuery<LoaderDescription>($"SELECT * FROM {MainDB_Tables.LoaderDescriptions} " +
                         $"WHERE ({nameof(LoaderDescription.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={currentUser.SubDepartmentId});");
             }
-            
+
             Random rand = new Random();
             int index = rand.Next(loaderDescriptions.Count() - 1);
             return loaderDescriptions.ElementAt(index);
+        }
+        #endregion
+
+        #region Update
+        /// <summary>
+        /// Записать значение уровня одобрения от пользователя
+        /// </summary>
+        internal void SetLoaderDescriptionUserRank(int rate, LoaderDescription loaderDescription)
+        {
+            if (loaderDescription != null)
+            {
+                int currentRate = loaderDescription.ApprovalRate;
+                int newRate = currentRate + rate;
+                ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
+                    $"SET {nameof(LoaderDescription.ApprovalRate)}='{newRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+            }
         }
 
         /// <summary>
@@ -154,8 +174,13 @@ namespace KPLN_Loader.Services
         internal void SetRevitUserName(string userName, User currentUser)
         {
             if (currentUser.RevitUserName == null || !currentUser.RevitUserName.Equals(userName))
-                ExecuteNonQuery($"UPDATE Users SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+                ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
+                    $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
         }
+        #endregion
+
+        #region Delete
+        #endregion
 
         private void ExecuteNonQuery(string query, object parameters = null)
         {

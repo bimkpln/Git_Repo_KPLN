@@ -119,7 +119,7 @@
     <Compile Include="Application.cs" />
     <Compile Include="Common\IExecutableCommand.cs" />
     <Compile Include="Common\IExternalModule.cs" />
-    <Compile Include="Core\DatabasePaths.cs" />
+    <Compile Include="Core\DB_Paths.cs" />
     <Compile Include="Core\SQLiteData\LoaderDescription.cs" />
     <Compile Include="Core\SQLiteData\Module.cs" />
     <Compile Include="Core\SQLiteData\SubDepartment.cs" />
@@ -133,6 +133,7 @@
       <DependentUpon>LoaderStatusForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Core\MainDB_Tables.cs" />
     <Compile Include="Services\EnvironmentService.cs" />
     <Compile Include="Services\SQLiteService.cs" />
   </ItemGroup>

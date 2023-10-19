@@ -96,6 +96,7 @@ namespace KPLN_Loader
                 // Добавление пользовательской инструкции
                 LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
                 loaderStatusForm.SetInstruction(loaderDescription);
+                loaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
 
                 // Вывод в окно пользователя
                 Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
@@ -252,6 +253,14 @@ namespace KPLN_Loader
             loaderStatusForm.Start_WindowClose();
 
             return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Обработчик события RiseLikeEvant
+        /// </summary>
+        private void LoaderStatusForm_RiseLikeEvant(int rate, LoaderDescription loaderDescription)
+        {
+            _dbService.SetLoaderDescriptionUserRank(rate, loaderDescription);
         }
 
         /// <summary>
