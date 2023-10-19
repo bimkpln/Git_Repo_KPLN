@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KPLN_Loader
 {
@@ -74,7 +75,8 @@ namespace KPLN_Loader
             #endregion
 
             _logger.Info($"Запуск в Revit {_revitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-            ClearingOldLogs(logDirPath, logFileName);
+            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
+            
             try
             {
                 #region Подготовка и проверка окружения
