@@ -30,8 +30,10 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             Element = element;
             ElementId = element.Id;
-            if (Element is Room room) ElementName = room.Name;
-            else ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
+            if (Element is Room room) 
+                ElementName = room.Name;
+            else 
+                ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
             CategoryName = element.Category.Name;
             
             CurrentStatus = status;

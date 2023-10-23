@@ -24,6 +24,10 @@ namespace KPLN_ModelChecker_User
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            // Инициирую статические поля проверок
+            var a = ExternalCommands.CommandCheckDimensions();
+
+
             //Добавляю кнопку в панель
             string currentPanelName = "Контроль качества";
             RibbonPanel currentPanel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
@@ -36,6 +40,18 @@ namespace KPLN_ModelChecker_User
             pullDownData.Image = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             pullDownData.LargeImage = PngImageSource("KPLN_ModelChecker_User.Source.checker_push.png");
             PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
+
+            AddPushButtonData(
+                "CheckLaunchDate",
+                "Даты\nзапуска",
+                "Проверить факт и дату запуска плагинов.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckLaunchDate).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.launchDate.png",
+                _mainContextualHelp,
+                _userDepartment == 2
+                );
 
             AddPushButtonData(
                 "CheckLevels",

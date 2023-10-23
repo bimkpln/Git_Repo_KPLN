@@ -25,13 +25,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка связей";
+            CheckName = "Проверка связей";
+            MainStorageName = "KPLN_CheckLinks";
+            LastRunGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e");
+            UserTextGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762f");
+            
             _application = uiapp;
-
-            _allStorageName = "KPLN_CheckLinks";
-
-            _lastRunGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e");
-            _userTextGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762f");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -54,7 +53,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!doc.IsWorkshared) throw new UserException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
 
@@ -70,14 +69,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 else throw new Exception("Ошибка определения RevitLinkInstance");
             }
 
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            result.AddRange(CheckWorkSets(elemColl));
             result.AddRange(CheckLocation(doc, elemColl));
             if (CheckPin(elemColl) is WPFEntity checkPin) result.Add(checkPin);
 
@@ -87,38 +85,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)
         {
             report.SetWPFEntityFiltration_ByErrorHeader();
-        }
-
-        /// <summary>
-        /// Проверка на корректность рабочих наборов
-        /// </summary>
-        /// <param name="rvtLinks">Коллекция связей</param>
-        /// <returns>Коллекция ошибок WPFEntity</returns>
-        private IEnumerable<WPFEntity> CheckWorkSets(IEnumerable<Element> rvtLinks)
-        {
-            List<WPFEntity> result = new List<WPFEntity>();
-
-            foreach (RevitLinkInstance link in rvtLinks)
-            {
-                string[] separators = { ".rvt : " };
-                string[] nameSubs = link.Name.Split(separators, StringSplitOptions.None);
-                if (nameSubs.Length > 3) continue;
-
-                string wsName = link.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
-                if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
-                {
-                    result.Add(new WPFEntity(
-                        link,
-                        Status.Error,
-                        "Ошибка рабочего набора",
-                        "Связь находится в некорректном рабочем наборе",
-                        false,
-                        false,
-                        "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'"));
-                }
-            }
-
-            return result;
         }
 
         /// <summary>

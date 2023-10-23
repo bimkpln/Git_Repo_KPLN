@@ -45,13 +45,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка зеркальных элементов";
+            CheckName = "Проверка зеркальных элементов";
             _application = uiapp;
 
-            _allStorageName = "KPLN_CheckMirroredInstances";
+            MainStorageName = "KPLN_CheckMirroredInstances";
 
-            _lastRunGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447b");
-            _userTextGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447c");
+            LastRunGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447b");
+            UserTextGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447c");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -83,9 +83,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => null;
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 

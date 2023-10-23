@@ -46,13 +46,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка отверстий";
+            CheckName = "Проверка отверстий";
+            MainStorageName = "KPLN_CheckHoles";
+            LastRunGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA160");
+            UserTextGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA161");
+            
             _application = uiapp;
-
-            _allStorageName = "KPLN_CheckHoles";
-
-            _lastRunGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA160");
-            _userTextGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA161");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -77,15 +76,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!(elemColl.Any()))
                 throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
             
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<CheckHolesHoleData> holesData = PrepareHoleData(elemColl);
             BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);

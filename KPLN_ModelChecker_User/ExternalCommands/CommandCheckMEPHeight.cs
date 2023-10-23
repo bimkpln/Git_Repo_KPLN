@@ -75,22 +75,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка высоты эл-в ИОС";
+            CheckName = "Проверка высоты эл-в ИОС";
+            MainStorageName = "KPLN_CheckMEPHeight";
+            LastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
+            UserTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
+
             _application = uiapp;
-
-            _allStorageName = "KPLN_CheckMEPHeight";
-
-            _lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
-            _userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Получаю коллекцию элементов для анализа
-            Element[] mepELems = PreapareIOSElements(doc);
-
             #region Проверяю и обрабатываю элементы
-            WPFEntity[] wpfColl = CheckCommandRunner(doc, mepELems);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, PreapareIOSElements(doc));
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) 
                 form.Show(); 
@@ -101,19 +97,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!elemColl.Any())
                 throw new UserException("В проекте отсутсвуют необходимые элементы ИОС");
 
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            // Подготовливаю спец. классы отдельным потоком
+            #region Подготовливаю спец. классы отдельным потоком
             CheckMEPHeightMEPData[] mepDataColl = null;
             Task prepearMEPDataTask = Task.Run(() =>
             {
@@ -123,6 +119,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 .Where(m => m.MEPElemSolids.Count != 0)
                 .ToArray();
             });
+            #endregion
 
             #region Подготовка элементов АР
             //Подготовка связей АР

@@ -144,6 +144,7 @@
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
     <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
     <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
+    <Compile Include="ExternalCommands\CommandCheckLaunchDate.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
@@ -236,6 +237,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_mepHeigtheight.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\launchDate.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

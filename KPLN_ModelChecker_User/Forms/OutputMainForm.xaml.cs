@@ -145,12 +145,16 @@ namespace KPLN_ModelChecker_User.Forms
                 
                 if (wpfEntity.IsZoomElement)
                 {
-                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
-                    else ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null) 
+                        ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                    else 
+                        ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
                 }
                 else
-                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
-                    else ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null) 
+                        ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                    else 
+                        ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
             }
         }
 

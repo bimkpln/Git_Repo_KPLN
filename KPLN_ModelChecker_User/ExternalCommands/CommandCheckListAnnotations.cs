@@ -54,13 +54,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка листов на аннотации";
-            _application = uiapp;
+            CheckName = "Проверка листов на аннотации";
+            MainStorageName = "KPLN_CheckAnnotation";
+            LastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898");
+            UserTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2899");
 
-            _allStorageName = "KPLN_CheckAnnotation";
-            
-            _lastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898");
-            _userTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2899");
+            _application = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -144,9 +143,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => null;
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             if (elemColl.Any())
             {

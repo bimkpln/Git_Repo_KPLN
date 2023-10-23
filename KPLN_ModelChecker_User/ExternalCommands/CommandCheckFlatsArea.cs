@@ -74,18 +74,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         internal override Result Execute(UIApplication uiapp)
         {
-            _name = "Проверка помещений";
-            _application = uiapp;
-
-            _allStorageName = "KPLN_CheckFlatsArea";
+            CheckName = "Проверка помещений";
+            MainStorageName = "KPLN_CheckFlatsArea";
+            MarkerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
+            LastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
+            UserTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
+            
             _markerFieldName = "kpln_ar_area";
-
-            _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
-            _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
-            _userTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
-
-            // Из-за сторонней библиотеки - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
-            _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, "storage");
+            _application = uiapp;
+            // Из-за сторонней библиотеки (на python) - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
+            _esBuildergMarker = new ExtensibleStorageBuilder(MarkerGuid, _markerFieldName, "storage");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -109,14 +107,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Failed;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
         {
             if (!(elemColl.Any()))
                 throw new UserException("В проекте нет помещений.");
 
             foreach (Element elem in elemColl)
             {
-                if (!(elem is Room room)) _errorElemCollection.Add(new CheckCommandError(elem, "Не помещение!"));
+                if (!(elem is Room room)) 
+                    _errorElemCollection.Append(new CheckCommandError(elem, "Не помещение!"));
                 else
                 {
                     List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
@@ -133,7 +132,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)
@@ -141,7 +140,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             report.SetWPFEntityFiltration_ByErrorHeader();
         }
 
-        private protected override List<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> entities = new List<WPFEntity>();
 
@@ -160,7 +159,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             Parameter param = room.LookupParameter(paramName);
             if (param == null)
-                throw new Exception($"У помещений нет параметра: {paramName}");
+                throw new UserException($"У помещений нет параметра: {paramName}");
         }
 
         /// <summary>
