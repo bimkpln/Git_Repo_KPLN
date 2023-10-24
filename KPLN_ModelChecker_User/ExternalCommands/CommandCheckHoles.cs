@@ -26,6 +26,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_DuctInsulations,
             BuiltInCategory.OST_DuctFitting,
             BuiltInCategory.OST_DuctAccessory,
+            BuiltInCategory.OST_DuctTerminal,
             BuiltInCategory.OST_PipeCurves,
             BuiltInCategory.OST_PipeInsulations,
             BuiltInCategory.OST_PipeFitting,
@@ -81,7 +82,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             if (!(elemColl.Any()))
                 throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
-            
+
             return null;
         }
 
@@ -93,7 +94,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             
             foreach (var hd in holesData)
             {
-                hd.SetIntersectsData(mepBBoxData);
+                hd.SetIntersectsData(mepBBoxData, _notCriticalErrorElemColl);
             }
 
             return PrepareHolesIntersectsWPFEntity(doc, holesData);
@@ -115,8 +116,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (Element hole in holesColl)
             {
                 CheckHolesHoleData holeData = new CheckHolesHoleData(hole);
-                holeData.SetGeometryData(ViewDetailLevel.Coarse);
-                if (holeData.CurrentSolid != null) result.Add(holeData);
+                holeData.SetGeometryData(ViewDetailLevel.Coarse, _notCriticalErrorElemColl);
+                if (holeData.CurrentSolid != null) 
+                    result.Add(holeData);
                 else
                     Print($"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную", KPLN_Loader.Preferences.MessageType.Warning);
             }
@@ -194,7 +196,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Document linkDoc = rvtLinkInst.GetLinkDocument();
                 if (linkDoc != null)
                 {
-                    BoundingBoxIntersectsFilter filter = CreateFilter(bbox);
+                    Transform linkTransform = rvtLinkInst.GetTransform();
+                    BoundingBoxXYZ transfBbox = new BoundingBoxXYZ()
+                    {
+                        Max = linkTransform.Inverse.OfPoint(bbox.Max),
+                        Min = linkTransform.Inverse.OfPoint(bbox.Min),
+                    };
+                    BoundingBoxIntersectsFilter filter = CreateFilter(transfBbox);
                     foreach (BuiltInCategory bic in _builtInCategories)
                     {
                         IEnumerable<CheckHolesMEPData> trueMEPElemEntities = new FilteredElementCollector(linkDoc)
@@ -202,11 +210,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             .WhereElementIsNotElementType()
                             .WherePasses(filter)
                             .Cast<Element>()
-                            .Select(e => new CheckHolesMEPData(e));
+                            .Select(e => new CheckHolesMEPData(e, rvtLinkInst));
                         
                         List<CheckHolesMEPData> updateMEPElemEntities = new List<CheckHolesMEPData>(trueMEPElemEntities.Count());
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
                         {
+                            if (mepElementEntity.CurrentElement.Id.IntegerValue == 6431351)
+                            {
+                                var a = 1;
+                            }
                             #region Блок дополнительной фильтрации
                             if (mepElementEntity.CurrentElement is FamilyInstance mepFI)
                             {
@@ -216,7 +228,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 // По коннектам - отсеиваю мелкие семейства соединителей, арматуры с подключением < 50 мм. Они 99% попадут по трубе/воздуховоду/лотку. Оборудование - попадает все
                                 double tolerance = 0.17;
                                 MEPModel mepModel = mepFI.MEPModel;
-                                if (mepModel != null && bic != BuiltInCategory.OST_MechanicalEquipment)
+                                if (mepModel != null && bic != BuiltInCategory.OST_MechanicalEquipment && bic != BuiltInCategory.OST_DuctTerminal)
                                 {
                                     int isToleranceConCount = 0;
                                     ConnectorManager conManager = mepModel.ConnectorManager;
@@ -235,17 +247,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                             #region Блок дополнения элементов геометрией
                             Location location = mepElementEntity.CurrentElement.Location;
-                            if (location is LocationPoint locationPoint) mepElementEntity.CurrentLocationColl.Add(locationPoint.Point);
+                            List<XYZ> locationColl = new List<XYZ>(3);
+                            if (location is LocationPoint locationPoint)
+                                locationColl.Add(locationPoint.Point);
                             else if (location is LocationCurve locationCurve)
                             {
                                 Curve curve = locationCurve.Curve;
                                 XYZ start = curve.GetEndPoint(0);
-                                mepElementEntity.CurrentLocationColl.Add(start);
+                                locationColl.Add(start);
                                 XYZ end = curve.GetEndPoint(1);
-                                mepElementEntity.CurrentLocationColl.Add(end);
+                                locationColl.Add(end);
                                 XYZ center = new XYZ((start.X + end.X) / 2, (start.Y + end.Y) / 2, (start.Z + end.Z) / 2);
-                                mepElementEntity.CurrentLocationColl.Add(center);
+                                locationColl.Add(center);
                             }
+
+                            mepElementEntity.CurrentLocationColl = locationColl;
                             #endregion
 
                             updateMEPElemEntities.Add(mepElementEntity);

@@ -10,13 +10,27 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckHolesMEPData : CheckHolesEntity
     {
-        public CheckHolesMEPData(Element elem) : base(elem)
+        private List<XYZ> _currentLocationColl;
+
+
+        public CheckHolesMEPData(Element elem, RevitLinkInstance linkInstance) : base(elem, linkInstance)
         {
         }
 
         /// <summary>
-        /// Коллеция точек элемента в пространстве
+        /// Коллеция точек элемента в пространстве, с поправкой на координаты
         /// </summary>
-        public List<XYZ> CurrentLocationColl { get; set; } = new List<XYZ>(3);
+        public List<XYZ> CurrentLocationColl 
+        { 
+            get => _currentLocationColl;
+            set
+            {
+                foreach (XYZ xyz in value)
+                {
+                    XYZ prepearedXYZ = CurrentLinkInstance == null ? xyz : CurrentLinkTransform.OfPoint(xyz);
+                    _currentLocationColl.Add(prepearedXYZ);
+                }
+            }
+        }
     }
 }

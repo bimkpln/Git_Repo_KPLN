@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -12,18 +13,28 @@ namespace KPLN_ModelChecker_User.Common
         {
             CurrentElement = elem;
         }
+
+        public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this (elem)
+        {
+            CurrentLinkInstance = linkInstance;
+            CurrentLinkTransform = linkInstance.GetTotalTransform();
+        }
         
         public Element CurrentElement { get; }
 
         public Solid CurrentSolid { get; set; }
 
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
+        
+        public RevitLinkInstance CurrentLinkInstance { get; protected set; } = null;
+
+        public Transform CurrentLinkTransform { get; protected set; } = null;
 
         /// <summary>
         /// Заполнить поля CurrentRoomSolid и CurrentRoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
         /// </summary>
         /// <param name="detailLevel">Уровень детализации</param>
-        public void SetGeometryData(ViewDetailLevel detailLevel)
+        public void SetGeometryData(ViewDetailLevel detailLevel, List<CheckCommandError> notCriticalErrorElemColl)
         {
             #region Задаю Solid, если ранее не был создан
             if (CurrentSolid == null)
@@ -50,7 +61,9 @@ namespace KPLN_ModelChecker_User.Common
                         }
                     }
                 }
-                CurrentSolid = resultSolid;
+
+                if (resultSolid != null)
+                    CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
             }
             #endregion
 
@@ -63,11 +76,12 @@ namespace KPLN_ModelChecker_User.Common
                     if (bbox == null)
                         throw new Exception($"Элементу {CurrentElement.Id} - невозможно создать BoundingBoxXYZ. Отправь сообщение разработчику");
                     Transform transform = bbox.Transform;
+                    Transform resultTransform = CurrentLinkInstance == null ? transform : transform * CurrentLinkTransform;
 
                     CurrentBBox = new BoundingBoxXYZ()
                     {
-                        Max = transform.OfPoint(bbox.Max),
-                        Min = transform.OfPoint(bbox.Min),
+                        Max = resultTransform.OfPoint(bbox.Max),
+                        Min = resultTransform.OfPoint(bbox.Min),
                     };
                 }
             }

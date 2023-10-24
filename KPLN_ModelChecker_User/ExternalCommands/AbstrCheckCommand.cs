@@ -33,7 +33,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список элементов, которые провалили проверку перед запуском
         /// </summary>
-        private protected List<CheckCommandError> _errorElemCollection = new List<CheckCommandError>();
+        private protected List<CheckCommandError> _criticalErrorElemColl = new List<CheckCommandError>();
+        /// <summary>
+        /// Список элементов, которые провалили обработку скриптом
+        /// </summary>
+        private protected List<CheckCommandError> _notCriticalErrorElemColl = new List<CheckCommandError>();
         /// <summary>
         /// Список элементов, которые прошли проверку перед запуском
         /// </summary>
@@ -107,11 +111,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             try
             {
-                _errorElemCollection = CheckElements(doc, elemColl);
-                if (_errorElemCollection != null && _errorElemCollection.Count() > 0)
+                _criticalErrorElemColl = CheckElements(doc, elemColl);
+                if (_criticalErrorElemColl != null && _criticalErrorElemColl.Count() > 0)
                 {
-                    CreateAndShowElementCheckingErrorReport(_errorElemCollection);
-                    _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement));
+                    CreateAndShowElementCheckingErrorReport(_criticalErrorElemColl);
+                    _trueElemCollection = elemColl.Except(_criticalErrorElemColl.Select(e => e.ErrorElement));
                 }
                 else _trueElemCollection = elemColl;
 
@@ -160,6 +164,24 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Вывод предупреждений пользователю об НЕ критичных ошибках
+        /// </summary>
+        /// <param name="doc">Revit-документ</param>
+        /// <param name="wpfEntityColl">Коллеция WPFEntity элементов для генерации отчета</param>
+        /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
+        /// <returns>Окно для вывода пользователю</returns>
+        internal void ShowNotCriticalErrors()
+        {
+            if (_notCriticalErrorElemColl.Any())
+            {
+                foreach (CheckCommandError error in _notCriticalErrorElemColl)
+                {
+                    Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", KPLN_Loader.Preferences.MessageType.Warning);
+                }
+            }
         }
 
         /// <summary>

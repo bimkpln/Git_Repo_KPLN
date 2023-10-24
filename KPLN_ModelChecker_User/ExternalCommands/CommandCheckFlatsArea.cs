@@ -115,7 +115,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (Element elem in elemColl)
             {
-                if (!(elem is Room room)) _errorElemCollection.Add(new CheckCommandError(elem, "Не помещение!"));
+                if (!(elem is Room room)) _criticalErrorElemColl.Add(new CheckCommandError(elem, "Не помещение!"));
                 else
                 {
                     List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
