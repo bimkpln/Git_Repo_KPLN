@@ -64,10 +64,11 @@ namespace KPLN_ModelChecker_User.Common
             {
                 foreach (XYZ locPoint in mepData.CurrentLocationColl)
                 {
-                    if (locPoint.DistanceTo(currentCentroid) < 10)
+                    if (locPoint.DistanceTo(currentCentroid) < 30)
                     {
                         mepData.SetGeometryData(ViewDetailLevel.Fine);
-                        if (mepData.CurrentSolid == null) continue;
+                        if (mepData.CurrentSolid == null) 
+                            continue;
                         try
                         {
                             Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(this.CurrentSolid, mepData.CurrentSolid, BooleanOperationsType.Intersect);

@@ -122,16 +122,21 @@
     <Compile Include="Common\CheckHolesEntity.cs" />
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
+    <Compile Include="Common\CheckLevelOfInstanceData.cs" />
+    <Compile Include="Common\CheckLevelOfInstanceGridData.cs" />
+    <Compile Include="Common\CheckLevelOfInstanceLevelData.cs" />
+    <Compile Include="Common\CheckLevelOfInstancePntComparer.cs" />
+    <Compile Include="Common\CheckLevelOfInstanceSectionData.cs" />
     <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
     <Compile Include="Common\CheckMEPHeightARElemData.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
     <Compile Include="Common\DebugMeasure.cs" />
     <Compile Include="Common\Collections.cs" />
+    <Compile Include="Common\ExtensibleStorageEntity.cs" />
     <Compile Include="Common\MEPElementData.cs" />
     <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\UserException.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
-    <Compile Include="Common\WPFReport.cs" />
     <Compile Include="Common\GeometryBoundingBox.cs" />
     <Compile Include="Common\LevelChecker.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
@@ -160,14 +165,14 @@
     <Compile Include="Forms\Core\ErrorTypes\LittleWarning.cs" />
     <Compile Include="Forms\Core\ErrorTypes\Warning.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
+    <Compile Include="Forms\OutputFormLaunchDate.xaml.cs">
+      <DependentUpon>OutputFormLaunchDate.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ElementsOutput.xaml.cs">
       <DependentUpon>ElementsOutput.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OutputForm.xaml.cs">
-      <DependentUpon>OutputForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ElementsOutputExtended.xaml.cs">
       <DependentUpon>ElementsOutputExtended.xaml</DependentUpon>
@@ -186,7 +191,6 @@
     <Compile Include="Tools\Extentions.cs" />
     <Compile Include="Tools\LevelTools.cs" />
     <Compile Include="Tools\LevelUtils.cs" />
-    <Compile Include="Tools\WindowHandleSearch.cs" />
     <Compile Include="WPFItems\WPFEntity.cs" />
     <Compile Include="WPFItems\WPFReportCreator.cs" />
   </ItemGroup>
@@ -205,6 +209,10 @@
     <EmbeddedResource Include="Source\surch_list_annotation.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\OutputFormLaunchDate.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\OutputMainForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -212,10 +220,6 @@
     <Page Include="Forms\ElementsOutput.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\OutputForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\ElementsOutputExtended.xaml">
       <SubType>Designer</SubType>

@@ -14,7 +14,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckHoles : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckHoles : AbstrCheckCommand<CommandCheckHoles>, IExternalCommand
     {
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
@@ -26,6 +26,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_DuctInsulations,
             BuiltInCategory.OST_DuctFitting,
             BuiltInCategory.OST_DuctAccessory,
+            BuiltInCategory.OST_DuctTerminal,
             BuiltInCategory.OST_PipeCurves,
             BuiltInCategory.OST_PipeInsulations,
             BuiltInCategory.OST_PipeFitting,
@@ -36,22 +37,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_CableTrayFitting,
         };
 
+        public CommandCheckHoles() : base()
+        {
+        }
+
+        internal CommandCheckHoles(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка отверстий";
-            MainStorageName = "KPLN_CheckHoles";
-            LastRunGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA160");
-            UserTextGuid = new Guid("820080C5-DA99-40D7-9445-E53F288AA161");
-            
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -76,9 +80,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
-            if (!(elemColl.Any()))
+            if (!(objColl.Any()))
                 throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
             
             return Enumerable.Empty<CheckCommandError>();
@@ -115,9 +119,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 CheckHolesHoleData holeData = new CheckHolesHoleData(hole);
                 holeData.SetGeometryData(ViewDetailLevel.Coarse);
-                if (holeData.CurrentSolid != null) result.Add(holeData);
+                if (holeData.CurrentSolid != null)
+                    result.Add(holeData);
                 else
-                    Print($"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную", MessageType.Warning);
+                    _errorRunColl.Append(new CheckCommandError(hole, $"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную"));
             }
 
             return result;
@@ -193,7 +198,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Document linkDoc = rvtLinkInst.GetLinkDocument();
                 if (linkDoc != null)
                 {
-                    BoundingBoxIntersectsFilter filter = CreateFilter(bbox);
+                    // Нужна поправка на координаты связей, чтобы сгенерить корретный bbox
+                    Transform linkTransform = rvtLinkInst.GetTransform();
+                    BoundingBoxXYZ transfBbox = new BoundingBoxXYZ()
+                    {
+                        Max = linkTransform.Inverse.OfPoint(bbox.Max),
+                        Min = linkTransform.Inverse.OfPoint(bbox.Min),
+                    };
+                    
+                    BoundingBoxIntersectsFilter filter = CreateFilter(transfBbox);
                     foreach (BuiltInCategory bic in _builtInCategories)
                     {
                         IEnumerable<CheckHolesMEPData> trueMEPElemEntities = new FilteredElementCollector(linkDoc)
@@ -201,7 +214,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             .WhereElementIsNotElementType()
                             .WherePasses(filter)
                             .Cast<Element>()
-                            .Select(e => new CheckHolesMEPData(e));
+                            .Select(e => new CheckHolesMEPData(e, rvtLinkInst));
                         
                         List<CheckHolesMEPData> updateMEPElemEntities = new List<CheckHolesMEPData>(trueMEPElemEntities.Count());
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
@@ -215,7 +228,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 // По коннектам - отсеиваю мелкие семейства соединителей, арматуры с подключением < 50 мм. Они 99% попадут по трубе/воздуховоду/лотку. Оборудование - попадает все
                                 double tolerance = 0.17;
                                 MEPModel mepModel = mepFI.MEPModel;
-                                if (mepModel != null && bic != BuiltInCategory.OST_MechanicalEquipment)
+                                if (mepModel != null 
+                                    && bic != BuiltInCategory.OST_MechanicalEquipment 
+                                    && bic != BuiltInCategory.OST_DuctTerminal)
                                 {
                                     int isToleranceConCount = 0;
                                     ConnectorManager conManager = mepModel.ConnectorManager;
@@ -233,18 +248,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             #endregion
 
                             #region Блок дополнения элементов геометрией
+                            List<XYZ> locationColl = new List<XYZ>(3);
                             Location location = mepElementEntity.CurrentElement.Location;
-                            if (location is LocationPoint locationPoint) mepElementEntity.CurrentLocationColl.Add(locationPoint.Point);
+                            if (location is LocationPoint locationPoint)
+                                locationColl.Add(locationPoint.Point);
                             else if (location is LocationCurve locationCurve)
                             {
                                 Curve curve = locationCurve.Curve;
                                 XYZ start = curve.GetEndPoint(0);
-                                mepElementEntity.CurrentLocationColl.Add(start);
+                                locationColl.Add(start);
                                 XYZ end = curve.GetEndPoint(1);
-                                mepElementEntity.CurrentLocationColl.Add(end);
+                                locationColl.Add(end);
                                 XYZ center = new XYZ((start.X + end.X) / 2, (start.Y + end.Y) / 2, (start.Z + end.Z) / 2);
-                                mepElementEntity.CurrentLocationColl.Add(center);
+                                locationColl.Add(center);
                             }
+                            mepElementEntity.CurrentLocationColl = locationColl;
                             #endregion
 
                             updateMEPElemEntities.Add(mepElementEntity);

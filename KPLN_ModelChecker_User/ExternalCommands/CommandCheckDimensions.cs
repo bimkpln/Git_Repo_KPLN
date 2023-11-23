@@ -13,7 +13,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckDimensions : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckDimensions : AbstrCheckCommand<CommandCheckDimensions>, IExternalCommand
     {
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
@@ -27,9 +27,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "min"
         };
 
-        internal static CommandCheckDimensions()
+        public CommandCheckDimensions() : base()
         {
+        }
 
+        internal CommandCheckDimensions(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
         }
 
         /// <summary>
@@ -37,17 +40,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка размеров";
-            MainStorageName = "KPLN_CheckDimensions";
-            LastRunGuid = new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568");
-            UserTextGuid = new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569");
-            
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -65,13 +63,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            result.AddRange(CheckOverride(doc, elemColl));
+            result.AddRange(CheckOverride(elemColl));
             result.AddRange(CheckAccuracy(doc));
 
             return result;
@@ -85,7 +83,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Определяю размеры, которые были переопределены в проекте
         /// </summary>
-        private IEnumerable<WPFEntity> CheckOverride(Document doc, Element[] elemColl)
+        private IEnumerable<WPFEntity> CheckOverride(Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -250,11 +248,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             result.Add(new WPFEntity(
                                 doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
                                 Status.Error,
-                                "Нарушение точности размера",
+                                "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
                                 false,
                                 false,
-                                $"Принятое округление в 1 мм, а в данном типе - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));
+                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));
                         }
                     }
                     catch (Exception)

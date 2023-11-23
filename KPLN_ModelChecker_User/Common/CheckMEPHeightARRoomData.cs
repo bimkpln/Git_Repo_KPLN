@@ -74,6 +74,7 @@ namespace KPLN_ModelChecker_User.Common
                         switch (geomObject)
                         {
                             case Solid solid:
+                                _roomSolid = solid;
                                 return _roomBBox = GetBoundingBoxXYZ(solid);
                             case GeometryInstance geomInstance:
                                 GeometryElement instGeomElem = geomInstance.GetInstanceGeometry();
@@ -177,14 +178,6 @@ namespace KPLN_ModelChecker_User.Common
                 CheckMEPHeightARElemData[] quickFilteredArr = projectionElemsColl.Where(e => arRoomData.IsElemInCurrentRoom_QuickFilter(e.ARElemBBoxes)).ToArray();
                 foreach (CheckMEPHeightARElemData arElem in quickFilteredArr)
                 {
-                    if (arRoomData.CurrentRoom.Id.IntegerValue == 15936552)
-                    {
-                        var a = 1;
-                    }
-                    if (arElem.ARElement.Id.IntegerValue == 15840566)
-                    {
-                        var aaa = 1;
-                    }
                     if (!arRoomData.SetRoomDownARElemsDataColl_ByIncludedToRoom(arElem))
                     {
                         arRoomData.SetRoomDownARElemsDataColl_ByProjectedWithRoom(arElem);

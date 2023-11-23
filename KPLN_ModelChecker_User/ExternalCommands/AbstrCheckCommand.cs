@@ -16,12 +16,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     /// <summary>
     /// Абстрактный класс для подготовки, создания и вывода отчета пользователю
     /// </summary>
-    internal abstract class AbstrCheckCommand
+    internal abstract class AbstrCheckCommand<T>
     {
         /// <summary>
-        /// Ссылка на Revit-application
+        /// Ссылка на Revit-UIApplication
         /// </summary>
-        private protected UIApplication _application;
+        private protected UIApplication _uiApp;
         /// <summary>
         /// Ссылка на отчет 
         /// </summary>
@@ -29,89 +29,37 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список элементов, которые провалили проверку перед запуском
         /// </summary>
-        private protected IEnumerable<CheckCommandError> _errorElemCollection = new List<CheckCommandError>();
+        private protected IEnumerable<CheckCommandError> _errorCheckElemsColl = new List<CheckCommandError>();
+        /// <summary>
+        /// Список элементов, которые провалили прохождение скрипта, но НЕ критичные
+        /// </summary>
+        private protected IEnumerable<CheckCommandError> _errorRunColl = new List<CheckCommandError>();
         /// <summary>
         /// Список элементов, которые прошли проверку перед запуском
         /// </summary>
         private protected Element[] _trueElemCollection;
 
-        // Последний запуск
-        private ExtensibleStorageBuilder _esBuilderRun;
-        internal protected readonly string _lastRunFieldName = "Last_Run";
-
-        // Комментарий по внесению в допустимое
-        private ExtensibleStorageBuilder _esBuilderUserText;
-        internal protected readonly string _userTextFieldName = "Approve_Comment";
-
-        // Ключевой комментарий - маркер
-        private protected ExtensibleStorageBuilder _esBuildergMarker;
-        internal protected string _markerFieldName = "Main_Marker";
-        
         /// <summary>
-        /// Имя проверки
+        /// Конструктор для классов, наследуемых от AbstrCheckCommand. Если его не переопределить в наследнике - IExternalCommand не справиться с запуском (ему нужен конструтор по умолчанию)
         /// </summary>
-        internal static string CheckName { get; protected private set; }
-
-        /// <summary>
-        /// Имя основного Storage
-        /// </summary>
-        internal static string MainStorageName { get; protected private set; }
-
-        /// <summary>
-        /// GUID для Storage последнего запуска
-        /// </summary>
-        internal static Guid LastRunGuid { get; protected private set; }
-
-        /// <summary>
-        /// GUID для Storage комментария пользователя (для допустимых)
-        /// </summary>
-        internal static Guid UserTextGuid { get; protected private set; }
-
-        /// <summary>
-        /// GUID для Storage ключевого комментария
-        /// </summary>
-        internal static Guid MarkerGuid { get; protected private set; }
-
-        /// <summary>
-        /// Extensible Storage для последнего запуска
-        /// </summary>
-        private protected ExtensibleStorageBuilder ESBuilderRun
+        public AbstrCheckCommand()
         {
-            get
-            {
-                if (_esBuilderRun == null) _esBuilderRun = new ExtensibleStorageBuilder(LastRunGuid, _lastRunFieldName, MainStorageName);
-                return _esBuilderRun;
-            }
         }
 
         /// <summary>
-        /// Extensible Storage для пользовательского комментария
+        /// Конструктор для класса Module. Он инициализирует основные переменные для работы с ExtensibleStorage
         /// </summary>
-        private protected ExtensibleStorageBuilder ESBuilderUserText
+        internal AbstrCheckCommand(ExtensibleStorageEntity esEntity)
         {
-            get
-            {
-                if (_esBuilderUserText == null) _esBuilderUserText = new ExtensibleStorageBuilder(LastRunGuid, _lastRunFieldName, MainStorageName);
-                return _esBuilderUserText;
-            }
+            ESEntity = esEntity;
         }
 
-        /// <summary>
-        /// Extensible Storage для ключевого комментария
-        /// </summary>
-        private protected ExtensibleStorageBuilder ESBuildergMarker
-        {
-            get
-            {
-                if (_esBuildergMarker == null) _esBuildergMarker = new ExtensibleStorageBuilder(MarkerGuid, _markerFieldName, MainStorageName);
-                return _esBuildergMarker;
-            }
-        }
+        internal static ExtensibleStorageEntity ESEntity { get; private protected set; }
 
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        internal abstract Result Execute(UIApplication uiapp);
+        public abstract Result ExecuteByUIApp(UIApplication uiapp);
 
         /// <summary>
         /// Метод для инициализации и запуска всех процессов проверки
@@ -121,19 +69,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns>Коллекция WPFEntity для передачи в отчет пользовател</returns>
         internal WPFEntity[] CheckCommandRunner(Document doc, Element[] elemColl)
         {
+            
+            if (ESEntity.CheckName == null || string.IsNullOrEmpty(ESEntity.CheckName))
+                throw new ArgumentNullException("Ты забыл инициировать основные поля. Это вынесено в класс Module, чтобы обработать плагином по выводу информации по запускам скриптов");
+            
             try
             {
-                _errorElemCollection = CheckElements(doc, elemColl);
-                if (_errorElemCollection.Count() > 0)
+                _errorCheckElemsColl = CheckElements(doc, elemColl);
+                if (_errorCheckElemsColl.Count() > 0)
                 {
-                    CreateAndShowElementCheckingErrorReport(_errorElemCollection);
-                    _trueElemCollection = elemColl.Except(_errorElemCollection.Select(e => e.ErrorElement)).ToArray();
+                    CreateAndShowElementCheckingErrorReport(_errorCheckElemsColl);
+                    _trueElemCollection = elemColl.Except(_errorCheckElemsColl.Select(e => e.ErrorElement)).ToArray();
                 }
-                else _trueElemCollection = elemColl;
+                else 
+                    _trueElemCollection = elemColl;
 
                 CheckAndDropExtStrApproveComment(doc, _trueElemCollection);
 
-                return PreapareElements(doc, _trueElemCollection).ToArray();
+                WPFEntity[] result = PreapareElements(doc, _trueElemCollection).ToArray();
+                ShowErrorRunColl();
+                return result;
             }
             catch (Exception ex)
             {
@@ -156,6 +111,20 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
+        /// Вывод предупреждений пользователю об элементах, которые не прошли обработку плагином (но по сути - НЕ критичные)
+        /// </summary>
+        internal void ShowErrorRunColl()
+        {
+            if (_errorRunColl.Any())
+            {
+                foreach (CheckCommandError error in _errorRunColl)
+                {
+                    Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", MessageType.Warning);
+                }
+            }
+        }
+
+        /// <summary>
         /// Подготовка окна результата проверки для пользователя
         /// </summary>
         /// <param name="doc">Revit-документ</param>
@@ -171,7 +140,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (_report != null)
                 {
                     SetWPFEntityFiltration(_report);
-                    return new OutputMainForm(_application, this.GetType().Name, _report, ESBuilderRun, ESBuilderUserText, ESBuildergMarker);
+                    return new OutputMainForm(_uiApp, this.GetType().Name, _report, ESEntity.ESBuilderRun, ESEntity.ESBuilderUserText, ESEntity.ESBuildergMarker);
                 }
             }
 
@@ -184,10 +153,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для проверки</param>
         /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
-        private protected abstract IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl);
+        private protected abstract IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl);
 
         /// <summary>
-        /// Анализ элементов
+        /// Анализ элементов Revit и подготовка элементов WPFEntity для отчета
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
@@ -202,16 +171,22 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Установить статус по комментарию пользователя
         /// </summary>
-        /// <param name="elem">Элемент Revit</param>
+        /// <param name="obj">Объект, который должен представлять элемент Revit</param>
         /// <param name="ifNullComment">Статус</param>
-        private protected Status SetApproveStatusByUserComment(object elem, Status ifNullComment)
+        private protected Status SetApproveStatusByUserComment(object obj, Status ifNullComment)
         {
             Status currentStatus;
-            if (ESBuilderUserText.IsDataExists_Text((Element)elem))
+            if (obj is Element elem)
             {
-                currentStatus = Status.Approve;
+                if (ESEntity.ESBuilderUserText.IsDataExists_Text(elem))
+                {
+                    currentStatus = Status.Approve;
+                }
+                else currentStatus = ifNullComment;
             }
-            else currentStatus = ifNullComment;
+            else
+                throw new Exception($"{obj} - не Element Revit");
+            
 
             return currentStatus;
         }
@@ -224,7 +199,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected string GetUserComment(object elem)
         {
             string approveComment = string.Empty;
-            if (ESBuilderUserText.IsDataExists_Text((Element)elem)) approveComment = _esBuilderUserText.GetResMessage_Element((Element)elem).Description;
+            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)elem)) approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)elem).Description;
 
             return approveComment;
         }
@@ -257,10 +232,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                     foreach (var elem in elemColl)
                     {
-                        bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
-                        bool checkTrueExtStrData = ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
+                        bool isDataExist = ESEntity.ESBuilderUserText.IsDataExists_Text(elem);
+                        bool checkTrueExtStrData = ESEntity.ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
                         if (isDataExist && !checkTrueExtStrData)
-                            ESBuilderUserText.DropStorageData_TextLog(elem);
+                            ESEntity.ESBuilderUserText.DropStorageData_TextLog(elem);
                     }
 
                     t.Commit();
@@ -270,10 +245,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 foreach (var elem in elemColl)
                 {
-                    bool isDataExist = ESBuilderUserText.IsDataExists_Text(elem);
-                    bool checkTrueExtStrData = ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
+                    bool isDataExist = ESEntity.ESBuilderUserText.IsDataExists_Text(elem);
+                    bool checkTrueExtStrData = ESEntity.ESBuilderUserText.CheckStorageDataContains_TextLog(elem, elem.Id.ToString());
                     if (isDataExist && !checkTrueExtStrData)
-                        ESBuilderUserText.DropStorageData_TextLog(elem);
+                        ESEntity.ESBuilderUserText.DropStorageData_TextLog(elem);
                 }
             }
         }
@@ -289,17 +264,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 #region Настройка информации по логам проека
                 Element piElem = doc.ProjectInformation;
-                ResultMessage esMsgRun = ESBuilderRun.GetResMessage_Element(piElem);
-                ResultMessage esMsgMarker = ESBuildergMarker.GetResMessage_Element(piElem);
+                ResultMessage esMsgRun = ESEntity.ESBuilderRun.GetResMessage_Element(piElem);
+                ResultMessage esMsgMarker = ESEntity.ESBuildergMarker.GetResMessage_Element(piElem);
                 #endregion
 
-                if (esMsgMarker == null) return new WPFReportCreator(wpfEntityColl, CheckName, esMsgRun.Description);
+                if (ESEntity.ESBuildergMarker.Guid.Equals(Guid.Empty)) 
+                    return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
                 else
                 {
                     switch (esMsgMarker.CurrentStatus)
                     {
                         case MessageStatus.Ok:
-                            return new WPFReportCreator(wpfEntityColl, CheckName, esMsgRun.Description, esMsgMarker.Description);
+                            return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description, esMsgMarker.Description);
 
                         case MessageStatus.Error:
                             if (isMarkered)
@@ -311,16 +287,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 taskDialog.Show();
                                 return null;
                             }
-                            else return new WPFReportCreator(wpfEntityColl, CheckName, esMsgRun.Description);
+                            else return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
                     }
                 }
             }
             else 
             { 
-                Print($"[{CheckName}] Предупреждений не найдено :)", MessageType.Success);
+                Print($"[{ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
 
                 // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+                ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
             } 
 
             return null;

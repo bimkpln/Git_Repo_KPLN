@@ -13,7 +13,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMirroredInstances : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckMirroredInstances : AbstrCheckCommand<CommandCheckMirroredInstances>, IExternalCommand
     {
         /// <summary>
         /// Список категорий для проверки
@@ -35,23 +35,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "557_"
         };
 
+        public CommandCheckMirroredInstances() : base()
+        {
+        }
+
+        internal CommandCheckMirroredInstances(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка зеркальных элементов";
-            _application = uiapp;
-
-            MainStorageName = "KPLN_CheckMirroredInstances";
-
-            LastRunGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447b");
-            UserTextGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447c");
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -83,7 +85,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {

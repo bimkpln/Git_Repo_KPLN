@@ -18,7 +18,7 @@ namespace KPLN_ModelChecker_User.Common
         /// От данного парамтера зависит точность опредления привязки элемента к помещению
         /// </summary>
         private const int _bboxExpanded = 10;
-        private readonly List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
+        private List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
         public List<Solid> _mepElemSolids = new List<Solid>();
         private BoundingBoxXYZ[] _currentBBoxArray;
         /// <summary>
@@ -35,58 +35,14 @@ namespace KPLN_ModelChecker_User.Common
 
         public List<Solid> MEPElemSolids
         {
-            get
-            {
-                if (_mepElemSolids.Count == 0)
-                {
-
-                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-                    opt.ComputeReferences = true;
-                    GeometryElement geomElem = MEPElement.get_Geometry(opt);
-                    if (geomElem != null)
-                    {
-                        GetSolidsFromGeomElem(geomElem, Transform.Identity, _mepElemSolids);
-                    }
-
-                    // Нужно отфильтровать на безсолидные элементы (изоляция отводов, элементы без геометрии и т.п.)
-                    //if (_mepElemSolids == null || _mepElemSolids.Count == 0)
-                    //    throw new Exception($"Не удалось получить полноценную коллекцию Solid у элемента с id: {MEPElement.Id}");
-                }
-
-                return _mepElemSolids;
-            }
+            get => _mepElemSolids;
+            private set => _mepElemSolids = value;
         }
 
         public List<BoundingBoxXYZ> MEPElemBBoxes
         {
-            get
-            {
-                if (_mepElemBBoxes.Count == 0)
-                {
-                    GeometryElement geometryElement = MEPElement.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
-                    foreach (GeometryObject geomObject in geometryElement)
-                    {
-                        switch (geomObject)
-                        {
-                            case Solid solid:
-                                _mepElemBBoxes.Add(GetBoundingBoxXYZ(solid));
-                                break;
-                            case GeometryInstance geomInstance:
-                                GeometryElement instGeomElem = geomInstance.GetInstanceGeometry();
-                                _mepElemBBoxes.AddRange(GetBoundingBoxXYZColl(instGeomElem));
-                                break;
-
-                            case GeometryElement geomElem:
-                                _mepElemBBoxes.AddRange(GetBoundingBoxXYZColl(geomElem));
-                                break;
-                        }
-                        if (_mepElemBBoxes.Count == 0)
-                            throw new Exception($"Не удалось получить BoundingBoxXYZ у элемента с id: {MEPElement.Id}");
-                    }
-                }
-
-                return _mepElemBBoxes;
-            }
+            get =>  _mepElemBBoxes;
+            private set => _mepElemBBoxes = value;
         }
 
         /// <summary>
@@ -171,6 +127,38 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
+        /// Инициализация коллекции Solidов для элемента
+        /// </summary>
+        public CheckMEPHeightMEPData SetCurrentSolidColl()
+        {
+            Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+            opt.ComputeReferences = true;
+            GeometryElement geomElem = MEPElement.get_Geometry(opt);
+            if (geomElem != null)
+            {
+                GetSolidsFromGeomElem(geomElem, Transform.Identity, MEPElemSolids);
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Инициализация коллекции BoundingBoxXYZов для элемента
+        /// </summary>
+        public CheckMEPHeightMEPData SetCurrentBBoxColl()
+        {
+            foreach (Solid solid in MEPElemSolids)
+            {
+                _mepElemBBoxes.Add(GetBoundingBoxXYZ(solid));
+            }
+
+            if (_mepElemBBoxes.Count == 0)
+                throw new Exception($"Не удалось получить BoundingBoxXYZ у элемента с id: {MEPElement.Id}");
+
+            return this;
+        }
+
+        /// <summary>
         /// Определение находиться ли элемент в границах помещения
         /// </summary>
         /// <param name="arData">Спец. класс для проверки</param>
@@ -178,11 +166,6 @@ namespace KPLN_ModelChecker_User.Common
         {
             foreach (BoundingBoxXYZ bbox in SplitedBBoxArray)
             {
-                if (MEPElement.Id.IntegerValue == 13064543)
-                {
-                    var a = 1;
-                }
-
                 // Быстрая и неточная проверка на BoundingBoxXYZ
                 if ((arData.RoomBBox.Max.X >= bbox.Min.X && arData.RoomBBox.Min.X <= bbox.Max.X)
                     && (arData.RoomBBox.Max.Y >= bbox.Min.Y && arData.RoomBBox.Min.Y <= bbox.Max.Y)
@@ -296,11 +279,6 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="arData">Спец. класс для проверки</param>
         private bool IsHeigtError(CheckMEPHeightARRoomData arData)
         {
-            if(MEPElement.Id.IntegerValue== 13064543)
-            {
-                var a = 1;
-            }
-            
             // Зада. мин длину, при которой элемент считается с потенциальным нарушением - выше 1.5 м
             double minIntDist = 5;
             double tempIntDist = Double.MaxValue;

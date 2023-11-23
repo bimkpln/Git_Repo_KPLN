@@ -9,6 +9,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -78,7 +79,7 @@ namespace KPLN_ModelChecker_User.Forms
             
             #region Настраиваю данные блока ключевого лога
             _esBuilderMarker = esBuilderMarker;
-            if (_esBuilderMarker.Guid != new Guid("00000000-0000-0000-0000-000000000000"))
+            if (!_esBuilderMarker.Guid.Equals(Guid.Empty))
             {
                 MarkerRow.Height = GridLength.Auto;
                 MarkerData.Text = creator.LogMarker;
@@ -185,10 +186,21 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
-
+            // Создаем тип
             Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
-            AbstrCheckCommand instance = Activator.CreateInstance(type) as AbstrCheckCommand;
-            instance.Execute(_application);
+
+            // Создаем экземпляр типа
+            object instance = Activator.CreateInstance(type);
+            
+            // Определяем метод ExecuteByUIApp
+            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+            if (executeMethod != null)
+                executeMethod.Invoke(instance, new object[] { _application });
+            else
+                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
+                
 
             this.Close();
         }

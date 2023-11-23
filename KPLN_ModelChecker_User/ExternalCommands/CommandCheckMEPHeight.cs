@@ -14,7 +14,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMEPHeight : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckMEPHeight : AbstrCheckCommand<CommandCheckMEPHeight>, IExternalCommand
     {
         /// <summary>
         /// Список категорий элементов для проверки
@@ -37,6 +37,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_Sprinklers,
             BuiltInCategory.OST_PlumbingFixtures,
         };
+
         /// <summary>
         /// Список исключений в именах семейств для генерации исключений в выбранных категориях
         /// </summary>
@@ -64,23 +65,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "953_",
             "960_",
         };
-        
+
+        public CommandCheckMEPHeight() : base()
+        {
+        }
+
+        internal CommandCheckMEPHeight(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка высоты эл-в ИОС";
-            MainStorageName = "KPLN_CheckMEPHeight";
-            LastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
-            UserTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
-
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -97,9 +101,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
-            if (!elemColl.Any())
+            if (!objColl.Any())
                 throw new UserException("В проекте отсутсвуют необходимые элементы ИОС");
 
             return Enumerable.Empty<CheckCommandError>();
@@ -114,7 +118,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Task prepearMEPDataTask = Task.Run(() =>
             {
                 mepDataColl = elemColl
-                .Select(e => new CheckMEPHeightMEPData(e))
+                .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
                 // Проверка элементов на предмет наличия геометрии
                 .Where(m => m.MEPElemSolids.Count != 0)
                 .ToArray();
@@ -167,11 +171,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Анализ элементов ИОС на элементы АР
             foreach (CheckMEPHeightARRoomData arRoomData in checkMEPHeightARData)
             {
-                if (arRoomData.CurrentRoom.Name.Equals("1.1.0.13"))
-                {
-                    var a = 1;
-                }
-                
                 CheckMEPHeightMEPData[] currentRoomMEPDataColl = mepDataColl
                     .Where(mep => mep.IsElemInCurrentRoom(arRoomData))
                     .ToArray();

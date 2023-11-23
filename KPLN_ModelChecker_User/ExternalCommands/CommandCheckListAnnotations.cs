@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckListAnnotations : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckListAnnotations : AbstrCheckCommand<CommandCheckListAnnotations>, IExternalCommand
     {
         /// <summary>
         /// Список категорий для анализа
@@ -44,22 +44,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "099_"
         };
 
+        public CommandCheckListAnnotations() : base()
+        {
+        }
+
+        internal CommandCheckListAnnotations(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка листов на аннотации";
-            MainStorageName = "KPLN_CheckAnnotation";
-            LastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898");
-            UserTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2899");
-
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -116,7 +119,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
 
                 // Анализирую вид
@@ -126,7 +129,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
             }
             catch (Exception ex)
@@ -143,7 +146,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {

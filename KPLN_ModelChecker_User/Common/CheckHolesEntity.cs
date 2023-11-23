@@ -8,16 +8,35 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckHolesEntity
     {
+        private Transform _currentLinkTransform;
+
         public CheckHolesEntity(Element elem)
         {
             CurrentElement = elem;
         }
         
+        public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this(elem)
+        {
+            CurrentLinkInstance = linkInstance;
+        }
+
         public Element CurrentElement { get; }
 
         public Solid CurrentSolid { get; set; }
 
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
+        
+        public RevitLinkInstance CurrentLinkInstance { get; } = null;
+
+        public Transform CurrentLinkTransform 
+        {
+            get
+            {
+                if (_currentLinkTransform == null && CurrentLinkInstance != null)
+                    _currentLinkTransform = CurrentLinkInstance.GetTotalTransform();
+                return _currentLinkTransform;
+            }
+        }
 
         /// <summary>
         /// Заполнить поля RoomSolid и RoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
@@ -50,7 +69,7 @@ namespace KPLN_ModelChecker_User.Common
                         }
                     }
                 }
-                CurrentSolid = resultSolid;
+                CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
             }
             #endregion
 
@@ -63,11 +82,12 @@ namespace KPLN_ModelChecker_User.Common
                     if (bbox == null)
                         throw new Exception($"Элементу {CurrentElement.Id} - невозможно создать BoundingBoxXYZ. Отправь сообщение разработчику");
                     Transform transform = bbox.Transform;
+                    Transform resultTransform = CurrentLinkInstance == null ? transform : transform * CurrentLinkTransform;
 
                     CurrentBBox = new BoundingBoxXYZ()
                     {
-                        Max = transform.OfPoint(bbox.Max),
-                        Min = transform.OfPoint(bbox.Min),
+                        Max = resultTransform.OfPoint(bbox.Max),
+                        Min = resultTransform.OfPoint(bbox.Min),
                     };
                 }
             }

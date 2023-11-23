@@ -99,7 +99,7 @@ namespace KPLN_Loader.Forms
         internal void Start_WindowClose()
         {
             // Запускаем таймер при загрузке формы, чтобы окно провисело гарантировано 15 сек.
-            _closeTimer.Interval = 15000;
+            _closeTimer.Interval = 25000;
             _closeTimer.Start();
         }
 

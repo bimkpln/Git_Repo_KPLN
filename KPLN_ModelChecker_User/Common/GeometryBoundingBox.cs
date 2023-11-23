@@ -13,9 +13,11 @@ namespace KPLN_ModelChecker_User.Common
         {
             get
             {
-                BoundingBoxXYZ box = new BoundingBoxXYZ();
-                box.Min = Min;
-                box.Max = Max;
+                BoundingBoxXYZ box = new BoundingBoxXYZ
+                {
+                    Min = Min,
+                    Max = Max
+                };
                 return box;
             }
         }

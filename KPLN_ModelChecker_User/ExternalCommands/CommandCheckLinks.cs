@@ -13,24 +13,27 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckLinks : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckLinks : AbstrCheckCommand<CommandCheckLinks>, IExternalCommand
     {
+        public CommandCheckLinks() : base()
+        {
+        }
+
+        internal CommandCheckLinks(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка связей";
-            MainStorageName = "KPLN_CheckLinks";
-            LastRunGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e");
-            UserTextGuid = new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762f");
-            
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -53,20 +56,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
             if (!doc.IsWorkshared) throw new UserException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
 
-            if (!(elemColl.Any())) throw new UserException("В проекте отсутсвуют связи");
+            if (!(objColl.Any())) throw new UserException("В проекте отсутсвуют связи");
 
-            foreach (Element element in elemColl)
+            foreach (object obj in objColl)
             {
-                if (element is RevitLinkInstance revitLink)
+                if (obj is Element element)
                 {
-                    Document document = revitLink.GetLinkDocument();
-                    if (document == null) throw new UserException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
+                    if (element is RevitLinkInstance revitLink)
+                    {
+                        Document document = revitLink.GetLinkDocument();
+                        if (document == null) throw new UserException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
+                    }
+                    else throw new Exception("Ошибка определения RevitLinkInstance");
                 }
-                else throw new Exception("Ошибка определения RevitLinkInstance");
+                else throw new Exception("Ошибка анализируемой коллекции");
+
             }
 
             return Enumerable.Empty<CheckCommandError>();
@@ -179,7 +187,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     errorElems,
                     Status.Error,
                     "Ошибка прикрепления",
-                    "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin'), не путать с настройкой типа связи 'Прикрепление' ('Attachment'))",
+                    "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin')) ВНИМАНИЕ: не путать с настройкой типа связи 'Прикрепление' ('Attachment')",
                     false,
                     false);
             }

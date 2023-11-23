@@ -13,24 +13,27 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckElementWorksets : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckElementWorksets : AbstrCheckCommand<CommandCheckElementWorksets>, IExternalCommand
     {
+        public CommandCheckElementWorksets() : base()
+        {
+        }
+
+        internal CommandCheckElementWorksets(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            CheckName = "Проверка рабочих наборов";
-            MainStorageName = "KPLN_CheckElementWorksets";
-            LastRunGuid = new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7");
-            UserTextGuid = new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8");
-            
-            _application = uiapp;
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -48,7 +51,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, Element[] elemColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] elemColl) => Enumerable.Empty<CheckCommandError>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
