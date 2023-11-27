@@ -15,11 +15,11 @@ namespace KPLN_ModelChecker_User.Common
         
         public enum Status 
         { 
-            AllmostOk, 
-            LittleWarning, 
-            Warning, 
             Error,
-            Approve
+            Warning, 
+            LittleWarning, 
+            AllmostOk, 
+            Approve,
         }
         
         public enum StatusExtended { Critical, Warning, LittleWarning }

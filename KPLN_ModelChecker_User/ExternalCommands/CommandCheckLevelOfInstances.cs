@@ -29,23 +29,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         };
 
         /// <summary>
-        /// Список исключений в именах семейств для генерации исключений в выбранных категориях
+        /// Список исключений в именах СЕМЕЙСТВ И ТИПОВ ревит (НАЧИНАЕТСЯ С) для генерации исключений в выбранных категориях.
+        /// ВАЖНО: Имя семейства и типа в ревит прописано в параметре ELEM_FAMILY_AND_TYPE_PARAM, и формируется в формате "Имя семейства" + ": " + "Имя типа"
         /// </summary>
-        private readonly List<string> _exceptionFamilyStartNameList = new List<string>
-        {
-            "199_",
-            "501_",
-        };
+        private List<string> _exceptionFamilyAndTypeNameStartWithList;
 
         /// <summary>
-        /// Список имен семейств для жёсткого поиска привязок
+        /// Список имен СЕМЕЙСТВ ревит для жёсткого поиска привязок
         /// </summary>
-        private readonly List<string> _hardCheckFamilyContainsName = new List<string>
-        {
-            "100_",
-            "115_",
-            "120_",
-        };
+        private List<string> _hardCheckFamilyNamesList;
 
         /// <summary>
         /// Коллекция элементов, которые не удалось проверить из-за ошибки с пересечением геометрии
@@ -74,6 +66,50 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
+
+            #region Настройка под раздел
+            string pathName = doc.PathName;
+            if (pathName.ToUpper().Contains("_AR_")
+                || pathName.ToUpper().Contains("_АР_")
+                || (pathName.ToUpper().Contains("_AR.RVT") || pathName.ToUpper().Contains("_АР.RVT"))
+                || (pathName.ToUpper().Contains("-AR.RVT") || pathName.ToUpper().Contains("-АР.RVT"))
+                )
+            {
+                _exceptionFamilyAndTypeNameStartWithList = new List<string>()
+                {
+                    "199_",
+                    "Базовая стена: 00_",
+                };
+
+                _hardCheckFamilyNamesList = new List<string>()
+                {
+                    "100_",
+                    "115_",
+                    "120_",
+                };
+            }
+            else if (pathName.ToUpper().Contains("_KR_")
+                || pathName.ToUpper().Contains("_КР_")
+                || (pathName.ToUpper().Contains("_KR.RVT") || pathName.ToUpper().Contains("_КР.RVT"))
+                || (pathName.ToUpper().Contains("-KR.RVT") || pathName.ToUpper().Contains("-КР.RVT"))
+                )
+            {
+                // ЗАПОЛНИТЬ ДЛЯ КР
+                _exceptionFamilyAndTypeNameStartWithList = new List<string>()
+                {
+                    "501_",
+                };
+
+                _hardCheckFamilyNamesList = new List<string>()
+                {
+                    "100_",
+                    "115_",
+                    "120_",
+                };
+            }
+            else
+                throw new Exception("Раздел проекта не определен. Обратись к разработчику!");
+            #endregion
 
             #region Проверяю и обрабатываю элементы
             WPFEntity[] wpfColl = CheckCommandRunner(doc, PreapareElements(doc));
@@ -113,17 +149,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<CheckLevelOfInstanceSectionData> sectData = CheckLevelOfInstanceSectionData.SpecialSolidPrepare(levelDatas, gridDatas);
             #endregion
 
+            // 15 с
             Task.WaitAll(prepDataTask);
 
             // Первичный проход
             result.AddRange(CheckNullLevelElements(instDataColl));
+            // 76 с 
             result.AddRange(CheckInstDataElems(instDataColl, sectData));
 
             // Повторный проход по НЕ проверенным
             result.AddRange(Reapeted_CheckElemsBySectionData(instDataColl, sectData));
-            result.Add(Reapeted_CheckNotAnalyzedElements(instDataColl));
 
             // Выдача ошибок
+            result.Add(CheckNotAnalyzedElements(instDataColl));
             result.Add(ErrorGeomCheckedElementsResult());
 
             return result;
@@ -131,7 +169,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)
         {
-            report.SetWPFEntityFiltration_ByErrorHeader();
+            report.SetWPFEntityFiltration_ByCategory();
         }
 
         /// <summary>
@@ -142,10 +180,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<Element> result = new List<Element>();
 
             // Генерация фильтров
-            List<FilterRule> filtRules = new List<FilterRule>(_exceptionFamilyStartNameList.Count);
-            foreach (string currentName in _exceptionFamilyStartNameList)
+            List<FilterRule> filtRules = new List<FilterRule>();
+            foreach (string currentName in _exceptionFamilyAndTypeNameStartWithList)
             {
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
                 filtRules.Add(fRule);
             }
             ElementParameterFilter eFilter = new ElementParameterFilter(filtRules);
@@ -221,7 +259,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Менеджер проверки коллекции элементов
+        /// Менеджер первичной проверки проверки коллекции элементов
         /// </summary>
         /// <param name="instDataColl">Коллекция на проверку</param>
         /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
@@ -232,18 +270,23 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (CheckLevelOfInstanceData instData in instDataColl)
             {
+                //if (instData.CurrentElem.Id.IntegerValue != 29545897)
+                //    continue;
+
                 // Предварительная проверка на отсутсвие привязки выполнить ранее!
                 if (instData.CurrentElemProjectDownLevel != null)
                 {
                     WPFEntity checkExtraLevelBindElements = CheckExtraLevelBindElements(instData);
                     if (checkExtraLevelBindElements != null)
                         result.Add(checkExtraLevelBindElements);
-                    else
-                    {
-                        WPFEntity draftCheckElemsBySectionData = Draft_CheckElemsBySectionData(instData, sectDatas);
-                        if (draftCheckElemsBySectionData != null)
-                            result.Add(draftCheckElemsBySectionData);
-                    }
+                    
+                    WPFEntity checkExtraOffsetstElements = CheckExtraOffsetstElements(instData);
+                    if (checkExtraOffsetstElements != null)
+                        result.Add(checkExtraOffsetstElements);
+
+                    WPFEntity draftCheckElemsBySectionData = Draft_CheckElemsBySectionData(instData, sectDatas);
+                    if (draftCheckElemsBySectionData != null)
+                        result.Add(draftCheckElemsBySectionData);
                 }
             }
 
@@ -251,13 +294,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Проверка на привязку для элементов с двумя уровнями
+        /// Проверка на нарушение привязки элементов с двумя уровнями
         /// </summary>
         /// <param name="instData">Элемент на проверку</param>
         /// <returns></returns>
         private WPFEntity CheckExtraLevelBindElements(CheckLevelOfInstanceData instData)
         {
-
             Level chkLvlDown = instData.CurrentElemProjectDownLevel;
             Level chkLvlUp = instData.CurrentElemProjectUpLevel;
             if (chkLvlDown != null && chkLvlUp != null)
@@ -288,6 +330,40 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
+        /// Проверка на наличие слишком большой привязки у элементов
+        /// </summary>
+        /// <param name="instData">Элемент на проверку</param>
+        /// <returns></returns>
+        private WPFEntity CheckExtraOffsetstElements(CheckLevelOfInstanceData instData)
+        {
+            string msg = string.Empty;
+            if (Math.Abs(instData.DownOffset) > 20 && Math.Abs(instData.UpOffset) > 20)
+                msg = $"Отсутп снизу составляет {instData.DownOffset}, оступ сверху состовляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+            else if (Math.Abs(instData.DownOffset) > 20)
+                msg = $"Отсутп снизу составляет {instData.DownOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+            else if (Math.Abs(instData.UpOffset) > 20)
+                msg = $"Отсутп сверху составляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+            
+            if (!string.IsNullOrEmpty(msg))
+            {
+                // Выставляю флаг, что элемент не прошел текущую проверку, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
+                instData.IsEmptyChecked = false;
+                
+                WPFEntity offsetError = new WPFEntity(
+                    instData.CurrentElem,
+                    Status.Error,
+                    "Слишком большой оффсет элемента",
+                    msg,
+                    true,
+                    true);
+                offsetError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                return offsetError;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Предварительная (элементы внутри секции) проверка элементов на принадлежность к секции и своему уровню
         /// </summary>
         /// <param name="instData">Элемент на проверку</param>
@@ -297,11 +373,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Предварительная проверка на отсутсвие привязки выполнить ранее!
             if (instData.CurrentElemProjectDownLevel != null)
             {
-                //if (instData.CurrentElem.Id.IntegerValue != 7218226)
-                //    continue;
-
                 foreach (CheckLevelOfInstanceSectionData sectData in sectDatas)
                 {
+                    //if (instData.CurrentElem.Id.IntegerValue == 29545897)
+                    //{
+                    //    var a = 1;
+                    //}
+                    
+                    // Игнорирую заведомо отличающиеся по отметкам секции
+                    if (Math.Abs(instData.MinAndMaxElevation[0] - sectData.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
+                        && Math.Abs(instData.MinAndMaxElevation[1] - sectData.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
+                        continue;
+
                     List<Solid> intersectSolids = new List<Solid>();
                     try
                     {
@@ -394,8 +477,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 ? CheckLevelOfInstanceLevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentAboveLevel)
                 : string.Empty;
 
-            // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки)
-            if (((instData.CurrentElem is FamilyInstance familyInstance && _hardCheckFamilyContainsName.Where(hn => familyInstance.Symbol.FamilyName.Contains(hn)).Count() > 0) 
+            // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки, стены)
+            if (((instData.CurrentElem is FamilyInstance familyInstance && _hardCheckFamilyNamesList.Where(hn => familyInstance.Symbol.FamilyName.Contains(hn)).Count() > 0) 
                     || instData.CurrentElem as Ceiling != null)
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && intersectSolidsValue > instSolidValue * 0.80
@@ -434,29 +517,53 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 return hardFloorError;
             }
 
-            // Анализ на смещение относительно уровня на более чем 1 для стен (УТОЧНИТЬ ПО ЭЛ-ТАМ КР!!!)
+            // Анализ на смещение стен
             else if ((instData.CurrentElem as Wall != null)
-                && sectData.CurrentLevelData.CurrentDownLevel != null
-                && sectData.CurrentLevelData.CurrentAboveLevel != null
-                && !instPrjLvlNumber.Equals(sectCurrentLvlDownNumber)
                 && !instPrjLvlNumber.Equals(sectDataLvlCurrnetNumber)
-                && !instPrjLvlNumber.Equals(sectDataLvlAboveNumber)
                 )
             {
-                WPFEntity hardError = new WPFEntity(
-                    instData.CurrentElem,
-                    Status.Error,
-                    "Нарушены привязки к уровню ниже, или уровню выше",
-                    $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
-                    true,
-                    true);
-                hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
-                return hardError;
+                // Относительно уровня на более чем 1 для стен (УТОЧНИТЬ ПО ЭЛ-ТАМ КР!!!)
+                if (sectData.CurrentLevelData.CurrentDownLevel != null
+                    && sectData.CurrentLevelData.CurrentAboveLevel != null
+                    && !instPrjLvlNumber.Equals(sectCurrentLvlDownNumber)
+                    && !instPrjLvlNumber.Equals(sectDataLvlAboveNumber)
+                    )
+                {
+                    WPFEntity hardError = new WPFEntity(
+                        instData.CurrentElem,
+                        Status.Error,
+                        "Нарушены привязки к уровню ниже, или уровню выше",
+                        $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                        true,
+                        true);
+                    hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                    return hardError;
+                }
+
+                // Относительно уровня на процент пересечения
+                if (sectData.CurrentLevelData.CurrentDownLevel != null
+                    && sectData.CurrentLevelData.CurrentAboveLevel != null
+                    && instData.CurrentElemProjectDownLevel != null
+                    && instData.CurrentElemProjectUpLevel != null
+                    && intersectSolidsValue > instSolidValue * 0.80
+                    )
+                {
+                    WPFEntity hardError = new WPFEntity(
+                        instData.CurrentElem,
+                        Status.Error,
+                        "Нарушена привязка к уровню",
+                        $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                        true,
+                        true);
+                    hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                    return hardError;
+                }
+
             }
 
             // Анализ на смещение относительно уровня на 50% по НЕ однозначным элементам
             else if (instData.CurrentElem as Floor == null
-                && !(instData.CurrentElem is FamilyInstance famInst && _hardCheckFamilyContainsName.Where(hn => famInst.Symbol.FamilyName.Contains(hn)).Count() > 0)
+                && !(instData.CurrentElem is FamilyInstance famInst && _hardCheckFamilyNamesList.Where(hn => famInst.Symbol.FamilyName.Contains(hn)).Count() > 0)
                 && instData.CurrentElem as Wall == null
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && intersectSolidsValue > instSolidValue * 0.50
@@ -489,15 +596,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (CheckLevelOfInstanceData instData in instDataColl)
             {
-                if (instData.CurrentElem.Id.IntegerValue == 29835789)
-                {
-                    var a = 1;
-                }
-
-                if (instData.CurrentElem.Id.IntegerValue == 7218226)
-                {
-                    var aф = 1;
-                }
                 // Предварительная проверка на отсутсвие привязки выполнить ранее!
                 if (instData.CurrentElemProjectDownLevel != null && instData.IsEmptyChecked)
                 {
@@ -556,17 +654,22 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             double tempFacePrj = double.MaxValue;
             foreach (CheckLevelOfInstanceSectionData sectData in sectDatas)
             {
+                double sectDataCurrentLvlElev = sectData.CurrentLevelData.CurrentLevel.Elevation;
+                double instDataDownLvlElev = instData.CurrentElemProjectDownLevel.Elevation;
+                if (sectDataCurrentLvlElev > instDataDownLvlElev + 30)
+                    continue;
+                
                 FaceArray sectDataFaces = sectData.LevelSolid.Faces;
-                foreach (Solid instSolid in instData.CurrentSolidColl)
+                foreach (XYZ instGeomCenter in instData.CurrentGeomCenterColl)
                 {
-                    if (instSolid.Volume != 0)
+                    foreach (Face face in sectDataFaces)
                     {
-                        XYZ instCentr = instSolid.ComputeCentroid();
-                        foreach (Face face in sectDataFaces)
+                        IntersectionResult prjRes = face.Project(instGeomCenter);
+                        if (prjRes != null && prjRes.Distance < tempFacePrj)
                         {
-                            IntersectionResult prjRes = face.Project(instCentr);
-                            if (prjRes != null && prjRes.Distance < tempFacePrj)
-                                tempSect = sectData;
+                            tempSect = sectData;
+                            tempFacePrj = prjRes.Distance;
+                            break;
                         }
                     }
                 }
@@ -576,10 +679,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Повторная проверка элементов, котоыре не прошли анализ ни одной из проверок
+        /// Проверка элементов, котоыре не прошли анализ ни одной из проверок
         /// </summary>
         /// <param name="instDataColl">Коллекция на проверку</param>
-        private WPFEntity Reapeted_CheckNotAnalyzedElements(CheckLevelOfInstanceData[] instDataColl) => new WPFEntity(
+        private WPFEntity CheckNotAnalyzedElements(CheckLevelOfInstanceData[] instDataColl) => new WPFEntity(
                 instDataColl.Where(idc => idc.IsEmptyChecked).Select(idc => idc.CurrentElem),
                 Status.Error,
                 "Элементы не удалось проверить из-за особенностей проекта",

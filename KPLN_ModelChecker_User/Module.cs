@@ -320,7 +320,6 @@ namespace KPLN_ModelChecker_User
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="panel">Панель, в которую добавляем кнопку</param>
         /// <param name="imageName">Имя иконки</param>
-        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonData(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp, bool isVisible)
         {
             PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
@@ -337,8 +336,7 @@ namespace KPLN_ModelChecker_User
         /// <summary>
         /// Метод для добавления иконки для кнопки
         /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
+        /// <param name="embeddedPathname">Имя иконки с раширением</param>
         private ImageSource PngImageSource(string embeddedPathname)
         {
             Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);

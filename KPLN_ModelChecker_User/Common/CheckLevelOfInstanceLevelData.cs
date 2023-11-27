@@ -8,7 +8,7 @@ namespace KPLN_ModelChecker_User.Common
 {
     internal class CheckLevelOfInstanceLevelData
     {
-        private double[] _currentAndAboveLvlPnts;
+        private double[] _minAndMaxLvlPnts;
 
         /// <summary>
         /// Текущий уровень
@@ -26,28 +26,33 @@ namespace KPLN_ModelChecker_User.Common
         public Level CurrentDownLevel { get; private set; }
 
         /// <summary>
-        /// Нижняя точка текущего и верхнего уровня
+        /// Нижняя и верхняя точки для формирования бокса между уровнями
         /// </summary>
-        public double[] CurrentAndAboveLvlPnts
+        public double[] MinAndMaxLvlPnts
         {
             get
             {
-                if (_currentAndAboveLvlPnts == null)
+                if (_minAndMaxLvlPnts == null)
                 {
-                    _currentAndAboveLvlPnts = new double[2];
+                    _minAndMaxLvlPnts = new double[2];
 
-                    double minPointOfLevels = CurrentLevel.Elevation;
+                    double minPointOfLevels;
+                    if (CurrentDownLevel == null)
+                        minPointOfLevels = CurrentLevel.Elevation - 3;
+                    else
+                        minPointOfLevels = CurrentLevel.Elevation;
+                    
                     double maxPointOLevels;
                     if (CurrentAboveLevel == null)
                         maxPointOLevels = minPointOfLevels + 3;
                     else
                         maxPointOLevels = CurrentAboveLevel.Elevation;
 
-                    _currentAndAboveLvlPnts[0] = minPointOfLevels;
-                    _currentAndAboveLvlPnts[1] = maxPointOLevels;
+                    _minAndMaxLvlPnts[0] = minPointOfLevels;
+                    _minAndMaxLvlPnts[1] = maxPointOLevels;
                 }
 
-                return _currentAndAboveLvlPnts;
+                return _minAndMaxLvlPnts;
             }
         }
 
@@ -158,31 +163,27 @@ namespace KPLN_ModelChecker_User.Common
             string chkLvlNumber = GetLevelNumber(checkLevel);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
+                if (chkNumber == 0)
+                    throw new UserException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
+
                 foreach (Level level in levelColl)
                 {
                     string lvlNumber = GetLevelNumber(level);
-                    if (chkLvlNumber.Equals(lvlNumber))
+                    if (chkLvlNumber.Equals(lvlNumber)
+                        || !GetLevelSections(level).Contains(levelSection))
                         continue;
 
                     if (int.TryParse(lvlNumber, out int number))
                     {
+                        if (number == 0)
+                            throw new UserException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
+
                         if (chkNumber < 0
-                            && chkNumber < number
-                            && chkNumber - number == -1
-                            && GetLevelSections(level).Contains(levelSection)
+                            && number > 0
+                            && chkNumber - number == -2
                             )
                             return level;
-                        else if ((chkNumber > 0 || chkNumber == 0)
-                            && chkNumber > number
-                            && number - chkNumber == 1
-                            && GetLevelSections(level).Contains(levelSection)
-                            )
-                            return level;
-
-
-                        if (chkNumber < number
-                            && (number - chkNumber == 1 || Math.Abs(number) - Math.Abs(chkNumber) == 0)
-                            && GetLevelSections(level).Contains(levelSection))
+                        else if (number - chkNumber == 1)
                             return level;
                     }
                     else
@@ -207,25 +208,27 @@ namespace KPLN_ModelChecker_User.Common
             string chkLvlNumber = GetLevelNumber(checkLevel);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
+                if (chkNumber == 0)
+                    throw new UserException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
+
                 foreach (Level level in levelColl)
                 {
                     string lvlNumber = GetLevelNumber(level);
-                    if (chkLvlNumber.Equals(lvlNumber))
+                    if (chkLvlNumber.Equals(lvlNumber)
+                        || !GetLevelSections(level).Contains(levelSection))
                         continue;
 
                     if (int.TryParse(lvlNumber, out int number))
                     {
-                        if (chkNumber < 0
-                            && chkNumber > number
-                            && number - chkNumber == -1
-                            && GetLevelSections(level).Contains(levelSection)
+                        if (number == 0)
+                            throw new UserException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
+
+                        if (chkNumber > 0
+                            && number < 0
+                            && chkNumber - number == 2
                             )
                             return level;
-                        else if ((chkNumber > 0 || chkNumber == 0)
-                            && chkNumber > number
-                            && chkNumber - number == 1
-                            && GetLevelSections(level).Contains(levelSection)
-                            )
+                        else if (chkNumber - number == 1)
                             return level;
                     }
                     else

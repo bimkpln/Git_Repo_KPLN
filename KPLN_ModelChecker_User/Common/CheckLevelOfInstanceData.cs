@@ -35,8 +35,10 @@ namespace KPLN_ModelChecker_User.Common
 
         private List<BoundingBoxXYZ> _currentBBoxColl = new List<BoundingBoxXYZ>();
         private List<Solid> _currentSolidColl = new List<Solid>();
+        private List<XYZ> _currentGeomCenterColl = new List<XYZ>();
         private Level _currentElemProjectDownLevel;
         private Level _currentElemProjectUpLevel;
+        private double[] _minAndMaxElevation;
 
         public CheckLevelOfInstanceData(Element elem)
         {
@@ -63,6 +65,70 @@ namespace KPLN_ModelChecker_User.Common
         {
             get => _currentBBoxColl;
             private set => _currentBBoxColl = value;
+        }
+
+        /// <summary>
+        /// Коллекция BoundingBoxXYZ элемента
+        /// </summary>
+        public List<XYZ> CurrentGeomCenterColl
+        {
+            get
+            {
+                if (!_currentGeomCenterColl.Any())
+                {
+                    List<XYZ> tempColl = new List<XYZ>();
+                    try
+                    {
+                        foreach(Solid solid in CurrentSolidColl)
+                        {
+                            tempColl.Add(solid.ComputeCentroid());
+                        }
+                    }
+                    // Для сожной геометрии (разуклонка больших перекрытий) - могут быть проблемы с центроидом
+                    catch
+                    {
+                        tempColl.Clear();
+                        foreach (BoundingBoxXYZ instBbox in CurrentBBoxColl)
+                        {
+                            tempColl.Add(0.5 * (instBbox.Max + instBbox.Min));
+                        }
+                    }
+                    _currentGeomCenterColl.AddRange(tempColl);
+                }
+
+                return _currentGeomCenterColl;
+            }
+        }
+
+        /// <summary>
+        /// Минимальная и максимальная отметки элемента
+        /// </summary>
+        public double[] MinAndMaxElevation
+        {
+            get
+            {
+                if (_minAndMaxElevation == null)
+                {
+                    _minAndMaxElevation = new double[2];
+
+                    double minElevOfElem = double.MaxValue;
+                    double maxElevOfElem = double.MinValue;
+                    foreach (BoundingBoxXYZ instBbox in CurrentBBoxColl)
+                    {
+                        double minZ = instBbox.Min.Z;
+                        double maxZ = instBbox.Max.Z;
+                        if (minZ < minElevOfElem)
+                            minElevOfElem = minZ;
+                        if (maxZ > maxElevOfElem)
+                            maxElevOfElem = maxZ;
+                    }
+                    
+                    _minAndMaxElevation[0] = minElevOfElem;
+                    _minAndMaxElevation[1] = maxElevOfElem;
+                }
+
+                return _minAndMaxElevation;
+            }
         }
 
         /// <summary>

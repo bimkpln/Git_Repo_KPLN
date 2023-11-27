@@ -104,7 +104,7 @@ namespace KPLN_ModelChecker_User.Common
                     {
                         Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.LevelSolid, secData2.LevelSolid, BooleanOperationsType.Intersect);
                         if (intersectionSolid != null && intersectionSolid.Volume > 0)
-                            throw new UserException("Параметр \"Уровень выше\" для уровней в секции имеет ошибки: уровень выше находится ниже текущего уровня. Проверь " +
+                            throw new UserException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
                                 $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id} и {secData2.CurrentLevelData.CurrentLevel.Id} " +
                                 $"для секции №{secData1.GridData.CurrentSection}");
                     }
@@ -181,9 +181,9 @@ namespace KPLN_ModelChecker_User.Common
             List<XYZ> pointsOfGridsIntersectUp = new List<XYZ>();
             foreach (XYZ point in pointsOfGridsIntersect)
             {
-                XYZ newPointDwn = new XYZ(point.X, point.Y, levData.CurrentAndAboveLvlPnts[0]);
+                XYZ newPointDwn = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[0]);
                 pointsOfGridsIntersectDwn.Add(newPointDwn);
-                XYZ newPointUp = new XYZ(point.X, point.Y, levData.CurrentAndAboveLvlPnts[1]);
+                XYZ newPointUp = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[1]);
                 pointsOfGridsIntersectUp.Add(newPointUp);
             }
 
