@@ -1,7 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -10,7 +8,7 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckHolesMEPData : CheckHolesEntity
     {
-        private List<XYZ> _currentLocationColl;
+        private List<XYZ> _currentLocationColl = new List<XYZ>();
 
 
         public CheckHolesMEPData(Element elem, RevitLinkInstance linkInstance) : base(elem, linkInstance)
