@@ -25,7 +25,6 @@ namespace KPLN_Tools
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
-
             PushButtonData autonumber = CreateBtnData(
                 "Нумерация",
                 "Нумерация",
@@ -114,6 +113,40 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(tagWiper);
+            #endregion
+
+            #region Инструменты КР
+            PushButtonData smnx_Rebar = CreateBtnData(
+                "SMNX_Металоёмкость",
+                "SMNX_Металоёмкость",
+                "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
+                string.Format(
+                    "Варианты запуска:\n" +
+                        "1. Записать объём бетона и основную марку в арматуру;\n" +
+                        "2. Перенести значения из спецификации в параметр;\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "http://moodle");
+
+            PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
+                "Плагины КР",
+                "КР: Коллекция плагинов для автоматизации задач",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                PngImageSource("KPLN_Tools.Imagens.toolBoxSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.toolBoxBig.png"),
+                panel,
+                false);
+            krToolsPullDownBtn.AddPushButton(smnx_Rebar);
             #endregion
 
             #region Отверстия
