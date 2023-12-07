@@ -28,23 +28,31 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             try
             {
                 // Посадить на конфиг под каждый файл
-                if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("АР"))
+                string docTitle = doc.Title.ToUpper();
+                if (userDepartment == 1 || userDepartment == 4 
+                    && docTitle.Contains("АР"))
                 {
-                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docTitle.Contains("ОБДН"))
                     {
                         gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }
                 }
-                else if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("КР"))
+                else if (userDepartment == 2 || userDepartment == 4 
+                    && docTitle.Contains("КР"))
                 {
-                    if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docTitle.Contains("ОБДН"))
                     {
                         gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }
+                    else if (docTitle.Contains("ИЗМЛ"))
+                    {
+                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция");
+                    }
                 }
-                else if (userDepartment == 3 || userDepartment == 4 && (doc.Title.ToUpper().Contains("ОВ") || doc.Title.ToUpper().Contains("ВК") || doc.Title.ToUpper().Contains("АУПТ") || doc.Title.ToUpper().Contains("ЭОМ") || doc.Title.ToUpper().Contains("СС") || doc.Title.ToUpper().Contains("АВ")))
+                else if (userDepartment == 3 || userDepartment == 4 
+                    && (docTitle.Contains("ОВ") || docTitle.Contains("ВК") || docTitle.Contains("АУПТ") || docTitle.Contains("ЭОМ") || docTitle.Contains("СС") || docTitle.Contains("АВ")))
                 {
-                    if (userDepartment == 3 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docTitle.Contains("ОБДН"))
                     {
                         gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
                     }

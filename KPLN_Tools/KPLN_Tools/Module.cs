@@ -121,45 +121,80 @@ namespace KPLN_Tools
 
             #endregion
 
-            #region Отверстия
-            PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
-                "Отверстия",
-                "Плагины для работы с отверстиями",
-                string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.holesSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.holesBig.png"),
-                panel,
-                false);
-
-            PushButtonData holesManagerIOS = CreateBtnData("ИОС: Подготовить задание",
-                "ИОС: Подготовить задание",
-                "Подготовка заданий на отверстия от инженеров для АР.",
-                string.Format(
-                    "Плагин выполняет следующие функции:\n" +
-                        "1. Расширяет специальные элементы семейств, которые позволяют видеть отверстия вне зависимости от секущего диапозона;\n" +
-                        "2. Заполняют данные по относительной отметке.\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
-                "KPLN_Tools.Imagens.holesManagerSmall.png",
-                "KPLN_Tools.Imagens.holesManagerBig.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=1245");
-            #endregion
-
-            #region  Наполняю плагинами в зависимости от отдела
-            if (_userDepartment == 3 || _userDepartment == 4)
+            #region Инструменты КР
+            if (_userDepartment == 2 || _userDepartment == 4)
             {
-                holesPullDownBtn.AddPushButton(holesManagerIOS);
+                PushButtonData smnx_Rebar = CreateBtnData(
+                    "SMNX_Металоёмкость",
+                    "SMNX_Металоёмкость",
+                    "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
+                    string.Format(
+                        "Сценарии запуска:\n" +
+                            "1. Записать объём бетона и основную марку в арматуру;\n" +
+                            "2. Перенести значения из txt в параметры бетонных конструкций;\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                    "KPLN_Tools.Imagens.smnxRebarSmall.png",
+                    "KPLN_Tools.Imagens.smnxRebarSmall.png",
+                    "http://moodle");
+
+                PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
+                    "Плагины КР",
+                    "КР: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.krMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
+                    panel,
+                    false);
+                krToolsPullDownBtn.AddPushButton(smnx_Rebar);
             }
             #endregion
 
+            #region Отверстия
+            if (_userDepartment == 3 || _userDepartment == 4)
+            {
+                PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
+                    "Отверстия",
+                    "Плагины для работы с отверстиями",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.holesSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.holesBig.png"),
+                    panel,
+                    false);
+
+                PushButtonData holesManagerIOS = CreateBtnData("ИОС: Подготовить задание",
+                    "ИОС: Подготовить задание",
+                    "Подготовка заданий на отверстия от инженеров для АР.",
+                    string.Format(
+                        "Плагин выполняет следующие функции:\n" +
+                            "1. Расширяет специальные элементы семейств, которые позволяют видеть отверстия вне зависимости от секущего диапозона;\n" +
+                            "2. Заполняют данные по относительной отметке.\n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
+                    "KPLN_Tools.Imagens.holesManagerSmall.png",
+                    "KPLN_Tools.Imagens.holesManagerBig.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1245");
+
+                holesPullDownBtn.AddPushButton(holesManagerIOS);
+            }
+            #endregion
+            
             return Result.Succeeded;
         }
 

@@ -116,6 +116,7 @@
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
@@ -149,6 +150,10 @@
     <EmbeddedResource Include="Imagens\holesManagerSmall.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingBig.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingSmall.png" />
+    <EmbeddedResource Include="Imagens\krMainBig.png" />
+    <EmbeddedResource Include="Imagens\krMainSmall.png" />
+    <EmbeddedResource Include="Imagens\smnxRebarBig.png" />
+    <EmbeddedResource Include="Imagens\smnxRebarSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
