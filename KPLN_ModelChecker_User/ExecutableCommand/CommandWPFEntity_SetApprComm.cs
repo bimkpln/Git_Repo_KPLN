@@ -36,7 +36,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                     }
 
                 //Обновление данных на wpf-элементе
-                _wpfEntity.UpdateMainFieldByStatus(Common.Collections.Status.Approve);
+                _wpfEntity.UpdateMainFieldByStatus(Common.CheckCommandCollections.CheckStatus.Approve);
                 _wpfEntity.ApproveComment = _description;
 
                 t.Commit();

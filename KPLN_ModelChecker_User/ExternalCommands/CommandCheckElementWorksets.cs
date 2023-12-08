@@ -1,13 +1,14 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -61,7 +62,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 List<Workset> worksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToList();
                 if (worksets.Where(w => !w.IsOpen).Any())
-                    throw new UserException("Необходимо открыть все рабочие наборы!");
+                    throw new CheckerException("Необходимо открыть все рабочие наборы!");
 
                 foreach (Element element in elemColl)
                 {
@@ -82,7 +83,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 link,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
                                 false,
@@ -100,7 +101,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка сеток",
                                 $"Ось или уровень с ID: {element.Id} находится не в специальном рабочем наборе",
                                 true,
@@ -130,7 +131,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             {
                                 result.Add(new WPFEntity(
                                     element,
-                                    Status.Error,
+                                    CheckStatus.Error,
                                     "Ошибка мониторинговых элементов",
                                     $"Элементс с ID: {element.Id} находится не в специальном рабочем наборе",
                                     true,
@@ -148,7 +149,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для связей",
                                 true,
@@ -163,7 +164,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для осей и уровней",
                                 true,
@@ -177,7 +178,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для элементов с монитирнгом",
                                 true,
@@ -189,7 +190,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
             else
-                throw new UserException("Только для файлов, в которых есть рабочие наборы");
+                throw new CheckerException("Только для файлов, в которых есть рабочие наборы");
 
             return result;
         }

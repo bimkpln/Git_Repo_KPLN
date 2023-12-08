@@ -1,12 +1,15 @@
 ﻿using Autodesk.Revit.DB;
-using System;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Lib
 {
-    internal class CheckLevelOfInstanceSectionData
+    /// <summary>
+    /// Класс для генерации солида между уровнем и оргаждающими секциями
+    /// </summary>
+    public class LevelAndGridSolid
     {
         /// <summary>
         /// Солид уровня
@@ -16,14 +19,14 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Ссылка на текущий CheckLevelOfInstanceLevelData
         /// </summary>
-        public CheckLevelOfInstanceLevelData CurrentLevelData { get; private set; }
+        public LevelData CurrentLevelData { get; private set; }
 
         /// <summary>
         /// Ссылка на CheckLevelOfInstanceGridData
         /// </summary>
-        public CheckLevelOfInstanceGridData GridData { get; private set; }
-        
-        private CheckLevelOfInstanceSectionData(Solid solid, CheckLevelOfInstanceLevelData currentLevel, CheckLevelOfInstanceGridData gData)
+        public GridData GridData { get; private set; }
+
+        private LevelAndGridSolid(Solid solid, LevelData currentLevel, GridData gData)
         {
             LevelSolid = solid;
             CurrentLevelData = currentLevel;
@@ -31,39 +34,41 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
-        /// Подготовка коллекции спец. Solidов, для анализа
+        /// Подготовка коллекции солидов с данными по секциям
         /// </summary>
-        /// <param name="specialLevels">Коллеция спец. уровней</param>
-        /// <param name="specaislGrids">Коллекция спец. осей</param>
-        /// <exception cref="UserException">Ошибки, при некорректном указании данных в Revit</exception>
-        public static List<CheckLevelOfInstanceSectionData> SpecialSolidPrepare(List<CheckLevelOfInstanceLevelData> specialLevels, List<CheckLevelOfInstanceGridData> specaislGrids)
+        /// <param name="doc">Revit-документ</param>
+        /// <param name="gridSeparParamName">Параметр для разделения осей по секциям</param>
+        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string gridSeparParamName)
         {
-            List<CheckLevelOfInstanceSectionData> result = new List<CheckLevelOfInstanceSectionData>();
+            List<LevelAndGridSolid> result = new List<LevelAndGridSolid>();
+
+            List<GridData> gridDatas = GridData.GridPrepare(doc, gridSeparParamName);
+            List<LevelData> levelDatas = LevelData.LevelPrepare(doc);
 
             // Подготовка предварительной коллекции элементов
-            List<CheckLevelOfInstanceSectionData> preResult = new List<CheckLevelOfInstanceSectionData>();
-            foreach (CheckLevelOfInstanceLevelData currentLevel in specialLevels)
+            List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
+            foreach (LevelData currentLevel in levelDatas)
             {
                 bool isCreated = false;
-                foreach (CheckLevelOfInstanceGridData gData in specaislGrids)
+                foreach (GridData gData in gridDatas)
                 {
                     if (currentLevel.CurrentSectionNumber.Equals(gData.CurrentSection))
                     {
                         Solid levSolid = CreateSolidInModel(currentLevel, gData);
-                        CheckLevelOfInstanceSectionData secData = new CheckLevelOfInstanceSectionData(levSolid, currentLevel, gData);
+                        LevelAndGridSolid secData = new LevelAndGridSolid(levSolid, currentLevel, gData);
                         preResult.Add(secData);
                         isCreated = true;
                     }
                 }
 
                 if (!isCreated)
-                    throw new UserException($"Проблема с несовпадением названий секций в уровнях и в осях - нужно синхронизировать данные");
+                    throw new CheckerException($"Проблема с несовпадением названий секций в уровнях и в осях - нужно синхронизировать данные");
             }
 
             // Очистка от солидов, для вспомогательных уровней внутри секций
-            foreach (CheckLevelOfInstanceSectionData secData in preResult)
+            foreach (LevelAndGridSolid secData in preResult)
             {
-                IEnumerable<CheckLevelOfInstanceSectionData> currentSectionAndAboveLevelsColl = null;
+                IEnumerable<LevelAndGridSolid> currentSectionAndAboveLevelsColl = null;
                 if (secData.CurrentLevelData.CurrentAboveLevel != null)
                 {
                     currentSectionAndAboveLevelsColl = preResult
@@ -84,7 +89,7 @@ namespace KPLN_ModelChecker_User.Common
                     result.Add(secData);
                 else if (currentSectionAndAboveLevelsColl.Any())
                 {
-                    CheckLevelOfInstanceSectionData minSecData = currentSectionAndAboveLevelsColl
+                    LevelAndGridSolid minSecData = currentSectionAndAboveLevelsColl
                         .Aggregate((lvlMinElv, x) => (x.CurrentLevelData.CurrentLevel.Elevation < lvlMinElv.CurrentLevelData.CurrentLevel.Elevation) ? x : lvlMinElv);
                     if (!result.Contains(minSecData))
                         result.Add(minSecData);
@@ -96,15 +101,15 @@ namespace KPLN_ModelChecker_User.Common
             }
 
             // Проверка на коллизии между Solid
-            foreach (CheckLevelOfInstanceSectionData secData1 in result)
+            foreach (LevelAndGridSolid secData1 in result)
             {
-                foreach (CheckLevelOfInstanceSectionData secData2 in result)
+                foreach (LevelAndGridSolid secData2 in result)
                 {
                     if (!secData1.Equals(secData2))
                     {
                         Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.LevelSolid, secData2.LevelSolid, BooleanOperationsType.Intersect);
                         if (intersectionSolid != null && intersectionSolid.Volume > 0)
-                            throw new UserException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
+                            throw new CheckerException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
                                 $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id} и {secData2.CurrentLevelData.CurrentLevel.Id} " +
                                 $"для секции №{secData1.GridData.CurrentSection}");
                     }
@@ -112,6 +117,51 @@ namespace KPLN_ModelChecker_User.Common
             }
 
             return result;
+
+        }
+
+        /// <summary>
+        /// Создание Solid по параметрам
+        /// </summary>
+        /// <param name="levData">Данные по уровням</param>
+        /// <param name="grData">Данные по осям</param>
+        /// <returns>Созданная по солиду геометрия</returns>
+        private static Solid CreateSolidInModel(LevelData levData, GridData grData)
+        {
+            List<XYZ> pointsOfGridsIntersect = GetPointsOfGridsIntersection(grData.CurrentGrids);
+            pointsOfGridsIntersect.Sort(new PntComparer(GetCenterPointOfPoints(pointsOfGridsIntersect)));
+
+            List<XYZ> pointsOfGridsIntersectDwn = new List<XYZ>();
+            List<XYZ> pointsOfGridsIntersectUp = new List<XYZ>();
+            foreach (XYZ point in pointsOfGridsIntersect)
+            {
+                XYZ newPointDwn = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[0]);
+                pointsOfGridsIntersectDwn.Add(newPointDwn);
+                XYZ newPointUp = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[1]);
+                pointsOfGridsIntersectUp.Add(newPointUp);
+            }
+
+            List<Curve> curvesListDwn = GetCurvesListFromPoints(pointsOfGridsIntersectDwn);
+            List<Curve> curvesListUp = GetCurvesListFromPoints(pointsOfGridsIntersectUp);
+            CurveLoop curveLoopDwn = CurveLoop.Create(curvesListDwn);
+            CurveLoop curveLoopUp = CurveLoop.Create(curvesListUp);
+            try
+            {
+                CurveLoop[] curves = new CurveLoop[] { curveLoopDwn, curveLoopUp };
+                SolidOptions solidOptions = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
+                return GeometryCreationUtilities.CreateLoftGeometry(curves, solidOptions);
+            }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (Grid gr in grData.CurrentGrids)
+                {
+                    sb.Append(gr.Id.ToString());
+                    sb.Append(", ");
+                }
+
+                throw new CheckerException($"Пограничные оси обязательно должны пересекаться! Проверь оси id: {sb.ToString().TrimEnd(", ".ToArray())}");
+            }
         }
 
         /// <summary>
@@ -162,52 +212,8 @@ namespace KPLN_ModelChecker_User.Common
             double centerX = totalX / pointsOfGridsIntersect.Count;
             double centerY = totalY / pointsOfGridsIntersect.Count;
             double centerZ = totalZ / pointsOfGridsIntersect.Count;
-            
+
             return new XYZ(centerX, centerY, centerZ);
-        }
-
-        /// <summary>
-        /// Создание Solid по параметрам
-        /// </summary>
-        /// <param name="levData">Данные по уровням</param>
-        /// <param name="grData">Данные по осям</param>
-        /// <returns>Созданная по солиду геометрия</returns>
-        private static Solid CreateSolidInModel(CheckLevelOfInstanceLevelData levData, CheckLevelOfInstanceGridData grData)
-        {
-            List<XYZ> pointsOfGridsIntersect = GetPointsOfGridsIntersection(grData.CurrentGrids);
-            pointsOfGridsIntersect.Sort(new CheckLevelOfInstancePntComparer(GetCenterPointOfPoints(pointsOfGridsIntersect)));
-
-            List<XYZ> pointsOfGridsIntersectDwn = new List<XYZ>();
-            List<XYZ> pointsOfGridsIntersectUp = new List<XYZ>();
-            foreach (XYZ point in pointsOfGridsIntersect)
-            {
-                XYZ newPointDwn = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[0]);
-                pointsOfGridsIntersectDwn.Add(newPointDwn);
-                XYZ newPointUp = new XYZ(point.X, point.Y, levData.MinAndMaxLvlPnts[1]);
-                pointsOfGridsIntersectUp.Add(newPointUp);
-            }
-
-            List<Curve> curvesListDwn = GetCurvesListFromPoints(pointsOfGridsIntersectDwn);
-            List<Curve> curvesListUp = GetCurvesListFromPoints(pointsOfGridsIntersectUp);
-            CurveLoop curveLoopDwn = CurveLoop.Create(curvesListDwn);
-            CurveLoop curveLoopUp = CurveLoop.Create(curvesListUp);
-            try
-            {
-                CurveLoop[] curves = new CurveLoop[] { curveLoopDwn, curveLoopUp };
-                SolidOptions solidOptions = new SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId);
-                return GeometryCreationUtilities.CreateLoftGeometry(curves, solidOptions);
-            }
-            catch (Autodesk.Revit.Exceptions.InvalidOperationException)
-            {
-                StringBuilder sb = new StringBuilder();
-                foreach(Grid gr in grData.CurrentGrids)
-                {
-                    sb.Append(gr.Id.ToString());
-                    sb.Append(", ");
-                }
-                
-                throw new UserException($"Пограничные оси обязательно должны пересекаться! Проверь оси id: {sb.ToString().TrimEnd(", ".ToArray())}");
-            }
         }
 
         private static List<Curve> GetCurvesListFromPoints(List<XYZ> pointsOfGridsIntersect)

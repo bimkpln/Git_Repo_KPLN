@@ -7,7 +7,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -159,7 +159,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         return new WPFEntity(
                             dim,
-                            Status.Error,
+                            CheckStatus.Error,
                             "Нарушение диапозона",
                             "Размер вне диапозона",
                             false,
@@ -171,7 +171,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     return new WPFEntity(
                         dim,
-                        Status.Warning,
+                        CheckStatus.Warning,
                         "Нарушение диапозона",
                         "Не удалось определить данные. Нужен ручной анализ",
                         false,
@@ -189,7 +189,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     return new WPFEntity(
                         dim,
-                        Status.Warning,
+                        CheckStatus.Warning,
                         "Нарушение переопределения размера",
                         "Не удалось определить данные. Нужен ручной анализ",
                         false,
@@ -200,7 +200,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     return new WPFEntity(
                         dim,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Нарушение переопределения размера",
                         "Размер значительно отличается от реального",
                         false,
@@ -211,7 +211,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     return new WPFEntity(
                         dim,
-                        Status.Warning,
+                        CheckStatus.Warning,
                         "Нарушение переопределения размера",
                         "Размер незначительно отличается от реального",
                         false,
@@ -247,7 +247,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
                                 false,

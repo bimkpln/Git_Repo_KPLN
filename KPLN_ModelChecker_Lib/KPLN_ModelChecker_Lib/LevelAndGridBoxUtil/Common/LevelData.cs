@@ -1,12 +1,11 @@
 ﻿using Autodesk.Revit.DB;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 {
-    internal class CheckLevelOfInstanceLevelData
+    public class LevelData
     {
         private double[] _minAndMaxLvlPnts;
 
@@ -41,7 +40,7 @@ namespace KPLN_ModelChecker_User.Common
                         minPointOfLevels = CurrentLevel.Elevation - 3;
                     else
                         minPointOfLevels = CurrentLevel.Elevation;
-                    
+
                     double maxPointOLevels;
                     if (CurrentAboveLevel == null)
                         maxPointOLevels = minPointOfLevels + 3;
@@ -66,7 +65,7 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         public string CurrentSectionNumber { get; private set; }
 
-        private CheckLevelOfInstanceLevelData(Level level, string lvlNumber, string sectNumber, Level aboveLevel, Level downLevel)
+        private LevelData(Level level, string lvlNumber, string sectNumber, Level aboveLevel, Level downLevel)
         {
             CurrentLevel = level;
             CurrentLevelNumber = lvlNumber;
@@ -79,9 +78,9 @@ namespace KPLN_ModelChecker_User.Common
         /// Подготовка коллекции уровней для анализа
         /// </summary>
         /// <param name="doc">Revit-документ для анализа</param>
-        public static List<CheckLevelOfInstanceLevelData> LevelPrepare(Document doc)
+        internal static List<LevelData> LevelPrepare(Document doc)
         {
-            List<CheckLevelOfInstanceLevelData> preapareLevels = new List<CheckLevelOfInstanceLevelData>();
+            List<LevelData> preapareLevels = new List<LevelData>();
 
             Level[] levelColl = new FilteredElementCollector(doc)
                     .OfClass(typeof(Level))
@@ -92,13 +91,13 @@ namespace KPLN_ModelChecker_User.Common
 
             foreach (Level level in levelColl)
             {
-                List<string> lvlSections = GetLevelSections(level);
                 string lvlNumber = GetLevelNumber(level);
+                List<string> lvlSections = GetLevelSections(level);
                 foreach (string levelSection in lvlSections)
                 {
                     Level aboveLevel = GetAboveLevel(levelColl, level, levelSection);
                     Level downLevel = GetDownLevel(levelColl, level, levelSection);
-                    CheckLevelOfInstanceLevelData myLevel = new CheckLevelOfInstanceLevelData(level, lvlNumber, levelSection, aboveLevel, downLevel);
+                    LevelData myLevel = new LevelData(level, lvlNumber, levelSection, aboveLevel, downLevel);
                     preapareLevels.Add(myLevel);
                 }
             }
@@ -110,14 +109,12 @@ namespace KPLN_ModelChecker_User.Common
         /// Взять индекс уровня (номер этажа)
         /// </summary>
         /// <param name="level">Уровень на проверку</param>
-        /// <returns></returns>
-        /// <exception cref="UserException"></exception>
         public static string GetLevelNumber(Level level)
         {
             string levname = level.Name;
             string[] splitname = levname.Split('_');
             if (splitname.Length < 2)
-                throw new UserException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
+                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
             return splitname[1];
         }
@@ -126,16 +123,15 @@ namespace KPLN_ModelChecker_User.Common
         /// Взять секции, к которым относится уровень
         /// </summary>
         /// <param name="level"></param>
-        /// <returns></returns>
-        public static List<string> GetLevelSections(Level level)
+        private static List<string> GetLevelSections(Level level)
         {
             string levname = level.Name;
             string[] splitname = levname.Split('_');
             if (splitname.Length < 2)
-                throw new UserException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
+                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
             if (!splitname[0].Contains("С") && !splitname[0].Contains("К") && !splitname[0].Contains("ПАР") && !splitname[0].Contains("СТЛ"))
-                throw new UserException($"Некорректное имя уровня (см. ВЕР, паттерн: С1-5_01_+0.000_Технический этаж, или С1.2_01_+0.000_Технический этаж, или ПАР_01_+0.000_Технический этаж). Id: {level.Id}");
+                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
 
             return GetNumbers(splitname[0]);
         }
@@ -157,14 +153,13 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="levelColl">Коллекция уровней для проверки</param>
         /// <param name="checkLevel">Уровень, по которому проверяем</param>
         /// <param name="levelSection">Номер секции</param>
-        /// <returns></returns>
         private static Level GetAboveLevel(Level[] levelColl, Level checkLevel, string levelSection)
         {
             string chkLvlNumber = GetLevelNumber(checkLevel);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
                 if (chkNumber == 0)
-                    throw new UserException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
+                    throw new CheckerException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
 
                 foreach (Level level in levelColl)
                 {
@@ -176,7 +171,7 @@ namespace KPLN_ModelChecker_User.Common
                     if (int.TryParse(lvlNumber, out int number))
                     {
                         if (number == 0)
-                            throw new UserException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
+                            throw new CheckerException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
 
                         if (chkNumber < 0
                             && number > 0
@@ -187,11 +182,11 @@ namespace KPLN_ModelChecker_User.Common
                             return level;
                     }
                     else
-                        throw new UserException($"У уровня id {level.Id} не удалось получить int его номера");
+                        throw new CheckerException($"У уровня id {level.Id} не удалось получить int его номера");
                 }
             }
             else
-                throw new UserException($"У уровня id {checkLevel.Id} не удалось получить int его номера");
+                throw new CheckerException($"У уровня id {checkLevel.Id} не удалось получить int его номера");
 
             return null;
         }
@@ -202,14 +197,13 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="levelColl">Коллекция уровней для проверки</param>
         /// <param name="checkLevel">Уровень, по которому проверяем</param>
         /// <param name="levelSection">Номер секции</param>
-        /// <returns></returns>
         private static Level GetDownLevel(Level[] levelColl, Level checkLevel, string levelSection)
         {
             string chkLvlNumber = GetLevelNumber(checkLevel);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
                 if (chkNumber == 0)
-                    throw new UserException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
+                    throw new CheckerException($"У уровеня id {checkLevel.Id} значение уровня - 0. Это запрещено");
 
                 foreach (Level level in levelColl)
                 {
@@ -221,7 +215,7 @@ namespace KPLN_ModelChecker_User.Common
                     if (int.TryParse(lvlNumber, out int number))
                     {
                         if (number == 0)
-                            throw new UserException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
+                            throw new CheckerException($"У уровеня id {level.Id} значение уровня - 0. Это запрещено");
 
                         if (chkNumber > 0
                             && number < 0
@@ -232,11 +226,11 @@ namespace KPLN_ModelChecker_User.Common
                             return level;
                     }
                     else
-                        throw new UserException($"У уровеня id {level.Id} не удалось получить int его номера");
+                        throw new CheckerException($"У уровеня id {level.Id} не удалось получить int его номера");
                 }
             }
             else
-                throw new UserException($"У уровеня id {checkLevel.Id} не удалось получить int его номера");
+                throw new CheckerException($"У уровеня id {checkLevel.Id} не удалось получить int его номера");
 
             return null;
         }

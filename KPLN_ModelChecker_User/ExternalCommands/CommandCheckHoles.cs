@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -8,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -83,7 +84,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
             if (!(objColl.Any()))
-                throw new UserException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
+                throw new CheckerException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
             
             return Enumerable.Empty<CheckCommandError>();
         }
@@ -293,7 +294,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity zeroIOSElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Error),
+                        SetApproveStatusByUserComment(hole, CheckStatus.Error),
                         "Отверстие не содержит элементов ИОС",
                         $"Отверстие должно быть заполнено элементами ИОС, иначе оно лишнее",
                         true,
@@ -310,7 +311,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity errorNoPipeAreaElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Warning),
+                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
@@ -325,7 +326,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity errorOneElemAreaElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Warning),
+                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено 1 элементом ИОС на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,
@@ -340,7 +341,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity warnAreaElem = new WPFEntity(
                         hole,
-                        SetApproveStatusByUserComment(hole, Status.Warning),
+                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Возможно стоит пересмотреть размеры, т.к. отверстие заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         true,

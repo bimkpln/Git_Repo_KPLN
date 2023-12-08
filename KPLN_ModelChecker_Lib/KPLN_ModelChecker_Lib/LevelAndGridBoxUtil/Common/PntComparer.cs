@@ -1,13 +1,13 @@
 ﻿using Autodesk.Revit.DB;
 using System.Collections.Generic;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 {
-    internal class CheckLevelOfInstancePntComparer : IComparer<XYZ>
+    internal class PntComparer : IComparer<XYZ>
     {
         private readonly XYZ _centerPoint;
 
-        public CheckLevelOfInstancePntComparer(XYZ centerPoint)
+        public PntComparer(XYZ centerPoint)
         {
             _centerPoint = centerPoint;
         }

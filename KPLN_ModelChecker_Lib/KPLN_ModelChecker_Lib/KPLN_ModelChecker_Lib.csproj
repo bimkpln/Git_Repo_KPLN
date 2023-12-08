@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>KPLN_ModelChecker_Lib</RootNamespace>
     <AssemblyName>KPLN_ModelChecker_Lib</AssemblyName>
-    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
@@ -93,13 +93,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Common\AbstractCheckCommand.cs" />
-    <Compile Include="Common\ElementEntity.cs" />
-    <Compile Include="Commands\CommandCheckDimensions.cs" />
-    <Compile Include="Common\ErrorTypes\Error.cs" />
-    <Compile Include="Common\ErrorTypes\LittleWarning.cs" />
-    <Compile Include="Common\ErrorTypes\Warning.cs" />
-    <Compile Include="Common\ErrorTypes\IError.cs" />
+    <Compile Include="CheckerException.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\GridData.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\LevelData.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\PntComparer.cs" />
+    <Compile Include="LevelAndGridBoxUtil\LevelAndGridSolid.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />

@@ -111,13 +111,13 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 string selectedName = selectedContent.ToString();
                 if (selectedName == "Допустимое")
-                    e.Accepted = entity.CurrentStatus == Common.Collections.Status.Approve;
+                    e.Accepted = entity.CurrentStatus == Common.CheckCommandCollections.CheckStatus.Approve;
                 else if (chbxApproveShow.IsChecked is true)
                     e.Accepted = selectedName == "Необработанные предупреждения" || entity.FiltrationDescription == selectedName;
                 else if (selectedName == "Необработанные предупреждения")
-                    e.Accepted = entity.CurrentStatus != Common.Collections.Status.Approve;
+                    e.Accepted = entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
                 else
-                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.Collections.Status.Approve;
+                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
             }
         }
 

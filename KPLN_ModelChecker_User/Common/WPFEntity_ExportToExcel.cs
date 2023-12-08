@@ -65,7 +65,7 @@ namespace KPLN_ModelChecker_User.Common
             int row = 2;
             foreach (WPFEntity entity in entities)
             {
-                if (entity.CurrentStatus == Collections.Status.Approve) continue;
+                if (entity.CurrentStatus == CheckCommandCollections.CheckStatus.Approve) continue;
 
                 int column = 1;
                 string valueFromColl = string.Empty;

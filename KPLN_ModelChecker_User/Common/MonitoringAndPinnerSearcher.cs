@@ -1,11 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.WPFItems;
-using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -30,7 +27,7 @@ namespace KPLN_ModelChecker_User.Common
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Связь не найдена: «{element.Name}»",
                                 true,
@@ -41,7 +38,7 @@ namespace KPLN_ModelChecker_User.Common
                         {
                             result.Add(new WPFEntity(
                                 element,
-                                Status.Error,
+                                CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Мониторинг не из разбивочного файла: «{element.Name}»",
                                 true,
@@ -54,18 +51,18 @@ namespace KPLN_ModelChecker_User.Common
                 {
                     result.Add(new WPFEntity(
                         element,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Отсутсвие мониторинга",
                         $"Элементу с ID {element.Id} необходимо задать мониторинг",
                         true,
                         false));
                 }
-                
+
                 if (!element.Pinned)
                 {
                     result.Add(new WPFEntity(
                         element,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Отсутсвие прикрепления (PIN)",
                         $"Элемент не прикреплен: «{element.Name}»",
                         true,

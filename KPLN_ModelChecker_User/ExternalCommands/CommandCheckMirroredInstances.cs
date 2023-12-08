@@ -7,7 +7,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -117,7 +117,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                             WPFEntity hostEntity = new WPFEntity(
                                 element,
-                                SetApproveStatusByUserComment(element, Status.Error),
+                                SetApproveStatusByUserComment(element, CheckStatus.Error),
                                 "Недопустимый зеркальный элемент",
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 true,
@@ -134,7 +134,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         WPFEntity elemEntity = new WPFEntity(
                             element,
-                            SetApproveStatusByUserComment(element, Status.Error),
+                            SetApproveStatusByUserComment(element, CheckStatus.Error),
                             "Недопустимый зеркальный элемент",
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                             true,

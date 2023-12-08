@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -8,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -104,7 +105,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
             if (!objColl.Any())
-                throw new UserException("В проекте отсутсвуют необходимые элементы ИОС");
+                throw new CheckerException("В проекте отсутсвуют необходимые элементы ИОС");
 
             return Enumerable.Empty<CheckCommandError>();
         }
@@ -139,11 +140,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
             if (arLinkInsts.Count() == 0)
-                throw new UserException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
+                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
 
             // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
             if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
-                throw new UserException("Перед запуском - открой все связи АР");
+                throw new CheckerException("Перед запуском - открой все связи АР");
 
             // Получаю список назначений помещений, которые необходимо проверить (ПОВЕСИТЬ НА КОНФИГ!!!!!)
             string[] roomDepartmentColl = 
@@ -200,7 +201,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     result.Add(new WPFEntity(
                         verticalCurveElemsFiltered_ErrorElemsColl,
-                        Status.Error,
+                        CheckStatus.Error,
                         $"Недопустимая дистанция для помещения {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
                         $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arRoomData.RoomMinDistance * 304.8), 0)}",
                         true,

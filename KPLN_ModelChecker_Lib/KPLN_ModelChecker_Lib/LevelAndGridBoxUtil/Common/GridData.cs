@@ -1,14 +1,11 @@
 ﻿using Autodesk.Revit.DB;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 {
-    internal class CheckLevelOfInstanceGridData
+    public class GridData
     {
-        private readonly static string _paramName = "КП_О_Секция";
-
         /// <summary>
         /// Коллеция осей для секции
         /// </summary>
@@ -19,7 +16,7 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         public string CurrentSection { get; private set; }
 
-        private CheckLevelOfInstanceGridData(string currentSection, HashSet<Grid> currentGrids)
+        private GridData(string currentSection, HashSet<Grid> currentGrids)
         {
             CurrentSection = currentSection;
             CurrentGrids = currentGrids;
@@ -29,9 +26,10 @@ namespace KPLN_ModelChecker_User.Common
         /// Подготовка коллекции осей для анализа
         /// </summary>
         /// <param name="doc">Revit-документ для анализа</param>
-        public static List<CheckLevelOfInstanceGridData> GridPrepare(Document doc)
+        /// <param name="paramName">Имя параметра для сепарации</param>
+        internal static List<GridData> GridPrepare(Document doc, string paramName)
         {
-            List<CheckLevelOfInstanceGridData> preapareGrids = new List<CheckLevelOfInstanceGridData>();
+            List<GridData> preapareGrids = new List<GridData>();
 
             Grid[] grids = new FilteredElementCollector(doc)
                 .WhereElementIsNotElementType()
@@ -40,36 +38,36 @@ namespace KPLN_ModelChecker_User.Common
                 .ToArray();
             foreach (Grid grid in grids)
             {
-                Parameter param = grid.LookupParameter(_paramName);
+                Parameter param = grid.LookupParameter(paramName);
                 if (param != null && param.AsString() != null && param.AsString().Length != 0)
                 {
                     foreach (string sect in param.AsString().Split('-'))
                     {
-                        List<CheckLevelOfInstanceGridData> equalSections = preapareGrids.Where(g => g.CurrentSection.Equals(sect)).ToList();
+                        List<GridData> equalSections = preapareGrids.Where(g => g.CurrentSection.Equals(sect)).ToList();
                         if (equalSections.Count > 0)
                         {
-                            foreach (CheckLevelOfInstanceGridData gd in equalSections)
+                            foreach (GridData gd in equalSections)
                             {
                                 gd.CurrentGrids.Add(grid);
                             }
                         }
                         else
                         {
-                            preapareGrids.Add(new CheckLevelOfInstanceGridData(sect, new HashSet<Grid>() { grid }));
+                            preapareGrids.Add(new GridData(sect, new HashSet<Grid>() { grid }));
                         }
                     }
                 }
             }
 
             // Проверка полученных данных
-            foreach (CheckLevelOfInstanceGridData gd in preapareGrids)
+            foreach (GridData gd in preapareGrids)
             {
                 if (gd.CurrentGrids.Count < 4)
-                    throw new UserException($"Количество осей с номером секции: {gd.CurrentSection} меньше 4. Проверьте назначение параметров у осей!");
+                    throw new CheckerException($"Количество осей с номером секции: {gd.CurrentSection} меньше 4. Проверьте назначение параметров у осей!");
             }
 
             if (preapareGrids.Count == 0)
-                throw new UserException($"Для заполнения номера секции в элементах, необходимо заполнить параметр: {_paramName} в осях! Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
+                throw new CheckerException($"Для заполнения номера секции в элементах, необходимо заполнить параметр: {paramName} в осях! Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
 
             return preapareGrids;
         }

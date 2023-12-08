@@ -9,7 +9,8 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
+using KPLN_ModelChecker_Lib;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -111,7 +112,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
             if (!(objColl.Any()))
-                throw new UserException("В проекте нет помещений.");
+                throw new CheckerException("В проекте нет помещений.");
 
             foreach (object obj in objColl)
             {
@@ -164,7 +165,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             Parameter param = room.LookupParameter(paramName);
             if (param == null)
-                throw new UserException($"У помещений нет параметра: {paramName}");
+                throw new CheckerException($"У помещений нет параметра: {paramName}");
         }
 
         /// <summary>
@@ -279,15 +280,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     Parameter sParam = room.LookupParameter(_flatAreaSumParamData.SecondParam);
                     if (fParam.AsDouble() != sParam.AsDouble())
                     {
-                        Status currentStatus;
+                        CheckStatus currentStatus;
                         string approveComment = string.Empty;
                         if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room)) 
                         {
-                            currentStatus = Status.Approve;
+                            currentStatus = CheckStatus.Approve;
                             approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                         }
                         else
-                            currentStatus = Status.Error;
+                            currentStatus = CheckStatus.Error;
                         
                         result.Add(new WPFEntity(
                             room,
@@ -324,15 +325,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
                             if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
+                                currentStatus = CheckStatus.Approve;
                                 approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,
@@ -382,7 +383,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 room,
-                                SetApproveStatusByUserComment(room, Status.Error),
+                                SetApproveStatusByUserComment(room, CheckStatus.Error),
                                 "Нарушение анализа данных",
                                 $"Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
                                 false,
@@ -397,7 +398,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         result.Add(new WPFEntity(
                             room,
-                            SetApproveStatusByUserComment(room, Status.Error),
+                            SetApproveStatusByUserComment(room, CheckStatus.Error),
                             "Нарушение имени/номера помещения",
                             $"Параметр \"{fpc.SecondParam}\" на стадии П был \"{fParamToString}\", сейчас - \"{sParamToString}\"",
                             false,
@@ -430,15 +431,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
                             if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
+                                currentStatus = CheckStatus.Approve;
                                 approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,
@@ -479,15 +480,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
                             if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
+                                currentStatus = CheckStatus.Approve;
                                 approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,

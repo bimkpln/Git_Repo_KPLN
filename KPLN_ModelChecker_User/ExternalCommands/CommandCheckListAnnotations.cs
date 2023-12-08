@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -174,7 +174,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 result.Add(new WPFEntity(
                     elemColl,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Недопустимые аннотации",
                     "Данные элементы запрещено использовать на моделируемых видах",
                     false,

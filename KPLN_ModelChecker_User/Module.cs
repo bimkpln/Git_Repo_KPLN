@@ -136,30 +136,6 @@ namespace KPLN_ModelChecker_User
                 );
 
             AddPushButtonData(
-                "CheckLevels",
-                "Проверка привязки к уровням",
-                "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.",
-                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckLevelOfInstances).FullName,
-                pullDown,
-                "KPLN_ModelChecker_User.Source.checker_levels.png",
-                _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 3 || _userDepartment == 8
-                );
-
-            AddPushButtonData(
-                "CheckMirrored",
-                "Проверка\nзеркальных",
-                "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
-                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckMirroredInstances).FullName,
-                pullDown,
-                "KPLN_ModelChecker_User.Source.checker_mirrored.png",
-                _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 4 || _userDepartment == 8
-                );
-
-            AddPushButtonData(
                 "CheckCoordinates",
                 "Проверка\nсвязей",
                 "Проверка подгруженных rvt-связей:" +
@@ -255,35 +231,27 @@ namespace KPLN_ModelChecker_User
                 );
 
             AddPushButtonData(
-                "CheckHoles",
-                "АР: Проверка овтерстий",
-                "Плагин выполняет следующие функции:" +
-                    "\n1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;" +
-                    "\n2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС." +
-                    "\n ВАЖНО: Перед запуском, убедитесь что все необходимые связи ИОС подгружены в проект.",
+                "CheckLevels",
+                "Проверка привязки к уровням",
+                "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckHoles).FullName,
+                typeof(CommandCheckLevelOfInstances).FullName,
                 pullDown,
-                "KPLN_ModelChecker_User.Source.checkHoles.png",
+                "KPLN_ModelChecker_User.Source.checker_levels.png",
                 _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 8
+                _userDepartment == 2 || _userDepartment == 3 || _userDepartment == 8
                 );
 
             AddPushButtonData(
-                "CheckFlatsArea",
-                "АР: Проверка площадей",
-                "Сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
-                    "\n1. Находит разницу имен и номеров помещений;" +
-                    "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +
-                    "\n3. Находит разницу в площади помещения вне квартиры, если она превышает 1 м²;" +
-                    "\n4. Находит разницу в значениях параметров площадей в марках и фактической, если она превышает 0,1 м²;" +
-                    "\n5. Находит разницу зафиксированной площади квартиры.",
+                "CheckMirrored",
+                "Проверка\nзеркальных",
+                "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckFlatsArea).FullName,
+                typeof(CommandCheckMirroredInstances).FullName,
                 pullDown,
-                "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
+                "KPLN_ModelChecker_User.Source.checker_mirrored.png",
                 _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 8
+                _userDepartment == 2 || _userDepartment == 4 || _userDepartment == 8
                 );
 
             AddPushButtonData(
@@ -298,6 +266,17 @@ namespace KPLN_ModelChecker_User
                 _userDepartment == 8
                 );
 
+            AddPushButtonData(
+                "CheckPatitionalFile",
+                "BIM: Проверка разб.файла",
+                "Проверка положения и заполненности парамтеров секции",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckPartitionFile).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checkPatitionalFile.png",
+                _mainContextualHelp,
+                _userDepartment == 8
+                );
 
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
             return Result.Succeeded;

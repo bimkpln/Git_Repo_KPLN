@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using KPLN_ModelChecker_Lib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -185,7 +186,7 @@ namespace KPLN_ModelChecker_User.Common
 
                 }
                 if (arRoomData.RoomDownARElemDataColl.Count == 0)
-                    throw new UserException($"Не удалось получить нижние границы помещения с id: {arRoomData.CurrentRoom.Id} в связи: {arRoomData.RoomLinkInst.Name}");
+                    throw new CheckerException($"Не удалось получить нижние границы помещения с id: {arRoomData.CurrentRoom.Id} в связи: {arRoomData.RoomLinkInst.Name}");
             }
 
             return result;
@@ -211,7 +212,7 @@ namespace KPLN_ModelChecker_User.Common
             {
                 Parameter roomDepParam = room.get_Parameter(BuiltInParameter.ROOM_DEPARTMENT);
                 if (roomDepParam == null | String.IsNullOrEmpty(roomDepParam.AsString()))
-                    throw new UserException($"У помещения с id {room.Id} из связи {linkDoc.PathName} - не заполнен параметр \"Назначение\". Отправь эту ошибку в BIM отдел. " +
+                    throw new CheckerException($"У помещения с id {room.Id} из связи {linkDoc.PathName} - не заполнен параметр \"Назначение\". Отправь эту ошибку в BIM отдел. " +
                         $"Повторный запуск - только после устранения данной ошибки отделом АР");
 
                 foreach (string dep in roomDepartmentColl)

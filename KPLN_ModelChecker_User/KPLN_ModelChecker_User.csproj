@@ -1,40 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Revit2018</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KPLN_ModelChecker_User</RootNamespace>
-    <AssemblyName>KPLN_ModelChecker_User</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\MC_U2018\</OutputPath>
-    <DefineConstants>Revit2018</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <Optimize>true</Optimize>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\MC_U2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <Optimize>true</Optimize>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug\</OutputPath>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>Debug</DefineConstants>
+    <DefineConstants>DEBUG;Debug</DefineConstants>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2023\</OutputPath>
@@ -43,22 +23,36 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Revit2018\</OutputPath>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Revit2020\</OutputPath>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Debug\</OutputPath>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Revit2023\</OutputPath>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+    <ProjectGuid>{3FDE848D-0DE5-4F27-97E9-B4AF88AC41B6}</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace>KPLN_ModelChecker_User</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Library_ExtensibleStorage">
@@ -71,6 +65,11 @@
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Release\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
@@ -103,19 +102,19 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <Choose>
-    <When Condition=" '$(Configuration)'=='Revit2018' ">
+    <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
         <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2018\RevitAPI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2018\RevitAPIUI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition=" '$(Configuration)'=='Revit2020' " />
+    <When Condition=" '$(Configuration)'=='Revit2023' " />
   </Choose>
   <ItemGroup>
     <Compile Include="Common\CheckCommandError.cs" />
@@ -123,25 +122,14 @@
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />
     <Compile Include="Common\CheckLevelOfInstanceData.cs" />
-    <Compile Include="Common\CheckLevelOfInstanceGridData.cs" />
-    <Compile Include="Common\CheckLevelOfInstanceLevelData.cs" />
-    <Compile Include="Common\CheckLevelOfInstancePntComparer.cs" />
-    <Compile Include="Common\CheckLevelOfInstanceSectionData.cs" />
     <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
     <Compile Include="Common\CheckMEPHeightARElemData.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
-    <Compile Include="Common\DebugMeasure.cs" />
-    <Compile Include="Common\Collections.cs" />
+    <Compile Include="Common\CheckCommandCollections.cs" />
     <Compile Include="Common\ExtensibleStorageEntity.cs" />
-    <Compile Include="Common\MEPElementData.cs" />
     <Compile Include="Common\RoomParamData.cs" />
-    <Compile Include="Common\UserException.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
-    <Compile Include="Common\GeometryBoundingBox.cs" />
-    <Compile Include="Common\LevelChecker.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
-    <Compile Include="Common\WPFElement.cs" />
-    <Compile Include="Common\WPFDisplayItem.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
@@ -149,6 +137,7 @@
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
     <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
     <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
+    <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
     <Compile Include="ExternalCommands\CommandCheckLaunchDate.cs" />
     <Compile Include="ExternalCommands\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
@@ -159,23 +148,12 @@
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
-    <Compile Include="Forms\Core\ElementEntity.cs" />
-    <Compile Include="Forms\Core\ErrorTypes\Error.cs" />
-    <Compile Include="Forms\Core\ErrorTypes\IError.cs" />
-    <Compile Include="Forms\Core\ErrorTypes\LittleWarning.cs" />
-    <Compile Include="Forms\Core\ErrorTypes\Warning.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputFormLaunchDate.xaml.cs">
       <DependentUpon>OutputFormLaunchDate.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ElementsOutput.xaml.cs">
-      <DependentUpon>ElementsOutput.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ElementsOutputExtended.xaml.cs">
-      <DependentUpon>ElementsOutputExtended.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\WPFEntityApproveBtnVisibilityConverter.cs" />
     <Compile Include="Forms\StringToVisibilityConverter.cs" />
@@ -188,9 +166,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tools\Extentions.cs" />
-    <Compile Include="Tools\LevelTools.cs" />
-    <Compile Include="Tools\LevelUtils.cs" />
     <Compile Include="WPFItems\WPFEntity.cs" />
     <Compile Include="WPFItems\WPFReportCreator.cs" />
   </ItemGroup>
@@ -217,14 +192,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\ElementsOutput.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\ElementsOutputExtended.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -244,6 +211,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\launchDate.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checkPatitionalFile.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

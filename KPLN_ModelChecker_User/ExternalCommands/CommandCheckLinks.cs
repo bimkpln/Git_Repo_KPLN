@@ -1,13 +1,14 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -58,9 +59,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
-            if (!doc.IsWorkshared) throw new UserException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
+            if (!doc.IsWorkshared) throw new CheckerException("Проект не для совместной работы. Работа над такими проектами запрещена BEP");
 
-            if (!(objColl.Any())) throw new UserException("В проекте отсутсвуют связи");
+            if (!(objColl.Any())) throw new CheckerException("В проекте отсутсвуют связи");
 
             foreach (object obj in objColl)
             {
@@ -69,7 +70,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (element is RevitLinkInstance revitLink)
                     {
                         Document document = revitLink.GetLinkDocument();
-                        if (document == null) throw new UserException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
+                        if (document == null) throw new CheckerException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
                     }
                     else throw new Exception("Ошибка определения RevitLinkInstance");
                 }
@@ -118,7 +119,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         doc.AcquireCoordinates(link.Id);
                         result.Add(new WPFEntity(
                             link,
-                            Status.Error,
+                            CheckStatus.Error,
                             "Ошибка размещения",
                             "У связи и проекта - разные системы координат",
                             false,
@@ -134,7 +135,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             {
                                 result.Add(new WPFEntity(
                                     link,
-                                    Status.Error,
+                                    CheckStatus.Error,
                                     "Ошибка размещения",
                                     "У связи не выбрана общая площадка",
                                     false,
@@ -148,7 +149,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 link,
-                                Status.Warning,
+                                CheckStatus.Warning,
                                 "Ошибка размещения",
                                 "Экземпляры данной связи размещены несколько раз",
                                 false,
@@ -185,7 +186,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 return new WPFEntity(
                     errorElems,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Ошибка прикрепления",
                     "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin')) ВНИМАНИЕ: не путать с настройкой типа связи 'Прикрепление' ('Attachment')",
                     false,

@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
@@ -9,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -92,7 +93,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
             catch (Exception ex)
             {
-                if (ex is UserException userException)
+                if (ex is CheckerException _)
                 {
                     TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
                     {
@@ -173,14 +174,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="obj">Объект, который должен представлять элемент Revit</param>
         /// <param name="ifNullComment">Статус</param>
-        private protected Status SetApproveStatusByUserComment(object obj, Status ifNullComment)
+        private protected CheckStatus SetApproveStatusByUserComment(object obj, CheckStatus ifNullComment)
         {
-            Status currentStatus;
+            CheckStatus currentStatus;
             if (obj is Element elem)
             {
                 if (ESEntity.ESBuilderUserText.IsDataExists_Text(elem))
                 {
-                    currentStatus = Status.Approve;
+                    currentStatus = CheckStatus.Approve;
                 }
                 else currentStatus = ifNullComment;
             }

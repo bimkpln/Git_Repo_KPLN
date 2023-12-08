@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -150,7 +150,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 result.Add(new WPFEntity(
                     currentFam,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Предупреждение семейства",
                     $"Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
                     false,
@@ -163,7 +163,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 result.Add(new WPFEntity(
                     currentFam,
-                    Status.Warning,
+                    CheckStatus.Warning,
                     "Предупреждение семейства",
                     $"Возможно семейство является копией семейства «{similarFamilyName}»",
                     false,
@@ -188,7 +188,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     result.Add(new WPFEntity(
                     currentFam,
-                    Status.Warning,
+                    CheckStatus.Warning,
                     "Предупреждение типоразмера",
                     $"Возможно тип является копией типоразмера «{similarSymbolName}»",
                     false,
@@ -255,7 +255,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     return new WPFEntity(
                         currentFam,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Предупреждение источника семейства",
                         $"Данное семейство - не с диска Х. Запрещено использовать сторонние источники!",
                         false,

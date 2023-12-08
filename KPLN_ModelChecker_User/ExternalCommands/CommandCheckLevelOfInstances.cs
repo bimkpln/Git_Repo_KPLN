@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -9,7 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
@@ -143,11 +145,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             });
             #endregion
 
-            #region Подготовливаю данные по делению проекта на секции и уровни
-            List<CheckLevelOfInstanceGridData> gridDatas = CheckLevelOfInstanceGridData.GridPrepare(doc);
-            List<CheckLevelOfInstanceLevelData> levelDatas = CheckLevelOfInstanceLevelData.LevelPrepare(doc);
-            List<CheckLevelOfInstanceSectionData> sectData = CheckLevelOfInstanceSectionData.SpecialSolidPrepare(levelDatas, gridDatas);
-            #endregion
+            List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, "КП_О_Секция");
 
             // 15 с
             Task.WaitAll(prepDataTask);
@@ -155,10 +153,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Первичный проход
             result.AddRange(CheckNullLevelElements(instDataColl));
             // 76 с 
-            result.AddRange(CheckInstDataElems(instDataColl, sectData));
+            result.AddRange(CheckInstDataElems(instDataColl, sectDataSolids));
 
             // Повторный проход по НЕ проверенным
-            result.AddRange(Reapeted_CheckElemsBySectionData(instDataColl, sectData));
+            result.AddRange(Reapeted_CheckElemsBySectionData(instDataColl, sectDataSolids));
 
             // Выдача ошибок
             result.Add(CheckNotAnalyzedElements(instDataColl));
@@ -229,19 +227,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             if (emptyLevelElems.Count > 0)
             {
-                Status currentStatus;
+                CheckStatus currentStatus;
                 string approveComment = string.Empty;
                 if (emptyLevelElems.All(e => ESEntity.ESBuilderUserText.IsDataExists_Text(e))
                     && emptyLevelElems.All(e =>
                         ESEntity.ESBuilderUserText.GetResMessage_Element(e).Description
                             .Equals(ESEntity.ESBuilderUserText.GetResMessage_Element(emptyLevelElems.FirstOrDefault()).Description)))
                 {
-                    currentStatus = Status.Approve;
+                    currentStatus = CheckStatus.Approve;
                     approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element(emptyLevelElems.FirstOrDefault()).Description;
 
                 }
                 else
-                    currentStatus = Status.Error;
+                    currentStatus = CheckStatus.Error;
 
                 result.Add(new WPFEntity(
                     emptyLevelElems,
@@ -264,7 +262,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="instDataColl">Коллекция на проверку</param>
         /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
         /// <returns></returns>
-        private IEnumerable<WPFEntity> CheckInstDataElems(CheckLevelOfInstanceData[] instDataColl, List<CheckLevelOfInstanceSectionData> sectDatas)
+        private IEnumerable<WPFEntity> CheckInstDataElems(CheckLevelOfInstanceData[] instDataColl, List<LevelAndGridSolid> sectDatas)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -304,8 +302,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Level chkLvlUp = instData.CurrentElemProjectUpLevel;
             if (chkLvlDown != null && chkLvlUp != null)
             {
-                string chkLvlDownNumber = CheckLevelOfInstanceLevelData.GetLevelNumber(chkLvlDown);
-                string chkLvlUpNumber = CheckLevelOfInstanceLevelData.GetLevelNumber(chkLvlUp);
+                string chkLvlDownNumber = LevelData.GetLevelNumber(chkLvlDown);
+                string chkLvlUpNumber = LevelData.GetLevelNumber(chkLvlUp);
                 if (int.TryParse(chkLvlDownNumber, out int chkDownNumber) && int.TryParse(chkLvlUpNumber, out int chkUpNumber))
                 {
                     int lvlDiff = Math.Abs(Math.Abs(chkUpNumber) - Math.Abs(chkDownNumber));
@@ -315,7 +313,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         instData.IsEmptyChecked = false;
                         WPFEntity lvlDiffError = new WPFEntity(
                             instData.CurrentElem,
-                            Status.Error,
+                            CheckStatus.Error,
                             "Нарушено деление по уровням",
                             $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name} снизу и к {instData.CurrentElemProjectUpLevel.Name} сверху. Запрещено моделировать элементы без деления на уровни",
                             true,
@@ -351,7 +349,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 
                 WPFEntity offsetError = new WPFEntity(
                     instData.CurrentElem,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Слишком большой оффсет элемента",
                     msg,
                     true,
@@ -368,12 +366,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="instData">Элемент на проверку</param>
         /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
-        private WPFEntity Draft_CheckElemsBySectionData(CheckLevelOfInstanceData instData, List<CheckLevelOfInstanceSectionData> sectDatas)
+        private WPFEntity Draft_CheckElemsBySectionData(CheckLevelOfInstanceData instData, List<LevelAndGridSolid> sectDatas)
         {
             // Предварительная проверка на отсутсвие привязки выполнить ранее!
             if (instData.CurrentElemProjectDownLevel != null)
             {
-                foreach (CheckLevelOfInstanceSectionData sectData in sectDatas)
+                foreach (LevelAndGridSolid sectData in sectDatas)
                 {
                     //if (instData.CurrentElem.Id.IntegerValue == 29545897)
                     //{
@@ -436,7 +434,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="instSolid">Солид эл-та ревит для проверки</param>
         /// <param name="sectData">Солид секции для проверки</param>
         /// <returns></returns>
-        private Solid GetIntesectedInstSolid(Solid instSolid, CheckLevelOfInstanceSectionData sectData)
+        private Solid GetIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
             // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета
             Transform sectTransform = sectData.LevelSolid.GetBoundingBox().Transform;
@@ -460,21 +458,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="intersectSolids">Список солидов, эл-та ревит, которые пересекаются с солидом спец. класса секции Ревит</param>
         /// <param name="sectData">Спец. класс секции Ревит</param>
         /// <returns></returns>
-        private WPFEntity CheckSolids(CheckLevelOfInstanceData instData, List<Solid> intersectSolids, CheckLevelOfInstanceSectionData sectData)
+        private WPFEntity CheckSolids(CheckLevelOfInstanceData instData, List<Solid> intersectSolids, LevelAndGridSolid sectData)
         {
             double instSolidArea = instData.CurrentSolidColl.Sum(ids => ids.SurfaceArea);
             double instSolidValue = instData.CurrentSolidColl.Sum(ids => ids.Volume);
             double intersectSolidsArea = intersectSolids?.Sum(intS => intS.SurfaceArea) ?? 0;
             double intersectSolidsValue = intersectSolids?.Sum(intS => intS.Volume) ?? 0;
-            string instPrjLvlNumber = CheckLevelOfInstanceLevelData.GetLevelNumber(instData.CurrentElemProjectDownLevel);
+            string instPrjLvlNumber = LevelData.GetLevelNumber(instData.CurrentElemProjectDownLevel);
             string sectCurrentLvlDownNumber = sectData.CurrentLevelData.CurrentDownLevel != null
-                ? CheckLevelOfInstanceLevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentDownLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentDownLevel)
                 : string.Empty;
             string sectDataLvlCurrnetNumber = sectData.CurrentLevelData.CurrentLevel != null
-                ? CheckLevelOfInstanceLevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentLevel)
                 : string.Empty;
             string sectDataLvlAboveNumber = sectData.CurrentLevelData.CurrentAboveLevel != null
-                ? CheckLevelOfInstanceLevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentAboveLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentAboveLevel)
                 : string.Empty;
 
             // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки, стены)
@@ -487,7 +485,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 WPFEntity hardError = new WPFEntity(
                     instData.CurrentElem,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Нарушена привязка к уровню",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
                     true,
@@ -507,7 +505,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 WPFEntity hardFloorError = new WPFEntity(
                     instData.CurrentElem,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Нарушена привязка к уровню, или уровню ниже",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя по факту расположен на уровне {sectData.CurrentLevelData.CurrentLevel.Name}",
                     true,
@@ -531,7 +529,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity hardError = new WPFEntity(
                         instData.CurrentElem,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Нарушены привязки к уровню ниже, или уровню выше",
                         $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
                         true,
@@ -550,7 +548,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     WPFEntity hardError = new WPFEntity(
                         instData.CurrentElem,
-                        Status.Error,
+                        CheckStatus.Error,
                         "Нарушена привязка к уровню",
                         $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
                         true,
@@ -572,7 +570,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 WPFEntity warning = new WPFEntity(
                     instData.CurrentElem,
-                    Status.Warning,
+                    CheckStatus.Warning,
                     "Необходим контроль",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
                     true,
@@ -590,7 +588,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="instDataColl">Коллекция на проверку</param>
         /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
-        private IEnumerable<WPFEntity> Reapeted_CheckElemsBySectionData(CheckLevelOfInstanceData[] instDataColl, List<CheckLevelOfInstanceSectionData> sectDatas)
+        private IEnumerable<WPFEntity> Reapeted_CheckElemsBySectionData(CheckLevelOfInstanceData[] instDataColl, List<LevelAndGridSolid> sectDatas)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -600,7 +598,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (instData.CurrentElemProjectDownLevel != null && instData.IsEmptyChecked)
                 {
 
-                    CheckLevelOfInstanceSectionData sectData = GetNearestSecData(instData, sectDatas);
+                    LevelAndGridSolid sectData = GetNearestSecData(instData, sectDatas);
                     if (sectData != null)
                     {
                         try
@@ -648,11 +646,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="instData">Спец. класс для проверки</param>
         /// <returns></returns>
-        private CheckLevelOfInstanceSectionData GetNearestSecData(CheckLevelOfInstanceData instData, List<CheckLevelOfInstanceSectionData> sectDatas)
+        private LevelAndGridSolid GetNearestSecData(CheckLevelOfInstanceData instData, List<LevelAndGridSolid> sectDatas)
         {
-            CheckLevelOfInstanceSectionData tempSect = null;
+            LevelAndGridSolid tempSect = null;
             double tempFacePrj = double.MaxValue;
-            foreach (CheckLevelOfInstanceSectionData sectData in sectDatas)
+            foreach (LevelAndGridSolid sectData in sectDatas)
             {
                 double sectDataCurrentLvlElev = sectData.CurrentLevelData.CurrentLevel.Elevation;
                 double instDataDownLvlElev = instData.CurrentElemProjectDownLevel.Elevation;
@@ -684,7 +682,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="instDataColl">Коллекция на проверку</param>
         private WPFEntity CheckNotAnalyzedElements(CheckLevelOfInstanceData[] instDataColl) => new WPFEntity(
                 instDataColl.Where(idc => idc.IsEmptyChecked).Select(idc => idc.CurrentElem),
-                Status.Error,
+                CheckStatus.Error,
                 "Элементы не удалось проверить из-за особенностей проекта",
                 $"Необходимо показать разработчику",
                 true,
@@ -696,7 +694,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns></returns>
         private WPFEntity ErrorGeomCheckedElementsResult() => new WPFEntity(
             _errorGeomCheckedElements,
-            Status.Warning,
+            CheckStatus.Warning,
             "Элементы не удалось проверить из-за невозможности анализа геометрии",
             "Нужно проверить вручную",
             true,
