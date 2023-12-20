@@ -2,8 +2,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib;
-using KPLN_ModelChecker_User.Common;
-using KPLN_ModelChecker_User.Forms;
 using System;
 using System.Collections.Generic;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -26,11 +24,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 using (Transaction t = new Transaction(doc))
                 {
                     t.Start("КП: Построение боксов");
-                    
+
                     foreach (LevelAndGridSolid sectDataSolid in sectDataSolids)
                     {
                         DirectShape directShape = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
                         directShape.AppendShape(new GeometryObject[] { sectDataSolid.LevelSolid });
+                        directShape.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set($"Секция: {sectDataSolid.GridData.CurrentSection}. Этаж: {sectDataSolid.CurrentLevelData.CurrentLevelNumber}");
                     }
 
                     t.Commit();

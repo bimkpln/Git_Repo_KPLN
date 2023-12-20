@@ -1,11 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Parameters_Ribbon.Common.GripParam;
 using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
-using KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN;
-using KPLN_Parameters_Ribbon.Forms;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
@@ -20,33 +19,31 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
 
-            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
-            // Техническая подмена разделов для режима тестирования
-            if (userDepartment == 6) { userDepartment = 4; }
-            
             AbstrGripBuilder gripBuilder = null;
+            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
             try
             {
+                string docPath = doc.Title.ToUpper();
                 // Посадить на конфиг под каждый файл
-                if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("АР"))
+                if (userDepartment == 2 || userDepartment == 8 && docPath.Contains("АР"))
                 {
-                    if (userDepartment == 1 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docPath.Contains("ИЗМЛ"))
                     {
-                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
-                else if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("КР"))
+                else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("КР"))
                 {
-                    if (userDepartment == 2 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docPath.Contains("ИЗМЛ"))
                     {
-                        gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
-                else if (userDepartment == 3 || userDepartment == 4 && (doc.Title.ToUpper().Contains("ОВ") || doc.Title.ToUpper().Contains("ВК") || doc.Title.ToUpper().Contains("АУПТ") || doc.Title.ToUpper().Contains("ЭОМ") || doc.Title.ToUpper().Contains("СС") || doc.Title.ToUpper().Contains("АВ")))
+                else if (userDepartment == 4 || userDepartment == 5 || userDepartment == 6 || userDepartment == 7 || userDepartment == 8 && (docPath.Contains("ОВ") || docPath.Contains("ВК") || docPath.Contains("АУПТ") || docPath.Contains("ЭОМ") || docPath.Contains("СС") || docPath.Contains("АВ")))
                 {
-                    if (userDepartment == 3 || userDepartment == 4 && doc.Title.ToUpper().Contains("ОБДН"))
+                    if (docPath.Contains("ИЗМЛ"))
                     {
-                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
                 else
@@ -56,6 +53,22 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                 GripDirector gripDirector = new GripDirector(gripBuilder);
                 gripDirector.BuildWriter();
+                if (gripBuilder.ErrorElements.Count > 0)
+                {
+                    HashSet<string> uniqErrors = new HashSet<string>(gripBuilder.ErrorElements.Select(e => e.ErrorMessage));
+                    foreach(string error in uniqErrors)
+                    {
+                        string errorIdColl = string.Join(
+                            ",", 
+                            gripBuilder
+                                .ErrorElements
+                                .Where(e => e.ErrorMessage.Equals(error))
+                                .Select(e => e.ErrorElement.Id.ToString()));
+                        
+                        Print($"{error} - для след. элементов:\n {errorIdColl}", 
+                            MessageType.Warning);
+                    }
+                }
 
                 return Result.Succeeded;
             }

@@ -436,7 +436,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns></returns>
         private Solid GetIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
-            // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета
+            // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета (проблемы с элементами "по касательной")
             Transform sectTransform = sectData.LevelSolid.GetBoundingBox().Transform;
             Transform instTransform = instSolid.GetBoundingBox().Transform;
             Transform instInverseTransform = instTransform.Inverse;

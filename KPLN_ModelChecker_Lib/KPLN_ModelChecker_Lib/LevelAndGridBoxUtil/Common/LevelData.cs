@@ -9,6 +9,11 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
     {
         private double[] _minAndMaxLvlPnts;
 
+        internal static readonly string ParLvlName = "ПАР";
+        internal static readonly string StilLvlName = "СТЛ";
+        internal static readonly string SectLvlName = "С";
+        internal static readonly string KorpLvlName = "К";
+
         /// <summary>
         /// Текущий уровень
         /// </summary>
@@ -37,15 +42,15 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 
                     double minPointOfLevels;
                     if (CurrentDownLevel == null)
-                        minPointOfLevels = CurrentLevel.Elevation - 3;
+                        minPointOfLevels = CurrentLevel.Elevation - DownAndTopExtra - FloorScreedHeight;
                     else
-                        minPointOfLevels = CurrentLevel.Elevation;
+                        minPointOfLevels = CurrentLevel.Elevation - FloorScreedHeight;
 
                     double maxPointOLevels;
                     if (CurrentAboveLevel == null)
-                        maxPointOLevels = minPointOfLevels + 3;
+                        maxPointOLevels = minPointOfLevels + DownAndTopExtra - FloorScreedHeight;
                     else
-                        maxPointOLevels = CurrentAboveLevel.Elevation;
+                        maxPointOLevels = CurrentAboveLevel.Elevation - FloorScreedHeight;
 
                     _minAndMaxLvlPnts[0] = minPointOfLevels;
                     _minAndMaxLvlPnts[1] = maxPointOLevels;
@@ -54,6 +59,16 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 return _minAndMaxLvlPnts;
             }
         }
+
+        /// <summary>
+        /// Толщина смещения относительно уровня (чаще всего - стяжка пола). Нужна для перекидки значения элементов в стяжке на этаж выше
+        /// </summary>
+        public double FloorScreedHeight { get; }
+
+        /// <summary>
+        /// Размер увеличения нижнего и вехнего боксов. Нужна для привязки элементов, расположенных за пределами крайних уровней
+        /// </summary>
+        public double DownAndTopExtra { get; }
 
         /// <summary>
         /// Номер уровня
@@ -65,20 +80,24 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// </summary>
         public string CurrentSectionNumber { get; private set; }
 
-        private LevelData(Level level, string lvlNumber, string sectNumber, Level aboveLevel, Level downLevel)
+        private LevelData(Level level, string lvlNumber, string sectNumber, Level aboveLevel, Level downLevel, double floorScreedHeight, double downAndTopExtra)
         {
             CurrentLevel = level;
             CurrentLevelNumber = lvlNumber;
             CurrentSectionNumber = sectNumber;
             CurrentAboveLevel = aboveLevel;
             CurrentDownLevel = downLevel;
+            FloorScreedHeight = floorScreedHeight;
+            DownAndTopExtra = downAndTopExtra;
         }
 
         /// <summary>
         /// Подготовка коллекции уровней для анализа
         /// </summary>
         /// <param name="doc">Revit-документ для анализа</param>
-        internal static List<LevelData> LevelPrepare(Document doc)
+        /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
+        /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
+        internal static List<LevelData> LevelPrepare(Document doc, double floorScreedHeight, double downAndTopExtra)
         {
             List<LevelData> preapareLevels = new List<LevelData>();
 
@@ -97,7 +116,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 {
                     Level aboveLevel = GetAboveLevel(levelColl, level, levelSection);
                     Level downLevel = GetDownLevel(levelColl, level, levelSection);
-                    LevelData myLevel = new LevelData(level, lvlNumber, levelSection, aboveLevel, downLevel);
+                    LevelData myLevel = new LevelData(level, lvlNumber, levelSection, aboveLevel, downLevel, floorScreedHeight, downAndTopExtra);
                     preapareLevels.Add(myLevel);
                 }
             }
@@ -130,21 +149,34 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             if (splitname.Length < 2)
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
-            if (!splitname[0].Contains("С") && !splitname[0].Contains("К") && !splitname[0].Contains("ПАР") && !splitname[0].Contains("СТЛ"))
+            if (!splitname[0].Contains(SectLvlName) && !splitname[0].Contains(KorpLvlName) && !splitname[0].Contains(ParLvlName) && !splitname[0].Contains(StilLvlName))
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
 
-            return GetNumbers(splitname[0]);
+            return GetSections(splitname[0]);
         }
 
-        private static List<string> GetNumbers(string input)
+        private static List<string> GetSections(string input)
         {
-            List<string> numbers = new List<string>();
-            MatchCollection matches = Regex.Matches(input, @"\d+");
+            List<string> result = new List<string>();
+            if (input.Contains(ParLvlName))
+                result.Add(ParLvlName);
+
+            if (input.Contains(StilLvlName))
+                result.Add(StilLvlName);
+
+            MatchCollection matches = Regex.Matches(input, @"(\d+)-?(\d*)");
             foreach (Match match in matches)
             {
-                numbers.Add(match.Value);
+                int startRange = int.Parse(match.Groups[1].Value);
+                int endRange = string.IsNullOrEmpty(match.Groups[2].Value) ? startRange : int.Parse(match.Groups[2].Value);
+                // Добавляем числа в указанном диапазоне в результат
+                for (int i = startRange; i <= endRange; i++)
+                {
+                    result.Add(i.ToString());
+                }
             }
-            return numbers;
+
+            return result;
         }
 
         /// <summary>

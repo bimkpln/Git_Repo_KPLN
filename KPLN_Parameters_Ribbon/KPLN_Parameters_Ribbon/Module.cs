@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using System;
 using System.IO;
 using System.Reflection;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace KPLN_Parameters_Ribbon
@@ -33,7 +33,7 @@ namespace KPLN_Parameters_Ribbon
                     ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
-                "paramSetter.png",
+                "KPLN_Parameters_Ribbon.Imagens.paramSetter.png",
                 "http://moodle");
 
             //Добавляю кнопку в панель
@@ -49,7 +49,7 @@ namespace KPLN_Parameters_Ribbon
                     ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyProjectParams).FullName,
                 panel,
-                "copyProjectParams.png",
+                "KPLN_Parameters_Ribbon.Imagens.copyProjectParams.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90%22-,%D0%9F%D0%A3%D0%A2%D0%AC,-%D0%9F%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C%20%E2%80%9C%D0%9F%D0%B0%D1%80%D0%B0%D0%BC%D0%B5%D1%82%D1%80%D1%8B%E2%80%9D");
 
             //Добавляю выпадающий список в панель
@@ -57,8 +57,9 @@ namespace KPLN_Parameters_Ribbon
             {
                 ToolTip = "Коллекция плагинов, для заполнения парамтеров под конкретный проект"
             };
+            pullDownData.Image = PngImageSource("KPLN_Parameters_Ribbon.Imagens.paramPullDown.png");
+            pullDownData.LargeImage = PngImageSource("KPLN_Parameters_Ribbon.Imagens.paramPullDown.png");
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
-            BtnImagine(pullDown, "paramPullDown.png");
 
             //Добавляю кнопку в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -72,7 +73,7 @@ namespace KPLN_Parameters_Ribbon
                 ModuleData.ModuleName),
             typeof(ExternalCommands.CommandGripParam).FullName,
             pullDown,
-            "gripParams.png",
+            "KPLN_Parameters_Ribbon.Imagens.gripParams.png",
             "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90");
 
             AddPushButtonDataInPullDown(
@@ -86,7 +87,7 @@ namespace KPLN_Parameters_Ribbon
                 ModuleData.ModuleName),
             typeof(ExternalCommands.CommandCheckParamData).FullName,
             pullDown,
-            "auditParams.png",
+            "KPLN_Parameters_Ribbon.Imagens.auditParams.png",
             "http://moodle/");
 
 
@@ -112,7 +113,8 @@ namespace KPLN_Parameters_Ribbon
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            BtnImagine(button, imageName);
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
         }
 
         /// <summary>
@@ -133,20 +135,21 @@ namespace KPLN_Parameters_Ribbon
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            BtnImagine(button, imageName);
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
         }
 
         /// <summary>
         /// Метод для добавления иконки для кнопки
         /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
-        private void BtnImagine(RibbonButton button, string imageName)
+        /// <param name="embeddedPathname">Имя иконки с раширением</param>
+        private ImageSource PngImageSource(string embeddedPathname)
         {
-            string imageFullPath = Path.Combine(new FileInfo(_AssemblyPath).DirectoryName, @"Imagens\", imageName);
-            button.LargeImage = new BitmapImage(new Uri(imageFullPath));
+            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
 
+            return decoder.Frames[0];
         }
     }
 }

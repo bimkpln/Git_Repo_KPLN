@@ -22,22 +22,32 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         public void BuildWriter()
         {
             _builder.Prepare();
-
             _builder.Check();
-
             _builder.CountElements();
 
-            // Заполняю уровни с учетом секций
+            // Заполняю уровни с учетом секций по геометрии
             using (Transaction t = new Transaction(_builder.Doc))
             {
-                t.Start($"{_builder.DocMainTitle}: Параметры захваток");
+                t.Start($"{_builder.DocMainTitle}: Параметры захваток_Geom");
 
-                int max = _builder.AllElementsCount;
-                string format = "{0} из " + max.ToString() + " элементов обработано";
-
-                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров захваток", format, max))
+                string format = "{0} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
+                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров захваток по геометрии", format, _builder.AllElementsCount))
                 {
-                    bool writeLevelParams = _builder.ExecuteGripParams(pb);
+                    _builder.ExecuteGripParams_ByGeom(pb);
+                }
+
+                t.Commit();
+            }
+
+            // Заполняю уровни с учетом секций по основанию
+            using (Transaction t = new Transaction(_builder.Doc))
+            {
+                t.Start($"{_builder.DocMainTitle}: Параметры захваток_Host");
+
+                string format = $"{_builder.PbCounter} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
+                using (Progress_Single pb = new Progress_Single("KPLN: Обработка парамтеров захваток по основанию", format, _builder.AllElementsCount, _builder.PbCounter))
+                {
+                    _builder.ExecuteGripParams_ByHost(pb);
                 }
 
                 t.Commit();
@@ -45,7 +55,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             TaskDialog taskDialog = new TaskDialog("KPLN: Параметры захваток")
             {
-                MainInstruction = "Параметры захваток заполнены!",
+                MainInstruction = $"Параметры захваток заполнены для {_builder.PbCounter} из {_builder.AllElementsCount}!",
                 CommonButtons = TaskDialogCommonButtons.Ok
             };
 

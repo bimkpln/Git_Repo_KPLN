@@ -1,28 +1,27 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Parameters_Ribbon.Common.Tools;
-using KPLN_Parameters_Ribbon.Forms;
+using KPLN_ModelChecker_Lib;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_IOS : AbstrGripBuilder
     {
-        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName)
-        {
-        }
-
-        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, char splitLevelChar) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, splitLevelChar)
+        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, floorScreedHeight, downAndTopExtra)
         {
         }
 
         public override void Prepare()
         {
+            // Таска на подготовку солидов секций/этажей
+            Task sectSolidPrepareTask = Task.Run(() =>
+            {
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, FloorScreedHeight);
+            });
+
             List<BuiltInCategory> userCat = null;
             List<BuiltInCategory> revitCat = null;
-            List<BuiltInCategory> revitInsulCat = null;
-            List<FamilyInstance> _dirtyElems = new List<FamilyInstance>();
 
             // Делю на ЭОМ СС
             if (Doc.Title.ToUpper().Contains("ЭОМ")
@@ -63,6 +62,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Делю на ОВ ВК
             else
             {
+                // Таска на подготовку элементов на основе (ByHost)
+                Task elemsByHostPrepareTask = Task.Run(() =>
+                {
+                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                        .OfCategory(BuiltInCategory.OST_DuctInsulations)
+                        .WhereElementIsNotElementType()
+                        .Select(e => new InstanceElemData(e)));
+                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                        .OfCategory(BuiltInCategory.OST_PipeInsulations)
+                        .WhereElementIsNotElementType()
+                        .Select(e => new InstanceElemData(e)));
+                });
+
                 // Категории пользовательских семейств, используемые в проектах ИОС
                 userCat = new List<BuiltInCategory>()
                 {
@@ -86,118 +98,37 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_FlexPipeCurves,
                 };
 
-                // Категории системных семейств (изоляции), используемые в проектах ИОС
-                revitInsulCat = new List<BuiltInCategory>()
+                foreach (BuiltInCategory bic in revitCat)
                 {
-                    BuiltInCategory.OST_DuctInsulations,
-                    BuiltInCategory.OST_PipeInsulations,
-                };
-
-                foreach (BuiltInCategory bic in revitInsulCat)
-                {
-                    ElemsInsulation.AddRange(new FilteredElementCollector(Doc)
+                    ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                         .OfCategory(bic)
-                        .WhereElementIsNotElementType());
+                        .WhereElementIsNotElementType()
+                        .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
                 }
-            }
+                Task.WaitAll(elemsByHostPrepareTask);
 
-            foreach (BuiltInCategory bic in userCat)
-            {
-                switch (bic)
+                foreach (BuiltInCategory bic in userCat)
                 {
-                    case BuiltInCategory.OST_MechanicalEquipment:
-                        _dirtyElems.AddRange(new FilteredElementCollector(Doc)
-                            .OfClass(typeof(FamilyInstance))
-                            .OfCategory(bic)
-                            .Cast<FamilyInstance>()
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("500_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("501_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("502_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("503_")));
-                        break;
+                    IEnumerable<FamilyInstance> famInst = new FilteredElementCollector(Doc)
+                        .OfClass(typeof(FamilyInstance))
+                        .OfCategory(bic)
+                        .Cast<FamilyInstance>()
+                        .Where(x =>
+                            !x.Symbol.FamilyName.StartsWith("500_")
+                            && !x.Symbol.FamilyName.StartsWith("501_")
+                            && !x.Symbol.FamilyName.StartsWith("502_")
+                            && !x.Symbol.FamilyName.StartsWith("503_"));
 
-                    case BuiltInCategory.OST_GenericModel:
-                        _dirtyElems.AddRange(new FilteredElementCollector(Doc)
-                            .OfClass(typeof(FamilyInstance))
-                            .OfCategory(bic)
-                            .Cast<FamilyInstance>()
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("500_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("501_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("502_"))
-                            .Where(x => !x.Symbol.FamilyName.StartsWith("503_")));
-                        break;
-
-                    default:
-                        _dirtyElems.AddRange(new FilteredElementCollector(Doc)
-                            .OfClass(typeof(FamilyInstance))
-                            .OfCategory(bic)
-                            .Cast<FamilyInstance>());
-                        break;
+                    ElemsOnLevel.AddRange(famInst
+                        .Where(x => x.SuperComponent == null)
+                        .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    ElemsByHost.AddRange(famInst
+                        .Where(x => x.SuperComponent != null)
+                        .Select(e => new InstanceElemData(e)));
                 }
             }
 
-            ElemsOnLevel.AddRange(_dirtyElems
-                .Where(x => x.SuperComponent == null));
-
-            ElemsByHost.AddRange(_dirtyElems
-                .Where(x => x.SuperComponent != null));
-
-            foreach (BuiltInCategory bic in revitCat)
-            {
-                ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                    .OfCategory(bic)
-                    .WhereElementIsNotElementType());
-            }
-
-
-        }
-
-        public override bool ExecuteGripParams(Progress_Single pb)
-        {
-            GripByGeometry gripByGeometry = new GripByGeometry(Doc, LevelParamName, SectionParamName);
-
-            IEnumerable<MyLevel> myLevelColl = gripByGeometry.LevelPrepare();
-
-            Dictionary<string, HashSet<Grid>> gridsDict = gripByGeometry.GridPrepare("КП_О_Секция");
-
-            IEnumerable<MySolid> mySolids = gripByGeometry.SolidsCollectionPrepare(gridsDict, myLevelColl, LevelNumberIndex, SplitLevelChar);
-
-            bool byElem = false;
-            if (ElemsOnLevel.Count > 0)
-            {
-
-                IEnumerable<Element> notIntersectedElems = gripByGeometry.IntersectWithSolidExcecute(ElemsOnLevel, mySolids, pb);
-
-                IEnumerable<Element> notNearestSolidElems = gripByGeometry.FindNearestSolid(notIntersectedElems, mySolids, pb);
-
-                IEnumerable<Element> notRevalueElems = gripByGeometry.ReValueDuplicates(mySolids, pb);
-
-                if (gripByGeometry.DuplicatesWriteParamElems.Keys.Count() > 0)
-                {
-                    foreach (Element element in gripByGeometry.DuplicatesWriteParamElems.Keys)
-                    {
-                        Print($"Проверь вручную элемент с id: {element.Id}", MessageType.Warning);
-                    }
-                }
-
-                gripByGeometry.DeleteDirectShapes();
-
-                byElem = true;
-            }
-
-            bool byHost = false;
-            if (ElemsByHost.Count > 0)
-            {
-                byHost = new GripByHost().ExecuteByHostFamily(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
-            }
-
-            bool byElemsInsulation = false;
-            if (ElemsInsulation.Count > 0)
-            {
-                byElemsInsulation = new GripByHost().ExecuteByElementInsulation(Doc, ElemsInsulation, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
-            }
-
-            return byElem && byHost && byElemsInsulation;
+            Task.WaitAll(sectSolidPrepareTask);
         }
     }
 }

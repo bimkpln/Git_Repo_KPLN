@@ -38,18 +38,18 @@ namespace KPLN_ModelChecker_Lib
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="gridSeparParamName">Параметр для разделения осей по секциям</param>
-        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string gridSeparParamName)
+        /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
+        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string gridSeparParamName, double floorScreedHeight = 0, double downAndTopExtra = 3)
         {
             List<LevelAndGridSolid> result = new List<LevelAndGridSolid>();
 
             List<GridData> gridDatas = GridData.GridPrepare(doc, gridSeparParamName);
-            List<LevelData> levelDatas = LevelData.LevelPrepare(doc);
+            List<LevelData> levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra);
 
             // Подготовка предварительной коллекции элементов
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
             foreach (LevelData currentLevel in levelDatas)
             {
-                bool isCreated = false;
                 foreach (GridData gData in gridDatas)
                 {
                     if (currentLevel.CurrentSectionNumber.Equals(gData.CurrentSection))
@@ -57,12 +57,8 @@ namespace KPLN_ModelChecker_Lib
                         Solid levSolid = CreateSolidInModel(currentLevel, gData);
                         LevelAndGridSolid secData = new LevelAndGridSolid(levSolid, currentLevel, gData);
                         preResult.Add(secData);
-                        isCreated = true;
                     }
                 }
-
-                if (!isCreated)
-                    throw new CheckerException($"Проблема с несовпадением названий секций в уровнях и в осях - нужно синхронизировать данные");
             }
 
             // Очистка от солидов, для вспомогательных уровней внутри секций
@@ -105,6 +101,15 @@ namespace KPLN_ModelChecker_Lib
             {
                 foreach (LevelAndGridSolid secData2 in result)
                 {
+                    // Для паркинга допустимы пересечения солидов уровней
+                    if (
+                        secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
+                        || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
+                        || secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
+                        || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
+                        ) 
+                        continue;
+                    
                     if (!secData1.Equals(secData2))
                     {
                         Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.LevelSolid, secData2.LevelSolid, BooleanOperationsType.Intersect);

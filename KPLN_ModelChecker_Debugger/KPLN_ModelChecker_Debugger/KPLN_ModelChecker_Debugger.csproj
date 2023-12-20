@@ -70,6 +70,10 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2023\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Release\KPLN_Loader.dll</HintPath>
       <Private>False</Private>

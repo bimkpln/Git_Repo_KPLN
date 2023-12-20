@@ -1,289 +1,151 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_Parameters_Ribbon.Common.Tools;
-using KPLN_Parameters_Ribbon.Forms;
-using System;
+using KPLN_ModelChecker_Lib;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_KR : AbstrGripBuilder
     {
-        public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName)
-        {
-        }
-
-        public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, char splitLevelChar) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, splitLevelChar)
+        public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, floorScreedHeight, downAndTopExtra)
         {
         }
 
         public override void Prepare()
         {
-            // Категория "Стены" над уровнем (монолит)
+            // Таска на подготовку солидов секций/этажей
+            Task sectSolidPrepareTask = Task.Run(() =>
+            {
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, FloorScreedHeight);
+            });
+
+            // Таска на подготовку элементов на основе (ByHost)
+            Task elemsByHostPrepareTask = Task.Run(() =>
+            {
+                List<BuiltInCategory> userCat = new List<BuiltInCategory>()
+                {
+                    BuiltInCategory.OST_GenericModel,
+                    BuiltInCategory.OST_StructuralColumns,
+                    BuiltInCategory.OST_Rebar,
+                    BuiltInCategory.OST_StructuralFraming,
+                    BuiltInCategory.OST_Walls,
+                    BuiltInCategory.OST_Floors,
+                };
+                
+                foreach (BuiltInCategory cat in userCat)
+                {
+                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                        .OfClass(typeof(FamilyInstance))
+                        .OfCategory(cat)
+                        .Cast<FamilyInstance>()
+                        .Where(x => x.SuperComponent != null)
+                        .Select(e => new InstanceElemData(e)));
+                }
+            });
+
+            // Таска на подготовку элементов под уровнем (ElemsUnderLevel)
+            Task elemsUnderLevelPrepareTask = Task.Run(() =>
+            {
+                // Категория "Стены" монолит под уровнем
+                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(Wall))
+                    .Cast<Wall>()
+                    .Where(x => 
+                        x.Name.StartsWith("00_") 
+                        && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+                // Категория "Перекрытия" монолит под уровнем
+                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(Floor))
+                    .Cast<Floor>()
+                    .Where(x => 
+                        x.Name.StartsWith("00_") 
+                        && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+                // Семейства "Колоны" под уровнем
+                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                    .Cast<FamilyInstance>()
+                    .Where(x => x.SuperComponent == null)
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+                // Категория "Кровля" под уровнем
+                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(RoofBase))
+                    .Cast<RoofBase>()
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+                // Семейства "Обобщенная модель" под уровнем
+                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_GenericModel)
+                    .Cast<FamilyInstance>()
+                    .Where(x => x.SuperComponent == null)
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+            });
+
+            // Категория "Стены" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_"))
-                .Where(x => !x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк")));
+                .Where(x => 
+                    !x.Name.StartsWith("00_") 
+                    || (x.Name.StartsWith("00_") && (!x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк"))))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
-            // Категория "Стены" монолит под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Wall))
-                .Cast<Wall>()
-                .Where(x => x.Name.StartsWith("00_"))
-                .Where(x => x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")));
-
-            // Категория "Стены" монолит над уровнем
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Wall))
-                .Cast<Wall>()
-                .Where(x => !x.Name.StartsWith("00_")));
-
-            // Категория "Стены" утеплитель над уровнем
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Wall))
-                .Cast<Wall>()
-                .Where(x => !x.Name.StartsWith("01_")));
-
-            // Категория "Стены" гидроизоляция над уровнем
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Wall))
-                .Cast<Wall>()
-                .Where(x => !x.Name.StartsWith("02_")));
-
-            // Категория "Перекрытия" монолит над уровнем
+            // Категория "Перекрытия" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("00_")));
-
-            // Категория "Перекрытия" монолит под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Floor))
-                .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("00_"))
-                .Where(x => x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")));
-
-            // Категория "Перекрытия" утеплитель над уровнем
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Floor))
-                .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("01_")));
-
-            // Категория "Перекрытия" гидроизоляция над уровнем
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(Floor))
-                .Cast<Floor>()
-                .Where(x => x.Name.StartsWith("02_")));
+                .Where(x =>
+                    !x.Name.StartsWith("00_")
+                    || !(x.Name.StartsWith("00_") && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус"))))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2") && i.SuperComponent == null));
+                .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2") && i.SuperComponent == null)
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Окна" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(i => i.Symbol.FamilyName.StartsWith("23") && i.SuperComponent == null));
+                .Where(i => i.Symbol.FamilyName.StartsWith("23") && i.SuperComponent == null)
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
-            // Категория "Лестницы" над уровнем и в отдельный список
-            IEnumerable<StairsRun> stairsRun = new FilteredElementCollector(Doc)
+            // Категория "Лестницы" над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsRun))
-               .Cast<StairsRun>();
-            IEnumerable<StairsLanding> stairsLanding = new FilteredElementCollector(Doc)
+               .Cast<StairsRun>()
+               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsLanding))
-               .Cast<StairsLanding>();
-            ElemsOnLevel.AddRange(stairsRun);
-            ElemsOnLevel.AddRange(stairsLanding);
-            StairsElems.AddRange(stairsRun);
-            StairsElems.AddRange(stairsLanding);
+               .Cast<StairsLanding>()
+               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Колоны" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralColumns)
                 .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
+                .Where(x => x.SuperComponent == null)
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFoundation)
                 .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
+                .Where(x => x.SuperComponent == null)
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
-            // Семейства "Колоны" под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_StructuralFraming)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
-
-            // Категория "Кровля" под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(RoofBase))
-                .Cast<RoofBase>());
-
-            // Семейства "Перекрытия" под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_Floors)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
-
-            // Семейства "Обобщенная модель" под уровнем
-            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_GenericModel)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
-
-            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_Walls)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent == null));
-
-            #region Семейства как вложенные общие
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_GenericModel)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent != null));
-            
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_StructuralColumns)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent != null));
-
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_Rebar)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent != null));
-
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_StructuralFraming)
-                .Cast<FamilyInstance>()
-                .Where(x => x.SuperComponent != null));
-            #endregion
-        }
-
-        public override bool ExecuteGripParams(Progress_Single pb)
-        {
-            //Уровень
-            LevelTool.Levels = new FilteredElementCollector(Doc)
-                .OfClass(typeof(Level))
-                .WhereElementIsNotElementType()
-                .Cast<Level>();
-
-            FloorNumberOnLevelByElement(pb);
-
-            FloorNumberUnderLevelByElement(pb);
-
-            //Секция
-            bool byElem = false;
-            bool byUnderElem = false;
-            bool byStairsElem = false;
-
-            if (ElemsOnLevel.Count > 0)
-            {
-                byElem = SectionExcecuter.ExecuteByElement(Doc, ElemsOnLevel, "Орг.ОсьБлок", SectionParamName, pb);
-            }
-
-            if (ElemsUnderLevel.Count > 0)
-            {
-                byUnderElem = SectionExcecuter.ExecuteByElement(Doc, ElemsUnderLevel, "Орг.ОсьБлок", SectionParamName, pb);
-            }
-
-            if (StairsElems.Count > 0)
-            {
-                byStairsElem = SectionExcecuter.ExecuteByElement(Doc, StairsElems, "Орг.ОсьБлок", SectionParamName, pb);
-            }
-
-            bool byHost = false;
-            if (ElemsByHost.Count > 0)
-            {
-                byHost = new GripByHost().ExecuteByHostFamily(ElemsByHost, SectionParamName, LevelParamName, pb, ElemsOnLevel.Count + ElemsUnderLevel.Count + StairsElems.Count);
-            }
-
-            return byElem && byUnderElem && byStairsElem && byHost;
-        }
-
-        /// <summary>
-        /// Заполняю номер этажа для элементов, находящихся НА уровне
-        /// </summary>
-        protected virtual void FloorNumberOnLevelByElement(Progress_Single pb)
-        {
-            foreach (Element elem in ElemsOnLevel)
-            {
-                try
-                {
-                    Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
-                    if (baseLevel != null)
-                    {
-                        string floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
-                        if (floorNumber == null) continue;
-                        Parameter floor = elem.LookupParameter(LevelParamName);
-                        if (floor == null) continue;
-                        floor.Set(floorNumber);
-                        
-                        pb.Increment();
-                    }
-                }
-                catch (Exception e)
-                {
-                    PrintError(e, "Не удалось обработать элемент: " + elem.Id.IntegerValue + " " + elem.Name);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Заполняю номер этажа для элементов, находящихся ПОД уровнем
-        /// </summary>
-        protected virtual void FloorNumberUnderLevelByElement(Progress_Single pb)
-        {
-            foreach (Element elem in ElemsUnderLevel)
-            {
-                Level baseLevel = LevelTool.GetLevelOfElement(elem, Doc);
-                if (baseLevel != null)
-                {
-                    double offsetFromLev = LevelTool.GetElementLevelGrip(elem, baseLevel);
-
-                    string floorNumber;
-                    if (offsetFromLev < 0)
-                    {
-                        floorNumber = LevelTool.GetFloorNumberByLevel(baseLevel, LevelNumberIndex, SplitLevelChar);
-                    }
-                    else
-                    {
-                        floorNumber = LevelTool.GetFloorNumberIncrementLevel(baseLevel, LevelNumberIndex, Doc, SplitLevelChar);
-                    }
-
-                    if (floorNumber == null)
-                    {
-                        Print($"Не найден уровень выше, для уровня {baseLevel.Name} " +
-                            $"при обработке элемента: {elem.Name} c id: {elem.Id.IntegerValue}." +
-                            "\nДля уровней необходимо заполнить параметр: На уровень выше, за исключением последнего этажа",
-                            MessageType.Error);
-
-                        continue;
-                    }
-                    Parameter floor = elem.LookupParameter(LevelParamName);
-                    if (floor == null) continue;
-                    floor.Set(floorNumber);
-                    
-                    pb.Increment();
-                }
-                else
-                {
-                    Print($"Не найден уровень у элемента с Id: {elem.Id}", MessageType.Error);
-                }
-            }
+            Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask, elemsUnderLevelPrepareTask);
         }
     }
 }
