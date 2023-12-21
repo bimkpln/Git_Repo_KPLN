@@ -45,7 +45,9 @@ namespace KPLN_ModelChecker_User
             }
 #endif
             string assembly = _AssemblyPath.Split(new string[] { "\\" }, StringSplitOptions.None).Last().Split('.').First();
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Контроль качества");
+            //Добавляю кнопку в панель
+            string currentPanelName = "Контроль качества";
+            RibbonPanel panel = application.GetRibbonPanels(tabName).Where(i => i.Name == currentPanelName).ToList().FirstOrDefault() ?? application.CreateRibbonPanel(tabName, "Контроль качества");
             PulldownButtonData pullDownData = new PulldownButtonData("Проверить", "Проверить")
             {
                 ToolTip = "Набор плагинов, для ручной проверки моделей на ошибки"
@@ -204,6 +206,18 @@ namespace KPLN_ModelChecker_User
                 "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
                 _mainContextualHelp,
                 _userDepartment != 2 && _userDepartment != 3
+                );
+
+            AddPushButtonData(
+                "CheckPatitionalFile",
+                "BIM: Проверка разб.файла",
+                "Проверка положения и заполненности парамтеров секции",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(ExternalCommands.CommandCheckPartitionFile).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checkPatitionalFile.png",
+                _mainContextualHelp,
+                _userDepartment == 4 || _userDepartment == 6
                 );
 
             //AddPushButtonData(

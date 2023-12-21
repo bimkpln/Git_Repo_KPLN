@@ -68,6 +68,10 @@
       <HintPath>..\..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2020\KPLN_ModelChecker_Lib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
@@ -99,24 +103,14 @@
     <Compile Include="Common\CopyElemParamData\Variables.cs" />
     <Compile Include="Common\CopyElemParamData\ListBoxElement.cs" />
     <Compile Include="Common\CopyElemParamData\ParameterRuleElement.cs" />
-    <Compile Include="Common\GripParam\Builder\GripBuilder_IOS.cs" />
-    <Compile Include="Common\GripParam\Builder\OBDN\GripBuilder_AR_OBDN.cs" />
-    <Compile Include="Common\GripParam\GripByHost.cs" />
-    <Compile Include="Common\GripParam\LevelExcecuter.cs" />
-    <Compile Include="Common\GripParam\SectionExcecuter.cs" />
     <Compile Include="Common\GripParam\Builder\AbstrGripBuilder.cs" />
     <Compile Include="Common\GripParam\Builder\GripBuilder_AR.cs" />
+    <Compile Include="Common\GripParam\Builder\GripBuilder_IOS.cs" />
     <Compile Include="Common\GripParam\Builder\GripBuilder_KR.cs" />
     <Compile Include="Common\GripParam\Builder\GripDirector.cs" />
-    <Compile Include="Common\GripParam\Builder\OBDN\GripBuilder_KR_OBDN.cs" />
-    <Compile Include="Common\Tools\ClockwiseComparerTool.cs" />
-    <Compile Include="Common\Tools\ElementComparerTool.cs" />
-    <Compile Include="Common\Tools\GeometryTool.cs" />
-    <Compile Include="Common\Tools\LevelTool.cs" />
-    <Compile Include="Common\GripParam\GripByGeometry.cs" />
-    <Compile Include="Common\Tools\MyLevel.cs" />
-    <Compile Include="Common\Tools\MySolid.cs" />
-    <Compile Include="Common\Tools\SolidComparerTool.cs" />
+    <Compile Include="Common\GripParam\GripParamError.cs" />
+    <Compile Include="Common\GripParam\InstanceElemData.cs" />
+    <Compile Include="Common\GripParam\InstanceGeomData.cs" />
     <Compile Include="ExternalCommands\CommandCheckParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />

@@ -1,134 +1,108 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_Parameters_Ribbon.Common.Tools;
-using KPLN_Parameters_Ribbon.Forms;
-using System;
-using System.Collections.Generic;
+using KPLN_ModelChecker_Lib;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_AR : AbstrGripBuilder
     {
-        public GripBuilder_AR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName)
-        {
-        }
-
-        public GripBuilder_AR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, char splitLevelChar) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, splitLevelChar)
+        public GripBuilder_AR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, floorScreedHeight, downAndTopExtra)
         {
         }
 
         public override void Prepare()
         {
+            // Таска на подготовку солидов секций/этажей
+            Task sectSolidPrepareTask = Task.Run(() =>
+            {
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, FloorScreedHeight);
+            });
+
+            // Таска на подготовку элементов на основе (ByHost)
+            Task elemsByHostPrepareTask = Task.Run(() =>
+            {
+                // Семейства "Панели витража"
+                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_CurtainWallPanels)
+                    .Cast<FamilyInstance>()
+                    .Select(e => new InstanceElemData(e)));
+
+                // Семейства "Импосты витража"
+                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_CurtainWallMullions)
+                    .Cast<FamilyInstance>()
+                    .Select(e => new InstanceElemData(e)));
+            });
+
             // Категория "Стены"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => !x.Name.StartsWith("00_")));
+                .Where(x => !x.Name.StartsWith("00_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Перекрытия"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x => !x.Name.StartsWith("00_")));
+                .Where(x => !x.Name.StartsWith("00_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Кровля"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(RoofBase))
-                .Cast<RoofBase>());
+                .Cast<RoofBase>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Окна"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Windows)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Двери"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_Doors)
-                .Cast<FamilyInstance>());
-
-            // Семейства "Панели витража"
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_CurtainWallPanels)
-                .Cast<FamilyInstance>());
-
-            // Семейства "Импосты витража"
-            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_CurtainWallMullions)
-                .Cast<FamilyInstance>());
+                .Cast<FamilyInstance>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Лестничные марши"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Railing))
-                .Cast<Railing>());
+                .Cast<Railing>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Оборудование"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Обощенные модели"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Каркас несущий (перемычки)"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFraming)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_")));
-        }
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
-        public override bool ExecuteGripParams(Progress_Single pb)
-        {
-            GripByGeometry gripByGeometry = new GripByGeometry(Doc, LevelParamName, SectionParamName);
-
-            IEnumerable<MyLevel> myLevelColl = gripByGeometry.LevelPrepare();
-
-            Dictionary<string, HashSet<Grid>> gridsDict = gripByGeometry.GridPrepare("КП_О_Секция");
-
-            IEnumerable<MySolid> mySolids = gripByGeometry.SolidsCollectionPrepare(gridsDict, myLevelColl, LevelNumberIndex, SplitLevelChar);
-
-            bool byElem = false;
-            if (ElemsOnLevel.Count > 0)
-            {
-
-                IEnumerable<Element> notIntersectedElems = gripByGeometry.IntersectWithSolidExcecute(ElemsOnLevel, mySolids, pb);
-
-                IEnumerable<Element> notNearestSolidElems = gripByGeometry.FindNearestSolid(notIntersectedElems, mySolids, pb);
-
-                IEnumerable<Element> notRevalueElems = gripByGeometry.ReValueDuplicates(mySolids, pb);
-
-                if (gripByGeometry.DuplicatesWriteParamElems.Keys.Count() > 0)
-                {
-                    foreach (Element element in gripByGeometry.DuplicatesWriteParamElems.Keys)
-                    {
-                        Print($"Проверь вручную элемент с id: {element.Id}", KPLN_Loader.Preferences.MessageType.Warning);
-                    }
-                }
-
-                gripByGeometry.DeleteDirectShapes();
-
-                byElem = true;
-            }
-
-            bool byHost = false;
-            if (ElemsByHost.Count > 0)
-            {
-                byHost = new GripByHost().ExecuteByHostFamily_AR(ElemsByHost, SectionParamName, LevelParamName, pb, gripByGeometry.PbCounter);
-            }
-
-            return byElem && byHost;
+            Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask);
         }
     }
 }

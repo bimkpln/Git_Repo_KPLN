@@ -87,6 +87,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CheckerException.cs" />
     <Compile Include="Common\AbstractCheckCommand.cs" />
     <Compile Include="Common\ElementEntity.cs" />
     <Compile Include="Commands\CommandCheckDimensions.cs" />
@@ -94,6 +95,10 @@
     <Compile Include="Common\ErrorTypes\LittleWarning.cs" />
     <Compile Include="Common\ErrorTypes\Warning.cs" />
     <Compile Include="Common\ErrorTypes\IError.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\GridData.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\LevelData.cs" />
+    <Compile Include="LevelAndGridBoxUtil\Common\PntComparer.cs" />
+    <Compile Include="LevelAndGridBoxUtil\LevelAndGridSolid.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />

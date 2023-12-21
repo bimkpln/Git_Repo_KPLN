@@ -1,11 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Parameters_Ribbon.Common.GripParam;
 using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
-using KPLN_Parameters_Ribbon.Common.GripParam.Builder.OBDN;
-using KPLN_Parameters_Ribbon.Forms;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
@@ -20,41 +19,46 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
 
+            AbstrGripBuilder gripBuilder = null;
             int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
             // Техническая подмена оазделов для режима тестирования
             if (userDepartment == 6) { userDepartment = 4; }
             
-            AbstrGripBuilder gripBuilder = null;
             try
             {
+                string docPath = doc.Title.ToUpper();
                 // Посадить на конфиг под каждый файл
-                string docTitle = doc.Title.ToUpper();
-                if (userDepartment == 1 || userDepartment == 4 
-                    && docTitle.Contains("АР"))
+                if (docPath.Contains("АР"))
                 {
-                    if (docTitle.Contains("ОБДН"))
+                    if (docPath.Contains("ОБДН"))
                     {
-                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция", 0.328, 3);
+                    }
+                    else if (docPath.Contains("ИЗМЛ"))
+                    {
+                        gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
-                else if (userDepartment == 2 || userDepartment == 4 
-                    && docTitle.Contains("КР"))
+                else if (docPath.Contains("КР"))
                 {
-                    if (docTitle.Contains("ОБДН"))
+                    if (docPath.Contains("ОБДН"))
                     {
-                        gripBuilder = new GripBuilder_KR_OBDN(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "О_Этаж", 1, "SMNX_Секция", 0.328, 3);
                     }
-                    else if (docTitle.Contains("ИЗМЛ"))
+                    else if (docPath.Contains("ИЗМЛ"))
                     {
-                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция");
+                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
-                else if (userDepartment == 3 || userDepartment == 4 
-                    && (docTitle.Contains("ОВ") || docTitle.Contains("ВК") || docTitle.Contains("АУПТ") || docTitle.Contains("ЭОМ") || docTitle.Contains("СС") || docTitle.Contains("АВ")))
+                else if ((docPath.Contains("ОВ") || docPath.Contains("ВК") || docPath.Contains("АУПТ") || docPath.Contains("ЭОМ") || docPath.Contains("СС") || docPath.Contains("АВ")))
                 {
-                    if (docTitle.Contains("ОБДН"))
+                    if (docPath.Contains("ОБДН"))
                     {
-                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция");
+                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция", 0.328, 3);
+                    }
+                    else if (docPath.Contains("ИЗМЛ"))
+                    {
+                        gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
                     }
                 }
                 else
@@ -64,6 +68,22 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                 GripDirector gripDirector = new GripDirector(gripBuilder);
                 gripDirector.BuildWriter();
+                if (gripBuilder.ErrorElements.Count > 0)
+                {
+                    HashSet<string> uniqErrors = new HashSet<string>(gripBuilder.ErrorElements.Select(e => e.ErrorMessage));
+                    foreach (string error in uniqErrors)
+                    {
+                        string errorIdColl = string.Join(
+                            ",",
+                            gripBuilder
+                                .ErrorElements
+                                .Where(e => e.ErrorMessage.Equals(error))
+                                .Select(e => e.ErrorElement.Id.ToString()));
+
+                        Print($"{error} - для след. элементов:\n {errorIdColl}", 
+                            KPLN_Loader.Preferences.MessageType.Error);
+                    }
+                }
 
                 return Result.Succeeded;
             }

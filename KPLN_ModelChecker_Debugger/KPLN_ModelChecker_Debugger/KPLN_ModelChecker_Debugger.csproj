@@ -62,7 +62,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\bin\Debug\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />

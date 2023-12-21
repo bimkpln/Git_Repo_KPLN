@@ -51,7 +51,6 @@
     </Reference>
     <Reference Include="KPLN_ModelChecker_Lib">
       <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2020\KPLN_ModelChecker_Lib.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
@@ -131,6 +130,7 @@
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
+    <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
@@ -209,6 +209,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_mepHeigtheight.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checkPatitionalFile.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
