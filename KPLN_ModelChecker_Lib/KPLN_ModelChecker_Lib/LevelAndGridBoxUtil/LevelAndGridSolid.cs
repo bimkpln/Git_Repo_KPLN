@@ -44,7 +44,12 @@ namespace KPLN_ModelChecker_Lib
             List<LevelAndGridSolid> result = new List<LevelAndGridSolid>();
 
             List<GridData> gridDatas = GridData.GridPrepare(doc, gridSeparParamName);
-            List<LevelData> levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra);
+            HashSet<string> multiGridsSet = new HashSet<string>(gridDatas.Select(g => g.CurrentSection));
+            List<LevelData> levelDatas = new List<LevelData>();
+            if (multiGridsSet.Count == 1)
+                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, multiGridsSet.FirstOrDefault());
+            else
+                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra);
 
             // Подготовка предварительной коллекции элементов
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();

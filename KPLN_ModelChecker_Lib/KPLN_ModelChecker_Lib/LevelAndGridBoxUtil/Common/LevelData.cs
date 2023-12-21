@@ -7,12 +7,16 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 {
     public class LevelData
     {
-        private double[] _minAndMaxLvlPnts;
-
         internal static readonly string ParLvlName = "ПАР";
         internal static readonly string StilLvlName = "СТЛ";
         internal static readonly string SectLvlName = "С";
         internal static readonly string KorpLvlName = "К";
+
+        /// <summary>
+        /// Номер секции для проектов, котоыре не деляться на секции (т.е. она одна)
+        /// </summary>
+        private static string _singleSectionNumber;
+        private double[] _minAndMaxLvlPnts;
 
         /// <summary>
         /// Текущий уровень
@@ -97,8 +101,10 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// <param name="doc">Revit-документ для анализа</param>
         /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
         /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
-        internal static List<LevelData> LevelPrepare(Document doc, double floorScreedHeight, double downAndTopExtra)
+        /// <param name="singleSectionNumber">Номер секции, если здание с одной секцией</param>
+        internal static List<LevelData> LevelPrepare(Document doc, double floorScreedHeight, double downAndTopExtra, string singleSectionNumber = null)
         {
+            _singleSectionNumber = singleSectionNumber;
             List<LevelData> preapareLevels = new List<LevelData>();
 
             Level[] levelColl = new FilteredElementCollector(doc)
@@ -135,7 +141,12 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             if (splitname.Length < 2)
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
-            return splitname[1];
+            // Обработка проектов без деления на секции
+            if(!splitname[0].Any(char.IsLetter)
+                && !string.IsNullOrEmpty(_singleSectionNumber))
+                return splitname[0];
+            else
+                return splitname[1];
         }
 
         /// <summary>
@@ -149,9 +160,18 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             if (splitname.Length < 2)
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
-            if (!splitname[0].Contains(SectLvlName) && !splitname[0].Contains(KorpLvlName) && !splitname[0].Contains(ParLvlName) && !splitname[0].Contains(StilLvlName))
+            if (splitname[0].Any(char.IsLetter)
+                && !splitname[0].Contains(SectLvlName) 
+                && !splitname[0].Contains(KorpLvlName) 
+                && !splitname[0].Contains(ParLvlName) 
+                && !splitname[0].Contains(StilLvlName))
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
 
+            // Обработка проектов без деления на секции
+            if (!splitname[0].Any(char.IsLetter)
+                && !string.IsNullOrEmpty(_singleSectionNumber))
+                return new List<string> { _singleSectionNumber };
+            
             return GetSections(splitname[0]);
         }
 
