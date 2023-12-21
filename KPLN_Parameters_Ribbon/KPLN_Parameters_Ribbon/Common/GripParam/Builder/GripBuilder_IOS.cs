@@ -62,19 +62,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Делю на ОВ ВК
             else
             {
-                // Таска на подготовку элементов на основе (ByHost)
-                Task elemsByHostPrepareTask = Task.Run(() =>
-                {
-                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                        .OfCategory(BuiltInCategory.OST_DuctInsulations)
-                        .WhereElementIsNotElementType()
-                        .Select(e => new InstanceElemData(e)));
-                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                        .OfCategory(BuiltInCategory.OST_PipeInsulations)
-                        .WhereElementIsNotElementType()
-                        .Select(e => new InstanceElemData(e)));
-                });
-
                 // Категории пользовательских семейств, используемые в проектах ИОС
                 userCat = new List<BuiltInCategory>()
                 {
@@ -97,35 +84,48 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_PipeCurves,
                     BuiltInCategory.OST_FlexPipeCurves,
                 };
+            }
 
-                foreach (BuiltInCategory bic in revitCat)
-                {
-                    ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                        .OfCategory(bic)
-                        .WhereElementIsNotElementType()
-                        .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
-                }
-                Task.WaitAll(elemsByHostPrepareTask);
+            // Таска на подготовку элементов на основе (ByHost)
+            Task elemsByHostPrepareTask = Task.Run(() =>
+            {
+                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                    .OfCategory(BuiltInCategory.OST_DuctInsulations)
+                    .WhereElementIsNotElementType()
+                    .Select(e => new InstanceElemData(e)));
+                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                    .OfCategory(BuiltInCategory.OST_PipeInsulations)
+                    .WhereElementIsNotElementType()
+                    .Select(e => new InstanceElemData(e)));
+            });
 
-                foreach (BuiltInCategory bic in userCat)
-                {
-                    IEnumerable<FamilyInstance> famInst = new FilteredElementCollector(Doc)
-                        .OfClass(typeof(FamilyInstance))
-                        .OfCategory(bic)
-                        .Cast<FamilyInstance>()
-                        .Where(x =>
-                            !x.Symbol.FamilyName.StartsWith("500_")
-                            && !x.Symbol.FamilyName.StartsWith("501_")
-                            && !x.Symbol.FamilyName.StartsWith("502_")
-                            && !x.Symbol.FamilyName.StartsWith("503_"));
+            foreach (BuiltInCategory bic in revitCat)
+            {
+                ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                    .OfCategory(bic)
+                    .WhereElementIsNotElementType()
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+            }
+            Task.WaitAll(elemsByHostPrepareTask);
 
-                    ElemsOnLevel.AddRange(famInst
-                        .Where(x => x.SuperComponent == null)
-                        .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
-                    ElemsByHost.AddRange(famInst
-                        .Where(x => x.SuperComponent != null)
-                        .Select(e => new InstanceElemData(e)));
-                }
+            foreach (BuiltInCategory bic in userCat)
+            {
+                IEnumerable<FamilyInstance> famInst = new FilteredElementCollector(Doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(bic)
+                    .Cast<FamilyInstance>()
+                    .Where(x =>
+                        !x.Symbol.FamilyName.StartsWith("500_")
+                        && !x.Symbol.FamilyName.StartsWith("501_")
+                        && !x.Symbol.FamilyName.StartsWith("502_")
+                        && !x.Symbol.FamilyName.StartsWith("503_"));
+
+                ElemsOnLevel.AddRange(famInst
+                    .Where(x => x.SuperComponent == null)
+                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                ElemsByHost.AddRange(famInst
+                    .Where(x => x.SuperComponent != null)
+                    .Select(e => new InstanceElemData(e)));
             }
 
             Task.WaitAll(sectSolidPrepareTask);
