@@ -45,17 +45,22 @@ namespace KPLN_Loader
         private Logger _logger;
         private const string _ribbonName = "KPLN";
         private string _revitVersion;
+
+        /// <summary>
+        /// Кэширование текщего пользователя из БД
+        /// </summary>
+        public static User CurrentRevitUser { get; private set; }
+
+        /// <summary>
+        /// Кэширование текщего отдела
+        /// </summary>
+        public static SubDepartment CurrentSubDepartment { get; private set; }
         
         public Result OnShutdown(UIControlledApplication application)
         {
             application.ControlledApplication.DocumentOpened -= new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
             return Result.Succeeded;
         }
-
-        /// <summary>
-        /// Кэширование текщего пользователя из БД
-        /// </summary>
-        public static User CurrentRevitUser { get; private set; }
 
         public Result OnStartup(UIControlledApplication application)
         {
@@ -92,7 +97,7 @@ namespace KPLN_Loader
                 _dbService = new SQLiteService(_logger, mainDBPath);
                 CurrentRevitUser = _dbService.Authorization();
                 loaderStatusForm.CheckAndSetDebugStatusByUser(CurrentRevitUser);
-                SubDepartment userSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+                CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
                 loaderStatusForm.UpdateLayout();
                 
                 // Добавление пользовательской инструкции
@@ -103,7 +108,7 @@ namespace KPLN_Loader
                 // Вывод в окно пользователя
                 Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
                 LoadStatus?.Invoke(
-                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{userSubDepartment.Code}]"), 
+                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"), 
                     System.Windows.Media.Brushes.OrangeRed);
                 loaderStatusForm.UpdateLayout();
                 #endregion
