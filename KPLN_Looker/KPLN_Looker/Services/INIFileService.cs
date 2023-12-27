@@ -1,4 +1,4 @@
-﻿using KPLN_Loader.Core.SQLiteData;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,9 +16,9 @@ namespace KPLN_Looker.Services
         private const int SIZE = 1024; //Максимальный размер (для чтения значения из файла)
         private readonly string _path;
         private readonly string _revitVersion;
-        private readonly User _user;
+        private readonly DBUser _user;
 
-        public INIFileService(User user, string revitVersion)
+        public INIFileService(DBUser user, string revitVersion)
         {
             _user = user;
             _revitVersion = revitVersion;
@@ -112,7 +112,7 @@ namespace KPLN_Looker.Services
 
             List<string> tempFormat = templateFolder
                 .GetDirectories()
-                .Where(folder => 
+                .Where(folder =>
                     departmentKeywords.TryGetValue(_user.SubDepartmentId, out var keywords) && (keywords == null || keywords.Any(keyword => folder.Name.Contains(keyword))))
                 .SelectMany(folder => CreateTemplateFormat(folder))
                 .ToList();

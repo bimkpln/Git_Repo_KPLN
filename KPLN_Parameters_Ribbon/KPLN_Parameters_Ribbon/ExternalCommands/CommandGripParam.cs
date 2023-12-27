@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
 using System;
 using System.Collections.Generic;
@@ -15,12 +17,15 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+            DBUser dbUser = userDbService.GetCurrentDBUser();
+
             //Получение объектов приложения и документа
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
 
             AbstrGripBuilder gripBuilder = null;
-            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
+            int userDepartment = dbUser.SubDepartmentId;
             try
             {
                 string docPath = doc.Title.ToUpper();

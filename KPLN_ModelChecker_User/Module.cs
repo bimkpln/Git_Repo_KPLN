@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExternalCommands;
@@ -16,8 +18,14 @@ namespace KPLN_ModelChecker_User
     public class Module : IExternalModule
     {
         private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
-        private readonly int _userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly DBUser _currentDbUser;
+
+        public Module()
+        {
+            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+            _currentDbUser = userDbService.GetCurrentDBUser();
+        }
 
         public Result Close()
         {
@@ -132,7 +140,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.launchDate.png",
                 _mainContextualHelp,
-                _userDepartment == 2
+                _currentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -239,7 +247,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_levels.png",
                 _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 3 || _userDepartment == 8
+                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 3 || _currentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -251,7 +259,38 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mirrored.png",
                 _mainContextualHelp,
-                _userDepartment == 2 || _userDepartment == 4 || _userDepartment == 8
+                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 4 || _currentDbUser.SubDepartmentId == 8
+                );
+
+            AddPushButtonData(
+                "CheckHoles",
+                "АР: Проверить овтерстия",
+                "Плагин выполняет следующие функции:\n" +
+                        "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
+                        "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckHoles).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checkHoles.png",
+                _mainContextualHelp,
+                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 8
+                );
+
+            AddPushButtonData(
+                "CheckFlatsArea",
+                "АР: Проверка площадей квартир",
+                "Сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
+                    "\n1. Находит разницу имен и номеров помещений;" +
+                    "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +
+                    "\n3. Находит разницу в площади помещения вне квартиры, если она превышает 1 м²;" +
+                    "\n4. Находит разницу в значениях параметров площадей в марках и фактической, если она превышает 0,1 м²;" +
+                    "\n5. Находит разницу зафиксированной площади квартиры.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckFlatsArea).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
+                _mainContextualHelp,
+                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -263,7 +302,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
                 _mainContextualHelp,
-                _userDepartment == 8
+                _currentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -275,7 +314,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkPatitionalFile.png",
                 _mainContextualHelp,
-                _userDepartment == 8
+                _currentDbUser.SubDepartmentId == 8
                 );
 
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
@@ -301,7 +340,7 @@ namespace KPLN_ModelChecker_User
         /// <param name="imageName">Имя иконки</param>
         private void AddPushButtonData(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp, bool isVisible)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = pullDown.AddPushButton(data) as PushButton;
             button.ToolTip = description;
             button.LongDescription = longDescription;
