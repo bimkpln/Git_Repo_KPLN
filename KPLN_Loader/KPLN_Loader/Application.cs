@@ -49,12 +49,12 @@ namespace KPLN_Loader
         /// <summary>
         /// Кэширование текщего пользователя из БД
         /// </summary>
-        public static User CurrentRevitUser { get; private set; }
+        internal static User CurrentRevitUser { get; private set; }
 
         /// <summary>
         /// Кэширование текщего отдела
         /// </summary>
-        public static SubDepartment CurrentSubDepartment { get; private set; }
+        internal static SubDepartment CurrentSubDepartment { get; private set; }
         
         public Result OnShutdown(UIControlledApplication application)
         {
