@@ -1,7 +1,4 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts.Common;
-using System.Collections.Generic;
-using System.Linq;
+﻿using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {

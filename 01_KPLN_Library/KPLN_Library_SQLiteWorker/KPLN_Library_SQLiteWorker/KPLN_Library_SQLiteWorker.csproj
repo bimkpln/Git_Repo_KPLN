@@ -107,9 +107,11 @@
     <Compile Include="FactoryParts\Common\AbsCreatorDbService.cs" />
     <Compile Include="FactoryParts\CreatorProjectDbService.cs" />
     <Compile Include="FactoryParts\CreatorDocumentDbService.cs" />
+    <Compile Include="FactoryParts\CreatorSubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\CreatorUserDbService.cs" />
     <Compile Include="FactoryParts\DocumentDbService.cs" />
     <Compile Include="FactoryParts\ProjectDbService.cs" />
+    <Compile Include="FactoryParts\SubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
