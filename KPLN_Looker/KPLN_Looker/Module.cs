@@ -4,26 +4,33 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
-using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using KPLN_Loader.Common;
 using KPLN_Looker.Services;
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
-        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
-        private readonly DBUser _dbUser;
+        private bool _isDocumentClosed = false;
+        private readonly UserDbService _userDbService;
+        private readonly DBUser _dBUser;
+        private readonly DocumentDbService _documentDbService;
+        private readonly ProjectDbService _projectDbService;
+        private readonly SubDepartmentDbService _subDepartmentDbService;
 
         public Module()
         {
-            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-            _dbUser = userDbService.GetCurrentDBUser();
+            _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+            _dBUser = _userDbService.GetCurrentDBUser();
+
+            _documentDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
+            _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
+            _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
         }
 
         public Result Close()
@@ -36,7 +43,7 @@ namespace KPLN_Looker
             try
             {
                 // Перезапись ini-файла
-                INIFileService iNIFileService = new INIFileService(_dbUser, application.ControlledApplication.VersionNumber);
+                INIFileService iNIFileService = new INIFileService(_dBUser, application.ControlledApplication.VersionNumber);
                 if (!iNIFileService.OverwriteINIFile())
                 {
                     throw new Exception($"Ошибка при перезаписи ini-файла");
@@ -47,7 +54,7 @@ namespace KPLN_Looker
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
-                if (_dbUser.SubDepartmentId != 8)
+                if (_dBUser.SubDepartmentId != 8)
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
 
                 return Result.Succeeded;
@@ -64,53 +71,65 @@ namespace KPLN_Looker
         /// </summary>
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
-            //try
-            //{
-            //    if (FileActivityService.ActiveDocument != null
-            //        && !args.Document.IsFamilyDocument
-            //        && !args.Document.PathName.Contains(".rte"))
-            //    {
-            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
-            //        FileActivityService.ActivityBag.Enqueue(info);
+            Document doc = args.Document;
+            FileInfo fileInfo = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()));
+            string fileName = fileInfo.FullName;
 
-            //        // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
-            //        if (info.ProjectId == -1
-            //            && info.DocumentId != -1
-            //            && !info.DocumentTitle.ToLower().Contains("конц"))
-            //        {
-            //            Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
-            //                " - можете продолжить работу. Если же это файл новго проекта - напишите " +
-            //                "руководителю BIM-отдела",
-            //                KPLN_Loader.Preferences.MessageType.Error);
-            //        }
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    PrintError(ex);
-            //}
+            DBDocument dBDocument = null;
+            if (doc.IsWorkshared
+                && !doc.IsDetached
+                && !doc.IsFamilyDocument
+                && !fileInfo.Extension.Equals("rte")
+                && !fileName.ToLower().Contains(".концепция"))
+            {
+                DBProject dBProject = _projectDbService.GetDBProjects().Where(p => fileName.Contains(p.MainPath)).FirstOrDefault();
+                DBSubDepartment dBSubDepartment = _subDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+                int dBProjectId = dBProject == null ? -1 : dBProject.Id;
+                int dBSubDepartmentId = dBSubDepartment == null ? -1 : dBSubDepartment.Id;
 
-            //try
-            //{
-            //    Document document = args.Document;
+                dBDocument = _documentDbService.GetDBDocuments_ByPrjIdAndSubDepId(dBProjectId, dBSubDepartmentId).Where(d => d.FullPath.Equals(fileName)).FirstOrDefault();
+                if (dBDocument == null)
+                {
+                    dBDocument = new DBDocument()
+                    {
+                        Name = doc.Title,
+                        FullPath = fileName,
+                        ProjectId = dBProject.Id,
+                        SubDepartmentId = dBSubDepartment.Id,
+                        IsClosed = false,
+                    };
+                    Task createNewDoc = Task.Run(() =>
+                    {
+                        _documentDbService.CreateDBDocument(dBDocument);
+                    });
+                }
+                else
+                {
+                    if (dBProject != null)
+                    {
+                        // Технический блок: запись статуса документа IsClosed по статусу проекта
+                        Task updateDbDoc = Task.Run(() =>
+                        {
+                            _documentDbService.UpdateDBDocument_IsClosedByProject(dBProject);
+                        });
+                    }
 
-            //    if (document.IsWorkshared && !document.IsDetached)
-            //    {
-            //        DocumentPreapre(document);
-            //    }
-
-            //    foreach (RevitLinkInstance link in new FilteredElementCollector(document).OfClass(typeof(RevitLinkInstance)).WhereElementIsNotElementType().ToElements())
-            //    {
-            //        Document linkDocument = link.GetLinkDocument();
-            //        if (linkDocument == null) { continue; }
-
-            //        if (linkDocument.IsWorkshared)
-            //        {
-            //            DocumentPreapre(linkDocument);
-            //        }
-            //    }
-            //}
-            //catch (Exception) { }
+                    if ((dBProject != null && dBProject.IsClosed) || dBDocument.IsClosed)
+                    {
+                        _isDocumentClosed = true;
+                        TaskDialog taskDialog = new TaskDialog("KPLN: Закрытый проект")
+                        {
+                            MainIcon = TaskDialogIcon.TaskDialogIconError,
+                            MainContent = "Вы пытаетесь работать в закрытом проекте. О факте синхранизации узнает BIM-отдел. " +
+                                "Чтобы получить доступ на внесение изменений в этот проект - обратитесь в BIM-отдел",
+                            CommonButtons = TaskDialogCommonButtons.Ok,
+                        };
+                        taskDialog.Show();
+                    }
+                    else
+                        _isDocumentClosed = false;
+                }
+            }
         }
 
         /// <summary>
@@ -167,34 +186,24 @@ namespace KPLN_Looker
         /// </summary>
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
-            //try
-            //{
-            //    if (FileActivityService.ActiveDocument != null)
-            //    {
-            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
-            //        FileActivityService.ActivityBag.Enqueue(info);
-            //    }
-            //}
-            //catch (Exception) { }
-            ///*
-            //try
-            //{
-            //    Autodesk.Revit.DB.Document document = args.Document;
-            //    UpdateRoomDictKeys(document);
-            //}
-            //catch (Exception)
-            //{ }
-            //*/
-            //try
-            //{
-            //    FileActivityService.Synchronize(null);
-            //}
-            //catch (ArgumentNullException ex)
-            //{
-            //    PrintError(ex);
-            //}
-            //catch (Exception)
-            //{ }
+            Document doc = args.Document;
+
+            // Защита закрытого проекта от изменений
+            if (_isDocumentClosed)
+            {
+                BitrixMessageService
+                    .SendErrorMsg_ToBIMChat($"Сотрудник: {_dBUser.Surname} {_dBUser.Name} из отдела {_subDepartmentDbService.GetDBSubDepartment_ByDBUser(_dBUser).Code}\n" +
+                    $"Действие: Синхронизиция в проекте {doc.Title}, который ЗАКРЫТ.");
+
+                TaskDialog taskDialog = new TaskDialog("KPLN: Закрытый проект")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainContent = "Факт синхронизации в закрытом проекте - передан в BIM-отдел",
+                    FooterText = "За тобой уже выехали :)",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                taskDialog.Show();
+            }
         }
 
         /// <summary>

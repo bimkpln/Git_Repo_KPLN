@@ -5,6 +5,8 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Looker", "KPLN_Looker\KPLN_Looker.csproj", "{4379330A-7D4D-420E-8EC2-4F9E0149D9D4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_SQLiteWorker", "..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker.csproj", "{F852DAC2-074F-426E-B853-3A858062FCD7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,14 @@ Global
 		{4379330A-7D4D-420E-8EC2-4F9E0149D9D4}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
 		{4379330A-7D4D-420E-8EC2-4F9E0149D9D4}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
 		{4379330A-7D4D-420E-8EC2-4F9E0149D9D4}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2020|Any CPU.ActiveCfg = Revit2023|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2020|Any CPU.Build.0 = Revit2023|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
+		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
