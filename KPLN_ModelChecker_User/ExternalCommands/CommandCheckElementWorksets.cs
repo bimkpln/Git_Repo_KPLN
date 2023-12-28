@@ -70,10 +70,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (element.Category == null) { continue; }
 
                     // Анализ связей
-                    if (element.GetType() == typeof(RevitLinkInstance) 
-                        || element.GetType() == typeof(ImportInstance)) 
+                    if (element is RevitLinkInstance link)
                     {
-                        RevitLinkInstance link = (RevitLinkInstance)element;
                         string[] separators = { ".rvt : " };
                         string[] nameSubs = link.Name.Split(separators, StringSplitOptions.None);
                         if (nameSubs.Length > 3) continue;
@@ -91,6 +89,26 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'"));
                         }
                         continue; 
+                    }
+                    else if (element is ImportInstance impInstance)
+                    {
+                        // DWG может по разному импортировать связью. Те, что прикрепляются к уровню - могут иметь разный рабочий набор
+                        if (impInstance.IsLinked && !impInstance.ViewSpecific)
+                        {
+                            string wsName = impInstance.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
+                            if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
+                            {
+                                result.Add(new WPFEntity(
+                                    impInstance,
+                                    CheckStatus.Error,
+                                    "Ошибка рабочего набора",
+                                    "Связь находится в некорректном рабочем наборе",
+                                    false,
+                                    false,
+                                    "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'"));
+                            }
+                        }
+                        continue;
                     }
 
                     //Анализ уровней и осей

@@ -71,6 +71,11 @@
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -109,14 +114,7 @@
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition=" '$(Configuration)' == 'Revit2023' ">
-      <ItemGroup>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2023\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
+    <When Condition=" '$(Configuration)' == 'Revit2023' " />
   </Choose>
   <ItemGroup>
     <Compile Include="Common\CheckCommandError.cs" />
