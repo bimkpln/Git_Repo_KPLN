@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -218,7 +219,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+                if (CurrentDBUser.SubDepartmentId == 8)
                 {
                     return IsGroupEnabled;
                 }

@@ -18,6 +18,7 @@ using static KPLN_Clashes_Ribbon.Tools.HTMLTools;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using Image = System.Windows.Controls.Image;
 using Path = System.IO.Path;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -36,7 +37,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             InitializeComponent();
             UpdateGroups();
 
-            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+            if (CurrentDBUser.SubDepartmentId == 8)
                 btnAddGroup.Visibility = Visibility.Visible;
             else
                 btnAddGroup.Visibility = Visibility.Collapsed;
@@ -92,7 +93,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+                if (CurrentDBUser.SubDepartmentId == 8)
                 {
                     Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
                     _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
@@ -114,7 +115,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
-            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+            if (CurrentDBUser.SubDepartmentId == 8)
             {
                 ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                 int repInstIndex = 0;
@@ -378,7 +379,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+                if (CurrentDBUser.SubDepartmentId == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     group.Status = Core.ClashesMainCollection.KPItemStatus.Closed;
@@ -401,7 +402,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
-            if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId != 8) { return; }
+            if (CurrentDBUser.SubDepartmentId != 8) { return; }
             
             TextInputForm textInputForm = new TextInputForm(this, "Введите наименование отчета:");
             textInputForm.ShowDialog();
@@ -527,7 +528,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+                if (CurrentDBUser.SubDepartmentId == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     _sqliteService_MainDB.DeleteReportGroupAndReportsAndReportItems_ByReportGroupId(group.Id);

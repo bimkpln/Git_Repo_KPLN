@@ -17,16 +17,21 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Получить коллекцию ВСЕХ проектов
         /// </summary>
-        /// <returns>Коллекция пользователей</returns>
         public IEnumerable<DBProject> GetDBProjects() =>
             ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName};");
+
+        /// <summary>
+        /// Получить коллекцию ВСЕХ открытых проектов
+        /// </summary>
+        public IEnumerable<DBProject> GetDBProjects_Opened() =>
+            ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName} " +
-                $"WHERE {nameof(DBProject.IsBlocked)}='False';");
+                $"WHERE {nameof(DBProject.IsClosed)}='False';");
 
         /// <summary>
         /// Получить проект по Id
         /// </summary>
-        /// <returns>Коллекция пользователей</returns>
         public DBProject GetDBProject_ByProjectId(int id) => 
             ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName} " +

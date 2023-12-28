@@ -12,7 +12,7 @@ namespace KPLN_Clashes_Ribbon.Services
     /// </summary>
     public sealed class SQLiteService_MainDB : AbsSQLiteService
     {
-        private static readonly string _userSystemName = KPLN_Loader.Application.CurrentRevitUser.SystemName;
+        private static readonly string _userSystemName = CurrentDBUser.SystemName;
 
         public SQLiteService_MainDB()
         {

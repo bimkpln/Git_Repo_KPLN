@@ -22,6 +22,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Код (аббревиатура) проекта
         /// </summary>
         public string Code { get; set; }
+        
+        /// <summary>
+        /// Стадия проектирования
+        /// </summary>
+        public string Stage { get; set; }
 
         /// <summary>
         /// Путь к корневой папке
@@ -31,6 +36,6 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// <summary>
         /// Режим блокировки проекта под набор разрешенных пользователей вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
-        public bool IsBlocked { get; set; }
+        public bool IsClosed { get; set; }
     }
 }

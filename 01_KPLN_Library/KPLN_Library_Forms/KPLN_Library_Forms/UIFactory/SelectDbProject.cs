@@ -13,6 +13,22 @@ namespace KPLN_Library_Forms.UIFactory
     /// </summary>
     public static class SelectDbProject
     {
+        private static ProjectDbService _projectDbService;
+
+        internal static ProjectDbService CurrentProjectDbService
+        {
+            get 
+            { 
+                if (_projectDbService == null)
+                {
+                    CreatorProjectDbService creatorProjectDbService = new CreatorProjectDbService();
+                    _projectDbService = (ProjectDbService)creatorProjectDbService.CreateService();
+                }
+                
+                return _projectDbService; 
+            }
+        }
+
         /// <summary>
         /// Запуск окна выбора проекта
         /// </summary>
@@ -20,11 +36,8 @@ namespace KPLN_Library_Forms.UIFactory
         /// <exception cref="Exception"></exception>
         public static ElementPick CreateForm()
         {
-            CreatorProjectDbService creatorProjectDbService = new CreatorProjectDbService();
-            ProjectDbService projectDbService = (ProjectDbService)creatorProjectDbService.CreateService();
-
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
-            foreach (DBProject prj in projectDbService.GetDBProjects())
+            foreach (DBProject prj in CurrentProjectDbService.GetDBProjects())
             {
                 if (prj.Name.Equals(null))
                     throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта с id: {prj.Id} нет имени");

@@ -17,15 +17,6 @@
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\NWR2018\</OutputPath>
-    <DefineConstants>Revit2018</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <Optimize>true</Optimize>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\NWR2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
@@ -33,13 +24,6 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <Optimize>true</Optimize>
     <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2022|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\NWR2022\</OutputPath>
-    <DefineConstants>Revit2022</DefineConstants>
-    <Optimize>true</Optimize>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <OutputPath>bin\Debug\</OutputPath>
@@ -58,21 +42,11 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Revit2018\</OutputPath>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>bin\x64\Revit2020\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2022|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Revit2022\</OutputPath>
-    <Optimize>true</Optimize>
-    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>

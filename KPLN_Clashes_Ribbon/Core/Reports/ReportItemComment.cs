@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -9,7 +10,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
     {
         public ReportItemComment(string message)
         {
-            UserSystemName = KPLN_Loader.Application.CurrentRevitUser.SystemName;
+            UserSystemName = CurrentDBUser.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
         }
@@ -40,7 +41,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string UserFullName
         {
-            get => $"{KPLN_Loader.Application.CurrentRevitUser.Surname} {KPLN_Loader.Application.CurrentRevitUser.Name}";
+            get => $"{CurrentDBUser.Surname} {CurrentDBUser.Name}";
         }
 
         /// <summary>

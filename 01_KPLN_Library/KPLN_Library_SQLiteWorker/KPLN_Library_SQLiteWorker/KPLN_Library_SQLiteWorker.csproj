@@ -96,6 +96,7 @@
   <ItemGroup>
     <Compile Include="Core\DatabasePaths.cs" />
     <Compile Include="Core\SQLiteData\Abstractions\IDBEntity.cs" />
+    <Compile Include="Core\SQLiteData\DBSubDepartmentCodeMatrix.cs" />
     <Compile Include="Core\SQLiteData\DB_Enumerator.cs" />
     <Compile Include="Core\SQLiteData\DBDocument.cs" />
     <Compile Include="Core\SQLiteData\DBModule.cs" />
@@ -105,12 +106,14 @@
     <Compile Include="Core\SQLiteData\DBUser.cs" />
     <Compile Include="FactoryParts\Common\DbService.cs" />
     <Compile Include="FactoryParts\Common\AbsCreatorDbService.cs" />
+    <Compile Include="FactoryParts\CreatorSubDepartmentCodeMatrixDbService.cs" />
     <Compile Include="FactoryParts\CreatorProjectDbService.cs" />
     <Compile Include="FactoryParts\CreatorDocumentDbService.cs" />
     <Compile Include="FactoryParts\CreatorSubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\CreatorUserDbService.cs" />
     <Compile Include="FactoryParts\DocumentDbService.cs" />
     <Compile Include="FactoryParts\ProjectDbService.cs" />
+    <Compile Include="FactoryParts\SubDepartmentCodeMatrixDbService.cs" />
     <Compile Include="FactoryParts\SubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />

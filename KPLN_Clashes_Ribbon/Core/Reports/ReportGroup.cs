@@ -144,7 +144,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string LastUserFullName
         {
-            get => $"{KPLN_Loader.Application.CurrentRevitUser.Name} {KPLN_Loader.Application.CurrentRevitUser.Surname}";
+            get => $"{CurrentDBUser.Name} {CurrentDBUser.Surname}";
         }
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string UserCreatedFullName
         {
-            get => $"{KPLN_Loader.Application.CurrentRevitUser.Name} {KPLN_Loader.Application.CurrentRevitUser.Surname}";
+            get => $"{CurrentDBUser.Name} {CurrentDBUser.Surname}";
         }
 
         /// <summary>
@@ -223,7 +223,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId == 8)
+                if (CurrentDBUser.SubDepartmentId == 8)
                 {
                     return System.Windows.Visibility.Visible;
                 }

@@ -27,5 +27,6 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Отображение влк/выкл (True/False) для окна авторизации. В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsAuthEnabled { get; set; }
+
     }
 }

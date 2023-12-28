@@ -12,6 +12,7 @@
         Projects,
         ProjectsMatrix,
         SubDepartments,
+        SubDepartmentCodeMatrix,
         Users
     }
 }

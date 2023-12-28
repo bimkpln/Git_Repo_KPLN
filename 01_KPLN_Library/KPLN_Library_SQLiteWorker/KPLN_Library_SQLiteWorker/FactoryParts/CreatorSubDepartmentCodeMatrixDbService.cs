@@ -6,14 +6,14 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     /// <summary>
     /// Creator для таблицы Documents
     /// </summary>
-    public class CreatorDocumentDbService : AbsCreatorDbService
+    public class CreatorSubDepartmentCodeMatrixDbService : AbsCreatorDbService
     {
         public override DbService CreateService()
         {
             SQLFilesExistChecker();
             string connectionString = CreateConnectionString("KPLN_Loader_MainDB");
 
-            return new DocumentDbService(connectionString, DB_Enumerator.Documents.ToString());
+            return new SubDepartmentCodeMatrixDbService(connectionString, DB_Enumerator.SubDepartmentCodeMatrix.ToString());
         }
     }
 }
