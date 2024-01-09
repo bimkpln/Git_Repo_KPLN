@@ -3,6 +3,9 @@ using System.Net.Http;
 
 namespace KPLN_Looker.Services
 {
+    /// <summary>
+    /// Сервис по взаимодействию с Битрикс
+    /// </summary>
     internal class BitrixMessageService
     {
         /// <summary>
