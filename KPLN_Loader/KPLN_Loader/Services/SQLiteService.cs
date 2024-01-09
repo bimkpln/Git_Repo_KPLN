@@ -94,13 +94,13 @@ namespace KPLN_Loader.Services
         }
         #endregion
 
-            #region Read
-            /// <summary>
-            /// Получить коллекцию модулей из БД
-            /// </summary>
-            /// <param name="currentUser">Пользователь для из БД</param>
-            /// <returns>Коллекция модулей</returns>
-            internal IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
+        #region Read
+        /// <summary>
+        /// Получить коллекцию модулей из БД
+        /// </summary>
+        /// <param name="currentUser">Пользователь для из БД</param>
+        /// <returns>Коллекция модулей</returns>
+        internal IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
         {
             IEnumerable<Module> modules;
             // Модули-библиотеки нужны при любом режиме, для них статус IsDebugMode - не играет роли

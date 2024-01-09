@@ -308,7 +308,7 @@ namespace KPLN_ModelChecker_User
             AddPushButtonData(
                 "CheckPatitionalFile",
                 "BIM: Проверка разб.файла",
-                "Проверка положения и заполненности парамтеров секции",
+                "Проверка положения и заполненности параметров секции",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckPartitionFile).FullName,
                 pullDown,

@@ -1,7 +1,6 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
@@ -13,7 +12,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         internal DocumentDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
         {
         }
- 
+
         /// <summary>
         /// Создать новый документ в БД
         /// </summary>
@@ -21,8 +20,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         {
             ExecuteNonQuery(
                 $"INSERT INTO {_dbTableName} " +
-                $"({nameof(DBDocument.Name)}, {nameof(DBDocument.FullPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}) " +
-                $"VALUES (@{nameof(DBDocument.Name)}, @{nameof(DBDocument.FullPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)});",
+                $"({nameof(DBDocument.Name)}, {nameof(DBDocument.FullPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}, {nameof(DBDocument.LastChangedUserId)}, {nameof(DBDocument.LastChangedData)}) " +
+                $"VALUES (@{nameof(DBDocument.Name)}, @{nameof(DBDocument.FullPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
             dBDocument);
         }
 
@@ -42,6 +41,13 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public void UpdateDBDocument_IsClosedByProject(DBProject dbProject) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                   $"SET {nameof(DBDocument.IsClosed)}='{dbProject.IsClosed}' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
+
+        /// <summary>
+        /// Обновить дату последнего изменения документа
+        /// </summary>
+        public void UpdateDBDocument_LastChangedData(DBDocument dBDocument, string data) =>
+            ExecuteNonQuery($"UPDATE {_dbTableName} " +
+                  $"SET {nameof(DBDocument.LastChangedData)}='{data}' WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
 
     }
 }
