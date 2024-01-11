@@ -58,6 +58,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                 .ToArray();
             #endregion
 
+            string userResultMsg;
+            HashSet<string> resultGridSections = new HashSet<string>();
             using (Transaction trans = new Transaction(doc))
             {
                 trans.Start("КП: Копировать пар-ры сеток");
@@ -112,11 +114,22 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                         return Result.Cancelled;
                     }
 
-                    sectionParam.Set(sectionParamLink.AsString());
+                    string sectionParamLinkData = sectionParamLink.AsString();
+                    sectionParam.Set(sectionParamLinkData);
+                    
+                    if (!string.IsNullOrEmpty(sectionParamLinkData))
+                        resultGridSections.Add(sectionParamLinkData);
                 }
 
+                userResultMsg = string.Join(", ", resultGridSections);
                 trans.Commit();
             }
+
+            TaskDialog taskDialog = new TaskDialog("Результат работы")
+            {
+                MainContent = $"Перенос данных из разбивочного файла выполнен успешно!\nВ проекте выявлены форматы секций: {userResultMsg}",
+            };
+            taskDialog.Show();
 
             return Result.Succeeded;
         }
