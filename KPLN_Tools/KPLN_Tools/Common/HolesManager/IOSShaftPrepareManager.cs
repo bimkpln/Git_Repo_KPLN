@@ -96,7 +96,7 @@ namespace KPLN_Tools.Common.HolesManager
                 arElemColl.AddRange(new FilteredElementCollector(linkDoc)
                     .OfClass(typeof(Floor))
                     .WherePasses(filter)
-                    .Where(fl => fl.Name.StartsWith("00_"))
+                    .Where(fl => fl.Name.StartsWith("00_") || fl.Name.StartsWith("KTS_00_"))
                     .Cast<Floor>());
                 arElemColl.AddRange(new FilteredElementCollector(linkDoc)
                     .OfClass(typeof(RoofBase))

@@ -119,7 +119,7 @@ namespace KPLN_Tools.Common.HolesManager
                 IEnumerable<Floor> floorColl = new FilteredElementCollector(linkDoc)
                     .OfClass(typeof(Floor))
                     .WherePasses(filter)
-                    .Where(fl => fl.Name.StartsWith("00_"))
+                    .Where(fl => fl.Name.StartsWith("00_") || fl.Name.StartsWith("KTS_00_"))
                     .Cast<Floor>();
 
                 if (floorColl.Any())
