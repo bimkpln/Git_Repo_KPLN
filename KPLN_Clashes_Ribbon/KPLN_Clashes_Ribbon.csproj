@@ -227,15 +227,8 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="Source\RevitData\2018\ClashPoint.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Source\RevitData\2020\ClashPoint.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Source\RevitData\2022\ClashPoint.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="Source\RevitData\2020\ClashPoint.rfa" />
+    <None Include="Source\RevitData\2023\ClashPoint.rfa" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -249,4 +242,15 @@
   </Target>
   <Import Project="packages\EntityFramework.6.4.4\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.4.4\build\EntityFramework.targets')" />
   <Import Project="packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
+  <PropertyGroup>
+    <PreBuildEvent>IF "$(ConfigurationName)" == "Debug" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+)
+IF "$(ConfigurationName)" == "Revit2020" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2020\"
+)
+IF "$(ConfigurationName)" == "Revit2023" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+)</PreBuildEvent>
+  </PropertyGroup>
 </Project>

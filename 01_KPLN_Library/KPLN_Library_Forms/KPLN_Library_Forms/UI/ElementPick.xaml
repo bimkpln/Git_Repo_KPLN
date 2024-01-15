@@ -15,7 +15,7 @@
         Topmost="False" 
         WindowStartupLocation="CenterScreen" 
         Closing="Window_Closing" 
-        SizeToContent="Height" 
+        SizeToContent="WidthAndHeight" 
         Loaded="OnLoaded">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">
@@ -44,7 +44,7 @@
                                     Content="{TemplateBinding Content}" 
                                     HorizontalAlignment="Center" 
                                     VerticalAlignment="Center" 
-                                    Margin="0,0,0,0" />
+                                    Margin="5,0,5,0" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>

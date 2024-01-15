@@ -81,17 +81,20 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition/>
                                     </Grid.ColumnDefinitions>
+                                    
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Элемент 1" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5,0,0,0" Text="Категория: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Element_1_Info}"  TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="10"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="10"/>
                                     <Button Grid.Row="2" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1"/>
+                                    
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Элемент 2" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
                                     <TextBlock HorizontalAlignment="Right" Grid.Row="4" Grid.Column="0" Text=" Категория: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Element_2_Info}" TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="12"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="10"/>
                                     <Button Grid.Row="5" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2"/>
-                                    <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" Grid.Row="6" Grid.Column="0" Margin="5,0,0,0" Text="Дополнительно: " Foreground="White" FontSize="12"/>
+
+                                    <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0" Margin="5,0,0,0" Text="Дополнительно: " Foreground="White" FontSize="12"/>
                                     <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="6" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2"/>
                                     <TextBlock Visibility="{Binding IsGroup}" HorizontalAlignment="Right" Grid.Row="7" Grid.Column="0" Margin="5,0,0,0" Text="Субэлементы: " Foreground="White" FontSize="12"/>
                                     <ItemsControl Visibility="{Binding IsGroup}" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding SubElements}">

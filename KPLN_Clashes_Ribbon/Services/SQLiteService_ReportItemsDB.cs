@@ -29,7 +29,9 @@ namespace KPLN_Clashes_Ribbon.Services
                         $"{nameof(ReportItem.ReportGroupId)} INTEGER, " +
                         $"{nameof(ReportItem.Name)} TEXT, " +
                         $"{nameof(ReportItem.Image)} BLOB, " +
+                        $"{nameof(ReportItem.Element_1_Id)} INTEGER, " +
                         $"{nameof(ReportItem.Element_1_Info)} TEXT, " +
+                        $"{nameof(ReportItem.Element_2_Id)} INTEGER, " +
                         $"{nameof(ReportItem.Element_2_Info)} TEXT, " +
                         $"{nameof(ReportItem.Point)} TEXT, " +
                         $"{nameof(ReportItem.StatusId)} INTEGER NOT NULL DEFAULT 1, " +
@@ -48,14 +50,16 @@ namespace KPLN_Clashes_Ribbon.Services
                     $"{nameof(ReportItem.ReportGroupId)}, " +
                     $"{nameof(ReportItem.Name)}, " +
                     $"{nameof(ReportItem.Image)}, " +
+                    $"{nameof(ReportItem.Element_1_Id)}, " +
                     $"{nameof(ReportItem.Element_1_Info)}, " +
+                    $"{nameof(ReportItem.Element_2_Id)}, " +
                     $"{nameof(ReportItem.Element_2_Info)}, " +
                     $"{nameof(ReportItem.Point)}, " +
                     $"{nameof(ReportItem.StatusId)}, " +
                     $"{nameof(ReportItem.ParentGroupId)}) " +
                 "VALUES " +
-                    "(@Id, @ReportGroupId, @Name, @Image, " +
-                    "@Element_1_Info, @Element_2_Info, @Point, @StatusId, @ParentGroupId)",
+                    "(@Id, @ReportGroupId, @Name, @Image, @Element_1_Id, @Element_1_Info, " +
+                    "@Element_2_Id, @Element_2_Info, @Point, @StatusId, @ParentGroupId)",
                 reports);
         #endregion
 

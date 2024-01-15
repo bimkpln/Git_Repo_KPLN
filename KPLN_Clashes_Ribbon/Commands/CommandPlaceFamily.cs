@@ -33,12 +33,12 @@ namespace KPLN_Clashes_Ribbon.Commands
         private string ElementInfo2 { get; set; }
         public Result Execute(UIApplication app)
         {
+            Document doc = app.ActiveUIDocument.Document;
+            UIDocument uidoc = app.ActiveUIDocument;
             try
             {
                 if (app.ActiveUIDocument != null)
                 {
-                    Document doc = app.ActiveUIDocument.Document;
-                    
                     // Проверка на наличие элемента в файле
                     Element element1 = doc.GetElement(new ElementId(Id1));
                     Element element2 = doc.GetElement(new ElementId(Id2));
@@ -88,8 +88,13 @@ namespace KPLN_Clashes_Ribbon.Commands
                         catch (Exception) { }
                     }
                     FamilyInstance createdinstance = CreateFamilyInstance(doc, transformed_location);
-                    if (createdinstance != null) { ReportWindow.OnClosingActions.Add(new CommandRemoveInstance(doc, createdinstance)); }
+                    uidoc.Selection.SetElementIds(new List<ElementId>() { createdinstance.Id });
+
+                    if (createdinstance != null) 
+                        ReportWindow.OnClosingActions.Add(new CommandRemoveInstance(doc, createdinstance));
+                    
                     ZoomTools.ZoomElement(createdinstance.get_BoundingBox(null), app.ActiveUIDocument);
+                    
                     t.Commit();
                 }
                 return Result.Succeeded;
@@ -152,7 +157,8 @@ namespace KPLN_Clashes_Ribbon.Commands
         private static FamilySymbol GetFamilySymbol(Document doc)
         {
             string familyName = "ClashPoint";
-            foreach (Element element in new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_GenericModel))
+            FilteredElementCollector genModelsColl = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_GenericModel);
+            foreach (Element element in genModelsColl)
             {
                 FamilySymbol searchSymbol = element as FamilySymbol;
                 if (searchSymbol.FamilyName == familyName)
@@ -163,8 +169,6 @@ namespace KPLN_Clashes_Ribbon.Commands
             }
             try
             {
-                
-                
                 if (!doc.LoadFamily(($@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{ModuleData.RevitVersion}\{familyName}.rfa")))
                 {
                     throw new Exception("Семейство для метки не найдено!");

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
@@ -68,16 +69,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             ParentGroupId = parentGroupId;
             CommentCollection = comments;
 
-            try
-            { Element_1_Id = int.Parse(element_1_id, System.Globalization.NumberStyles.Integer); }
-            catch (Exception)
-            { Element_1_Id = -1; }
+            if (int.TryParse(element_1_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_1))
+                Element_1_Id = id_1;
+            else
+                Element_1_Id = -1;
 
-            try
-            { Element_2_Id = int.Parse(element_2_id, System.Globalization.NumberStyles.Integer); }
-            catch (Exception)
-            { Element_2_Id = -1; }
-
+            if (int.TryParse(element_2_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_2))
+                Element_2_Id = id_2;
+            else
+                Element_2_Id = -1;
+            
             Element_1_Info = element_1_info;
             Element_2_Info = element_2_info;
 
@@ -109,6 +110,10 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public string Name { get; set; }
 
         public byte[] Image { get; set; }
+
+        public int Element_1_Id { get; set; }
+
+        public int Element_2_Id { get; set; }
 
         public string Element_1_Info { get; set; }
 
@@ -161,10 +166,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         #endregion
 
         #region Дополнительная визуализация
-        public int Element_1_Id { get; set; }
-
-        public int Element_2_Id { get; set; }
-
         public KPItemStatus Status
         {
             get => _status;
