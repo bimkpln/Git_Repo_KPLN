@@ -4,7 +4,7 @@ using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -155,10 +155,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public virtual void Check()
         {
-            CheckElemParams(ElemsOnLevel);
-            CheckElemParams(ElemsByHost);
-            CheckElemParams(ElemsUnderLevel);
-            CheckElemParams(StairsElems);
+            Task elemsOnLevelCheckTask = Task.Run(() => CheckElemParams(ElemsOnLevel));
+            Task elemsByHostCheckTask = Task.Run(() => CheckElemParams(ElemsByHost));
+            Task elemsUnderLevelCheckTask = Task.Run(() => CheckElemParams(ElemsUnderLevel));
+            Task elemsStairsElemsCheckTask = Task.Run(() => CheckElemParams(StairsElems));
+
+            Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
         }
 
         /// <summary>
@@ -229,7 +231,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     }
                 }
                 LevelAndGridSolid downLevelAndGridSolid = SectDataSolids
-                    .Where(s => 
+                    .Where(s =>
                         s.GridData.CurrentSection.Equals(maxIntersectInstance.GridData.CurrentSection)
                         && s.CurrentLevelData.CurrentLevel.Equals(maxIntersectInstance.CurrentLevelData.CurrentLevel))
                     .FirstOrDefault();
