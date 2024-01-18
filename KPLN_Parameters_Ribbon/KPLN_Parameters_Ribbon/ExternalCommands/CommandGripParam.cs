@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Parameters_Ribbon.Common.GripParam;
 using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
 using System;
 using System.Collections.Generic;
@@ -63,7 +64,24 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 }
                 else
                 {
-                    throw new Exception("Ошибка номера отдела в БД. Обратись в BIM-отдел");
+                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                    {
+                        MainContent = "Ошибка номера отдела в БД. Обратись в BIM-отдел",
+                        MainIcon = TaskDialogIcon.TaskDialogIconInformation
+                    };
+                    taskDialog.Show();
+                    return Result.Failed;
+                }
+
+                if (gripBuilder == null)
+                {
+                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                    {
+                        MainContent = "Ошибка определения проекта. Обратись в BIM-отдел",
+                        MainIcon = TaskDialogIcon.TaskDialogIconInformation
+                    };
+                    taskDialog.Show();
+                    return Result.Failed;
                 }
 
                 GripDirector gripDirector = new GripDirector(gripBuilder);
@@ -86,6 +104,23 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 }
 
                 return Result.Succeeded;
+            }
+            catch (GripParamExection gpe)
+            {
+                string msg = string.Empty;
+                if (gpe.ErrorElements == null)
+                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}";
+                else
+                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}\nДля элементов:\n{string.Join(", ", gpe.ErrorElements.Select(e => e.Id.ToString()))}";
+
+                TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                {
+                    MainContent = msg,
+                    MainIcon = TaskDialogIcon.TaskDialogIconWarning
+                };
+                taskDialog.Show();
+
+                return Result.Failed;
             }
             catch (Exception e)
             {

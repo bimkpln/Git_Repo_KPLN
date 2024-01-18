@@ -62,7 +62,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private List<InstanceElemData> _elemsByHost = new List<InstanceElemData>();
         private List<InstanceElemData> _elemsUnderLevel = new List<InstanceElemData>();
         private List<InstanceElemData> _stairsElems = new List<InstanceElemData>();
+        public List<InstanceElemData> _allElements = new List<InstanceElemData>();
         private List<LevelAndGridSolid> _sectDataSolids = new List<LevelAndGridSolid>();
+        private List<GripParamError> _errorElements = new List<GripParamError>();
         private int _allElementsCount = 0;
         private int _hostElementsCount = 0;
 
@@ -103,12 +105,35 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         }
 
         /// <summary>
+        /// Коллекция всех эл-в
+        /// </summary>
+        public List<InstanceElemData> AllElements
+        {
+            get
+            {
+                if (_allElements.Count == 0)
+                    _allElements = ElemsOnLevel.Concat(ElemsByHost).Concat(ElemsUnderLevel).Concat(StairsElems).ToList();
+
+                return _allElements;
+            }
+        }
+
+        /// <summary>
         /// Количество всех элементов
         /// </summary>
         public int AllElementsCount
         {
-            get { return _allElementsCount; }
-            private set { _allElementsCount = value; }
+            get
+            {
+                if (_allElementsCount == 0)
+                {
+                    _allElementsCount = AllElements.Count;
+                    if (_allElementsCount == 0)
+                        throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!\n");
+                }
+
+                return _allElementsCount;
+            }
         }
 
         /// <summary>
@@ -116,8 +141,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public int HostElementsCount
         {
-            get { return _hostElementsCount; }
-            private set { _hostElementsCount = value; }
+            get
+            {
+                if (_hostElementsCount == 0)
+                    _hostElementsCount = ElemsByHost.Count;
+
+                return _hostElementsCount;
+            }
         }
 
         /// <summary>
@@ -133,7 +163,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Коллекция элементов, которые при анализе выдали ошибку
         /// </summary>
-        public List<GripParamError> ErrorElements = new List<GripParamError>();
+        public List<GripParamError> ErrorElements
+        {
+            get => _errorElements;
+            private set
+            {
+                _errorElements = value;
+            }
+        }
 
         public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra)
         {
@@ -154,25 +191,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Метод проверки элементов на заполняемость параметров и чистка списков от элементов, не подверженных чистке
         /// </summary>
-        public virtual void Check()
+        public virtual void Check(Document doc)
         {
             Task elemsOnLevelCheckTask = Task.Run(()=> CheckElemParams(ElemsOnLevel));
             Task elemsByHostCheckTask = Task.Run(()=> CheckElemParams(ElemsByHost));
             Task elemsUnderLevelCheckTask = Task.Run(()=> CheckElemParams(ElemsUnderLevel));
             Task elemsStairsElemsCheckTask = Task.Run(()=> CheckElemParams(StairsElems));
 
-            Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
-        }
+            ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, AllElements.Select(e => e.CurrentElem.Id).ToArray());
+            int errorCount = AllElementsCount - availableWSElemsId.Count;
+            if (errorCount > 0)
+                throw new GripParamExection($"Возможность изменения ограничена для {errorCount} элементов. Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы\n");
 
-        /// <summary>
-        /// Подсчет элементов для обработки
-        /// </summary>
-        public virtual void CountElements()
-        {
-            HostElementsCount = ElemsByHost.Count;
-            AllElementsCount = ElemsOnLevel.Count + ElemsUnderLevel.Count + ElemsByHost.Count + StairsElems.Count;
-            if (AllElementsCount == 0)
-                throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!");
+            Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
         }
 
         /// <summary>
@@ -216,7 +247,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 //    var a = 1;
                 //}
                 InstanceGeomData instGeomData = (InstanceGeomData)instElemData;
-                if (instGeomData == null) throw new Exception($"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент ьбез гометриии. Обратись к разработчику");
+                if (instGeomData == null) throw new GripParamExection($"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент ьбез гометриии. Обратись к разработчику");
 
                 LevelAndGridSolid maxIntersectInstance = GetMaxIntersectedLevelAndGridSolid(instGeomData);
                 if (maxIntersectInstance == null)
@@ -302,7 +333,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 Parameter levParam = elem.LookupParameter(LevelParamName);
                 if (sectParam == null || levParam == null)
                 {
-                    throw new Exception($"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа). " +
+                    throw new GripParamExection($"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа). " +
                         $"Пример: \nКатегория: {elem.Category.Name} / id: {elem.Id}");
                 }
 
@@ -414,7 +445,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"Что-то непонятное с элементом с id: {instGeomData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}");
+                    throw new GripParamExection($"Что-то непонятное с элементом с id: {instGeomData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}");
                 }
             }
 
@@ -470,7 +501,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 {
                     if (!ErrorElements.Where(e => e.ErrorElement.Id == instGeomData.CurrentElem.Id).Any())
                     {
-                        throw new Exception($"Что-то непонятное с элементом с id: {instGeomData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}");
+                        throw new GripParamExection($"Что-то непонятное с элементом с id: {instGeomData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}");
                     }
                 }
             }

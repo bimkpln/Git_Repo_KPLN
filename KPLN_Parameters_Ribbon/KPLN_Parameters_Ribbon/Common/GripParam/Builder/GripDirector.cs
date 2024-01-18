@@ -22,8 +22,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         public void BuildWriter()
         {
             _builder.Prepare();
-            _builder.Check();
-            _builder.CountElements();
+            _builder.Check(_builder.Doc);
 
             // Заполняю уровни с учетом секций по геометрии
             using (Transaction t = new Transaction(_builder.Doc))
