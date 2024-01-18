@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Parameters_Ribbon.Common.CheckParam.Builder;
 using System;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -11,7 +13,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandCheckParamData : IExternalCommand
     {
-        public Result Execute(ExternalCommandData commandData, ref string message, Autodesk.Revit.DB.ElementSet elements)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
 #if Revit2023 || Revit2022 || Revit2020 || Revit2018
             TaskDialog.Show("упс....", "Ата-та... Еще работаем над этим!");
@@ -24,7 +26,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
 
-            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
+            int userDepartment = Module.CurrentDBUser.SubDepartmentId;
             // Техническая подмена разделов для режима тестирования
             if (userDepartment == 6) { userDepartment = 4; }
 

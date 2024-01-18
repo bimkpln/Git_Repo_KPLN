@@ -123,6 +123,7 @@
     <Compile Include="Common\GripParam\Builder\GripBuilder_AR.cs" />
     <Compile Include="Common\GripParam\Builder\GripDirector.cs" />
     <Compile Include="Common\GripParam\GripParamError.cs" />
+    <Compile Include="Common\GripParam\GripParamExection.cs" />
     <Compile Include="Common\GripParam\InstanceElemData.cs" />
     <Compile Include="Common\GripParam\InstanceGeomData.cs" />
     <Compile Include="ExternalCommands\CommandCheckParamData.cs" />
