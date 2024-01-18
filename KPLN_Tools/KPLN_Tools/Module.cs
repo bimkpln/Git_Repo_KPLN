@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using System.IO;
@@ -11,7 +13,20 @@ namespace KPLN_Tools
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private readonly int _userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
+        private static DBUser _currentDBUser;
+        
+        internal static DBUser CurrentDBUser
+        {
+            get
+            {
+                if (_currentDBUser == null)
+                {
+                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+                    _currentDBUser = userDbService.GetCurrentDBUser();
+                }
+                return _currentDBUser;
+            }
+        }
 
         public Result Close()
         {
@@ -116,6 +131,19 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты КР
+            PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
+                "Плагины КР",
+                "КР: Коллекция плагинов для автоматизации задач",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                PngImageSource("KPLN_Tools.Imagens.krMainSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
+                panel,
+                false);
+
             PushButtonData smnx_Rebar = CreateBtnData(
                 "SMNX_Металоёмкость",
                 "SMNX_Металоёмкость",
@@ -134,18 +162,6 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
 
-            PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
-                "Плагины КР",
-                "КР: Коллекция плагинов для автоматизации задач",
-                string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxBig.png"),
-                panel,
-                false);
             krToolsPullDownBtn.AddPushButton(smnx_Rebar);
             #endregion
 
@@ -182,7 +198,7 @@ namespace KPLN_Tools
             #endregion
 
             #region  Наполняю плагинами в зависимости от отдела
-            if (_userDepartment != 2 && _userDepartment != 3)
+            if (CurrentDBUser.Id != 2 && CurrentDBUser.Id != 3)
             {
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }

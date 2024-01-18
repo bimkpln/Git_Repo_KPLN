@@ -73,7 +73,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Release\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -168,6 +168,8 @@
     <EmbeddedResource Include="Imagens\checkHolesFlippingSmall.png" />
     <EmbeddedResource Include="Imagens\searchUserBig.png" />
     <EmbeddedResource Include="Imagens\searchUserSmall.png" />
+    <EmbeddedResource Include="Imagens\krMainBig.png" />
+    <EmbeddedResource Include="Imagens\krMainSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
