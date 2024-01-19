@@ -13,7 +13,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             SQLFilesExistChecker();
             string connectionString = CreateConnectionString("KPLN_Loader_MainDB");
 
-            return new SubDepartmentDbService(connectionString, DB_Enumerator.SubDepartments.ToString());
+            return new SubDepartmentDbService(connectionString, DBSubDepartment.CurrentDB);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     /// </summary>
     internal class SubDepartmentCodeMatrixDbService : DbService
     {
-        internal SubDepartmentCodeMatrixDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
+        internal SubDepartmentCodeMatrixDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 

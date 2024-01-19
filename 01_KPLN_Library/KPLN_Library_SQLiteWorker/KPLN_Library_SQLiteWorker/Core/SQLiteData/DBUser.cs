@@ -9,10 +9,9 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     /// </summary>
     public class DBUser : IDBEntity
     {
+        #region Столбцы из БД
         [Key]
         public int Id { get; set; }
-
-        public DB_Enumerator CurrentDB { get; set; }
 
         /// <summary>
         /// Системное имя пользователя (Windows)
@@ -54,5 +53,16 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Режим отладки вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsDebugMode { get; set; }
+
+        /// <summary>
+        /// Ограничить работу пользователя вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
+        /// </summary>
+        public bool IsUserRestricted { get; set; }
+        #endregion
+
+        /// <summary>
+        /// Привязка к БД из DB_Enumerator
+        /// </summary>
+        public static DB_Enumerator CurrentDB { get; } = DB_Enumerator.Users;
     }
 }

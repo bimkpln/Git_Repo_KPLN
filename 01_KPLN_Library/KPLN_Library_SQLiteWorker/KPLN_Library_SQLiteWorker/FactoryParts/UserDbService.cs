@@ -12,7 +12,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     {
         private readonly string _sysUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
 
-        internal UserDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
+        internal UserDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 

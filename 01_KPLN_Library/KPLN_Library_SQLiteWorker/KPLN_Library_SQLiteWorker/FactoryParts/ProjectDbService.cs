@@ -10,7 +10,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     /// </summary>
     public class ProjectDbService : DbService
     {
-        internal ProjectDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
+        internal ProjectDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 

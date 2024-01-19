@@ -11,8 +11,8 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData.Abstractions
         int Id { get; set; }
 
         /// <summary>
-        /// Привязка к БД из DB_Enumerator
+        /// Привязка к БД из DB_Enumerator (на будущее - в C#7.X нет возможности указывать статические свойства)
         /// </summary>
-        DB_Enumerator CurrentDB { get; set; }
+        //public static DB_Enumerator CurrentDB { get; }
     }
 }

@@ -11,6 +11,7 @@
         Modules,
         Projects,
         ProjectsMatrix,
+        RevitDialogs,
         SubDepartments,
         SubDepartmentCodeMatrix,
         Users

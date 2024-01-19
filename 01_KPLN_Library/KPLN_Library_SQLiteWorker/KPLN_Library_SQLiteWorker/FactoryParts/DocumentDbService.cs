@@ -9,7 +9,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     /// </summary>
     public class DocumentDbService : DbService
     {
-        internal DocumentDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
+        internal DocumentDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 

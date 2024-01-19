@@ -9,10 +9,9 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     /// </summary>
     public class DBModule : IDBEntity
     {
+        #region Столбцы из БД
         [Key]
         public int Id { get; set; }
-
-        public DB_Enumerator CurrentDB { get; set; }
 
         /// <summary>
         /// Id отдела
@@ -44,5 +43,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Скрытая загрузка библиотек вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsLibraryModule { get; set; }
+        #endregion
+
+        /// <summary>
+        /// Привязка к БД из DB_Enumerator
+        /// </summary>
+        public static DB_Enumerator CurrentDB { get; } = DB_Enumerator.Modules;
     }
 }

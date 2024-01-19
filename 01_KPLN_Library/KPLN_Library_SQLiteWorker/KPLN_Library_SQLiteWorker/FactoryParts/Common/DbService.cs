@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using Dapper;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -13,14 +14,16 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
     public class DbService
     {
         private protected string _connectionString;
+        private protected DB_Enumerator _dBEnumerator;
         private protected string _dbTableName;
 
         /// <param name="connectionString">Строка подключения</param>
-        /// <param name="dbTableName">Имя таблицы в БД</param>
-        private protected DbService(string connectionString, string dbTableName)
+        /// <param name="dbEnumerator">Таблица в БД</param>
+        private protected DbService(string connectionString, DB_Enumerator dbEnumerator)
         {
             _connectionString = connectionString;
-            _dbTableName = dbTableName;
+            _dBEnumerator = dbEnumerator;
+            _dbTableName = _dBEnumerator.ToString();
         }
 
         private protected void ExecuteNonQuery(string query, object parameters = null)

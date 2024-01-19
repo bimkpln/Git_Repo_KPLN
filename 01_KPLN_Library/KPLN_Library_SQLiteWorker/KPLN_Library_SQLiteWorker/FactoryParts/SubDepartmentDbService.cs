@@ -15,7 +15,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     {
         private readonly SubDepartmentCodeMatrixDbService _subDepartmentCodeMatrixDbService;
         
-        internal SubDepartmentDbService(string connectionString, string databaseName) : base(connectionString, databaseName)
+        internal SubDepartmentDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
             _subDepartmentCodeMatrixDbService = (SubDepartmentCodeMatrixDbService)new CreatorSubDepartmentCodeMatrixDbService().CreateService();
         }
