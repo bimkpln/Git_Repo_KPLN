@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Looker", "KPLN_Looker\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_SQLiteWorker", "..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker.csproj", "{F852DAC2-074F-426E-B853-3A858062FCD7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Bitrix24Worker", "..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker.csproj", "{B81FECFC-20D8-46E0-88DF-6620FBD3D970}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +33,14 @@ Global
 		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2020|Any CPU.Build.0 = Revit2023|Any CPU
 		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
 		{F852DAC2-074F-426E-B853-3A858062FCD7}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|Any CPU.ActiveCfg = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|Any CPU.Build.0 = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|Any CPU.ActiveCfg = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

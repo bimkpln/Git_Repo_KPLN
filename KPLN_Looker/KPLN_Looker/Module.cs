@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
@@ -9,6 +10,7 @@ using KPLN_Looker.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Looker
@@ -40,6 +42,7 @@ namespace KPLN_Looker
                 }
 
                 //Подписка на события
+                application.ControlledApplication.ApplicationInitialized += OnApplicationInitialized;
                 application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
                 application.ViewActivated += OnViewActivated;
@@ -54,6 +57,23 @@ namespace KPLN_Looker
             {
                 Print($"Ошибка: {ex.Message}", MessageType.Error);
                 return Result.Failed;
+            }
+        }
+
+        /// <summary>
+        /// Событие, которое будет выполнено при инициализации приложения
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnApplicationInitialized(object sender, ApplicationInitializedEventArgs e)
+        {
+            if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+            {
+                MessageBox.Show(
+                    $"Ваша работа ограничена работой в тестовых файлах. Любой факт попытки открытия/синхронизации при работе с файлами с диска Y:\\ - будет передан в BIM-отдел", 
+                    "Предупреждение", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Asterisk);
             }
         }
 
@@ -74,6 +94,23 @@ namespace KPLN_Looker
             string fileName = fileInfo.FullName;
             if (IsMonitoredFile(doc, fileInfo, fileName))
             {
+                #region Отлов пользователей с ограничением допуска к работе
+                if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+                {
+                    BitrixMessageSender.SendErrorMsg_ToBIMChat(
+                        $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" + 
+                        $"Действие: Открыл проект {doc.Title}.");
+                    
+                    MessageBox.Show(
+                        $"Вы открытли проект с диска Y:\\. Напомню - Ваша работа ограничена тестовыми файлами! Данные переданы в BIM-отдел",
+                        "Ошибка",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+                #endregion
+
+                #region Обработка проектов КПЛН
                 DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(fileName);
                 if (dBProject != null)
                 {
@@ -116,6 +153,7 @@ namespace KPLN_Looker
                     };
                     td.Show();
                 }
+                #endregion
             }
 
         }
@@ -125,7 +163,7 @@ namespace KPLN_Looker
         /// </summary>
         private void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            View activeView = args.CurrentActiveView;
+            Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
             #region Закрываю вид, если он для бим-отдела
             if (activeView != null
                 && activeView is View3D _
@@ -154,6 +192,7 @@ namespace KPLN_Looker
         /// </summary>
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
+            var a = 1;
             //try
             //{
             //    #region Анализ триггерных изменений по проекту
@@ -190,6 +229,23 @@ namespace KPLN_Looker
             string fileName = fileInfo.FullName;
             if (IsMonitoredFile(doc, fileInfo, fileName))
             {
+                #region Отлов пользователей с ограничением допуска к работе
+                if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+                {
+                    BitrixMessageSender.SendErrorMsg_ToBIMChat(
+                        $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
+                        $"Действие: Произвел синхронизацию проекта {doc.Title}.");
+
+                    MessageBox.Show(
+                        $"Вы произвели синхронизацию проекта с диска Y:\\. Данные переданы в BIM-отдел и ГИ бюро",
+                        "Ошибка",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                #endregion
+
+                #region Работа с проектами КПЛН
                 DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(fileName);
                 if (dBProject != null)
                 {
@@ -199,7 +255,7 @@ namespace KPLN_Looker
                         // Защита закрытого проекта от изменений
                         if (dBDocument.IsClosed)
                         {
-                            BitrixMessageService
+                            BitrixMessageSender
                                 .SendErrorMsg_ToBIMChat($"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                                 $"Действие: Синхронизиция в проекте {doc.Title}, который ЗАКРЫТ.");
 
@@ -215,6 +271,7 @@ namespace KPLN_Looker
                         _dBWorkerService.Update_DBDocumentLastChangedData(dBDocument);
                     }
                 }
+                #endregion
             }
         }
 
