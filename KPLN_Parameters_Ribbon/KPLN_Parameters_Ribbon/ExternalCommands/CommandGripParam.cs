@@ -104,6 +104,20 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                 return Result.Failed;
             }
+            // Обработка для многопоточки (т.е. несколько ошибок, которые могут произойти при вызове функций несколько раз в разных потоках)
+            catch (AggregateException ae)
+            {
+                HashSet<Exception> hashAeS = ae.InnerExceptions.ToHashSet();
+                foreach (Exception e in hashAeS)
+                {
+                    if (e is GripParamExection gpe)
+                        Print($"Прервано с ошибкой: {gpe.ErrorMessage}", MessageType.Error);
+                    else
+                        Print($"Прервано с ошибкой: {e}", MessageType.Error);
+                }
+
+                return Result.Failed;
+            }
             catch (Exception e)
             {
                 Print($"Прервано с ошибкой: {e}", MessageType.Error);
