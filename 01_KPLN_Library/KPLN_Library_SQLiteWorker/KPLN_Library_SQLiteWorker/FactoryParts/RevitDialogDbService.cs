@@ -14,6 +14,13 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         }
 
         /// <summary>
+        /// Получить все RevitDialog
+        /// </summary>
+        public IEnumerable<DBRevitDialog> GetDBRevitDialogs() =>
+            ExecuteQuery<DBRevitDialog>(
+                 $"SELECT * FROM {_dbTableName};");
+
+        /// <summary>
         /// Получить RevitDialog по DialogId
         /// </summary>
         public IEnumerable<DBRevitDialog> GetDBRevitDialog_ByDialogId(string dialogId) =>
