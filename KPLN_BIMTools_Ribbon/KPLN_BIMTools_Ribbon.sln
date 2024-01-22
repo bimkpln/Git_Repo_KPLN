@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_BIMTools_Ribbon", "KPLN_BIMTools_Ribbon\KPLN_BIMTools_Ribbon.csproj", "{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2023|Any CPU = Revit2023|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
+		{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0E33DABF-5B86-4263-BA84-2C607B902456}
+	EndGlobalSection
+EndGlobal
