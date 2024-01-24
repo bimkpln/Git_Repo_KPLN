@@ -39,7 +39,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
         }
 
         /// <summary>
-        /// Коллекция BoundingBoxXYZ элемента
+        /// Коллекция точек геом. центров составного элемента
         /// </summary>
         public List<XYZ> CurrentGeomCenterColl
         {

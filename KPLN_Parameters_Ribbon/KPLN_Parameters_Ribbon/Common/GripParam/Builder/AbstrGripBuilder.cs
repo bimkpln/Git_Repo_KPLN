@@ -111,9 +111,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             get
             {
-                if (_allElements.Count == 0)
-                    _allElements = ElemsOnLevel.Concat(ElemsByHost).Concat(ElemsUnderLevel).Concat(StairsElems).ToList();
-
+                _allElements = ElemsOnLevel.Concat(ElemsByHost).Concat(ElemsUnderLevel).Concat(StairsElems).ToList();
                 return _allElements;
             }
         }
@@ -125,13 +123,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             get
             {
+                _allElementsCount = AllElements.Count;
                 if (_allElementsCount == 0)
-                {
-                    _allElementsCount = AllElements.Count;
-                    if (_allElementsCount == 0)
-                        throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!\n");
-                }
-
+                    throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!\n");
                 return _allElementsCount;
             }
         }
@@ -214,7 +208,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
-                //if (instElemData.CurrentElem.Id.IntegerValue == 5137353)
+                //if (instElemData.CurrentElem.Id.IntegerValue == 3964609)
                 //{
                 //    var a = 1;
                 //}
@@ -237,6 +231,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                 instElemData.CurrentElem.LookupParameter(SectionParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
                 instElemData.CurrentElem.LookupParameter(LevelParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentLevelNumber);
+                instElemData.IsEmptyData = false;
+                
                 pb.Update(++PbCounter, "Поиск по геометрии");
             }
 
@@ -270,6 +266,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                 instElemData.CurrentElem.LookupParameter(SectionParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
                 instElemData.CurrentElem.LookupParameter(LevelParamName).Set(downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber);
+                instElemData.IsEmptyData = false;
+
                 pb.Update(++PbCounter, "Поиск по геометрии");
             }
         }
@@ -313,9 +311,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                             "Вложенность: Не удалось определить основу. Скинь разработчику!"));
                     }
 
+                    instElemData.IsEmptyData = false;
+
                     pb.Update(++PbCounter, "Анализ элементов на основе");
                 }
             }
+        }
+
+        /// <summary>
+        /// Заполняю данными элементы, котоыре не подверглись обработке
+        /// </summary>
+        public void CheckNotExecutedElems()
+        {
+            ErrorElements.AddRange(AllElements.Where(e => e.IsEmptyData).Select(e => new GripParamError(e.CurrentElem, "Элементы не подверглись анализу")));
         }
 
         /// <summary>
@@ -459,7 +467,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private LevelAndGridSolid GetNearestIntersectedLevelAndGridSolid(InstanceGeomData instGeomData)
         {
             LevelAndGridSolid result = null;
-            double maxIntersectValue = 0;
+            double maxIntersectValue = double.MinValue;
+            // 4,5 м - условно возможное отклонение элемента от солида
+            double minPrjDistanceValue = 15;
             foreach (LevelAndGridSolid levelAndGridSolid in SectDataSolids)
             {
                 // Игнорирую заведомо отличающиеся по отметкам секции
@@ -468,8 +478,11 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     continue;
 
                 double tempIntersectValue = 0;
+                double tempPrjDistanceValue = 15;
                 try
                 {
+                    var a = tempPrjDistanceValue < double.MaxValue;
+                    var aa = tempPrjDistanceValue-1 < double.MaxValue;
                     foreach (Solid instSolid in instGeomData.CurrentSolidColl)
                     {
                         if (instSolid.Volume == 0)
@@ -478,12 +491,28 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         // Првоеряю положение в секции
                         Solid resSolid = GetIntesectedInstSolid(instSolid, levelAndGridSolid);
                         if (resSolid != null && resSolid.Volume > 0)
-                            tempIntersectValue += resSolid.Volume;
+                            tempIntersectValue += Math.Round(resSolid.Volume, 3);
                     }
 
-                    if (tempIntersectValue > 0 && maxIntersectValue < tempIntersectValue)
+                    if (tempIntersectValue > 0)
+                    {
+                        foreach (Face levelAndGridFace in levelAndGridSolid.LevelSolid.Faces)
+                        {
+                            foreach (XYZ checkPoint in instGeomData.CurrentGeomCenterColl)
+                            {
+                                IntersectionResult prjPointResult = levelAndGridFace.Project(checkPoint);
+                                if (prjPointResult != null && prjPointResult.Distance < tempPrjDistanceValue)
+                                {
+                                    tempPrjDistanceValue = Math.Round(prjPointResult.Distance, 3);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ((tempIntersectValue > 0 && maxIntersectValue <= tempIntersectValue) && (tempPrjDistanceValue < 15 && minPrjDistanceValue >= tempPrjDistanceValue))
                     {
                         maxIntersectValue = tempIntersectValue;
+                        minPrjDistanceValue = tempPrjDistanceValue;
                         result = levelAndGridSolid;
                     }
                 }

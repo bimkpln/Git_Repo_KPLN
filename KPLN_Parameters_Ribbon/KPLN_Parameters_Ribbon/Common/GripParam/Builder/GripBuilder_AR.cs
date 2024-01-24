@@ -58,6 +58,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Cast<RoofBase>()
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
+            // Категория "Потолки"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Ceiling))
+                .Cast<Ceiling>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
             // Семейства "Окна"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
