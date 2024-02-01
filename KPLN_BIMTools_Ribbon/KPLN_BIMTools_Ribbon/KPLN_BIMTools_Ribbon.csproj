@@ -46,7 +46,7 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU' ">
-    <OutputPath>bin\Revit2023\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\BIMTools_Ribbon\2023\</OutputPath>
     <DefineConstants>
     </DefineConstants>
     <Optimize>true</Optimize>
@@ -83,6 +83,9 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="RevitServerAPILib, Version=0.1.10.34061, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
@@ -99,10 +102,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\StaticAvailable.cs" />
-    <Compile Include="Common\ICopier.cs" />
-    <Compile Include="Common\ReviServerEnvironment.cs" />
-    <Compile Include="ExternalCommands\CommandImportFromRS.cs" />
-    <Compile Include="ExternalCommands\CommandExportToRS.cs" />
+    <Compile Include="Common\IExcecuteByUIApp.cs" />
+    <Compile Include="Common\RevitServerEnvironment.cs" />
+    <Compile Include="ExternalCommands\CommandRSExchange.cs" />
     <Compile Include="Forms\Example.xaml.cs">
       <DependentUpon>Example.xaml</DependentUpon>
     </Compile>

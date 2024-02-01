@@ -17,6 +17,7 @@ namespace KPLN_BIMTools_Ribbon
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private Logger _logger;
         private string _revitVersion;
+        private UIApplication _uiApp;
 
         public Result Close()
         {
@@ -27,8 +28,15 @@ namespace KPLN_BIMTools_Ribbon
         {
             _revitVersion = application.ControlledApplication.VersionNumber;
 
+            #region Получаю UIApplication из internal свойства UIControlledApplication
+            // https://stackoverflow.com/questions/42382320/getting-the-current-application-and-document-from-iexternalapplication-revit
+            string fieldName = "m_uiapplication";
+            FieldInfo fi = application.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            _uiApp = (UIApplication)fi.GetValue(application);
+            #endregion
+
             #region Настройка NLog
-            LogManager.Setup().LoadConfigurationFromFile(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location).ToString() + "\\nlog.config");
+            LogManager.Setup().LoadConfigurationFromFile(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString() + "\\nlog.config");
             _logger = LogManager.GetLogger("KPLN_BIMTools");
 
             string logDirPath = $"c:\\temp\\KPLN_Logs\\{_revitVersion}";
@@ -37,11 +45,11 @@ namespace KPLN_BIMTools_Ribbon
             LogManager.Configuration.Variables["logfilename"] = logFileName;
             #endregion
 
-            CommandExportToRS commandExportToRS = new CommandExportToRS(application, _logger);
-            CommandImportFromRS commandImportFromRS = new CommandImportFromRS(application, _logger);
+            CommandRSExchange.SetStaticEnvironment(application, _logger, _revitVersion);
 
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
 
+            #region Добавляю кнопки для ручного запуска
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "BIM");
 
@@ -55,39 +63,26 @@ namespace KPLN_BIMTools_Ribbon
 
             //Добавляю кнопку в выпадающий список pullDown
             AddPushButtonDataInPullDown(
-                "RS: Экспорт",
-                "RS: Экспорт",
-                "Экспортировать модели на Revit-Server KPLN",
+                "RS: Обмен",
+                "RS: Обмен",
+                "Обмен (экспорт/импорт) моделей с Revit-Server KPLN",
                 string.Format(
                     "Пакетная выгрзка моделей.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(CommandExportToRS).FullName,
+                typeof(CommandRSExchange).FullName,
                 pullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
                 "http://moodle.stinproject.local",
                 true
             );
+            #endregion
 
-            //Добавляю кнопку в выпадающий список pullDown
-            AddPushButtonDataInPullDown(
-                "RS: Импорт",
-                "RS: Импорт",
-                "Импортировать модели с Revit-Server KPLN",
-                string.Format(
-                    "Пакетный импорт моделей.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(CommandImportFromRS).FullName,
-                pullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
-                "http://moodle.stinproject.local",
-                true
-            );
+            #region Выполняю автоматический запуск
+            //AutoRun(nameof(CommandRSExchange));
+            #endregion
 
             return Result.Succeeded;
         }
@@ -158,6 +153,24 @@ namespace KPLN_BIMTools_Ribbon
                     }
                 }
             }
+        }
+
+        private void AutoRun(string externalCommand)
+        {
+            // Создаем тип
+            Type type = Type.GetType($"KPLN_BIMTools_Ribbon.ExternalCommands.{externalCommand}", true);
+
+            // Создаем экземпляр типа
+            object instance = Activator.CreateInstance(type);
+
+            // Определяем метод ExecuteByUIApp
+            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+            if (executeMethod != null)
+                executeMethod.Invoke(instance, new object[] { _uiApp });
+            else
+                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
         }
     }
 }
