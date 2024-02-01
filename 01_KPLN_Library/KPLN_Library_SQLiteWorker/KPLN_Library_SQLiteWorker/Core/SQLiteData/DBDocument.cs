@@ -14,14 +14,9 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public int Id { get; set; }
         
         /// <summary>
-        /// Имя файла
+        /// Путь к модели из хранилища
         /// </summary>
-        public string Name { get; set; }
-
-        /// <summary>
-        /// Полный путь к файлу
-        /// </summary>
-        public string FullPath { get; set; }
+        public string CentralPath { get; set; }
 
         /// <summary>
         /// Проект, к которому файл относится

@@ -20,8 +20,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         {
             ExecuteNonQuery(
                 $"INSERT INTO {_dbTableName} " +
-                $"({nameof(DBDocument.Name)}, {nameof(DBDocument.FullPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}, {nameof(DBDocument.LastChangedUserId)}, {nameof(DBDocument.LastChangedData)}) " +
-                $"VALUES (@{nameof(DBDocument.Name)}, @{nameof(DBDocument.FullPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
+                $"({nameof(DBDocument.CentralPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}, {nameof(DBDocument.LastChangedUserId)}, {nameof(DBDocument.LastChangedData)}) " +
+                $"VALUES (@{nameof(DBDocument.CentralPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
             dBDocument);
         }
 

@@ -12,8 +12,9 @@
         Projects,
         ProjectsMatrix,
         RevitDialogs,
-        SubDepartments,
+        RevitDocExchanges,
         SubDepartmentCodeMatrix,
+        SubDepartments,
         Users
     }
 }
