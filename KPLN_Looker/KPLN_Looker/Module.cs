@@ -9,7 +9,6 @@ using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -70,9 +69,9 @@ namespace KPLN_Looker
             if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
             {
                 MessageBox.Show(
-                    $"Ваша работа ограничена работой в тестовых файлах. Любой факт попытки открытия/синхронизации при работе с файлами с диска Y:\\ - будет передан в BIM-отдел", 
-                    "Предупреждение", 
-                    MessageBoxButtons.OK, 
+                    $"Ваша работа ограничена работой в тестовых файлах. Любой факт попытки открытия/синхронизации при работе с файлами с диска Y:\\ - будет передан в BIM-отдел",
+                    "Предупреждение",
+                    MessageBoxButtons.OK,
                     MessageBoxIcon.Asterisk);
             }
         }
@@ -90,18 +89,18 @@ namespace KPLN_Looker
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
-            FileInfo fileInfo = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()));
-            string fileName = fileInfo.FullName;
-            if (IsMonitoredFile(doc, fileInfo, fileName))
+            string fileName = doc.PathName;
+            if (IsMonitoredFile(doc, fileName))
             {
+                string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе
                 if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
                     BitrixMessageSender.SendErrorMsg_ToBIMChat(
                         $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" + 
+                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
                         $"Действие: Открыл проект {doc.Title}.");
-                    
+
                     MessageBox.Show(
                         $"Вы открытли проект с диска Y:\\. Напомню - Ваша работа ограничена тестовыми файлами! Данные переданы в BIM-отдел",
                         "Ошибка",
@@ -111,11 +110,39 @@ namespace KPLN_Looker
                 #endregion
 
                 #region Обработка проектов КПЛН
-                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(fileName);
+                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
                 if (dBProject != null)
                 {
-                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocAndSubDepartmentAndDBProject(doc, fileName, dBProject);
-                    if (dBDocument != null)
+                    // Ищу документ
+                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
+                    if (dBDocument == null)
+                    {
+                        // Создаю, если не нашел
+                        DBSubDepartment dBSubDepartment = _dBWorkerService.CurrentDBUserSubDepartment;
+                        DBUser dbUser = _dBWorkerService.CurrentDBUser;
+                        dBDocument = _dBWorkerService.Create_DBDocument(
+                            centralPath,
+                            dBProject.Id,
+                            dBSubDepartment.Id,
+                            dbUser.Id,
+                            _dBWorkerService.CurrentTimeForDB(),
+                            false);
+                    }
+
+                    //Обрабатываю докемент
+                    if (dBDocument == null)
+                    {
+                        // Вывожу окно, если джокумент не связан с проектом из БД
+                        TaskDialog td = new TaskDialog("ОШИБКА")
+                        {
+                            MainIcon = TaskDialogIcon.TaskDialogIconError,
+                            MainInstruction = "Не удалось определить документ в БД. Скинь скрин в BIM-отдел",
+                            FooterText = $"Специалисту BIM-отдела: файл - {centralPath}",
+                            CommonButtons = TaskDialogCommonButtons.Ok,
+                        };
+                        td.Show();
+                    }
+                    else
                     {
                         _dBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
                         if (dBProject != null && dBProject.IsClosed)
@@ -130,17 +157,6 @@ namespace KPLN_Looker
                             taskDialog.Show();
                         }
                     }
-                    else
-                    {
-                        TaskDialog td = new TaskDialog("ОШИБКА")
-                        {
-                            MainIcon = TaskDialogIcon.TaskDialogIconError,
-                            MainInstruction = "Не удалось определить документ в БД. Скинь скрин в BIM-отдел",
-                            FooterText = $"Специалисту BIM-отдела: файл - {fileName}",
-                            CommonButtons = TaskDialogCommonButtons.Ok,
-                        };
-                        td.Show();
-                    }
                 }
                 else
                 {
@@ -148,7 +164,7 @@ namespace KPLN_Looker
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconInformation,
                         MainInstruction = "Вы работаете в незарегестрированном проекте. Скинь скрин в BIM-отдел",
-                        FooterText = $"Специалисту BIM-отдела: файл - {fileName}",
+                        FooterText = $"Специалисту BIM-отдела: файл - {centralPath}",
                         CommonButtons = TaskDialogCommonButtons.Ok,
                     };
                     td.Show();
@@ -225,10 +241,10 @@ namespace KPLN_Looker
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
-            FileInfo fileInfo = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath()));
-            string fileName = fileInfo.FullName;
-            if (IsMonitoredFile(doc, fileInfo, fileName))
+            string fileName = doc.PathName;
+            if (IsMonitoredFile(doc, fileName))
             {
+                string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе
                 if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
@@ -246,10 +262,10 @@ namespace KPLN_Looker
                 #endregion
 
                 #region Работа с проектами КПЛН
-                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(fileName);
+                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
                 if (dBProject != null)
                 {
-                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocAndSubDepartmentAndDBProject(doc, fileName, dBProject);
+                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
                     if (dBDocument != null)
                     {
                         // Защита закрытого проекта от изменений
@@ -344,14 +360,13 @@ namespace KPLN_Looker
         /// Проверка файла на наличие мониторинга (проверок)
         /// </summary>
         /// <param name="doc"></param>
-        /// <param name="fileInfo"></param>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        private bool IsMonitoredFile(Document doc, FileInfo fileInfo, string fileName) =>
+        private bool IsMonitoredFile(Document doc, string fileName) =>
             doc.IsWorkshared
             && !doc.IsDetached
             && !doc.IsFamilyDocument
-            && !fileInfo.Extension.Equals("rte")
+            && !fileName.EndsWith("rte")
             && !fileName.ToLower().Contains("\\lib\\")
             && !fileName.ToLower().Contains("концепция");
 

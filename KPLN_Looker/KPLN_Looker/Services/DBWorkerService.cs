@@ -71,12 +71,11 @@ namespace KPLN_Looker.Services
         /// <param name="lastChangedData"></param>
         /// <param name="isClosed"></param>
         /// <returns></returns>
-        internal DBDocument Create_DBDocument(string title, string fileName, int dBProjectId, int dBSubDepartmentId, int dbUserId, string lastChangedData, bool isClosed)
+        internal DBDocument Create_DBDocument(string centralPath, int dBProjectId, int dBSubDepartmentId, int dbUserId, string lastChangedData, bool isClosed)
         {
             DBDocument dBDocument = new DBDocument()
             {
-                Name = title,
-                FullPath = fileName,
+                CentralPath = centralPath,
                 ProjectId = dBProjectId,
                 SubDepartmentId = dBSubDepartmentId,
                 LastChangedUserId = dbUserId,
@@ -97,37 +96,18 @@ namespace KPLN_Looker.Services
         /// <param name="fileName">Имя открытого файла Ревит</param>
         /// <returns></returns>
         internal DBProject Get_DBProjectByRevitDocFile(string fileName) => 
-            _projectDbService.GetDBProjects().First(p => fileName.Contains(p.MainPath));
+            _projectDbService.GetDBProjects().FirstOrDefault(p => fileName.Contains(p.MainPath) || fileName.Contains(p.RevitServerPath));
 
         /// <summary>
         /// Получить активный документ из БД по открытому проекту Ревит и по проекту из БД
         /// </summary>
-        /// <param name="doc">Активынй проект Ревит</param>
         /// <param name="fileName">Имя открытого файла Ревит</param>
         /// <param name="dBProject">Проект из БД</param>
         /// <returns></returns>
-        internal DBDocument Get_DBDocumentByRevitDocAndSubDepartmentAndDBProject(Document doc, string fileName, DBProject dBProject)
-        {
-            DBDocument dBDocument = null;
-            
-            DBSubDepartment dBSubDepartment = _subDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
-            dBDocument = _documentDbService
-                .GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartment.Id)
-                .First(d => d.FullPath.Equals(fileName));
-            if (dBDocument == null)
-            {
-                dBDocument = Create_DBDocument(
-                    doc.Title,
-                    fileName,
-                    dBProject.Id,
-                    dBSubDepartment.Id,
-                    _dBUser.Id,
-                    CurrentTimeForDB(),
-                    false);
-            }
-
-            return dBDocument;
-        }
+        internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject) =>
+            _documentDbService
+                .GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, CurrentDBUserSubDepartment.Id)
+                .FirstOrDefault(d => d.CentralPath.Equals(centralPath));
 
         /// <summary>
         /// Обновление статуса документа IsClosed по статусу проекта
@@ -153,6 +133,6 @@ namespace KPLN_Looker.Services
         /// Вывод времени в определенном формате для записи в БД
         /// </summary>
         /// <returns></returns>
-        private string CurrentTimeForDB() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
+        internal string CurrentTimeForDB() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
     }
 }

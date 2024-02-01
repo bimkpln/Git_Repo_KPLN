@@ -14,6 +14,8 @@ namespace KPLN_Revit_Starter
 
         static void Main(string[] args)
         {
+            // Магии в этом мало - основная нагрузка на Планировщик Windows: если комп запущен - планировщик сработает
+            
             ProcessStartInfo startInfo = new ProcessStartInfo(@"C:\Program Files\Autodesk\Revit 2023\Revit.exe")
             {
                 CreateNoWindow = false,
@@ -24,6 +26,7 @@ namespace KPLN_Revit_Starter
             try
             {
                 RunRevit(startInfo, args);
+                Console.ReadKey();
             }
             catch
             {
