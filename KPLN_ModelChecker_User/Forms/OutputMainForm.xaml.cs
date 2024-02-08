@@ -135,7 +135,7 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
         }
 
         private void OnZoomClicked(object sender, RoutedEventArgs e)
@@ -146,16 +146,16 @@ namespace KPLN_ModelChecker_User.Forms
                 
                 if (wpfEntity.IsZoomElement)
                 {
-                    if (wpfEntity.Element != null) 
-                        ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
-                    else 
-                        ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null)
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                    else
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
                 }
                 else
-                    if (wpfEntity.Element != null) 
-                        ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
-                    else 
-                        ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null)
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                    else
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
             }
         }
 
@@ -170,7 +170,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                     if (userTextInput.Status == UIStatus.RunStatus.Run)
                     {
-                        ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
                     }
                 }
             }

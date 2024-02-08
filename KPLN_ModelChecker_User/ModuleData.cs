@@ -7,7 +7,6 @@ namespace KPLN_ModelChecker_User
 {
     public static class ModuleData
     {
-        public static System.IntPtr MainWindowHandle { get; set; }
         /// <summary>
         /// Версия сборки, отображаемая в Revit
         /// </summary>
@@ -22,7 +21,6 @@ namespace KPLN_ModelChecker_User
         /// Имя модуля
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
-        public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
 
         private static string GetModuleCreationDate()
         {

@@ -317,15 +317,7 @@ namespace KPLN_ModelChecker_User
                 _currentDbUser.SubDepartmentId == 8
                 );
 
-            application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
             return Result.Succeeded;
-        }
-
-        private void OnIdling(object sender, IdlingEventArgs args)
-        {
-            UIApplication uiapp = sender as UIApplication;
-            while (CommandQueue.Count != 0)
-                CommandQueue.Dequeue().Execute(uiapp);
         }
 
         /// <summary>

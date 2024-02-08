@@ -42,7 +42,6 @@ namespace KPLN_Looker
 
                 //Подписка на события
                 application.ControlledApplication.ApplicationInitialized += OnApplicationInitialized;
-                application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
@@ -74,13 +73,6 @@ namespace KPLN_Looker
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Asterisk);
             }
-        }
-
-        private void OnIdling(object sender, IdlingEventArgs args)
-        {
-            UIApplication uiapp = sender as UIApplication;
-            while (CommandQueue.Count != 0)
-                CommandQueue.Dequeue().Execute(uiapp);
         }
 
         /// <summary>

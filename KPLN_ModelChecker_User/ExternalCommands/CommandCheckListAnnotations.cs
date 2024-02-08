@@ -119,7 +119,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
 
                 // Анализирую вид
@@ -129,7 +129,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
             }
             catch (Exception ex)

@@ -392,7 +392,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 continue;
 
                             // Првоеряю положение в секции
-                            Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, sectData.LevelSolid, BooleanOperationsType.Intersect);
+                            Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
                             if (checkSectSolid != null && checkSectSolid.Volume > 0)
                             {
                                 Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
@@ -437,14 +437,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private Solid GetIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
             // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета (проблемы с элементами "по касательной")
-            Transform sectTransform = sectData.LevelSolid.GetBoundingBox().Transform;
+            Transform sectTransform = sectData.CurrentlSolid.GetBoundingBox().Transform;
             Transform instTransform = instSolid.GetBoundingBox().Transform;
             Transform instInverseTransform = instTransform.Inverse;
             Solid instZerotransformSolid = SolidUtils.CreateTransformed(instSolid, instInverseTransform);
             sectTransform.Origin = new XYZ(sectTransform.Origin.X, sectTransform.Origin.Y, instTransform.Origin.Z);
 
             Solid transformedBySectdInstSolid = SolidUtils.CreateTransformed(instZerotransformSolid, sectTransform);
-            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.LevelSolid, BooleanOperationsType.Intersect);
+            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
             if (intersectSolid != null && intersectSolid.Volume > 0)
                 return intersectSolid;
 
@@ -657,7 +657,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (sectDataCurrentLvlElev > instDataDownLvlElev + 30)
                     continue;
                 
-                FaceArray sectDataFaces = sectData.LevelSolid.Faces;
+                FaceArray sectDataFaces = sectData.CurrentlSolid.Faces;
                 foreach (XYZ instGeomCenter in instData.CurrentGeomCenterColl)
                 {
                     foreach (Face face in sectDataFaces)
