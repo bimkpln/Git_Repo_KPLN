@@ -65,10 +65,12 @@ namespace KPLN_Tools.ExternalCommands
             // Поиск элементов на удаление
             try
             {
-                TaskDialog taskDialog = new TaskDialog("Выбери действие");
-                taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconInformation;
-                taskDialog.MainContent = "Восстановить связь у марок - нажми Да.\nУдалить марки - нажми Нет.";
-                taskDialog.CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No;
+                TaskDialog taskDialog = new TaskDialog("Выбери действие")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                    MainContent = "Восстановить связь у марок - нажми Да.\nУдалить марки - нажми Нет.",
+                    CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No
+                };
                 _mainTaskDialogRes = taskDialog.Show();
                 if (_mainTaskDialogRes == TaskDialogResult.Cancel)
                 {

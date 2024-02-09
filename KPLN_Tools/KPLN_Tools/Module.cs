@@ -14,7 +14,7 @@ namespace KPLN_Tools
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
         private static DBUser _currentDBUser;
-        
+
         internal static DBUser CurrentDBUser
         {
             get
@@ -62,7 +62,7 @@ namespace KPLN_Tools
                 string.Format(
                     "Для поиска введи имя Revit-пользователя.\n" +
                     "Доступно для пользователей KPLN_v.2.\n" +
-                    "\n"+
+                    "\n" +
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
@@ -91,6 +91,20 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
+
+            PushButtonData monitoringHelper = CreateBtnData(
+               "Экстра-мониторинг",
+               "Экстра-мониторинг",
+               "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
+               string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                   ModuleData.Date,
+                   ModuleData.Version,
+                   ModuleData.ModuleName
+               ),
+               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
@@ -127,6 +141,7 @@ namespace KPLN_Tools
 
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
+            sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             #endregion
 
@@ -216,12 +231,22 @@ namespace KPLN_Tools
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private PushButtonData CreateBtnData(string name, string text, string shortDescription, string longDescription, string className, string smlImageName, string lrgImageName, string contextualHelp)
+        private PushButtonData CreateBtnData(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            string className,
+            string smlImageName,
+            string lrgImageName,
+            string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
-            data.Text = text;
-            data.ToolTip = shortDescription;
-            data.LongDescription = longDescription;
+            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className)
+            {
+                Text = text,
+                ToolTip = shortDescription,
+                LongDescription = longDescription
+            };
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
@@ -251,7 +276,15 @@ namespace KPLN_Tools
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="imgSmall">Картинка маленькая</param>
         /// <param name="imgBig">Картинка большая</param>
-        private PulldownButton CreatePulldownButtonInRibbon(string name, string text, string shortDescription, string longDescription, ImageSource imgSmall, ImageSource imgBig, RibbonPanel panel, bool showName)
+        private PulldownButton CreatePulldownButtonInRibbon(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            ImageSource imgSmall,
+            ImageSource imgBig,
+            RibbonPanel panel,
+            bool showName)
         {
             RibbonItem pullDownRI = panel.AddItem(new PulldownButtonData(name, text)
             {

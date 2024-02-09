@@ -1,10 +1,13 @@
-﻿using System.IO;
+﻿using KPLN_Loader.Common;
+using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 
 namespace KPLN_Tools
 {
     internal static class ModuleData
     {
+        public static System.IntPtr MainWindowHandle { get; set; }
         /// <summary>
         /// Версия сборки, отображаемая в Revit
         /// </summary>
@@ -19,6 +22,7 @@ namespace KPLN_Tools
         /// Имя модуля
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
+        public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
 
         private static string GetModuleCreationDate()
         {
