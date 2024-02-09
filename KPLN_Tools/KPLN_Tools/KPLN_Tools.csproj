@@ -114,14 +114,23 @@
     <Compile Include="Common\HolesManager\IOSHoleDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
+    <Compile Include="Common\MonitorEntity.cs" />
+    <Compile Include="Common\MonitorParamDataTool.cs" />
+    <Compile Include="Common\MonitorParamRule.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
+    <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
+    <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
     <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandTitleBlockChanger.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
+      <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\UserSelectAlgoritm.xaml.cs">
       <DependentUpon>UserSelectAlgoritm.xaml</DependentUpon>
     </Compile>
@@ -154,6 +163,7 @@
     <EmbeddedResource Include="Imagens\krMainSmall.png" />
     <EmbeddedResource Include="Imagens\smnxRebarBig.png" />
     <EmbeddedResource Include="Imagens\smnxRebarSmall.png" />
+    <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -166,6 +176,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\MonitoringParamSetter.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\UserSelectAlgoritm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

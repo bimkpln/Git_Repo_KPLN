@@ -82,6 +82,20 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
 
+            PushButtonData monitoringHelper = CreateBtnData(
+               "Экстра-мониторинг",
+               "Экстра-мониторинг",
+               "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
+               string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                   ModuleData.Date,
+                   ModuleData.Version,
+                   ModuleData.ModuleName
+               ),
+               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "http://moodle/mod/book/view.php?id=502&chapterid=687");
+
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
                 "Восстановить размеры",
@@ -116,6 +130,7 @@ namespace KPLN_Tools
                 false);
 
             sharedPullDownBtn.AddPushButton(sh825TitleBlockChanger);
+            sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(autonumber);
 
