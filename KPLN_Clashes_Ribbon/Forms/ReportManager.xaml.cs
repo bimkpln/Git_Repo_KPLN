@@ -228,7 +228,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                     string id2 = string.Empty;
                     string name1 = string.Empty;
                     string name2 = string.Empty;
-                    ObservableCollection<ReportItemComment> comments = new ObservableCollection<ReportItemComment>();
+                    string reportParentGroupComments = string.Empty;
+                    string reportItemComments = string.Empty;
                     if (class_name == "headerRow" && headers.Count == 0)
                     {
                         if (IsMainHeader(node, out List<string> out_headers, out bool todecode))
@@ -250,7 +251,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        reportParentGroupComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
                         num_id++;
                         parentGroupId = num_id;
                         addInstance = true;
@@ -265,7 +266,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
                         num_id++;
                         addInstance = true;
                     }
@@ -279,7 +280,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
                         num_id++;
                         resetgroupid = true;
                         addInstance = true;
@@ -294,7 +295,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
-                        comments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
+                        reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
                         num_id++;
                         addInstance = true;
                     }
@@ -331,9 +332,10 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 name2,
                                 image,
                                 point,
-                                Core.ClashesMainCollection.KPItemStatus.Opened,
-                                -1,
-                                comments));
+                                KPItemStatus.Opened,
+                                reportParentGroupComments,
+                                reportItemComments,
+                                -1));
                         }
                         else
                         {
@@ -347,9 +349,10 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 name2,
                                 image,
                                 point,
-                                Core.ClashesMainCollection.KPItemStatus.Opened,
-                                parentGroupId,
-                                comments));
+                                KPItemStatus.Opened,
+                                reportParentGroupComments,
+                                reportItemComments,
+                                parentGroupId));
                         }
                     }
 

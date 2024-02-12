@@ -1,15 +1,11 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Tools.Common;
 using KPLN_Tools.ExecutableCommand;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.Forms
 {
@@ -28,11 +24,11 @@ namespace KPLN_Tools.Forms
             _doc = doc;
             _monitorEntities = monitorEntities;
 
-            _docParamColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().ModelParameters);
-            _docParamColl.OrderBy(p => p.Definition.Name);
+            ObservableCollection<Parameter> paramColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().ModelParameters);
+            _docParamColl = new ObservableCollection<Parameter>(paramColl.OrderBy(p => p.Definition.Name));
 
-            _linkParamColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().LinkElemsParams);
-            _linkParamColl.OrderBy(p => p.Definition.Name);
+            paramColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().LinkElemsParams);
+            _linkParamColl = new ObservableCollection<Parameter>(paramColl.OrderBy(p => p.Definition.Name));
 
             InitializeComponent();
             this.RulesControll.ItemsSource = new ObservableCollection<MonitorParamRule>();
@@ -49,7 +45,7 @@ namespace KPLN_Tools.Forms
         private void OnBtnRevalue(object sender, RoutedEventArgs e)
         {
             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandExtraMonitoring_SetParams(
-                _doc, 
+                _doc,
                 (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>),
                 _monitorEntities));
             this.Close();
@@ -98,7 +94,7 @@ namespace KPLN_Tools.Forms
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
         {
             (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>).Remove((sender as System.Windows.Controls.Button).DataContext as MonitorParamRule);
-            
+
             UpdateRunEnability();
         }
     }

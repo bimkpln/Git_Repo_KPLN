@@ -35,6 +35,8 @@ namespace KPLN_Clashes_Ribbon.Services
                         $"{nameof(ReportItem.Element_2_Info)} TEXT, " +
                         $"{nameof(ReportItem.Point)} TEXT, " +
                         $"{nameof(ReportItem.StatusId)} INTEGER NOT NULL DEFAULT 1, " +
+                        $"{nameof(ReportItem.ReportParentGroupComments)} TEXT, " +
+                        $"{nameof(ReportItem.ReportItemComments)} TEXT, " +
                         $"{nameof(ReportItem.Comments)} TEXT, " +
                         $"{nameof(ReportItem.ParentGroupId)} INTEGER NOT NULL DEFAULT -1, " +
                         $"{nameof(ReportItem.DelegatedDepartmentId)} INTEGER)");
@@ -55,11 +57,14 @@ namespace KPLN_Clashes_Ribbon.Services
                     $"{nameof(ReportItem.Element_2_Id)}, " +
                     $"{nameof(ReportItem.Element_2_Info)}, " +
                     $"{nameof(ReportItem.Point)}, " +
+                    $"{nameof(ReportItem.ReportParentGroupComments)}, " +
+                    $"{nameof(ReportItem.ReportItemComments)}, " +
                     $"{nameof(ReportItem.StatusId)}, " +
                     $"{nameof(ReportItem.ParentGroupId)}) " +
                 "VALUES " +
                     "(@Id, @ReportGroupId, @Name, @Image, @Element_1_Id, @Element_1_Info, " +
-                    "@Element_2_Id, @Element_2_Info, @Point, @StatusId, @ParentGroupId)",
+                    "@Element_2_Id, @Element_2_Info, @Point, @ReportParentGroupComments, " +
+                    "@ReportItemComments, @StatusId, @ParentGroupId)",
                 reports);
         #endregion
 

@@ -21,6 +21,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public event PropertyChangedEventHandler PropertyChanged;
 
         private int _statusId;
+        private string _comments;
         private KPItemStatus _status;
         private int _delegatedDepartmentId;
         private System.Windows.Visibility _isControllsVisible = System.Windows.Visibility.Visible;
@@ -60,14 +61,14 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             string image,
             string point,
             KPItemStatus status,
-            int parentGroupId,
-            ObservableCollection<ReportItemComment> comments)
+            string reportParentGroupComments,
+            string reportItemComments,
+            int parentGroupId)
         {
             Id = id;
             ReportGroupId = repGroupId;
             Name = name;
             ParentGroupId = parentGroupId;
-            CommentCollection = comments;
 
             if (int.TryParse(element_1_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_1))
                 Element_1_Id = id_1;
@@ -99,6 +100,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
             Point = point;
             Status = status;
+            ReportParentGroupComments = reportParentGroupComments;
+            ReportItemComments = reportItemComments;
         }
 
         #region Данные из БД
@@ -138,6 +141,10 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        public string ReportParentGroupComments { get; set; }
+
+        public string ReportItemComments { get; set; }
+
         /// <summary>
         /// Если коллизия в группе - ссылка на id данной группы, иначе значение -1 (приходит из настроек БД)
         /// </summary>
@@ -149,7 +156,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             private set { _delegatedDepartmentId = value; }
         }
 
-        private string _comments;
 
         /// <summary>
         /// Закодированный коммент из БД. Нужен для маппинга внутри Dapper. Set влияет на отображение в окне (ReportItemCommentCollection)
