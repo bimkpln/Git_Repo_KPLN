@@ -1,9 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_Tools.Common
 {
-    internal class MonitorParamDataTool
+    internal class MonitorTool
     {
         internal static double? GetDoubleValue(Parameter p)
         {
@@ -69,6 +70,50 @@ namespace KPLN_Tools.Common
                         return null;
                 }
             }
+        }
+
+        internal static Solid GetSolidFromElem(Element elem)
+        {
+            Solid resultSolid = null;
+            GeometryElement geomElem = elem.get_Geometry(new Options { DetailLevel = ViewDetailLevel.Fine });
+            foreach (GeometryObject gObj in geomElem)
+            {
+                Solid solid = gObj as Solid;
+                GeometryInstance gInst = gObj as GeometryInstance;
+                if (solid != null) resultSolid = solid;
+                else if (gInst != null)
+                {
+                    GeometryElement instGeomElem = gInst.GetInstanceGeometry();
+                    double tempVolume = 0;
+                    foreach (GeometryObject gObj2 in instGeomElem)
+                    {
+                        solid = gObj2 as Solid;
+                        if (solid != null && solid.Volume > tempVolume)
+                        {
+                            tempVolume = solid.Volume;
+                            resultSolid = solid;
+                        }
+                    }
+                }
+            }
+
+            return resultSolid;
+        }
+
+        internal static List<Curve> GetCurvesListFromPoints(List<XYZ> pointsOfIntersect)
+        {
+            List<Curve> curvesList = new List<Curve>();
+            for (int i = 0; i < pointsOfIntersect.Count; i++)
+            {
+                if (i == pointsOfIntersect.Count - 1)
+                {
+                    curvesList.Add(Line.CreateBound(pointsOfIntersect[i], pointsOfIntersect[0]));
+                    continue;
+                }
+
+                curvesList.Add(Line.CreateBound(pointsOfIntersect[i], pointsOfIntersect[i + 1]));
+            }
+            return curvesList;
         }
     }
 }

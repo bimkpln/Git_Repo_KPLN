@@ -27,7 +27,7 @@ namespace KPLN_Tools.Forms
             ObservableCollection<Parameter> paramColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().ModelParameters);
             _docParamColl = new ObservableCollection<Parameter>(paramColl.OrderBy(p => p.Definition.Name));
 
-            paramColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().LinkElemsParams);
+            paramColl = new ObservableCollection<Parameter>(_monitorEntities.FirstOrDefault().Value.FirstOrDefault().CurrentMonitorLinkEntity.LinkElemsParams);
             _linkParamColl = new ObservableCollection<Parameter>(paramColl.OrderBy(p => p.Definition.Name));
 
             InitializeComponent();

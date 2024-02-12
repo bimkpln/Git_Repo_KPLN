@@ -115,7 +115,8 @@
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\MonitorEntity.cs" />
-    <Compile Include="Common\MonitorParamDataTool.cs" />
+    <Compile Include="Common\MonitorLinkEntity.cs" />
+    <Compile Include="Common\MonitorTool.cs" />
     <Compile Include="Common\MonitorParamRule.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />

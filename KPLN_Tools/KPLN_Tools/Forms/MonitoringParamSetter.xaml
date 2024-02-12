@@ -28,8 +28,8 @@
                     <ColumnDefinition Width="270"/>
                     <ColumnDefinition Width="260"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Параметр (из)" HorizontalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"/>
-                <TextBlock Grid.Column="1" Text="Параметр (в)" HorizontalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"/>
+                <TextBlock Grid.Column="0" Text="Параметр из (связь)" HorizontalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"/>
+                <TextBlock Grid.Column="1" Text="Параметр в (твоя модель)" HorizontalAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"/>
             </Grid>
         </StackPanel>
         <Grid  Margin="5" Grid.Row="2" HorizontalAlignment="Left">

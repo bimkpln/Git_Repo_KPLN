@@ -36,28 +36,28 @@ namespace KPLN_Tools.ExecutableCommand
                 RevitLinkInstance revitLinkInstance = _doc.GetElement(kvp.Key) as RevitLinkInstance;
                 foreach (var monitorEntity in kvp.Value)
                 {
-                    Element targetElement = monitorEntity.ModelElement;
-                    Element sourceElement = monitorEntity.LinkElement;
+                    Element modelElement = monitorEntity.ModelElement;
+                    Element linkElement = monitorEntity.CurrentMonitorLinkEntity.LinkElement;
                     foreach (var paramRule in _paramRule)
                     {
-                        Parameter targetParam = targetElement.GetParameters(paramRule.SelectedTargetParameter.Definition.Name).FirstOrDefault();
-                        Parameter sourceParam = sourceElement.GetParameters(paramRule.SelectedSourceParameter.Definition.Name).FirstOrDefault();
-                        if (sourceParam != null && targetParam != null)
+                        Parameter modelParam = modelElement.GetParameters(paramRule.SelectedTargetParameter.Definition.Name).FirstOrDefault();
+                        Parameter linkParam = linkElement.GetParameters(paramRule.SelectedSourceParameter.Definition.Name).FirstOrDefault();
+                        if (modelParam != null && linkParam != null)
                         {
-                            string targetParamData = GetStringDataFromParam(targetParam);
-                            string sourceParamData = GetStringDataFromParam(sourceParam);
-                            if (!targetParamData.Equals(sourceParamData))
+                            string modelParamData = GetStringDataFromParam(modelParam);
+                            string linkParamData = GetStringDataFromParam(linkParam);
+                            if (!modelParamData.Equals(linkParamData))
                             {
-                                string errorMsg = $"У элемента твоей модели парамтер '{targetParam.Definition.Name}' имеет значение '{targetParamData}', " +
-                                    $"а параметр из связи '{sourceParam.Definition.Name}' имеет значение '{sourceParamData}'. " +
-                                    $"Id твоего элемента: {targetElement.Id}, Id элемента из связи: {sourceElement.Id}";
+                                string errorMsg = $"У элемента твоей модели парамтер '{modelParam.Definition.Name}' имеет значение '{modelParamData}', " +
+                                    $"а параметр из связи '{linkParam.Definition.Name}' имеет значение '{linkParamData}'. " +
+                                    $"Id твоего элемента: {modelParam.Id}, Id элемента из связи: {linkParam.Id}";
                                 _localErrors.Add(errorMsg);
                             }
                         }
 
                         else
-                            Print($"Проверь наличие параметра {paramRule.SelectedTargetParameter.Definition.Name} у элемента модели ({targetElement.Id}), " +
-                                $"или параметра {paramRule.SelectedSourceParameter.Definition.Name} у элемента связи ({sourceElement.Id})", MessageType.Error);
+                            Print($"Проверь наличие параметра {paramRule.SelectedTargetParameter.Definition.Name} у элемента модели ({modelElement.Id}), " +
+                                $"или параметра {paramRule.SelectedSourceParameter.Definition.Name} у элемента связи ({linkElement.Id})", MessageType.Error);
                     }
                 }
             }
@@ -93,7 +93,7 @@ namespace KPLN_Tools.ExecutableCommand
                 case StorageType.Integer:
                     return param.AsInteger().ToString();
                 case StorageType.String:
-                    return param.AsValueString();
+                    return param.AsString();
             }
 
             return null;
