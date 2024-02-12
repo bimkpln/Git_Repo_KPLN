@@ -38,7 +38,7 @@ namespace KPLN_Tools.ExecutableCommand
                     foreach (var monitorEntity in kvp.Value)
                     {
                         Element targetElement = monitorEntity.ModelElement;
-                        Element sourceElement = monitorEntity.LinkElement;
+                        Element sourceElement = monitorEntity.CurrentMonitorLinkEntity.LinkElement;
                         foreach (var paramRule in _paramRule)
                         {
                             Parameter targetParam = targetElement.GetParameters(paramRule.SelectedTargetParameter.Definition.Name).FirstOrDefault();
@@ -48,22 +48,22 @@ namespace KPLN_Tools.ExecutableCommand
                                 switch (targetParam.StorageType)
                                 {
                                     case StorageType.Double:
-                                        double? dv = MonitorParamDataTool.GetDoubleValue(sourceParam);
+                                        double? dv = MonitorTool.GetDoubleValue(sourceParam);
                                         if (dv != null)
                                             targetParam.Set((double)dv);
                                         break;
                                     case StorageType.Integer:
-                                        int? iv = MonitorParamDataTool.GetIntegerValue(sourceParam);
+                                        int? iv = MonitorTool.GetIntegerValue(sourceParam);
                                         if (iv != null)
                                             targetParam.Set((int)iv);
                                         break;
                                     case StorageType.ElementId:
-                                        string eiv = MonitorParamDataTool.GetStringValue(sourceParam);
+                                        string eiv = MonitorTool.GetStringValue(sourceParam);
                                         if (eiv != null && eiv != " " && eiv != string.Empty)
                                             targetParam.Set(eiv);
                                         break;
                                     case StorageType.String:
-                                        string sv = MonitorParamDataTool.GetStringValue(sourceParam);
+                                        string sv = MonitorTool.GetStringValue(sourceParam);
                                         if (sv != null && sv != " " && sv != string.Empty)
                                             targetParam.Set(sv);
                                         break;
