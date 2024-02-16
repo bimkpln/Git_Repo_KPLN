@@ -32,6 +32,8 @@ namespace KPLN_Clashes_Ribbon.Forms
         private ObservableCollection<ReportItem> _reportInstancesColl;
         private readonly ReportManager _reportManager;
         private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
+        private KPItemStatus _selectedKPItemStatus;
+        private string _searchData = string.Empty;
 
         public ReportWindow(Report report, bool isEnabled, ReportManager reportManager)
         {
@@ -170,34 +172,35 @@ namespace KPLN_Clashes_Ribbon.Forms
             ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
             foreach (ReportItem report in _reportInstancesColl)
             {
-                filtered_collection.Add(report);
+                if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
+                    filtered_collection.Add(report);
             }
             ReportControll.ItemsSource = filtered_collection;
         }
 
         private void UpdateCollection(KPItemStatus status)
         {
+            _selectedKPItemStatus = status;
+
             ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
             foreach (ReportItem report in _reportInstancesColl)
             {
-                if (status == KPItemStatus.Opened)
+                if (_selectedKPItemStatus == KPItemStatus.Opened
+                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
                 {
                     if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
-                    {
                         filtered_collection.Add(report);
-                    }
                 }
-                else
+                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
                 {
-                    if (report.Status == status)
-                    {
+                    if (report.Status == _selectedKPItemStatus)
                         filtered_collection.Add(report);
-                    }
                 }
 
             }
+
             if (ReportControll != null)
-            { ReportControll.ItemsSource = filtered_collection; }
+                ReportControll.ItemsSource = filtered_collection;
         }
 
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -221,6 +224,32 @@ namespace KPLN_Clashes_Ribbon.Forms
                     UpdateCollection(KPItemStatus.Delegated);
                     break;
             }
+        }
+
+        private void UserInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _searchData = textBox.Text.ToLower();
+
+            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
+            foreach (ReportItem report in _reportInstancesColl)
+            {
+                if (_selectedKPItemStatus == KPItemStatus.Opened 
+                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
+                {
+                    if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
+                        filtered_collection.Add(report);
+                }
+                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
+                {
+                    if (report.Status == _selectedKPItemStatus)
+                        filtered_collection.Add(report);
+                }
+
+            }
+
+            if (ReportControll != null)
+                ReportControll.ItemsSource = filtered_collection;
         }
 
         /// <summary>

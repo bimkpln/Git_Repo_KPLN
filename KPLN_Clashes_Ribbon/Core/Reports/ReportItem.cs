@@ -142,8 +142,30 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
 
         public string ReportParentGroupComments { get; set; }
+        
+        public System.Windows.Visibility ReportParentGroupCommentsVisibility 
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(ReportParentGroupComments))
+                    return System.Windows.Visibility.Collapsed;
+                
+                return System.Windows.Visibility.Visible;
+            }
+        }
 
         public string ReportItemComments { get; set; }
+
+        public System.Windows.Visibility ReportItemCommentsVisibility
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(ReportItemComments))
+                    return System.Windows.Visibility.Collapsed;
+
+                return System.Windows.Visibility.Visible;
+            }
+        }
 
         /// <summary>
         /// Если коллизия в группе - ссылка на id данной группы, иначе значение -1 (приходит из настроек БД)
@@ -204,9 +226,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get
             {
                 if (SubElements.Count != 0)
-                {
                     return System.Windows.Visibility.Visible;
-                }
+                
                 return System.Windows.Visibility.Collapsed;
             }
         }
