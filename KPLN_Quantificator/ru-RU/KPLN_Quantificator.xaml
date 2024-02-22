@@ -56,5 +56,17 @@
                             Orientation="Vertical"/>
             </RibbonPanelSource>
         </RibbonPanel>
+
+		<RibbonPanel x:Uid="KPLN_Tab_Other">
+			<RibbonPanelSource x:Uid="KPLN_Tab_Other" KeyTip="G3" Title="Дополнительно">
+				<local:NWRibbonButton x:Uid="Button_G" Id="ID_Button_G"
+                            Size="Large"
+                            KeyTip="G1"
+                            ShowText="True"
+                            Text="Добавить&#x0a;комментарий"
+                            Orientation="Vertical"/>
+			</RibbonPanelSource>
+		</RibbonPanel>
+		
     </RibbonTab>
 </RibbonControl>

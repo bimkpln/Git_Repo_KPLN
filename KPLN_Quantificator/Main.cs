@@ -1,15 +1,9 @@
 ﻿using System;
-using System.Threading;
-using System.Collections.Generic;
-using System.Windows.Forms;
-using System.Text;
 using Autodesk.Navisworks.Api;
 using Autodesk.Navisworks.Api.Plugins;
-using Autodesk.Navisworks.Api.Data;
-using Autodesk.Navisworks.Api.Takeoff;
 using KPLN_Quantificator.Forms;
-using Autodesk.Navisworks.Api.DocumentParts;
 using KPLN_Quantificator.Services;
+
 
 namespace KPLN_Quantificator
 {
@@ -22,6 +16,7 @@ namespace KPLN_Quantificator
     [Command("ID_Button_D", DisplayName = "Добавить ресурсы", Icon = "Source\\match_resources_small.png", LargeIcon = "Source\\match_resources_big.png", ToolTip = "Сопоставление ресурсов с элементами по выбранному параметру RBS", CanToggle = true)]
     [Command("ID_Button_E", DisplayName = "Сгруппировать коллизии", Icon = "Source\\group_c_small.png", LargeIcon = "Source\\group_c_big.png", ToolTip = "Группировка коллизий по выбранным параметрам. Сделано на основе «Group Clashes»", CanToggle = true)]
     [Command("ID_Button_F", DisplayName = "Подсчет коллизий", Icon = "Source\\counter_small.png", LargeIcon = "Source\\counter_big.png", ToolTip = "Подсчет количества коллизий по разделам (раздел выделяется из имени)", CanToggle = true)]
+    [Command("ID_Button_G", DisplayName = "Автоматический комментарий", Icon = "Source\\comment_small.png", LargeIcon = "Source\\comment_big.png", ToolTip = "Создание текстового комментария. Для создания комментария в автоматическом режиме необходимо выделить два эллемента и нажать клавишу Q", CanToggle = true)]
     public class Main : CommandHandlerPlugin
     {
         public override int ExecuteCommand(string name, params string[] parameters)
@@ -93,6 +88,18 @@ namespace KPLN_Quantificator
 
                                 break;
                             }
+                        case "ID_Button_G":
+                            {
+                                if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count == 2)
+                                {
+                                    AddComment.GettingDataForAComment();
+                                    AddComment.CreateViewpoint();
+                                    GlobalPreferences.state = 0;
+                                }
+                                else { GlobalPreferences.state = 0;}
+
+                                break;
+                            }
                         default:
                             {
                                 GlobalPreferences.state = 0;
@@ -110,10 +117,29 @@ namespace KPLN_Quantificator
                     
                     return 0;
                 }
-            }
-
+            }      
+            
             return 0;
         }
     }
 }
 
+
+namespace KPLN_Quantificator_inputPlugin
+{
+    [Plugin("KPLN Extention_inputPlugin", "KPLN")]
+    public class Main: InputPlugin
+    {
+        public override bool KeyDown(Autodesk.Navisworks.Api.View view, KeyModifiers modifier, ushort key, double timeOffset)
+        {
+            if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count == 2 && key == 81)
+            {
+                AddComment.GettingDataForAComment();
+                AddComment.CreateViewpoint();
+                return true;
+            }
+
+            return base.KeyDown(view, modifier, key, timeOffset);
+        }
+    }
+}
