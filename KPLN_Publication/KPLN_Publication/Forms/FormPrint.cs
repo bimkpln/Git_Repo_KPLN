@@ -11,6 +11,7 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -42,14 +43,14 @@ namespace KPLN_Publication
         public bool printToFile = false;
 
 
-        public FormPrint(Dictionary<string, List<MySheet>> SheetsBase, YayPrintSettings printSettings)
+        public FormPrint(Dictionary<string, List<MySheet>> SheetsBase, YayPrintSettings printSettings, DBUser currentDBUser)
         {
             InitializeComponent();
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
 
-            int userDepartment = KPLN_Loader.Application.CurrentRevitUser.SubDepartmentId;
-            if (userDepartment == 1 || userDepartment == 4 || userDepartment == 6)
+            int userDepartment = currentDBUser.SubDepartmentId;
+            if (userDepartment == 2 || userDepartment == 8)
                 this.checkBoxExcludeBorders.Enabled = true;
 
             sheetsBaseToPrint = SheetsBase;

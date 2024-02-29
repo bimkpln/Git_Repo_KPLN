@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
@@ -16,6 +15,21 @@ namespace KPLN_Publication.ExternalCommands.Print
     [Transaction(TransactionMode.Manual)]
     class CommandBatchPrint : IExternalCommand
     {
+        private static DBUser _currentDBUser;
+
+        internal static DBUser CurrentDBUser
+        {
+            get
+            {
+                if (_currentDBUser == null)
+                {
+                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+                    _currentDBUser = userDbService.GetCurrentDBUser();
+                }
+                return _currentDBUser;
+            }
+        }
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
@@ -124,7 +138,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 #endif
 
                 YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings();
-                FormPrint form = new FormPrint(allSheets, printSettings);
+                FormPrint form = new FormPrint(allSheets, printSettings, CurrentDBUser);
                 form.ShowDialog();
 
                 if (form.DialogResult != System.Windows.Forms.DialogResult.OK) return Result.Cancelled;
