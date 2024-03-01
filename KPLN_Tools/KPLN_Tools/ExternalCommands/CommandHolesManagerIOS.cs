@@ -28,6 +28,12 @@ namespace KPLN_Tools.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
+            IOSHolesPrepareManager iOSHolesPrepareManager = null;
+            List<IOSHoleDTO> holesDTOColl = null;
+
+            IOSShaftPrepareManager iOSShaftPrepareManager = null;
+            List<IOSShaftDTO> shaftDTOColl = null;
+            
             try
             {
                 // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
@@ -79,11 +85,11 @@ namespace KPLN_Tools.ExternalCommands
                 #endregion
 
                 #region Подготовка и обработка спец. классов для последующей записи в проект
-                IOSHolesPrepareManager iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
-                List<IOSHoleDTO> holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
+                iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
+                holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
 
-                IOSShaftPrepareManager iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
-                List<IOSShaftDTO> shaftDTOElems = iOSShaftPrepareManager.PrepareShaftDTO();
+                iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
+                shaftDTOColl = iOSShaftPrepareManager.PrepareShaftDTO();
                 #endregion
 
                 #region Вывод ошибок пользователю
@@ -114,7 +120,7 @@ namespace KPLN_Tools.ExternalCommands
                     t.Start("КП_Отверстия для АР: границы и отметки");
 
                     HolesParamsWriter(holesDTOColl);
-                    ShaftParamsWriter(shaftDTOElems);
+                    ShaftParamsWriter(shaftDTOColl);
 
                     t.Commit();
                 }
@@ -130,6 +136,8 @@ namespace KPLN_Tools.ExternalCommands
                 return Result.Cancelled;
             }
 
+            Print($"Выполнено успешно для {holesDTOColl.Count - iOSHolesPrepareManager.ErrorFamInstColl.Count} отверстий " +
+                $"и {shaftDTOColl.Count - iOSShaftPrepareManager.ErrorFamInstColl.Count} шахт", MessageType.Success);
             return Result.Succeeded;
         }
 

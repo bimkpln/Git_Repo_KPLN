@@ -47,7 +47,6 @@ namespace KPLN_Tools.Common.HolesManager
         /// </summary>
         private BoundingBoxXYZ PrepareHoleBBox(FamilyInstance famInst)
         {
-            BoundingBoxXYZ result = null;
             GeometryElement geomElem = famInst
                     .get_Geometry(new Options()
                     {
@@ -66,13 +65,12 @@ namespace KPLN_Tools.Common.HolesManager
                         BoundingBoxXYZ bbox = solid.GetBoundingBox();
                         //bbox.Transform = transform;
                         Transform transform = bbox.Transform;
-                        result = new BoundingBoxXYZ()
+                        
+                        return new BoundingBoxXYZ()
                         {
                             Max = transform.OfPoint(bbox.Max),
                             Min = transform.OfPoint(bbox.Min),
                         };
-
-                        return result;
                     }
                 }
             }
@@ -104,6 +102,8 @@ namespace KPLN_Tools.Common.HolesManager
 
                 Transform trans = linkedModel.GetTotalTransform();
                 BoundingBoxIntersectsFilter filter = CreateFilter(fiBBox, trans);
+                if (filter == null)
+                    continue;
 
                 // Перевод координат отверстия на координаты связи
                 BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
@@ -267,6 +267,9 @@ namespace KPLN_Tools.Common.HolesManager
             Outline outline = new Outline(
                 transform.Inverse.OfPoint(new XYZ(sminX - 1, sminY - 1, bbox.Min.Z - 50)),
                 transform.Inverse.OfPoint(new XYZ(smaxX + 1, smaxY + 1, bbox.Max.Z + 50)));
+            
+            if (outline.IsEmpty)
+                return null;
 
             return new BoundingBoxIntersectsFilter(outline);
         }
