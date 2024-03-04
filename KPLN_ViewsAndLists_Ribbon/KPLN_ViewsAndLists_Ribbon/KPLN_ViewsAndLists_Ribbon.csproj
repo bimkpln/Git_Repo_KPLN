@@ -48,8 +48,9 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\bin\Revit2022\KPLN_Loader.dll</HintPath>
+    <Reference Include="KPLN_Loader, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -118,8 +119,11 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\Lists\TBlockEntity.cs" />
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
+    <Compile Include="ExternalCommands\Lists\CommandListTBlockParamCopier.cs" />
     <Compile Include="ExternalCommands\Lists\CommandListRename.cs" />
+    <Compile Include="ExternalCommands\UserErrorException.cs" />
     <Compile Include="Forms\FormListRename.xaml.cs">
       <DependentUpon>FormListRename.xaml</DependentUpon>
     </Compile>
@@ -163,6 +167,11 @@
     <Compile Include="Common\Views\FilterUtils\FilterCreator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Common\Views\FilterUtils\ViewUtils.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Forms\FormBatchDelete.resx">
@@ -176,29 +185,20 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\CommandBatchDelete_small.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\CommandCreate_small.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\CommandViewColoring_small.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\CommandWallHatch_small.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\CommandBatchDelete_small.png" />
+    <EmbeddedResource Include="Resources\CommandCreate_small.png" />
+    <EmbeddedResource Include="Resources\CommandViewColoring_small.png" />
+    <EmbeddedResource Include="Resources\CommandWallHatch_small.png" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Resources\CommandListRename.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Resources\mainLists.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Resources\mainViews.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Resources\CommandListRename.png" />
+    <EmbeddedResource Include="Resources\CommandListTBlockParamCopier.png" />
+    <EmbeddedResource Include="Resources\mainLists.png" />
+    <EmbeddedResource Include="Resources\mainViews.png" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\FormListRename.xaml">

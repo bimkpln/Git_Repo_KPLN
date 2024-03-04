@@ -3,6 +3,7 @@ using KPLN_Loader.Common;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace KPLN_ViewsAndLists_Ribbon
@@ -26,7 +27,8 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ToolTip = "Пакетная работа с видами"
             };
             PulldownButton pullDown_Views = panel.AddItem(pullDownData_Views) as PulldownButton;
-            BtnImagine(pullDown_Views, "mainViews.png");
+            pullDown_Views.Image = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainViews.png");
+            pullDown_Views.LargeImage = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainViews.png");
 
             // Добавляю выпадающие списки pullDown для листов
             PulldownButtonData pullDownData_Lists = new PulldownButtonData("Lists", "Листы")
@@ -34,7 +36,8 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ToolTip = "Пакетная работа с листами"
             };
             PulldownButton pullDown_Lists = panel.AddItem(pullDownData_Lists) as PulldownButton;
-            BtnImagine(pullDown_Lists, "mainLists.png");
+            pullDown_Lists.Image = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainLists.png");
+            pullDown_Lists.LargeImage = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainLists.png");
 
             #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
@@ -49,7 +52,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandCreate).FullName,
                 pullDown_Views,
-                "CommandCreate_small.png",
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandCreate_small.png",
                 "http://moodle"
             );
 
@@ -65,7 +68,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
                 pullDown_Views,
-                "CommandBatchDelete_small.png",
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandBatchDelete_small.png",
                 "http://moodle"
             );
 
@@ -81,7 +84,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandViewColoring).FullName,
                 pullDown_Views,
-                "CommandViewColoring_small.png",
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandViewColoring_small.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=671l"
             );
 
@@ -101,7 +104,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandWallHatch).FullName,
                 pullDown_Views,
-                "CommandWallHatch_small.png",
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandWallHatch_small.png",
                 "http://bim-starter.com/plugins/wallhatch/"
             );
             #endregion
@@ -121,7 +124,24 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Lists.CommandListRename).FullName,
                 pullDown_Lists,
-                "CommandListRename.png",
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRename.png",
+                "http://moodle/mod/book/view.php?id=502&chapterid=911"
+            );
+
+            AddPushButtonDataInPullDown(
+                "CommandListTBlockParamCopier",
+                "Перенос\nпараметров",
+                "Перенос параметров листа в параметры основной надписи",
+                string.Format(
+                    "Переносит значения листа в экземпляр основной надписи.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Lists.CommandListTBlockParamCopier).FullName,
+                pullDown_Lists,
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListTBlockParamCopier.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
             #endregion
@@ -153,18 +173,20 @@ namespace KPLN_ViewsAndLists_Ribbon
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            BtnImagine(button, imageName);
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
         }
 
         /// <summary>
         /// Метод для добавления иконки для кнопки
         /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
-        private void BtnImagine(RibbonButton button, string imageName)
+        /// <param name="embeddedPathname">Имя иконки с раширением</param>
+        private ImageSource PngImageSource(string embeddedPathname)
         {
-            string imageFullPath = Path.Combine(new FileInfo(AssemblyPath).DirectoryName, @"Resources\", imageName);
-            button.LargeImage = new BitmapImage(new Uri(imageFullPath));
+            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
+
+            return decoder.Frames[0]; ;
 
         }
     }
