@@ -27,7 +27,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandListRename : IExternalCommand
+    internal class CommandListRenumber : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
