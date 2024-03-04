@@ -106,8 +106,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\ButtonToRunEntity.cs" />
     <Compile Include="Common\ElementEntity.cs" />
     <Compile Include="Common\UIStatus.cs" />
+    <Compile Include="UI\ButtonToRun.xaml.cs">
+      <DependentUpon>ButtonToRun.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\HtmlWindow\HtmlOutput.cs" />
     <Compile Include="UI\HtmlWindow\MessageType.cs" />
     <Compile Include="UI\HtmlWindow\OutputWindow.cs">
@@ -133,6 +137,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="UI\ButtonToRun.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="UI\UserTextInput.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

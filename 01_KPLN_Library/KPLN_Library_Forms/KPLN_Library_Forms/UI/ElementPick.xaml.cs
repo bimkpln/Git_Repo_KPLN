@@ -15,14 +15,7 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         private bool _isRun = false;
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; }
-
         private readonly IEnumerable<ElementEntity> _collection;
-
-        private ElementEntity _selectedElement;
 
         public ElementPick(IEnumerable<ElementEntity> collection)
         {
@@ -34,20 +27,19 @@ namespace KPLN_Library_Forms.UI
         }
 
         /// <summary>
+        /// Выбранный элемент
+        /// </summary>
+        public ElementEntity SelectedElement { get; private set; }
+
+        /// <summary>
         /// Коллекция элементов, которые будут отображаться в окне
         /// </summary>
         public IEnumerable<ElementEntity> Collection { get { return _collection; } }
 
         /// <summary>
-        /// Выбранный элемент
+        /// Статус запуска
         /// </summary>
-        public ElementEntity SelectedElement
-        {
-            get
-            { return _selectedElement; }
-            set
-            { _selectedElement = value; }
-        }
+        public RunStatus Status { get; private set; }
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
