@@ -225,26 +225,31 @@ namespace KPLN_Tools.ExternalCommands
         /// <returns></returns>
         private HashSet<Parameter> GetParametersFromElems(Element[] trueElems)
         {
-            HashSet<ElementId> docElemsParamIds = new HashSet<ElementId>();
-            docElemsParamIds.UnionWith(trueElems.SelectMany(elem => elem.GetOrderedParameters().Select(p => p.Id)));
-            docElemsParamIds.UnionWith(trueElems.SelectMany(elem => (elem as FamilyInstance).Symbol.GetOrderedParameters().Select(p => p.Id)));
+            HashSet<string> docElemsParamNames = new HashSet<string>();
+            docElemsParamNames.UnionWith(trueElems.SelectMany(elem => elem.GetOrderedParameters().Select(p => p.Definition.Name)));
+            docElemsParamNames.UnionWith(trueElems.SelectMany(elem => (elem as FamilyInstance).Symbol.GetOrderedParameters().Select(p => p.Definition.Name)));
 
             HashSet<Parameter> result = new HashSet<Parameter>();
-            foreach (ElementId paramId in docElemsParamIds)
+            foreach (string paramName in docElemsParamNames)
             {
+                if (paramName.StartsWith("Смещение УГО "))
+                {
+                    var a = 1;
+                }
+                
                 Parameter param = null;
                 bool isContain = true;
                 foreach (Element elem in trueElems)
                 {
-                    param = elem.get_Parameter((BuiltInParameter)paramId.IntegerValue);
+                    var aaa = elem.Id;
+                    param = elem.LookupParameter(paramName);
                     if (param == null)
-                        param = (elem as FamilyInstance).Symbol.get_Parameter((BuiltInParameter)paramId.IntegerValue);
-
+                        param = (elem as FamilyInstance).Symbol.LookupParameter(paramName);
+                    
                     if (param == null)
-                    {
                         isContain = false;
-                        break;
-                    }
+                    else
+                        isContain = true;
                 }
 
                 if (isContain)
