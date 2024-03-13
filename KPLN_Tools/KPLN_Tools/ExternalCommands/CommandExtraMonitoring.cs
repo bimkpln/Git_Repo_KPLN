@@ -226,20 +226,20 @@ namespace KPLN_Tools.ExternalCommands
         /// <returns></returns>
         private HashSet<Parameter> GetParametersFromElems(Element[] trueElems)
         {
-            HashSet<ElementId> docElemsParamIds = new HashSet<ElementId>();
-            docElemsParamIds.UnionWith(trueElems.SelectMany(elem => elem.GetOrderedParameters().Select(p => p.Id)));
-            docElemsParamIds.UnionWith(trueElems.SelectMany(elem => (elem as FamilyInstance).Symbol.GetOrderedParameters().Select(p => p.Id)));
+            HashSet<string> docElemsParamNames = new HashSet<string>();
+            docElemsParamNames.UnionWith(trueElems.SelectMany(elem => elem.GetOrderedParameters().Select(p => p.Definition.Name)));
+            docElemsParamNames.UnionWith(trueElems.SelectMany(elem => (elem as FamilyInstance).Symbol.GetOrderedParameters().Select(p => p.Definition.Name)));
 
             HashSet<Parameter> result = new HashSet<Parameter>();
-            foreach (ElementId paramId in docElemsParamIds)
+            foreach (string paramName in docElemsParamNames)
             {
                 Parameter param = null;
                 bool isContain = true;
                 foreach (Element elem in trueElems)
                 {
-                    param = elem.get_Parameter((BuiltInParameter)paramId.IntegerValue);
+                    param = elem.LookupParameter(paramName);
                     if (param == null)
-                        param = (elem as FamilyInstance).Symbol.get_Parameter((BuiltInParameter)paramId.IntegerValue);
+                        param = (elem as FamilyInstance).Symbol.LookupParameter(paramName);
 
                     if (param == null)
                     {
@@ -250,7 +250,6 @@ namespace KPLN_Tools.ExternalCommands
 
                 if (isContain)
                     result.Add(param);
-
             }
 
             return result;
@@ -276,28 +275,29 @@ namespace KPLN_Tools.ExternalCommands
                     .WhereElementIsNotElementType()
                     .ToElements();
                 
-                // Добавляю параметры из связи
-                HashSet<Parameter> linkElemsParams = GetParametersFromElems(bicElems.ToArray());
-
+                List<Element> intersectedBicElems = new List<Element>();
                 foreach (Element el in bicElems)
                 {
                     if (el.Location is LocationPoint locPoint)
                     {
-                        if (el.Id.IntegerValue == 10630094) 
-                        { 
-                            var a = 1; 
-                        }
-                        
                         XYZ elPntTransformed = linkTrans.OfPoint(locPoint.Point);
                         if (elPntTransformed.X >= searchBbox.Min.X && elPntTransformed.X <= searchBbox.Max.X &&
                             elPntTransformed.Y >= searchBbox.Min.Y && elPntTransformed.Y <= searchBbox.Max.Y &&
                             elPntTransformed.Z >= searchBbox.Min.Z && elPntTransformed.Z <= searchBbox.Max.Z)
                         {
-                            _monitorLinkEntiteDict[_currentLink.Id].Add(new MonitorLinkEntity(el, linkElemsParams, _currentLink));
+                            intersectedBicElems.Add(el);
                         }
                     }
                     else
                         ErrorDictSetting($"Элементы из связи {_currentLink.Name} - не удалось получить LocationPoint. Скинь в BIM-отдел:", el);
+                }
+
+                // Добавляю параметры из связи
+                HashSet<Parameter> linkElemsParams = GetParametersFromElems(intersectedBicElems.ToArray());
+
+                foreach (Element el in intersectedBicElems)
+                {
+                    _monitorLinkEntiteDict[_currentLink.Id].Add(new MonitorLinkEntity(el, linkElemsParams, _currentLink));
                 }
             }
         }
