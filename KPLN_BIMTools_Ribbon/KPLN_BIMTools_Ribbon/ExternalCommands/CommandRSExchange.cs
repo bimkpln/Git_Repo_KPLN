@@ -8,7 +8,6 @@ using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace KPLN_BIMTools_Ribbon.ExternalCommands
 {
@@ -17,7 +16,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class CommandRSExchange : ExchangeEnvironment, IExternalCommand, IExecuteByUIApp
+    internal class CommandRSExchange : ExchangeEnvironment, IExternalCommand, IExecuteByUIApp
     {
         public CommandRSExchange()
         {
@@ -44,7 +43,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             Logger.Info($"Старт обмена файлами с Revit-Server");
 
             // Подготовка к открытию
-            SetOptions();
+            SetOptions(WorksetConfigurationOption.CloseAllWorksets);
 
             // Копирую файлы по указанным путям
             foreach (DBRevitDocExchanges docExchanges in DBRevitDocExchanges)
@@ -81,14 +80,10 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
             // Проверяю, что это папка, если нет - то ревит-сервер
             if (Directory.Exists(pathTo))
-            {
                 OpenAndCopyFile(app, fileFromPathes, pathFrom, pathTo);
-            }
             // Обрабатываю ревит-сервер
             else
-            {
                 OpenAndCopyFile(app, fileFromPathes, pathFrom, pathTo, "RSN:");
-            }
         }
 
         /// <summary>
@@ -119,9 +114,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                         Logger.Info($"Файл {newPath} успешно сохранен!\n");
                     }
                     else
-                    {
                         Logger.Error($"Не удалось открыть Revit-документ ({currentPathFrom}). Нужно вмешаться человеку");
-                    }
                 }
             }
             catch (Exception ex)

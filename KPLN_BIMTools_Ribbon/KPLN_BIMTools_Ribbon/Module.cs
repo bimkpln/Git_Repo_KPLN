@@ -61,7 +61,7 @@ namespace KPLN_BIMTools_Ribbon
             };
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
 
-            //Добавляю кнопку в выпадающий список pullDown
+            //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
                 "RS: Обмен",
                 "RS: Обмен",
@@ -75,6 +75,23 @@ namespace KPLN_BIMTools_Ribbon
                 typeof(CommandRSExchange).FullName,
                 pullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
+                "http://moodle.stinproject.local",
+                true
+            );
+
+            AddPushButtonDataInPullDown(
+                "NW: Экспорт",
+                "NW: Экспорт",
+                "Экспорт моделей в Navisworks",
+                string.Format(
+                    "Пакетный (по предварительным настройкам) экспорт моделей в Navisworks.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandNWExport).FullName,
+                pullDown,
+                "KPLN_BIMTools_Ribbon.Imagens.nwExportSmall.png",
                 "http://moodle.stinproject.local",
                 true
             );

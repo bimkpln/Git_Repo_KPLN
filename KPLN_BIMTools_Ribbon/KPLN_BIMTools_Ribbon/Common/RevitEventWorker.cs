@@ -45,7 +45,7 @@ namespace KPLN_BIMTools_Ribbon.Common
 
         /// <summary>
         /// Обработка события всплывающего окна Ревит
-        /// </summary>
+        /// </summary>=
         /// <param name="sender"></param>
         /// <param name="args"></param>
         internal void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
@@ -69,8 +69,8 @@ namespace KPLN_BIMTools_Ribbon.Common
                         else
                             _logger.Error($"Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!");
                     }
-
-                    _logger.Error($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
+                    else
+                        _logger.Error($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
 
                 }
                 else

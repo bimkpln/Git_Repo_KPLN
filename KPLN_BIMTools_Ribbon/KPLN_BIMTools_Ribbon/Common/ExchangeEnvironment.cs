@@ -155,10 +155,10 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Подготовка опций к открытию и сохранению
         /// </summary>
-        private protected void SetOptions()
+        private protected void SetOptions(WorksetConfigurationOption worksetConfigurationOption)
         {
             _openOptions = new OpenOptions() { DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets };
-            _openOptions.SetOpenWorksetsConfiguration(new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets));
+            _openOptions.SetOpenWorksetsConfiguration(new WorksetConfiguration(worksetConfigurationOption));
 
             _saveAsOptions = new SaveAsOptions() { OverwriteExistingFile = true };
             WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() { SaveAsCentral = true };
