@@ -81,8 +81,7 @@ namespace KPLN_Looker
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
-            string fileName = doc.PathName;
-            if (IsMonitoredFile(doc, fileName))
+            if (IsMonitoredFile(doc))
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе
@@ -155,7 +154,7 @@ namespace KPLN_Looker
                     TaskDialog td = new TaskDialog("ВНИМАНИЕ")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                        MainInstruction = "Вы работаете в незарегестрированном проекте. Скинь скрин в BIM-отдел",
+                        MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
                         FooterText = $"Специалисту BIM-отдела: файл - {centralPath}",
                         CommonButtons = TaskDialogCommonButtons.Ok,
                     };
@@ -233,8 +232,7 @@ namespace KPLN_Looker
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
-            string fileName = doc.PathName;
-            if (IsMonitoredFile(doc, fileName))
+            if (IsMonitoredFile(doc))
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе
@@ -354,13 +352,20 @@ namespace KPLN_Looker
         /// <param name="doc"></param>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        private bool IsMonitoredFile(Document doc, string fileName) =>
-            doc.IsWorkshared
-            && !doc.IsDetached
-            && !doc.IsFamilyDocument
-            && !fileName.EndsWith("rte")
-            && !fileName.ToLower().Contains("\\lib\\")
-            && !fileName.ToLower().Contains("концепция");
+        private bool IsMonitoredFile(Document doc)
+        {
+            string fileName;
+            if (doc.IsWorkshared)
+                fileName = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            else
+                fileName = doc.PathName;
 
+            return doc.IsWorkshared
+                && !doc.IsDetached
+                && !doc.IsFamilyDocument
+                && !fileName.EndsWith("rte")
+                && !fileName.ToLower().Contains("\\lib\\")
+                && !fileName.ToLower().Contains("концепция");
+        }
     }
 }
