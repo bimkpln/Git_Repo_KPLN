@@ -232,29 +232,23 @@ namespace KPLN_Tools.ExternalCommands
             HashSet<Parameter> result = new HashSet<Parameter>();
             foreach (string paramName in docElemsParamNames)
             {
-                if (paramName.StartsWith("Смещение УГО "))
-                {
-                    var a = 1;
-                }
-                
                 Parameter param = null;
                 bool isContain = true;
                 foreach (Element elem in trueElems)
                 {
-                    var aaa = elem.Id;
                     param = elem.LookupParameter(paramName);
                     if (param == null)
                         param = (elem as FamilyInstance).Symbol.LookupParameter(paramName);
                     
                     if (param == null)
+                    {
                         isContain = false;
-                    else
-                        isContain = true;
+                        break;
+                    }
                 }
 
                 if (isContain)
                     result.Add(param);
-
             }
 
             return result;
@@ -281,9 +275,7 @@ namespace KPLN_Tools.ExternalCommands
                     .WhereElementIsNotElementType()
                     .ToElements();
 
-                // Добавляю параметры из связи
-                HashSet<Parameter> linkElemsParams = GetParametersFromElems(bicElems.ToArray());
-
+                List<Element> intersectedBicElems = new List<Element>();
                 foreach (Element el in bicElems)
                 {
                     if (el.Location is LocationPoint locPoint)
@@ -293,11 +285,19 @@ namespace KPLN_Tools.ExternalCommands
                             elPntTransformed.Y >= searchBbox.Min.Y && elPntTransformed.Y <= searchBbox.Max.Y &&
                             elPntTransformed.Z >= searchBbox.Min.Z && elPntTransformed.Z <= searchBbox.Max.Z)
                         {
-                            _monitorLinkEntiteDict[_currentLink.Id].Add(new MonitorLinkEntity(el, linkElemsParams, _currentLink));
+                            intersectedBicElems.Add(el);
                         }
                     }
                     else
                         ErrorDictSetting($"Элементы из связи {_currentLink.Name} - не удалось получить LocationPoint. Скинь в BIM-отдел:", el);
+                }
+
+                // Добавляю параметры из связи
+                HashSet<Parameter> linkElemsParams = GetParametersFromElems(intersectedBicElems.ToArray());
+
+                foreach (Element el in intersectedBicElems)
+                {
+                    _monitorLinkEntiteDict[_currentLink.Id].Add(new MonitorLinkEntity(el, linkElemsParams, _currentLink));
                 }
             }
 
