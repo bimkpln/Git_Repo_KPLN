@@ -15,6 +15,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Controls;
 using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Scoper
@@ -26,9 +28,15 @@ namespace KPLN_Scoper
         /// </summary>
         private readonly SQLUserInfo _dbUserInfo;
 
+        private protected SaveAsOptions _rsAutoCopySaveAsOptions;
+
         public Module()
         {
             _dbUserInfo = KPLN_Loader.Preferences.User;
+
+            _rsAutoCopySaveAsOptions = new SaveAsOptions() { OverwriteExistingFile = false };
+            WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() { SaveAsCentral = false };
+            _rsAutoCopySaveAsOptions.SetWorksharingOptions(worksharingSaveAsOptions);
         }
         
         public Result Close()
@@ -60,9 +68,10 @@ namespace KPLN_Scoper
                 // Обновление файлов в БД.
                 KPLN_Library_DataBase.DbControll.Update();
 
+                # if Revit2020
                 UpdateAllDocumentInfo();
-
                 UpdateAllModuleInfo();
+                #endif
 
                 //Подписка на события
                 application.ViewActivated += OnViewActivated;
@@ -110,30 +119,30 @@ namespace KPLN_Scoper
         
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            try
-            {
-                #region Анализ триггерных изменений по проекту
-                Document doc = args.GetDocument();
-                // Игнорирую не для совместной работы
-                if (doc.IsWorkshared)
-                {
-                    // Игнорирую файлы не с диска Y: и файлы концепции
-                    string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-                    if (docPath.Contains("stinproject.local\\project\\")
-                        && !(docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
-                    {
-                        IsFamilyLoadedFromOtherFile(args);
-                    }
-                }
-                #endregion
+            //try
+            //{
+            //    #region Анализ триггерных изменений по проекту
+            //    Document doc = args.GetDocument();
+            //    // Игнорирую не для совместной работы
+            //    if (doc.IsWorkshared)
+            //    {
+            //        // Игнорирую файлы не с диска Y: и файлы концепции
+            //        string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            //        if (docPath.Contains("stinproject.local\\project\\")
+            //            && !(docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
+            //        {
+            //            IsFamilyLoadedFromOtherFile(args);
+            //        }
+            //    }
+            //    #endregion
 
-                if (FileActivityService.ActiveDocument != null && !FileActivityService.ActiveDocument.IsFamilyDocument && !FileActivityService.ActiveDocument.PathName.Contains(".rte"))
-                {
-                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
-                    FileActivityService.ActivityBag.Enqueue(info);
-                }
-            }
-            catch (Exception) { }
+            //    if (FileActivityService.ActiveDocument != null && !FileActivityService.ActiveDocument.IsFamilyDocument && !FileActivityService.ActiveDocument.PathName.Contains(".rte"))
+            //    {
+            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
+            //        FileActivityService.ActivityBag.Enqueue(info);
+            //    }
+            //}
+            //catch (Exception) { }
         }
 
         /// <summary>
@@ -280,15 +289,33 @@ namespace KPLN_Scoper
 
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
-            try
+            if (args.Status == RevitAPIEventStatus.Succeeded)
             {
-                if (FileActivityService.ActiveDocument != null)
-                {
-                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
-                    FileActivityService.ActivityBag.Enqueue(info);
-                }
+                Document doc = args.Document;
+                // Хардкод для старой версии - бэкапим только проект Сетунь
+                if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_АР_"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\project\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+             
+                if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_КР_"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
             }
-            catch (Exception) { }
+            
+            //try
+            //{
+            //    if (FileActivityService.ActiveDocument != null)
+            //    {
+            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentSynchronized);
+            //        FileActivityService.ActivityBag.Enqueue(info);
+            //    }
+
+            //    FileActivityService.Synchronize(null);
+
+            //}
+            //catch (ArgumentNullException ex)
+            //{
+            //    PrintError(ex);
+            //}
+            //catch (Exception) { }
             /*
             try
             {
@@ -298,16 +325,6 @@ namespace KPLN_Scoper
             catch (Exception)
             { }
             */
-            try
-            {
-                FileActivityService.Synchronize(null);
-            }
-            catch (ArgumentNullException ex)
-            {
-                PrintError(ex);
-            }
-            catch (Exception)
-            { }
         }
 
         /// <summary>
@@ -315,31 +332,31 @@ namespace KPLN_Scoper
         /// </summary>
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
-            try
-            {
-                if (FileActivityService.ActiveDocument != null 
-                    && !args.Document.IsFamilyDocument 
-                    && !args.Document.PathName.Contains(".rte"))
-                {
-                    ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
-                    FileActivityService.ActivityBag.Enqueue(info);
+            //try
+            //{
+            //    if (FileActivityService.ActiveDocument != null 
+            //        && !args.Document.IsFamilyDocument 
+            //        && !args.Document.PathName.Contains(".rte"))
+            //    {
+            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.ActiveDocument);
+            //        FileActivityService.ActivityBag.Enqueue(info);
 
-                    // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
-                    if (info.ProjectId == -1
-                        && info.DocumentId != -1
-                        && !info.DocumentTitle.ToLower().Contains("конц"))
-                    {
-                        Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
-                            " - можете продолжить работу. Если же это файл новго проекта - напишите " +
-                            "руководителю BIM-отдела",
-                            KPLN_Loader.Preferences.MessageType.Error);
-                    }
-                }
-            }
-            catch (Exception ex) 
-            { 
-                PrintError(ex); 
-            }
+            //        // Если отловить ошибку в ActivityInfo - активность по проекту не будет писаться вовсе
+            //        if (info.ProjectId == -1
+            //            && info.DocumentId != -1
+            //            && !info.DocumentTitle.ToLower().Contains("конц"))
+            //        {
+            //            Print($"Внимание: Ваш проект не зарегестрирован! Если это временный файл" +
+            //                " - можете продолжить работу. Если же это файл новго проекта - напишите " +
+            //                "руководителю BIM-отдела",
+            //                KPLN_Loader.Preferences.MessageType.Error);
+            //        }
+            //    }
+            //}
+            //catch (Exception ex) 
+            //{ 
+            //    PrintError(ex); 
+            //}
 
             try
             {
@@ -370,8 +387,7 @@ namespace KPLN_Scoper
         /// </summary>
         private void UpdateAllDocumentInfo()
         {
-            if (_dbUserInfo.SystemName != "tkutsko")
-            { return; }
+            if (_dbUserInfo.SystemName != "tkutsko") { return; }
             
             List<SQLProject> projects = GetProjects();
             List<SQLDepartment> departments = GetDepartments();
@@ -992,6 +1008,71 @@ namespace KPLN_Scoper
             }
 
             return modules;
+        }
+
+        private bool RSBackupFile(Document doc, string pathTo)
+        {
+            string copyTaskMsg = string.Empty;
+            Task copyLocalFileTask = Task.Run(() => 
+            {
+                FileInfo localFI = new FileInfo(doc.PathName);
+                if (localFI.Exists)
+                {
+                    if (Directory.Exists(pathTo))
+                    {
+                        string archCopyPath = $"{pathTo}\\{doc.Title}_{DateTime.Now:MM_d_H_m}.rvt";
+                        FileInfo archCopyFI = localFI.CopyTo(archCopyPath);
+                        if (!archCopyFI.Exists)
+                            copyTaskMsg = "Не удалось сделать архивную копию. Обратись в BIM-отдел!";
+                    }
+                }
+                else
+                    copyTaskMsg = "Не удалось найти локальную копию. Обратись в BIM-отдел!";
+            });
+            
+            string clearTaskMsg = string.Empty;
+            Task clearArchCopyFilesTask = Task.Run(() =>
+            {
+                // Лимит на архивные копии для конкретного файла
+                int archFilesLimit = 10;
+                string[] namePrepareArr = doc.Title.Split(new[] { $"_{_dbUserInfo.SystemName}" }, StringSplitOptions.None);
+                if (namePrepareArr.Length == 0)
+                    clearTaskMsg = $"Не удалось определить имя модели из хранилища для пользователя {_dbUserInfo.SystemName}. Обратись в BIM-отдел!";
+                else
+                {
+                    string centralFileName = namePrepareArr[0];
+                    if (Directory.Exists(pathTo))
+                    {
+                        string[] archFiles = Directory.GetFiles(pathTo);
+                        FileInfo[] currentCentralArchCopies = archFiles
+                            .Where(a => a.Contains(centralFileName))
+                            .Select(a => new FileInfo(a))
+                            .OrderBy(fi => fi.CreationTime)
+                            .ToArray();
+                        
+                        if (currentCentralArchCopies.Count() > archFilesLimit)
+                        {
+                            int startCount = currentCentralArchCopies.Count() - archFilesLimit;
+                            while (startCount > 0)
+                            {
+                                startCount--;
+                                FileInfo archCopyToDel = currentCentralArchCopies[startCount];
+                                archCopyToDel.Delete();
+                            }
+                        }
+                    }
+                }
+            });
+
+            Task.WaitAll(new Task[2] { copyLocalFileTask, clearArchCopyFilesTask });
+           
+            if (copyTaskMsg != string.Empty) 
+                Print($"Ошибка при копировании резервного файла: {copyTaskMsg}", KPLN_Loader.Preferences.MessageType.Error);
+            
+            if (clearTaskMsg != string.Empty)
+                Print($"Ошибка при очистке старых резервных копий: {clearTaskMsg}", KPLN_Loader.Preferences.MessageType.Error);
+
+            return false;
         }
     }
 }
