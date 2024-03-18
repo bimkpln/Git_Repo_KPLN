@@ -21,7 +21,7 @@ namespace KPLN_Quantificator.Services
                 string elementFile = item?.Parent?.Parent?.Parent?.Parent?.PropertyCategories.FindPropertyByDisplayName("Элемент", "Файл источника")?.Value.ToString();
                 string elementType = item?.Parent?.Parent?.Parent?.Parent?.Parent?.PropertyCategories.FindPropertyByDisplayName("Элемент", "Тип")?.Value.ToString();
                 
-                if (elementType == "DisplayString:Экземпляр")
+                if (elementType == "DisplayString:Экземпляр" || elementType == "DisplayString:Ссылка")
                 {
                     return textFilter(item.Parent.Parent.Parent.Parent.Parent.PropertyCategories.FindPropertyByDisplayName("Элемент", "Имя").Value.ToString());
                 }

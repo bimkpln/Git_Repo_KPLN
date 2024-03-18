@@ -136,6 +136,9 @@
     <Compile Include="Common\Collections.cs" />
     <Compile Include="Common\CustomClashTest.cs" />
     <Compile Include="DBTools.cs" />
+    <Compile Include="Forms\RenameViewForm.xaml.cs">
+      <DependentUpon>RenameViewForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="GlobalPreferences.cs" />
     <Compile Include="GroupingFunctions.cs" />
     <Compile Include="Output.cs" />
@@ -193,6 +196,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\RenameViewForm.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Source\comment_big.png">
@@ -223,6 +230,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\match_resources_small.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\rename_big.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\rename_small.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\scope_set_big.png">
