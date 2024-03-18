@@ -1,16 +1,13 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-
-using KPLN_Loader.Common;
-using KPLN_Loader.Output;
 using KPLN_Finishing.CommandTools;
+using KPLN_Loader.Common;
 using System;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media.Imaging;
-
-
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Finishing
 {
@@ -20,6 +17,7 @@ namespace KPLN_Finishing
         {
             return Result.Succeeded;
         }
+        
         public Result Execute(UIControlledApplication application, string tabName)
         {
             Names.assembly = Assembly.GetExecutingAssembly().FullName;
@@ -69,21 +67,26 @@ namespace KPLN_Finishing
             button_F.ItemText = "Типовые\nэтажи";
             button_F.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"https://www.youtube.com/watch?v=2D8GMjI__pg"));
             SetIcon(button_F, "parse_groups");
+            
             application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
+            
             return Result.Succeeded;
         }
+        
         private void SetIcon(PushButton btn, string path)
         {
             BitmapImage icon = new BitmapImage(new Uri(string.Format(@"{0}\Source\{1}.png", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString(), path)));
             btn.Image = icon;
             btn.LargeImage = icon;
         }
+        
         private void SetIcon(PushButtonData btn, string path)
         {
             BitmapImage icon = new BitmapImage(new Uri(string.Format(@"{0}\Source\{1}.png", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString(), path)));
             btn.Image = icon;
             btn.LargeImage = icon;
         }
+        
         public void OnIdling(object sender, IdlingEventArgs args)
         {
             if (Preferences.IdlingCollectionsRun.Count != 0)
@@ -99,7 +102,7 @@ namespace KPLN_Finishing
                             cmd.Execute(sender as UIApplication);
                             Preferences.IdlingCollectionsRun.RemoveAt(0);
                         }
-                        catch (Exception e) { Output.PrintError(e); }
+                        catch (Exception e) { PrintError(e); }
 
                     }
                     t.Commit();

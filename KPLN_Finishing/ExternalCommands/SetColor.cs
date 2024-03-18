@@ -2,18 +2,12 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-
-using KPLN_Loader.Output;
-using static KPLN_Finishing.Tools;
-using static KPLN_Loader.Output.Output;
+using KPLN_Finishing.CommandTools;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KPLN_Finishing.Forms;
-using static KPLN_Loader.Preferences;
-using KPLN_Finishing.CommandTools;
-using KPLN_Finishing.CommandTools;
+using static KPLN_Finishing.Tools;
 
 namespace KPLN_Finishing.ExternalCommands
 {
@@ -47,8 +41,7 @@ namespace KPLN_Finishing.ExternalCommands
                         List<ColorPresset> presets = new List<ColorPresset>();
                         FillPatternElement fillPatternElement = new FilteredElementCollector(doc).OfClass(typeof(FillPatternElement)).Cast<FillPatternElement>().First(a => a.GetFillPattern().IsSolidFill);
                         OverrideGraphicSettings settingsDefault = new OverrideGraphicSettings();
-                        Autodesk.Revit.DB.Color white = new Autodesk.Revit.DB.Color(255, 255, 255);
-#if Revit2020
+                        Color white = new Color(255, 255, 255);
                         settingsDefault.SetSurfaceForegroundPatternColor(white);
                         settingsDefault.SetProjectionLineWeight(1);
                         settingsDefault.SetHalftone(true);
@@ -56,13 +49,12 @@ namespace KPLN_Finishing.ExternalCommands
                         settingsDefault.SetSurfaceTransparency(80);
                         //
                         OverrideGraphicSettings settingsError = new OverrideGraphicSettings();
-                        Autodesk.Revit.DB.Color red = new Autodesk.Revit.DB.Color(255, 40, 0);
+                        Color red = new Color(255, 40, 0);
                         settingsError.SetSurfaceForegroundPatternColor(red);
                         settingsError.SetProjectionLineWeight(7);
                         settingsError.SetHalftone(false);
                         settingsError.SetSurfaceForegroundPatternId(fillPatternElement.Id);
                         settingsError.SetSurfaceTransparency(0);
-#endif
 #if Revit2018
                         settingsDefault.SetProjectionFillColor(white);
                         settingsDefault.SetProjectionLineWeight(1);
@@ -128,7 +120,7 @@ namespace KPLN_Finishing.ExternalCommands
             }
             catch (Exception e)
             {
-                Output.PrintError(e);
+                HtmlOutput.PrintError(e);
                 return Result.Failed;
             }
             return Result.Succeeded;

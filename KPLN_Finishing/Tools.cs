@@ -1,11 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using KPLN_Loader.Output;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Preferences;
 
 namespace KPLN_Finishing
 {
@@ -27,6 +26,7 @@ namespace KPLN_Finishing
             List<WPFParameter> builtInParametersSorted = builtInParameters.OrderBy(o => o.Name).ToList();
             return builtInParametersSorted;
         }
+        
         public static Element GetTypeElement(Element element)
         {
             switch (element.Category.Id.IntegerValue)
@@ -63,6 +63,7 @@ namespace KPLN_Finishing
             }
             return null;
         }
+        
         public static string GetGroupParameter(Document doc, Element element)
         {
             try
@@ -95,54 +96,67 @@ namespace KPLN_Finishing
             catch (Exception) { }
             return string.Empty;
         }
+        
         public static void LoadElementParameters(Document doc)
         {
-            List<ScriptParameter> parametersElements = new List<ScriptParameter>() { new ScriptParameter("О_Id помещения", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_Имя помещения", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_Номер помещения", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_Группа", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_Описание", ParameterType.MultilineText, typeof(TypeBinding), doc),
-                                                                                                new ScriptParameter("О_Плинтус", ParameterType.YesNo, typeof(TypeBinding), doc),
-                                                                                                new ScriptParameter("О_Плинтус_Высота", ParameterType.Length, typeof(TypeBinding), doc)};
+            List<ScriptParameter> parametersElements = new List<ScriptParameter>() 
+            { 
+                new ScriptParameter("О_Id помещения", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_Имя помещения", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_Номер помещения", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_Группа", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_Описание", typeof(TypeBinding), doc),
+                new ScriptParameter("О_Плинтус", typeof(TypeBinding), doc),
+                new ScriptParameter("О_Плинтус_Высота", typeof(TypeBinding), doc)
+            };
             LoadParameters(doc, new BuiltInCategory[] { BuiltInCategory.OST_Walls, BuiltInCategory.OST_Floors, BuiltInCategory.OST_Ceilings }, parametersElements);
         }
+        
         public static void LoadRoomParameters(Document doc)
         {
-            List<ScriptParameter> parametersRooms = new List<ScriptParameter>(){ new ScriptParameter("О_ПОМ_ГОСТ_Описание стен", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание плинтусов", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание полов", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание потолков", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь стен_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь полов_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_Группа", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_Ведомость", ParameterType.Text, typeof(InstanceBinding), doc)};
+            List<ScriptParameter> parametersRooms = new List<ScriptParameter>()
+            { 
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание стен", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание плинтусов", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание полов", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание потолков", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь стен_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь полов_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_Группа", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_Ведомость", typeof(InstanceBinding), doc)
+            };
             LoadParameters(doc, new BuiltInCategory[] { BuiltInCategory.OST_Rooms }, parametersRooms);
         }
+        
         private static bool IsParameterExist(Element element, ScriptParameter parameter)
         {
             foreach (Parameter p in element.Parameters)
             {
-                if (p.IsShared && p.Definition.ParameterType == parameter.Type && p.Definition.Name == parameter.Name)
+                if (p.IsShared && p.Definition.Name == parameter.Name)
                 {
                     return true;
                 }
             }
             return false;
         }
+        
         public static bool AllParametersExist(Element room, Document doc)
         {
-            List<ScriptParameter> parametersRooms = new List<ScriptParameter>(){ new ScriptParameter("О_ПОМ_ГОСТ_Описание стен", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание плинтусов", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание полов", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Описание потолков", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь стен_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Площадь полов_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст", ParameterType.MultilineText, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_Группа", ParameterType.Text, typeof(InstanceBinding), doc),
-                                                                                                new ScriptParameter("О_ПОМ_Ведомость", ParameterType.Text, typeof(InstanceBinding), doc)};
+            List<ScriptParameter> parametersRooms = new List<ScriptParameter>()
+            { 
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание стен", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание плинтусов", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание полов", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Описание потолков", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь стен_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Площадь полов_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_Группа", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_ПОМ_Ведомость", typeof(InstanceBinding), doc)
+            };
 
             foreach (ScriptParameter parameter in parametersRooms)
             {
@@ -166,7 +180,7 @@ namespace KPLN_Finishing
                 }
                 catch (Exception e)
                 {
-                    Output.PrintError(e);
+                    HtmlOutput.PrintError(e);
                 }
             }
         }
@@ -203,19 +217,19 @@ namespace KPLN_Finishing
                         try
                         {
                             doc.ParameterBindings.Insert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA);
-                            Output.Print(string.Format("ДОБАВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
+                            HtmlOutput.Print($"ДОБАВЛЕН: «{externalDefinition.Name}»", MessageType.Regular);
                         }
                         catch (Exception e)
                         {
-                            { Output.PrintError(e); }
+                            { HtmlOutput.PrintError(e); }
                             try
                             {
                                 doc.ParameterBindings.ReInsert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA);
-                                Output.Print(string.Format("ОБНОВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
+                                HtmlOutput.Print($"ОБНОВЛЕН: «{externalDefinition.Name}»", MessageType.Regular);
                             }
                             catch (Exception e2)
                             {
-                                { Output.PrintError(e2); }
+                                { HtmlOutput.PrintError(e2); }
                             }
 
                         }
@@ -227,19 +241,19 @@ namespace KPLN_Finishing
                         try
                         {
                             doc.ParameterBindings.Insert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA);
-                            Output.Print(string.Format("ДОБАВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
+                            HtmlOutput.Print(string.Format("ДОБАВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
                         }
                         catch (Exception e)
                         {
-                            { Output.PrintError(e); }
+                            { HtmlOutput.PrintError(e); }
                             try
                             {
                                 doc.ParameterBindings.ReInsert(externalDefinition, newIB, BuiltInParameterGroup.PG_DATA);
-                                Output.Print(string.Format("ОБНОВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
+                                HtmlOutput.Print(string.Format("ОБНОВЛЕН: «{0}»", externalDefinition.Name), MessageType.Regular);
                             }
                             catch (Exception e2)
                             {
-                                Output.PrintError(e2);
+                                HtmlOutput.PrintError(e2);
                             }
                         }
                     }
@@ -554,13 +568,11 @@ namespace KPLN_Finishing
     public class ScriptParameter
     {
         public string Name { get; }
-        public ParameterType Type { get; }
         public CategorySet Categories { get; }
         public Type TypeBinding { get; }
-        public ScriptParameter(string name, ParameterType type, Type typebinding, Document doc)
+        public ScriptParameter(string name, Type typebinding, Document doc)
         {
             Name = name;
-            Type = type;
             TypeBinding = typebinding;
             //
             BindingMap bindingMap = doc.ParameterBindings;
