@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -41,7 +42,11 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string UserFullName
         {
-            get => $"{CurrentDBUser.Surname} {CurrentDBUser.Name}";
+            get
+            {
+                DBUser dBUser = ClashUserDbService.GetDBUser_ByUserName(UserSystemName);
+                return $"{dBUser.Surname} {dBUser.Name}";
+            } 
         }
 
         /// <summary>

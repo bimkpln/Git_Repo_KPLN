@@ -5,22 +5,22 @@ namespace KPLN_Clashes_Ribbon.Core
 {
     public static class ClashesMainCollection
     {
-        private static DBUser _dBUser;
+        private static DBUser _currentDBUser;
 
         public static readonly string StringSeparatorItem = "~SE00~";
 
         public static readonly string StringSeparatorSubItem = "~SE01~";
 
+        public static UserDbService ClashUserDbService = (UserDbService)new CreatorUserDbService().CreateService();
+
         public static DBUser CurrentDBUser 
         {
             get
             {
-                if (_dBUser == null)
-                {
-                    UserDbService userDbService = (UserDbService) new CreatorUserDbService().CreateService();
-                    _dBUser = userDbService.GetCurrentDBUser();
-                }
-                return _dBUser;
+                if (_currentDBUser == null)
+                    _currentDBUser = ClashUserDbService.GetCurrentDBUser();
+                
+                return _currentDBUser;
             } 
         }
 
