@@ -27,11 +27,11 @@ namespace KPLN_Quantificator.Forms
 
             SavedItem newViewpoint = doc.SavedViewpoints.CurrentSavedViewpoint.CreateUniqueCopy();
 
-            newViewpoint.DisplayName = viewpointTextFloor + "-" + viewpointTextNumber + "-" + ViewPointTextName.Text;
+            newViewpoint.DisplayName = viewpointTextFloor + "." + viewpointTextNumber + "." + ViewPointTextName.Text;
 
             if (int.TryParse(viewpointTextNumber, out int number))
             {
-                viewpointTextNumber = (number + 1).ToString();
+                viewpointTextNumber = (number + 1).ToString("000");
             }
 
             doc.SavedViewpoints.ReplaceWithCopy(parent, index, newViewpoint);
