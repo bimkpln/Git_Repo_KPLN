@@ -1,4 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -72,26 +73,7 @@ namespace KPLN_Tools.Forms
             if (!(listBox.SelectedItem is DBUser dBUser))
                 throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД\n\n");
 
-            string id = string.Empty;
-            using (HttpClient client = new HttpClient())
-            {
-                // Выполнение GET - запроса к странице
-                HttpResponseMessage response = await client.GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/152/rud1zqq5p9ol00uk/user.search.json?LAST_NAME={0}", $"{dBUser.Surname}"));
-                if (response.IsSuccessStatusCode)
-                {
-                    string content = await response.Content.ReadAsStringAsync();
-                    if (string.IsNullOrEmpty(content))
-                        throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
-
-                    dynamic dynDeserilazeData = JsonConvert.DeserializeObject<dynamic>(content);
-                    dynamic responseResult = dynDeserilazeData.result;
-                    id = responseResult[0].ID.ToString();
-                }
-            }
-
-            if (id == string.Empty)
-                throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
-
+            int id = await BitrixMessageSender.GetDBUserBitrixId_ByDBUser(dBUser);
             Process.Start(new ProcessStartInfo($@"https://kpln.bitrix24.ru/company/personal/user/{id}/")
             {
                 UseShellExecute = true
