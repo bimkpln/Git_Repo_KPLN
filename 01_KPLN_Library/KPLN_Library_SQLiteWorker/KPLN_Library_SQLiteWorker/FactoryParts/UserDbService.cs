@@ -16,6 +16,10 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         {
         }
 
+        #region Create
+        #endregion
+
+        #region Read
         /// <summary>
         /// Получить текущего пользователя
         /// </summary>
@@ -44,5 +48,18 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public IEnumerable<DBUser> GetDBUsers() => 
             ExecuteQuery<DBUser>(
                 $"SELECT * FROM {_dbTableName};");
+        #endregion
+
+        #region Update
+        /// <summary>
+        /// Обновить значение BitrixID для пользователя
+        /// </summary>
+        public void UpdateDBUser_BitrixUserID(DBUser dbUser, int bitrixId) =>
+            ExecuteNonQuery($"UPDATE {_dbTableName} " +
+                  $"SET {nameof(DBUser.BitrixUserID)}='{bitrixId}' WHERE {nameof(DBUser.Id)}='{dbUser.Id}';");
+        #endregion
+
+        #region Delete
+        #endregion
     }
 }

@@ -58,6 +58,12 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Ограничить работу пользователя вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsUserRestricted { get; set; }
+
+        /// <summary>
+        /// ID пользователя Bitrix. Значения заполняются при автоматом, при отправке сообщений конкретному пользователю.
+        /// см. KPLN_Library_Bitrix24Worker
+        /// </summary>
+        public int BitrixUserID { get; set; }
         #endregion
 
         /// <summary>

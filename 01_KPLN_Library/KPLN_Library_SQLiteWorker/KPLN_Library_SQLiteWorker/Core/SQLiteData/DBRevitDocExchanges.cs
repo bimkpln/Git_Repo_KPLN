@@ -20,20 +20,19 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public int ProjectId { get; set; }
 
         /// <summary>
-        /// Связь с документом из БД
+        /// Тип обмена файлов
         /// </summary>
-        [ForeignKey(nameof(DBDocument))]
-        public int DocumentId { get; set; }
+        public string RevitDocExchangeType { get; set; }
 
         /// <summary>
-        /// Путь к файлу/папке откуда копируем
+        /// Имя конфига
         /// </summary>
-        public string PathFrom { get; set; }
+        public string SettingName { get; set; }
 
         /// <summary>
-        /// Путь к корневой папке куда копируем
+        /// Путь к файлу конфигураций по обмену
         /// </summary>
-        public string PathTo { get; set; }
+        public string SettingDBFilePath { get; set; }
 
         /// <summary>
         /// Режим блокировки файла под действия по обмену (True/False). В БД тип данных текст, преобразование происходит в Dapper
@@ -45,5 +44,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Привязка к БД из DB_Enumerator
         /// </summary>
         public static DB_Enumerator CurrentDB { get; } = DB_Enumerator.RevitDocExchanges;
+    }
+
+    public enum RevitDocExchangeEnum
+    {
+        Navisworks,
+        RevitServer
     }
 }
