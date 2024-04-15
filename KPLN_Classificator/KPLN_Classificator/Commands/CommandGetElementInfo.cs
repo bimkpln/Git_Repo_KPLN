@@ -14,10 +14,11 @@ using KPLN_Classificator.Forms;
 using Autodesk.Revit.DB.Architecture;
 using System.Windows.Forms;
 using KPLN_Classificator.Forms.ViewModels;
+using KPLN_Loader.Common;
 
 namespace KPLN_Classificator
 {
-    public class CommandGetElementInfo : MyExecutableCommand
+    public class CommandGetElementInfo : IExecutableCommand
     {
         private MainWindow form;
         public List<string> paramNames;
@@ -77,7 +78,7 @@ namespace KPLN_Classificator
                     }
                     else
                     {
-                        paramValues.Add(ParamUtils.getValueStringOfAllParams(elem, paramName) ?? "");
+                        paramValues.Add(ParamUtils.getValueStringOfAllParams(doc, elem, paramName) ?? "");
                     }
                 }
 

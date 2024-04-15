@@ -9,10 +9,12 @@ namespace KPLN_Classificator
 {
     public class StorageUtils
     {
+        private readonly string _revitVersion;
         public string xmlFilePath;
 
-        public StorageUtils()
+        public StorageUtils(string revitVersion)
         {
+            _revitVersion = revitVersion;
             this.xmlFilePath = null;
         }
         public InfosStorage getInfoStorage()
@@ -23,7 +25,7 @@ namespace KPLN_Classificator
             UtilsStorage utilsStorage = null;
             try
             {
-                using (StreamReader r = new StreamReader(string.Format("C:\\TEMP\\ccsettings{0}.xml", RevitVersion)))
+                using (StreamReader r = new StreamReader(string.Format("C:\\TEMP\\ccsettings{0}.xml", _revitVersion)))
                 {
                     utilsStorage = (UtilsStorage)storageSerializer.Deserialize(r);
                 }
@@ -67,7 +69,7 @@ namespace KPLN_Classificator
                 Directory.CreateDirectory("C:\\TEMP");
             }
 
-            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", RevitVersion)))
+            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", _revitVersion)))
             {
                 storageSerializer.Serialize(r, utilsStorage);
             }
@@ -98,7 +100,7 @@ namespace KPLN_Classificator
             System.Xml.Serialization.XmlSerializer storageSerializer =
                  new System.Xml.Serialization.XmlSerializer(typeof(UtilsStorage));
 
-            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", RevitVersion)))
+            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", _revitVersion)))
             {
                 storageSerializer.Serialize(r, utilsStorage);
             }
@@ -116,7 +118,7 @@ namespace KPLN_Classificator
             UtilsStorage utilsStorage = null;
             try
             {
-                using (StreamReader r = new StreamReader(string.Format("C:\\TEMP\\ccsettings{0}.xml", RevitVersion)))
+                using (StreamReader r = new StreamReader(string.Format("C:\\TEMP\\ccsettings{0}.xml", _revitVersion)))
                 {
                     utilsStorage = (UtilsStorage)utilsSerializer.Deserialize(r);
                 }
@@ -150,7 +152,7 @@ namespace KPLN_Classificator
                 Directory.CreateDirectory("C:\\TEMP");
             }
 
-            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", RevitVersion)))
+            using (StreamWriter r = new StreamWriter(string.Format("C:\\TEMP\\ccsettings{0}.xml", _revitVersion)))
             {
                 utilsSerializer.Serialize(r, utilsStorage);
             }

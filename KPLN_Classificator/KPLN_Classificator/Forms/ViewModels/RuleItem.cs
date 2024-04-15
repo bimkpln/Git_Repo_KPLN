@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using BuiltInCategory = Autodesk.Revit.DB.BuiltInCategory;
 
 namespace KPLN_Classificator.Forms.ViewModels
@@ -194,7 +191,7 @@ namespace KPLN_Classificator.Forms.ViewModels
 
         private long getHashSumOfRuleItem()
         {
-            try
+            if (valuesOfParams != null)
             {
                 long sum = 0L;
                 sum += GetHashCode();
@@ -204,10 +201,8 @@ namespace KPLN_Classificator.Forms.ViewModels
                 }
                 return sum;
             }
-            catch (Exception)
-            {
-                return hashSumOfRuleItem;
-            }
+            
+            return hashSumOfRuleItem;
         }
 
         public void setHashSum()

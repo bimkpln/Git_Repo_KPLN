@@ -87,7 +87,7 @@ namespace KPLN_Classificator
             return false;
         }
 
-        private static bool setParam(Element elem, string paramName, string value, out string valueForAssigned)
+        private static bool setParam(Document doc, Element elem, string paramName, string value, out string valueForAssigned)
         {
             valueForAssigned = null;
             bool rsl = false;
@@ -109,7 +109,7 @@ namespace KPLN_Classificator
                                 string valueOfParam = null;
                                 if (foundParamName.Contains("*"))
                                 {
-                                    valueOfParam = getValueStringOfAllParams(elem, foundParamNameForGettingValue.Split('*')[0]);
+                                    valueOfParam = getValueStringOfAllParams(doc, elem, foundParamNameForGettingValue.Split('*')[0]);
                                     if (valueOfParam == null) return rsl;
                                     try
                                     {
@@ -124,7 +124,7 @@ namespace KPLN_Classificator
                                 }
                                 else
                                 {
-                                    valueOfParam = getValueStringOfAllParams(elem, foundParamNameForGettingValue);
+                                    valueOfParam = getValueStringOfAllParams(doc, elem, foundParamNameForGettingValue);
                                     if (valueOfParam == null) valueOfParam = "";
                                 }
                                 if (!foundParamsAndTheirValues.ContainsKey(foundParamName))
@@ -178,7 +178,7 @@ namespace KPLN_Classificator
             return rsl;
         }
 
-        private void setClassificator(Classificator classificator, InfosStorage storage, Element elem)
+        private void setClassificator(Classificator classificator, InfosStorage storage, Document doc, Element elem)
         {
             bool paramChecker;
             List<string> assignedValues = new List<string>();
@@ -193,7 +193,7 @@ namespace KPLN_Classificator
             for (int i = 0; i < Math.Min(classificator.paramsValues.Count, storage.instanseParams.Count); i++)
             {
                 if (classificator.paramsValues[i].Length == 0) continue;
-                paramChecker = setParam(elem, storage.instanseParams[i], classificator.paramsValues[i], out string valueForAssigned);
+                paramChecker = setParam(doc, elem, storage.instanseParams[i], classificator.paramsValues[i], out string valueForAssigned);
                 if (paramChecker)
                 {
                     assignedValues.Add(valueForAssigned);
@@ -210,44 +210,51 @@ namespace KPLN_Classificator
             output.PrintDebug(string.Format("Были присвоены значения: {0}", string.Join("; ", assignedValues)), Output.OutputMessageType.System_OK, debug);
         }
 
-        public static string getValueStringOfAllParams(Element elem, string paramName)
+        public static string getValueStringOfAllParams(Document doc, Element elem, string paramName)
         {
             string paramValue = null;
-            Parameter paramObject = elem.LookupParameter(paramName);
-            if (paramObject == null)
+            Parameter param = elem.LookupParameter(paramName);
+            if (param == null)
             {
-                try
-                {
-                    paramObject = elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
-                }
-                catch (Exception)
-                { }
+                param = elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
             }
-            if (paramObject == null)
+            if (param == null)
             {
                 output.PrintDebug(string.Format("В элементе: \"{0}\" c id: {1} не найден параметр: \"{2}\"", elem.Name, elem.Id, paramName), Output.OutputMessageType.Warning, debug);
                 return paramValue;
             }
-            try
+            if (param.StorageType == StorageType.String)
             {
-                if (paramObject.StorageType == StorageType.String)
+                paramValue = param.AsString().ToString();
+            }
+            else if (param.StorageType == StorageType.Double)
+            {
+                // Преобразую системные единцы
+                var typeId = param.GetUnitTypeId();
+                if (UnitUtils.IsMeasurableSpec(typeId))
                 {
-                    paramValue = paramObject.AsString().ToString();
+                    paramValue = UnitFormatUtils.Format(
+                        doc.GetUnits(),
+                        typeId,
+                        param.AsDouble(),
+                        true);
                 }
-                else if (paramObject.StorageType == StorageType.Double)
-                {
-                    paramValue = paramObject.AsDouble().ToString();
-                }
-                else if (paramObject.StorageType == StorageType.Integer)
-                {
-                    paramValue = paramObject.AsInteger().ToString();
-                }
+                // Преобразую пользовательские единицы. Они всегда в футах
                 else
                 {
-                    output.PrintDebug("Не удалось определить тип параметра: " + paramName, Output.OutputMessageType.Error, debug);
+                    double value = Math.Round(param.AsDouble() * 304.8, 1);
+                    paramValue = value.ToString();
                 }
             }
-            catch (Exception) { }
+            else if (param.StorageType == StorageType.Integer)
+            {
+                paramValue = param.AsInteger().ToString();
+            }
+            else
+            {
+                output.PrintDebug("Не удалось определить тип параметра: " + paramName, Output.OutputMessageType.Error, debug);
+            }
+            
             return paramValue;
         }
 
@@ -308,22 +315,22 @@ namespace KPLN_Classificator
 
                     if (categoryCatch && familyNameCatch && typeNameCatch && !familyNameNotExist && !typeNameNotExist)
                     {
-                        setClassificator(classificator, storage, elem);
+                        setClassificator(classificator, storage, doc, elem);
                         break;
                     }
                     if (categoryCatch && familyNameCatch && !familyNameNotExist && typeNameNotExist)
                     {
-                        setClassificator(classificator, storage, elem);
+                        setClassificator(classificator, storage, doc, elem);
                         break;
                     }
                     if (categoryCatch && typeNameCatch && familyNameNotExist && !typeNameNotExist)
                     {
-                        setClassificator(classificator, storage, elem);
+                        setClassificator(classificator, storage, doc, elem);
                         break;
                     }
                     if (categoryCatch && familyNameNotExist && typeNameNotExist)
                     {
-                        setClassificator(classificator, storage, elem);
+                        setClassificator(classificator, storage, doc, elem);
                         break;
                     }
                 }

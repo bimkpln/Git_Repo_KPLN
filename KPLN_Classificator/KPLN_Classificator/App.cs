@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Classificator.ExecutableCommand;
-using KPLN_Classificator.UserInfo;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static KPLN_Classificator.ApplicationConfig;
 
 namespace KPLN_Classificator
@@ -18,7 +17,6 @@ namespace KPLN_Classificator
         {
             //Конфигурирование приложения для работы в стандартной среде
             output = new StubOutput();
-            userInfo = new StandartUserInfo();
             commandEnvironment = new StandartCommandEnvironment();
         }
 

@@ -1,12 +1,8 @@
-﻿using KPLN_Loader.Common;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using KPLN_Classificator.ExecutableCommand;
-using KPLN_Classificator.UserInfo;
-using System;
+using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using static KPLN_Classificator.ApplicationConfig;
 
@@ -21,28 +17,15 @@ namespace KPLN_Classificator
         {
             //Конфигурирование приложения для работы в среде KPLN_Loader
             output = new KplnOutput();
-            userInfo = new KplnUserInfo();
             commandEnvironment = new KplnCommandEnvironment();
         }
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-#if Revit2020
-            MainWindowHandle = application.MainWindowHandle;
-            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
-            RevitWindow = hwndSource.RootVisual as Window;
-#endif
-#if Revit2018
-            try
-            {
-                MainWindowHandle = SystemTools.WindowHandleSearch.MainWindowHandle.Handle;
-            }
-            catch (Exception) { }
-#endif
             assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             try { application.CreateRibbonTab(tabName); } catch { }
 
-            string panelName = "Классификатор";
+            string panelName = "Параметры";
             RibbonPanel panel = null;
             List<RibbonPanel> tryPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName).ToList();
             if (tryPanels.Count == 0)
