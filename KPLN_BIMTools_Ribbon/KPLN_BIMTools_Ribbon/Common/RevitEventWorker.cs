@@ -15,10 +15,10 @@ namespace KPLN_BIMTools_Ribbon.Common
     {
         private static Logger _logger;
         private readonly DBRevitDialog[] _dbRevitDialogs;
-        private readonly ExchangeEnvironment _exchangeEnvironment;
+        private readonly ExchangeService _exchangeEnvironment;
         private string _currentDocName;
 
-        public RevitEventWorker(ExchangeEnvironment exchangeEnvironment, Logger logger, DBRevitDialog[] dbRevitDialogs)
+        public RevitEventWorker(ExchangeService exchangeEnvironment, Logger logger, DBRevitDialog[] dbRevitDialogs)
         {
             _exchangeEnvironment = exchangeEnvironment;
             _logger = logger;

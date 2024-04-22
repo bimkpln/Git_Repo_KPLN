@@ -3,11 +3,20 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
+using KPLN_BIMTools_Ribbon.Core;
+using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_BIMTools_Ribbon.Forms;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime;
+using System.Windows.Shapes;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_BIMTools_Ribbon.ExternalCommands
 {
@@ -16,7 +25,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandRSExchange : ExchangeEnvironment, IExternalCommand, IExecuteByUIApp
+    internal class CommandRSExchange : ExchangeService, IExternalCommand, IExecuteByUIApp
     {
         public CommandRSExchange()
         {
@@ -27,100 +36,62 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return ExecuteByUIApp(commandData.Application);
+            return ExecuteByUIApp(commandData.Application, RevitDocExchangeEnum.RevitServer);
         }
 
-        public Result ExecuteByUIApp(UIApplication uiapp)
+        public Result ExecuteByUIApp(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum)
         {
-            RevitEventWorker revitEventWorker = new RevitEventWorker(this, Logger, DBRevitDialogs);
-
-            // Подписка на события
-            RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
-            RevitUIControlledApp.ControlledApplication.DocumentOpened += revitEventWorker.OnDocumentOpened;
-            RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
-            //RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
-
-            Logger.Info($"Старт обмена файлами с Revit-Server");
-
-            // Подготовка к открытию
-            SetOptions(WorksetConfigurationOption.CloseAllWorksets);
-
-            // Копирую файлы по указанным путям
-            foreach (DBRevitDocExchanges docExchanges in DBRevitDocExchanges)
+            try
             {
-                _sourceProjectsName.Add(CurrentProjectDbService.GetDBProject_ByProjectId(docExchanges.ProjectId).Name);
-                PrepareAndCopyFile(uiapp.Application, docExchanges.PathFrom, docExchanges.PathTo);
+                if (!StartService(uiapp, revitDocExchangeEnum))
+                    return Result.Cancelled;
             }
+            catch (Exception ex)
+            {
+                PrintError(ex);
 
-            SendResultMsg("Плагин по обмену моделями с Revit-Server");
-            Logger.Info($"Файлы успешно переданы на Revit-Server!");
-
-            //Отписка от событий
-            RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
-            RevitUIControlledApp.ControlledApplication.DocumentOpened -= revitEventWorker.OnDocumentOpened;
-            RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
-            //RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
-
-            revitEventWorker.Dispose();
+                return Result.Failed;
+            }
 
             return Result.Succeeded;
         }
 
         /// <summary>
-        /// Метод подготовки к копированию и копированию
-        /// </summary>
-        private void PrepareAndCopyFile(Application app, string pathFrom, string pathTo)
-        {
-            List<string> fileFromPathes = PreparePathesToOpen(pathFrom);
-            if (fileFromPathes.Count == 0)
-            {
-                Logger.Error($"Не удалось найти Revit-файлы из папки: {pathFrom}");
-                return;
-            }
-
-            // Проверяю, что это папка, если нет - то ревит-сервер
-            if (Directory.Exists(pathTo))
-                OpenAndCopyFile(app, fileFromPathes, pathFrom, pathTo);
-            // Обрабатываю ревит-сервер
-            else
-                OpenAndCopyFile(app, fileFromPathes, pathFrom, pathTo, "RSN:");
-        }
-
-        /// <summary>
         /// Метод открытия и копирования файла по новому пути
         /// </summary>
-        private void OpenAndCopyFile(Application app, List<string> fileFromPathes, string pathFrom, string pathTo, string rsn = "")
+        private protected override string ExchangeFile(Application app, string fileFromPath, DBConfigEntity configEntity, string rsn = "")
         {
-            try
+            //Апкастинг в настройку для экспорта в RS
+            if (configEntity is DBRSConfigData rsConfigData)
             {
-                foreach (string currentPathFrom in fileFromPathes)
+                // Подготовка к открытию
+                SetOpenOptions(WorksetConfigurationOption.CloseAllWorksets);
+                SetSaveAsOptions();
+                
+                // Открываем документ по указанному пути
+                Document doc = app.OpenDocumentFile(
+                    ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath),
+                    _openOptions);
+
+                if (doc != null)
                 {
-                    CountSourceDocs++;
-                    // Открываем документ по указанному пути
-                    Document doc = app.OpenDocumentFile(
-                        ModelPathUtils.ConvertUserVisiblePathToModelPath(currentPathFrom),
-                        _openOptions);
+                    string newPath = $"{rsn}{rsConfigData.PathTo}\\{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}.rvt";
+                    ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(newPath);
 
-                    if (doc != null)
-                    {
-                        string newPath = $"{rsn}{pathTo}\\{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}.rvt";
-                        ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(newPath);
+                    doc.SaveAs(newModelPath, _saveAsOptions);
+                    CurrentDocName = doc.Title;
+                    doc.Close(false);
 
-                        doc.SaveAs(newModelPath, _saveAsOptions);
-                        CurrentDocName = doc.Title;
-                        doc.Close();
-
-                        CountProcessedDocs++;
-                        Logger.Info($"Файл {newPath} успешно сохранен!\n");
-                    }
-                    else
-                        Logger.Error($"Не удалось открыть Revit-документ ({currentPathFrom}). Нужно вмешаться человеку");
+                    return newPath;
                 }
+                else
+                    Logger.Error($"Не удалось открыть Revit-документ ({fileFromPath}). Нужно вмешаться человеку");
             }
-            catch (Exception ex)
-            {
-                Logger.Error($"Ошибка обработки Revit-документа/файлов из папки ({pathFrom}):\n{ex.Message}");
-            }
+            else
+                throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRSConfigData)}");
+
+
+            return null;
         }
     }
 }

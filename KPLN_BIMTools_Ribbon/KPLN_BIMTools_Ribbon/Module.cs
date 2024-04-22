@@ -36,7 +36,7 @@ namespace KPLN_BIMTools_Ribbon
             #endregion
 
             #region Настройка NLog
-            LogManager.Setup().LoadConfigurationFromFile(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString() + "\\nlog.config");
+            LogManager.Setup().LoadConfigurationFromFile(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString() + "\\bimToolsNlog.config");
             _logger = LogManager.GetLogger("KPLN_BIMTools");
 
             string logDirPath = $"c:\\temp\\KPLN_Logs\\{_revitVersion}";
