@@ -5,6 +5,6 @@ Project -> Export Template...
 
 2. [Подгрузка для локальных пользователей]
 Для того, чтобы создавать новые проекты на основе шаблона для плагинов KPLN, необходимо zip-файл KPLN_CSharp_Template.zip скопировать локально себе в папку:
-%USERPROFILE%\Documents\Visual Studio 2022\My Exported Templates
+%USERPROFILE%\Documents\Visual Studio 2022\Templates\ProjectTemplates\My Exported Templates
 
 !!!Не забудь проверить версию Visual Studio
