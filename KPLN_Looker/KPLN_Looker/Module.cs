@@ -87,7 +87,7 @@ namespace KPLN_Looker
                 #region Отлов пользователей с ограничением допуска к работе
                 if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
-                    BitrixMessageSender.SendErrorMsg_ToBIMChat(
+                    BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                         $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
                         $"Действие: Открыл проект {doc.Title}.");
@@ -238,7 +238,7 @@ namespace KPLN_Looker
                 #region Отлов пользователей с ограничением допуска к работе
                 if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
-                    BitrixMessageSender.SendErrorMsg_ToBIMChat(
+                    BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                         $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
                         $"Действие: Произвел синхронизацию проекта {doc.Title}.");
@@ -262,7 +262,7 @@ namespace KPLN_Looker
                         if (dBDocument.IsClosed)
                         {
                             BitrixMessageSender
-                                .SendErrorMsg_ToBIMChat($"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                                .SendMsg_ToBIMChat($"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                                 $"Действие: Синхронизиция в проекте {doc.Title}, который ЗАКРЫТ.");
 
                             TaskDialog taskDialog = new TaskDialog("KPLN: Закрытый проект")

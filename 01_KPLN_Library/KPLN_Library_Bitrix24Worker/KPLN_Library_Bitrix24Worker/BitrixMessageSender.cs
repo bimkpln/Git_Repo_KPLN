@@ -60,16 +60,15 @@ namespace KPLN_Library_Bitrix24Worker
         /// <param name="msg">Сообщение, которое будет отправлено</param>
         public static async void SendMsg_ToUser_ByDBUser(DBUser dBUser, string msg)
         {
-            if (await SetDBUserBitrixId_ByDBUserSurname(dBUser) != -1)
+            if (await GetDBUserBitrixId_ByDBUser(dBUser) != -1)
             {
-                string id = string.Empty;
                 try
                 {
                     using (HttpClient client = new HttpClient())
                     {
                         // Выполнение GET - запроса к странице
                         HttpResponseMessage response = await client
-                            .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/qd00y541wgy6wyyz/im.message.add.json?MESSAGE={0}&DIALOG_ID={1}", $"{msg}", $"{id}"));
+                            .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/c87h1w5xrelntkxh/im.message.add.json?MESSAGE={0}&DIALOG_ID={1}", $"{msg}", $"{dBUser.BitrixUserID}"));
                         if (response.IsSuccessStatusCode)
                         {
                             string content = await response.Content.ReadAsStringAsync();
@@ -89,7 +88,13 @@ namespace KPLN_Library_Bitrix24Worker
         /// Получить значение ID из Битрикс
         /// </summary>
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
-        public static async Task<int> GetDBUserBitrixId_ByDBUser(DBUser dBUser) => await SetDBUserBitrixId_ByDBUserSurname(dBUser);
+        public static async Task<int> GetDBUserBitrixId_ByDBUser(DBUser dBUser)
+        {
+            if (dBUser.BitrixUserID != -1)
+                return dBUser.BitrixUserID;
+            
+            return await SetDBUserBitrixId_ByDBUserSurname(dBUser);
+        }
 
         /// <summary>
         /// Отправить данные по Id пользователя из Битрикс24 в БД КПЛН.
@@ -97,10 +102,7 @@ namespace KPLN_Library_Bitrix24Worker
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
         private static async Task<int> SetDBUserBitrixId_ByDBUserSurname(DBUser dBUser)
         {
-            int id = dBUser.BitrixUserID;
-            if (dBUser.BitrixUserID != -1)
-                return id;
-
+            int id = -1;
             try
             {
                 using (HttpClient client = new HttpClient())
@@ -124,15 +126,13 @@ namespace KPLN_Library_Bitrix24Worker
                     throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
                 
                 CurrentUserDbService.UpdateDBUser_BitrixUserID(dBUser, id);
-                
-                return id;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            return -1;
+            return id;
         }
     }
 }
