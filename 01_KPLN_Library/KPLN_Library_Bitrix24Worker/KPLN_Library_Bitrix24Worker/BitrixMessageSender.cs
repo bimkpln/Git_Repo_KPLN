@@ -60,7 +60,8 @@ namespace KPLN_Library_Bitrix24Worker
         /// <param name="msg">Сообщение, которое будет отправлено</param>
         public static async void SendMsg_ToUser_ByDBUser(DBUser dBUser, string msg)
         {
-            if (await GetDBUserBitrixId_ByDBUser(dBUser) != -1)
+            int bitrixUserId = await GetDBUserBitrixId_ByDBUser(dBUser);
+            if (bitrixUserId != -1)
             {
                 try
                 {
@@ -68,7 +69,7 @@ namespace KPLN_Library_Bitrix24Worker
                     {
                         // Выполнение GET - запроса к странице
                         HttpResponseMessage response = await client
-                            .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/c87h1w5xrelntkxh/im.message.add.json?MESSAGE={0}&DIALOG_ID={1}", $"{msg}", $"{dBUser.BitrixUserID}"));
+                            .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/c87h1w5xrelntkxh/im.message.add.json?MESSAGE={0}&DIALOG_ID={1}", $"{msg}", $"{bitrixUserId}"));
                         if (response.IsSuccessStatusCode)
                         {
                             string content = await response.Content.ReadAsStringAsync();
