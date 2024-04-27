@@ -145,39 +145,77 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(tagWiper);
             #endregion
 
-            #region Инструменты КР
-            PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
-                "Плагины КР",
-                "КР: Коллекция плагинов для автоматизации задач",
+            #region Инструменты СС
+            if (CurrentDBUser.SubDepartmentId == 7 || CurrentDBUser.SubDepartmentId == 8)
+            {
+                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины СС",
+                "Плагины СС",
+                "СС: Коллекция плагинов для автоматизации задач",
                 string.Format(
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.krMainSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
+                PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
                 panel,
                 false);
 
-            PushButtonData smnx_Rebar = CreateBtnData(
-                "SMNX_Металоёмкость",
-                "SMNX_Металоёмкость",
-                "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
-                string.Format(
-                    "Варианты запуска:\n" +
-                        "1. Записать объём бетона и основную марку в арматуру;\n" +
-                        "2. Перенести значения из спецификации в параметр;\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
-                "KPLN_Tools.Imagens.wipeSmall.png",
-                "KPLN_Tools.Imagens.wipeSmall.png",
-                "http://moodle");
+                PushButtonData ssSystems = CreateBtnData(
+                    "Слаботочные системы",
+                    "Слаботочные системы",
+                    "Помощь в создании цепей СС",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_SS_Systems).FullName,
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    "http://moodle");
 
-            krToolsPullDownBtn.AddPushButton(smnx_Rebar);
+                ssToolsPullDownBtn.AddPushButton(ssSystems);
+            }
+            #endregion
+
+            #region Инструменты КР
+            if (CurrentDBUser.SubDepartmentId == 3 || CurrentDBUser.SubDepartmentId == 8)
+            {
+                PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
+                    "Плагины КР",
+                    "КР: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.krMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
+                    panel,
+                    false);
+
+                PushButtonData smnx_Rebar = CreateBtnData(
+                    "SMNX_Металоёмкость",
+                    "SMNX_Металоёмкость",
+                    "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
+                    string.Format(
+                        "Варианты запуска:\n" +
+                            "1. Записать объём бетона и основную марку в арматуру;\n" +
+                            "2. Перенести значения из спецификации в параметр;\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                    "KPLN_Tools.Imagens.wipeSmall.png",
+                    "KPLN_Tools.Imagens.wipeSmall.png",
+                    "http://moodle");
+
+                krToolsPullDownBtn.AddPushButton(smnx_Rebar);
+            }
             #endregion
 
             #region Отверстия
@@ -210,9 +248,8 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.holesManagerSmall.png",
                 "KPLN_Tools.Imagens.holesManagerBig.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1245");
-            #endregion
 
-            #region  Наполняю плагинами в зависимости от отдела
+            // Наполняю плагинами в зависимости от отдела
             if (CurrentDBUser.Id != 2 && CurrentDBUser.Id != 3)
             {
                 holesPullDownBtn.AddPushButton(holesManagerIOS);

@@ -87,11 +87,11 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -142,6 +142,10 @@
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="Common\SS_System\PickFilter.cs" />
+    <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
+    <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
+    <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
@@ -151,9 +155,13 @@
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandSearchRevitUser.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
     <Compile Include="Forms\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SS_Sysetm_Main.xaml.cs">
+      <DependentUpon>SS_Sysetm_Main.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\UserSearch.xaml.cs">
       <DependentUpon>UserSearch.xaml</DependentUpon>
@@ -186,6 +194,9 @@
     <EmbeddedResource Include="Imagens\krMainSmall.png" />
     <EmbeddedResource Include="Imagens\monitorMainBig.png" />
     <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
+    <EmbeddedResource Include="Imagens\ssMainBig.png" />
+    <EmbeddedResource Include="Imagens\ssMainSmall.png" />
+    <EmbeddedResource Include="Imagens\ssSystemsSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -202,6 +213,10 @@
     <Page Include="Forms\MonitoringParamSetter.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SS_Sysetm_Main.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\UserSearch.xaml">
       <SubType>Designer</SubType>

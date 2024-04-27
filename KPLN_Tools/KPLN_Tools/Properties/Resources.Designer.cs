@@ -203,6 +203,36 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap ssMainBig {
+            get {
+                object obj = ResourceManager.GetObject("ssMainBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ssMainSmall {
+            get {
+                object obj = ResourceManager.GetObject("ssMainSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ssSystemsSmall {
+            get {
+                object obj = ResourceManager.GetObject("ssSystemsSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap toolBoxBig {
             get {
                 object obj = ResourceManager.GetObject("toolBoxBig", resourceCulture);
