@@ -7,9 +7,12 @@ using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Windows;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
+using Application = Autodesk.Revit.ApplicationServices.Application;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -17,6 +20,66 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckFamilies : AbstrCheckCommand<CommandCheckFamilies>, IExternalCommand
     {
+        private readonly string[] _systemTypeCode = new string[]
+        {
+            // ЖЕЛЕЗОБЕТОН, КЛАДКА (АР/КР):
+            "ЖБ",
+            "К",
+            "ККЛ",
+            "ГБ",
+            "ГСБ",
+            "КБ",
+            "СКЦ",
+            "ПГП",
+            "ПГПВ",
+            "КАМ",
+            // ИЗОЛЯЦИЯ (АР/КР):
+            "ППС",
+            "МИН",
+            "ГИ",
+            "ПИ",
+            "ДРЕН",
+            "ГЕО",
+            "В",
+            // ОТДЕЛКА - СТЕНЫ, ПОЛЫ, ПОТОЛКИ (АР/КР):
+            "ГКЛ",
+            "ГКЛВ",
+            "ГВЛ",
+            "ГВЛВ",
+            "АЦЭИД",
+            "ХЦЛ",
+            "ЦСП",
+            "ШТ",
+            "ШТВ",
+            "ШТД",
+            "ШП",
+            "ГР",
+            "КРАС",
+            "ОБ",
+            "ФИБ",
+            "ККЛ",
+            "ПЛКЛ",
+            "ПЛКР",
+            "КРГ",
+            "ПЛТР",
+            "ПЛТАК",
+            "ТЕРД  ",
+            "КЛЕ",
+            "ЦПС",
+            "ЦПСА",
+            "БС",
+            "НП",
+            "ПАР",
+            "КВР",
+            "ЛИН",
+            "ЛАМ",
+            "АРМС",
+            "ГРИЛ",
+            "НАТП",
+            "АКУС",
+            "КАМ",
+        };
+        
         public CommandCheckFamilies() : base()
         {
         }
@@ -40,15 +103,20 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
             Application app = uiapp.Application;
+            
             app.FailuresProcessing += FailuresProcessor;
 
             try
             {
                 // Получаю коллекцию элементов для анализа
-                Element[] famColl = new FilteredElementCollector(doc).OfClass(typeof(Family)).ToArray();
+                FilteredElementCollector docFamsColl = new FilteredElementCollector(doc).OfClass(typeof(Family));
+                FilteredElementCollector wallTypesColl = new FilteredElementCollector(doc).OfClass(typeof(WallType));
+                FilteredElementCollector floorTypesColl = new FilteredElementCollector(doc).OfClass(typeof(FloorType));
+
+                FilteredElementCollector resultColl = docFamsColl.UnionWith(wallTypesColl).UnionWith(floorTypesColl);
 
                 #region Проверяю и обрабатываю элементы
-                WPFEntity[] wpfColl = CheckCommandRunner(doc, famColl);
+                WPFEntity[] wpfColl = CheckCommandRunner(doc, resultColl.ToArray());
                 OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
                 if (form != null) form.Show();
                 else return Result.Cancelled;
@@ -73,12 +141,35 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            foreach (Family currentFam in elemColl)
+            foreach (Element elem in elemColl)
             {
-                result.AddRange(CheckFamilyName(currentFam, elemColl));
-                WPFEntity checkFamilyPath = CheckFamilyPath(doc, currentFam);
-                if (checkFamilyPath != null)
-                    result.Add(checkFamilyPath);
+                // Проверяю семейства и их типоразмеры
+                //if (elem is Family currentFam)
+                //{
+                //    result.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
+
+                //    WPFEntity checkFamilyPath = CheckFamilyPath(doc, currentFam);
+                //    if (checkFamilyPath != null)
+                //        result.Add(checkFamilyPath);
+                //}
+
+                // Проверяю системные типоразмеры АР и КР
+                if (doc.PathName.Contains("АР_")
+                    || doc.PathName.Contains("_АР_")
+                    || doc.PathName.Contains("AR_")
+                    || doc.PathName.Contains("_AR_")
+                    || doc.PathName.Contains("КР_")
+                    || doc.PathName.Contains("_КР_")
+                    || doc.PathName.Contains("KR_")
+                    || doc.PathName.Contains("_KR_"))
+                {
+                    if (elem is ElementType currentType)
+                    {
+                        WPFEntity typeNameError = CheckSysytemFamilyTypeName(currentType);
+                        if (typeNameError != null) 
+                            result.Add(typeNameError);
+                    }
+                }
             }
 
             return result;
@@ -136,12 +227,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Проверка имен семейства и его типоразмеров
+        /// Проверка имен семейства и его типоразмеров на наличие дубликатов
         /// </summary>
         /// <param name="currentFam">Семейство для проверки</param>
         /// <param name="docFamilies">Коллекция семейств проекта</param>
-        /// <param name="outputCollection">Коллекция элементов WPFDisplayItem для отчета</param>
-        private IEnumerable<WPFEntity> CheckFamilyName(Family currentFam, Element[] docFamilies)
+        private IEnumerable<WPFEntity> CheckFamilyAndTypeDuplicateName(Family currentFam, Element[] docFamilies)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -151,7 +241,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 result.Add(new WPFEntity(
                     currentFam,
                     CheckStatus.Error,
-                    "Предупреждение семейства",
+                    "Ошибка семейства",
                     $"Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
                     false,
                     false,
@@ -172,7 +262,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             ISet<ElementId> famSymolsIds = currentFam.GetFamilySymbolIds();
-            Element[] currentFamilySymols = new Element[famSymolsIds.Count];
+            FamilySymbol[] currentFamilySymols = new FamilySymbol[famSymolsIds.Count];
             for (int i = 0; i < famSymolsIds.Count; i++)
             {
                 FamilySymbol symbol = currentFam.Document.GetElement(famSymolsIds.ElementAt(i)) as FamilySymbol;
@@ -201,6 +291,123 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
+        /// Проверка имен типоразмеров системных семейств
+        /// </summary>
+        /// <param name="elemType">Тип для проверки</param>
+        private WPFEntity CheckSysytemFamilyTypeName(ElementType elemType)
+        {
+            string typeName = elemType.Name;
+            if (!typeName.Equals("99_Не использовать"))
+            {
+                string[] typeSplitedName = typeName.Split('_');
+                if (typeSplitedName.Length < 3)
+                {
+                    return new WPFEntity(
+                        elemType,
+                        CheckStatus.Error,
+                        "Ошибка типоразмера системного",
+                        $"Данный типоразмер назван не по ВЕР - не хватает основных блоков",
+                        false,
+                        true,
+                        "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'");
+                }
+
+                if (!(typeSplitedName[0].StartsWith("00")
+                    || typeSplitedName[0].StartsWith("01")
+                    || typeSplitedName[0].StartsWith("02")
+                    || typeSplitedName[0].StartsWith("03")
+                    || typeSplitedName[0].StartsWith("04")
+                    || typeSplitedName[0].StartsWith("05")))
+                {
+                    return new WPFEntity(
+                        elemType,
+                        CheckStatus.Error,
+                        "Ошибка типоразмера системного",
+                        $"Данный типоразмер назван не по ВЕР - ошибка кода",
+                        false,
+                        true,
+                        "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.");
+                }
+
+                #region Проверка ЖБ на привязку к коду 00
+                string sliceCode = typeSplitedName[1];
+                if (sliceCode.ToUpper().Equals("ВН") || sliceCode.ToUpper().Equals("НА"))
+                    sliceCode = typeSplitedName[2];
+
+                if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ"))
+                {
+                    return new WPFEntity(
+                        elemType,
+                        CheckStatus.Error,
+                        "Ошибка типоразмера системного",
+                        $"Код '00_' может содержать только несущие конструкции",
+                        false,
+                        true,
+                        $"Несущий стены/перекрытия - это ЖБ (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон (нет ЖБ): {sliceCode}");
+                }
+                if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
+                {
+                    return new WPFEntity(
+                        elemType,
+                        CheckStatus.Warning,
+                        "Предупреждение типоразмера системного",
+                        $"ЖБ вне несущего слоя",
+                        false,
+                        true,
+                        $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а {typeSplitedName[0]})");
+                }
+                #endregion
+
+                #region Нахожу суммарную толщину
+                string totalThicknessStr = typeSplitedName[typeSplitedName.Length - 1];
+                if (!double.TryParse(totalThicknessStr, out double totalThickness))
+                {
+                    totalThicknessStr = typeSplitedName[typeSplitedName.Length - 2];
+                    if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 2], out totalThickness))
+                    {
+                        return new WPFEntity(
+                            elemType,
+                            CheckStatus.Error,
+                            "Ошибка типоразмера системного",
+                            $"Ошибка индекса положения суммарной толщины",
+                            false,
+                            true,
+                            $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Сейчас это значение не цифра, а: {totalThicknessStr}");
+                    }
+                }
+                
+                double typeThickness = 0;
+                if (elemType is FloorType floorType)
+                    typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
+                        new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                else if (elemType is WallType wallType)
+                {
+                    Parameter widthParam = wallType.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM);
+                    if (widthParam == null)
+                        return null;
+
+                    typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
+                        new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                }
+
+                if (Math.Abs(totalThickness - typeThickness) > 0.1)
+                {
+                    return new WPFEntity(
+                        elemType,
+                        CheckStatus.Error,
+                        "Ошибка типоразмера системного",
+                        $"Сумма слоёв не совпадает с описанием",
+                        false,
+                        true,
+                        $"Толщина слоя в имени указана как {totalThicknessStr}, хотя на самом деле она составляет {typeThickness}");
+                }
+                #endregion
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Проверка пути к семейству
         /// </summary>
         /// <param name="doc">Файл Revit</param>
@@ -208,12 +415,34 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="outputCollection">Коллекция элементов WPFDisplayItem для отчета</param>
         private WPFEntity CheckFamilyPath(Document doc, Family currentFam)
         {
-            BuiltInCategory currentBIC;
+            // Отсеиваю по имени семейств плагинов
+            if (currentFam.Name.Contains("ClashPoint"))
+                return null;
+
+            // Блок игнорирования семейств ostec/dkc (они плагином устанавливаются локально на диск С)
+            if (currentFam.Name.ToLower().Contains("ostec")
+                || currentFam.Name.ToLower().Contains("dkc"))
+                return null;
+
             Category currentCat = currentFam.FamilyCategory;
             if (currentCat == null)
                 return null;
 
-            currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
+            // Блок игнорирования семейств настроенных из шаблона (АР балясины, ограждения)
+            if (currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster 
+                || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingTermination
+                || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingSupport)
+                return null;
+
+            // Блок игнорирования семейств аннотаций, кроме штампов (остальное проектировщики могут создавать)
+            if (currentCat.CategoryType.Equals(CategoryType.Annotation)
+                && !currentFam.Name.StartsWith("020_")
+                && !currentFam.Name.StartsWith("022_")
+                && !currentFam.Name.StartsWith("023_")
+                && !currentFam.Name.ToLower().Contains("жук"))
+                return null;
+
+            BuiltInCategory currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
             if (currentFam.get_Parameter(BuiltInParameter.FAMILY_SHARED).AsInteger() != 1
                 && currentFam.IsEditable
                 && !currentBIC.Equals(BuiltInCategory.OST_ProfileFamilies)
@@ -222,7 +451,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
                 && !currentBIC.Equals(BuiltInCategory.OST_DetailComponentTags))
             {
-
                 Document famDoc;
                 try
                 {
@@ -235,28 +463,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (famDoc.IsFamilyDocument != true)
                     return null;
 
-                // Блок игнорирования семейств ostec/dkc (они плагином устанавливаются локально на диск С)
-                if (currentFam.Name.ToLower().Contains("ostec")
-                    || currentFam.Name.ToLower().Contains("dkc"))
-                    return null;
-
-                // Блок игнорирования семейств аннотаций, кроме штампов (остальное проектировщики могут создавать)
-                if (currentCat.CategoryType.Equals(CategoryType.Annotation)
-                    && !currentFam.Name.StartsWith("020_")
-                    && !currentFam.Name.StartsWith("022_")
-                    && !currentFam.Name.StartsWith("023_")
-                    && !currentFam.Name.ToLower().Contains("жук"))
-                    return null;
-
                 string famPath = famDoc.PathName;
-                if (!famPath.StartsWith("X:\\")
+                if (!(famPath.StartsWith("X:\\") && new FileInfo(famPath).Exists)
                     & !famPath.Contains("03_Скрипты")
                     & !famPath.Contains("KPLN_Loader"))
                 {
                     return new WPFEntity(
                         currentFam,
                         CheckStatus.Error,
-                        "Предупреждение источника семейства",
+                        "Ошибка источника семейства",
                         $"Данное семейство - не с диска Х. Запрещено использовать сторонние источники!",
                         false,
                         false,

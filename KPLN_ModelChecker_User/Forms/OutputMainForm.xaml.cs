@@ -68,8 +68,9 @@ namespace KPLN_ModelChecker_User.Forms
             InitializeCollectionViewSource();
             UpdateEntityList();
 
-            // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит)
-            if (_externalCommand == nameof(CommandCheckLinks)) this.RestartBtn.Visibility = Visibility.Collapsed;
+            // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
+            if (_externalCommand == nameof(CommandCheckLinks) || _externalCommand == nameof(CommandCheckFamilies)) 
+                this.RestartBtn.Visibility = Visibility.Collapsed;
         }
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)

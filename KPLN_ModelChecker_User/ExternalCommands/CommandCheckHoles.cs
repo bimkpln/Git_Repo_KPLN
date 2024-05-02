@@ -8,7 +8,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -66,7 +65,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
-                .Where(e => 
+                .Where(e =>
                     e.Symbol.FamilyName.StartsWith("199_Отверстие")
                     && e.GetSubComponentIds().Count == 0)
                 .ToArray();
@@ -85,7 +84,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             if (!(objColl.Any()))
                 throw new CheckerException("Не удалось определить семейства. Поиск осуществялется по категории 'Оборудование', и имени, которое начинается с '199_Отверстие'");
-            
+
             return Enumerable.Empty<CheckCommandError>();
         }
 
@@ -94,7 +93,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<CheckHolesHoleData> holesData = PrepareHoleData(elemColl);
             BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(holesData);
             List<CheckHolesMEPData> mepBBoxData = PrepareMEPData(doc, sumBBox);
-            
+
             foreach (var hd in holesData)
             {
                 hd.SetIntersectsData(mepBBoxData);
@@ -164,9 +163,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 #endregion
             }
 
-            return new BoundingBoxXYZ 
-            { 
-                Min = new XYZ(minX, minY, minZ), 
+            return new BoundingBoxXYZ
+            {
+                Min = new XYZ(minX, minY, minZ),
                 Max = new XYZ(maxX, maxY, maxZ)
             };
         }
@@ -193,7 +192,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
                         || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
                 .Cast<RevitLinkInstance>();
-            
+
             foreach (RevitLinkInstance rvtLinkInst in rvtLinkInsts)
             {
                 Document linkDoc = rvtLinkInst.GetLinkDocument();
@@ -206,7 +205,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         Max = linkTransform.Inverse.OfPoint(bbox.Max),
                         Min = linkTransform.Inverse.OfPoint(bbox.Min),
                     };
-                    
+
                     BoundingBoxIntersectsFilter filter = CreateFilter(transfBbox);
                     foreach (BuiltInCategory bic in _builtInCategories)
                     {
@@ -216,7 +215,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             .WherePasses(filter)
                             .Cast<Element>()
                             .Select(e => new CheckHolesMEPData(e, rvtLinkInst));
-                        
+
                         List<CheckHolesMEPData> updateMEPElemEntities = new List<CheckHolesMEPData>(trueMEPElemEntities.Count());
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
                         {
@@ -229,8 +228,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 // По коннектам - отсеиваю мелкие семейства соединителей, арматуры с подключением < 50 мм. Они 99% попадут по трубе/воздуховоду/лотку. Оборудование - попадает все
                                 double tolerance = 0.17;
                                 MEPModel mepModel = mepFI.MEPModel;
-                                if (mepModel != null 
-                                    && bic != BuiltInCategory.OST_MechanicalEquipment 
+                                if (mepModel != null
+                                    && bic != BuiltInCategory.OST_MechanicalEquipment
                                     && bic != BuiltInCategory.OST_DuctTerminal)
                                 {
                                     int isToleranceConCount = 0;

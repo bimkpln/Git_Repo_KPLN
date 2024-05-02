@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
@@ -11,7 +10,6 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using static KPLN_ModelChecker_User.ModuleData;
 
 namespace KPLN_ModelChecker_User
 {
@@ -19,13 +17,17 @@ namespace KPLN_ModelChecker_User
     {
         private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
-        private readonly DBUser _currentDbUser;
 
         public Module()
         {
             UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-            _currentDbUser = userDbService.GetCurrentDBUser();
+            CurrentDbUser = userDbService.GetCurrentDBUser();
         }
+
+        /// <summary>
+        /// Текущий пользователь
+        /// </summary>
+        public static DBUser CurrentDbUser { get; private set; }
 
         public Result Close()
         {
@@ -140,7 +142,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.launchDate.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -186,7 +188,8 @@ namespace KPLN_ModelChecker_User
                 "Проверка\nсемейств",
                 "Проверка семейств на:" +
                     "\n1. Импорт семейств из разрешенных источников (диск Х);" +
-                    "\n2. На наличие дубликатов имен (проверяются и типоразмеры).",
+                    "\n2. Наличие дубликатов имен (проверяются и типоразмеры);" +
+                    "\n3. Соответсвие имени типоразмеров системных семейств требованиям ВЕР.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckFamilies).FullName,
                 pullDown,
@@ -247,7 +250,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_levels.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 3 || _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 3 || CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -259,7 +262,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mirrored.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 4 || _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 4 || CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -273,7 +276,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkHoles.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -290,7 +293,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 2 || _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -302,7 +305,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -314,7 +317,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkPatitionalFile.png",
                 _mainContextualHelp,
-                _currentDbUser.SubDepartmentId == 8
+                CurrentDbUser.SubDepartmentId == 8
                 );
 
             return Result.Succeeded;

@@ -10,7 +10,7 @@
         ResizeMode="CanResizeWithGrip" 
         Title="Задаётся через конструктор" 
         WindowStyle="ToolWindow" 
-        Topmost="False" 
+        Topmost="True" 
         WindowStartupLocation="CenterOwner" 
         Closing="Window_Closing">
 
