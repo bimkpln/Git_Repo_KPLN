@@ -7,17 +7,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_CSharp_Template", "KPL
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Revit2020|Any CPU = Revit2020|Any CPU
-		Revit2023|Any CPU = Revit2023|Any CPU
+		Debug|x64 = Debug|x64
+		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
-		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|x64.ActiveCfg = Release|x64
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Debug|x64.Build.0 = Release|x64
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{00675015-3002-4A8F-B7C7-CBB16F172C75}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
