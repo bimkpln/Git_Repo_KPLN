@@ -91,7 +91,7 @@ namespace KPLN_CSharp_Template
         }
 
         /// <summary>
-        /// Метод для добавления отдельной в панель
+        /// Метод для добавления отдельной кнопки в панель
         /// </summary>
         /// <param name="name">Внутреннее имя кнопки</param>
         /// <param name="text">Имя, видимое пользователю</param>
