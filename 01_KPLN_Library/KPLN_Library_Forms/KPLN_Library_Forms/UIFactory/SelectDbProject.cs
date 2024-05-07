@@ -34,7 +34,7 @@ namespace KPLN_Library_Forms.UIFactory
         /// </summary>
         /// <returns>Возвращает выбранный проект, или null, если нужно выбрать всё</returns>
         /// <exception cref="Exception"></exception>
-        public static ElementPick CreateForm()
+        public static ElementSinglePick CreateForm()
         {
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
             foreach (DBProject prj in CurrentProjectDbService.GetDBProjects())
@@ -44,10 +44,10 @@ namespace KPLN_Library_Forms.UIFactory
                 else if (prj.Code.Equals(null))
                     throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта с id: {prj.Id} нет имени");
                 else if (prj.Code != "BIM")
-                    projects.Add(new ElementEntity(prj));
+                    projects.Add(new ElementEntity(prj, prj.MainPath));
             }
 
-            ElementPick _pickForm = new ElementPick(projects.OrderBy(p => p.Name));
+            ElementSinglePick _pickForm = new ElementSinglePick(projects.OrderBy(p => p.Name), "Выбери проект");
 
             return _pickForm;
         }

@@ -113,6 +113,9 @@
     <Compile Include="UI\ButtonToRun.xaml.cs">
       <DependentUpon>ButtonToRun.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\ElementMultiPick.xaml.cs">
+      <DependentUpon>ElementMultiPick.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\HtmlWindow\HtmlOutput.cs" />
     <Compile Include="UI\HtmlWindow\MessageType.cs" />
     <Compile Include="UI\HtmlWindow\OutputWindow.cs">
@@ -128,8 +131,8 @@
     <Compile Include="UI\UserVerify.xaml.cs">
       <DependentUpon>UserVerify.xaml</DependentUpon>
     </Compile>
-    <Compile Include="UI\ElementPick.xaml.cs">
-      <DependentUpon>ElementPick.xaml</DependentUpon>
+    <Compile Include="UI\ElementSinglePick.xaml.cs">
+      <DependentUpon>ElementSinglePick.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UIFactory\SelectDbProject.cs" />
@@ -142,6 +145,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="UI\ElementMultiPick.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="UI\UserTextInput.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -150,7 +157,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="UI\ElementPick.xaml">
+    <Page Include="UI\ElementSinglePick.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
