@@ -36,6 +36,22 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
+                "BatchViewCut",
+                "Копировать\nподрезку",
+                "Копировать подрезку",
+                string.Format(
+                    "Копирует подрезку активного плана на выбранные из списка.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Views.CommandCutCopy).FullName,
+                pullDown_Views,
+                "KPLN_ViewsAndLists_Ribbon.Resources.CutCopy_small.png",
+                "http://moodle"
+            );
+
+            AddPushButtonDataInPullDown(
                 "BatchCreate",
                 "Создать\nфильтры",
                 "Создать фильтры",

@@ -136,6 +136,9 @@
   <data name="CommandWallHatch_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\CommandWallHatch_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="CutCopy_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\CutCopy_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="mainLists" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\mainLists.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

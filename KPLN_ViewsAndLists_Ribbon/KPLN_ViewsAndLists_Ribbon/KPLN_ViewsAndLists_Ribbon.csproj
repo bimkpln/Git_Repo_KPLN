@@ -131,6 +131,7 @@
     <Compile Include="Common\UserErrorException.cs" />
     <Compile Include="ExternalCommands\Lists\CommandListTBlockParamCopier.cs" />
     <Compile Include="ExternalCommands\Lists\CommandListRenumber.cs" />
+    <Compile Include="ExternalCommands\Views\CommandCutCopy.cs" />
     <Compile Include="Forms\FormListRename.xaml.cs">
       <DependentUpon>FormListRename.xaml</DependentUpon>
     </Compile>
@@ -214,6 +215,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\CommandListTBlockParamCopier.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\CutCopy_small.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
