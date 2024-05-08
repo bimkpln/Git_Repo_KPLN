@@ -204,7 +204,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                         Logger.Info($"Файл {newFilePath} успешно сохранен!\n");
                                     }
                                     else
-                                        Logger.Error($"Ошибки с файлом ({newFilePath}) описаны выше.");
+                                        Logger.Error($"Ошибки с файлом {config.Name} описаны выше.\n");
                                 }
                             }
                             // Обрабатываю ревит-сервер
