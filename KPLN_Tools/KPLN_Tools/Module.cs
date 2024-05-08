@@ -5,6 +5,7 @@ using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using System.IO;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -215,6 +216,41 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
+            }
+            #endregion
+
+            #region Инструменты ОВВК
+            if (CurrentDBUser.SubDepartmentId == 4 || CurrentDBUser.SubDepartmentId == 5 || CurrentDBUser.SubDepartmentId == 8)
+            {
+                PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины ОВВК",
+                    "Плагины ОВВК",
+                    "ОВВК: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.hvacSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.hvacBig.png"),
+                    panel,
+                false);
+
+                PushButtonData ovvk_pipeThickness = CreateBtnData(
+                    "ОВВК: Толщина труб",
+                    "ОВВК: Толщина труб",
+                    "ОВВК: Заполняет толщину труб по выбранной конфигурации",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_OVVK_PipeThickness).FullName,
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "http://moodle");
+
+                ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
             }
             #endregion
 

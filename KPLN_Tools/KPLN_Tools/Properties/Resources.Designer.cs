@@ -143,6 +143,26 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap hvacBig {
+            get {
+                object obj = ResourceManager.GetObject("hvacBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap hvacSmall {
+            get {
+                object obj = ResourceManager.GetObject("hvacSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap krMainBig {
             get {
                 object obj = ResourceManager.GetObject("krMainBig", resourceCulture);
@@ -176,6 +196,26 @@ namespace KPLN_Tools.Properties {
         internal static System.Drawing.Bitmap monitorMainSmall {
             get {
                 object obj = ResourceManager.GetObject("monitorMainSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap pipeThicknessBig {
+            get {
+                object obj = ResourceManager.GetObject("pipeThicknessBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap pipeThicknessSmall {
+            get {
+                object obj = ResourceManager.GetObject("pipeThicknessSmall", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
