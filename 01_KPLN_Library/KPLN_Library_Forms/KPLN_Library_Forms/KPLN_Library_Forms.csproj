@@ -125,6 +125,9 @@
       <DependentUpon>OutputWindow.cs</DependentUpon>
     </Compile>
     <Compile Include="UI\IntToBoolConverter.cs" />
+    <Compile Include="UI\CustomMessageBox.xaml.cs">
+      <DependentUpon>CustomMessageBox.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\UserTextInput.xaml.cs">
       <DependentUpon>UserTextInput.xaml</DependentUpon>
     </Compile>
@@ -146,6 +149,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\ElementMultiPick.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\CustomMessageBox.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

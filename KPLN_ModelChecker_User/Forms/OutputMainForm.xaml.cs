@@ -212,7 +212,7 @@ namespace KPLN_ModelChecker_User.Forms
         private void ExportBtn_Clicked(object sender, RoutedEventArgs e)
         {
             string path = WPFEntity_ExportToExcel.SetPath();
-            if (!string.IsNullOrEmpty(path)) WPFEntity_ExportToExcel.Run(path, _creator.CheckName, _entities);
+            if (!string.IsNullOrEmpty(path)) WPFEntity_ExportToExcel.Run(this, path, _creator.CheckName, _entities);
         }
 
         private void ChbxApproveShow_Clicked(object sender, RoutedEventArgs e)
