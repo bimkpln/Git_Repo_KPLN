@@ -17,13 +17,17 @@ namespace KPLN_Library_Forms.Common
         {
             Element = elem;
 
-            // Анбоксинг на Element Revit
-            if (elem is Element element)
-                Name = element.Name;
+            // Анбоксинг на View Revit
+            if (elem is View view)
+                Name = view.Title;
 
             // Анбоксинг на DbProject KPLN_Library_DataBase
-            if (elem is DBProject dbProject)
+            else if (elem is DBProject dbProject)
                 Name = $"{dbProject.Name}. Стадия: {dbProject.Stage}";
+
+            // Анбоксинг на Element Revit
+            else if (elem is Element element)
+                Name = element.Name;
         }
 
         public ElementEntity(object elem, string tooltip) : this(elem)
