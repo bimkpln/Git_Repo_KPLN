@@ -48,7 +48,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandCutCopy).FullName,
                 pullDown_Views,
                 "KPLN_ViewsAndLists_Ribbon.Resources.CutCopy_small.png",
-                "http://moodle"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1295"
             );
 
             AddPushButtonDataInPullDown(
@@ -64,7 +64,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandCreate).FullName,
                 pullDown_Views,
                 "KPLN_ViewsAndLists_Ribbon.Resources.CommandCreate_small.png",
-                "http://moodle"
+                "http://moodle/mod/book/view.php?id=502&chapterid=670"
             );
 
             AddPushButtonDataInPullDown(
@@ -80,7 +80,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
                 pullDown_Views,
                 "KPLN_ViewsAndLists_Ribbon.Resources.CommandBatchDelete_small.png",
-                "http://moodle"
+                "http://moodle/mod/book/view.php?id=502&chapterid=670"
             );
 
             AddPushButtonDataInPullDown(
