@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using System.IO;
@@ -28,40 +29,6 @@ namespace KPLN_Tools
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
-
-            PushButtonData autonumber = CreateBtnData(
-                "Нумерация",
-                "Нумерация",
-                "Нумерация позици в спецификации на +1 от начального значения",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandAutonumber).FullName,
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=687");
-
-            PushButtonData tagWiper = CreateBtnData(
-                "Очистить марки помещений",
-                "Очистить марки помещений",
-                "УДАЛЯЕТ все марки помещений, которые потеряли основу, а также пытается ОБНОВИТЬ связи маркам помещений",
-                string.Format(
-                    "Варианты запуска:\n" +
-                        "1. Выделить ЛМК листы, чтобы проанализировать рамзещенные на них виды;\n" +
-                        "2. Открыть лист, чтобы проанализировать рамзещенные на нем виды;\n" +
-                        "3. Открыть отдельный вид.\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandTagWiper).FullName,
-                "KPLN_Tools.Imagens.wipeSmall.png",
-                "KPLN_Tools.Imagens.wipeSmall.png",
-                "http://moodle");
 
             PushButtonData sh825TitleBlockChanger = CreateBtnData(
                 "Замена форматов",
@@ -96,6 +63,55 @@ namespace KPLN_Tools
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
+            PushButtonData tagWiper = CreateBtnData(
+                "Очистить марки помещений",
+                "Очистить марки помещений",
+                "УДАЛЯЕТ все марки помещений, которые потеряли основу, а также пытается ОБНОВИТЬ связи маркам помещений",
+                string.Format(
+                    "Варианты запуска:\n" +
+                        "1. Выделить ЛМК листы, чтобы проанализировать рамзещенные на них виды;\n" +
+                        "2. Открыть лист, чтобы проанализировать рамзещенные на нем виды;\n" +
+                        "3. Открыть отдельный вид.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandTagWiper).FullName,
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "http://moodle");
+
+            PushButtonData autonumber = CreateBtnData(
+                "Нумерация",
+                "Нумерация",
+                "Нумерация позици в спецификации на +1 от начального значения",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandAutonumber).FullName,
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "http://moodle/mod/book/view.php?id=502&chapterid=687");
+
+            PushButtonData changeLevel = CreateBtnData(
+                "Изменение уровня",
+                "Изменение уровня",
+                "Плагин для изменения позиции уровня с сохранением привязанности элементов",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandChangeLevel).FullName,
+                "KPLN_Tools.Imagens.changeLevelSmall.png",
+                "KPLN_Tools.Imagens.changeLevelSmall.png",
+                "http://moodle/");
+
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
                 "Восстановить размеры",
@@ -118,7 +134,7 @@ namespace KPLN_Tools
 
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
-                "Общая коллекция мни-плагинов",
+                "Общая коллекция мини-плагинов",
                 string.Format(
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -132,6 +148,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(sh825TitleBlockChanger);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
+            sharedPullDownBtn.AddPushButton(changeLevel);
             sharedPullDownBtn.AddPushButton(autonumber);
 
             #endregion

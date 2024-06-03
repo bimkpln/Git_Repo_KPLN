@@ -42,7 +42,7 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Tools\KPLN_Tools\bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
@@ -122,6 +122,7 @@
     <Compile Include="Common\DimensionDTO.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
+    <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
     <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
@@ -129,6 +130,9 @@
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandTitleBlockChanger.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="Forms\FormChageLevel.xaml.cs">
+      <DependentUpon>FormChageLevel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
     </Compile>
@@ -165,6 +169,8 @@
     <EmbeddedResource Include="Imagens\smnxRebarBig.png" />
     <EmbeddedResource Include="Imagens\smnxRebarSmall.png" />
     <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
+    <EmbeddedResource Include="Imagens\changeLevelBig.png" />
+    <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -177,6 +183,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\FormChageLevel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\MonitoringParamSetter.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

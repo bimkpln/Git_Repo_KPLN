@@ -13,8 +13,11 @@ namespace KPLN_Quantificator.Services
         internal static void GettingDataForAComment()
         {
             Selection storedSelection = doc.CurrentSelection;
-            ModelItem selectElement1 = storedSelection.GetSelectedItems()[0];
-            ModelItem selectElement2 = storedSelection.GetSelectedItems()[1];
+
+            foreach (ModelItem selectedItem in storedSelection.GetSelectedItems())
+            {
+                textComment += $"{elementPath(selectedItem)}-ID: {elementID(selectedItem)};\n";
+            }
 
             string elementPath(ModelItem item) 
             {
@@ -57,9 +60,7 @@ namespace KPLN_Quantificator.Services
 
                 return cutText.Replace("DisplayString:", "").Replace("_64_BIM_112", "").Replace("_66_BIM_92", "")
                     .Replace("_tkutsko", "").Replace("_spetrov", "").Replace("_dsadovskaya", "").Replace("_gfedoseeva", "").Replace("_отсоединено", "");
-            }
-
-            textComment = $"{elementPath(selectElement1)}-ID: {elementID(selectElement1)};\n{elementPath(selectElement2)}-ID: {elementID(selectElement2)};";
+            }           
         }
         
         internal static Point2D ScreenToCameraSpace(Point2D pointScreenSpace)
@@ -96,6 +97,7 @@ namespace KPLN_Quantificator.Services
             doc.SavedViewpoints.CurrentSavedViewpoint = item;
 
             doc.CurrentSelection.Clear();
+            textComment = "";
         }
     }
 }
