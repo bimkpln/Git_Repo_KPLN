@@ -21,7 +21,7 @@ namespace KPLN_Quantificator
     [Command("ID_Button_D", DisplayName = "Добавить ресурсы", Icon = "Source\\match_resources_small.png", LargeIcon = "Source\\match_resources_big.png", ToolTip = "Сопоставление ресурсов с элементами по выбранному параметру RBS", CanToggle = true)]
     [Command("ID_Button_E", DisplayName = "Сгруппировать коллизии", Icon = "Source\\group_c_small.png", LargeIcon = "Source\\group_c_big.png", ToolTip = "Группировка коллизий по выбранным параметрам. Сделано на основе «Group Clashes». Горячие клавиши - Shift + G", CanToggle = true)]
     [Command("ID_Button_F", DisplayName = "Подсчет коллизий", Icon = "Source\\counter_small.png", LargeIcon = "Source\\counter_big.png", ToolTip = "Подсчет количества коллизий по разделам (раздел выделяется из имени)", CanToggle = true)]
-    [Command("ID_Button_G", DisplayName = "Автоматический комментарий", Icon = "Source\\comment_small.png", LargeIcon = "Source\\comment_big.png", ToolTip = "Создание текстового комментария. Для создания комментария в автоматическом режиме необходимо выделить два эллемента и нажать клавишу Q", CanToggle = true)]
+    [Command("ID_Button_G", DisplayName = "Автоматический комментарий", Icon = "Source\\comment_small.png", LargeIcon = "Source\\comment_big.png", ToolTip = "Создание текстового комментария. Для создания комментария в автоматическом режиме необходимо выделить элемент/элементы и нажать клавишу E", CanToggle = true)]
     [Command("ID_Button_H", DisplayName = "Настройка для пакетного переименования точек обзора", Icon = "Source\\rename_small.png", LargeIcon = "Source\\rename_big.png", ToolTip = "Настройка для пакетного переименования точек обзора.\nДля переименования точки обзора - задайте параметры в данном окне, после чего выберите необходимую точку обзора и нажмите клавишу Q", CanToggle = true)]
     public class Main : CommandHandlerPlugin
     {
@@ -101,7 +101,7 @@ namespace KPLN_Quantificator
                             }
                         case "ID_Button_G":
                             {
-                                if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count == 2)
+                                if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count >= 1 && Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count <= 20)
                                 {
                                     AddComment.GettingDataForAComment();
                                     AddComment.CreateViewpoint();
@@ -164,7 +164,7 @@ namespace KPLN_Quantificator_inputPlugin
                 return true;
             }
 
-            if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count == 2 && key == 81)
+            if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count >= 1 && Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count <= 20 && key == 69)
             {
                     AddComment.GettingDataForAComment();
                     AddComment.CreateViewpoint();
