@@ -70,13 +70,14 @@ namespace KPLN_Loader
             _revitVersion = application.ControlledApplication.VersionNumber;
 
             #region Настройка NLog
+            // Данный логгер должен содержать все настройки для каждого отдельного плагина. Это связано с инициализацией dll самим ревитом.
             LogManager.Setup().LoadConfigurationFromFile(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location).ToString() + "\\nlog.config");
             _logger = LogManager.GetLogger("KPLN_Loader");
 
             string logDirPath = $"c:\\temp\\KPLN_Logs\\{_revitVersion}";
             string logFileName = "KPLN_Loader";
-            LogManager.Configuration.Variables["logdir"] = logDirPath;
-            LogManager.Configuration.Variables["logfilename"] = logFileName;
+            LogManager.Configuration.Variables["loader_logdir"] = logDirPath;
+            LogManager.Configuration.Variables["loader_logfilename"] = logFileName;
             #endregion
 
             _logger.Info($"Запуск в Revit {_revitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
