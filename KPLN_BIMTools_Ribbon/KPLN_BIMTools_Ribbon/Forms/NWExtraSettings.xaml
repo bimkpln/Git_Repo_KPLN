@@ -167,7 +167,7 @@
             Grid.Row="8"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            Width="150"
+            MinWidth="150"
             Text="{Binding ViewName, UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
@@ -179,7 +179,7 @@
             Grid.Row="9"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            Width="150"
+            MinWidth="150"
             ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
             Text="{Binding WorksetToCloseNamesStartWith, 
                 UpdateSourceTrigger=PropertyChanged}"/>
@@ -193,7 +193,7 @@
             Grid.Row="10"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            Width="150"
+            MinWidth="150"
             ToolTip="Добавляется в конце имени получаемого файла nwc. Разделить нужно указывать самостоятельно"
             Text="{Binding NavisDocPostfix, 
                 UpdateSourceTrigger=PropertyChanged}"/>

@@ -191,6 +191,15 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
         }
         #endregion
 
+        #region Delete
+        /// <summary>
+        /// Очистить таблицу от всех данных
+        /// </summary>
+        public void DropTable() 
+        {
+            ExecuteNonQuery($"DELETE FROM {_dbTableName};");
+        }
+        #endregion
 
         private void ExecuteNonQuery(string query, object parameters = null)
         {

@@ -30,7 +30,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="IsEnabled" Value="False"/>
         </Style>
-    
+
     </Window.Resources>
 
     <Grid Margin="10">
@@ -58,7 +58,7 @@
             <StackPanel Orientation="Vertical" x:Name="sp">
                 <ItemsControl 
                     x:Name="iControllGroups" 
-                    ItemsSource="{Binding DBRevitDocExchanges}">
+                    ItemsSource="{Binding CurrentDBRevitDocExchanges}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="10">
@@ -73,13 +73,43 @@
                                     Fill="White" 
                                     Stroke="AliceBlue"
                                     StrokeThickness ="2"/>
+
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <CheckBox
                                         IsChecked="False"
                                         Checked="OnConfigChecked"
-                                        Unchecked="OnConfigUnChecked">
-                                        <TextBlock Text="{Binding SettingName}" TextWrapping="Wrap"/>
-                                    </CheckBox>
+                                        Unchecked="OnConfigUnChecked"/>
+                                    <TextBlock 
+                                        TextWrapping="Wrap">
+                                        <TextBlock.ToolTip>
+                                            <StackPanel MaxWidth="300">
+                                                <TextBlock 
+                                                    TextWrapping="Wrap" 
+                                                    FontSize="10"
+                                                    Text="Нажми ПКМ, чтобы редактировать, копировать или удалить данную конфигурацию"/>
+                                            </StackPanel>
+                                        </TextBlock.ToolTip>
+                                        <TextBlock.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem 
+                                                    Header="Изменить" 
+                                                    Click="MenuItem_Update_Click"/>
+                                                <MenuItem 
+                                                    Header="Копировать" 
+                                                    Click="MenuItem_Copy_Click"/>
+                                                <MenuItem 
+                                                    Header="Удалить" 
+                                                    Click="MenuItem_Delete_Click"/>
+                                            </ContextMenu>
+                                        </TextBlock.ContextMenu>
+                                        <TextBlock.Inlines>
+                                            <Run Text="{Binding SettingName}"/>
+                                            <LineBreak/>
+                                            <Run FontSize="10" 
+                                                    Foreground="Gray" 
+                                                    Text="{Binding DescriptionForShow}"/>
+                                        </TextBlock.Inlines>
+                                    </TextBlock>
                                 </StackPanel>
 
                             </Grid>
@@ -121,22 +151,6 @@
                     ToolTip="Добавить новую конфигурацию для проекта"
                     IsEnabled="True"
                     Click="OnBtnAddConf"/>
-                <Button 
-                    x:Name="btnCopyConf"
-                    Content="📜📜"
-                    Style="{StaticResource UserActionBtns}"
-                    Foreground="Orange"
-                    IsEnabled="False"
-                    ToolTip="Скопировать выбранную конфигурацию"
-                    Click="OnBtnCopyConf"/>
-                <Button 
-                    x:Name="btnSetConf"
-                    Content="✎"
-                    Style="{StaticResource UserActionBtns}"
-                    Foreground="Orange"
-                    IsEnabled="False"
-                    ToolTip="Редактировать выбранную конфигурацию"
-                    Click="OnBtnSetConf"/>
                 <Button 
                     x:Name="btnDelConf"
                     Content="✖️"

@@ -7,8 +7,10 @@ using Microsoft.Win32;
 using NLog;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,30 +18,81 @@ using System.Windows.Input;
 
 namespace KPLN_BIMTools_Ribbon.Forms
 {
-    public partial class ConfigItem : Window
+    public partial class ConfigItem : Window, INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// Кэширование пути для выбора файлов
+        /// </summary>
+        private static string _initialDirectoryForOpenFileDialog = @"Y:\";
+
         private readonly Logger _logger;
         private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly SQLiteService _sqliteService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
-        private readonly List<CheckBox> _checkBoxList = new List<CheckBox>();
-        private readonly List<FileEntity> _fileEntityList = new List<FileEntity>();
+
+        private string _settingName;
+        private string _sharedPathTo;
         private bool _canRunByName;
         private bool _canRunByPathTo;
 
-        public ConfigItem(Logger logger, RevitDocExchangestDbService revitDocExchangestDbService, SQLiteService sqliteService, DBProject project, RevitDocExchangeEnum revitDocExchangeEnum)
+        /// <summary>
+        /// Конструктор основной единицы отчета
+        /// </summary>
+        /// <param name="logger">Логгер</param>
+        /// <param name="revitDocExchangestDbService">Текущий сервис работы с БД по отчетам из диспетчера</param>
+        /// <param name="sqliteService">Текущий сервис работы с БД по отчетам из текущего окна</param>
+        /// <param name="project">Ссылка на проект</param>
+        /// <param name="revitDocExchangeEnum">Тип обмена</param>
+        /// <param name="currentDBRevitDocExchanges">Ссылка на существующий конфиг</param>
+        public ConfigItem(
+            Logger logger,
+            RevitDocExchangestDbService revitDocExchangestDbService,
+            SQLiteService sqliteService,
+            DBProject project,
+            RevitDocExchangeEnum revitDocExchangeEnum,
+            DBRevitDocExchanges currentDBRevitDocExchanges = null)
         {
             _logger = logger;
             _revitDocExchangestDbService = revitDocExchangestDbService;
             _sqliteService = sqliteService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
+            CurrentDBRevitDocExchanges = currentDBRevitDocExchanges;
+
+            string mainProjectPath = _project.MainPath;
+            if (!string.IsNullOrEmpty(mainProjectPath) && Directory.Exists(mainProjectPath))
+                _initialDirectoryForOpenFileDialog = mainProjectPath;
 
             InitializeComponent();
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
-            
-            SetExtraSettings();
+
+            if (CurrentDBRevitDocExchanges == null)
+                SetExtraSettings();
+            else
+            {
+                // Добавляю общее имя конфига
+                CurrentDBRevitDocExchanges = _revitDocExchangestDbService.GetDBRevitDocExchanges_ById(CurrentDBRevitDocExchanges.Id);
+                SettingName = CurrentDBRevitDocExchanges.SettingName;
+
+                // Проверяю на триггер копирования - базы данных не будут совпадать
+                SQLiteService tempSqliteService = null;
+                if (_sqliteService.CurrentDBFullPath != CurrentDBRevitDocExchanges.SettingDBFilePath)
+                    tempSqliteService = new SQLiteService(_logger, CurrentDBRevitDocExchanges.SettingDBFilePath, _revitDocExchangeEnum);
+                else 
+                    tempSqliteService = _sqliteService;
+
+                // Добавляю общие настройки конфига (которые дублируются по каждтому DBConfigEntity)
+                IEnumerable<DBConfigEntity> dBConfigEntities = tempSqliteService.GetConfigItems();
+                SetExtraSettings_DBConfigEntity(dBConfigEntities.FirstOrDefault());
+                SharedPathTo = dBConfigEntities.FirstOrDefault().PathTo;
+
+                // Добавляю список файлов
+                FileEntitiesList = new ObservableCollection<FileEntity>(dBConfigEntities.Select(ent => new FileEntity(ent.Name, ent.PathFrom)));
+
+            }
 
             DataContext = this;
         }
@@ -52,27 +105,70 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <summary>
         /// Имя текущего конфига
         /// </summary>
-        internal string SettingName { get; private set; }
+        public string SettingName
+        {
+            get => _settingName;
+            set
+            {
+                if (value != _settingName)
+                {
+                    _settingName = value;
+                    OnPropertyChanged();
+
+                    // Меняю настройки кликабельности кнопок
+                    if (!string.IsNullOrWhiteSpace(_settingName) && _settingName.Length > 5)
+                        _canRunByName = true;
+                    else
+                        _canRunByName = false;
+
+                    BtnEnableSwitch();
+                }
+            }
+        }
 
         /// <summary>
         /// Общий путь для сохранения
         /// </summary>
-        internal string SharedPathTo { get; private set; }
+        public string SharedPathTo
+        {
+            get => _sharedPathTo;
+            set
+            {
+                if (value != _sharedPathTo)
+                {
+                    _sharedPathTo = value;
+                    OnPropertyChanged();
+
+                    // Меняю настройки кликабельности кнопок
+                    if (!string.IsNullOrWhiteSpace(_sharedPathTo) && _sharedPathTo.Length > 10)
+                        _canRunByPathTo = true;
+                    else
+                        _canRunByPathTo = false;
+
+                    BtnEnableSwitch();
+                }
+            }
+        }
 
         /// <summary>
         /// Ссылка на текущий конфиг
         /// </summary>
-        internal DBRevitDocExchanges CurrentDBRevitDocExchanges { get; private set; }
+        public DBRevitDocExchanges CurrentDBRevitDocExchanges { get; private set; }
 
         /// <summary>
-        /// Ссылка коллекцию настроек в конфиге
+        /// Ссылка на коллекцию путей к файлам в конфиге
         /// </summary>
-        internal List<DBConfigEntity> DBConfigEntityColl { get; private set; }
+        public ObservableCollection<FileEntity> FileEntitiesList { get; private set; } = new ObservableCollection<FileEntity>();
 
         /// <summary>
         /// Доп. настройки - UserControl
         /// </summary>
         public UserControl SelectedConfig { get; private set; }
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
 
         /// <summary>
         /// Динамическое создание блока доп. параметров (добавление в окно wpf), в зависимости от типа экспорта
@@ -101,37 +197,26 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        /// <summary>
+        /// Динамическое создание блока доп. параметров (добавление в окно wpf), в зависимости от типа экспорта и уже преднастроенного DBConfigEntity
+        /// </summary>
+        private void SetExtraSettings_DBConfigEntity(DBConfigEntity dBConfigEntity)
+        {
+            switch (_revitDocExchangeEnum)
+            {
+                case (RevitDocExchangeEnum.Navisworks):
+                    if (dBConfigEntity is DBNWConfigData dbNWConfigData)
+                        SelectedConfig = new NWExtraSettings(dbNWConfigData);
+                    break;
+                case (RevitDocExchangeEnum.RevitServer):
+                    break;
+            }
+        }
+
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
                 Close();
-        }
-
-        #region Общие параметры
-        private void ItemNameChanged(object sender, TextChangedEventArgs e)
-        {
-            TextBox textBox = sender as TextBox;
-            SettingName = textBox.Text;
-
-            if (!string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text.Length > 5)
-                _canRunByName = true;
-            else 
-                _canRunByName = false;
-
-            BtnEnableSwitch();
-        }
-
-        private void PathToChanged(object sender, TextChangedEventArgs e)
-        {
-            TextBox textBox = sender as TextBox;
-            SharedPathTo = textBox.Text;
-
-            if (!string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text.Length > 10)
-                _canRunByPathTo = true;
-            else 
-                _canRunByPathTo = false;
-
-            BtnEnableSwitch();
         }
 
         /// <summary>
@@ -144,24 +229,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
             else
                 btnOk.IsEnabled = false;
         }
-        #endregion
 
-        #region Добавление файлов
+        #region Добавление/удаление файлов
         private void OnWindowsAddFile(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 Multiselect = true,
                 Filter = "Revit Files (*.rvt)|*.rvt",
-                InitialDirectory = @"Y:\",
+                InitialDirectory = _initialDirectoryForOpenFileDialog,
             };
 
             if (openFileDialog.ShowDialog() == true)
             {
+                _initialDirectoryForOpenFileDialog = openFileDialog.FileName;
                 foreach (string filePath in openFileDialog.FileNames)
                 {
                     string fileName = Path.GetFileName(filePath);
-                    AddCheckBox(new FileEntity(fileName, filePath));
+                    FileEntitiesList.Add(new FileEntity(fileName, filePath));
                 }
             }
         }
@@ -172,67 +257,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
             userStringInput.ShowDialog();
             if (userStringInput.IsRun)
             {
-                AddCheckBox(new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath));
+                FileEntitiesList.Add(new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath));
             }
         }
 
-        private void AddCheckBox(FileEntity fileEntity)
+        private void LBMenuItem_Delete_Click(object sender, RoutedEventArgs e)
         {
-            btnRemoveFile.IsEnabled = true;
-
-            CheckBox checkBox = new CheckBox
+            if ((MenuItem)e.Source is MenuItem menuItem)
             {
-                IsChecked = true,
-                Content = new TextBlock
-                {
-                    Text = fileEntity.Name,
-                    TextWrapping = TextWrapping.NoWrap,
-                    ToolTip = fileEntity.Path,
-                    Margin = new Thickness(5, 0, 0, 5),
-                },
-            };
-            checkBox.Checked += CheckBox_Checked;
-            checkBox.Unchecked += CheckBox_Unchecked;
-
-            _checkBoxList.Add(checkBox);
-            fileWrapPanel.Children.Add(checkBox);
-
-            _fileEntityList.Add(fileEntity);
-        }
-
-        private void CheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            btnRemoveFile.IsEnabled = true;
-        }
-
-        private void CheckBox_Unchecked(object sender, RoutedEventArgs e)
-        {
-            if (_checkBoxList.Count(checkBox => checkBox.IsChecked == true) > 0)
-                btnRemoveFile.IsEnabled = true;
-            else
-                btnRemoveFile.IsEnabled = false;
-        }
-
-        private void OnBtnRemoveFile(object sender, RoutedEventArgs e)
-        {
-            List<CheckBox> checkedCheckBoxes = new List<CheckBox>();
-
-            foreach (CheckBox checkBox in _checkBoxList)
-            {
-                if (checkBox.IsChecked == true)
-                {
-                    checkedCheckBoxes.Add(checkBox);
-                }
-            }
-
-            foreach (CheckBox checkBox in checkedCheckBoxes)
-            {
-                int index = _checkBoxList.IndexOf(checkBox);
-                
-                _checkBoxList.Remove(checkBox);
-                fileWrapPanel.Children.Remove(checkBox);
-
-                _fileEntityList.RemoveAt(index);
+                if (menuItem.DataContext is FileEntity fileEntity)
+                    FileEntitiesList.Remove(fileEntity);
             }
         }
         #endregion
@@ -247,44 +281,74 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void OnBtnOkClick(object sender, RoutedEventArgs e)
         {
             IsRun = true;
-            
-            // Создаю БД для записи
-            Task createDB = Task.Run(() =>
+
+            // Настройка CurrentDBRevitDocExchanges. Если её нет, то создаём с нуля, иначе - делаем уточнение по параметрам
+            if (CurrentDBRevitDocExchanges == null)
+            {
+                CurrentDBRevitDocExchanges = new DBRevitDocExchanges
+                {
+                    ProjectId = _project.Id,
+                    RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
+                    SettingName = this.SettingName,
+                    SettingDBFilePath = _sqliteService.CurrentDBFullPath,
+                    DescriptionForShow = $"Путь для сохранения: {SharedPathTo}\nКол-во файлов/сборок: {FileEntitiesList.Count}"
+                };
+            }
+            else
+            {
+                CurrentDBRevitDocExchanges = new DBRevitDocExchanges
+                {
+                    Id = CurrentDBRevitDocExchanges.Id,
+                    ProjectId = _project.Id,
+                    RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
+                    SettingName = this.SettingName,
+                    SettingDBFilePath = _sqliteService.CurrentDBFullPath,
+                    DescriptionForShow = $"Путь для сохранения: {SharedPathTo}\nКол-во файлов/сборок: {FileEntitiesList.Count}",
+                };
+            }
+
+            // Создаю БД для записи Items, а также вношу запись в основную БД диспетчера. Если база ранее была создана - то данный этап игнорирую
+            if (!File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
-            });
-
-            CurrentDBRevitDocExchanges = new DBRevitDocExchanges
-            {
-                ProjectId = _project.Id,
-                RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
-                SettingName = this.SettingName,
-                SettingDBFilePath = _sqliteService.CurrentDBFullPath,
-            };
-            Task createDocExchanges = Task.Run(() =>
-            {
-                _revitDocExchangestDbService.CreateDBRevitDocExchanges(CurrentDBRevitDocExchanges);
-            });
+                int idFromDB = _revitDocExchangestDbService.CreateDBRevitDocExchanges(CurrentDBRevitDocExchanges);
+                CurrentDBRevitDocExchanges.Id = idFromDB;
+            }
 
             //Создание экземпляра класса на основе введенных данных
-            createDB.Wait();
             switch (_revitDocExchangeEnum)
             {
                 case RevitDocExchangeEnum.Navisworks:
                     NWExtraSettings extraSettings = (NWExtraSettings)SelectedConfig;
                     DBNWConfigData sharedDBNWConfigData = extraSettings.CurrentDBNWConfigData;
 
-                    IEnumerable<DBNWConfigData> dBNWConfigDatas = _fileEntityList
+                    IEnumerable<DBNWConfigData> dBNWConfigDatas = FileEntitiesList
                         .Select(fe => new DBNWConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(sharedDBNWConfigData));
-                    _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
+                    
+                    if (_sqliteService.GetConfigItems().Count() == 0)
+                        _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
+                    else
+                    {
+                        _sqliteService.DropTable();
+                        _revitDocExchangestDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(CurrentDBRevitDocExchanges);
+                        _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
+                    }
                     break;
                 case RevitDocExchangeEnum.RevitServer:
-                    IEnumerable<DBRSConfigData> dBRSConfigDatas = _fileEntityList.Select(fe => new DBRSConfigData(fe.Name, fe.Path, SharedPathTo));
-                    _sqliteService.PostConfigItems_ByRSConfigs(dBRSConfigDatas);
+                    IEnumerable<DBRSConfigData> dBRSConfigDatas = FileEntitiesList
+                        .Select(fe => new DBRSConfigData(fe.Name, fe.Path, SharedPathTo));
+
+                    if (_sqliteService.GetConfigItems().Count() == 0)
+                        _sqliteService.PostConfigItems_ByRSConfigs(dBRSConfigDatas);
+                    else
+                    {
+                        _sqliteService.DropTable();
+                        _revitDocExchangestDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(CurrentDBRevitDocExchanges);
+                        _sqliteService.PostConfigItems_ByRSConfigs(dBRSConfigDatas);
+                    }
                     break;
             }
 
-            createDocExchanges.Wait();
             this.Close();
         }
         #endregion

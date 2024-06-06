@@ -1,6 +1,6 @@
 ﻿namespace KPLN_BIMTools_Ribbon.Forms
 {
-    internal class FileEntity
+    public class FileEntity
     {
         public FileEntity(string name, string path)
         {

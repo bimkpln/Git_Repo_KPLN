@@ -11,11 +11,32 @@
         WindowStyle="ToolWindow" 
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
+        ResizeMode="CanResize"
         Width="1000" 
         Height="600" 
         Background="#FF292D36">
     <Window.Resources>
 
+        <DataTemplate x:Key="FileEntityTemplate">
+            <ListBox>
+                <ListBox.Items>
+                    <TextBlock 
+                        Text="{Binding Name}"
+                        TextWrapping="Wrap"
+                        HorizontalAlignment="Stretch"
+                        ToolTip="Нажми ПКМ, чтобы удалить файл/группу файлов"
+                        Margin="2"/>
+                </ListBox.Items>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem 
+                            Header="Удалить" 
+                            Click="LBMenuItem_Delete_Click"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+        </DataTemplate>
+        
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style 
@@ -109,7 +130,7 @@
                     x:Name="ItemName"
                     Grid.Column="1"
                     Grid.Row="1"
-                    TextChanged="ItemNameChanged"/>
+                    Text="{Binding SettingName}"/>
 
                 <TextBlock 
                     Grid.Column="0"
@@ -119,7 +140,7 @@
                     x:Name="PathTo"
                     Grid.Column="1"
                     Grid.Row="2"
-                    TextChanged="PathToChanged"/>
+                    Text="{Binding SharedPathTo}"/>
             </Grid>
             <!--Блок основных глобальных настроек -->
             
@@ -133,63 +154,69 @@
                 FontSize="14"
                 Foreground="White"/>
             
-            <ScrollViewer 
-                HorizontalScrollBarVisibility="Disabled" 
-                VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.4*"/>
-                        <ColumnDefinition Width="0.01*"/>
-                        <ColumnDefinition Width="0.59*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="15"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.4*"/>
+                    <ColumnDefinition Width="0.01*"/>
+                    <ColumnDefinition Width="0.59*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="15"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <!--Доп настройки-->
-                    <TextBlock 
-                        Grid.Column="0"
-                        Grid.Row="0"
-                        Text="Дополнительные настройки:"/>
-                    <ContentPresenter
-                        Grid.Column="0"
-                        Grid.Row="1"
-                        Content="{Binding SelectedConfig}">
-                        <ContentPresenter.Resources>
-                            <DataTemplate DataType="{x:Type local:NWExtraSettings}">
-                                <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
-                            </DataTemplate>
-                            <!--Создается новый UserControl, и привязывается по аналогии. Потом в SetExtraSettings() выбираем нужный-->
-                            <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
-                                <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
-                            </DataTemplate>-->
-                        </ContentPresenter.Resources>
-                    </ContentPresenter>
-                    <!--Доп настройки-->
+                <!--Доп настройки-->
+                <TextBlock 
+                    Grid.Column="0"
+                    Grid.Row="0"
+                    Text="Дополнительные настройки:"/>
+                <ContentPresenter
+                    Grid.Column="0"
+                    Grid.Row="1"
+                    Content="{Binding SelectedConfig}">
+                    <ContentPresenter.Resources>
+                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
+                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
+                        </DataTemplate>-->
+                        <!--Создается новый UserControl, и привязывается по аналогии. Потом в SetExtraSettings() выбираем нужный-->
+                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
+                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
+                        </DataTemplate>-->
+                    </ContentPresenter.Resources>
+                </ContentPresenter>
+                <!--Доп настройки-->
 
-                    <!--Список файлов-->
-                    <TextBlock 
-                        Grid.Column="2"
-                        Grid.Row="0"
-                        Text="Список папок/файлов для экспорта:"/>
+                <!--Список файлов-->
+                <TextBlock 
+                    Grid.Column="2"
+                    Grid.Row="0"
+                    Text="Список папок/файлов для экспорта:"/>
+                <StackPanel  
+                    Name="ScrollStack"
+                    Grid.Column="2" 
+                    Grid.Row="1"
+                    MinHeight="300">
                     <ScrollViewer 
-                        Grid.Column="2"
-                        Grid.Row="1"
                         HorizontalScrollBarVisibility="Auto" 
-                        VerticalScrollBarVisibility="Disabled">
-                        <WrapPanel 
+                        VerticalScrollBarVisibility="Auto"
+                        Height="{Binding ElementName=ScrollStack, Path=ActualHeight}">
+                        <ItemsControl 
                             x:Name="fileWrapPanel"
-                            Grid.Row="1" 
                             Margin="5"
-                            Orientation="Vertical"/>       
+                            ItemsSource="{Binding FileEntitiesList}" 
+                            ItemTemplate="{StaticResource FileEntityTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Vertical"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                     </ScrollViewer>
-                    <!--Список файлов-->
+                </StackPanel>
+                <!--Список файлов-->
 
-                </Grid>
-            <!--Блок дополнительных настроек (соответсвует наследникам DBConfigEntity)-->
-            </ScrollViewer>
+            </Grid>
+        <!--Блок дополнительных настроек (соответсвует наследникам DBConfigEntity)-->
         </StackPanel>
         <!--Блок с настройками конфигов-->
 
@@ -222,15 +249,6 @@
                 Foreground="Green"
                 ToolTip="Добавить файл/-ы указав путь вручную. Актуально для RevitServer, и если нужно обрабоать ВСЕ файлы из конкрентной папки"
                 Click="OnBtnHandleAddFile"/>
-            <Button 
-                x:Name="btnRemoveFile"
-                Grid.Column="2"
-                Content="➖"
-                Padding="-5"
-                Style="{StaticResource UserActionBtns}"
-                Foreground="Red"
-                ToolTip="Удалить файл/-ы"
-                Click="OnBtnRemoveFile"/>
         </Grid>
         <!--Изменение список файлов-->
 

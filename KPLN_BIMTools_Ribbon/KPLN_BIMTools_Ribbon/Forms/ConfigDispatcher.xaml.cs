@@ -1,8 +1,4 @@
-﻿using Autodesk.Revit.UI;
-using KPLN_BIMTools_Ribbon.Common;
-using KPLN_BIMTools_Ribbon.Core;
-using KPLN_BIMTools_Ribbon.Core.SQLite;
-using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+﻿using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using NLog;
@@ -11,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -25,8 +20,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
-        
+
         private List<CheckBox> _checkedCheckBoxes = new List<CheckBox>();
+        private ObservableCollection<DBRevitDocExchanges> _currentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>();
 
         public ConfigDispatcher(Logger logger, RevitDocExchangestDbService revitDocExchangestDbService, DBProject project, RevitDocExchangeEnum revitDocExchangeEnum)
         {
@@ -37,9 +33,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             InitializeComponent();
 
-            DBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(_revitDocExchangestDbService.GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project));
+            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(_revitDocExchangestDbService.GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project));
             DataContext = this;
-            
+
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
         }
 
@@ -49,11 +45,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
         public bool IsRun { get; private set; }
 
         /// <summary>
+        /// Ссылка на коллекцию конфигов
+        /// </summary>
+        public ObservableCollection<DBRevitDocExchanges> CurrentDBRevitDocExchanges { get; private set; }
+
+        /// <summary>
         /// Ссылка на выбранные конфиги
         /// </summary>
         public List<DBRevitDocExchanges> SelectedDBExchangeEntities { get; private set; } = new List<DBRevitDocExchanges>();
-
-        public ObservableCollection<DBRevitDocExchanges> DBRevitDocExchanges { get; private set; }
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
@@ -77,7 +76,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             IsRun = true;
             UpdateCheckedCheckBoxes(this.iControllGroups);
-            foreach(CheckBox chkBox in _checkedCheckBoxes)
+            foreach (CheckBox chkBox in _checkedCheckBoxes)
             {
                 if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
                     SelectedDBExchangeEntities.Add(docExchanges);
@@ -93,26 +92,70 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // Создание конфига
             FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
             SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
-            
+
             ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum);
             configItem.ShowDialog();
             if (configItem.IsRun)
-                DBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
         }
 
-        private void OnBtnCopyConf(object sender, RoutedEventArgs e)
+
+        private void MenuItem_Update_Click(object sender, RoutedEventArgs e)
         {
+            if ((MenuItem)e.Source is MenuItem menuItem)
+            {
+                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                {
+                    SQLiteService sqliteService = new SQLiteService(_logger, docExchanges.SettingDBFilePath, _revitDocExchangeEnum);
+                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, docExchanges);
+                    
+                    configItem.ShowDialog();
+
+                    // Обновляю основную коллекцию новыми данными
+                    int index = CurrentDBRevitDocExchanges.IndexOf(docExchanges);
+                    if (index >= 0)
+                    {
+                        // Уведомить об изменении элемента
+                        CurrentDBRevitDocExchanges[index] = configItem.CurrentDBRevitDocExchanges;
+                    }
+                }
+            }
         }
 
-        private void OnBtnSetConf(object sender, RoutedEventArgs e)
+        private void MenuItem_Copy_Click(object sender, RoutedEventArgs e)
         {
+            if ((MenuItem)e.Source is MenuItem menuItem)
+            {
+                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                {
+                    // Создание конфига
+                    FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
+                    SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
+
+                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, docExchanges);
+                    configItem.SettingName = $"{configItem.SettingName}_new_{DateTime.Now:d}";
+
+                    configItem.ShowDialog();
+
+                    CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                }
+            }
+        }
+
+        private void MenuItem_Delete_Click(object sender, RoutedEventArgs e)
+        {
+            if ((MenuItem)e.Source is MenuItem menuItem)
+            {
+                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                    DeleteDBRevitDocExchange(docExchanges);
+            }
         }
 
         private void OnBtnDelConf(object sender, RoutedEventArgs e)
         {
             UserDialog cd = new UserDialog("ВНИМАНИЕ", "Сейчас будут удалены выбранные элементы. Продолжить?");
             cd.ShowDialog();
-            
+
             if (cd.IsRun)
             {
                 List<CheckBox> checkedCheckBoxesToDel = new List<CheckBox>(_checkedCheckBoxes.Count());
@@ -120,24 +163,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
                     {
-                        SelectedDBExchangeEntities.Remove(docExchanges);
-
-                        _revitDocExchangestDbService.DeleteDBRevitDocExchange_ById(docExchanges.Id);
-                        DBRevitDocExchanges.Remove(docExchanges);
-
-                        FileInfo currentDB = new FileInfo(docExchanges.SettingDBFilePath);
-                        currentDB.Delete();
-
+                        DeleteDBRevitDocExchange(docExchanges);
                         checkedCheckBoxesToDel.Add(chkBox);
                     }
                     else
                         throw new Exception("Скинь разработчику: Не удалось преобразовать тип CheckBox в тип из БД DBRevitDocExchanges");
                 }
-                
+
                 // Блокирую старт, т.к. ничего не выбрано
                 _checkedCheckBoxes.RemoveAll(chBx => checkedCheckBoxesToDel.Contains(chBx));
                 BtnEnableSwitch();
             }
+        }
+
+        private void DeleteDBRevitDocExchange(DBRevitDocExchanges docExchanges)
+        {
+            SelectedDBExchangeEntities.Remove(docExchanges);
+
+            _revitDocExchangestDbService.DeleteDBRevitDocExchange_ById(docExchanges.Id);
+            CurrentDBRevitDocExchanges.Remove(docExchanges);
+
+            FileInfo currentDB = new FileInfo(docExchanges.SettingDBFilePath);
+            currentDB.Delete();
         }
 
         /// <summary>
@@ -207,17 +254,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 btnRun.IsEnabled = false;
                 btnDelConf.IsEnabled = false;
-            }
-
-            if (_checkedCheckBoxes.Count == 1)
-            {
-                btnCopyConf.IsEnabled = true;
-                btnSetConf.IsEnabled = true;
-            }
-            else
-            {
-                btnCopyConf.IsEnabled = false;
-                btnSetConf.IsEnabled = false;
             }
         }
     }

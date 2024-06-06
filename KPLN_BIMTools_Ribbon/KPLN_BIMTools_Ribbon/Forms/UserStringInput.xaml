@@ -64,7 +64,7 @@
                 Grid.Column="0"
                 Grid.Row="1"
                 FontSize="16"
-                Text="Имя папки/файла:"
+                Text="Собирательное имя для папки, или имя файла:"
                 Foreground="White"/>
             <TextBox 
                 Grid.Row="2"
@@ -74,7 +74,7 @@
                 Grid.Column="0"
                 Grid.Row="3"
                 FontSize="16"
-                Text="Путь к папке/файлу с исходными файлами:"
+                Text="Путь к папке с исходными файлами, или полный путь к файлу:"
                 Foreground="White"/>
             <TextBox 
                 Grid.Row="4"
