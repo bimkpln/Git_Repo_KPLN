@@ -38,6 +38,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Режим блокировки файла под действия по обмену (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Общий комментарий для пользователя
+        /// </summary>
+        public string DescriptionForShow { get; set; }
         #endregion
 
         /// <summary>

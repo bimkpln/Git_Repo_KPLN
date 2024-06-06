@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Library_Forms.UI"
         mc:Ignorable="d" 
-        Width="300" 
+        Width="400" 
         Height="400"
         MaxHeight="750"
         Title="KPLN: Окно выбора" 
@@ -29,7 +29,6 @@
                             <Grid>
                                 <ContentPresenter 
                                     x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
                                     HorizontalAlignment="Center" 
                                     VerticalAlignment="Center"
                                     Margin="5"/>
@@ -133,7 +132,7 @@
         <ScrollViewer 
             Grid.Row="1" 
             Margin="0, 0, 0, 5"
-            HorizontalScrollBarVisibility="Hidden" 
+            HorizontalScrollBarVisibility="Disabled" 
             VerticalScrollBarVisibility="Visible">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="Elements">
@@ -141,9 +140,13 @@
                         <DataTemplate>
                             <Button 
                                 Style="{StaticResource BTN}" 
-                                Content="{Binding Name}" 
                                 ToolTip="{Binding Tooltip}" 
-                                Click="OnElementClick"/>
+                                Click="OnElementClick">
+                                <TextBlock
+                                    TextWrapping="Wrap"
+                                    TextAlignment="Center"
+                                    Text="{Binding Name}"/>
+                            </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

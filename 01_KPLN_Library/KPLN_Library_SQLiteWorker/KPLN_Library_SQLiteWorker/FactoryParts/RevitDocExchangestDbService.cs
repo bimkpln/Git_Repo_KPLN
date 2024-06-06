@@ -1,6 +1,5 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
-using KPLN_Loader.Core.SQLiteData;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,14 +19,26 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// Создание новой сущности в БД
         /// </summary>
         /// <param name="docExchanges"></param>
-        public void CreateDBRevitDocExchanges(DBRevitDocExchanges docExchanges) =>
-            ExecuteNonQuery($"INSERT INTO {_dbTableName} " +
-                    $"({nameof(DBRevitDocExchanges.ProjectId)}, {nameof(DBRevitDocExchanges.RevitDocExchangeType)}, {nameof(DBRevitDocExchanges.SettingName)}, {nameof(DBRevitDocExchanges.SettingDBFilePath)}) " +
-                    $"VALUES (@{nameof(DBRevitDocExchanges.ProjectId)}, @{nameof(DBRevitDocExchanges.RevitDocExchangeType)}, @{nameof(DBRevitDocExchanges.SettingName)}, @{nameof(DBRevitDocExchanges.SettingDBFilePath)});",
-                docExchanges);
+        public int CreateDBRevitDocExchanges(DBRevitDocExchanges docExchanges) =>
+            ExecuteQuery<int>(
+                $"INSERT INTO {_dbTableName} " +
+                    $"({nameof(DBRevitDocExchanges.ProjectId)}, {nameof(DBRevitDocExchanges.RevitDocExchangeType)}, {nameof(DBRevitDocExchanges.SettingName)}, {nameof(DBRevitDocExchanges.SettingDBFilePath)}, {nameof(DBRevitDocExchanges.DescriptionForShow)}) " +
+                    $"VALUES (@{nameof(DBRevitDocExchanges.ProjectId)}, @{nameof(DBRevitDocExchanges.RevitDocExchangeType)}, @{nameof(DBRevitDocExchanges.SettingName)}, @{nameof(DBRevitDocExchanges.SettingDBFilePath)}, @{nameof(DBRevitDocExchanges.DescriptionForShow)})" +
+                    $"RETURNING Id;",
+                docExchanges)
+            .FirstOrDefault();
         #endregion
 
         #region Read
+        /// <summary>
+        /// Получить конфигурации по id
+        /// </summary>
+        public DBRevitDocExchanges GetDBRevitDocExchanges_ById(int id) =>
+            ExecuteQuery<DBRevitDocExchanges>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBRevitDocExchanges.Id)}='{id}';")
+            .FirstOrDefault();
+
         /// <summary>
         /// Получить коллекцию ВСЕХ активных файлов-конфигураций для обмена
         /// </summary>
@@ -52,7 +63,13 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// </summary>
         public void UpdateDBRevitDocExchanges_IsClosedByProject(DBProject dbProject) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                  $"SET {nameof(DBRevitDocExchanges.IsActive)}='{dbProject.IsClosed}' WHERE {nameof(DBRevitDocExchanges.ProjectId)}='{dbProject.Id}';");
+                $"SET {nameof(DBRevitDocExchanges.IsActive)}='{dbProject.IsClosed}' WHERE {nameof(DBRevitDocExchanges.ProjectId)}='{dbProject.Id}';");
+        
+        public void UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchanges currentDocExc) =>
+            ExecuteNonQuery($"UPDATE {_dbTableName} " +
+                $"SET {nameof(DBRevitDocExchanges.SettingName)}='{currentDocExc.SettingName}', " +
+                $"{nameof(DBRevitDocExchanges.DescriptionForShow)}='{currentDocExc.DescriptionForShow}'" +
+                $"WHERE {nameof(DBRevitDocExchanges.Id)}='{currentDocExc.Id}';");
         #endregion
 
         #region Delete
