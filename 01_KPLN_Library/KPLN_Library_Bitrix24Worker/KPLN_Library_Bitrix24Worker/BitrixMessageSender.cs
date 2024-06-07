@@ -86,7 +86,7 @@ namespace KPLN_Library_Bitrix24Worker
         }
 
         /// <summary>
-        /// Получить значение ID из Битрикс
+        /// Получить значение ID из Битрикс. Реализован формат заполнения значения ID для старых пользовтелей.
         /// </summary>
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
         public static async Task<int> GetDBUserBitrixId_ByDBUser(DBUser dBUser)

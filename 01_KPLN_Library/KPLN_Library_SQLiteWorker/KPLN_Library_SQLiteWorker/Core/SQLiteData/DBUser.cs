@@ -60,8 +60,7 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public bool IsUserRestricted { get; set; }
 
         /// <summary>
-        /// ID пользователя Bitrix. Значения заполняются при автоматом, при отправке сообщений конкретному пользователю.
-        /// см. KPLN_Library_Bitrix24Worker
+        /// ID пользователя Bitrix
         /// </summary>
         public int BitrixUserID { get; set; }
         #endregion
