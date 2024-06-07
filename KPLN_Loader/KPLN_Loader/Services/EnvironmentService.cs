@@ -6,8 +6,12 @@ using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.IO;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace KPLN_Loader.Services
 {
@@ -60,6 +64,41 @@ namespace KPLN_Loader.Services
         internal DirectoryInfo ModulesLocation 
         {
             get { return _modulesLocation; }
+        }
+
+        /// <summary>
+        /// Получить значение Id пользователя из Битрикс24 КПЛН.
+        /// </summary>
+        /// <param name="name">Имя пользователя</param>
+        /// <param name="surname">Фамилия пользователя</param>
+        internal static async Task<int> GetUserBitrixId_ByNameAndSurname(string name, string surname)
+        {
+            int id = -1;
+            using (HttpClient client = new HttpClient())
+            {
+                // Выполнение GET - запроса к странице
+                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/152/rud1zqq5p9ol00uk/user.search.json?NAME={name}&LAST_NAME={surname}");
+                if (response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    if (string.IsNullOrEmpty(content))
+                        throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
+
+                    dynamic dynDeserilazeData = JsonConvert.DeserializeObject<dynamic>(content);
+                    dynamic responseResult = dynDeserilazeData.result;
+                    // Возвращаю дефолтное значение 
+                    if (responseResult.Count == 0)
+                        throw new Exception("\n[KPLN]: Произошла ошибка поиска пользователя по Id. Сокрее всего была ошибка при вводе ФИО. Запусти Revit заново, если ошибка не пропадёт - сввяжись с BIM-отделом\n\n");
+
+                    if (!int.TryParse(responseResult[0].ID.ToString(), out id))
+                        throw new Exception("\n[KPLN]: Не удалось привести значение ID к int\n\n");
+                }
+            }
+
+            if (id == -1)
+                throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
+            
+            return id;
         }
 
         /// <summary>

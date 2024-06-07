@@ -51,5 +51,10 @@ namespace KPLN_Loader.Core.SQLiteData
         /// Режим отладки вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsDebugMode { get; set; }
+
+        /// <summary>
+        /// ID пользователя Bitrix
+        /// </summary>
+        public int BitrixUserID { get; set; }
     }
 }

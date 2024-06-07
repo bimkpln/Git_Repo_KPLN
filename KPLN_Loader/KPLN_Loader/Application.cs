@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace KPLN_Loader
 {
@@ -55,7 +56,7 @@ namespace KPLN_Loader
         /// Кэширование текщего отдела
         /// </summary>
         internal static SubDepartment CurrentSubDepartment { get; private set; }
-        
+
         public Result OnShutdown(UIControlledApplication application)
         {
             application.ControlledApplication.DocumentOpened -= new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
@@ -82,7 +83,7 @@ namespace KPLN_Loader
 
             _logger.Info($"Запуск в Revit {_revitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
-            
+
             try
             {
                 #region Подготовка и проверка окружения
@@ -100,7 +101,7 @@ namespace KPLN_Loader
                 loaderStatusForm.CheckAndSetDebugStatusByUser(CurrentRevitUser);
                 CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
                 loaderStatusForm.UpdateLayout();
-                
+
                 // Добавление пользовательской инструкции
                 LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
                 loaderStatusForm.SetInstruction(loaderDescription);
@@ -109,7 +110,7 @@ namespace KPLN_Loader
                 // Вывод в окно пользователя
                 Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
                 LoadStatus?.Invoke(
-                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"), 
+                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
                     System.Windows.Media.Brushes.OrangeRed);
                 loaderStatusForm.UpdateLayout();
                 #endregion
@@ -130,7 +131,7 @@ namespace KPLN_Loader
                 {
                     isModuleLoad = false;
                     string moduleVersion = "-";
-                    
+
                     if (module == null)
                     {
                         string msg = $"Модуль/библиотека [{module.Name}] не найден/а!";
@@ -138,7 +139,7 @@ namespace KPLN_Loader
                         LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Red);
                         continue;
                     }
-                    
+
                     try
                     {
                         DirectoryInfo targetDirInfo = _envService.CopyModule(module);
@@ -246,7 +247,14 @@ namespace KPLN_Loader
             {
                 _logger.Error($"Глобальная ошибка плагина загрузки: \n{ex}");
                 _logger.Info($"Инициализация не удалась\n");
-                loaderStatusForm.Start_WindowClose();
+                loaderStatusForm.Close();
+                
+                Exception currentEx = ex.InnerException ?? ex;
+                MessageBox.Show(
+                    $"Инициализация не удалась. Отправь в BIM-отдел KPLN: {currentEx.Message}",
+                    "Ошибка KPLN",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Warning);
 
                 return Result.Cancelled;
             }

@@ -5,7 +5,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Loader.Forms"
         Title="KPLN: Авторизация " FontFamily="Consolas" 
-        ResizeMode="NoResize" WindowStyle="ToolWindow"  Topmost="True" WindowStartupLocation="CenterScreen" 
+        ResizeMode="NoResize" 
+        WindowStyle="ToolWindow"  
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
         SizeToContent="WidthAndHeight">
 
     <Window.Resources>

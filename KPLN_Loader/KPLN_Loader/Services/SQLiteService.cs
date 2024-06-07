@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KPLN_Loader.Services
 {
@@ -28,7 +29,7 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Кэширование коллекции отделов из БД
         /// </summary>
-        private IEnumerable<SubDepartment> SubDepartments 
+        private IEnumerable<SubDepartment> SubDepartments
         {
             get
             {
@@ -56,6 +57,7 @@ namespace KPLN_Loader.Services
                 LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled));
                 if ((bool)loginForm.ShowDialog())
                 {
+                    int bitrixId = Task.Run(() => EnvironmentService.GetUserBitrixId_ByNameAndSurname(loginForm.UserName, loginForm.Surname)).Result;
                     currentUser = new User()
                     {
                         SystemName = sysUserName,
@@ -63,11 +65,12 @@ namespace KPLN_Loader.Services
                         Surname = loginForm.Surname,
                         SubDepartmentId = loginForm.CurrentSubDepartment.Id,
                         RegistrationDate = currentDate,
+                        BitrixUserID = bitrixId,
                     };
-                    
+
                     ExecuteNonQuery($"INSERT INTO {MainDB_Tables.Users} " +
-                            $"({nameof(User.SystemName)}, {nameof(User.Name)}, {nameof(User.Surname)}, {nameof(User.SubDepartmentId)}, {nameof(User.RegistrationDate)}) " +
-                            $"VALUES (@{nameof(User.SystemName)}, @{nameof(User.Name)}, @{nameof(User.Surname)}, @{nameof(User.SubDepartmentId)}, @{nameof(User.RegistrationDate)});",
+                            $"({nameof(User.SystemName)}, {nameof(User.Name)}, {nameof(User.Surname)}, {nameof(User.SubDepartmentId)}, {nameof(User.RegistrationDate)}, {nameof(User.BitrixUserID)}) " +
+                            $"VALUES (@{nameof(User.SystemName)}, @{nameof(User.Name)}, @{nameof(User.Surname)}, @{nameof(User.SubDepartmentId)}, @{nameof(User.RegistrationDate)}, @{nameof(User.BitrixUserID)});",
                         currentUser);
 
                     _logger.Info($"Пользователь {currentUser.SystemName}: " +
@@ -85,7 +88,7 @@ namespace KPLN_Loader.Services
 
             if (currentUser.IsDebugMode)
                 _logger.Info("ВЫБРАН СТАТУС ЗАПУСКА - DEBUG");
-            
+
             currentUser.LastConnectionDate = currentDate;
             ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
                 $"SET {nameof(User.LastConnectionDate)}='{currentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
