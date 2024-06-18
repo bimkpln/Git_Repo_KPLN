@@ -24,15 +24,21 @@ namespace KPLN_Tools.ExternalCommands
 
         public static BuiltInParameter[] GetParametersForMovingItems(Element element)
         {
-            BuiltInParameter[] parameters;
+            BuiltInParameter[] parameters = null;
+
+            if (element == null || element.Category == null)
+            {
+                return parameters;
+            }
+
             BuiltInParameter baseLevel;
             BuiltInParameter baseOffset; 
             BuiltInParameter topLevel;
             BuiltInParameter topOffset;
 
-            string category = element?.Category?.Name;
+            string category = element.Category.Name;
 
-            if (category == "OST_Walls")
+            if (category == "Стены")
             {
                 baseLevel = BuiltInParameter.WALL_BASE_CONSTRAINT;
                 baseOffset = BuiltInParameter.WALL_BASE_OFFSET;
@@ -42,7 +48,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
 
             }
-            else if (category == "OST_StructuralColumns")
+            else if (category == "Несущие колонны")
             {
                 baseLevel = BuiltInParameter.FAMILY_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM;
@@ -52,7 +58,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
 
             }
-            else if (category == "OST_Floors")
+            else if (category == "Перекрытия")
             {
                 baseLevel = BuiltInParameter.LEVEL_PARAM;
                 baseOffset = BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM;
@@ -60,7 +66,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
 
             }
-            else if (category == "OST_Ceilings")
+            else if (category == "Потолки")
             {
                 baseLevel = BuiltInParameter.LEVEL_PARAM;
                 baseOffset = BuiltInParameter.CEILING_HEIGHTABOVELEVEL_PARAM;
@@ -68,21 +74,21 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
 
             }
-            else if (category == "OST_Roofs")
+            else if (category == "Кровли")
             {
                 baseLevel = BuiltInParameter.ROOF_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM;
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
             }
-            else if (category == "OST_Windows" || category == "OST_Doors")
+            else if (category == "Окна" || category == "Двери")
             {
                 baseLevel = BuiltInParameter.FAMILY_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM;
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
             }
-            else if (category == "OST_Stairs" || category == "OST_Ramps")
+            else if (category == "Лестницы" || category == "Пандусы")
             {
                 baseLevel = BuiltInParameter.STAIRS_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.STAIRS_BASE_OFFSET;
@@ -91,7 +97,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
             }
-            else if (category == "OST_StairsRailing")
+            else if (category == "Ограждения лестниц")
             {
                 baseLevel = BuiltInParameter.STAIRS_RAILING_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.STAIRS_RAILING_HEIGHT_OFFSET;
@@ -108,5 +114,6 @@ namespace KPLN_Tools.ExternalCommands
 
             return parameters;
         }
+        
     }
 }

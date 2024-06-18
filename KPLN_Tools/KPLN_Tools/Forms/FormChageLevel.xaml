@@ -36,8 +36,9 @@
             </ScrollViewer>
         </GroupBox>
 
-        <Button Content="Отмена" Height="30" Width="100" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,170,0" IsEnabled="True" Click="Button_CloseClick"/>
-        <Button Content="Переместить элементы" Height="30" Width="150" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,10,0" IsEnabled="True" Click="Button_ClickTransferringElements"/>
+        <Button Content="Отмена" Height="30" Width="100" Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,390,0" IsEnabled="True" Click="Button_CloseClick"/>
+        <Button Content="Переместить элементы" Height="30" Width="150" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,270,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElements"/>
+        <Button Content="Переместить элементы, открепив сверху" Height="30" Width="250" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,10,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElementsConditions"/>
         
     </Grid>
 </Window>
