@@ -213,11 +213,6 @@
     <EmbeddedResource Include="Imagens\loadSmall.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="bimToolsNlog.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Imagens\mainLoadBig.png" />
   </ItemGroup>
   <ItemGroup>

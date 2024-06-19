@@ -1,10 +1,8 @@
 ﻿using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
-using KPLN_BIMTools_Ribbon.Core;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
@@ -12,7 +10,6 @@ using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
