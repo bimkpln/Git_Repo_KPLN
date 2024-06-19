@@ -35,6 +35,7 @@ namespace KPLN_Tools.ExternalCommands
             BuiltInParameter baseOffset; 
             BuiltInParameter topLevel;
             BuiltInParameter topOffset;
+            BuiltInParameter elementHeight;
 
             string category = element.Category.Name;
 
@@ -44,8 +45,9 @@ namespace KPLN_Tools.ExternalCommands
                 baseOffset = BuiltInParameter.WALL_BASE_OFFSET;
                 topLevel = BuiltInParameter.WALL_HEIGHT_TYPE;
                 topOffset = BuiltInParameter.WALL_TOP_OFFSET;
+                elementHeight = BuiltInParameter.WALL_USER_HEIGHT_PARAM;
 
-                parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
+                parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset, elementHeight };
 
             }
             else if (category == "Несущие колонны")
@@ -54,8 +56,9 @@ namespace KPLN_Tools.ExternalCommands
                 baseOffset = BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM;
                 topLevel = BuiltInParameter.FAMILY_TOP_LEVEL_PARAM;
                 topOffset = BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM;
+                elementHeight = BuiltInParameter.FAMILY_HEIGHT_PARAM;
 
-                parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
+                parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset, elementHeight };
 
             }
             else if (category == "Перекрытия")

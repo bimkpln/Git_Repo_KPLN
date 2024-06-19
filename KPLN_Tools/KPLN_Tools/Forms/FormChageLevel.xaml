@@ -5,40 +5,43 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:KPLN_Tools.Forms"
              mc:Ignorable="d" 
-             ResizeMode="NoResize" Width="1100" Height="600" IsEnabled="True" Title="Изменение уровня элементов" WindowStartupLocation="CenterScreen">
-    
-    <Grid Margin="30,10,25,10">
+             ResizeMode="NoResize" Width="1200" Height="610" IsEnabled="True" Title="Изменение уровня элементов" WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="30,10,30,20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="20*"/>
-            <RowDefinition Height="22*"></RowDefinition>
-            <RowDefinition Height="400*"></RowDefinition>
-            <RowDefinition Height="50*"></RowDefinition>
+            <RowDefinition Height="30*"/>
+            <RowDefinition Height="30*"/>
+            <RowDefinition Height="500*"/>
+            <RowDefinition Height="30*"/>
+            <RowDefinition Height="30*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100*"></ColumnDefinition>
-            <ColumnDefinition Width="109*"></ColumnDefinition>
+            <ColumnDefinition Width="490*"></ColumnDefinition>
+            <ColumnDefinition Width="500*"></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
-        <Label Content="Уровень-экспортер" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-5,5,0,0" FontSize="11" Height="25" Width="150"/>
-        <Label Content="Уровень-импортер" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="11"  Height="25" Width="150" />
+        <Label Content="Уровень-экспортер" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left" Margin="-5,2,0,0" FontSize="11" Height="25"/>
+        <Label Content="Уровень-импортер" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left"  Margin="-5,2,0,0" FontSize="11"  Height="25" />
 
-        <ComboBox x:Name="LevelExport" ItemsSource="{Binding ElementsByLevel.Keys}" SelectedValuePath="Key" SelectedValue="{Binding SelectedKey}" SelectionChanged="LevelExport_SelectionChanged" Grid.Row="0" Grid.Column="0" Background="#FFFFFFFF" Padding="3,2,0,0" Margin="0,25,10,0" IsEnabled="True" Grid.RowSpan="2"/>
-        <ComboBox x:Name="levelImport" ItemsSource="{Binding ElementsByLevel.Keys}" SelectedValuePath="Key" SelectedValue="{Binding SelectedKey}" SelectionChanged="LevelImport_SelectionChanged" Grid.Row="0" Grid.Column="1" Background="#FFFFFFFF" Padding="3,2,0,0" Margin="10,25,10,0" IsEnabled="True" Grid.RowSpan="2"/>
+        <ComboBox x:Name="LevelExport" ItemsSource="{Binding ElementsByLevel.Keys}" SelectedValuePath="Key" SelectedValue="{Binding SelectedKey}" SelectionChanged="LevelExport_SelectionChanged" Grid.Row="1" Grid.Column="0" Background="#FFFFFFFF" Padding="3,2,0,0" IsEnabled="True" Grid.RowSpan="2" VerticalAlignment="Top" Height="21px" Width="350" HorizontalAlignment="Left"/>
+        <ComboBox x:Name="levelImport" ItemsSource="{Binding ElementsByLevel.Keys}" SelectedValuePath="Key" SelectedValue="{Binding SelectedKey}" SelectionChanged="LevelImport_SelectionChanged" Grid.Row="1" Grid.Column="1" Background="#FFFFFFFF" Padding="3,2,0,0" IsEnabled="True" Grid.RowSpan="2" VerticalAlignment="Top" Height="21px" Width="350" HorizontalAlignment="Left"/>
 
-        <GroupBox Header="Список элементов уровня-экспортера" Grid.Row="2" Grid.Column="0" Margin="0,10,10,47" Padding="5,5,5,5" FontSize="11" Grid.RowSpan="2">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="420">
-                <TextBlock x:Name="LevelExportElementList" MinHeight="420" TextWrapping="Wrap" VerticalAlignment="Center" Background="#FFF3F1F1" Padding="8,10,0,0" FontSize="11" IsEnabled="False"/>
+        <GroupBox Header="Список элементов уровня-экспортера" Grid.Row="2" Grid.Column="0" Margin="0,10,20,10" Padding="5,5,5,5" FontSize="11">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="400">
+                <TextBlock x:Name="LevelExportElementList" MinHeight="400" TextWrapping="Wrap" VerticalAlignment="Center" Background="#FFF3F1F1" Padding="8,5,0,10" FontSize="11" IsEnabled="False"/>
             </ScrollViewer>
         </GroupBox>
-        <GroupBox Header="Список элементов уровня-импортера" Grid.Row="2" Grid.Column="1" Margin="10,10,10,47" Padding="5,5,5,5" FontSize="11" Grid.RowSpan="2">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="420">
-                <TextBlock x:Name="LevelImportElementList" MinHeight="420" TextWrapping="Wrap" VerticalAlignment="Center" Background="#FFF3F1F1" Padding="8,10,0,0" FontSize="11" IsEnabled="False"/>
-            </ScrollViewer>
-        </GroupBox>
-
-        <Button Content="Отмена" Height="30" Width="100" Grid.Row="3" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,390,0" IsEnabled="True" Click="Button_CloseClick"/>
-        <Button Content="Переместить элементы" Height="30" Width="150" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,270,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElements"/>
-        <Button Content="Переместить элементы, открепив сверху" Height="30" Width="250" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,20,10,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElementsConditions"/>
         
+        <GroupBox Header="Список элементов уровня-импортера" Grid.Row="2" Grid.Column="1" Margin="0,10,0,10" Padding="5,5,5,5" FontSize="11">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Height="400">
+                <TextBlock x:Name="LevelImportElementList" MinHeight="400" TextWrapping="Wrap" VerticalAlignment="Center" Background="#FFF3F1F1" Padding="8,5,0,10" FontSize="11" IsEnabled="False"/>
+            </ScrollViewer>
+        </GroupBox>
+
+        <Label Content="Новый верхний уровень (для перемещения элементов с откреплением верхнего уровня)" Grid.Row="3" HorizontalAlignment="Left" VerticalAlignment="Bottom" FontSize="11" Margin="-5,0,0,0"/>
+        <ComboBox x:Name="NewTopLevel" ItemsSource="{Binding ElementsByLevel.Keys}" Grid.Row="4" Grid.Column="0" Background="#FFFFFFFF" Padding="3,2,0,0" IsEnabled="True" Width="470" Height="21px" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+
+        <Button Content="Переместить элементы" Height="25" Width="150" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,270,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElements"/>
+        <Button Content="Переместить элементы, открепив сверху" Height="25" Width="250" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0" IsEnabled="True" Background="#FFFFE7E7" Click="Button_ClickTransferringElementsConditions"/>
     </Grid>
 </Window>

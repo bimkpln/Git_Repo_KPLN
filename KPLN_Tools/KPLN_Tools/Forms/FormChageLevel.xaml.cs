@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using KPLN_Tools.ExternalCommands;
+using System.Xml.Linq;
 
 
 namespace KPLN_Tools.Forms
@@ -19,6 +20,8 @@ namespace KPLN_Tools.Forms
     {
         private Document _doc;
         public Dictionary<string, List<ElementId>> ElementsByLevel { get; set; }
+
+        bool conditionsTopLevel;
 
         public FormChageLevel(Document document)
         {
@@ -159,9 +162,7 @@ namespace KPLN_Tools.Forms
         private View3D CreateAndOpenNewView(string exportLevelName, string importLevelName)
         {
             ViewFamilyType viewFamilyType = new FilteredElementCollector(_doc)
-                .OfClass(typeof(ViewFamilyType))
-                .Cast<ViewFamilyType>()
-                .FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);          
+                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);          
 
             if (viewFamilyType != null)
             {
@@ -176,7 +177,7 @@ namespace KPLN_Tools.Forms
                     XYZ upDirection = new XYZ(0, 0, 1);
                     XYZ forwardDirection = new XYZ(0, 1, 0);
 
-                    ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);
+                    ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);         
 
                     newView3D = View3D.CreateIsometric(_doc, viewFamilyType.Id);
 
@@ -197,6 +198,7 @@ namespace KPLN_Tools.Forms
                             }
                         }
 
+                        // Задаём имя 3D-вида
                         string baseName = $"ПроверочныйВид__{exportLevelName}--{importLevelName}";
                         string newViewName = baseName;
                         int numSuffixView3D = 2;
@@ -209,6 +211,7 @@ namespace KPLN_Tools.Forms
                         newView3D.Name = newViewName;
 
                         newView3D.SetOrientation(viewOrientation);
+
                     }
 
                     transaction.Commit();
@@ -244,14 +247,88 @@ namespace KPLN_Tools.Forms
                 return false;
             }
 
+            if (NewTopLevel.Text == "" && conditionsTopLevel == true)
+            {
+                System.Windows.Forms.MessageBox.Show("Не выбран верхний уровень", "Предупреждение",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (NewTopLevel.Text == exportLevelName && conditionsTopLevel == true)
+            {
+                System.Windows.Forms.MessageBox.Show("Выбранный верхний уровень совпадает с уровнем-экспортером", "Предупреждение",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (NewTopLevel.Text == importLevelName && conditionsTopLevel == true)
+            {
+                System.Windows.Forms.MessageBox.Show("Выбранный верхний уровень совпадает с уровнем-импортером", "Предупреждение",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return false;
+            }
+
             return true;
         }
 
+        private void FinishTransferMessage()
+        {
+            if (!string.IsNullOrEmpty(LevelExportElementList.Text))
+            {
+                System.Windows.Forms.MessageBox.Show("Не все элементы были перенесены на новый уровень", "Предупреждение",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                return;
+            }
+            else
+            {
+                System.Windows.Forms.MessageBox.Show("Все элементы были перенесены на новый уровень", "Уведомление",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+                return;
+            }
+        }    
+
+        // Нахождение высоты черезз геометрию (стены, колоны)
+        public double GetElementHeight(Element element)
+        {
+            Options options = new Options();
+            GeometryElement geomElement = element.get_Geometry(options);
+
+            double minZ = double.MaxValue;
+            double maxZ = double.MinValue;
+
+            foreach (GeometryObject geomObj in geomElement)
+            {
+                Solid solid = geomObj as Solid;
+                if (solid != null)
+                {
+                    foreach (Face face in solid.Faces)
+                    {
+                        Mesh mesh = face.Triangulate();
+                        foreach (XYZ vertex in mesh.Vertices)
+                        {
+                            if (vertex.Z < minZ) minZ = vertex.Z;
+                            if (vertex.Z > maxZ) maxZ = vertex.Z;
+                        }
+                    }
+                }
+            }
+
+            double height = maxZ - minZ;
+            return height;
+            }
+     
         // Перемещение элементов на новый уровень
         private void Button_ClickTransferringElements(object sender, RoutedEventArgs e)
         {
             string exportLevelName = LevelExport.SelectedItem as string;
             string importLevelName = levelImport.SelectedItem as string;
+
+            conditionsTopLevel = false;
 
             bool shouldContinue = WarningDialogWindow(exportLevelName, importLevelName);
 
@@ -296,7 +373,10 @@ namespace KPLN_Tools.Forms
                 }
 
                 //Группировка эллементов
-                Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
+                try
+                {
+                    Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
+                } catch (Autodesk.Revit.Exceptions.ArgumentException) { };
 
                 transaction.Commit();
             }
@@ -304,7 +384,9 @@ namespace KPLN_Tools.Forms
             CreateAndOpenNewView(exportLevelName, importLevelName);
 
             ElementsByLevel = GetElementsByLevel(_doc);
-            ElementLevelListName();               
+            ElementLevelListName();
+
+            FinishTransferMessage();
         }
 
         // XAML: Переместить на уровень отсоеденив зависимость сверху
@@ -312,6 +394,9 @@ namespace KPLN_Tools.Forms
         {
             string exportLevelName = LevelExport.SelectedItem as string;
             string importLevelName = levelImport.SelectedItem as string;
+            string newTopLevellName = NewTopLevel.SelectedItem as string;
+
+            conditionsTopLevel = true;
 
             bool shouldContinue = WarningDialogWindow(exportLevelName, importLevelName);
 
@@ -324,6 +409,9 @@ namespace KPLN_Tools.Forms
                 .OfClass(typeof(Level)).FirstOrDefault(x => x.Name == importLevelName) as Level;
             Level newLevelTransfer = newLevel;
 
+            Level newTopLevel = new FilteredElementCollector(_doc)
+               .OfClass(typeof(Level)).FirstOrDefault(x => x.Name == newTopLevellName) as Level;
+
             using (Transaction transaction = new Transaction(_doc, "KPLN: Перенос на новый уровень"))
             {
                 transaction.Start();
@@ -335,6 +423,7 @@ namespace KPLN_Tools.Forms
 
                     // Разгруппировка эллементов
                     Group groupOld = element as Group;
+
                     if (groupOld != null)
                     {
                         groupOld.UngroupMembers();
@@ -343,6 +432,27 @@ namespace KPLN_Tools.Forms
                     //
                     var levelNameParameter = element.get_Parameter(levelExportParametrs[0]);
                     var levelOffsetParameter = element.get_Parameter(levelExportParametrs[1]);
+                    
+                    if (element.Category.Name == "Стены" || element.Category.Name != "Несущие колонны")
+                    {
+                        var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
+                        var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
+                        var elementHeight = element.get_Parameter(levelExportParametrs[4]);
+
+                        double heightValue = GetElementHeight(element);
+
+                        topLevelNameParameter.Set(ElementId.InvalidElementId);
+                        elementHeight.Set(heightValue);                       
+                    }
+
+                    if (element.Category.Name == "Лестницы" || element.Category.Name == "Пандусы")
+                    {
+                        var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
+                        var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
+
+                        levelNameParameter.Set(newLevel.Id);
+                        topLevelNameParameter.Set(newTopLevel.Id) ;
+                    }
 
                     if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
                     {
@@ -356,7 +466,11 @@ namespace KPLN_Tools.Forms
                 }
 
                 //Группировка эллементов
-                Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
+                try
+                {
+                    Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
+                }
+                catch (Autodesk.Revit.Exceptions.ArgumentException) { };
 
                 transaction.Commit();
             }
@@ -365,6 +479,8 @@ namespace KPLN_Tools.Forms
 
             ElementsByLevel = GetElementsByLevel(_doc);
             ElementLevelListName();
+
+            FinishTransferMessage();
         }
 
         // XAML: закрыть окно
