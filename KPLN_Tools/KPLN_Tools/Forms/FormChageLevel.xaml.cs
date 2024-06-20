@@ -162,7 +162,7 @@ namespace KPLN_Tools.Forms
         private View3D CreateAndOpenNewView(string exportLevelName, string importLevelName)
         {
             ViewFamilyType viewFamilyType = new FilteredElementCollector(_doc)
-                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);          
+                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);
 
             if (viewFamilyType != null)
             {
@@ -176,7 +176,6 @@ namespace KPLN_Tools.Forms
                     XYZ eyePosition = new XYZ(1, 1, 1);
                     XYZ upDirection = new XYZ(0, 0, 1);
                     XYZ forwardDirection = new XYZ(0, 1, 0);
-
                     ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);         
 
                     newView3D = View3D.CreateIsometric(_doc, viewFamilyType.Id);
@@ -198,7 +197,6 @@ namespace KPLN_Tools.Forms
                             }
                         }
 
-                        // Задаём имя 3D-вида
                         string baseName = $"ПроверочныйВид__{exportLevelName}--{importLevelName}";
                         string newViewName = baseName;
                         int numSuffixView3D = 2;
@@ -211,7 +209,6 @@ namespace KPLN_Tools.Forms
                         newView3D.Name = newViewName;
 
                         newView3D.SetOrientation(viewOrientation);
-
                     }
 
                     transaction.Commit();
@@ -221,11 +218,43 @@ namespace KPLN_Tools.Forms
                 {
                     UIDocument uiDoc = new UIDocument(_doc);
                     uiDoc.ActiveView = newView3D;
+
+                    ApplyTemporaryIsolation(newView3D, importLevelName);
+
                     return newView3D;
                 }
             }
 
             return null;
+        }
+
+        // Временаая изоляция элементов
+        private void ApplyTemporaryIsolation(View3D view3D, string levelName)
+        {
+            using (Transaction transaction = new Transaction(_doc, "KPLN: Временная изоляция элементов"))
+            {
+                transaction.Start();
+
+                Level level = new FilteredElementCollector(_doc)
+                    .OfClass(typeof(Level))
+                    .FirstOrDefault(e => e.Name.Equals(levelName)) as Level;
+
+                if (level != null)
+                {
+                    ElementLevelFilter levelFilter = new ElementLevelFilter(level.Id);
+                    ICollection<ElementId> elementIds = new FilteredElementCollector(_doc)
+                        .WherePasses(levelFilter)
+                        .WhereElementIsNotElementType()
+                        .ToElementIds();
+
+                    if (elementIds.Count > 0)
+                    {
+                        view3D.IsolateElementsTemporary(elementIds);
+                    }
+                }
+
+                transaction.Commit();
+            }
         }
 
         // Условия для окон с предупреждениями
@@ -274,6 +303,7 @@ namespace KPLN_Tools.Forms
             return true;
         }
 
+        // Окно о выполнении работы
         private void FinishTransferMessage()
         {
             if (!string.IsNullOrEmpty(LevelExportElementList.Text))
@@ -293,7 +323,7 @@ namespace KPLN_Tools.Forms
         }    
 
         // Нахождение высоты черезз геометрию (стены, колоны)
-        public double GetElementHeight(Element element)
+        private double GetElementHeight(Element element)
         {
             Options options = new Options();
             GeometryElement geomElement = element.get_Geometry(options);
@@ -389,7 +419,7 @@ namespace KPLN_Tools.Forms
             FinishTransferMessage();
         }
 
-        // XAML: Переместить на уровень отсоеденив зависимость сверху
+        // Перемещение элементов на новый уровень, отсоеденив зависимость сверху
         private void Button_ClickTransferringElementsConditions(object sender, RoutedEventArgs e)
         {
             string exportLevelName = LevelExport.SelectedItem as string;
@@ -432,8 +462,18 @@ namespace KPLN_Tools.Forms
                     //
                     var levelNameParameter = element.get_Parameter(levelExportParametrs[0]);
                     var levelOffsetParameter = element.get_Parameter(levelExportParametrs[1]);
-                    
-                    if (element.Category.Name == "Стены" || element.Category.Name != "Несущие колонны")
+
+                    if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
+                    {
+                        FailureHandlingOptions failureHandlingOptions = transaction.GetFailureHandlingOptions();
+                        failureHandlingOptions.SetFailuresPreprocessor(new IgnoreFailuresPreprocessor());
+                        transaction.SetFailureHandlingOptions(failureHandlingOptions);
+
+                        levelOffsetParameter.Set(CalculatedElementOffset(element, newLevelTransfer));
+                        levelNameParameter.Set(newLevel.Id);
+                    }
+
+                    if (levelExportParametrs.Length > 2 && (element.Category.Name == "Стены" || element.Category.Name != "Несущие колонны"))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
@@ -445,7 +485,7 @@ namespace KPLN_Tools.Forms
                         elementHeight.Set(heightValue);                       
                     }
 
-                    if (element.Category.Name == "Лестницы" || element.Category.Name == "Пандусы")
+                    if (levelExportParametrs.Length > 2 && (element.Category.Name == "Лестницы" || element.Category.Name == "Пандусы"))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
@@ -454,15 +494,6 @@ namespace KPLN_Tools.Forms
                         topLevelNameParameter.Set(newTopLevel.Id) ;
                     }
 
-                    if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
-                    {
-                        FailureHandlingOptions failureHandlingOptions = transaction.GetFailureHandlingOptions();
-                        failureHandlingOptions.SetFailuresPreprocessor(new IgnoreFailuresPreprocessor());
-                        transaction.SetFailureHandlingOptions(failureHandlingOptions);
-
-                        levelOffsetParameter.Set(CalculatedElementOffset(element, newLevelTransfer));
-                        levelNameParameter.Set(newLevel.Id);
-                    }
                 }
 
                 //Группировка эллементов
