@@ -22,19 +22,15 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
             try
             {
-                if (!doc.IsWorkshared)
-                {
-                    message = "Файл не является файлом совместной работы";
-                    return Result.Failed;
-                }
-
-                //Вывод пользовательского окна с xml-шаблонами
+                #region Вывод пользовательского окна с xml-шаблонами
                 string dllPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                 string folder = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
-                System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog();
-                dialog.InitialDirectory = folder;
-                dialog.Multiselect = false;
-                dialog.Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*";
+                System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog
+                {
+                    InitialDirectory = folder,
+                    Multiselect = false,
+                    Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
+                };
                 if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
                 {
                     return Result.Cancelled;
@@ -48,6 +44,49 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                 {
                     dto = (WorksetDTO)serializer.Deserialize(r);
                 }
+                #endregion
+
+                #region Первичное создание рабочих наборов в модели
+                if (!doc.IsWorkshared && doc.CanEnableWorksharing())
+                {
+                    TaskDialog taskDialog = new TaskDialog("Внимание!")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                        MainContent = "В данном документе не включена функция совместной работы. Хотите активировать функцию совместной работы и создать рабочие наборы?",
+                        CommonButtons = TaskDialogCommonButtons.Ok|TaskDialogCommonButtons.Cancel,
+                    };
+                    TaskDialogResult dialogResult = taskDialog.Show();
+                    if (dialogResult == TaskDialogResult.Cancel) 
+                        return Result.Cancelled;
+                    else
+                    {
+                        // Попытка поиска РН для уровней
+                        string abrDepartment = "аббрРазд";
+                        string gridsLevelsWS = "аббрРазд_Оси и уровни";
+                        WorksetByCurrentParameter currentGridsLevelsWS = dto.WorksetByCurrentParameterList
+                            .Where(p => p.WorksetName.Contains("Оси и уровни"))
+                            .FirstOrDefault();
+                        if (currentGridsLevelsWS != null)
+                        {
+                            gridsLevelsWS = currentGridsLevelsWS.WorksetName;
+                            abrDepartment = gridsLevelsWS.Split('_')[0];
+                        }
+
+                        // Попытка поиска дефолтного РН для раздела
+                        string defaultWS;
+                        WorksetByCurrentParameter currentDefaultWS = dto.WorksetByCurrentParameterList
+                            .Where(p => !p.WorksetName.Contains("Оси и уровни") && p.WorksetName.Contains(abrDepartment))
+                            .FirstOrDefault();
+                        if (currentDefaultWS != null)
+                            defaultWS = currentDefaultWS.WorksetName;
+                        else
+                            defaultWS = $"{abrDepartment}_Модель";
+
+                        // Создаю первичные РН в проекте
+                        doc.EnableWorksharing(gridsLevelsWS, defaultWS);
+                    }
+                }
+                #endregion
 
                 //Создание рабочих наборов
                 using (Transaction t = new Transaction(doc))
@@ -185,20 +224,23 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     }
 
                     //Назначение рабочих наборов для связанных файлов
-                    FilteredElementCollector links = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkInstance));
+                    IEnumerable<RevitLinkInstance> links = new FilteredElementCollector(doc)
+                        .OfClass(typeof(RevitLinkInstance))
+                        .Cast<RevitLinkInstance>();
                     foreach (RevitLinkInstance linkInstance in links)
                     {
-                        RevitLinkType linkFileType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
-                        if (linkFileType == null) continue;
-                        if (linkFileType.IsNestedLink) continue;
+                        if(doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)
+                        {
+                            if (linkFileType.IsNestedLink) continue;
+                            
+                            string linkWorksetName1 = linkInstance.Name.Split(':')[0];
+                            string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
+                            string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
+                            Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
 
-                        string linkWorksetName1 = linkInstance.Name.Split(':')[0];
-                        string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
-                        string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
-                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
-
-                        WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
-                        WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
+                            WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
+                            WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
+                        }
                     }
 
                    t.Commit();
