@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User
 {
     public class Module : IExternalModule
     {
-        private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=937";
+        private readonly string _mainContextualHelp = "http://moodle/mod/book/view.php?id=502&chapterid=991";
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Module()

@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -178,11 +179,15 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         private static List<string> GetSections(string input)
         {
             List<string> result = new List<string>();
-            if (input.Contains(ParLvlName))
-                result.Add(ParLvlName);
 
-            if (input.Contains(StilLvlName))
+            if (string.Equals(input, ParLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(ParLvlName);
+            else if(string.Equals(input, StilLvlName, StringComparison.OrdinalIgnoreCase))
                 result.Add(StilLvlName);
+            else if (string.Equals(input, KorpLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(KorpLvlName);
+            else if (string.Equals(input, SectLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(SectLvlName);
 
             MatchCollection matches = Regex.Matches(input, @"(\d+)-?(\d*)");
             foreach (Match match in matches)
