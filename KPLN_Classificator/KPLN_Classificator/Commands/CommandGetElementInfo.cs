@@ -57,11 +57,7 @@ namespace KPLN_Classificator
                 }
                 else
                 {
-                    try
-                    {
-                        familyName = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
-                    }
-                    catch (Exception) { }
+                    familyName = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
                     familyName = familyName == null || familyName.Length == 0 ? (elem as ElementType).FamilyName : familyName;
                 }
 
@@ -77,7 +73,9 @@ namespace KPLN_Classificator
                     }
                     else
                     {
-                        paramValues.Add(ParamUtils.getValueStringOfAllParams(elem, paramName) ?? "");
+                        Parameter elemParam = elem.LookupParameter(paramName) ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
+                        if (elemParam != null)
+                            paramValues.Add(ParamUtils.GetValueStringOfParam_ByTargetParam(elem, paramName, elemParam) ?? "");
                     }
                 }
 

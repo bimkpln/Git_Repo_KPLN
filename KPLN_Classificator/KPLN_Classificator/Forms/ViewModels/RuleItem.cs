@@ -80,6 +80,40 @@ namespace KPLN_Classificator.Forms.ViewModels
                 NotifyPropertyChanged();
             }
         }
+
+        private string _parameterName { get; set; }
+
+        public string parameterName
+        {
+            get
+            {
+                return _parameterName;
+            }
+            set
+            {
+                _parameterName = value;
+                NotifyPropertyChanged();
+                checkChanges();
+            }
+        }
+
+        private string _parameterValue { get; set; }
+
+        public string parameterValue
+        {
+            get
+            {
+                return _parameterValue;
+            }
+            set
+            {
+                _parameterValue = value;
+                NotifyPropertyChanged();
+                checkChanges();
+            }
+        }
+
+
         private BuiltInCategory _builtInCategoryName { get; set; }
 
         public BuiltInCategory builtInCategoryName
@@ -127,10 +161,12 @@ namespace KPLN_Classificator.Forms.ViewModels
             }
         }
 
-        public RuleItem(string familyNameValue, string typeNameValue, BuiltInCategory builtInCategoryName)
+        public RuleItem(string familyNameValue, string typeNameValue, string parameterName, string parameterValue, BuiltInCategory builtInCategoryName)
         {
             this.familyNameValue = familyNameValue;
             this.typeNameValue = typeNameValue;
+            this.parameterName = parameterName;
+            this.parameterValue = parameterValue;
             this.valuesOfParams = new ObservableCollection<ParamValueItem>();
             this.builtInCategoryName = builtInCategoryName;
             this.elemsCountInModel = -1;
@@ -183,6 +219,8 @@ namespace KPLN_Classificator.Forms.ViewModels
             int hashCode = -25894503;
             hashCode = hashCode * 31 + EqualityComparer<string>.Default.GetHashCode(familyNameValue);
             hashCode = hashCode * 31 + EqualityComparer<string>.Default.GetHashCode(typeNameValue);
+            hashCode = hashCode * 31 + EqualityComparer<string>.Default.GetHashCode(parameterName);
+            hashCode = hashCode * 31 + EqualityComparer<string>.Default.GetHashCode(parameterValue);
             hashCode = hashCode * 31 + builtInCategoryName.GetHashCode();
             return hashCode;
         }
@@ -194,7 +232,9 @@ namespace KPLN_Classificator.Forms.ViewModels
 
         private long getHashSumOfRuleItem()
         {
-            try
+            if(valuesOfParams == null)
+                return hashSumOfRuleItem;
+            else
             {
                 long sum = 0L;
                 sum += GetHashCode();
@@ -203,10 +243,6 @@ namespace KPLN_Classificator.Forms.ViewModels
                     sum += valueItem.GetHashCode();
                 }
                 return sum;
-            }
-            catch (Exception)
-            {
-                return hashSumOfRuleItem;
             }
         }
 

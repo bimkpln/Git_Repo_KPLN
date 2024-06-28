@@ -42,31 +42,28 @@ namespace KPLN_Classificator
             assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             try { application.CreateRibbonTab(tabName); } catch { }
 
-            string panelName = "Классификатор";
+            string panelName = "Параметры";
             RibbonPanel panel = null;
             List<RibbonPanel> tryPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName).ToList();
             if (tryPanels.Count == 0)
-            {
                 panel = application.CreateRibbonPanel(tabName, panelName);
-            }
             else
-            {
                 panel = tryPanels.First();
-            }
 
             PushButtonData btnHostMark = new PushButtonData(
-                "ClassificatorCompleteCommand",
-                "Заполнить\nклассификатор",
+                "Заполнить\nпараметры",
+                "Заполнить\nпараметры",
                 assemblyPath,
-                typeof(CommandOpenClassificatorForm).FullName);
-
-            btnHostMark.LargeImage = PngImageSource("KPLN_Classificator.Resources.Classificator_large.PNG");
-            btnHostMark.Image = PngImageSource("KPLN_Classificator.Resources.Classificator.PNG");
-            btnHostMark.ToolTip = "Параметризация элементов согласно заданным правилам.";
-            btnHostMark.LongDescription = "Возможности:\n" +
-                "Задание правил для параметризации элементов;\n" +
-                "Маппинг параметров (передача значений между параметрами элемента);\n" +
-                "Сохранение конфигурационного файла с возможностью повторного использования;\n";
+                typeof(CommandOpenClassificatorForm).FullName)
+            {
+                LargeImage = PngImageSource("KPLN_Classificator.Resources.Classificator_large.PNG"),
+                Image = PngImageSource("KPLN_Classificator.Resources.Classificator.PNG"),
+                ToolTip = "Параметризация элементов согласно заданным правилам.",
+                LongDescription = "Возможности:\n" +
+                "\t1. Задание правил для параметризации элементов;\n" +
+                "\t2. Маппинг параметров (передача значений между параметрами элемента);\n" +
+                "\t3. Сохранение конфигурационного файла с возможностью повторного использования;\n"
+            };
             btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=669"));
             btnHostMark.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 

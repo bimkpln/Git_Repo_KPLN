@@ -54,7 +54,7 @@
                                     <TextBox Grid.Column="0" Text="{Binding paramName}"></TextBox>
                                     <Button Grid.Column="1" Content="➕" Click="Add_ParamName_Click" Background="White" BorderBrush="#FFAA8B00" Margin="2,0,1,0"/>
                                     <Button Grid.Column="2" Content="🗙" Click="Delete_ParamName_Click" Background="White" BorderBrush="#FFAA8B00" Margin="1,0,2,0"/>
-                                    <Button Grid.Column="3" Content="🔍" Click="Choose_ParamName_Click"  Background="White" BorderBrush="#FFAA8B00" Margin="1,0,2,0"/>
+                                    <Button Grid.Column="3" Content="🔍" Click="Choose_TargetParamName_Click"  Background="White" BorderBrush="#FFAA8B00" Margin="1,0,2,0"/>
                                 </Grid>
                             </GroupBox>
                         </DataTemplate>
@@ -73,8 +73,12 @@
                     <RadioButton x:Name="InstanceRadioButton" Content="Параметры экземпляра" IsEnabled="True" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,20,0" Checked="RadioButton_Checked" FontWeight="Bold"/>
                     <RadioButton x:Name="TypeRadioButton" Content="Параметры типа" IsEnabled="True" VerticalAlignment="Center" HorizontalAlignment="Center" Checked="RadioButton_Checked" FontWeight="Bold"/>
                 </StackPanel>
-                <Button Margin="0,5,5,5" Grid.Column="2" Content="Правило из модели" Padding="5,1" Click="Get_Rule_Click"  Background="White" BorderBrush="#FFAA8B00"></Button>
-                <Button Margin="0,5,5,5" Grid.Column="3" Content="Добавить правило" Padding="5,1" Click="Add_Rule_Click" Background="White" BorderBrush="#FFAA8B00"></Button>
+                <Button Margin="0,5,5,5" Grid.Column="2" Content="Добавить правило" Padding="5,1" Click="Add_Rule_Click" Background="White" BorderBrush="#FFAA8B00"/>
+                <Button Margin="0,5,5,5" Grid.Column="3" Content="Заполнить правило из модели" Padding="5,1" Click="Get_Rule_Click"  Background="White" BorderBrush="#FFAA8B00">
+                    <Button.ToolTip>
+                            <TextBlock Text="Заполняет сведения о элементе (категория, имя семейства, имя типа) из выбранного в модели элемента"/>
+                    </Button.ToolTip>
+                </Button>
             </Grid>
         </StackPanel>
         <ScrollViewer Margin="5,5,5,5" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" IsDeferredScrollingEnabled="True">
@@ -139,6 +143,7 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
+                                        <!--Блок поиска элементов-->
                                         <StackPanel Orientation="Vertical" Grid.Column="1" Grid.Row="0" >
                                             <TextBlock Text="Критерии для поиска элемента в модели." Foreground="WhiteSmoke"></TextBlock>
                                             <TextBlock Margin="8,4,0,0" Text="Категория элемента в модели:" Foreground="WhiteSmoke"></TextBlock>
@@ -153,6 +158,7 @@
                                                     </ToolTip>
                                                 </ComboBox.ToolTip>
                                             </ComboBox>
+                                            <!--Поиск по имени семейства-->
                                             <GroupBox Header="{Binding familyNameTextBox, UpdateSourceTrigger=PropertyChanged}"  BorderThickness="0" Foreground="White">
                                                 <TextBox Text="{Binding familyNameValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap">
                                                     <TextBox.ToolTip>
@@ -170,6 +176,7 @@
                                                     </TextBox.ToolTip>
                                                 </TextBox>
                                             </GroupBox>
+                                            <!--Поиск по имени типа-->
                                             <GroupBox Header="{Binding typeNameTextBox, UpdateSourceTrigger=PropertyChanged}" BorderThickness="0" Foreground="White">
                                                 <TextBox Text="{Binding typeNameValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap">
                                                     <TextBox.ToolTip>
@@ -187,6 +194,43 @@
                                                     </TextBox.ToolTip>
                                                 </TextBox>
                                             </GroupBox>
+                                            <!--Поиск по парамтеру-->
+                                            <Expander 
+                                                x:Name="expHeader" 
+                                                Header="Блок фильтрации по параметру">
+                                                <Grid>
+                                                    <StackPanel>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition/>
+                                                                <ColumnDefinition Width="0.15*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <GroupBox Grid.Column="0" Header="Имя параметра:" Margin="5" BorderThickness="0" Foreground="White">
+                                                                <TextBox Text="{Binding parameterName, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"/>
+                                                            </GroupBox>
+                                                            <Button Grid.Column="1" Content="🔍" Click="Choose_FilterParamName_Click" VerticalAlignment="Stretch" Background="White" BorderBrush="#FFAA8B00" Margin="5"/>
+                                                        </Grid>
+                                                        <GroupBox Header="Значение:" Margin="5" BorderThickness="0" Foreground="White">
+                                                            <TextBox Text="{Binding parameterValue, UpdateSourceTrigger=PropertyChanged}" ToolTipService.InitialShowDelay="2000" ToolTipService.ShowDuration="20000" TextWrapping="Wrap">
+                                                                <TextBox.ToolTip>
+                                                                    <ToolTip Background="#FFFFD100" Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25" >
+                                                                        <StackPanel>
+                                                                            <TextBlock>В поле возможно использовать условия И (",") ИЛИ ("|") НЕ ("!"), например:</TextBlock>
+                                                                            <TextBlock Foreground="Red">00,стена|пилон,внешний</TextBlock>
+                                                                            <TextBlock>означает, что в названии должно содержаться "00" И ("стена" ИЛИ "пилон") И "внешний". Или:</TextBlock>
+                                                                            <TextBlock Foreground="Red">00,плита,!покрытие,!площадка</TextBlock>
+                                                                            <TextBlock>означает, что в названии должно содержаться "00" И "плита" И НЕ "покрытие" И НЕ "площадка".</TextBlock>
+                                                                            <TextBlock>Если в найденном семействе выполнены все эти условия, оно будет обработано плагином</TextBlock>
+                                                                            <TextBlock>Регистр букв значения не имеет</TextBlock>
+                                                                        </StackPanel>
+                                                                    </ToolTip>
+                                                                </TextBox.ToolTip>
+                                                            </TextBox>
+                                                        </GroupBox>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Expander>
+                                            <!--Предварительный подсчет-->
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="Найдено элементов в модели: " Foreground="WhiteSmoke"></TextBlock>
                                                 <TextBlock Text="{Binding elemsCountInModel, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}" Foreground="WhiteSmoke"></TextBlock>

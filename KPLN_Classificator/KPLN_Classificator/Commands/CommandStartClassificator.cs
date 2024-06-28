@@ -23,6 +23,7 @@ namespace KPLN_Classificator
         {
             this.form = form;
         }
+        
         public Result Execute(UIApplication app)
         {
             Document doc = app.ActiveUIDocument.Document;
@@ -43,9 +44,9 @@ namespace KPLN_Classificator
 
             using (Transaction t = new Transaction(doc))
             {
-                t.Start("Заполнение параметров классификатора");
+                t.Start("KPLN: Заполнение параметров");
 
-                if (form.instanceOrType == 2)
+                if (form.storage.instanceOrType == 2)
                 {
                     List<Element> constrsTypes;
 
@@ -71,14 +72,13 @@ namespace KPLN_Classificator
 
                     ParamUtils utilsForType = new ParamUtils(debugMode);
                     if (!utilsForType.startClassification(constrsTypes, storage, doc))
-                    {
                         return Result.Cancelled;
-                    }
+                    
                     output.PrintInfo(string.Format("Успешно обработано элементов: {0}. Обработано с ошибками: {1}.",
                         utilsForType.fullSuccessElems.Count, utilsForType.notFullSuccessElems.Count), Output.OutputMessageType.Success);
                 }
 
-                else if (form.instanceOrType == 1)
+                else if (form.storage.instanceOrType == 1)
                 {
                     List<Element> constrsInstances;
 
