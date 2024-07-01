@@ -16,13 +16,18 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
-        public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
         private readonly DBWorkerService _dBWorkerService;
+        private static int _restrictedUserSynch = 0;
 
         public Module()
         {
             _dBWorkerService = new DBWorkerService();
         }
+
+        /// <summary>
+        /// Указатель на окно ревит
+        /// </summary>
+        public static IntPtr MainWindowHandle { get; set; }
 
         public Result Close()
         {
@@ -31,6 +36,8 @@ namespace KPLN_Looker
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            MainWindowHandle = application.MainWindowHandle;
+
             try
             {
                 // Перезапись ini-файла
@@ -189,7 +196,7 @@ namespace KPLN_Looker
                 };
                 td.Show();
 
-                CommandQueue.Enqueue(new ViewCloser(activeView.Id));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ViewCloser(activeView.Id));
             }
             #endregion
         }
@@ -238,16 +245,28 @@ namespace KPLN_Looker
                 #region Отлов пользователей с ограничением допуска к работе
                 if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
+                    _restrictedUserSynch++;
                     BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                         $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
                         $"Действие: Произвел синхронизацию проекта {doc.Title}.");
 
-                    MessageBox.Show(
-                        $"Вы произвели синхронизацию проекта с диска Y:\\. Данные переданы в BIM-отдел и ГИ бюро",
-                        "Ошибка",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                    if (_restrictedUserSynch == 1)
+                        MessageBox.Show(
+                            $"Вы произвели синхронизацию проекта с диска Y:\\. Данные переданы в BIM-отдел и ГИ бюро. Следующая синхнронизация приведёт к ЗАКРЫТИЮ вашего файла.",
+                            "Ошибка",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    else
+                    {
+                        MessageBox.Show(
+                            $"Вы произвели синхронизацию проекта с диска Y:\\. Данные переданы в BIM-отдел и ГИ бюро. Файл будет ЗАКРЫТ.",
+                            "Ошибка",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser());
+                    }
                 }
                 #endregion
 
