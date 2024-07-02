@@ -1,7 +1,9 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
+using System.Windows;
 using System.Windows.Forms;
 using Excel = Microsoft.Office.Interop.Excel;
 
@@ -37,7 +39,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <param name="path">Путь</param>
         /// <param name="checkName">Имя проверки</param>
         /// <param name="entities">Коллекция WPFEntity</param>
-        public static void Run(string path, string checkName, IEnumerable<WPFEntity> entities)
+        public static void Run(Window owner, string path, string checkName, IEnumerable<WPFEntity> entities)
         {
             Excel.Application excelApp = new Excel.Application();
             Excel.Workbook workbook = excelApp.Workbooks.Add();
@@ -65,7 +67,7 @@ namespace KPLN_ModelChecker_User.Common
             int row = 2;
             foreach (WPFEntity entity in entities)
             {
-                if (entity.CurrentStatus == Collections.Status.Approve) continue;
+                if (entity.CurrentStatus == CheckCommandCollections.CheckStatus.Approve) continue;
 
                 int column = 1;
                 string valueFromColl = string.Empty;
@@ -89,18 +91,31 @@ namespace KPLN_ModelChecker_User.Common
 
             // Сохранить файл
             string currentPath = $"{path}\\{checkName}_Отчет по ошибкам.xlsx";
+            
+            CustomMessageBox customMessageBox = null;
             try
             {
                 workbook.SaveAs(currentPath);
-                MessageBox.Show($"Сохранено успешно!\nПуть: {currentPath}");
+                customMessageBox = new CustomMessageBox("Сохранено успешно!", $"Путь:\n{currentPath}");
+
             }
             catch (System.Runtime.InteropServices.COMException ex) 
             {
-                if (ex.HResult == _hr) MessageBox.Show("Файл занят. Закрой его, либо сохрани файл с другим именем (ищи появившееся окно Excel)");
-                else MessageBox.Show("Ой. Отправь имя файла, проверку разработчику");
+                if (ex.HResult == _hr)
+                    customMessageBox = new CustomMessageBox("Ошибка!", "Файл занят. Закрой его, либо сохрани файл с другим именем (ищи появившееся окно Excel)");
+                else 
+                    customMessageBox = new CustomMessageBox("Ошибка!", "Отправь имя файла и имя проверки проверку разработчику");
+
+            }
+            catch (Exception ex)
+            {
+                customMessageBox = new CustomMessageBox("Ошибка!", $"Отправь имя файла и имя проверки проверку разработчику. Текст ошибки: {ex.Message}");
             }
             finally
             {
+                // Вывод сообщения пользователю
+                customMessageBox.ShowByOwner(owner);
+
                 // Очистка
                 workbook.Close();
                 excelApp.Quit();

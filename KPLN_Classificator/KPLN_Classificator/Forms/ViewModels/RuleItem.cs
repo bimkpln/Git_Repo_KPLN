@@ -1,4 +1,4 @@
-﻿using KPLN_Classificator.Utils;
+using KPLN_Classificator.Utils;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -232,7 +232,7 @@ namespace KPLN_Classificator.Forms.ViewModels
 
         private long getHashSumOfRuleItem()
         {
-            if(valuesOfParams == null)
+            if (valuesOfParams == null)
                 return hashSumOfRuleItem;
             else
             {

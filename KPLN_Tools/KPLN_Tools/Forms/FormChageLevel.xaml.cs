@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit;
+using Autodesk.Revit;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
@@ -91,7 +91,7 @@ namespace KPLN_Tools.Forms
             if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
             {
                 List<ElementId> elements = ElementsByLevel[selectedKey];
-           
+
                 foreach (ElementId elementID in elements)
                 {
                     Element element = _doc.GetElement(elementID);
@@ -116,7 +116,7 @@ namespace KPLN_Tools.Forms
 
             if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
             {
-                List<ElementId> elements = ElementsByLevel[selectedKey];              
+                List<ElementId> elements = ElementsByLevel[selectedKey];
 
                 foreach (ElementId elementID in elements)
                 {
@@ -159,7 +159,7 @@ namespace KPLN_Tools.Forms
             Paragraph paragraphImport = new Paragraph();
             paragraphImport.Inlines.Add(new Run(listLevelImportElement));
             LevelImportElementList.Document.Blocks.Add(paragraphImport);
-        }  
+        }
 
         // Формула сдвига элемента на уровне
         private double CalculatedElementOffset(Element element, Level level)
@@ -178,11 +178,11 @@ namespace KPLN_Tools.Forms
             if (elevationDifference > 0)
             {
                 offset = baseOffset - Math.Abs(elevationDifference);
-            }  
+            }
             if (elevationDifference < 0)
             {
                 offset = baseOffset + Math.Abs(elevationDifference);
-            } 
+            }
 
             return offset;
         }
@@ -200,12 +200,12 @@ namespace KPLN_Tools.Forms
                 using (Transaction transaction = new Transaction(_doc, "KPLN: Создание нового 3D вида"))
                 {
                     transaction.Start();
-                   
+
                     // Используем стандартные 3D настройки (изометрию)
                     XYZ eyePosition = new XYZ(1, 1, 1);
                     XYZ upDirection = new XYZ(0, 0, 1);
                     XYZ forwardDirection = new XYZ(0, 1, 0);
-                    ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);         
+                    ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);
 
                     newView3D = View3D.CreateIsometric(_doc, viewFamilyType.Id);
 
@@ -335,7 +335,7 @@ namespace KPLN_Tools.Forms
         // Окно о выполнении работы
         private void FinishTransferMessage()
         {
-            if (!string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelImportElementList.Document.ContentStart, LevelImportElementList.Document.ContentEnd).Text)) 
+            if (!string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelImportElementList.Document.ContentStart, LevelImportElementList.Document.ContentEnd).Text))
             {
                 System.Windows.Forms.MessageBox.Show("Не все элементы были перенесены на новый уровень", "Предупреждение",
                     System.Windows.Forms.MessageBoxButtons.OK,
@@ -349,7 +349,7 @@ namespace KPLN_Tools.Forms
                     System.Windows.Forms.MessageBoxIcon.Information);
                 return;
             }
-        }    
+        }
 
         // Нахождение высоты черезз геометрию (стены, колоны)
         private double GetElementHeight(Element element)
@@ -379,8 +379,8 @@ namespace KPLN_Tools.Forms
 
             double height = maxZ - minZ;
             return height;
-            }
-     
+        }
+
         // Перемещение элементов на новый уровень
         private void Button_ClickTransferringElements(object sender, RoutedEventArgs e)
         {
@@ -393,7 +393,7 @@ namespace KPLN_Tools.Forms
 
             if (!shouldContinue)
             {
-                return; 
+                return;
             }
 
             Level newLevel = new FilteredElementCollector(_doc)
@@ -403,7 +403,7 @@ namespace KPLN_Tools.Forms
             using (Transaction transaction = new Transaction(_doc, "KPLN: Перенос на новый уровень"))
             {
                 transaction.Start();
-             
+
                 foreach (ElementId elementID in ElementsByLevel[exportLevelName])
                 {
                     Element element = _doc.GetElement(elementID);
@@ -427,7 +427,7 @@ namespace KPLN_Tools.Forms
                         transaction.SetFailureHandlingOptions(failureHandlingOptions);
 
                         levelOffsetParameter.Set(CalculatedElementOffset(element, newLevelTransfer));
-                        levelNameParameter.Set(newLevel.Id);                                               
+                        levelNameParameter.Set(newLevel.Id);
                     }
                 }
 
@@ -435,7 +435,8 @@ namespace KPLN_Tools.Forms
                 try
                 {
                     Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
-                } catch (Autodesk.Revit.Exceptions.ArgumentException) { };
+                }
+                catch (Autodesk.Revit.Exceptions.ArgumentException) { };
 
                 transaction.Commit();
             }
@@ -502,7 +503,7 @@ namespace KPLN_Tools.Forms
                         levelNameParameter.Set(newLevel.Id);
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls || 
+                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls ||
                         element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
@@ -512,17 +513,17 @@ namespace KPLN_Tools.Forms
                         double heightValue = GetElementHeight(element);
 
                         topLevelNameParameter.Set(ElementId.InvalidElementId);
-                        elementHeight.Set(heightValue);                       
+                        elementHeight.Set(heightValue);
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs 
+                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs
                         || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
 
                         levelNameParameter.Set(newLevel.Id);
-                        topLevelNameParameter.Set(newTopLevel.Id) ;
+                        topLevelNameParameter.Set(newTopLevel.Id);
                     }
 
                 }

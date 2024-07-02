@@ -1,13 +1,11 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_ViewsAndLists_Ribbon.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using System.Windows.Forms;
-using static KPLN_Loader.Output.Output;
-using KPLN_ViewsAndLists_Ribbon.Forms;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
@@ -31,8 +29,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 List<string> filterNames = filters.Select(x => x.Name).ToList();
                 filterNames.Sort();
 
-                FormBatchDelete form = new FormBatchDelete();
-                form.Items = filterNames;
+                FormBatchDelete form = new FormBatchDelete
+                {
+                    Items = filterNames
+                };
 
                 form.ShowDialog();
 

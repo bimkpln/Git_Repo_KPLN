@@ -5,9 +5,9 @@ using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using KPLN_Library_Forms;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -19,19 +19,19 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Список элементов, которые относятся к ошибкам
         /// </summary>
-        private List<ElementId> _errorList = new List<ElementId>();
+        private readonly List<ElementId> _errorList = new List<ElementId>();
 
         /// <summary>
         /// Словарь элементов, где ключ - вид, значения - марки на виде
         /// </summary>
-        private Dictionary<ElementId, List<ElementId>> _errorDict = new Dictionary<ElementId, List<ElementId>>();
+        private readonly Dictionary<ElementId, List<ElementId>> _errorDict = new Dictionary<ElementId, List<ElementId>>();
 
         /// <summary>
         /// Список элементов, которые были исправлены
         /// </summary>
-        private List<ElementId> _correctedList = new List<ElementId>();
+        private readonly List<ElementId> _correctedList = new List<ElementId>();
 
-        private TaskDialogResult _mainTaskDialogRes;
+        private ButtonToRunEntity _selectedBtn;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -66,15 +66,23 @@ namespace KPLN_Tools.ExternalCommands
             // Поиск элементов на удаление
             try
             {
-                TaskDialog taskDialog = new TaskDialog("Выбери действие");
-                taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconInformation;
-                taskDialog.MainContent = "Восстановить связь у марок - нажми Да.\nУдалить марки - нажми Нет.";
-                taskDialog.CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No;
-                _mainTaskDialogRes = taskDialog.Show();
-                if (_mainTaskDialogRes == TaskDialogResult.Cancel)
+                List<ButtonToRunEntity> btnColl = new List<ButtonToRunEntity>
                 {
+                    new ButtonToRunEntity(
+                        "Восстановить связь у марок", 
+                        "Сценарий, при котором марки помещений будут восстановлены (если это возможно)"),
+                    new ButtonToRunEntity(
+                        "Удалить испорченные марки",
+                        "Сценарий, при котором марки помещений будут УДАЛЕНЫ"),
+                };
+                
+                ButtonToRun buttonToRun = new ButtonToRun("Выбери сценарий для запуска", btnColl);
+                buttonToRun.ShowDialog();
+                
+                if (buttonToRun.Status == UIStatus.RunStatus.Run && buttonToRun.SelectedButton != null)
+                    _selectedBtn = buttonToRun.SelectedButton;
+                else
                     return Result.Cancelled;
-                }
 
                 // Анализирую выбранные листы
                 if (sheetsList.Count > 0)
@@ -103,7 +111,13 @@ namespace KPLN_Tools.ExternalCommands
             }
             catch (Exception ex)
             {
-                PrintError(ex);
+                //PrintError(ex);
+                TaskDialog td = new TaskDialog("ОШИБКА")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                    MainInstruction = ex.Message,
+                };
+                td.Show();
             }
             return Result.Succeeded;
         }
@@ -172,8 +186,9 @@ namespace KPLN_Tools.ExternalCommands
             foreach (Element link in collection)
             {
                 RevitLinkInstance linkInst = link as RevitLinkInstance;
-                
-                if (linkInst.Name.ToLower().Contains("ar") || linkInst.Name.ToLower().Contains("ар"))
+
+                if (linkInst.Name.ToLower().Contains("_ar_") || linkInst.Name.ToLower().Contains("_ар_")
+                    || (linkInst.Name.ToLower().StartsWith("ar_") || linkInst.Name.ToLower().StartsWith("ар_")))
                 {
                     Document linkDoc = linkInst.GetLinkDocument();
                     
@@ -186,20 +201,21 @@ namespace KPLN_Tools.ExternalCommands
                             {
                                 ViewPlan currentView = doc.GetElement(kvp.Key) as ViewPlan;
 
-                                FilteredElementCollector roomsColl = new FilteredElementCollector(linkDoc).OfCategory(BuiltInCategory.OST_Rooms);
+                                IEnumerable<Room> roomsColl = new FilteredElementCollector(linkDoc)
+                                    .OfCategory(BuiltInCategory.OST_Rooms)
+                                    .Cast<Room>();
                                 if (roomsColl.Count() > 0)
                                 {
-                                    Transform transformCoord = linkInst.GetTransform();
+                                    Transform linkTrans = linkInst.GetTransform();
                                     
                                     RoomTag roomTag = doc.GetElement(elemId) as RoomTag;
                                     LocationPoint tagLocationPoint = roomTag.Location as LocationPoint;
                                     XYZ tagPoint = tagLocationPoint.Point;
 
-                                    foreach (Element elem in roomsColl)
+                                    foreach (Room room in roomsColl)
                                     {
-                                        Room room = elem as Room;
-                                        
-                                        if (room.IsPointInRoom(tagPoint))
+                                        XYZ transformedToLinkTagPoint = linkTrans.Inverse.OfPoint(tagPoint);
+                                        if (room.IsPointInRoom(transformedToLinkTagPoint))
                                         {
                                             LinkElementId roomId = new LinkElementId(linkInst.Id, room.Id);
                                             UV uvPoint = new UV(tagPoint.X, tagPoint.Y);
@@ -228,10 +244,8 @@ namespace KPLN_Tools.ExternalCommands
             {
                 t.Start("KPLN_Почистить/починить марки помещений");
                 
-                if (_mainTaskDialogRes == TaskDialogResult.Yes)
-                {
+                if (_selectedBtn.Name == "Восстановить связь у марок")
                     CorrectedElements(doc);
-                }
                 
                 foreach (List<ElementId> values in _errorDict.Values)
                 {

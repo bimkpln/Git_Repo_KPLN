@@ -1,29 +1,26 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Loader.Common;
 using KPLN_Clashes_Ribbon.Tools;
+using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
     public class CommandZoomSelectElement : IExecutableCommand
     {
-        private int _id;
+        private readonly int _id;
 
-        private string _elInfo;
-        
+        private readonly string _elInfo;
+
         public CommandZoomSelectElement(int id, string elInfo)
         {
             _id = id;
             _elInfo = elInfo;
         }
 
-        
+
         public Result Execute(UIApplication app)
         {
             if (app.ActiveUIDocument != null)
@@ -31,7 +28,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                 Document doc = app.ActiveUIDocument.Document;
                 Element element = doc.GetElement(new ElementId(_id));
                 Transaction t = new Transaction(doc, "Zoom");
-                
+
                 if (!ElementCheckErrorFromInfoParse(doc, element))
                 {
                     t.Start();
@@ -43,10 +40,10 @@ namespace KPLN_Clashes_Ribbon.Commands
                     else
                         TaskDialog.Show("Внимание!", "Данный элемент не найден! Возможно, элемент был удален, или замоделирован заново, что привело к замене id.");
                     t.Commit();
-                    
+
                     return Result.Succeeded;
                 }
-                
+
                 return Result.Failed;
             }
 
@@ -84,7 +81,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                     TaskDialog.Show("Внимание!", "Это элемент из связанного файла, но его id совпадает с id элемента в ВАШЕМ файле." +
                         "\nВид не будет соответвовать элементу из отчета");
             }
-            
+
             TaskDialog.Show("Внимание!", "Элемент не прошел проверку. Скинь скрин отчета с отображением имени файла, " +
                 "имени отчета и номером конфликта Куцко Тимофею. " +
                 "Чтобы не тормозить работу - используй поиск по id (Управление ➜ Выбрать по коду)");

@@ -7,12 +7,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Web;
-using System.Web.UI.HtmlControls;
-using System.Windows.Controls;
 using System.Windows.Forms;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
@@ -54,7 +51,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             foreach (HtmlNode sub_node in node.ChildNodes)
             {
                 if (Decode(sub_node.GetAttributeValue("class", "NONE")) == string.Format("элемент{0}Содержимое", num.ToString()))
-                    {
+                {
                     if (Decode(sub_node.InnerText).ToLower().Contains("id объекта"))
                     {
                         return Decode(sub_node.InnerText).Split(':').Last();
@@ -124,17 +121,19 @@ namespace KPLN_Clashes_Ribbon.Commands
         {
             try
             {
-                OpenFileDialog dialog = new OpenFileDialog();
-                dialog.Filter = "html report (*.html)|*.html";
-                dialog.Title = "Выберите отчет NavisWorks в формате .html";
-                dialog.CheckFileExists = true;
-                dialog.CheckPathExists = true;
-                dialog.Multiselect = false;
+                OpenFileDialog dialog = new OpenFileDialog
+                {
+                    Filter = "html report (*.html)|*.html",
+                    Title = "Выберите отчет NavisWorks в формате .html",
+                    CheckFileExists = true,
+                    CheckPathExists = true,
+                    Multiselect = false
+                };
                 DialogResult result = dialog.ShowDialog();
                 if (result == DialogResult.OK)
                 {
                     FileInfo file = new FileInfo(dialog.FileName);
-                    Print(file.Extension, KPLN_Loader.Preferences.MessageType.System_Regular);
+                    Print(file.Extension, MessageType.System_Regular);
                     if (file.Extension == ".html")
                     {
                         HtmlAgilityPack.HtmlDocument htmlSnippet = new HtmlAgilityPack.HtmlDocument();
@@ -152,13 +151,13 @@ namespace KPLN_Clashes_Ribbon.Commands
                                 {
                                     Stream stream = System.IO.File.Open(imageFile.FullName, FileMode.Open);
                                 }
-                                Print(string.Format("{0}", header), KPLN_Loader.Preferences.MessageType.Success);
-                                Print(string.Format("Image = '{0}'", Optimize(GetImage(link))), KPLN_Loader.Preferences.MessageType.System_Regular);
-                                Print(string.Format("Point = '{0}'", Optimize(GetPoint(link))), KPLN_Loader.Preferences.MessageType.System_Regular);
-                                Print(string.Format("ID1 = '{0}'", Optimize(GetId(link, 1))), KPLN_Loader.Preferences.MessageType.System_Regular);
-                                Print(string.Format("ID2 = '{0}'", Optimize(GetId(link, 2))), KPLN_Loader.Preferences.MessageType.System_Regular);
-                                Print(string.Format("Name1 = '{0}'", GetFullName(link, 1)), KPLN_Loader.Preferences.MessageType.System_Regular);
-                                Print(string.Format("Name2 = '{0}'", GetFullName(link, 2)), KPLN_Loader.Preferences.MessageType.System_Regular);
+                                Print(string.Format("{0}", header), MessageType.Success);
+                                Print(string.Format("Image = '{0}'", Optimize(GetImage(link))), MessageType.System_Regular);
+                                Print(string.Format("Point = '{0}'", Optimize(GetPoint(link))), MessageType.System_Regular);
+                                Print(string.Format("ID1 = '{0}'", Optimize(GetId(link, 1))), MessageType.System_Regular);
+                                Print(string.Format("ID2 = '{0}'", Optimize(GetId(link, 2))), MessageType.System_Regular);
+                                Print(string.Format("Name1 = '{0}'", GetFullName(link, 1)), MessageType.System_Regular);
+                                Print(string.Format("Name2 = '{0}'", GetFullName(link, 2)), MessageType.System_Regular);
                             }
                         }
                     }

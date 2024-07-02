@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 
 namespace KPLN_Parameters_Ribbon.Forms
 {
@@ -58,7 +50,7 @@ namespace KPLN_Parameters_Ribbon.Forms
                 progressBar1.Value -= value;
             else
                 progressBar1.Value = 0;
-            
+
             if (null != _format)
             {
                 Header_lbl.Text = string.Format(_format, progressBar1.Value);

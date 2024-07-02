@@ -14,7 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using static KPLN_Clashes_Ribbon.Common.Collections;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -67,13 +67,13 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
         private void OnCancel(object sender, RoutedEventArgs e)
         {
-            Dialog.DialogResult = Common.Collections.KPTaskDialogResult.Cancel;
+            Dialog.DialogResult = Core.ClashesMainCollection.KPTaskDialogResult.Cancel;
             Close();
         }
 
         private void OnOk(object sender, RoutedEventArgs e)
         {
-            Dialog.DialogResult = Common.Collections.KPTaskDialogResult.Ok;
+            Dialog.DialogResult = Core.ClashesMainCollection.KPTaskDialogResult.Ok;
             Close();
         }
     }

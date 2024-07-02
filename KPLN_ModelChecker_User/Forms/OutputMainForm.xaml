@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_ModelChecker_User.Forms.OutputMainForm"
+<Window x:Class="KPLN_ModelChecker_User.Forms.OutputMainForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -10,7 +10,7 @@
         ResizeMode="CanResizeWithGrip" 
         Title="Задаётся через конструктор" 
         WindowStyle="ToolWindow" 
-        Topmost="False" 
+        Topmost="True" 
         WindowStartupLocation="CenterOwner" 
         Closing="Window_Closing">
 
@@ -89,7 +89,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="0.15*"/>
-            <ColumnDefinition Width="0.75*"/>
+            <ColumnDefinition Width="0.70*"/>
             <ColumnDefinition Width="0.15*"/>
         </Grid.ColumnDefinitions>
 
@@ -110,7 +110,7 @@
                     SelectionChanged="OnSelectedCategoryChanged"/>
         </StackPanel>
 
-        <ScrollViewer Grid.Row="3" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" 
+        <ScrollViewer Grid.Row="3"  Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" 
                 VerticalScrollBarVisibility="Visible" Margin="0,3,0,0">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="iControll">
@@ -232,7 +232,7 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Grid Grid.Row="4" Grid.Column="0" Margin="0,3,0,3">
+        <Grid Grid.Row="4" Grid.Column="0" Margin="0,3,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.5*"/>
                 <ColumnDefinition Width="0.5*"/>
@@ -249,11 +249,11 @@
                     Content="💾" ToolTip="Нажми, чтобы экспортировать отчет в Excel"
                     Click="ExportBtn_Clicked"/>
         </Grid>
-        <DockPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
+
+        <DockPanel  Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="5">
             <CheckBox x:Name="chbxApproveShow"
                 Style="{StaticResource CHBX_D}" HorizontalAlignment="Left"
                 Click="ChbxApproveShow_Clicked"/>
-            <TextBlock Text="Включить элементы со статусом 'Допустимое'" TextWrapping="Wrap"/>
         </DockPanel>
 
         <Grid Grid.Row="4" Grid.Column="3" Margin="0,0,10,0">
@@ -262,8 +262,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Style="{StaticResource TXT_D}" FontWeight="Bold" HorizontalAlignment="Left" Text="Итого:"/>
-            <TextBlock x:Name="txbCount" Grid.Column="1" Style="{StaticResource TXT_D}" HorizontalAlignment="Right" Text="х"/>
-            
+            <TextBlock x:Name="txbCount" Grid.Column="1" Style="{StaticResource TXT_D}" HorizontalAlignment="Right" Text="x"/>
         </Grid>
 
     </Grid>

@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -142,7 +143,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
             // Обработка проектов без деления на секции
-            if (!splitname[0].Any(char.IsLetter)
+            if(!splitname[0].Any(char.IsLetter)
                 && !string.IsNullOrEmpty(_singleSectionNumber))
                 return splitname[0];
             else
@@ -161,9 +162,9 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
             if (splitname[0].Any(char.IsLetter)
-                && !splitname[0].Contains(SectLvlName)
-                && !splitname[0].Contains(KorpLvlName)
-                && !splitname[0].Contains(ParLvlName)
+                && !splitname[0].Contains(SectLvlName) 
+                && !splitname[0].Contains(KorpLvlName) 
+                && !splitname[0].Contains(ParLvlName) 
                 && !splitname[0].Contains(StilLvlName))
                 throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
 
@@ -171,18 +172,22 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             if (!splitname[0].Any(char.IsLetter)
                 && !string.IsNullOrEmpty(_singleSectionNumber))
                 return new List<string> { _singleSectionNumber };
-
+            
             return GetSections(splitname[0]);
         }
 
         private static List<string> GetSections(string input)
         {
             List<string> result = new List<string>();
-            if (input.Contains(ParLvlName))
-                result.Add(ParLvlName);
 
-            if (input.Contains(StilLvlName))
+            if (string.Equals(input, ParLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(ParLvlName);
+            else if(string.Equals(input, StilLvlName, StringComparison.OrdinalIgnoreCase))
                 result.Add(StilLvlName);
+            else if (string.Equals(input, KorpLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(KorpLvlName);
+            else if (string.Equals(input, SectLvlName, StringComparison.OrdinalIgnoreCase))
+                result.Add(SectLvlName);
 
             MatchCollection matches = Regex.Matches(input, @"(\d+)-?(\d*)");
             foreach (Match match in matches)

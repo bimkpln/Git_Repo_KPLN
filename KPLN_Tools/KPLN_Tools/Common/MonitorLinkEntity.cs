@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -14,7 +14,7 @@ namespace KPLN_Tools.Common
             LinkIsntance = linkIsntance;
             LinkElemsParams = linkElemsParams;
         }
-        
+
         public Element LinkElement { get; protected set; }
 
         public Solid LinkElementSolid

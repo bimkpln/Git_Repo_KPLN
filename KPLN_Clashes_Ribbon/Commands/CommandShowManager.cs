@@ -2,12 +2,12 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Forms;
-using KPLN_Library_DataBase.Collections;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
@@ -19,11 +19,12 @@ namespace KPLN_Clashes_Ribbon.Commands
         {
             try
             {
-                ElementPick selectedProjectForm = SelectDbProject.CreateForm();
+                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm();
                 bool? dialogResult = selectedProjectForm.ShowDialog();
                 if (selectedProjectForm.Status == UIStatus.RunStatus.Run)
                 {
-                    ReportManager mainForm = new ReportManager((DbProject)selectedProjectForm.SelectedElement.Element);
+                    DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
+                    ReportManager mainForm = new ReportManager(dBProject);
                     mainForm.Show();
                 }
                 else

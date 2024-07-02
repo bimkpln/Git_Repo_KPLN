@@ -1,9 +1,9 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace KPLN_CSharp_Template
@@ -26,7 +26,7 @@ namespace KPLN_CSharp_Template
             PulldownButtonData pullDownData = new PulldownButtonData("Шаблон", "Шаблон");
             pullDownData.ToolTip = "Описание выпадающего списка";
             PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
-            BtnImagine(pullDown, "temp.png");
+            pullDown.Image = PngImageSource("KPLN_CSharp_Template.Imagens.temp.png");
 
             //Добавляю кнопку в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -41,7 +41,7 @@ namespace KPLN_CSharp_Template
                 ),
                 typeof(ExternalCommands.PullDownHW).FullName,
                 pullDown,
-                "pushPin.png",
+                "KPLN_CSharp_Template.Imagens.pushPin.png",
                 "http://moodle.stinproject.local"
             );
 
@@ -60,7 +60,7 @@ namespace KPLN_CSharp_Template
                 ),
                 typeof(ExternalCommands.ButtonHW).FullName,
                 currentPanel,
-                "temp.png",
+                "KPLN_CSharp_Template.Imagens.temp.png",
                 "http://moodle.stinproject.local"
             );
 
@@ -76,7 +76,7 @@ namespace KPLN_CSharp_Template
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="pullDownButton">Выпадающий список, в который добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки</param>
+        /// <param name="imageName">Имя иконки, как ресурса</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp)
         {
@@ -85,12 +85,13 @@ namespace KPLN_CSharp_Template
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            BtnImagine(button, imageName);
         }
 
         /// <summary>
-        /// Метод для добавления отдельной в панель
+        /// Метод для добавления отдельной кнопки в панель
         /// </summary>
         /// <param name="name">Внутреннее имя кнопки</param>
         /// <param name="text">Имя, видимое пользователю</param>
@@ -98,7 +99,7 @@ namespace KPLN_CSharp_Template
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="panel">Панель, в которую добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки</param>
+        /// <param name="imageName">Имя иконки, как ресурса</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
@@ -107,20 +108,21 @@ namespace KPLN_CSharp_Template
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            BtnImagine(button, imageName);
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
         }
 
         /// <summary>
         /// Метод для добавления иконки для кнопки
         /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
-        private void BtnImagine(RibbonButton button, string imageName)
+        /// <param name="embeddedPathname">Имя иконки с раширением</param>
+        private ImageSource PngImageSource(string embeddedPathname)
         {
-            string imageFullPath = Path.Combine(new FileInfo(_assemblyPath).DirectoryName, @"Imagens\", imageName);
-            button.LargeImage = new BitmapImage(new Uri(imageFullPath));
+            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
 
+            return decoder.Frames[0];
         }
     }
 }

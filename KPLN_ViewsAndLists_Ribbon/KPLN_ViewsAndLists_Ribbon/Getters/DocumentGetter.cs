@@ -48,6 +48,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     mp.Set(val);
 
                 }
+
                 values.Add(mp);
             }
 

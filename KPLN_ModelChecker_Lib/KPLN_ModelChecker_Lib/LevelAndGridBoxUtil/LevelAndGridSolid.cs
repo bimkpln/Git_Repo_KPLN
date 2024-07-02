@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,9 +12,9 @@ namespace KPLN_ModelChecker_Lib
     public class LevelAndGridSolid
     {
         /// <summary>
-        /// Солид уровня
+        /// Солид в границах уровней и осей
         /// </summary>
-        public Solid LevelSolid { get; private set; }
+        public Solid CurrentlSolid { get; private set; }
 
         /// <summary>
         /// Ссылка на текущий CheckLevelOfInstanceLevelData
@@ -28,7 +28,7 @@ namespace KPLN_ModelChecker_Lib
 
         private LevelAndGridSolid(Solid solid, LevelData currentLevel, GridData gData)
         {
-            LevelSolid = solid;
+            CurrentlSolid = solid;
             CurrentLevelData = currentLevel;
             GridData = gData;
         }
@@ -112,12 +112,12 @@ namespace KPLN_ModelChecker_Lib
                         || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
                         || secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
                         || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
-                        )
+                        ) 
                         continue;
-
+                    
                     if (!secData1.Equals(secData2))
                     {
-                        Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.LevelSolid, secData2.LevelSolid, BooleanOperationsType.Intersect);
+                        Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.CurrentlSolid, secData2.CurrentlSolid, BooleanOperationsType.Intersect);
                         if (intersectionSolid != null && intersectionSolid.Volume > 0)
                             throw new CheckerException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
                                 $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id} и {secData2.CurrentLevelData.CurrentLevel.Id} " +

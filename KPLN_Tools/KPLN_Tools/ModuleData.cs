@@ -1,16 +1,13 @@
-﻿using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.UI;
-using System;
+﻿using KPLN_Loader.Common;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_Tools
 {
     internal static class ModuleData
     {
+        public static System.IntPtr MainWindowHandle { get; set; }
         /// <summary>
         /// Версия сборки, отображаемая в Revit
         /// </summary>
@@ -19,11 +16,24 @@ namespace KPLN_Tools
         /// <summary>
         /// Актуальная дата плагина
         /// </summary>
-        public static string Date = "2023/04/05";
+        public static string Date = GetModuleCreationDate();
 
         /// <summary>
         /// Имя модуля
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
+        public static readonly Queue<IExecutableCommand> CommandQueue = new Queue<IExecutableCommand>();
+
+        private static string GetModuleCreationDate()
+        {
+            string filePath = Assembly.GetExecutingAssembly().Location;
+            if (File.Exists(filePath))
+            {
+                FileInfo fileInfo = new FileInfo(filePath);
+                return fileInfo.CreationTime.ToString("yyyy/MM/dd");
+            }
+
+            return "Дата не определена";
+        }
     }
 }

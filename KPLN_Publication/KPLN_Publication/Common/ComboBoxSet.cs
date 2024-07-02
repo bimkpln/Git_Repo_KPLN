@@ -1,14 +1,7 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Publication.Common.Filters;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Publication.Common
 {
@@ -16,7 +9,7 @@ namespace KPLN_Publication.Common
     {
         public bool Sheets { get; private set; }
         public bool Views { get; private set; }
-        public bool IsUserCreated 
+        public bool IsUserCreated
         {
             get
             {
@@ -26,7 +19,7 @@ namespace KPLN_Publication.Common
         }
         public string Name { get; private set; }
         private Document Document { get; set; }
-        public ObservableCollection<ListBoxElement> Elements 
+        public ObservableCollection<ListBoxElement> Elements
         {
             get
             {
@@ -39,7 +32,7 @@ namespace KPLN_Publication.Common
                         elements.Add(new ListBoxElement(i, true));
                     }
                 }
-                
+
                 if (Views)
                 {
                     foreach (View i in new FilteredElementCollector(Document).OfClass(typeof(View)).WhereElementIsNotElementType().ToElements())

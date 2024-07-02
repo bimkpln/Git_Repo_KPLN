@@ -1,21 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.ApplicationServices;
-using System.IO;
-using System.Xml;
-using static KPLN_Classificator.ApplicationConfig;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Classificator.Data;
 using KPLN_Classificator.Forms;
+using KPLN_Loader.Common;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using static KPLN_Classificator.ApplicationConfig;
 
 namespace KPLN_Classificator
 {
-    class CommandStartClassificator : MyExecutableCommand
+    class CommandStartClassificator : IExecutableCommand
     {
         private ClassificatorForm form { get; set; }
 
@@ -23,7 +20,7 @@ namespace KPLN_Classificator
         {
             this.form = form;
         }
-        
+
         public Result Execute(UIApplication app)
         {
             Document doc = app.ActiveUIDocument.Document;

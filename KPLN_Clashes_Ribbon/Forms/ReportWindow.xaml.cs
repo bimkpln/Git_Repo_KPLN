@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Clashes_Ribbon.Commands;
-using KPLN_Clashes_Ribbon.Common;
-using KPLN_Clashes_Ribbon.Common.Reports;
-using KPLN_Clashes_Ribbon.Tools;
+using KPLN_Clashes_Ribbon.Core;
+using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Clashes_Ribbon.Services;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -14,9 +14,9 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Media;
-using static KPLN_Clashes_Ribbon.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -25,25 +25,27 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportWindow : Window
     {
-        
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
-        private Report _currentReport;
-
-        private ObservableCollection<ReportInstance> _reportInstancesColl;
-
-        private ReportManager _reportManager;
+        private readonly Report _currentReport;
+        private readonly SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
+        private ObservableCollection<ReportItem> _reportInstancesColl;
+        private readonly ReportManager _reportManager;
+        private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
+        private KPItemStatus _selectedKPItemStatus;
+        private string _searchData = string.Empty;
 
         public ReportWindow(Report report, bool isEnabled, ReportManager reportManager)
         {
             _currentReport = report;
+            _sqliteService_ReportInstanceDB = new SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
             _reportManager = reportManager;
 
-            _reportInstancesColl = ReportInstance.GetReportInstances(report.Path);
+            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             if (isEnabled)
             {
-                foreach (ReportInstance instance in _reportInstancesColl)
+                foreach (ReportItem instance in _reportInstancesColl)
                 {
                     instance.IsControllsVisible = System.Windows.Visibility.Visible;
                     instance.IsControllsEnabled = true;
@@ -51,67 +53,57 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             else
             {
-                foreach (ReportInstance instance in _reportInstancesColl)
+                foreach (ReportItem instance in _reportInstancesColl)
                 {
                     instance.IsControllsVisible = System.Windows.Visibility.Collapsed;
                     instance.IsControllsEnabled = false;
                 }
             }
-            
+
             InitializeComponent();
-            
+
             Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
-            
-            UpdateCollection(Status.Opened);
-            
+
+            UpdateCollection(KPItemStatus.Opened);
+
             Closing += RemoveOnClose;
         }
 
         /// <summary>
         /// Получить приоритетный статус из инстансов внутри одного отчета
         /// </summary>
-        private Status GetMainReportStatus()
+        private KPItemStatus GetMainReportStatus()
         {
-            _reportInstancesColl = ReportInstance.GetReportInstances(_currentReport.Path);
+            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
 
-            if (_reportInstancesColl.Any(c => c.Status == Status.Opened))
-            {
-                return Status.Opened;
-            }
-            else if (_reportInstancesColl.All(c => c.Status == Status.Closed || c.Status == Status.Approved))
-            {
-                return Status.Closed;
-            }
-            else if (_reportInstancesColl.All(c => c.Status == Status.Delegated))
-            {
-                return Status.Delegated;
-            }
-            else if (_reportInstancesColl.All(c => c.Status == Status.Delegated || c.Status == Status.Approved || c.Status == Status.Closed))
-            {
-                return Status.Delegated;
-            }
+            if (_reportInstancesColl.Any(c => c.Status == KPItemStatus.Opened))
+                return KPItemStatus.Opened;
+            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Closed || c.Status == KPItemStatus.Approved))
+                return KPItemStatus.Closed;
+            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Delegated))
+                return KPItemStatus.Delegated;
+            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Delegated || c.Status == KPItemStatus.Approved || c.Status == KPItemStatus.Closed))
+                return KPItemStatus.Delegated;
             else
-            {
-                return Status.Opened;
-            }
+                return KPItemStatus.Opened;
         }
-        
+
         private void RemoveOnClose(object sender, CancelEventArgs args)
         {
             foreach (IExecutableCommand cmd in OnClosingActions)
             {
-                try
-                {
-                    KPLN_Loader.Preferences.CommandQueue.Enqueue(cmd);
-                }
-                catch (Exception)
-                { }
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(cmd);
             }
         }
- 
+
         private void OnLoadImage(object sender, RoutedEventArgs e)
         {
-            ((sender as System.Windows.Controls.Button).DataContext as ReportInstance).LoadImage();
+            if ((sender as System.Windows.Controls.Button).DataContext is ReportItem reportItem)
+            {
+                byte[] image_bytes = _sqliteService_ReportInstanceDB.GetImageBytes_ByItem(reportItem);
+                if (image_bytes != null)
+                    reportItem.LoadImage(image_bytes);
+            }
         }
 
         /// <summary>
@@ -119,8 +111,8 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// </summary>
         private void SelectIdElement_1(object sender, RoutedEventArgs e)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            SelectId(sender, e, report.Element_1_Info);
+            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            SelectId(sender, report.Element_1_Info);
         }
 
         /// <summary>
@@ -128,15 +120,15 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// </summary>
         private void SelectIdElement_2(object sender, RoutedEventArgs e)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            SelectId(sender, e, report.Element_2_Info);
+            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            SelectId(sender, report.Element_2_Info);
         }
 
-        private void SelectId(object sender, RoutedEventArgs e, string elInfo)
+        private void SelectId(object sender, string elInfo)
         {
             if (int.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
             {
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
             }
             else
                 throw new Exception("Проблемы с отчетом: параметр id не парсится");
@@ -144,13 +136,13 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            
+            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+
             string pt = report.Point;
             pt = pt.Replace("X:", "");
             pt = pt.Replace("Y:", "");
             pt = pt.Replace("Z:", "");
-            
+
             string pts = string.Empty;
             foreach (char c in pt)
             {
@@ -159,7 +151,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     pts += c;
                 }
             }
-            
+
             string[] parts = pts.Split(',');
             //var temp = double.Parse(parts[0].Replace(".", ","), NumberStyles.Float);
             if (
@@ -169,7 +161,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 )
             {
                 XYZ point = new XYZ(pointX, pointY, pointZ);
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
             }
             else
                 throw new Exception("Проблемы с CultureInfo");
@@ -177,124 +169,156 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void UpdateCollection()
         {
-            ObservableCollection<ReportInstance> filtered_collection = new ObservableCollection<ReportInstance>();
-            foreach (ReportInstance report in _reportInstancesColl)
+            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
+            foreach (ReportItem report in _reportInstancesColl)
             {
-                filtered_collection.Add(report);
+                if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
+                    filtered_collection.Add(report);
             }
             ReportControll.ItemsSource = filtered_collection;
         }
 
-        private void UpdateCollection(Status status)
+        private void UpdateCollection(KPItemStatus status)
         {
-            try
+            _selectedKPItemStatus = status;
+
+            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
+            foreach (ReportItem report in _reportInstancesColl)
             {
-                ObservableCollection<ReportInstance> filtered_collection = new ObservableCollection<ReportInstance>();
-                foreach (ReportInstance report in _reportInstancesColl)
+                if (_selectedKPItemStatus == KPItemStatus.Opened
+                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
                 {
-                    if (status == Status.Opened)
-                    {
-                        if (report.Status == Status.Opened || report.Status == Status.Delegated)
-                        {
-                            filtered_collection.Add(report);
-                        }
-                    }
-                    else
-                    {
-                        if (report.Status == status)
-                        {
-                            filtered_collection.Add(report);
-                        }
-                    }
-                    
+                    if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
+                        filtered_collection.Add(report);
                 }
-                if (ReportControll != null)
-                { ReportControll.ItemsSource = filtered_collection; }
+                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
+                {
+                    if (report.Status == _selectedKPItemStatus)
+                        filtered_collection.Add(report);
+                }
+
             }
-            catch (Exception)
-            { }
+
+            if (ReportControll != null)
+                ReportControll.ItemsSource = filtered_collection;
         }
-        
+
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            try
+            int i = this.cbxFilter.SelectedIndex;
+            switch (i)
             {
-                int i = this.cbxFilter.SelectedIndex;
-                switch (i)
-                {
-                    case 0:
-                        UpdateCollection();
-                        break;
-                    case 1:
-                        UpdateCollection(Status.Opened);
-                        break;
-                    case 2:
-                        UpdateCollection(Status.Closed);
-                        break;
-                    case 3:
-                        UpdateCollection(Status.Approved);
-                        break;
-                    case 4:
-                        UpdateCollection(Status.Delegated);
-                        break;
-                }
+                case 0:
+                    UpdateCollection();
+                    break;
+                case 1:
+                    UpdateCollection(KPItemStatus.Opened);
+                    break;
+                case 2:
+                    UpdateCollection(KPItemStatus.Closed);
+                    break;
+                case 3:
+                    UpdateCollection(KPItemStatus.Approved);
+                    break;
+                case 4:
+                    UpdateCollection(KPItemStatus.Delegated);
+                    break;
             }
-            catch (Exception) { }
+        }
+
+        private void UserInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _searchData = textBox.Text.ToLower();
+
+            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
+            foreach (ReportItem report in _reportInstancesColl)
+            {
+                if (_selectedKPItemStatus == KPItemStatus.Opened 
+                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
+                {
+                    if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
+                        filtered_collection.Add(report);
+                }
+                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
+                {
+                    if (report.Status == _selectedKPItemStatus)
+                        filtered_collection.Add(report);
+                }
+
+            }
+
+            if (ReportControll != null)
+                ReportControll.ItemsSource = filtered_collection;
+        }
+
+        /// <summary>
+        /// Метод для записи данных (комментарии) в окно и БД для текущего ReportItem
+        /// </summary>
+        /// <param name="item">ReportItem для анализа</param>
+        /// <param name="msg">Сообщение при смене статуса</param>
+        private void ItemMessageWorker(ReportItem item, string msg)
+        {
+            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
+
+            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
+            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
+
+            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
+        }
+
+        /// <summary>
+        /// Метод для записи данных (комментарии, статус) в окно и БД для текущего ReportItem
+        /// </summary>
+        /// <param name="item">ReportItem для анализа</param>
+        /// <param name="itemStatus">Присаваиваемый статус замечания</param>
+        /// <param name="msg">Сообщение при смене статуса</param>
+        private void ItemMessageWorker(ReportItem item, KPItemStatus itemStatus, string msg)
+        {
+            _sqliteService_ReportInstanceDB.SetStatusId_ByReportItem(itemStatus, item);
+            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
+
+            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
+            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
+
+            item.Status = itemStatus;
+            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
+
+            ResetDelegateBtnBrush(item);
         }
 
         private void OnCorrected(object sender, RoutedEventArgs e)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            try
-            {
-                DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", 0);
-                DbController.SetInstanceValue(_currentReport.Path, report.Id, "DEPARTMENT", -1);
-                report.Status = Common.Collections.Status.Closed;
-                report.AddComment(string.Format("Статус изменен: <Исправлено>\n"), 1);
-                DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-            }
-            catch (Exception ex)
-            { PrintError(ex); }
-
-            ResetDelegateBtnBrush(report);
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ItemMessageWorker(item, KPItemStatus.Closed, "Статус изменен: <Устранено>\n");
         }
 
         private void OnApproved(object sender, RoutedEventArgs e)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            TextInputDialog inputName = new TextInputDialog(this, "Введите комментарий:");
-            inputName.ShowDialog();
-            if (inputName.IsConfirmed())
-            {
-                try
-                {
-                    DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", 1);
-                    report.Status = Common.Collections.Status.Approved;
-                    report.AddComment(string.Format("Статус изменен: <Допустимое>\n" + inputName.GetLastPickedValue()), 1);
-                    DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                }
-                catch (Exception ex)
-                { PrintError(ex); }
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
 
-                ResetDelegateBtnBrush(report);
-            }
+            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
+            textInputForm.ShowDialog();
+            string msg = textInputForm.UserComment;
+            if (msg != null)
+                ItemMessageWorker(item, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
         }
 
         private void OnReset(object sender, RoutedEventArgs e)
         {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            try
-            {
-                DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", -1);
-                report.Status = Common.Collections.Status.Opened;
-                report.AddComment(string.Format("Статус изменен: <Открытое>\n"), 1);
-                DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-            }
-            catch (Exception ex)
-            { PrintError(ex); }
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\n");
+        }
+
+        private void OnAddComment(object sender, RoutedEventArgs e)
+        {
+            ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+
+            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
+            textInputForm.ShowDialog();
+            string msg = textInputForm.UserComment;
+            if (msg != null)
+                ItemMessageWorker(item, $"{msg}");
         }
 
         /// <summary>
@@ -304,41 +328,24 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             SubDepartmentBtn subDepartmentBtn = button.DataContext as SubDepartmentBtn;
-            ReportInstance report = subDepartmentBtn.Parent;
-            try
+            ReportItem item = subDepartmentBtn.Parent;
+            if (subDepartmentBtn.Id == 7)
             {
-                if (subDepartmentBtn.Id == 7)
-                {
-                    // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
-                    DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", -1);
-                    DbController.SetInstanceValue(_currentReport.Path, report.Id, "DEPARTMENT", -1);
-                    report.Status = Common.Collections.Status.Opened;
-                    report.AddComment(string.Format($"Статус изменен: <Возвращен в работу>\n"), 1);
-                    DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                    ResetDelegateBtnBrush(report);
-                }
-                else 
-                {
-                    // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
-                    DbController.SetInstanceValue(_currentReport.Path, report.Id, "STATUS", 2);
-                    DbController.SetInstanceValue(_currentReport.Path, report.Id, "DEPARTMENT", subDepartmentBtn.Id);
-                    report.Status = Common.Collections.Status.Delegated;
-                    report.AddComment(string.Format($"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n"), 1);
-                    DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                    SetDelegateBtnBrush(report, subDepartmentBtn);
-                }
-                
+                // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
+                ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
             }
-            catch (Exception ex)
-            { PrintError(ex); }
+            else
+            {
+                // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
+                SetDelegateBtnBrush(item, subDepartmentBtn);
+                ItemMessageWorker(item, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
+            }
         }
 
         /// <summary>
         /// Сброс цвета кнопок делегирования
         /// </summary>
-        private void ResetDelegateBtnBrush(ReportInstance report)
+        private void ResetDelegateBtnBrush(ReportItem report)
         {
             ObservableCollection<SubDepartmentBtn> subDepartmentBtns = report.SubDepartmentBtns;
             foreach (SubDepartmentBtn sdBtn in subDepartmentBtns)
@@ -350,7 +357,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// <summary>
         /// Переключение цветов по нажатию на кнопку делегирования
         /// </summary>
-        private void SetDelegateBtnBrush(ReportInstance report, SubDepartmentBtn btn)
+        private void SetDelegateBtnBrush(ReportItem report, SubDepartmentBtn btn)
         {
             ObservableCollection<SubDepartmentBtn> subDepartmentBtns = report.SubDepartmentBtns;
             foreach (SubDepartmentBtn sdBtn in subDepartmentBtns)
@@ -359,47 +366,16 @@ namespace KPLN_Clashes_Ribbon.Forms
                 { btn.DelegateBtnBackground = Brushes.Aqua; }
                 else
                 { sdBtn.DelegateBtnBackground = Brushes.Transparent; }
-                
-            }
-        }
 
-        private void OnAddComment(object sender, RoutedEventArgs e)
-        {
-            ReportInstance report = (sender as System.Windows.Controls.Button).DataContext as ReportInstance;
-            TextInputDialog inputName = new TextInputDialog(this, "Введите комментарий:");
-            inputName.ShowDialog();
-            if (inputName.IsConfirmed())
-            {
-                report.AddComment(inputName.GetLastPickedValue(), 0);
-                DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
             }
-        }
-
-        private void OnRemoveComment(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                ReportComment comment = (sender as System.Windows.Controls.Button).DataContext as ReportComment;
-                comment.Parent.RemoveComment(comment);
-                try
-                {
-                    DbController.UpdateGroupLastChange(_currentReport.GroupId);
-                    DbController.UpdateReportLastChange(_currentReport.Id, GetMainReportStatus());
-                }
-                catch (Exception)
-                { }
-            }
-            catch (Exception)
-            { }
         }
 
         private void OnBtnUpdate(object sender, RoutedEventArgs args)
         {
             _reportManager.UpdateGroups();
 
-            _reportInstancesColl = ReportInstance.GetReportInstances(_currentReport.Path);
-            
+            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+
             int i = cbxFilter.SelectedIndex;
             switch (i)
             {
@@ -407,41 +383,43 @@ namespace KPLN_Clashes_Ribbon.Forms
                     UpdateCollection();
                     break;
                 case 1:
-                    UpdateCollection(Status.Opened);
+                    UpdateCollection(KPItemStatus.Opened);
                     break;
                 case 2:
-                    UpdateCollection(Status.Closed);
+                    UpdateCollection(KPItemStatus.Closed);
                     break;
                 case 3:
-                    UpdateCollection(Status.Approved);
+                    UpdateCollection(KPItemStatus.Approved);
                     break;
                 case 4:
-                    UpdateCollection(Status.Delegated);
+                    UpdateCollection(KPItemStatus.Delegated);
                     break;
             }
         }
-       private void OnExport(object sender, RoutedEventArgs e)
+
+        private void OnExport(object sender, RoutedEventArgs e)
         {
             List<string> rows = new List<string>();
-            ObservableCollection<ReportInstance> visibleCollection = ReportControll.ItemsSource as ObservableCollection<ReportInstance>;
-            foreach (ReportInstance instance in visibleCollection)
+            ObservableCollection<ReportItem> visibleCollection = ReportControll.ItemsSource as ObservableCollection<ReportItem>;
+            foreach (ReportItem instance in visibleCollection)
             {
                 rows.Add(GetExportRow(instance));
-                foreach (ReportInstance subInstance in instance.SubElements)
+                foreach (ReportItem subInstance in instance.SubElements)
                 {
                     rows.Add(GetExportRow(subInstance, instance));
                 }
             }
-            string data = string.Join(Environment.NewLine, rows);
-            SaveFileDialog dialog = new SaveFileDialog();
-            dialog.Title = "Сохранить отчет";
-            dialog.Filter = "txt file (*.txt)|*.txt";
-            dialog.RestoreDirectory = true;
-            dialog.FileName = string.Format("{0}_{1}-{2}-{3}.txt", _currentReport.Name.Replace('.', '_'), DateTime.Now.Year.ToString(),
-                DateTime.Now.Month.ToString(), DateTime.Now.Day.ToString());
-            dialog.CreatePrompt = false;
-            dialog.OverwritePrompt = true;
-            dialog.SupportMultiDottedExtensions = false;
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                Title = "Сохранить отчет",
+                Filter = "txt file (*.txt)|*.txt",
+                RestoreDirectory = true,
+                FileName = string.Format("{0}_{1}-{2}-{3}.txt", _currentReport.Name.Replace('.', '_'), DateTime.Now.Year.ToString(),
+                DateTime.Now.Month.ToString(), DateTime.Now.Day.ToString()),
+                CreatePrompt = false,
+                OverwritePrompt = true,
+                SupportMultiDottedExtensions = false
+            };
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 StreamWriter writer = new StreamWriter(dialog.OpenFile());
@@ -453,7 +431,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 writer.Close();
             }
         }
-        
+
         private static string Optimize(string value)
         {
             string final = string.Empty;
@@ -487,21 +465,23 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             return final;
         }
-        
-        private static string GetExportRow(ReportInstance instance, ReportInstance parent = null)
+
+        private static string GetExportRow(ReportItem instance, ReportItem parent = null)
         {
 
-            List<string> parts = new List<string>();
-            parts.Add(Optimize(instance.Id.ToString()));
-            parts.Add(Optimize(instance.GroupId.ToString()));
-            parts.Add(Optimize(instance.Name));
+            List<string> parts = new List<string>
+            {
+                Optimize(instance.Id.ToString()),
+                Optimize(instance.ParentGroupId.ToString()),
+                Optimize(instance.Name)
+            };
             if (parent != null)
             {
                 parts.Add(Optimize(parent.Status.ToString("G")));
-                if (parent.Comments.Count != 0)
+                if (parent.CommentCollection.Count != 0)
                 {
-                    ReportComment comment = parent.Comments.Last();
-                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.User), Optimize(comment.Message)));
+                    ReportItemComment comment = parent.CommentCollection.Last();
+                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else
                 {
@@ -511,10 +491,10 @@ namespace KPLN_Clashes_Ribbon.Forms
             else
             {
                 parts.Add(Optimize(instance.Status.ToString("G")));
-                if (instance.Comments.Count != 0)
+                if (instance.CommentCollection.Count != 0)
                 {
-                    ReportComment comment = instance.Comments.Last();
-                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.User), Optimize(comment.Message)));
+                    ReportItemComment comment = instance.CommentCollection.Last();
+                    parts.Add(string.Format("<{0}> {1} {2}", Optimize(comment.Time), Optimize(comment.UserFullName), Optimize(comment.Message)));
                 }
                 else
                 {

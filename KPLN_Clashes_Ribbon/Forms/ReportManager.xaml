@@ -97,7 +97,7 @@
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <Image Source="{Binding Source.Value, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Width="30" Height="30"/>
                                     <StackPanel Margin="5,0,0,0" Orientation="Vertical" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Foreground="White"/>
+                                        <TextBlock Text="{Binding GroupName}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Foreground="White"/>
                                         <TextBlock Text="{Binding DateCreated}" TextWrapping="Wrap" VerticalAlignment="Center" Opacity="0.5" Foreground="White"/>
                                         <!-- Поиск внутри группы-->
                                         <DockPanel>
@@ -229,7 +229,15 @@
                                 </Button>
                                 
                                 <StackPanel Margin="0,10,0,0" Grid.Row="2" Orientation="Horizontal">
-                                    <Button Visibility="{Binding AdminControllsVisibilityAdd}" IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Content="Добавить" Background="{x:Null}" BorderBrush="White" Click="OnBtnAddReport" Opacity="0.2" Foreground="White">
+                                    <Button 
+                                        Visibility="{Binding AdminControllsVisibilityAdd}" 
+                                        IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
+                                        Content="Добавить" 
+                                        Background="{x:Null}" 
+                                        BorderBrush="White" 
+                                        Click="OnBtnAddReport" 
+                                        Opacity="0.2" 
+                                        Foreground="White">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="300">
                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Добавить"/>
@@ -253,7 +261,7 @@
                                 
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">
                                     <TextBlock Text="Автор: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding DBUserCreated}" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="{Binding UserCreatedFullName}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DateCreated}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
@@ -261,7 +269,7 @@
                                 
                                 <StackPanel Grid.Row="4" Orientation="Horizontal">
                                     <TextBlock Text="Изменил: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding DBUserLast}" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="{Binding LastUserFullName}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DateLast}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -42,9 +42,18 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Tools\KPLN_Tools\bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;Revit2020</DefineConstants>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;Debug</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2023\</OutputPath>
+    <DefineConstants>Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -55,21 +64,34 @@
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_DataBase\KPLNDataBase.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_Bitrix24Worker">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Release\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Revit2023\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Revit2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_Loader\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -110,37 +132,50 @@
     <When Condition=" '$(Configuration)'=='Revit2020' " />
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\MonitorLinkEntity.cs" />
+    <Compile Include="Common\MonitorTool.cs" />
+    <Compile Include="Common\MonitorParamRule.cs" />
+    <Compile Include="Common\MonitorEntity.cs" />
     <Compile Include="Common\HolesManager\IOSShaftDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHoleDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
-    <Compile Include="Common\MonitorEntity.cs" />
-    <Compile Include="Common\MonitorLinkEntity.cs" />
-    <Compile Include="Common\MonitorTool.cs" />
-    <Compile Include="Common\MonitorParamRule.cs" />
+    <Compile Include="Common\OVVK_System\IJsonSerializable.cs" />
+    <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
+    <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="Common\SS_System\PickFilter.cs" />
+    <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
+    <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
+    <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
+    <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
     <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
     <Compile Include="ExternalCommands\CommandAutonumber.cs" />
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
-    <Compile Include="ExternalCommands\CommandTitleBlockChanger.cs" />
+    <Compile Include="ExternalCommands\CommandSearchRevitUser.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
+    <Compile Include="Forms\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\UserSelectAlgoritm.xaml.cs">
-      <DependentUpon>UserSelectAlgoritm.xaml</DependentUpon>
+    <Compile Include="Forms\OVVK_PipeThocknessForm.xaml.cs">
+      <DependentUpon>OVVK_PipeThocknessForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormRenamer.xaml.cs">
-      <DependentUpon>FormRenamer.xaml</DependentUpon>
+    <Compile Include="Forms\SS_Sysetm_Main.xaml.cs">
+      <DependentUpon>SS_Sysetm_Main.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\UserSearch.xaml.cs">
+      <DependentUpon>UserSearch.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -164,11 +199,19 @@
     <EmbeddedResource Include="Imagens\holesManagerSmall.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingBig.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingSmall.png" />
+    <EmbeddedResource Include="Imagens\searchUserBig.png" />
+    <EmbeddedResource Include="Imagens\searchUserSmall.png" />
     <EmbeddedResource Include="Imagens\krMainBig.png" />
     <EmbeddedResource Include="Imagens\krMainSmall.png" />
-    <EmbeddedResource Include="Imagens\smnxRebarBig.png" />
-    <EmbeddedResource Include="Imagens\smnxRebarSmall.png" />
+    <EmbeddedResource Include="Imagens\monitorMainBig.png" />
     <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
+    <EmbeddedResource Include="Imagens\ssMainBig.png" />
+    <EmbeddedResource Include="Imagens\ssMainSmall.png" />
+    <EmbeddedResource Include="Imagens\ssSystemsSmall.png" />
+    <EmbeddedResource Include="Imagens\hvacBig.png" />
+    <EmbeddedResource Include="Imagens\hvacSmall.png" />
+    <EmbeddedResource Include="Imagens\pipeThicknessBig.png" />
+    <EmbeddedResource Include="Imagens\pipeThicknessSmall.png" />
     <EmbeddedResource Include="Imagens\changeLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
@@ -176,6 +219,7 @@
     </Content>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
@@ -184,18 +228,22 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\FormChageLevel.xaml">
-      <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\MonitoringParamSetter.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\UserSelectAlgoritm.xaml">
+    <Page Include="Forms\OVVK_PipeThocknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\FormRenamer.xaml">
+    <Page Include="Forms\SS_Sysetm_Main.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\UserSearch.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

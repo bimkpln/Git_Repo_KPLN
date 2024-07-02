@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -28,14 +28,20 @@ namespace KPLN_Tools.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
+            IOSHolesPrepareManager iOSHolesPrepareManager = null;
+            List<IOSHoleDTO> holesDTOColl = null;
+
+            IOSShaftPrepareManager iOSShaftPrepareManager = null;
+            List<IOSShaftDTO> shaftDTOColl = null;
+            
             try
             {
                 // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
                 IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
                     .OfClass(typeof(RevitLinkInstance))
-                    .Where(lm => 
+                    .Where(lm =>
                         lm.Name.ToUpper().Contains("_AR_")
-                        || lm.Name.ToUpper().Contains("_АР_") 
+                        || lm.Name.ToUpper().Contains("_АР_")
                         || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
                         || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
                         || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
@@ -80,31 +86,31 @@ namespace KPLN_Tools.ExternalCommands
                 #endregion
 
                 #region Подготовка и обработка спец. классов для последующей записи в проект
-                IOSHolesPrepareManager iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
-                List<IOSHoleDTO> holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
+                iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
+                holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
 
-                IOSShaftPrepareManager iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
-                List<IOSShaftDTO> shaftDTOElems = iOSShaftPrepareManager.PrepareShaftDTO();
+                iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
+                shaftDTOColl = iOSShaftPrepareManager.PrepareShaftDTO();
                 #endregion
 
                 #region Вывод ошибок пользователю
                 if (iOSHolesPrepareManager.ErrorFamInstColl.Any())
                 {
-                    Print("Ошибки определения основы у отверстий ↑", KPLN_Loader.Preferences.MessageType.Header);
+                    Print("Ошибки определения основы у отверстий ↑", MessageType.Header);
                     foreach (FamilyInstance fi in iOSHolesPrepareManager.ErrorFamInstColl)
                     {
                         Print($"KPLN: Ошибка - отверстие с id: {fi.Id} невозможно определить основу (уровень, на котором оно расположено). " +
-                            $"Отверстие должно быть в стене, а стена должна стоять на Жб перекрытии, расстояние до которой не больше 15 м", KPLN_Loader.Preferences.MessageType.Warning);
+                            $"Отверстие должно быть в стене, а стена должна стоять на Жб перекрытии, расстояние до которой не больше 15 м", MessageType.Warning);
                     }
                 }
 
                 if (iOSShaftPrepareManager.ErrorFamInstColl.Any())
                 {
-                    Print("Ошибки определения основы у шахт ↑", KPLN_Loader.Preferences.MessageType.Header);
+                    Print("Ошибки определения основы у шахт ↑", MessageType.Header);
                     foreach (FamilyInstance fi in iOSShaftPrepareManager.ErrorFamInstColl)
                     {
                         Print($"KPLN: Ошибка - шахта с id: {fi.Id} невозможно определить основу (уровень, на котором оно расположено). " +
-                            $"Основание шахты должно быть либо в перекрытии, либо над ним не выше, чем на 0.300 м", KPLN_Loader.Preferences.MessageType.Warning);
+                            $"Основание шахты должно быть либо в перекрытии, либо над ним не выше, чем на 0.300 м", MessageType.Warning);
                     }
                 }
                 #endregion
@@ -115,7 +121,7 @@ namespace KPLN_Tools.ExternalCommands
                     t.Start("КП_Отверстия для АР: границы и отметки");
 
                     HolesParamsWriter(holesDTOColl);
-                    ShaftParamsWriter(shaftDTOElems);
+                    ShaftParamsWriter(shaftDTOColl);
 
                     t.Commit();
                 }
@@ -124,13 +130,15 @@ namespace KPLN_Tools.ExternalCommands
             catch (Exception ex)
             {
                 if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}\n StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}\n StackTrace: {ex.StackTrace}", MessageType.Header);
                 else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}\n StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}\n StackTrace: {ex.StackTrace}", MessageType.Header);
 
                 return Result.Cancelled;
             }
 
+            Print($"Выполнено успешно для {holesDTOColl.Count - iOSHolesPrepareManager.ErrorFamInstColl.Count} отверстий " +
+                $"и {shaftDTOColl.Count - iOSShaftPrepareManager.ErrorFamInstColl.Count} шахт", MessageType.Success);
             return Result.Succeeded;
         }
 

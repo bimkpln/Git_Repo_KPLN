@@ -9,7 +9,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.Forms
 {
@@ -172,13 +172,15 @@ namespace KPLN_Parameters_Ribbon.Forms
                     DirectoryInfo info = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
                     path = info.FullName;
                 }
-                OpenFileDialog dialog = new OpenFileDialog();
-                dialog.Filter = "Text files(*.txt)|*.txt";
-                dialog.Title = "Открыть файл настроек";
-                dialog.InitialDirectory = path;
-                dialog.FileName = "DataRules";
-                dialog.ValidateNames = true;
-                dialog.DefaultExt = "txt";
+                OpenFileDialog dialog = new OpenFileDialog
+                {
+                    Filter = "Text files(*.txt)|*.txt",
+                    Title = "Открыть файл настроек",
+                    InitialDirectory = path,
+                    FileName = "DataRules",
+                    ValidateNames = true,
+                    DefaultExt = "txt"
+                };
                 Hide();
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
@@ -248,13 +250,15 @@ namespace KPLN_Parameters_Ribbon.Forms
                     DirectoryInfo info = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
                     path = info.FullName;
                 }
-                SaveFileDialog dialog = new SaveFileDialog();
-                dialog.Filter = "Text files(*.txt)|*.txt";
-                dialog.Title = "Сохранить настройки";
-                dialog.InitialDirectory = path;
-                dialog.FileName = "DataRules";
-                dialog.ValidateNames = true;
-                dialog.DefaultExt = "txt";
+                SaveFileDialog dialog = new SaveFileDialog
+                {
+                    Filter = "Text files(*.txt)|*.txt",
+                    Title = "Сохранить настройки",
+                    InitialDirectory = path,
+                    FileName = "DataRules",
+                    ValidateNames = true,
+                    DefaultExt = "txt"
+                };
                 Hide();
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
@@ -274,7 +278,7 @@ namespace KPLN_Parameters_Ribbon.Forms
         }
         private void OnBtnRun(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>));
         }
 
         private void SelectedCategoryChanged(object sender, SelectionChangedEventArgs e)

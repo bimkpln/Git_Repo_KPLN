@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -9,6 +9,8 @@ namespace KPLN_ModelChecker_User.Common
     /// </summary>
     internal class CheckHolesEntity
     {
+        private Transform _currentLinkTransform;
+
         public CheckHolesEntity(Element elem)
         {
             CurrentElement = elem;
@@ -20,18 +22,31 @@ namespace KPLN_ModelChecker_User.Common
             CurrentLinkTransform = linkInstance.GetTotalTransform();
         }
         
+        public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this(elem)
+        {
+            CurrentLinkInstance = linkInstance;
+        }
+
         public Element CurrentElement { get; }
 
         public Solid CurrentSolid { get; set; }
 
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
         
-        public RevitLinkInstance CurrentLinkInstance { get; protected set; } = null;
+        public RevitLinkInstance CurrentLinkInstance { get; } = null;
 
-        public Transform CurrentLinkTransform { get; protected set; } = null;
+        public Transform CurrentLinkTransform 
+        {
+            get
+            {
+                if (_currentLinkTransform == null && CurrentLinkInstance != null)
+                    _currentLinkTransform = CurrentLinkInstance.GetTotalTransform();
+                return _currentLinkTransform;
+            }
+        }
 
         /// <summary>
-        /// Заполнить поля CurrentRoomSolid и CurrentRoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
+        /// Заполнить поля RoomSolid и RoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
         /// </summary>
         /// <param name="detailLevel">Уровень детализации</param>
         public void SetGeometryData(ViewDetailLevel detailLevel, List<CheckCommandError> notCriticalErrorElemColl)
@@ -61,9 +76,7 @@ namespace KPLN_ModelChecker_User.Common
                         }
                     }
                 }
-
-                if (resultSolid != null)
-                    CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
+                CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
             }
             #endregion
 

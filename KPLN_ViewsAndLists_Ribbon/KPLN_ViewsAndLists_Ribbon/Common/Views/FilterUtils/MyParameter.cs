@@ -225,7 +225,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                 case StorageType.Integer:
                     return intValue.ToString();
                 case StorageType.Double:
-                    return (doubleValue * 304.8).ToString("F0");
+                    return (doubleValue * 304.8).ToString("F1");
                 case StorageType.String:
                     return stringValue;
                 case StorageType.ElementId:

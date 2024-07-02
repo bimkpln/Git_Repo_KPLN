@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using KPLN_ModelChecker_Lib;
 using System.Collections.Generic;
@@ -33,7 +33,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_Walls,
                     BuiltInCategory.OST_Floors,
                 };
-
+                
                 foreach (BuiltInCategory cat in userCat)
                 {
                     ElemsByHost.AddRange(new FilteredElementCollector(Doc)
@@ -52,8 +52,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(Wall))
                     .Cast<Wall>()
-                    .Where(x =>
-                        x.Name.StartsWith("00_")
+                    .Where(x => 
+                        x.Name.StartsWith("00_") 
                         && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
                     .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
@@ -61,8 +61,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(Floor))
                     .Cast<Floor>()
-                    .Where(x =>
-                        x.Name.StartsWith("00_")
+                    .Where(x => 
+                        x.Name.StartsWith("00_") 
                         && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
                     .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
@@ -93,8 +93,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x =>
-                    !x.Name.StartsWith("00_")
+                .Where(x => 
+                    !x.Name.StartsWith("00_") 
                     || (x.Name.StartsWith("00_") && (!x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк"))))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System.Collections.ObjectModel;
 
 namespace KPLN_Tools.Common

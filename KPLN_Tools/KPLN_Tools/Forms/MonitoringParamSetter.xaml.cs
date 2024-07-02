@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_Tools.Common;
 using KPLN_Tools.ExecutableCommand;
 using System.Collections.Generic;
@@ -44,7 +44,7 @@ namespace KPLN_Tools.Forms
 
         private void OnBtnRevalue(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandExtraMonitoring_SetParams(
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandExtraMonitoring_SetParams(
                 _doc,
                 (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>),
                 _monitorEntities));
@@ -53,7 +53,7 @@ namespace KPLN_Tools.Forms
 
         private void OnBtnCheck(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandExtraMonitoring_CheckParams(
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandExtraMonitoring_CheckParams(
                _doc,
                (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>),
                _monitorEntities));

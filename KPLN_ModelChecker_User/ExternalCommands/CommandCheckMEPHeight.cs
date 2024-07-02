@@ -1,19 +1,21 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using System.Threading.Tasks;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMEPHeight : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckMEPHeight : AbstrCheckCommand<CommandCheckMEPHeight>, IExternalCommand
     {
         /// <summary>
         /// Список категорий элементов для проверки
@@ -36,6 +38,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_Sprinklers,
             BuiltInCategory.OST_PlumbingFixtures,
         };
+
         /// <summary>
         /// Список исключений в именах семейств для генерации исключений в выбранных категориях
         /// </summary>
@@ -64,112 +67,145 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "960_",
         };
 
+        public CommandCheckMEPHeight() : base()
+        {
+        }
+
+        internal CommandCheckMEPHeight(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            _name = "Проверка высоты эл-в ИОС";
-            _application = uiapp;
-
-            _allStorageName = "KPLN_CheckMEPHeight";
-
-            _lastRunGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68");
-            _userTextGuid = new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69");
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Получаю коллекцию элементов для анализа
-            IEnumerable<Element> mepELems = PreapareIOSElements(doc);
-
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, mepELems);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, PreapareIOSElements(doc));
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            if (form != null) form.Show();
-            else return Result.Cancelled;
+            if (form != null) 
+                form.Show(); 
+            else 
+                return Result.Cancelled;
             #endregion
 
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
-            if (!elemColl.Any())
-                throw new UserException("В проекте отсутсвуют необходимые элементы ИОС");
+            if (!objColl.Any())
+                throw new CheckerException("В проекте отсутсвуют необходимые элементы ИОС");
 
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
+            #region Подготовливаю спец. классы отдельным потоком
+            CheckMEPHeightMEPData[] mepDataColl = null;
+            Task prepearMEPDataTask = Task.Run(() =>
+            {
+                mepDataColl = elemColl
+                .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
+                // Проверка элементов на предмет наличия геометрии
+                .Where(m => m.MEPElemSolids.Count != 0)
+                .ToArray();
+            });
+            #endregion
+
             #region Подготовка элементов АР
             //Подготовка связей АР
-            IEnumerable<RevitLinkInstance> arLinkInsts = new FilteredElementCollector(doc)
+            RevitLinkInstance[] arLinkInsts = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 // Слабое место - имена файлов могут отличаться из-за требований Заказчика
                 .Where(lm =>
                     (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
                     || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
                     || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                .Cast<RevitLinkInstance>();
+                .Cast<RevitLinkInstance>()
+                .ToArray();
+
+            // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
+            if (arLinkInsts.Count() == 0)
+                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
 
             // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
             if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
-                throw new UserException("Перед запуском - открой все связи АР");
+                throw new CheckerException("Перед запуском - открой все связи АР");
 
-            List<CheckMEPHeightARData> checkMEPHeightARData = CheckMEPHeightARData.PreapareMEPHeightARDataColl(arLinkInsts);
+            // Получаю список назначений помещений, которые необходимо проверить (ПОВЕСИТЬ НА КОНФИГ!!!!!)
+            string[] roomDepartmentColl = 
+            {
+                "Кладовая",
+                "МОП",
+                "Технические помещения"
+            };
+
+            // Получаю список части имен помещений, которые НЕ являются ошибками (ПОВЕСИТЬ НА КОНФИГ!!!!!)
+            string[] roomNameExceptionColl =
+            {
+                "итп",
+                "пространство",
+                "насосн",
+                "камера",
+            };
+
+            List<CheckMEPHeightARRoomData> checkMEPHeightARData = CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts, roomDepartmentColl, roomNameExceptionColl);
             #endregion
 
+            Task.WaitAll(prepearMEPDataTask);
+
             #region Обработка элементов ИОС
-            // Подготовка элементов ИОС
-            IEnumerable<CheckMEPHeightMEPData> mepDataColl = elemColl.Select(e => new CheckMEPHeightMEPData(e));
-
-            // Анализ элементов ИОС на элемены АР
-            foreach (CheckMEPHeightARData arData in checkMEPHeightARData)
+            // Анализ элементов ИОС на элементы АР
+            foreach (CheckMEPHeightARRoomData arRoomData in checkMEPHeightARData)
             {
-                IEnumerable<CheckMEPHeightMEPData> currentRoomMEPDataColl = mepDataColl.Where((mep, ar) => CheckMEPHeightMEPData.IsElemInCurrentRoomCheck(mep, arData));
+                CheckMEPHeightMEPData[] currentRoomMEPDataColl = mepDataColl
+                    .Where(mep => mep.IsElemInCurrentRoom(arRoomData))
+                    .ToArray();
 
-                List<CheckMEPHeightMEPData> errorMEPDataColl = new List<CheckMEPHeightMEPData>();
-                foreach (CheckMEPHeightMEPData mepData in currentRoomMEPDataColl)
-                {
-                    if (mepData.CheckMinDistance(arData))
-                        errorMEPDataColl.Add(mepData);
-                }
+                CheckMEPHeightMEPData[] errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR(currentRoomMEPDataColl, arRoomData);
 
                 List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
-                if (errorMEPDataColl.Any())
+                foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
                 {
-                    foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
+                    bool isVerticalElem = false;
+                    if (mepData.MEPElement is InsulationLiningBase insLining)
                     {
-                        if (mepData.CurrentElement is InsulationLiningBase insLining)
-                        {
-                            if (CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl))
-                                verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-                        }
-                        else if (CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.CurrentElement, errorMEPDataColl))
-                        {
-                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.CurrentElement);
-                        }
+                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(doc.GetElement(insLining.HostElementId), errorMEPDataColl);
+                        if (isVerticalElem)
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.MEPElement);
                     }
+                    else
+                    {
 
-                    if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
-                    {
-                        result.Add(new WPFEntity(
-                            verticalCurveElemsFiltered_ErrorElemsColl,
-                            Status.Error,
-                            $"Недопустимая дистанция для помещения {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
-                            $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arData.CurrentRoomMinDistance * 304.8), 0)}",
-                            true,
-                            false));
+                        isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.MEPElement, errorMEPDataColl);
+                        if (isVerticalElem)
+                            verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.MEPElement);
                     }
+                }
+
+                if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
+                {
+                    result.Add(new WPFEntity(
+                        verticalCurveElemsFiltered_ErrorElemsColl,
+                        CheckStatus.Error,
+                        $"Недопустимая дистанция для помещения {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
+                        $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arRoomData.RoomMinDistance * 304.8), 0)}",
+                        true,
+                        false));
                 }
             }
             #endregion
@@ -185,21 +221,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Получение элементов ИОС по списку категорий, с учетом фильтрации
         /// </summary>
-        private IEnumerable<Element> PreapareIOSElements(Document doc)
+        private Element[] PreapareIOSElements(Document doc)
         {
             List<Element> result = new List<Element>();
-            List<FilteredElementCollector> bicColl = new List<FilteredElementCollector>();
+
+            // Генерация фильтров
+            List<FilterRule> filtRules = new List<FilterRule>(_exceptionFamilyStartNameList.Count);
+            foreach (string currentName in _exceptionFamilyStartNameList)
+            {
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
+                filtRules.Add(fRule);
+            }
+            ElementParameterFilter eFilter = new ElementParameterFilter(filtRules);
+
             // Генерация и фильтрация FilteredElementCollector
+            List<FilteredElementCollector> bicColl = new List<FilteredElementCollector>(_mepBICColl.Count);
             foreach (BuiltInCategory bic in _mepBICColl)
             {
                 FilteredElementCollector fic = new FilteredElementCollector(doc).OfCategory(bic);
-                foreach (string currentName in _exceptionFamilyStartNameList)
-                {
-                    FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
-                    ElementParameterFilter eFilter = new ElementParameterFilter(fRule);
-                    fic.WherePasses(eFilter).WhereElementIsNotElementType();
-                }
-
+                fic.WherePasses(eFilter).WhereElementIsNotElementType();
                 bicColl.Add(fic);
             }
 
@@ -209,7 +249,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 result.AddRange(coll.ToElements());
             }
 
-            return result;
+            return result.ToArray();
         }
     }
 }

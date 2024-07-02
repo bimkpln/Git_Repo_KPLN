@@ -2,17 +2,12 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
-
-using KPLN_Loader.Output;
-using static KPLN_Finishing.Tools;
-using static KPLN_Loader.Output.Output;
+using KPLN_Finishing.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KPLN_Finishing.Forms;
-using static KPLN_Loader.Preferences;
-using KPLN_Finishing.CommandTools;
+using static KPLN_Finishing.Tools;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Finishing.ExternalCommands
 {
@@ -25,7 +20,7 @@ namespace KPLN_Finishing.ExternalCommands
             Document doc = commandData.Application.ActiveUIDocument.Document;
             if (new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements().Count == 0)
             {
-                Output.Print("В проекте отсутствуют помещения!\n\nПодсказка: Необходимо запускать плагин  в проектах с присутствующими помещениями и элементами отделки. Связанные файлы в расчете не принимаюит участия.", MessageType.Error);
+                Print("В проекте отсутствуют помещения!\n\nПодсказка: Необходимо запускать плагин  в проектах с присутствующими помещениями и элементами отделки. Связанные файлы в расчете не принимаюит участия.", MessageType.Error);
                 return Result.Cancelled;
             }
             TaskDialog td = new TaskDialog("Обновить ведомости");
@@ -39,7 +34,7 @@ namespace KPLN_Finishing.ExternalCommands
             { return Result.Cancelled; }
             if (!AllParametersExist(new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements().First(), doc))
             {
-                Output.Print("Не все параметры, требуемые для работы, подгружены в проект!\n\nПодсказка: Воспользуйтесь загрузчиком параметров либо проверьте параметры вручную.", MessageType.Error);
+                Print("Не все параметры, требуемые для работы, подгружены в проект!\n\nПодсказка: Воспользуйтесь загрузчиком параметров либо проверьте параметры вручную.", MessageType.Error);
                 return Result.Failed;
             }
             if (td.WasVerificationChecked())
@@ -151,7 +146,7 @@ namespace KPLN_Finishing.ExternalCommands
             }
             else
             {
-                Output.Print("Не найдено ни одного помещения в проекте со связанными элементами отделки", MessageType.Error);
+                Print("Не найдено ни одного помещения в проекте со связанными элементами отделки", MessageType.Error);
                 return Result.Cancelled;
             }
         }

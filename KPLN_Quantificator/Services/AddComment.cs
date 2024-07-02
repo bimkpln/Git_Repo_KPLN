@@ -1,10 +1,10 @@
-﻿using Autodesk.Navisworks.Api;
+using Autodesk.Navisworks.Api;
 using Autodesk.Navisworks.Api.Interop;
 using System.Windows.Forms;
 
 namespace KPLN_Quantificator.Services
 {
-    
+
     public static class AddComment
     {
         internal static Document doc = Autodesk.Navisworks.Api.Application.ActiveDocument;
@@ -19,11 +19,11 @@ namespace KPLN_Quantificator.Services
                 textComment += $"{elementPath(selectedItem)}-ID: {elementID(selectedItem)};\n";
             }
 
-            string elementPath(ModelItem item) 
+            string elementPath(ModelItem item)
             {
                 string elementFile = item?.Parent?.Parent?.Parent?.Parent?.PropertyCategories.FindPropertyByDisplayName("Элемент", "Файл источника")?.Value.ToString();
                 string elementType = item?.Parent?.Parent?.Parent?.Parent?.Parent?.PropertyCategories.FindPropertyByDisplayName("Элемент", "Тип")?.Value.ToString();
-                
+
                 if (elementType == "DisplayString:Экземпляр" || elementType == "DisplayString:Ссылка")
                 {
                     return textFilter(item.Parent.Parent.Parent.Parent.Parent.PropertyCategories.FindPropertyByDisplayName("Элемент", "Имя").Value.ToString());
@@ -51,18 +51,19 @@ namespace KPLN_Quantificator.Services
                 else
                 {
                     return textFilter(elementIDValues);
-                }           
+                }
             };
 
-            string textFilter(string text) {
+            string textFilter(string text)
+            {
                 int endIndex = text.IndexOf(".rvt");
                 string cutText = endIndex != -1 ? text.Substring(0, endIndex) : text;
 
                 return cutText.Replace("DisplayString:", "").Replace("_64_BIM_112", "").Replace("_66_BIM_92", "")
                     .Replace("_tkutsko", "").Replace("_spetrov", "").Replace("_dsadovskaya", "").Replace("_gfedoseeva", "").Replace("_отсоединено", "");
-            }           
+            }
         }
-        
+
         internal static Point2D ScreenToCameraSpace(Point2D pointScreenSpace)
         {
             LcOaViewer viewer = doc.ActiveView.Viewer;

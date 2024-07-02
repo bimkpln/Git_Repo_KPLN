@@ -1,9 +1,12 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using System.IO;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -12,7 +15,20 @@ namespace KPLN_Tools
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
+        private static DBUser _currentDBUser;
+
+        internal static DBUser CurrentDBUser
+        {
+            get
+            {
+                if (_currentDBUser == null)
+                {
+                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+                    _currentDBUser = userDbService.GetCurrentDBUser();
+                }
+                return _currentDBUser;
+            }
+        }
 
         public Result Close()
         {
@@ -21,19 +37,15 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            // Техническая подмена разделов для режима тестирования
-            if (_userDepartment == 6) { _userDepartment = 4; }
-
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
-
-            PushButtonData sh825TitleBlockChanger = CreateBtnData(
-                "Замена форматов",
-                "Замена форматов",
-                "АСТЕРУС_ШК825: подгружает параметры для штампа, и меняет форматы",
+            PushButtonData autonumber = CreateBtnData(
+                "Нумерация",
+                "Нумерация",
+                "Нумерация позици в спецификации на +1 от начального значения",
                 string.Format(
                     "Алгоритм запуска:\n" +
                         "1. Запускаем плагин для фиксации размеров штампов;\n" +
@@ -49,19 +61,23 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
 
-            PushButtonData monitoringHelper = CreateBtnData(
-               "Экстра-мониторинг",
-               "Экстра-мониторинг",
-               "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
-               string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                   ModuleData.Date,
-                   ModuleData.Version,
-                   ModuleData.ModuleName
-               ),
-               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
-               "KPLN_Tools.Imagens.monitorMainSmall.png",
-               "KPLN_Tools.Imagens.monitorMainSmall.png",
-               "http://moodle/mod/book/view.php?id=502&chapterid=687");
+            PushButtonData searchUser = CreateBtnData(
+                "Найти пользователя",
+                "Найти пользователя",
+                "Выдает данные KPLN-пользователя Revit",
+                string.Format(
+                    "Для поиска введи имя Revit-пользователя.\n" +
+                    "Доступно для пользователей KPLN_v.2.\n" +
+                    "\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandSearchRevitUser).FullName,
+                "KPLN_Tools.Imagens.searchUserBig.png",
+                "KPLN_Tools.Imagens.searchUserSmall.png",
+                "http://moodle");
 
             PushButtonData tagWiper = CreateBtnData(
                 "Очистить марки помещений",
@@ -82,20 +98,19 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
 
-            PushButtonData autonumber = CreateBtnData(
-                "Нумерация",
-                "Нумерация",
-                "Нумерация позици в спецификации на +1 от начального значения",
-                string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.CommandAutonumber).FullName,
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=687");
+            PushButtonData monitoringHelper = CreateBtnData(
+               "Экстрамониторинг",
+               "Экстрамониторинг",
+               "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
+               string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                   ModuleData.Date,
+                   ModuleData.Version,
+                   ModuleData.ModuleName
+               ),
+               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "KPLN_Tools.Imagens.monitorMainSmall.png",
+               "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
             PushButtonData changeLevel = CreateBtnData(
                 "Изменение уровня",
@@ -131,7 +146,6 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
 
-
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
                 "Общая коллекция мини-плагинов",
@@ -145,35 +159,52 @@ namespace KPLN_Tools
                 panel,
                 false);
 
-            sharedPullDownBtn.AddPushButton(sh825TitleBlockChanger);
+
+            sharedPullDownBtn.AddPushButton(autonumber);
+            sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
-            sharedPullDownBtn.AddPushButton(autonumber);
-
             #endregion
 
-            #region Инструменты КР
-            if (_userDepartment == 2 || _userDepartment == 4)
+            #region Инструменты СС
+            if (CurrentDBUser.SubDepartmentId == 7 || CurrentDBUser.SubDepartmentId == 8)
             {
-                PushButtonData smnx_Rebar = CreateBtnData(
-                    "SMNX_Металоёмкость",
-                    "SMNX_Металоёмкость",
-                    "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
+                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины СС",
+                "Плагины СС",
+                "СС: Коллекция плагинов для автоматизации задач",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
+                panel,
+                false);
+
+                PushButtonData ssSystems = CreateBtnData(
+                    "Слаботочные системы",
+                    "Слаботочные системы",
+                    "Помощь в создании цепей СС",
                     string.Format(
-                        "Сценарии запуска:\n" +
-                            "1. Записать объём бетона и основную марку в арматуру;\n" +
-                            "2. Перенести значения из txt в параметры бетонных конструкций;\n" +
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
-                    "KPLN_Tools.Imagens.smnxRebarSmall.png",
-                    "KPLN_Tools.Imagens.smnxRebarSmall.png",
+                    typeof(ExternalCommands.Command_SS_Systems).FullName,
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "http://moodle");
 
+                ssToolsPullDownBtn.AddPushButton(ssSystems);
+            }
+            #endregion
+
+            #region Инструменты КР
+            if (CurrentDBUser.SubDepartmentId == 3 || CurrentDBUser.SubDepartmentId == 8)
+            {
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
                     "Плагины КР",
                     "КР: Коллекция плагинов для автоматизации задач",
@@ -186,12 +217,97 @@ namespace KPLN_Tools
                     PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
                     panel,
                     false);
+
+                PushButtonData smnx_Rebar = CreateBtnData(
+                    "SMNX_Металоёмкость",
+                    "SMNX_Металоёмкость",
+                    "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
+                    string.Format(
+                        "Варианты запуска:\n" +
+                            "1. Записать объём бетона и основную марку в арматуру;\n" +
+                            "2. Перенести значения из спецификации в параметр;\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                    "KPLN_Tools.Imagens.wipeSmall.png",
+                    "KPLN_Tools.Imagens.wipeSmall.png",
+                    "http://moodle");
+
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
             }
             #endregion
 
+            #region Инструменты ОВВК
+            if (CurrentDBUser.SubDepartmentId == 4 || CurrentDBUser.SubDepartmentId == 5 || CurrentDBUser.SubDepartmentId == 8)
+            {
+                PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины ОВВК",
+                    "Плагины ОВВК",
+                    "ОВВК: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.hvacSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.hvacBig.png"),
+                    panel,
+                false);
+
+                PushButtonData ovvk_pipeThickness = CreateBtnData(
+                    "Толщина труб",
+                    "Толщина труб",
+                    "Заполняет толщину труб по выбранной конфигурации",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_OVVK_PipeThickness).FullName,
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "http://moodle");
+
+                ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
+            }
+            #endregion
+
             #region Отверстия
-            if (_userDepartment == 3 || _userDepartment == 4)
+            PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
+                "Отверстия",
+                "Плагины для работы с отверстиями",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                PngImageSource("KPLN_Tools.Imagens.holesSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.holesBig.png"),
+                panel,
+                false);
+
+            PushButtonData holesManagerIOS = CreateBtnData("ИОС: Подготовить задание",
+                "ИОС: Подготовить задание",
+                "Подготовка заданий на отверстия от инженеров для АР.",
+                string.Format(
+                    "Плагин выполняет следующие функции:\n" +
+                        "1. Расширяет специальные элементы семейств, которые позволяют видеть отверстия вне зависимости от секущего диапозона;\n" +
+                        "2. Заполняют данные по относительной отметке.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
+                "KPLN_Tools.Imagens.holesManagerSmall.png",
+                "KPLN_Tools.Imagens.holesManagerBig.png",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1245");
+
+            // Наполняю плагинами в зависимости от отдела
+            if (CurrentDBUser.Id != 2 && CurrentDBUser.Id != 3)
             {
                 PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
                     "Отверстия",
@@ -239,12 +355,22 @@ namespace KPLN_Tools
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private PushButtonData CreateBtnData(string name, string text, string shortDescription, string longDescription, string className, string smlImageName, string lrgImageName, string contextualHelp)
+        private PushButtonData CreateBtnData(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            string className,
+            string smlImageName,
+            string lrgImageName,
+            string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
-            data.Text = text;
-            data.ToolTip = shortDescription;
-            data.LongDescription = longDescription;
+            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className)
+            {
+                Text = text,
+                ToolTip = shortDescription,
+                LongDescription = longDescription
+            };
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
@@ -274,7 +400,15 @@ namespace KPLN_Tools
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="imgSmall">Картинка маленькая</param>
         /// <param name="imgBig">Картинка большая</param>
-        private PulldownButton CreatePulldownButtonInRibbon(string name, string text, string shortDescription, string longDescription, ImageSource imgSmall, ImageSource imgBig, RibbonPanel panel, bool showName)
+        private PulldownButton CreatePulldownButtonInRibbon(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            ImageSource imgSmall,
+            ImageSource imgBig,
+            RibbonPanel panel,
+            bool showName)
         {
             RibbonItem pullDownRI = panel.AddItem(new PulldownButtonData(name, text)
             {

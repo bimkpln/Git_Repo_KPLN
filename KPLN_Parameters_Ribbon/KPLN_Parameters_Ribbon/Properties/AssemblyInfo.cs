@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("KPLN_Parameters_Ribbon")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("KPLN")]
 [assembly: AssemblyProduct("KPLN_Parameters_Ribbon")]
 [assembly: AssemblyCopyright("KPLN ©  2022")]
 [assembly: AssemblyTrademark("")]

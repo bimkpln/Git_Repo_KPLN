@@ -1,12 +1,8 @@
-﻿using KPLN_Loader.Common;
 using Autodesk.Revit.UI;
 using KPLN_Classificator.ExecutableCommand;
-using KPLN_Classificator.UserInfo;
-using System;
+using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using static KPLN_Classificator.ApplicationConfig;
 
@@ -21,24 +17,11 @@ namespace KPLN_Classificator
         {
             //Конфигурирование приложения для работы в среде KPLN_Loader
             output = new KplnOutput();
-            userInfo = new KplnUserInfo();
             commandEnvironment = new KplnCommandEnvironment();
         }
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-#if Revit2020
-            MainWindowHandle = application.MainWindowHandle;
-            HwndSource hwndSource = HwndSource.FromHwnd(MainWindowHandle);
-            RevitWindow = hwndSource.RootVisual as Window;
-#endif
-#if Revit2018
-            try
-            {
-                MainWindowHandle = SystemTools.WindowHandleSearch.MainWindowHandle.Handle;
-            }
-            catch (Exception) { }
-#endif
             assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             try { application.CreateRibbonTab(tabName); } catch { }
 
@@ -51,7 +34,7 @@ namespace KPLN_Classificator
                 panel = tryPanels.First();
 
             PushButtonData btnHostMark = new PushButtonData(
-                "Заполнить\nпараметры",
+                "ClassificatorCompleteCommand",
                 "Заполнить\nпараметры",
                 assemblyPath,
                 typeof(CommandOpenClassificatorForm).FullName)
@@ -64,7 +47,6 @@ namespace KPLN_Classificator
                 "\t2. Маппинг параметров (передача значений между параметрами элемента);\n" +
                 "\t3. Сохранение конфигурационного файла с возможностью повторного использования;\n"
             };
-            btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=669"));
             btnHostMark.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
             panel.AddItem(btnHostMark);

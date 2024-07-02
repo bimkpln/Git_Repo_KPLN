@@ -1,34 +1,28 @@
 ﻿using Autodesk.Revit.DB;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Controls;
 using System.Windows.Media;
-using static KPLN_Loader.Output.Output;
 
 namespace KPLN_Publication.Common
 {
     public class ListBoxElement : INotifyPropertyChanged
     {
         public View View { get; set; }
-        private System.Windows.Visibility? _Visibility { get; set; }
+        private System.Windows.Visibility? _visibility;
         public System.Windows.Visibility? Visibility
         {
             get
             {
-                if (_Visibility == null)
+                if (_visibility == null)
                 {
                     return System.Windows.Visibility.Visible;
                 }
-                return _Visibility;
+                return _visibility;
             }
             set
             {
-                _Visibility = value;
+                _visibility = value;
                 NotifyPropertyChanged();
             }
         }
@@ -51,12 +45,12 @@ namespace KPLN_Publication.Common
         }
         private bool _isChecked = false;
         public bool IsChecked
-        { 
+        {
             get
             {
                 return _isChecked;
-            } 
-            set 
+            }
+            set
             {
                 if (value == _isChecked)
                 {
@@ -64,7 +58,7 @@ namespace KPLN_Publication.Common
                 }
                 _isChecked = value;
                 NotifyPropertyChanged();
-            } 
+            }
         }
         public SolidColorBrush Fill { get; private set; }
         public string Name { get; private set; }
@@ -74,12 +68,12 @@ namespace KPLN_Publication.Common
             View = view;
             IsChecked = isChecked;
             if (view.GetType() == typeof(ViewSheet))
-            { 
+            {
                 Name = string.Format("{0}: {1}", (view as ViewSheet).SheetNumber, (view as ViewSheet).Name);
                 Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 225, 210, 30));
             }
             else
-            { 
+            {
                 Name = view.Name;
                 Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 70, 160, 225));
             }

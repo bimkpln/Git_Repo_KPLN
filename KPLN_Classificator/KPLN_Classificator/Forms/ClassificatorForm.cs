@@ -1,19 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using ElementId = Autodesk.Revit.DB.ElementId;
-using Category = Autodesk.Revit.DB.Category;
-using BuiltInCategory = Autodesk.Revit.DB.BuiltInCategory;
+﻿using KPLN_Classificator.Data;
 using KPLN_Classificator.Utils;
-using System.Windows.Interop;
-using KPLN_Classificator.Data;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Windows.Forms;
 using static KPLN_Classificator.ApplicationConfig;
+using BuiltInCategory = Autodesk.Revit.DB.BuiltInCategory;
 
 namespace KPLN_Classificator.Forms
 {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,10 +14,11 @@ using KPLN_Classificator.Forms;
 using Autodesk.Revit.DB.Architecture;
 using System.Windows.Forms;
 using KPLN_Classificator.Forms.ViewModels;
+using KPLN_Loader.Common;
 
 namespace KPLN_Classificator
 {
-    public class CommandGetElementInfo : MyExecutableCommand
+    public class CommandGetElementInfo : IExecutableCommand
     {
         private MainWindow form;
         public List<string> paramNames;
@@ -57,7 +58,9 @@ namespace KPLN_Classificator
                 }
                 else
                 {
-                    familyName = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
+                    if (famNameParam != null)
+                        familyName = famNameParam.AsValueString();
+                    Parameter famNameParam = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM);
                     familyName = familyName == null || familyName.Length == 0 ? (elem as ElementType).FamilyName : familyName;
                 }
 

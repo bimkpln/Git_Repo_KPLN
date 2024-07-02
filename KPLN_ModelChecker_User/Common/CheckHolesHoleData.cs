@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -64,10 +64,11 @@ namespace KPLN_ModelChecker_User.Common
             {
                 foreach (XYZ locPoint in mepData.CurrentLocationColl)
                 {
-                    if (locPoint.DistanceTo(currentCentroid) < 25)
+                    if (locPoint.DistanceTo(currentCentroid) < 30)
                     {
-                        mepData.SetGeometryData(ViewDetailLevel.Fine, notCriticalErrorElemColl);
-                        if (mepData.CurrentSolid == null) continue;
+                        mepData.SetGeometryData(ViewDetailLevel.Fine);
+                        if (mepData.CurrentSolid == null) 
+                            continue;
                         try
                         {
                             Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(this.CurrentSolid, mepData.CurrentSolid, BooleanOperationsType.Intersect);

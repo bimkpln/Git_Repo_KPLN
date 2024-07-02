@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
@@ -7,7 +7,7 @@ using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
@@ -87,7 +87,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 }
                 catch (Exception ex)
                 {
-                    Print($"Прервано с критической системной ошибкой:\n {ex.Message}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Прервано с критической системной ошибкой:\n {ex.Message}", MessageType.Error);
                     return Result.Failed;
                 }
             }
@@ -98,13 +98,13 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
         private List<TBlockEntity> CreateTBlocksEntity(Document doc, IEnumerable<ViewSheet> sheetsList)
         {
             List<TBlockEntity> result = new List<TBlockEntity>();
-
+            
             foreach (ViewSheet sheet in sheetsList)
             {
                 IList<ElementId> dependentElemsColl = sheet.GetDependentElements(null);
                 IEnumerable<Element> tBlocksOnView = dependentElemsColl
                     .Select(id => doc.GetElement(id))
-                    .Where(el => el.Category != null && el.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks);
+                    .Where(el => el.Category != null && el.Category.BuiltInCategory == BuiltInCategory.OST_TitleBlocks);
                 result.Add(new TBlockEntity(sheet, tBlocksOnView));
             }
 
@@ -122,16 +122,16 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             if (tBlockParams == null || tBlockParams.Contains(null))
             {
                 Print($"У основной надписи на листе {viewSheet.SheetNumber} - {viewSheet.Name} нет параметра {tBlockParamName}. Если это титул - пропусти, иначе - скинь в BIM-отдел",
-                    KPLN_Loader.Preferences.MessageType.Warning);
+                    MessageType.Warning);
                 return;
             }
 
-            foreach (Element elem in tBlockEntity.CurrentTBlocks)
+            foreach(Element elem in tBlockEntity.CurrentTBlocks)
             {
-                string vSheetParamValue = vSheetParam.AsString();
+                string vSheetParamValue = vSheetParam.AsValueString();
                 if (elem is FamilyInstance famInst)
                 {
-                    if (famInst.Category.Id.IntegerValue != (int)BuiltInCategory.OST_TitleBlocks)
+                    if (famInst.Category.BuiltInCategory != BuiltInCategory.OST_TitleBlocks)
                         throw new Exception("Скинь разработчику - в коллекцию TBlockEntity попали НЕ только OST_TitleBlocks");
 
                     Parameter currentTBlockParam = famInst.LookupParameter(tBlockParamName);

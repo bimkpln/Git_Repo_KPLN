@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Common;
@@ -6,8 +6,7 @@ using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
-using static KPLN_Loader.Preferences;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
 namespace KPLN_Tools.ExternalCommands
@@ -55,15 +54,15 @@ namespace KPLN_Tools.ExternalCommands
 
                 return Result.Failed;
             }
-
+            
             try
             {
                 SetMonitoredElemsFromUserSelect(doc, selectedIds);
-                
-                if(_monitorEntitiesDict.Count > 0)
+
+                if (_monitorEntitiesDict.Count > 0)
                 {
                     List<ElementId> errorElemIdColl = new List<ElementId>();
-                    foreach(var id in selectedIds)
+                    foreach (var id in selectedIds)
                     {
                         bool inColl = false;
                         foreach (var kvp in _monitorEntitiesDict)
@@ -85,16 +84,15 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         string msg = string.Join(", ", errorElemIdColl);
                         Print(
-                            $"Элементы из выборки - не удалось определить основу. Нужно чтобы элементы у связи и твоего проекта - полностью совпадали по геометрии. Ошибки: {msg}", 
+                            $"Элементы из выборки - не удалось определить основу. Нужно чтобы элементы у связи и твоего проекта - полностью совпадали по геометрии. Ошибки: {msg}",
                             MessageType.Error);
-                        
+
                         Print("Работа экстренно остановлена. Исправь ошибки: ", MessageType.Error);
-                        
+
                         return Result.Failed;
                     }
                 }
-                
-                
+
                 if (_monitorEntitiesDict.Count > 0)
                 {
                     MonitoringParamSetter setterForm = new MonitoringParamSetter(doc, _monitorEntitiesDict);
@@ -110,7 +108,7 @@ namespace KPLN_Tools.ExternalCommands
                         {
                             errorIds = string.Join(", ", element.Id);
                         }
-
+                    
                         Print($"{kvp.Key} {errorIds}", MessageType.Error);
                     }
                     Print($"В ходе работы были выявлены ошибки:", MessageType.Error);
@@ -171,7 +169,8 @@ namespace KPLN_Tools.ExternalCommands
             double minY = locPntsFromUserSelection.Min(pnt => pnt.Y);
             double minZ = locPntsFromUserSelection.Min(pnt => pnt.Z);
             XYZ minPoint = new XYZ(minX, minY, minZ);
-            
+
+            // Расширяем для малой выборки
             if (minPoint.IsAlmostEqualTo(maxPoint, 1))
             {
                 maxPoint += new XYZ(1.0, 1.0, 1.0);
@@ -201,7 +200,7 @@ namespace KPLN_Tools.ExternalCommands
                         }
                         else if (_currentLink.Id.IntegerValue != currentLink.Id.IntegerValue)
                             throw new Exception($"Работа экстренно прекращена! Элемент с id:{element.Id} - имеет мониторинг из другой связи. Можно выполнить проверку только с разделением по связям.");
-                        
+                    
                         UpdateMonitorEntityColl(doc, element, docElemsParams);
                     }
                 }
@@ -240,7 +239,7 @@ namespace KPLN_Tools.ExternalCommands
                     param = elem.LookupParameter(paramName);
                     if (param == null)
                         param = (elem as FamilyInstance).Symbol.LookupParameter(paramName);
-
+                    
                     if (param == null)
                     {
                         isContain = false;
@@ -270,11 +269,12 @@ namespace KPLN_Tools.ExternalCommands
             Transform linkTrans = _currentLink.GetTransform();
             foreach (BuiltInCategory bic in MonitoredBuiltInCatArr)
             {
+                // Добавяляю элементы из связи
                 IList<Element> bicElems = new FilteredElementCollector(_currentLink.GetLinkDocument())
                     .OfCategory(bic)
                     .WhereElementIsNotElementType()
                     .ToElements();
-                
+
                 List<Element> intersectedBicElems = new List<Element>();
                 foreach (Element el in bicElems)
                 {
@@ -300,6 +300,9 @@ namespace KPLN_Tools.ExternalCommands
                     _monitorLinkEntiteDict[_currentLink.Id].Add(new MonitorLinkEntity(el, linkElemsParams, _currentLink));
                 }
             }
+
+            if (_monitorLinkEntiteDict[_currentLink.Id].Count == 0)
+                Print($"Элементы из связи {_currentLink.Name} - не удалось получить элементы проекта. Скинь в BIM-отдел!", MessageType.Error);
         }
 
         /// <summary>
@@ -312,7 +315,7 @@ namespace KPLN_Tools.ExternalCommands
         private void UpdateMonitorEntityColl(Document doc, Element modelElement, HashSet<Parameter> docElemsParams)
         {
             Solid modelElemSolid = MonitorTool.GetSolidFromElem(modelElement);
-            
+
             foreach (KeyValuePair<ElementId, List<MonitorLinkEntity>> kvp in _monitorLinkEntiteDict)
             {
                 if (!_monitorEntitiesDict.ContainsKey(_currentLink.Id))
@@ -322,27 +325,24 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     RevitLinkInstance linkInstance = doc.GetElement(kvp.Key) as RevitLinkInstance;
                     Document linkDoc = linkInstance.GetLinkDocument();
-                    
+
                     foreach (MonitorLinkEntity monitorLinkEntity in kvp.Value)
                     {
-                        Solid linkElemSolid = monitorLinkEntity.LinkElementSolid;
-
                         Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
                             modelElemSolid,
-                            linkElemSolid,
+                            monitorLinkEntity.LinkElementSolid, 
                             BooleanOperationsType.Intersect);
-                        
                         if (intersectionSolid != null && intersectionSolid.Volume > 0)
                         {
                             _monitorEntitiesDict[_currentLink.Id].Add(
                                 new MonitorEntity(
-                                    modelElement, 
-                                    modelElemSolid, 
+                                    modelElement,
+                                    modelElemSolid,
                                     docElemsParams,
                                     monitorLinkEntity
                                     ));
-                            
-                            return; 
+
+                            return;
                         }
                     }
                 }

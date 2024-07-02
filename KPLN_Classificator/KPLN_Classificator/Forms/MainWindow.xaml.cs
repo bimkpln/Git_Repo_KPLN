@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_Classificator.Forms.ViewModels;
 using KPLN_Classificator.Utils;
 using System;
@@ -251,7 +251,7 @@ namespace KPLN_Classificator.Forms
             if (isDocumentAvailable)
             {
                 Button bt = (Button)sender;
-                if(bt.DataContext is ParamNameItem paramNameItem)
+                if (bt.DataContext is ParamNameItem paramNameItem)
                 {
                     ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
                     parameterSelectorForm.ShowDialog();
@@ -266,7 +266,7 @@ namespace KPLN_Classificator.Forms
             if (isDocumentAvailable)
             {
                 Button bt = (Button)sender;
-                if(bt.DataContext is RuleItem ruleItem)
+                if (bt.DataContext is RuleItem ruleItem)
                 {
                     ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
                     parameterSelectorForm.ShowDialog();
@@ -281,7 +281,7 @@ namespace KPLN_Classificator.Forms
             if (isDocumentAvailable)
             {
                 Button bt = (Button)sender;
-                if(bt.DataContext is ParamValueItem paramValueItem)
+                if (bt.DataContext is ParamValueItem paramValueItem)
                 {
                     if (paramValueItem.paramValue.Contains("[]"))
                     {

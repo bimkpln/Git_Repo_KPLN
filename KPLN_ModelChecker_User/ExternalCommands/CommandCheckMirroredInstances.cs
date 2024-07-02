@@ -7,14 +7,13 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMirroredInstances : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckMirroredInstances : AbstrCheckCommand<CommandCheckMirroredInstances>, IExternalCommand
     {
         /// <summary>
         /// Список категорий для проверки
@@ -36,23 +35,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "557_"
         };
 
+        public CommandCheckMirroredInstances() : base()
+        {
+        }
+
+        internal CommandCheckMirroredInstances(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            _name = "Проверка зеркальных элементов";
-            _application = uiapp;
-
-            _allStorageName = "KPLN_CheckMirroredInstances";
-
-            _lastRunGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447b");
-            _userTextGuid = new Guid("33b660af-95b8-4d7c-ac42-c9425320447c");
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -64,7 +65,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 FilteredElementCollector bicColl = new FilteredElementCollector(doc)
                     .OfCategory(bic)
                     .WhereElementIsNotElementType();
-                
+
                 // У оборудования нужно брать только элементы из списка
                 if (bic == BuiltInCategory.OST_MechanicalEquipment) checkElemColl.AddRange(FilteredByStringContainsColl(bicColl).ToElements());
                 // У остального - берем все, кроме семейств проемов
@@ -75,7 +76,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, checkElemColl);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, checkElemColl.ToArray());
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -84,9 +85,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl) => null;
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -104,7 +105,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if ((BuiltInCategory)element.Category.Id.IntegerValue == BuiltInCategory.OST_CurtainWallPanels)
                 {
                     string elName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM).AsValueString();
-                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер") 
+                    if (elName.StartsWith("135_") && elName.ToLower().Contains("двер")
                         || (elName.ToLower().Contains("створк") && !elName.ToLower().Contains("глух")))
                     {
                         Wall panelHostWall = instance.Host as Wall;
@@ -116,7 +117,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                             WPFEntity hostEntity = new WPFEntity(
                                 element,
-                                SetApproveStatusByUserComment(element, Status.Error),
+                                SetApproveStatusByUserComment(element, CheckStatus.Error),
                                 "Недопустимый зеркальный элемент",
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 true,
@@ -133,7 +134,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         WPFEntity elemEntity = new WPFEntity(
                             element,
-                            SetApproveStatusByUserComment(element, Status.Error),
+                            SetApproveStatusByUserComment(element, CheckStatus.Error),
                             "Недопустимый зеркальный элемент",
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                             true,

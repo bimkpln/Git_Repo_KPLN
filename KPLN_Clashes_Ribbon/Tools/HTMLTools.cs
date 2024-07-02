@@ -1,5 +1,5 @@
 ﻿using HtmlAgilityPack;
-using KPLN_Clashes_Ribbon.Common.Reports;
+using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -40,50 +40,38 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             return result;
         }
-        public static ObservableCollection<ReportComment> TryGetComments(string row)
+        public static string TryGetComments(string row)
         {
-            ObservableCollection<ReportComment> comments = new ObservableCollection<ReportComment>();
-            try
+            string comment = string.Empty;
+            string[] lines = row.Split('#');
+            foreach (string line in lines)
             {
-                string[] lines = row.Split('#');
-                foreach (string line in lines)
+                if (line != string.Empty)
                 {
-                    try
+                    List<string> parts = new List<string>();
+                    string[] pp = line.Split(' ');
+                    foreach (string p in pp)
                     {
-                        if (line != string.Empty)
-                        {
-                            List<string> parts = new List<string>();
-                            string[] pp = line.Split(' ');
-                            foreach (string p in pp)
-                            {
-                                if (p != string.Empty) { parts.Add(p); }
-                            }
-                            string user = parts[2];
-                            string time = parts[4] + " " + GetTime(parts[5]) + ":00";
-                            string message = GetMessage(parts[5]);
-                            List<string> msgParts = new List<string>() { message };
-                            int i = 0;
-                            foreach (string p in parts)
-                            {
-                                if (i > 5)
-                                {
-                                    msgParts.Add(p);
-                                }
-                                i++;
-                            }
-                            string msg = string.Join(" ", msgParts);
-                            ReportComment comment = new ReportComment(user, time, msg, 1);
-                            comments.Add(comment);
-
-                        }
+                        if (p != string.Empty) { parts.Add(p); }
                     }
-                    catch (Exception)
-                    { }
+                    string user = parts[2];
+                    string time = parts[4] + " " + GetTime(parts[5]) + ":00";
+                    string message = GetMessage(parts[5]);
+                    List<string> msgParts = new List<string>() { message };
+                    int i = 0;
+                    foreach (string p in parts)
+                    {
+                        if (i > 5)
+                        {
+                            msgParts.Add(p);
+                        }
+                        i++;
+                    }
+                    comment = string.Join(" ", msgParts);
                 }
             }
-            catch (Exception)
-            { }
-            return comments;
+
+            return comment;
         }
         public static int GetRowId(List<string> values, string value, bool skipfirst = false)
         {

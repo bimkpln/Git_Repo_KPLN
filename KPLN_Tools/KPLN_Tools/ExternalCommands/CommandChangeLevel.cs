@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Forms;
@@ -32,7 +32,7 @@ namespace KPLN_Tools.ExternalCommands
             }
 
             BuiltInParameter baseLevel;
-            BuiltInParameter baseOffset; 
+            BuiltInParameter baseOffset;
             BuiltInParameter topLevel;
             BuiltInParameter topOffset;
             BuiltInParameter elementHeight;
@@ -89,7 +89,7 @@ namespace KPLN_Tools.ExternalCommands
                 baseLevel = BuiltInParameter.FAMILY_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM;
 
-                parameters = new BuiltInParameter[] { baseLevel, baseOffset};
+                parameters = new BuiltInParameter[] { baseLevel, baseOffset };
             }
             else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps)
             {
@@ -117,6 +117,6 @@ namespace KPLN_Tools.ExternalCommands
 
             return parameters;
         }
-        
+
     }
 }

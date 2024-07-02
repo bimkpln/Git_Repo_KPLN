@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -7,8 +7,8 @@ namespace KPLN_Tools.Common
     public class MonitorEntity
     {
         internal MonitorEntity(
-            Element modelElement, 
-            Solid modelElemSolid, 
+            Element modelElement,
+            Solid modelElemSolid,
             HashSet<Parameter> modelParameters,
             MonitorLinkEntity monitorLinkEntity)
         {

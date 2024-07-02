@@ -10,12 +10,19 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Rectangle Fill="#FFFFD100"/>
-        <StackPanel  Grid.Row="0" Orientation="Vertical">
-            <TextBlock Margin="5,5,0,0" Text="Фильтр:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="0.95*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Rectangle Grid.RowSpan="2" Grid.ColumnSpan="2" Fill="#FFFFD100"/>
+
+        <!--Фильтрование по статусу замечания-->
+        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical">
+            <TextBlock Margin="5,5,0,0" Text="Фильтр по статусу:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
@@ -28,21 +35,42 @@
                     <ComboBoxItem Content="Допустимые"/>
                     <ComboBoxItem Content="Делегированные"/>
                 </ComboBox>
-                <Button Margin="0,0,5,5" Grid.Column="1" Content="🖬" Padding="5,1" Background="White" BorderBrush="#FFAA8B00" Foreground="#FFFFD100" Click="OnExport">
-                    <Button.ToolTip>
-                        <StackPanel MaxWidth="300">
-                            <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Экспорт"/>
-                            <TextBlock TextWrapping="Wrap" Text="Сохранение отчета в формате .txt"/>
-                            <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                            <TextBlock TextWrapping="Wrap" Text="Подсказка: Для импорта в таблицы Excell (Разделитель - «Табуляция»)" FontStyle="Italic"/>
-                        </StackPanel>
-                    </Button.ToolTip>
-                </Button>
             </Grid>
-            
         </StackPanel>
         
-        <ScrollViewer Margin="0,0,0,17" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <!--Экспорт в txt-->
+        <Button Margin="5,5,5,5" Grid.Row="0" Grid.Column="1" Content="🖬" Padding="5,1" Background="White" BorderBrush="#FFAA8B00" Foreground="#FFFFD100" Click="OnExport">
+            <Button.ToolTip>
+                <StackPanel>
+                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Экспорт"/>
+                    <TextBlock TextWrapping="Wrap" Text="Сохранение отчета в формате .txt"/>
+                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                    <TextBlock TextWrapping="Wrap" Text="Подсказка: Для импорта в таблицы Excell (Разделитель - «Табуляция»)" FontStyle="Italic"/>
+                </StackPanel>
+            </Button.ToolTip>
+        </Button>
+        
+        <!--Фильтрование по имени документа-->
+        <DockPanel Grid.Row="1" Grid.ColumnSpan="2">
+            <TextBlock 
+                Text="Фильтр по данным об эл-тах:" 
+                Margin="5" 
+                VerticalAlignment="Center" 
+                HorizontalAlignment="Left" 
+                FontWeight="Bold"/>
+            <TextBox 
+                Margin="5" 
+                VerticalAlignment="Center" 
+                HorizontalAlignment="Left" 
+                FontStretch="ExtraExpanded" 
+                TextAlignment="Left" 
+                MinHeight="20" 
+                MinWidth="200" 
+                DockPanel.Dock="Left"
+                TextChanged="UserInput_TextChanged"/>
+        </DockPanel>
+
+        <ScrollViewer Margin="0,0,0,17" Grid.Row="2" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical">
                 <ItemsControl x:Name="ReportControll">
                     <ItemsControl.ItemTemplate>
@@ -55,13 +83,14 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="0.5*"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Rectangle Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Margin="-3" RadiusX="3" RadiusY="3" Grid.ColumnSpan="2" Grid.RowSpan="7"/>
+                                
+                                <!--Информация по группе-->
+                                <Rectangle Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Margin="-3" RadiusX="3" RadiusY="3" Grid.ColumnSpan="2" Grid.RowSpan="6"/>
                                 <TextBlock Margin="3,2,0,5"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Name}" Foreground="White" FontWeight="Bold"/>
                                 <Button Grid.Column="0" Grid.Row="1"  Width="200" Height="200" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
                                 <Image VerticalAlignment="Top" Grid.Column="0" Width="200" Height="200" Grid.Row="1" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
@@ -77,25 +106,38 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition/>
                                     </Grid.ColumnDefinitions>
+
+                                    <!--Информация по элементу группы №1-->
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Элемент 1" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5,0,0,0" Text="Категория: " Foreground="White" FontSize="12"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5,0,0,5" Text="Данные об эл-те: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Element_1_Info}"  TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="10"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,5" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="12"/>
                                     <Button Grid.Row="2" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1"/>
+
+                                    <!--Информация по элементу группы №2-->
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Элемент 2" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="4" Grid.Column="0" Text=" Категория: " Foreground="White" FontSize="12"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="4" Grid.Column="0" Text=" Данные об эл-те: " Foreground="White" FontSize="12"/>
                                     <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Element_2_Info}" TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,0" Text="ID объекта: " Foreground="White" FontSize="12"/>
+                                    <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,5" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="12"/>
                                     <Button Grid.Row="5" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2"/>
-                                    <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" Grid.Row="6" Grid.Column="0" Margin="5,0,0,0" Text="Дополнительно: " Foreground="White" FontSize="12"/>
-                                    <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="6" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2"/>
-                                    <TextBlock Visibility="{Binding IsGroup}" HorizontalAlignment="Right" Grid.Row="7" Grid.Column="0" Margin="5,0,0,0" Text="Субэлементы: " Foreground="White" FontSize="12"/>
-                                    <ItemsControl Visibility="{Binding IsGroup}" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding SubElements}">
+
+                                    <!--Комменты от координатора-->
+                                    <TextBlock Visibility="{Binding ReportParentGroupCommentsVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0" Margin="5,0,0,5" Text="Комментарий BIM: " Foreground="White" FontSize="12" TextDecorations="Underline"/>
+                                    <TextBlock Visibility="{Binding ReportParentGroupCommentsVisibility}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="6" Grid.Column="1" Margin="5,0,0,5" Text="{Binding ReportParentGroupComments}"  Foreground="Bisque" FontSize="12" TextWrapping="Wrap"/>
+                                    
+                                    <!--Метка-->
+                                    <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0" Margin="5,0,0,0" Text="Найти: " Foreground="White" FontSize="12"/>
+                                    <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="7" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2"/>
+
+                                    <!--Информация по субэлементам группы-->
+                                    <TextBlock Visibility="{Binding IsGroup}" HorizontalAlignment="Right" Grid.Row="8" Grid.Column="0" Margin="5,0,0,0" Text="Субэлементы: " Foreground="White" FontSize="12"/>
+                                    <ItemsControl Visibility="{Binding IsGroup}" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding SubElements}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="5">
@@ -112,12 +154,15 @@
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
                                                         <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
                                                     </Grid.RowDefinitions>
                                                     <Rectangle Margin="-3"  Fill="#3FFFFFFF" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="5" RadiusX="3" RadiusY="3"/>
                                                     <Button Grid.Column="0" Grid.Row="0" Grid.RowSpan="5"  Width="80" Height="80" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="5" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
                                                     <Image VerticalAlignment="Top" Grid.Column="0" Margin="5" Grid.Row="0" Width="80" Grid.RowSpan="5" Height="80" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+                                                    
+                                                    <!--Элемент 1-->
                                                     <TextBlock Margin="0,0,0,5" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="0" Text="{Binding Name}" Foreground="White"  FontSize="12" FontWeight="Bold" TextDecorations="Underline"/>
-                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="Элемент 1:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="Элемент 1 Id:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
                                                     <Button Grid.Column="2" Grid.Row="1" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1" FontSize="10">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
@@ -128,7 +173,9 @@
                                                             </StackPanel>
                                                         </Button.ToolTip>
                                                     </Button>
-                                                    <TextBlock Grid.Column="1" Grid.Row="2" Text="Элемент 2:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+
+                                                    <!--Элемент 2-->
+                                                    <TextBlock Grid.Column="1" Grid.Row="2" Text="Элемент 2 Id:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
                                                     <Button Grid.Column="2" Grid.Row="2" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2" FontSize="10">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
@@ -139,7 +186,13 @@
                                                             </StackPanel>
                                                         </Button.ToolTip>
                                                     </Button>
-                                                    <Button Grid.Column="1" Visibility="{Binding PlacePointVisibility}" Grid.Row="3" Grid.ColumnSpan="2" VerticalAlignment="Top" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2" FontSize="10"/>
+
+                                                    <!--Комменты от координатора-->
+                                                    <TextBlock Visibility="{Binding ReportItemCommentsVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Margin="5,0,0,5" Text="Комментарий BIM: " Foreground="White" FontSize="10" TextDecorations="Underline"/>
+                                                    <TextBlock Visibility="{Binding ReportItemCommentsVisibility}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Margin="5,0,0,5" Text="{Binding ReportItemComments}"  Foreground="Bisque" FontSize="10" TextWrapping="Wrap"/>
+
+                                                    <!--Метка коллизий-->
+                                                    <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="5,0,0,5" VerticalAlignment="Top" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2" FontSize="10"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -192,7 +245,18 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                                <Button Height="25" Width="50" Padding="5,0,5,0" x:Name="btn_delegate" Margin="3,10,0,0" Content="{Binding Name}" Background="{Binding DelegateBtnBackground}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnDelegate">
+                                                <Button x:Name="btn_delegate" 
+                                                        Height="25" 
+                                                        Width="50" 
+                                                        Padding="5,0,5,0" 
+                                                        Margin="3,10,0,0" 
+                                                        Content="{Binding Name}" 
+                                                        Background="{Binding DelegateBtnBackground}" 
+                                                        BorderBrush="White" 
+                                                        Foreground="White" 
+                                                        FontWeight="Bold" 
+                                                        BorderThickness="2" 
+                                                        Click="OnDelegate">
                                                     <Button.ToolTip>
                                                         <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Description}"/>
                                                     </Button.ToolTip>
@@ -203,9 +267,9 @@
                                 </ItemsControl>
 
                                 <!--Блок комментирования-->
-                                <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Комментарии:" Foreground="White"/>
-                                <StackPanel Margin="0,20,4,0" Grid.Row="4" MaxHeight="300" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Vertical">
-                                    <ItemsControl ItemsSource="{Binding Comments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Text="Комментарии:" Foreground="White"/>
+                                <StackPanel Margin="0,20,4,0" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Vertical">
+                                    <ItemsControl ItemsSource="{Binding CommentCollection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="6, 5, 5, 5" HorizontalAlignment="Left">
@@ -217,36 +281,39 @@
                                                     <Rectangle Grid.RowSpan="3" Margin="-3" RadiusX="3" RadiusY="3" Stroke="White" StrokeThickness="2" Fill="#19FFFFFF"/>
                                                     <StackPanel Grid.Row="0" Orientation="Horizontal">
                                                         <TextBlock Text="От: " Foreground="White"/>
-                                                        <TextBlock Text="{Binding User}" Foreground="White"/>
+                                                        <TextBlock Text="{Binding UserFullName}" Foreground="White"/>
                                                         <TextBlock Text=" - " Foreground="White"/>
                                                         <TextBlock Text="{Binding Time}" Foreground="White" Margin="0,0,25,0"/>
                                                     </StackPanel>
                                                     <Separator Grid.Row="1" Background="White" Foreground="White"/>
                                                     <TextBlock TextWrapping="Wrap" Grid.Row="2"  Text="{Binding Message}" Foreground="White"/>
-                                                    <Button Visibility="{Binding VisibleIfUserComment}" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.ColumnSpan="3" Margin="3" Content="✖" Width="22" Height="22" FontSize="10" Foreground="White" Background="{x:Null}" BorderBrush="#33FFFFFF" Click="OnRemoveComment">
-                                                        <Button.ToolTip>
-                                                            <StackPanel MaxWidth="300">
-                                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>
-                                                                <TextBlock TextWrapping="Wrap" Text="Удалить комментарий"/>
-                                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие доступно только для пользовательских комментариев" FontStyle="Italic"/>
-                                                            </StackPanel>
-                                                        </Button.ToolTip>
-                                                    </Button>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
-
-                                <Button Grid.Row="5" Content="Комментировать" IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Top" Margin="2,0,0,4" Background="{x:Null}" BorderBrush="White" Foreground="White" BorderThickness="2" Click="OnAddComment"/>
+                                <Button 
+                                    Grid.Row="5" 
+                                    Width="200"
+                                    HorizontalAlignment="Left"
+                                    Content="Комментировать" 
+                                    IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                    VerticalAlignment="Top" 
+                                    Margin="4,3,0,0" 
+                                    Background="{x:Null}" 
+                                    BorderBrush="White" 
+                                    Foreground="White" 
+                                    BorderThickness="2" 
+                                    Click="OnAddComment"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </ScrollViewer>
-        <StackPanel Orientation="Horizontal" Grid.Row="2">
+        
+        <!--Блок обновления-->
+        <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.ColumnSpan="2">
             <Button x:Name="btnUpdate" Margin="5,5,5,5" Content="Обновить отчеты" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnUpdate" Foreground="White">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
@@ -255,5 +322,6 @@
                 </Button.ToolTip>
             </Button>
         </StackPanel>
+        
     </Grid>
 </Window>

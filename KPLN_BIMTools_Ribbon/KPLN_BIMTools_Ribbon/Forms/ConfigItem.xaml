@@ -1,0 +1,295 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.ConfigItem"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_BIMTools_Ribbon.Forms"
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontSize="14"
+        Title="KPLN: Конфигурация экспорта" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
+        ResizeMode="CanResize"
+        Width="1000" 
+        Height="600" 
+        Background="#FF292D36">
+    <Window.Resources>
+
+        <DataTemplate x:Key="FileEntityTemplate">
+            <ListBox>
+                <ListBox.Items>
+                    <TextBlock 
+                        Text="{Binding Name}"
+                        TextWrapping="Wrap"
+                        HorizontalAlignment="Stretch"
+                        ToolTip="Нажми ПКМ, чтобы удалить файл/группу файлов"
+                        Margin="2"/>
+                </ListBox.Items>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem 
+                            Header="Удалить" 
+                            Click="LBMenuItem_Delete_Click"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+        </DataTemplate>
+        
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style 
+            x:Key="UserActionBtns"
+            TargetType="Button">
+            <Setter Property="Padding" Value="25,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderBrush" Value="Green"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="IsEnabled" Value="False"/>
+        </Style>
+
+        <Style 
+            x:Name="TextBlockLbl"
+            TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style 
+            x:Name="TxtBx"
+            TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <!--Заголовок-->
+        <TextBlock 
+            Grid.ColumnSpan="2"
+            Text="Редатор настройки экспорта" 
+            Margin="0,0,0,5" 
+            FontWeight="Bold" 
+            FontSize="14"
+            Foreground="White"/>
+        <!--Заголовок-->
+
+        <!--Блок с настройками конфигов-->
+        <StackPanel 
+            x:Name="sp"
+            Grid.Row="1"
+            Grid.ColumnSpan="2"
+            Orientation="Vertical">
+
+            <Separator />
+            
+            <!--Блок основных глобальных настроек -->
+            <Grid Grid.ColumnSpan="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.3*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock 
+                    Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Text="Глобальные настройки экспорта" 
+                    Margin="0,0,0,5" 
+                    FontWeight="Bold" 
+                    FontSize="14"
+                    Foreground="White"/>
+                <TextBlock 
+                    Grid.Column="0"
+                    Grid.Row="1"
+                    Text="Имя конфигурации:"/>
+                <TextBox 
+                    x:Name="ItemName"
+                    Grid.Column="1"
+                    Grid.Row="1"
+                    Text="{Binding SettingName}"/>
+
+                <TextBlock 
+                    Grid.Column="0"
+                    Grid.Row="2"
+                    Text="Путь для размещения итога:"/>
+                <TextBox 
+                    x:Name="PathTo"
+                    Grid.Column="1"
+                    Grid.Row="2"
+                    Text="{Binding SharedPathTo}"/>
+            </Grid>
+            <!--Блок основных глобальных настроек -->
+            
+            <Separator />
+            
+            <!--Блок дополнительных настроек (соответсвует наследникам DBConfigEntity)-->
+            <TextBlock 
+                Text="Настройки экспорта в зависимости от назначения"
+                Margin="0,0,0,5" 
+                FontWeight="Bold" 
+                FontSize="14"
+                Foreground="White"/>
+            
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.4*"/>
+                    <ColumnDefinition Width="0.01*"/>
+                    <ColumnDefinition Width="0.59*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="15"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!--Доп настройки-->
+                <TextBlock 
+                    Grid.Column="0"
+                    Grid.Row="0"
+                    Text="Дополнительные настройки:"/>
+                <ContentPresenter
+                    Grid.Column="0"
+                    Grid.Row="1"
+                    Content="{Binding SelectedConfig}">
+                    <ContentPresenter.Resources>
+                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
+                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
+                        </DataTemplate>-->
+                        <!--Создается новый UserControl, и привязывается по аналогии. Потом в SetExtraSettings() выбираем нужный-->
+                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
+                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
+                        </DataTemplate>-->
+                    </ContentPresenter.Resources>
+                </ContentPresenter>
+                <!--Доп настройки-->
+
+                <!--Список файлов-->
+                <TextBlock 
+                    Grid.Column="2"
+                    Grid.Row="0"
+                    Text="Список папок/файлов для экспорта:"/>
+                <StackPanel  
+                    Name="ScrollStack"
+                    Grid.Column="2" 
+                    Grid.Row="1"
+                    MinHeight="300">
+                    <ScrollViewer 
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto"
+                        Height="{Binding ElementName=ScrollStack, Path=ActualHeight}">
+                        <ItemsControl 
+                            x:Name="fileWrapPanel"
+                            Margin="5"
+                            ItemsSource="{Binding FileEntitiesList}" 
+                            ItemTemplate="{StaticResource FileEntityTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Vertical"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                <!--Список файлов-->
+
+            </Grid>
+        <!--Блок дополнительных настроек (соответсвует наследникам DBConfigEntity)-->
+        </StackPanel>
+        <!--Блок с настройками конфигов-->
+
+        <!--Изменение список файлов-->
+        <Grid 
+            Grid.Column="1"
+            Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="50"/>
+            </Grid.ColumnDefinitions>
+            <Button 
+                x:Name="btnWindowsAddFile"
+                Grid.Column="0"
+                Content="🔍"
+                Padding="-5"
+                IsEnabled="True"
+                Style="{StaticResource UserActionBtns}"
+                Foreground="Green"
+                ToolTip="Добавить файл/-ы, выбрав их через проводник"
+                Click="OnWindowsAddFile"/>
+            <Button 
+                x:Name="btnHandleAddFile"
+                Grid.Column="1"
+                Content="✍🏻"
+                Padding="-5"
+                IsEnabled="True"
+                Style="{StaticResource UserActionBtns}"
+                Foreground="Green"
+                ToolTip="Добавить файл/-ы указав путь вручную. Актуально для RevitServer, и если нужно обрабоать ВСЕ файлы из конкрентной папки"
+                Click="OnBtnHandleAddFile"/>
+        </Grid>
+        <!--Изменение список файлов-->
+
+        <Separator 
+            Grid.Row="3"
+            Grid.ColumnSpan="2"/>
+        <!--Нижний блок кнопок-->
+        <Grid 
+            Grid.Row="4"
+            Grid.ColumnSpan="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.5*"/>
+                <ColumnDefinition Width="0.5*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel 
+                 Grid.Column="0"
+                 Orientation="Horizontal"
+                 HorizontalAlignment="Center">
+                <Button 
+                    x:Name="btnOk"
+                    Content="✔️"
+                    Style="{StaticResource UserActionBtns}"
+                    Foreground="Green"
+                    ToolTip="Подтвердить и сохранить изменения"
+                    Click="OnBtnOkClick"/>
+            </StackPanel>
+            <StackPanel 
+                 Grid.Column="1"
+                 Orientation="Horizontal"
+                 HorizontalAlignment="Center">
+                <Button 
+                    x:Name="btnCancel"
+                    Content="✖️"
+                    Style="{StaticResource UserActionBtns}"
+                    Foreground="Red"
+                    IsEnabled="True"
+                    ToolTip="Отменить изменения"
+                    Click="OnBtnCancelClick"/>
+            </StackPanel>
+        </Grid>
+        <!--Нижний блок кнопок-->
+
+    </Grid>
+</Window>

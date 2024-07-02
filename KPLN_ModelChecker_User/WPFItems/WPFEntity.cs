@@ -1,12 +1,11 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media;
-using static KPLN_ModelChecker_User.Common.Collections;
-using static KPLN_Loader.Output.Output;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.WPFItems
 {
@@ -28,13 +27,18 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// </summary>
         private string _header;
 
-        public WPFEntity(Element element, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
+        public WPFEntity(Element element, CheckStatus status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
         {
             Element = element;
             ElementId = element.Id;
-            if (Element is Room room) ElementName = room.Name;
-            else ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
-            CategoryName = element.Category.Name;
+            if (Element is Room room) 
+                ElementName = room.Name;
+            else 
+                ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
+            if (Element is Family family)
+                CategoryName = family.FamilyCategory.Name;
+            else
+                CategoryName = element.Category.Name;
             
             CurrentStatus = status;
             ErrorHeader = header;
@@ -49,7 +53,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             UpdateMainFieldByStatus(status);
         }
 
-        public WPFEntity(IEnumerable<Element> elements, Status status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
+        public WPFEntity(IEnumerable<Element> elements, CheckStatus status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
         {
             ElementCollection = elements;
             ElementIdCollection = elements.Select(e => e.Id);
@@ -173,7 +177,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Текущий статус ошибки
         /// </summary>
-        public Status CurrentStatus { get; private set; }
+        public CheckStatus CurrentStatus { get; private set; }
 
         /// <summary>
         /// Использовать кастомный зум?
@@ -211,24 +215,24 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Обновление основных визуальных разделителей единицы отчета
         /// </summary>
         /// <param name="status"></param>
-        public void UpdateMainFieldByStatus(Status status)
+        public void UpdateMainFieldByStatus(CheckStatus status)
         {
             CurrentStatus = status;
             switch (status)
             {
-                case Status.LittleWarning:
+                case CheckStatus.LittleWarning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 240, 90));
                     Header = "Обрати внимание: " + Header;
                     break;
-                case Status.Warning:
+                case CheckStatus.Warning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 180, 90));
                     Header = "Предупреждение: " + Header;
                     break;
-                case Status.Error:
+                case CheckStatus.Error:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 125, 125));
                     Header = "Ошибка: " + Header;
                     break;
-                case Status.Approve:
+                case CheckStatus.Approve:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 125, 105, 240));
                     Header = "Допустимое: " + Header;
                     break;

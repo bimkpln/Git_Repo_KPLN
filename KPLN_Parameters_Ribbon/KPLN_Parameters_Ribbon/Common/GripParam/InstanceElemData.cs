@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam
 {

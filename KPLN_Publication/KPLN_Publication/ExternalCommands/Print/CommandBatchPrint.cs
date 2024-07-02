@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
 namespace KPLN_Publication.ExternalCommands.Print
@@ -17,6 +15,21 @@ namespace KPLN_Publication.ExternalCommands.Print
     [Transaction(TransactionMode.Manual)]
     class CommandBatchPrint : IExternalCommand
     {
+        private static DBUser _currentDBUser;
+
+        internal static DBUser CurrentDBUser
+        {
+            get
+            {
+                if (_currentDBUser == null)
+                {
+                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+                    _currentDBUser = userDbService.GetCurrentDBUser();
+                }
+                return _currentDBUser;
+            }
+        }
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
@@ -98,7 +111,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 {
                     foreach(string listError in listErrors)
                     {
-                        KPLN_Loader.Output.Output.Print($"Ошибка: {listError}. Печать остановлена", KPLN_Loader.Preferences.MessageType.Error);
+                        KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput.Print($"Ошибка: {listError}. Печать остановлена", MessageType.Error);
                     }
                     return Result.Failed;
                 }
@@ -108,14 +121,13 @@ namespace KPLN_Publication.ExternalCommands.Print
                 //ProjectRating.Worker.Execute(commandData);
 
                 //очистка старых Schema при необходимости
+#if Revit2020
                 try
                 {
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch =
-                         Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD4"));
+                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD4"));
                     Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch, true);
 
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch2 =
-                         Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD5"));
+                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch2 = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD5"));
                     Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch2, true);
                     logger.Write("Schema очищены");
                 }
@@ -123,10 +135,10 @@ namespace KPLN_Publication.ExternalCommands.Print
                 {
                     logger.Write("Не удалось очистить Schema");
                 }
-
+#endif
 
                 YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings();
-                FormPrint form = new FormPrint(allSheets, printSettings);
+                FormPrint form = new FormPrint(allSheets, printSettings, CurrentDBUser);
                 form.ShowDialog();
 
                 if (form.DialogResult != System.Windows.Forms.DialogResult.OK) return Result.Cancelled;
@@ -234,8 +246,10 @@ namespace KPLN_Publication.ExternalCommands.Print
                             {
                                 logger.Write("Это файл совместной работы, открываю с отсоединением");
                                 ModelPath mpath = linkDoc.GetWorksharingCentralModelPath();
-                                OpenOptions oo = new OpenOptions();
-                                oo.DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets;
+                                OpenOptions oo = new OpenOptions
+                                {
+                                    DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
+                                };
                                 WorksetConfiguration wc = new WorksetConfiguration(WorksetConfigurationOption.OpenAllWorksets);
                                 oo.SetOpenWorksetsConfiguration(wc);
                                 rlt.Unload(new SaveCoordinates());
@@ -528,31 +542,6 @@ namespace KPLN_Publication.ExternalCommands.Print
                 PrintError(e, "Произошла ошибка во время запуска скрипта");
                 return Result.Failed;
             }
-        }
-
-        /// <summary>
-        /// Поиск ближайшей точки в формате - Max.X текущей основной надписи == 
-        /// </summary>
-        /// <param name="xyzTuplePoints">Коллекция для проверки</param>
-        /// <param name="checkPoint">Точка для проверки</param>
-        /// <returns></returns>
-        private XYZ FindNearestTitleMaxPointBySpecialPoint(List<Tuple<XYZ, XYZ>> xyzTuplePoints, XYZ checkPoint)
-        {
-            double minDistance = double.MaxValue;
-            XYZ nearestPoint = null;
-
-            foreach (var point in xyzTuplePoints)
-            {
-                double distance = point.Item1.DistanceTo(checkPoint);
-
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearestPoint = point.Item1;
-                }
-            }
-
-            return nearestPoint;
         }
     }
 }

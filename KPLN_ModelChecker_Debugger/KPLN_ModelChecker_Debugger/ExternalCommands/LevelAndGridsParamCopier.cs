@@ -1,9 +1,9 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_Debugger.ExternalCommands
 {
@@ -44,8 +44,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
             if (!linkGridDataElemColl.Any())
             {
-                Print("Не удалось получить оси и уровни из разбивочного файла. Нужно загрузить файл в проект. Если файлы подгружены, то скинь проблему разработчику", 
-                    KPLN_Loader.Preferences.MessageType.Error);
+                Print("Не удалось получить оси и уровни из разбивочного файла. Нужно загрузить файл в проект. Если файлы подгружены, то скинь проблему разработчику",
+                    MessageType.Error);
                 return Result.Cancelled;
             }
             #endregion
@@ -71,13 +71,13 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     if (!linkElemIds.Any())
                     {
                         Print($"На элемент {prjGrid.Name} id: {prjGrid.Id} не назначен мониторинг. Оси/уровни - должны быть с мониторингом",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
                     else if (linkElemIds.Count > 1)
                     {
                         Print($"На элемент {prjGrid.Name} id: {prjGrid.Id} мониторинг назначен более 1 раза. Это не допустимо",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
 
@@ -88,13 +88,13 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     if (equalLinkGridData.Equals(default(LinkGridData)))
                     {
                         Print($"Элемент {prjGrid.Name} id: {prjGrid.Id} - не существует в разб. файле. Проверь имена элементов вручную.",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
                     else if (equalLinkGridData.RevLinkInstance.Id != linkElemIds.FirstOrDefault())
                     {
                         Print($"Ошибка в назначении мониторинга для элемента {prjGrid.Name} id: {prjGrid.Id} - не из того файла скопирован элемент",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
                     #endregion
@@ -103,20 +103,20 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     if (sectionParam == null)
                     {
                         Print($"Элемент {prjGrid.Name} id: {prjGrid.Id} - не имеет нужного параметра ({_sectParamName}) для сепарации на секции. Добавь его параметром проекта из ФОП_КПЛН",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
                     Parameter sectionParamLink = equalLinkGridData.Element.LookupParameter(_sectParamName);
                     if (sectionParamLink == null)
                     {
                         Print($"Элемент {equalLinkGridData.Element.Name} из связи: {equalLinkGridData.RevLinkInstance.Name} - не имеет нужного параметра ({_sectParamName}) для сепарации на секции. Добавь его параметром проекта из ФОП_КПЛН",
-                            KPLN_Loader.Preferences.MessageType.Error);
+                            MessageType.Error);
                         return Result.Cancelled;
                     }
 
                     string sectionParamLinkData = sectionParamLink.AsString();
                     sectionParam.Set(sectionParamLinkData);
-
+                    
                     if (!string.IsNullOrEmpty(sectionParamLinkData))
                         resultGridSections.Add(sectionParamLinkData);
                 }

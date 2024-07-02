@@ -1,11 +1,9 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Classificator.ApplicationConfig;
-using Autodesk.Revit.DB.Architecture;
 
 namespace KPLN_Classificator
 {
@@ -47,11 +45,6 @@ namespace KPLN_Classificator
                 default:
                     output.PrintDebug("Не удалось определить тип параметра: " + parameter, Output.OutputMessageType.Error, debug);
                     break;
-            }
-
-            if(elemParamValue == null)
-            {
-                var a = 1;
             }
 
             return CheckUserStringInput(parameterValue, elemParamValue);
@@ -170,7 +163,7 @@ namespace KPLN_Classificator
                                     }
                                     catch (Exception)
                                     {
-                                        output.PrintDebug(string.Format("Значение параметра: \"{0}\" в классификаторе содержит операцию умножения (*), которое не было выполнено. Проверьте корректность заполнения конфигурационного файла. Значение не вписано в параметр: \"{1}\".", 
+                                        output.PrintDebug(string.Format("Значение параметра: \"{0}\" в классификаторе содержит операцию умножения (*), которое не было выполнено. Проверьте корректность заполнения конфигурационного файла. Значение не вписано в параметр: \"{1}\".",
                                             foundParamName, targetParamName), Output.OutputMessageType.Warning, debug);
                                         return rsl;
                                     }
@@ -195,7 +188,7 @@ namespace KPLN_Classificator
                     if (itemValue == null || itemValue.Length == 0)
                     {
                         output.PrintDebug(
-                            $"Не заполнено значение параметра: \"{item}\" у элемента: {elem.Name} с id: {elem.Id}. Значение не вписано в параметр: \"{targetParamName}\".", 
+                            $"Не заполнено значение параметра: \"{item}\" у элемента: {elem.Name} с id: {elem.Id}. Значение не вписано в параметр: \"{targetParamName}\".",
                             Output.OutputMessageType.Warning, debug);
                         return rsl;
                     }
@@ -222,7 +215,7 @@ namespace KPLN_Classificator
             }
             catch (Exception)
             {
-                output.PrintDebug(string.Format("Не удалось присвоить значение \"{0}\" параметру: \"{1}\" с типом данных: {2}. Элемент: {3} с id: {4}", 
+                output.PrintDebug(string.Format("Не удалось присвоить значение \"{0}\" параметру: \"{1}\" с типом данных: {2}. Элемент: {3} с id: {4}",
                     newValue, targetParamName, targetParam.StorageType.ToString(), elem.Name, elem.Id), Output.OutputMessageType.Warning, debug);
             }
             return rsl;
@@ -318,7 +311,7 @@ namespace KPLN_Classificator
                         "Проверь выборку (можно выбирать только моделируемые элементы), либо запусти на весь проект!", Output.OutputMessageType.Error);
                     return false;
                 }
-                
+
                 string familyName = getElemFamilyName(elem);
 
                 output.PrintDebug(string.Format("{0} : {1} : {2}", elem.Name, familyName, elem.Id.IntegerValue), Output.OutputMessageType.Regular, debug);
@@ -331,7 +324,7 @@ namespace KPLN_Classificator
                     else
                         output.PrintDebug(string.Format("Не удалось определить категорию из файла классификатора: {0}. Возможно, она введена неверно.", classificator.BuiltInName), Output.OutputMessageType.Error, debug);
                     if (!categoryCatch) continue;
-                    
+
                     bool familyNameCatch = nameChecker(classificator.FamilyName, familyName);
                     if (!familyNameCatch) continue;
 
@@ -363,7 +356,7 @@ namespace KPLN_Classificator
 
             if (familyName == null)
                 throw new Exception("Не удалось взять имя семейства! Обратись к разработчику");
-            
+
             return familyName;
         }
 
@@ -422,7 +415,8 @@ namespace KPLN_Classificator
             switch (p.StorageType)
             {
                 case StorageType.Double:
-                    return UnitUtils.ConvertFromInternalUnits(p.AsDouble(), p.DisplayUnitType).ToString();
+                    return UnitUtils.ConvertFromInternalUnits(p.AsDouble(), p.GetUnitTypeId()).ToString();
+                    //return UnitUtils.ConvertFromInternalUnits(p.AsDouble(), p.DisplayUnitType).ToString();
                 case StorageType.Integer:
                     return p.AsValueString();
                 case StorageType.String:

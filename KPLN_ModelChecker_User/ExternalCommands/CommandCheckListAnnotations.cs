@@ -8,14 +8,14 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckListAnnotations : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckListAnnotations : AbstrCheckCommand<CommandCheckListAnnotations>, IExternalCommand
     {
         /// <summary>
         /// Список категорий для анализа
@@ -38,29 +38,32 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "012_",
             "020_Эквив",
             "022_",
+            "020_Эквив",
             "023_",
             "024_",
             "070_",
             "099_"
         };
 
+        public CommandCheckListAnnotations() : base()
+        {
+        }
+
+        internal CommandCheckListAnnotations(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            _name = "Проверка листов на аннотации";
-            _application = uiapp;
-
-            _allStorageName = "KPLN_CheckAnnotation";
-            
-            _lastRunGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898");
-            _userTextGuid = new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2899");
+            _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -97,11 +100,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     List<WPFEntity> wpfColl = new List<WPFEntity>();
                     foreach (ViewSheet viewSheet in sheetsList)
                     {
-                        IEnumerable<WPFEntity> annColl = CheckCommandRunner(doc, FindAllAnnotationsOnList(doc, viewSheet));
+                        WPFEntity[] annColl = CheckCommandRunner(doc, FindAllAnnotationsOnList(doc, viewSheet));
                         if (annColl != null)
                             wpfColl.AddRange(annColl);
                     }
-                    OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+                    OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl.ToArray());
                     if (form != null)
                     {
                         form.Show();
@@ -113,11 +116,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 else if (activeView.Category.Id.IntegerValue.Equals((int)BuiltInCategory.OST_Sheets))
                 {
                     ViewSheet viewSheet = activeView as ViewSheet;
-                    IEnumerable<Element> annColl = FindAllAnnotationsOnList(doc, viewSheet);
+                    Element[] annColl = FindAllAnnotationsOnList(doc, viewSheet);
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
 
                 // Анализирую вид
@@ -127,15 +130,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     QuickShowResult(uidoc, annColl);
 
                     // Провожу фиксацию запуска отдельно от вшитого в OutputMainForm
-                    ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESBuilderRun, DateTime.Now));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
                 }
             }
             catch (Exception ex)
             {
                 if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message} \nStackTrace: {ex.StackTrace}", MessageType.Header);
                 else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message} \nStackTrace: {ex.StackTrace}", MessageType.Header);
 
                 return Result.Cancelled;
             }
@@ -144,9 +147,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl) => null;
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             if (elemColl.Any())
             {
@@ -172,7 +175,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 result.Add(new WPFEntity(
                     elemColl,
-                    Status.Error,
+                    CheckStatus.Error,
                     "Недопустимые аннотации",
                     "Данные элементы запрещено использовать на моделируемых видах",
                     false,
@@ -225,7 +228,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на листах и записи в коллекцию или словарь (в зависимости от количества выбранных листов)
         /// </summary>
-        private IEnumerable<Element> FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet)
+        private Element[] FindAllAnnotationsOnList(Document doc, ViewSheet viewSheet)
         {
             List<Element> result = new List<Element>();
 
@@ -246,7 +249,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            return result;
+            return result.ToArray();
         }
 
         /// <summary>

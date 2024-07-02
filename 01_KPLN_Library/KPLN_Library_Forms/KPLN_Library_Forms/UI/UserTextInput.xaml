@@ -6,8 +6,16 @@
         xmlns:local="clr-namespace:KPLN_Library_Forms.UI"
         mc:Ignorable="d" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
-        Title="KPLN: Комментарий" Width="400" Height="200"  Background="#FF292D36" WindowStartupLocation="CenterOwner" 
-            ResizeMode="NoResize" WindowStyle="ToolWindow" Topmost="True" Closing="Window_Closing" Loaded="OnLoaded">
+        Title="KPLN: Комментарий" 
+        Width="400" 
+        Height="200"  
+        Background="#FF292D36" 
+        WindowStartupLocation="CenterOwner" 
+        ResizeMode="NoResize" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        Closing="Window_Closing" 
+        Loaded="OnLoaded">
     <Window.Resources>
         <Style TargetType="TextBox" x:Key="BX">
             <Setter Property="Background" Value="#FF292D36"/>
@@ -18,6 +26,7 @@
             <Setter Property="Background" Value="{x:Null}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Margin" Value="5,0,0,0"/>
             <Setter Property="Padding" Value="5,0,5,0"/>
@@ -28,6 +37,7 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
     </Window.Resources>
+
     <Grid Margin="5">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -37,12 +47,29 @@
         <Grid.Resources>
             <local:IntToBoolConverter x:Key="IntToBoolConverter"/>
         </Grid.Resources>
-        <TextBlock x:Name="tbHeader" Style="{StaticResource TXT}" Text="Задаётся через конструктор!" TextWrapping="Wrap" Margin="0,5,0,5" Grid.Row="0" FontWeight="Bold"/>
-        <TextBox x:Name="tBox" Style="{StaticResource BX}" Grid.Row="1" TextWrapping="Wrap"/>
-        <Button x:Name="btnApply" Margin="0,5,0,0" Grid.Row="2" 
-                Style="{StaticResource BTN}" IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" 
-                HorizontalAlignment="Left" VerticalAlignment="Top" 
-                ToolTip="Действие необходимо подтверждать развернутым комментарием (более 5 символов)" Content="Применить"
-                Click="OnBtnApply" IsDefault="True"/>
+
+        <TextBlock 
+            x:Name="tbHeader" 
+            Grid.Row="0" 
+            Style="{StaticResource TXT}" 
+            Text="Задаётся через конструктор!" 
+            FontWeight="Bold"/>
+
+        <TextBox 
+            x:Name="tBox" 
+            Grid.Row="1" 
+            Style="{StaticResource BX}" 
+            TextWrapping="Wrap"/>
+
+        <Button 
+            x:Name="btnApply" 
+            Grid.Row="2" 
+            Style="{StaticResource BTN}" 
+            IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" 
+            HorizontalAlignment="Left" 
+            ToolTip="Действие необходимо подтверждать развернутым комментарием (более 5 символов)" 
+            Content="Применить"
+            Click="OnBtnApply" 
+            IsDefault="True"/>
     </Grid>
 </Window>

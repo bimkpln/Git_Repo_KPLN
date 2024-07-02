@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
@@ -9,13 +9,14 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
+using KPLN_ModelChecker_Lib;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckFlatsArea : AbstrCheckCommand, IExternalCommand
+    internal class CommandCheckFlatsArea : AbstrCheckCommand<CommandCheckFlatsArea>, IExternalCommand
     {
         #region Инициализация полей
         /// <summary>
@@ -64,41 +65,41 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         };
         #endregion
 
+        public CommandCheckFlatsArea() : base()
+        {
+        }
+
+        internal CommandCheckFlatsArea(ExtensibleStorageEntity esEntity) : base(esEntity)
+        {
+        }
+        
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return Execute(commandData.Application);
+            return ExecuteByUIApp(commandData.Application);
         }
 
-        internal override Result Execute(UIApplication uiapp)
+        public override Result ExecuteByUIApp(UIApplication uiapp)
         {
-            _name = "Проверка помещений";
-            _application = uiapp;
-
-            _allStorageName = "KPLN_CheckFlatsArea";
-            _markerFieldName = "kpln_ar_area";
-
-            _markerGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA149");
-            _lastRunGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA150");
-            _userTextGuid = new Guid("720080C5-DA99-40D7-9445-E53F288AA151");
-
-            // Из-за сторонней библиотеки - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
-            _esBuildergMarker = new ExtensibleStorageBuilder(_markerGuid, _markerFieldName, "storage");
+            _uiApp = uiapp;
+            // Из-за сторонней библиотеки (на python) - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
+            ESEntity.ESBuildergMarker = new ExtensibleStorageBuilder(ESEntity.MarkerGuid, ESEntity.MarkerFieldName, "storage");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            IEnumerable<Room> roomsColl = new FilteredElementCollector(doc)
+            Room[] roomsColl = new FilteredElementCollector(doc)
                     .OfCategory(BuiltInCategory.OST_Rooms)
                     .WhereElementIsNotElementType()
                     .Cast<Room>()
-                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0);
+                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0)
+                    .ToArray();
 
             #region Проверяю и обрабатываю элементы
-            IEnumerable<WPFEntity> wpfColl = CheckCommandRunner(doc, roomsColl);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, roomsColl);
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl, true);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -108,31 +109,36 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Failed;
         }
 
-        private protected override List<CheckCommandError> CheckElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl)
         {
-            if (!(elemColl.Any()))
-                throw new UserException("В проекте нет помещений.");
+            if (!(objColl.Any()))
+                throw new CheckerException("В проекте нет помещений.");
 
-            foreach (Element elem in elemColl)
+            foreach (object obj in objColl)
             {
-                if (!(elem is Room room)) _criticalErrorElemColl.Add(new CheckCommandError(elem, "Не помещение!"));
-                else
+                if (obj is Element element)
                 {
-                    List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
-                    tempColl.AddRange(_flatAreaParamDataColl);
-                    tempColl.AddRange(_roomAreaParamDataColl);
-
-                    foreach (RoomParamData rpc in tempColl)
+                    if (!(element is Room room))
+                        _errorCheckElemsColl.Append(new CheckCommandError(element, "Не помещение!"));
+                    else
                     {
-                        if (rpc.FirstParam != null)
-                            CheckParam(room, rpc.FirstParam);
-                        if (rpc.SecondParam != null)
-                            CheckParam(room, rpc.SecondParam);
+                        List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);
+                        tempColl.AddRange(_flatAreaParamDataColl);
+                        tempColl.AddRange(_roomAreaParamDataColl);
+
+                        foreach (RoomParamData rpc in tempColl)
+                        {
+                            if (rpc.FirstParam != null)
+                                CheckParam(room, rpc.FirstParam);
+                            if (rpc.SecondParam != null)
+                                CheckParam(room, rpc.SecondParam);
+                        }
                     }
                 }
+                else throw new Exception("Ошибка анализируемой коллекции");
             }
 
-            return null;
+            return Enumerable.Empty<CheckCommandError>();
         }
 
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)
@@ -140,7 +146,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             report.SetWPFEntityFiltration_ByErrorHeader();
         }
 
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, IEnumerable<Element> elemColl)
+        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> entities = new List<WPFEntity>();
 
@@ -152,14 +158,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
             entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
 
-            return entities.OrderBy(e => e.ElementId.IntegerValue);
+            return entities.OrderBy(e => e.ElementId.IntegerValue).ToList();
         }
 
         private void CheckParam(Room room, string paramName)
         {
             Parameter param = room.LookupParameter(paramName);
             if (param == null)
-                throw new Exception($"У помещений нет параметра: {paramName}");
+                throw new CheckerException($"У помещений нет параметра: {paramName}");
         }
 
         /// <summary>
@@ -274,15 +280,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     Parameter sParam = room.LookupParameter(_flatAreaSumParamData.SecondParam);
                     if (fParam.AsDouble() != sParam.AsDouble())
                     {
-                        Status currentStatus;
+                        CheckStatus currentStatus;
                         string approveComment = string.Empty;
-                        if (ESBuilderUserText.IsDataExists_Text((Element)room)) 
+                        if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room)) 
                         {
-                            currentStatus = Status.Approve;
-                            approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
+                            currentStatus = CheckStatus.Approve;
+                            approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                         }
                         else
-                            currentStatus = Status.Error;
+                            currentStatus = CheckStatus.Error;
                         
                         result.Add(new WPFEntity(
                             room,
@@ -319,15 +325,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
-                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
+                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
-                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
+                                currentStatus = CheckStatus.Approve;
+                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,
@@ -377,7 +383,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             result.Add(new WPFEntity(
                                 room,
-                                SetApproveStatusByUserComment(room, Status.Error),
+                                SetApproveStatusByUserComment(room, CheckStatus.Error),
                                 "Нарушение анализа данных",
                                 $"Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
                                 false,
@@ -392,7 +398,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         result.Add(new WPFEntity(
                             room,
-                            SetApproveStatusByUserComment(room, Status.Error),
+                            SetApproveStatusByUserComment(room, CheckStatus.Error),
                             "Нарушение имени/номера помещения",
                             $"Параметр \"{fpc.SecondParam}\" на стадии П был \"{fParamToString}\", сейчас - \"{sParamToString}\"",
                             false,
@@ -425,15 +431,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
-                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
+                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
-                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
+                                currentStatus = CheckStatus.Approve;
+                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,
@@ -474,15 +480,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            Status currentStatus;
+                            CheckStatus currentStatus;
                             string approveComment = string.Empty;
-                            if (ESBuilderUserText.IsDataExists_Text((Element)room))
+                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
                             {
-                                currentStatus = Status.Approve;
-                                approveComment = ESBuilderUserText.GetResMessage_Element((Element)room).Description;
+                                currentStatus = CheckStatus.Approve;
+                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
                             }
                             else
-                                currentStatus = Status.Error;
+                                currentStatus = CheckStatus.Error;
 
                             result.Add(new WPFEntity(
                                 room,
@@ -505,51 +511,5 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             return null;
         }
-
-        /// <summary>
-        ///  Расчте расстояния Дамерлоу-Левинштейна для текста
-        /// </summary>
-        private static int DamerauLevenshteinDistance(string firstText, string secondText)
-        {
-            var n = firstText.Length + 1;
-            var m = secondText.Length + 1;
-            var arrayD = new int[n, m];
-
-            for (var i = 0; i < n; i++)
-            {
-                arrayD[i, 0] = i;
-            }
-
-            for (var j = 0; j < m; j++)
-            {
-                arrayD[0, j] = j;
-            }
-
-            for (var i = 1; i < n; i++)
-            {
-                for (var j = 1; j < m; j++)
-                {
-                    var cost = firstText[i - 1] == secondText[j - 1] ? 0 : 1;
-
-                    arrayD[i, j] = Minimum(arrayD[i - 1, j] + 1,          // удаление
-                                            arrayD[i, j - 1] + 1,         // вставка
-                                            arrayD[i - 1, j - 1] + cost); // замена
-
-                    if (i > 1 && j > 1
-                        && firstText[i - 1] == secondText[j - 2]
-                        && firstText[i - 2] == secondText[j - 1])
-                    {
-                        arrayD[i, j] = Minimum(arrayD[i, j],
-                                           arrayD[i - 2, j - 2] + cost); // перестановка
-                    }
-                }
-            }
-
-            return arrayD[n - 1, m - 1];
-        }
-
-        private static int Minimum(int a, int b) => a < b ? a : b;
-
-        private static int Minimum(int a, int b, int c) => (a = a < b ? a : b) < c ? a : c;
     }
 }

@@ -65,28 +65,34 @@ namespace KPLN_Publication
                 " - Объединение листов в один PDF;\n" +
                 " - Авто именование PDF файлов по маске;\n\n";
             btnCreate.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=667"));
-            
+
             // Stacked items: Обновить спецификации, создание наборов публикаций и набор действий перед выдачей
             // Обновить спецификации
-            PushButtonData btnRefresh = new PushButtonData("RefreshSchedules", "Обновить\nспецификации", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandRefreshSchedules");
-            btnRefresh.LargeImage = PngImageSource("KPLN_Publication.Resources.UpdateBig.png");
-            btnRefresh.Image = PngImageSource("KPLN_Publication.Resources.UpdateSmall.png");
-            btnRefresh.ToolTip = "...";
-            btnRefresh.LongDescription = "Обновляет спецификации на листах";
-            
+            PushButtonData btnRefresh = new PushButtonData("RefreshSchedules", "Обновить\nспецификации", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandRefreshSchedules")
+            {
+                LargeImage = PngImageSource("KPLN_Publication.Resources.UpdateBig.png"),
+                Image = PngImageSource("KPLN_Publication.Resources.UpdateSmall.png"),
+                ToolTip = "...",
+                LongDescription = "Обновляет спецификации на листах"
+            };
+
             // Создание наборов публикаций
-            PushButtonData btnPublSets = new PushButtonData("CreatePublicationSets", "Менеджер\nнаборов", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandOpenSetManager");
-            btnPublSets.LargeImage = PngImageSource("KPLN_Publication.Resources.SetsBig.png");
-            btnPublSets.Image = PngImageSource("KPLN_Publication.Resources.SetsSmall.png");
-            btnPublSets.LongDescription = "Пакетно создает наборы публикации по определенным условиям";
-            btnPublSets.ToolTip = "Утилита для создания наборов видов и листов (для печати и экспорта DWG/BIM360)";
+            PushButtonData btnPublSets = new PushButtonData("CreatePublicationSets", "Менеджер\nнаборов", assemblyPath, "KPLN_Publication.ExternalCommands.BeforePublication.CommandOpenSetManager")
+            {
+                LargeImage = PngImageSource("KPLN_Publication.Resources.SetsBig.png"),
+                Image = PngImageSource("KPLN_Publication.Resources.SetsSmall.png"),
+                LongDescription = "Пакетно создает наборы публикации по определенным условиям",
+                ToolTip = "Утилита для создания наборов видов и листов (для печати и экспорта DWG/BIM360)"
+            };
             btnPublSets.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=666"));
-            
+
             // Набор действий перед выдачей
-            PulldownButtonData pullDownData = new PulldownButtonData("Перед выдачей", "Перед выдачей");
-            pullDownData.LargeImage = PngImageSource("KPLN_Publication.Resources.PublBig.png");
-            pullDownData.Image = PngImageSource("KPLN_Publication.Resources.PublSmall.png");
-            
+            PulldownButtonData pullDownData = new PulldownButtonData("Перед выдачей", "Перед выдачей")
+            {
+                LargeImage = PngImageSource("KPLN_Publication.Resources.PublBig.png"),
+                Image = PngImageSource("KPLN_Publication.Resources.PublSmall.png")
+            };
+
             // Stacked items: добавление элементов
             IList<RibbonItem> stackedGroup = panel1.AddStackedItems(btnRefresh, btnPublSets, pullDownData);
             PulldownButton pullDownPubl = stackedGroup[2] as PulldownButton;

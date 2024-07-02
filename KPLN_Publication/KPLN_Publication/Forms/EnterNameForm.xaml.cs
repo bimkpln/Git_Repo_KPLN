@@ -1,22 +1,7 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Publication.ExternalCommands.BeforePublication;
-using KPLN_Publication.ExternalCommands.Print;
 using KPLN_Publication.ExternalCommands.PublicationSet;
-using KPLN_Publication.Common;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace KPLN_Publication.Forms
 {
@@ -41,10 +26,10 @@ namespace KPLN_Publication.Forms
             }
             else
             {
-                KPLN_Loader.Preferences.CommandQueue.Enqueue(new CommandCreateSet(Elements, tb.Text));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandCreateSet(Elements, tb.Text));
                 Close();
             }
-            
+
         }
     }
 }

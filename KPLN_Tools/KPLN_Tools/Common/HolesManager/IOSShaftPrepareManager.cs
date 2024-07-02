@@ -1,9 +1,8 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.Common.HolesManager
 {
@@ -82,34 +81,36 @@ namespace KPLN_Tools.Common.HolesManager
 
                 Transform trans = linkedModel.GetTotalTransform();
                 BoundingBoxIntersectsFilter filter = CreateFilter(fiBBox, trans);
-
-                // Перевод координат отверстия на координаты связи
-                BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
+                if (filter != null)
                 {
-                    Min = trans.Inverse.OfPoint(fiBBox.Min),
-                    Max = trans.Inverse.OfPoint(fiBBox.Max),
-                };
+                    // Перевод координат отверстия на координаты связи
+                    BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
+                    {
+                        Min = trans.Inverse.OfPoint(fiBBox.Min),
+                        Max = trans.Inverse.OfPoint(fiBBox.Max),
+                    };
 
-                // Поиск перекрытий, которые пересекаются с расширенным отверстием
-                List<Element> arElemColl = new List<Element>();
+                    // Поиск перекрытий, которые пересекаются с расширенным отверстием
+                    List<Element> arElemColl = new List<Element>();
 
-                arElemColl.AddRange(new FilteredElementCollector(linkDoc)
-                    .OfClass(typeof(Floor))
-                    .WherePasses(filter)
-                    .Where(fl => fl.Name.StartsWith("00_") || fl.Name.StartsWith("KTS_00_"))
-                    .Cast<Floor>());
-                arElemColl.AddRange(new FilteredElementCollector(linkDoc)
-                    .OfClass(typeof(RoofBase))
-                    .WherePasses(filter)
-                    .Where(fl => fl.Name.StartsWith("01_"))
-                    .Cast<RoofBase>());
+                    arElemColl.AddRange(new FilteredElementCollector(linkDoc)
+                        .OfClass(typeof(Floor))
+                        .WherePasses(filter)
+                        .Where(fl => fl.Name.StartsWith("00_"))
+                        .Cast<Floor>());
+                    arElemColl.AddRange(new FilteredElementCollector(linkDoc)
+                        .OfClass(typeof(RoofBase))
+                        .WherePasses(filter)
+                        .Where(fl => fl.Name.StartsWith("01_"))
+                        .Cast<RoofBase>());
 
-                // Обработка пересекающихся перекрытий
-                if (arElemColl.Any())
-                {
-                    downBindElev = arElemColl.Min(e => ((Level)linkDoc.GetElement(e.LevelId)).Elevation);
-                    downHost = arElemColl.Where(e => ((Level)linkDoc.GetElement(e.LevelId)).Elevation == downBindElev).FirstOrDefault();
-                    rlvDist = fiBBox.Min.Z - downBindElev;
+                    // Обработка пересекающихся перекрытий
+                    if (arElemColl.Any())
+                    {
+                        downBindElev = arElemColl.Min(e => ((Level)linkDoc.GetElement(e.LevelId)).Elevation);
+                        downHost = arElemColl.Where(e => ((Level)linkDoc.GetElement(e.LevelId)).Elevation == downBindElev).FirstOrDefault();
+                        rlvDist = fiBBox.Min.Z - downBindElev;
+                    }
                 }
             }
 
@@ -152,6 +153,9 @@ namespace KPLN_Tools.Common.HolesManager
             Outline outline = new Outline(
                 transform.Inverse.OfPoint(new XYZ(sminX + 0.5, sminY + 0.5, bbox.Min.Z - 1)),
                 transform.Inverse.OfPoint(new XYZ(smaxX + 0.5, smaxY + 0.5, bbox.Max.Z + 1)));
+            
+            if (outline.IsEmpty)
+                return null;
 
             return new BoundingBoxIntersectsFilter(outline);
         }

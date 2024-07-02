@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Parameters_Ribbon.Common.GripParam;
@@ -6,7 +6,7 @@ using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
 {
@@ -21,46 +21,28 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             Document doc = uiapp.ActiveUIDocument.Document;
 
             AbstrGripBuilder gripBuilder = null;
-            int userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-            // Техническая подмена оазделов для режима тестирования
-            if (userDepartment == 6) { userDepartment = 4; }
-            
+            int userDepartment = Module.CurrentDBUser.SubDepartmentId;
             try
             {
                 string docPath = doc.Title.ToUpper();
                 // Посадить на конфиг под каждый файл
-                if (docPath.Contains("АР"))
+                if (userDepartment == 2 || userDepartment == 8 && docPath.Contains("АР"))
                 {
-                    if (docPath.Contains("ОБДН"))
-                    {
-                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция", 0.328, 3);
-                    }
-                    else if (docPath.Contains("ИЗМЛ"))
-                    {
+                    if (docPath.Contains("ИЗМЛ"))
                         gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
-                    }
                 }
-                else if (docPath.Contains("КР"))
+                else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("КР"))
                 {
-                    if (docPath.Contains("ОБДН"))
-                    {
-                        gripBuilder = new GripBuilder_AR(doc, "ОБДН", "О_Этаж", 1, "SMNX_Секция", 0.328, 3);
-                    }
-                    else if (docPath.Contains("ИЗМЛ"))
-                    {
+                    if (docPath.Contains("ИЗМЛ"))
                         gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция", 0.328, 10);
-                    }
                 }
-                else if ((docPath.Contains("ОВ") || docPath.Contains("ВК") || docPath.Contains("АУПТ") || docPath.Contains("ЭОМ") || docPath.Contains("СС") || docPath.Contains("АВ")))
+                else if (userDepartment == 4 || userDepartment == 5 || userDepartment == 6 || userDepartment == 7 || userDepartment == 8 && (docPath.Contains("ОВ") || docPath.Contains("ВК") || docPath.Contains("АУПТ") || docPath.Contains("ЭОМ") || docPath.Contains("СС") || docPath.Contains("АВ")))
                 {
                     if (docPath.Contains("ОБДН"))
-                    {
-                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", 1, "SMNX_Секция", 0.328, 3);
-                    }
-                    else if (docPath.Contains("ИЗМЛ"))
-                    {
+                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
+
+                    if (docPath.Contains("ИЗМЛ"))
                         gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
-                    }
                 }
                 else
                 {
@@ -98,8 +80,8 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                                 .Where(e => e.ErrorMessage.Equals(error))
                                 .Select(e => e.ErrorElement.Id.ToString()));
 
-                        Print($"{error} - для след. элементов:\n {errorIdColl}", 
-                            KPLN_Loader.Preferences.MessageType.Error);
+                        Print($"{error} - для след. элементов:\n {errorIdColl}",
+                            MessageType.Warning);
                     }
                 }
 
@@ -111,8 +93,8 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 if (gpe.ErrorElements == null)
                     msg = $"ОШИБКА:\n{gpe.ErrorMessage}";
                 else
-                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}\nДля элементов:\n{string.Join(", ", gpe.ErrorElements.Select(e => e.Id.ToString()))}";
-
+                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}\nДля элементов:\n{string.Join(", ",  gpe.ErrorElements.Select(e => e.Id.ToString()))}";
+                
                 TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
                 {
                     MainContent = msg,
@@ -129,16 +111,16 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 foreach (Exception e in hashAeS)
                 {
                     if (e is GripParamExection gpe)
-                        Print($"Прервано с ошибкой: {gpe.ErrorMessage}", KPLN_Loader.Preferences.MessageType.Error);
+                        Print($"Прервано с ошибкой: {gpe.ErrorMessage}", MessageType.Error);
                     else
-                        Print($"Прервано с ошибкой: {e}", KPLN_Loader.Preferences.MessageType.Error);
+                        Print($"Прервано с ошибкой: {e}", MessageType.Error);
                 }
 
                 return Result.Failed;
             }
             catch (Exception e)
             {
-                Print($"Прервано с ошибкой: {e}", KPLN_Loader.Preferences.MessageType.Error);
+                Print($"Прервано с ошибкой: {e}", MessageType.Error);
 
                 return Result.Failed;
             }

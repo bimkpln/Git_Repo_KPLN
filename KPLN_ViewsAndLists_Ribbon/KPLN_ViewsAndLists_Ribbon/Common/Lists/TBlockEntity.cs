@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System.Collections.Generic;
 
 namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
@@ -13,9 +13,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
             CurrentViewSheet = currentViewSheet;
             CurrentTBlocks = currentTBlocks;
         }
-
+        
         internal ViewSheet CurrentViewSheet { get; }
-
+        
         internal IEnumerable<Element> CurrentTBlocks { get; }
 
     }

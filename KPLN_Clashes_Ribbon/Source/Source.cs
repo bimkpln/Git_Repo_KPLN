@@ -5,34 +5,34 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using static KPLN_Clashes_Ribbon.Common.Collections;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Source
 {
     public class Source
     {
-        private static string AssemblyPath = new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName;
+        private static readonly string AssemblyPath = new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName;
         
-        public Source(Icon icon)
+        public Source(KPIcon icon)
         {
             switch (icon)
             {
-                case Icon.Report:
+                case KPIcon.Report:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_default.png");
                     break;
-                case Icon.Report_Closed:
+                case KPIcon.Report_Closed:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_closed.png");
                     break;
-                case Icon.Report_New:
+                case KPIcon.Report_New:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_new.png");
                     break;
-                case Icon.Instance:
+                case KPIcon.Instance:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance.png");
                     break;
-                case Icon.Instance_Closed:
+                case KPIcon.Instance_Closed:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_closed.png");
                     break;
-                case Icon.Instance_Delegated:
+                case KPIcon.Instance_Delegated:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_delegated.png");
                     break;
             }

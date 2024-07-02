@@ -7,24 +7,24 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Publication.Common.Filters
 {
     public class WPFFilterElement : INotifyPropertyChanged
     {
         public Guid Guid = Guid.NewGuid();
-        private string _Number { get; set; }
+        private string _number;
         public string Number
         {
             get
             {
-                if (_Number == null) { return "-"; }
-                return _Number;
+                if (_number == null) { return "-"; }
+                return _number;
             }
             set
             {
-                _Number = value;
+                _number = value;
                 NotifyPropertyChanged();
             }
         }
@@ -47,7 +47,7 @@ namespace KPLN_Publication.Common.Filters
             //Print(string.Format("NotifyPropertyChanged (" + propertyName + ")"), KPLN_Loader.Preferences.MessageType.System_Regular);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        private ListBoxParameter _SelectedParameter { get; set; }
+        private ListBoxParameter _selectedParameter;
         public bool ElementPassesFilter(View view)
         {
             if (SelectedParameter.Parameter == null) { return true; }
@@ -87,7 +87,7 @@ namespace KPLN_Publication.Common.Filters
                                 if (v.EndsWith(SelectedValue)) { return true; }
                                 else { return false; }
                             default:
-                                Print("Тип равенства неопределен!", KPLN_Loader.Preferences.MessageType.Critical);
+                                Print("Тип равенства неопределен!", MessageType.Critical);
                                 return true;
                         }
                     }
@@ -99,63 +99,63 @@ namespace KPLN_Publication.Common.Filters
         {
             get
             {
-                return _SelectedParameter;
+                return _selectedParameter;
             }
             set
             {
-                _SelectedParameter = value;
+                _selectedParameter = value;
                 NotifyPropertyChanged();
             }
         }
-        private string _SelectedType { get; set; }
+        private string _selectedType;
         public string SelectedType
         {
             get
             {
-                return _SelectedType;
+                return _selectedType;
             }
             set
             {
-                _SelectedType = value;
+                _selectedType = value;
                 NotifyPropertyChanged();
             }
         }
-        private ObservableCollection<string> _Types { get; set; }
+        private ObservableCollection<string> _types;
         public ObservableCollection<string> Types
         {
             get
             {
-                return _Types;
+                return _types;
             }
             set
             {
-                _Types = value;
+                _types = value;
                 NotifyPropertyChanged();
             }
         }
-        private string _SelectedValue { get; set; }
+        private string _selectedValue;
         public string SelectedValue
         {
             get
             {
-                return _SelectedValue;
+                return _selectedValue;
             }
             set
             {
-                _SelectedValue = value;
+                _selectedValue = value;
                 NotifyPropertyChanged();
             }
         }
-        private ObservableCollection<string> _Values { get; set; }
+        private ObservableCollection<string> _values;
         public ObservableCollection<string> Values
         {
             get
             {
-                return _Values;
+                return _values;
             }
             set
             {
-                _Values = value;
+                _values = value;
                 NotifyPropertyChanged();
             }
         }

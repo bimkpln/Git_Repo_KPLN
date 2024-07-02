@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using System;
 
@@ -8,24 +10,29 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandWPFEntity_SetTimeRunLog : IExecutableCommand
     {
+        private readonly DBUser _currentDbUser;
         private readonly DateTime _closeTime;
         private readonly ExtensibleStorageBuilder _esBuilderRun;
+
 
         public CommandWPFEntity_SetTimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
         {
             _esBuilderRun = esBuilderRun;
             _closeTime = closeTime;
+
+            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
+            _currentDbUser = userDbService.GetCurrentDBUser();
         }
 
         public Result Execute(UIApplication app)
         {
+            // Игнорирую специалистов BIM-отдела
+            if (_currentDbUser.SubDepartmentId == 8) 
+                return Result.Cancelled;
+
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Время"))
             {
                 t.Start();
-
-                // Игнорирую специалистов BIM-отдела
-                int _userDepartment = KPLN_Loader.Preferences.User.Department.Id;
-                if (_userDepartment == 4) return Result.Cancelled;
 
                 //Получение объектов приложения и документа
                 Document doc = app.ActiveUIDocument.Document;

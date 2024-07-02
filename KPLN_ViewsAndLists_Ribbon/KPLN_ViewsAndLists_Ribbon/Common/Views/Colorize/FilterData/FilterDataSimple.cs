@@ -48,12 +48,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.Colorize.FilterData
                 string filterName = _filterNamePrefix + catsName + " " + paramName;
 
                 if (_criteriaType == CriteriaType.Equals)
-                    filterName = filterName + " равно ";
+                    filterName += " равно ";
                 else if (_criteriaType == CriteriaType.StartsWith)
-                    filterName = filterName + " нач.с ";
+                    filterName += " нач.с ";
                 filterName += mp.AsValueString();
 
-                ParameterFilterElement filter = FilterCreator.createSimpleFilter(doc, catsIds, filterName, mp, _criteriaType);
+                ParameterFilterElement filter = FilterCreator.CreateSimpleFilter(doc, catsIds, filterName, mp, _criteriaType);
                 if (filter == null) continue;
 
 

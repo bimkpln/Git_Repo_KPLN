@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Parameters_Ribbon.Forms;
 
@@ -44,7 +44,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 t.Start($"{_builder.DocMainTitle}: Параметры захваток_Host");
 
                 string format = $"{_builder.PbCounter} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
-                using (Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка парамтеров захваток по основанию", format, _builder.AllElementsCount, _builder.PbCounter))
+                using (Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка парамтеров захваток по геометрии", format, _builder.AllElementsCount, _builder.PbCounter))
                 {
                     _builder.ExecuteGripParams_ByHost(pb);
                 }

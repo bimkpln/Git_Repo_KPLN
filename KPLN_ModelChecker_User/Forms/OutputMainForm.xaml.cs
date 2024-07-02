@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
@@ -9,6 +9,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -67,8 +68,9 @@ namespace KPLN_ModelChecker_User.Forms
             InitializeCollectionViewSource();
             UpdateEntityList();
 
-            // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит)
-            if (_externalCommand == nameof(CommandCheckLinks)) this.RestartBtn.Visibility = Visibility.Collapsed;
+            // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
+            if (_externalCommand == nameof(CommandCheckLinks) || _externalCommand == nameof(CommandCheckFamilies)) 
+                this.RestartBtn.Visibility = Visibility.Collapsed;
         }
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
@@ -78,7 +80,7 @@ namespace KPLN_ModelChecker_User.Forms
             
             #region Настраиваю данные блока ключевого лога
             _esBuilderMarker = esBuilderMarker;
-            if (_esBuilderMarker.Guid != new Guid("00000000-0000-0000-0000-000000000000"))
+            if (!_esBuilderMarker.Guid.Equals(Guid.Empty))
             {
                 MarkerRow.Height = GridLength.Auto;
                 MarkerData.Text = creator.LogMarker;
@@ -110,13 +112,13 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 string selectedName = selectedContent.ToString();
                 if (selectedName == "Допустимое")
-                    e.Accepted = entity.CurrentStatus == Common.Collections.Status.Approve;
+                    e.Accepted = entity.CurrentStatus == Common.CheckCommandCollections.CheckStatus.Approve;
                 else if (chbxApproveShow.IsChecked is true)
                     e.Accepted = selectedName == "Необработанные предупреждения" || entity.FiltrationDescription == selectedName;
                 else if (selectedName == "Необработанные предупреждения")
-                    e.Accepted = entity.CurrentStatus != Common.Collections.Status.Approve;
+                    e.Accepted = entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
                 else
-                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.Collections.Status.Approve;
+                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
             }
         }
 
@@ -130,12 +132,11 @@ namespace KPLN_ModelChecker_User.Forms
                 _entityViewSource.View.Refresh();
                 txbCount.Text = _entityViewSource.View.Cast<WPFEntity>().Count().ToString();
             }
-
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
         }
 
         private void OnZoomClicked(object sender, RoutedEventArgs e)
@@ -146,12 +147,16 @@ namespace KPLN_ModelChecker_User.Forms
                 
                 if (wpfEntity.IsZoomElement)
                 {
-                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
-                    else ModuleData.CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null)
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                    else
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
                 }
                 else
-                    if (wpfEntity.Element != null) ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
-                    else ModuleData.CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
+                    if (wpfEntity.Element != null)
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                    else
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
             }
         }
 
@@ -166,7 +171,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                     if (userTextInput.Status == UIStatus.RunStatus.Run)
                     {
-                        ModuleData.CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
                     }
                 }
             }
@@ -182,10 +187,21 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
-
+            // Создаем тип
             Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
-            AbstrCheckCommand instance = Activator.CreateInstance(type) as AbstrCheckCommand;
-            instance.Execute(_application);
+
+            // Создаем экземпляр типа
+            object instance = Activator.CreateInstance(type);
+            
+            // Определяем метод ExecuteByUIApp
+            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+            if (executeMethod != null)
+                executeMethod.Invoke(instance, new object[] { _application });
+            else
+                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
+                
 
             this.Close();
         }
@@ -196,7 +212,7 @@ namespace KPLN_ModelChecker_User.Forms
         private void ExportBtn_Clicked(object sender, RoutedEventArgs e)
         {
             string path = WPFEntity_ExportToExcel.SetPath();
-            if (!string.IsNullOrEmpty(path)) WPFEntity_ExportToExcel.Run(path, _creator.CheckName, _entities);
+            if (!string.IsNullOrEmpty(path)) WPFEntity_ExportToExcel.Run(this, path, _creator.CheckName, _entities);
         }
 
         private void ChbxApproveShow_Clicked(object sender, RoutedEventArgs e)

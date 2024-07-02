@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.Common
@@ -10,7 +10,6 @@ namespace KPLN_ModelChecker_User.Common
     {
         private List<XYZ> _currentLocationColl = new List<XYZ>();
 
-
         public CheckHolesMEPData(Element elem, RevitLinkInstance linkInstance) : base(elem, linkInstance)
         {
         }
@@ -18,8 +17,8 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Коллеция точек элемента в пространстве, с поправкой на координаты
         /// </summary>
-        public List<XYZ> CurrentLocationColl 
-        { 
+        public List<XYZ> CurrentLocationColl
+        {
             get => _currentLocationColl;
             set
             {

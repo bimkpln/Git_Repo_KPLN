@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.Collections;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.WPFItems
 {
@@ -12,7 +12,7 @@ namespace KPLN_ModelChecker_User.WPFItems
     {
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun)
         {
-            WPFEntityCollection = wpfEntityColl;
+            WPFEntityCollection = wpfEntityColl.OrderBy(w => w.CurrentStatus);
             int counter = 0;
             foreach (WPFEntity w in WPFEntityCollection)
                 w.Header = $"#{++counter} {w.Header}";
@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             LogLastRun = logLastRun;
 
             FiltrationCollection = new HashSet<string>() { "Необработанные предупреждения" };
-            if (wpfEntityColl.FirstOrDefault(w => w.CurrentStatus == Status.Approve) != null) FiltrationCollection.Add("Допустимое");
+            if (WPFEntityCollection.FirstOrDefault(w => w.CurrentStatus == CheckStatus.Approve) != null) FiltrationCollection.Add("Допустимое");
         }
 
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun, string logMarker) : this(wpfEntityColl, checkName, logLastRun)
@@ -80,19 +80,19 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 switch (w.CurrentStatus)
                 {
-                    case Status.AllmostOk:
+                    case CheckStatus.AllmostOk:
                         w.FiltrationDescription = "Почти хорошо";
                         break;
-                    case Status.LittleWarning:
+                    case CheckStatus.LittleWarning:
                         w.FiltrationDescription = "Обрати внимание";
                         break;
-                    case Status.Warning:
+                    case CheckStatus.Warning:
                         w.FiltrationDescription = "Предупреждение";
                         break;
-                    case Status.Error:
+                    case CheckStatus.Error:
                         w.FiltrationDescription = "Ошибка";
                         break;
-                    case Status.Approve:
+                    case CheckStatus.Approve:
                         w.FiltrationDescription = "Допустимое";
                         break;
                 }

@@ -1,10 +1,10 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib;
 using System;
 using System.Collections.Generic;
-using static KPLN_Loader.Output.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -28,7 +28,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     foreach (LevelAndGridSolid sectDataSolid in sectDataSolids)
                     {
                         DirectShape directShape = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_GenericModel));
-                        directShape.AppendShape(new GeometryObject[] { sectDataSolid.LevelSolid });
+                        directShape.AppendShape(new GeometryObject[] { sectDataSolid.CurrentlSolid });
                         directShape.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).Set($"Секция: {sectDataSolid.GridData.CurrentSection}. Этаж: {sectDataSolid.CurrentLevelData.CurrentLevelNumber}");
                     }
 
@@ -48,9 +48,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
 
                 else if (ex.InnerException != null)
-                    Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
                 else
-                    Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", KPLN_Loader.Preferences.MessageType.Error);
+                    Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
 
                 return Result.Cancelled;
             }

@@ -71,8 +71,8 @@
                          FontStretch="ExtraExpanded" PasswordChanged="PasswordText_Changed"/>
         </DockPanel>
 
-        <GridSplitter  Grid.Row="0" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"></GridSplitter>
-        
+        <GridSplitter Grid.Row="0" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"/>
+
         <Button x:Name="Run" Style="{StaticResource BTN}" Background="Orange" Grid.Row="2" Content="Выполнить команду" Click="OnRunClick"/>
     
     </Grid>

@@ -1,12 +1,11 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using static KPLN_Loader.Output.Output;
-using static KPLN_Loader.Preferences;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.ExecutableCommand
 {
@@ -42,7 +41,7 @@ namespace KPLN_Tools.ExecutableCommand
                     {
                         Parameter modelParam = modelElement.GetParameters(paramRule.SelectedTargetParameter.Definition.Name).FirstOrDefault();
                         Parameter linkParam = linkElement.GetParameters(paramRule.SelectedSourceParameter.Definition.Name).FirstOrDefault();
-                        if (modelParam != null && linkParam != null)
+                        if (linkParam != null && modelParam != null)
                         {
                             string modelParamData = GetStringDataFromParam(modelParam);
                             string linkParamData = GetStringDataFromParam(linkParam);
@@ -50,7 +49,7 @@ namespace KPLN_Tools.ExecutableCommand
                             {
                                 string errorMsg = $"У элемента твоей модели парамтер '{modelParam.Definition.Name}' имеет значение '{modelParamData}', " +
                                     $"а параметр из связи '{linkParam.Definition.Name}' имеет значение '{linkParamData}'. " +
-                                    $"Id твоего элемента: {modelParam.Id}, Id элемента из связи: {linkParam.Id}";
+                                    $"Id твоего элемента: {modelElement.Id}, Id элемента из связи: {linkElement.Id}";
                                 _localErrors.Add(errorMsg);
                             }
                         }

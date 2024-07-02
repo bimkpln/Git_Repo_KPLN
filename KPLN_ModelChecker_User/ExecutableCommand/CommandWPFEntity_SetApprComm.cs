@@ -27,10 +27,16 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
                 //Получение объектов приложения и документа
                 ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esText.Guid, _esText.FieldName, _esText.StorageName);
-                esBuilder.SetStorageDataWithSeparator_TextLog(_wpfEntity.Element, app.Application.Username, _description);
+                if (_wpfEntity.Element != null)
+                    esBuilder.SetStorageDataWithSeparator_TextLog(_wpfEntity.Element, app.Application.Username, _description);
+                else
+                    foreach (Element elem in _wpfEntity.ElementCollection)
+                    {
+                        esBuilder.SetStorageDataWithSeparator_TextLog(elem, app.Application.Username, _description);
+                    }
 
                 //Обновление данных на wpf-элементе
-                _wpfEntity.UpdateMainFieldByStatus(Common.Collections.Status.Approve);
+                _wpfEntity.UpdateMainFieldByStatus(Common.CheckCommandCollections.CheckStatus.Approve);
                 _wpfEntity.ApproveComment = _description;
 
                 t.Commit();

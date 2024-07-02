@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using KPLN_Loader.Output;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using KPLN_Finishing.CommandTools;
 using System;
 using System.Collections.Generic;
@@ -51,7 +51,7 @@ namespace KPLN_Finishing.Forms
             }
             catch (Exception e)
             {
-                Output.PrintError(e);
+                PrintError(e);
             }
         }
         private bool IsChecked(System.Windows.Controls.CheckBox box)
@@ -67,7 +67,7 @@ namespace KPLN_Finishing.Forms
             }
             catch (Exception e)
             {
-                Output.PrintError(e);
+                PrintError(e);
             }
         }
         private void UpdatePeview()
@@ -303,7 +303,7 @@ namespace KPLN_Finishing.Forms
             try
             { UpdatePeview(); }
             catch (Exception e)
-            { Output.PrintError(e); }
+            { PrintError(e); }
         }
         private void OnOk(object sender, RoutedEventArgs e)
         {
@@ -919,10 +919,10 @@ namespace KPLN_Finishing.Forms
                             room.LookupParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст").Set(PlinthsArea);
                         }
                     }
-                    catch (Exception e) { Output.PrintError(e); }
+                    catch (Exception e) { PrintError(e); }
                 }
             }
-            catch (Exception e) { Output.PrintError(e); }
+            catch (Exception e) { PrintError(e); }
         }
     }
     public class MetaRoom

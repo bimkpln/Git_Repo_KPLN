@@ -41,52 +41,11 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
             {
                 t.Start();
 
-                if (_elementCollection != null) PrepareAndSetView(app, _elementCollection);
+                if (_elementCollection != null) 
+                    PrepareAndSetView(app, _elementCollection);
                 else
-                {
-                    // Анлиз размеров (только их!), размещенных на легенде
-                    if (_element is Dimension dim)
-                    {
-                        // Легенды Ревит не умеет подбирать. Добавлен вывод на экран сообщения, чтобы открыли вид вручную
-                        app.DialogBoxShowing += new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
-                        app.ActiveUIDocument.ShowElements(_element);
-                        app.DialogBoxShowing -= new EventHandler<DialogBoxShowingEventArgs>(DialogBox);
-
-                        View appView = app.ActiveUIDocument.ActiveView;
-                        View dimView = dim.View;
-
-                        if (appView == null && dimView == null)
-                        {
-                            TaskDialog.Show("KPLN", $"У размера с ID: {dim.Id} нет вида. Обратись в BIM-отдел!");
-
-                            return Result.Cancelled;
-                        }
-
-                        if (appView.Id != dimView.Id)
-                        {
-                            if (dim.View is ViewPlan viewPlan)
-                            if (viewPlan != null)
-                            {
-                                ReferenceArray refArray = dim.References;
-                                StringBuilder stringBuilder = new StringBuilder(refArray.Size);
-                                foreach (Reference refItem in refArray)
-                                {
-                                    stringBuilder.Append($"{refItem.ElementId}/");
-                                }
-
-                                TaskDialog.Show("KPLN", $"Размер скрыт из-за скрытия элементов, на которые он размещен. " +
-                                    $"Чтобы его найти, нужно чтобы основы размера были видны на плане: {viewPlan.Name}." +
-                                    $"\nId элементов основы: {stringBuilder.ToString().TrimEnd('/')}");
-                            }
-                            else
-                            {
-                                TaskDialog.Show("KPLN", $"Открой легенду ({dimView.Name}) вручную.");
-                            }
-                        }
-                    }
-                    else PrepareAndSetView(app, _element, _box, _centroid);
-                }
-
+                    PrepareAndSetView(app, _element, _box, _centroid);
+                
                 t.Commit();
             }
 
@@ -108,6 +67,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 {
                     // Создание и применение подрезки
                     BoundingBoxXYZ sectionBox = PrepareElemsSumBBox(elemColl);
+                    if (sectionBox == null) return;
+
                     activeView.SetSectionBox(sectionBox);
 
                     // Создание и применение ориентации вида
@@ -210,46 +171,53 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         /// </summary>
         private BoundingBoxXYZ PrepareElemsSumBBox(IEnumerable<Element> elemColl)
         {
-            double minX = double.MaxValue;
-            double minY = double.MaxValue;
-            double minZ = double.MaxValue;
-            double maxX = double.MinValue;
-            double maxY = double.MinValue;
-            double maxZ = double.MinValue;
+            List<XYZ> xyzColl = new List<XYZ>();
             foreach (Element elem in elemColl)
             {
-                BoundingBoxXYZ elemBbox = PrepareElemBBox(elem);
-                if (elemBbox != null)
+                if (elem.Location is Location location)
                 {
-                    #region Получаю минимальную точку в каждой плоскости
-                    XYZ bboxmim = elemBbox.Min;
-                    double tminX = Math.Min(minX, bboxmim.X);
-                    double tminY = Math.Min(minY, bboxmim.Y);
-                    double tminZ = Math.Min(minZ, bboxmim.Z);
-                    if (tminX < minX) minX = tminX;
-                    if (tminY < minY) minY = tminY;
-                    if (tminZ < minZ) minZ = tminZ;
-                    #endregion
-
-                    #region Получаю максимальную точку в каждой плоскости
-                    XYZ bboxMax = elemBbox.Max;
-                    double tmaxX = Math.Max(maxX, bboxMax.X);
-                    double tmaxY = Math.Max(maxY, bboxMax.Y);
-                    double tmaxZ = Math.Max(maxZ, bboxMax.Z);
-                    if (tmaxX > maxX) maxX = tmaxX;
-                    if (tmaxY > maxY) maxY = tmaxY;
-                    if (tmaxZ > maxZ) maxZ = tmaxZ;
-                    #endregion
+                    if (location is LocationPoint locPnt)
+                        xyzColl.Add(locPnt.Point);
+                    else if (location is LocationCurve locCrv)
+                    {
+                        xyzColl.Add(locCrv.Curve.GetEndPoint(0));
+                        xyzColl.Add(locCrv.Curve.GetEndPoint(1));
+                    }
                 }
             }
 
-            if (minX == minY || minX == minZ || maxX == maxY || maxX == maxZ) return null;
-
-            return new BoundingBoxXYZ
+            if (xyzColl.Count > 0)
             {
-                Min = new XYZ(minX, minY, minZ) + new XYZ(-1, -1, -5),
-                Max = new XYZ(maxX, maxY, maxZ) + new XYZ(1, 1, 5)
-            };
+                XYZ minPoint = null;
+                XYZ maxPoint = null;
+
+                foreach (XYZ point in xyzColl)
+                {
+                    if (minPoint == null)
+                    {
+                        minPoint = point;
+                        maxPoint = point;
+                    }
+                    else
+                    {
+                        if (point.X < minPoint.X) minPoint = new XYZ(point.X, minPoint.Y, minPoint.Z);
+                        if (point.Y < minPoint.Y) minPoint = new XYZ(minPoint.X, point.Y, minPoint.Z);
+                        if (point.Z < minPoint.Z) minPoint = new XYZ(minPoint.X, minPoint.Y, point.Z);
+
+                        if (point.X > maxPoint.X) maxPoint = new XYZ(point.X, maxPoint.Y, maxPoint.Z);
+                        if (point.Y > maxPoint.Y) maxPoint = new XYZ(maxPoint.X, point.Y, maxPoint.Z);
+                        if (point.Z > maxPoint.Z) maxPoint = new XYZ(maxPoint.X, maxPoint.Y, point.Z);
+                    }
+                }
+
+                return new BoundingBoxXYZ
+                {
+                    Min = minPoint + new XYZ(-1, -1, -5),
+                    Max = maxPoint + new XYZ(1, 1, 5)
+                };
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -257,11 +225,11 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         /// </summary>
         private BoundingBoxXYZ PrepareElemBBox(Element elem)
         {
-            GeometryElement geomElem = elem
-                    .get_Geometry(new Options()
-                    {
-                        DetailLevel = ViewDetailLevel.Fine,
-                    });
+            BoundingBoxXYZ result = new BoundingBoxXYZ();
+
+            Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
+            opt.ComputeReferences = true;
+            GeometryElement geomElem = elem.get_Geometry(opt);
 
             Solid currentSolid = null;
             foreach (GeometryObject gObj in geomElem)
@@ -286,30 +254,17 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 else 
                     throw new Exception($"Не удалось получить геометрию у элемента с id: {elem.Id}");
 
-                BoundingBoxXYZ bbox = currentSolid.GetBoundingBox();
-                Transform transform = bbox.Transform;
-                BoundingBoxXYZ result = new BoundingBoxXYZ()
+                if (currentSolid != null)
                 {
-                    Max = transform.OfPoint(bbox.Max),
-                    Min = transform.OfPoint(bbox.Min),
-                };
+                    BoundingBoxXYZ bbox = currentSolid.GetBoundingBox();
+                    Transform transform = bbox.Transform;
+                    result.Max = transform.OfPoint(bbox.Max);
+                    result.Min = transform.OfPoint(bbox.Min);
+                }
 
-                return result;
             }
 
-            return null;
-        }
-
-        /// <summary>
-        /// Закрывает окно с ошибкой об открытии легенды
-        /// </summary>
-        private void DialogBox(object sender, DialogBoxShowingEventArgs args)
-        {
-            TaskDialogShowingEventArgs td = args as TaskDialogShowingEventArgs;
-            if (td.Message.Equals("Невозможно подобрать подходящий вид."))
-            {
-                args.OverrideResult(1);
-            }
+            return result;
         }
     }
 }
