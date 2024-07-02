@@ -9,6 +9,9 @@ using System.Windows;
 using System.Windows.Controls;
 using KPLN_Tools.ExternalCommands;
 using System.Xml.Linq;
+using System.Windows.Documents;
+using static System.Net.Mime.MediaTypeNames;
+using System.Windows.Forms;
 
 
 namespace KPLN_Tools.Forms
@@ -20,6 +23,9 @@ namespace KPLN_Tools.Forms
     {
         private Document _doc;
         public Dictionary<string, List<ElementId>> ElementsByLevel { get; set; }
+
+        public static string listLevelExportElement;
+        public static string listLevelImportElement;
 
         bool conditionsTopLevel;
 
@@ -80,17 +86,24 @@ namespace KPLN_Tools.Forms
         {
             string selectedKey = LevelExport.SelectedItem as string;
 
+            listLevelExportElement = "";
+
             if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
             {
                 List<ElementId> elements = ElementsByLevel[selectedKey];
-
-                LevelExportElementList.Text = "";
-
+           
                 foreach (ElementId elementID in elements)
                 {
                     Element element = _doc.GetElement(elementID);
-                    LevelExportElementList.Text += $"ID: {elementID}; ИМЯ: {element.Name}\n";
+                    listLevelExportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
                 }
+
+                System.Windows.Controls.RichTextBox levelExportElementListRTB = LevelExportElementList;
+                levelExportElementListRTB.Document.Blocks.Clear();
+
+                Paragraph paragraphLEChanges = new Paragraph();
+                paragraphLEChanges.Inlines.Add(new Run(listLevelExportElement));
+                LevelExportElementList.Document.Blocks.Add(paragraphLEChanges);
             }
         }
 
@@ -99,37 +112,53 @@ namespace KPLN_Tools.Forms
         {
             string selectedKey = levelImport.SelectedItem as string;
 
+            listLevelImportElement = "";
+
             if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
             {
-                List<ElementId> elements = ElementsByLevel[selectedKey];
-
-                LevelImportElementList.Text = "";
+                List<ElementId> elements = ElementsByLevel[selectedKey];              
 
                 foreach (ElementId elementID in elements)
                 {
                     Element element = _doc.GetElement(elementID);
-                    LevelImportElementList.Text += $"ID: {elementID}; ИМЯ: {element.Name}\n";
+                    listLevelImportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
                 }
+
+                LevelImportElementList.Document.Blocks.Clear();
+                Paragraph paragraphLIChanges = new Paragraph();
+                paragraphLIChanges.Inlines.Add(new Run(listLevelImportElement));
+                LevelImportElementList.Document.Blocks.Add(paragraphLIChanges);
             }
         }
 
         // XAML: обновление содержимого списков LevelExport и LevelImport
         private void ElementLevelListName()
         {
-            LevelExportElementList.Text = "";
-            LevelImportElementList.Text = "";
+            listLevelExportElement = "";
+            listLevelImportElement = "";
 
             foreach (ElementId elementID in ElementsByLevel[LevelExport.SelectedItem as string])
             {
                 Element element = _doc.GetElement(elementID);
-                LevelExportElementList.Text += $"ID: {elementID}; ИМЯ: {element.Name}\n";
+                listLevelExportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
             }
 
             foreach (ElementId elementID in ElementsByLevel[levelImport.SelectedItem as string])
             {
                 Element element = _doc.GetElement(elementID);
-                LevelImportElementList.Text += $"ID: {elementID}; ИМЯ: {element.Name}\n";
+                listLevelImportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
             }
+
+            LevelExportElementList.Document.Blocks.Clear();
+            LevelImportElementList.Document.Blocks.Clear();
+
+            Paragraph paragraphExport = new Paragraph();
+            paragraphExport.Inlines.Add(new Run(listLevelExportElement));
+            LevelExportElementList.Document.Blocks.Add(paragraphExport);
+
+            Paragraph paragraphImport = new Paragraph();
+            paragraphImport.Inlines.Add(new Run(listLevelImportElement));
+            LevelImportElementList.Document.Blocks.Add(paragraphImport);
         }  
 
         // Формула сдвига элемента на уровне
@@ -185,11 +214,11 @@ namespace KPLN_Tools.Forms
                         List<string> existingViewNames = new List<string>();
 
                         FilteredElementCollector collector = new FilteredElementCollector(_doc);
-                        ICollection<Element> views = collector.OfClass(typeof(View)).ToElements();
+                        ICollection<Element> views = collector.OfClass(typeof(Autodesk.Revit.DB.View)).ToElements();
 
                         foreach (Element view in views)
                         {
-                            View viewElement = view as View;
+                            Autodesk.Revit.DB.View viewElement = view as Autodesk.Revit.DB.View;
 
                             if (viewElement != null && !string.IsNullOrEmpty(viewElement.Name))
                             {
@@ -268,7 +297,7 @@ namespace KPLN_Tools.Forms
                 return false;
             }
 
-            if (LevelExportElementList.Text == "")
+            if (string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelExportElementList.Document.ContentStart, LevelExportElementList.Document.ContentEnd).Text))
             {
                 System.Windows.Forms.MessageBox.Show("На уровне-экспортере нет элементов", "Предупреждение",
                     System.Windows.Forms.MessageBoxButtons.OK,
@@ -306,7 +335,7 @@ namespace KPLN_Tools.Forms
         // Окно о выполнении работы
         private void FinishTransferMessage()
         {
-            if (!string.IsNullOrEmpty(LevelExportElementList.Text))
+            if (!string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelImportElementList.Document.ContentStart, LevelImportElementList.Document.ContentEnd).Text)) 
             {
                 System.Windows.Forms.MessageBox.Show("Не все элементы были перенесены на новый уровень", "Предупреждение",
                     System.Windows.Forms.MessageBoxButtons.OK,
@@ -473,7 +502,8 @@ namespace KPLN_Tools.Forms
                         levelNameParameter.Set(newLevel.Id);
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Name == "Стены" || element.Category.Name != "Несущие колонны"))
+                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls || 
+                        element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
@@ -485,7 +515,8 @@ namespace KPLN_Tools.Forms
                         elementHeight.Set(heightValue);                       
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Name == "Лестницы" || element.Category.Name == "Пандусы"))
+                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs 
+                        || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
