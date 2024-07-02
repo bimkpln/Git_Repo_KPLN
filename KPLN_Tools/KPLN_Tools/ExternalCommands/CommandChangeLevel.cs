@@ -89,7 +89,7 @@ namespace KPLN_Tools.ExternalCommands
                 baseLevel = BuiltInParameter.FAMILY_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM;
 
-                parameters = new BuiltInParameter[] { baseLevel, baseOffset };
+                parameters = new BuiltInParameter[] { baseLevel, baseOffset};
             }
             else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps)
             {
