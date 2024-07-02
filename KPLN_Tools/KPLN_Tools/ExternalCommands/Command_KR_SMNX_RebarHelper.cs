@@ -1,9 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Tools.Common;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -18,7 +15,7 @@ namespace KPLN_Tools.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            
+
 
             return Result.Succeeded;
         }

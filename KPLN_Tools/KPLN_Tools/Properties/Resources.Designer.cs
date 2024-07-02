@@ -73,6 +73,26 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap changeLevelBig {
+            get {
+                object obj = ResourceManager.GetObject("changeLevelBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap changeLevelSmall {
+            get {
+                object obj = ResourceManager.GetObject("changeLevelSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap checkHolesFlippingBig {
             get {
                 object obj = ResourceManager.GetObject("checkHolesFlippingBig", resourceCulture);

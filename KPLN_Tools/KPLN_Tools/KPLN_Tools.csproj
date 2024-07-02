@@ -151,6 +151,7 @@
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
+    <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
     <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
@@ -161,6 +162,9 @@
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
     <Compile Include="Forms\EmptyStringToDashConverter.cs" />
+    <Compile Include="Forms\FormChageLevel.xaml.cs">
+      <DependentUpon>FormChageLevel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
     </Compile>
@@ -208,6 +212,8 @@
     <EmbeddedResource Include="Imagens\hvacSmall.png" />
     <EmbeddedResource Include="Imagens\pipeThicknessBig.png" />
     <EmbeddedResource Include="Imagens\pipeThicknessSmall.png" />
+    <EmbeddedResource Include="Imagens\changeLevelBig.png" />
+    <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -221,6 +227,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\FormChageLevel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\MonitoringParamSetter.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

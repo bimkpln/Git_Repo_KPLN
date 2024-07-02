@@ -107,6 +107,21 @@ namespace KPLN_Tools
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
+            PushButtonData changeLevel = CreateBtnData(
+                "Изменение уровня",
+                "Изменение уровня",
+                "Плагин для изменения позиции уровня с сохранением привязанности элементов",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandChangeLevel).FullName,
+                "KPLN_Tools.Imagens.changeLevelSmall.png",
+                "KPLN_Tools.Imagens.changeLevelSmall.png",
+                "http://moodle/");
+
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
                 "Восстановить размеры",
@@ -126,7 +141,6 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
 
-
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
                 "Общая коллекция мни-плагинов",
@@ -140,10 +154,12 @@ namespace KPLN_Tools
                 panel,
                 false);
 
+
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
+            sharedPullDownBtn.AddPushButton(changeLevel);
             #endregion
 
             #region Инструменты СС
