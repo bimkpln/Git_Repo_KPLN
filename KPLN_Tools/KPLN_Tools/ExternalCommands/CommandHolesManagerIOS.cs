@@ -43,6 +43,7 @@ namespace KPLN_Tools.ExternalCommands
                         lm.Name.ToUpper().Contains("_AR_")
                         || lm.Name.ToUpper().Contains("_АР_")
                         || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                        || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
                         || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
                     .Cast<RevitLinkInstance>();
                 if (!linkedModels.Any())

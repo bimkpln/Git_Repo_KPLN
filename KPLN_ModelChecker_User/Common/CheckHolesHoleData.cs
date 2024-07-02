@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -57,7 +57,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Задать коллецию элементов и рассчитать площадь пересечения элементов, которые пересекаются с отверстием
         /// </summary>
         /// <param name="mepElements">Коллекция элементов ИОС, которые нужно проверить на пересечение</param>
-        public void SetIntersectsData(List<CheckHolesMEPData> mepElements)
+        public void SetIntersectsData(List<CheckHolesMEPData> mepElements, List<CheckCommandError> notCriticalErrorElemColl)
         {
             XYZ currentCentroid = this.CurrentSolid.ComputeCentroid();
             foreach (CheckHolesMEPData mepData in mepElements)

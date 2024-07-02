@@ -16,7 +16,6 @@ namespace KPLN_Classificator.Forms
         public InfosStorage storage;
         public bool debugMode;
         public bool colourMode;
-        public int instanceOrType;
         public List<BuiltInCategory> checkedCats;
         public MainWindow form;
         public List<BuiltInCategory> allCats;

@@ -1,4 +1,4 @@
-﻿using Autodesk.Navisworks.Api;
+using Autodesk.Navisworks.Api;
 using Autodesk.Navisworks.Api.Interop;
 using Autodesk.Navisworks.Api.Plugins;
 using KPLN_Quantificator.Forms;
@@ -132,8 +132,8 @@ namespace KPLN_Quantificator
 
                     return 0;
                 }
-            }
-
+            }      
+            
             return 0;
         }
     }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Autodesk.Revit.DB;
 
@@ -19,6 +19,16 @@ namespace KPLN_Classificator
         /// Имя типа для фильтрации
         /// </summary>
         public string TypeName;
+        
+        /// <summary>
+        /// Парамтер для фильтрации
+        /// </summary>
+        public string ParameterName;
+        
+        /// <summary>
+        /// Значение параметра для фильтрации
+        /// </summary>
+        public string ParameterValue;
 
         /// <summary>
         /// Парамтер для фильтрации

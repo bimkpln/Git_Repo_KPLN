@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
@@ -46,15 +47,19 @@ namespace KPLN_Tools
                 "Нумерация",
                 "Нумерация позици в спецификации на +1 от начального значения",
                 string.Format(
-                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Алгоритм запуска:\n" +
+                        "1. Запускаем плагин для фиксации размеров штампов;\n" +
+                        "2. Меняем семейство на согласованное с BIM-отделом;\n" +
+                        "3. Запускаем плагин для установки размеров листов и добавления параметров.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandAutonumber).FullName,
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=687");
+                typeof(ExternalCommands.CommandTitleBlockChanger).FullName,
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "KPLN_Tools.Imagens.wipeSmall.png",
+                "http://moodle");
 
             PushButtonData searchUser = CreateBtnData(
                 "Найти пользователя",
@@ -143,7 +148,7 @@ namespace KPLN_Tools
 
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
-                "Общая коллекция мни-плагинов",
+                "Общая коллекция мини-плагинов",
                 string.Format(
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -304,10 +309,40 @@ namespace KPLN_Tools
             // Наполняю плагинами в зависимости от отдела
             if (CurrentDBUser.Id != 2 && CurrentDBUser.Id != 3)
             {
+                PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
+                    "Отверстия",
+                    "Плагины для работы с отверстиями",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.holesSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.holesBig.png"),
+                    panel,
+                    false);
+
+                PushButtonData holesManagerIOS = CreateBtnData("ИОС: Подготовить задание",
+                    "ИОС: Подготовить задание",
+                    "Подготовка заданий на отверстия от инженеров для АР.",
+                    string.Format(
+                        "Плагин выполняет следующие функции:\n" +
+                            "1. Расширяет специальные элементы семейств, которые позволяют видеть отверстия вне зависимости от секущего диапозона;\n" +
+                            "2. Заполняют данные по относительной отметке.\n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
+                    "KPLN_Tools.Imagens.holesManagerSmall.png",
+                    "KPLN_Tools.Imagens.holesManagerBig.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1245");
+
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }
             #endregion
-
+            
             return Result.Succeeded;
         }
 

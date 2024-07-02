@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System.IO;
 using System.Reflection;

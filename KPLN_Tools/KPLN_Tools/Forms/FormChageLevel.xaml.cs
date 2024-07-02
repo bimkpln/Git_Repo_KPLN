@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit;
+using Autodesk.Revit;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;

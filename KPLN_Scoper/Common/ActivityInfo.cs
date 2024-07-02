@@ -30,7 +30,8 @@ namespace KPLN_Scoper.Common
             
             Type = type;
             
-            string filename = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())).FullName;
+            string modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            string filename = new FileInfo(modelPath).FullName;
             
             View actView = doc.ActiveView;
             

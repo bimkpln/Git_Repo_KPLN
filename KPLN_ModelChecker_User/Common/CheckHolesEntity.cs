@@ -1,5 +1,6 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -13,6 +14,12 @@ namespace KPLN_ModelChecker_User.Common
         public CheckHolesEntity(Element elem)
         {
             CurrentElement = elem;
+        }
+
+        public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this (elem)
+        {
+            CurrentLinkInstance = linkInstance;
+            CurrentLinkTransform = linkInstance.GetTotalTransform();
         }
         
         public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this(elem)
@@ -42,7 +49,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Заполнить поля RoomSolid и RoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
         /// </summary>
         /// <param name="detailLevel">Уровень детализации</param>
-        public void SetGeometryData(ViewDetailLevel detailLevel)
+        public void SetGeometryData(ViewDetailLevel detailLevel, List<CheckCommandError> notCriticalErrorElemColl)
         {
             #region Задаю Solid, если ранее не был создан
             if (CurrentSolid == null)

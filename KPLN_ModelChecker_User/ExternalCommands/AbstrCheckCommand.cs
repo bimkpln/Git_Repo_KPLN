@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_ModelChecker_Lib;
@@ -146,6 +146,24 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Вывод предупреждений пользователю об НЕ критичных ошибках
+        /// </summary>
+        /// <param name="doc">Revit-документ</param>
+        /// <param name="wpfEntityColl">Коллеция WPFEntity элементов для генерации отчета</param>
+        /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
+        /// <returns>Окно для вывода пользователю</returns>
+        internal void ShowNotCriticalErrors()
+        {
+            if (_notCriticalErrorElemColl.Any())
+            {
+                foreach (CheckCommandError error in _notCriticalErrorElemColl)
+                {
+                    Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", KPLN_Loader.Preferences.MessageType.Warning);
+                }
+            }
         }
 
         /// <summary>

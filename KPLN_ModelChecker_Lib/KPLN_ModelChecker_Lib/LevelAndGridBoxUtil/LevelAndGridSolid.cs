@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using System.Collections.Generic;
 using System.Linq;

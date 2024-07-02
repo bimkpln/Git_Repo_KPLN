@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System.Collections.Generic;
 
 namespace KPLN_ViewsAndLists_Ribbon.Common.Lists

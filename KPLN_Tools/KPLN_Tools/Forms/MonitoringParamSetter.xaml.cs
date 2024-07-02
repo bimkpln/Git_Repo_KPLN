@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_Tools.Common;
 using KPLN_Tools.ExecutableCommand;
 using System.Collections.Generic;

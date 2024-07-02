@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib;
 using KPLN_Parameters_Ribbon.Forms;
 using System;

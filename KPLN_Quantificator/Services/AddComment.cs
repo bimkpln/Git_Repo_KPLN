@@ -1,4 +1,4 @@
-﻿using Autodesk.Navisworks.Api;
+using Autodesk.Navisworks.Api;
 using Autodesk.Navisworks.Api.Interop;
 using System.Windows.Forms;
 

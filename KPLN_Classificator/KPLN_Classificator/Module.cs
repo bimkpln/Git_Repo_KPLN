@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using KPLN_Classificator.ExecutableCommand;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
@@ -29,13 +29,9 @@ namespace KPLN_Classificator
             RibbonPanel panel = null;
             List<RibbonPanel> tryPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName).ToList();
             if (tryPanels.Count == 0)
-            {
                 panel = application.CreateRibbonPanel(tabName, panelName);
-            }
             else
-            {
                 panel = tryPanels.First();
-            }
 
             PushButtonData btnHostMark = new PushButtonData(
                 "ClassificatorCompleteCommand",
