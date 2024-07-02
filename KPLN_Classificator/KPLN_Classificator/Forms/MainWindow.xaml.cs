@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using static KPLN_Classificator.ApplicationConfig;
@@ -20,7 +21,7 @@ namespace KPLN_Classificator.Forms
     {
         public ObservableCollection<RuleItem> ruleItems { get; set; }
         public ClassificatorForm classificatorForm { get; set; }
-        public Settings settings { get; set; }
+        public ViewModels.Settings settings { get; set; }
         public InfosStorage storage { get; set; }
         private bool checkedExit { get; set; }
 
@@ -31,7 +32,7 @@ namespace KPLN_Classificator.Forms
             this.storage = storage;
             this.ruleItems = new ObservableCollection<RuleItem>();
             this.Collection.ItemsSource = ruleItems;
-            this.settings = new Settings();
+            this.settings = new ViewModels.Settings();
             this.CollectionParamNames.ItemsSource = settings.paramNameItems;
             RuleItem.builtInCats = allCats;
             this.checkedExit = true;
@@ -40,7 +41,7 @@ namespace KPLN_Classificator.Forms
             {
                 this.storage.classificator = new List<Classificator>();
                 this.storage.instanseParams = new List<string>();
-                RuleItem firstRuleItem = new RuleItem("", "", BuiltInCategory.INVALID);
+                RuleItem firstRuleItem = new RuleItem("", "", "", "", BuiltInCategory.INVALID);
                 firstRuleItem.addValueOfParam("");
                 ruleItems.Add(firstRuleItem);
                 settings.addParamName("Введите имя параметра");
@@ -57,7 +58,7 @@ namespace KPLN_Classificator.Forms
                 }
                 foreach (var item in storage.classificator)
                 {
-                    RuleItem ruleItem = new RuleItem(item.FamilyName, item.TypeName, item.BuiltInName);
+                    RuleItem ruleItem = new RuleItem(item.FamilyName, item.TypeName, item.ParameterName, item.ParameterValue, item.BuiltInName);
                     foreach (var pv in item.paramsValues)
                     {
                         ruleItem.addValueOfParam(pv);
@@ -124,7 +125,7 @@ namespace KPLN_Classificator.Forms
             {
                 Button bt = (Button)sender;
                 RuleItem ruleItem = bt.DataContext as RuleItem;
-                RuleItem newRuleItem = new RuleItem(ruleItem.familyNameValue, ruleItem.typeNameValue, ruleItem.builtInCategoryName);
+                RuleItem newRuleItem = new RuleItem(ruleItem.familyNameValue, ruleItem.typeNameValue, ruleItem.parameterName, ruleItem.parameterValue, ruleItem.builtInCategoryName);
                 foreach (ParamValueItem item in ruleItem.valuesOfParams)
                 {
                     newRuleItem.addValueOfParam(item.paramValue);
@@ -169,7 +170,7 @@ namespace KPLN_Classificator.Forms
 
         private void Add_Rule_Click(object sender, RoutedEventArgs e)
         {
-            ruleItems.Add(new RuleItem("", "", BuiltInCategory.INVALID));
+            ruleItems.Add(new RuleItem("", "", "", "", BuiltInCategory.INVALID));
             ruleItems.Last().addValueOfParam("");
             refreshNumbersOfRules(ruleItems);
         }
@@ -192,7 +193,7 @@ namespace KPLN_Classificator.Forms
             {
                 ruleItems.RemoveAt(0);
             }
-            RuleItem newRule = new RuleItem(familyName, typeName, builtInCategory);
+            RuleItem newRule = new RuleItem(familyName, typeName, "", "", builtInCategory);
             if (!ruleItems.Contains(newRule))
             {
                 ruleItems.Add(newRule);
@@ -244,14 +245,33 @@ namespace KPLN_Classificator.Forms
             }
         }
 
-        private void Choose_ParamName_Click(object sender, RoutedEventArgs e)
+        private void Choose_TargetParamName_Click(object sender, RoutedEventArgs e)
         {
             if (isDocumentAvailable)
             {
                 Button bt = (Button)sender;
-                ParamNameItem paramItem = bt.DataContext as ParamNameItem;
-                ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams, paramItem);
-                parameterSelectorForm.ShowDialog();
+                if (bt.DataContext is ParamNameItem paramNameItem)
+                {
+                    ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
+                    parameterSelectorForm.ShowDialog();
+                    if (parameterSelectorForm.SelectedMyParameter != null)
+                        paramNameItem.paramName = parameterSelectorForm.SelectedMyParameter.Name;
+                }
+            }
+        }
+
+        private void Choose_FilterParamName_Click(object sender, RoutedEventArgs e)
+        {
+            if (isDocumentAvailable)
+            {
+                Button bt = (Button)sender;
+                if (bt.DataContext is RuleItem ruleItem)
+                {
+                    ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
+                    parameterSelectorForm.ShowDialog();
+                    if (parameterSelectorForm.SelectedMyParameter != null)
+                        ruleItem.parameterName = parameterSelectorForm.SelectedMyParameter.Name;
+                }
             }
         }
 
@@ -260,11 +280,19 @@ namespace KPLN_Classificator.Forms
             if (isDocumentAvailable)
             {
                 Button bt = (Button)sender;
-                ParamValueItem valueItem = bt.DataContext as ParamValueItem;
-                if (valueItem.paramValue.Contains("[]"))
+                if (bt.DataContext is ParamValueItem paramValueItem)
                 {
-                    ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams, valueItem);
-                    parameterSelectorForm.ShowDialog();
+                    if (paramValueItem.paramValue.Contains("[]"))
+                    {
+                        ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
+                        parameterSelectorForm.ShowDialog();
+                        if (parameterSelectorForm.SelectedMyParameter != null)
+                        {
+                            var regex = new Regex(Regex.Escape("[]"));
+                            paramValueItem.paramValue = regex.Replace(paramValueItem.paramValue, string.Format("[{0}]", parameterSelectorForm.SelectedMyParameter.Name), 1);
+                        }
+
+                    }
                 }
             }
         }
@@ -308,6 +336,8 @@ namespace KPLN_Classificator.Forms
                 classificator.BuiltInName = item.builtInCategoryName;
                 classificator.FamilyName = item.familyNameValue;
                 classificator.TypeName = item.typeNameValue;
+                classificator.ParameterName = item.parameterName;
+                classificator.ParameterValue = item.parameterValue;
                 classificator.paramsValues = item.valuesOfParams.Select(x => x.paramValue).ToList();
                 storage.classificator.Add(classificator);
             }
@@ -340,49 +370,31 @@ namespace KPLN_Classificator.Forms
 
         public bool findDoubledRules()
         {
-            HashSet<RuleItem> doubledItems = new HashSet<RuleItem>();
-            for (int i = 0; i < ruleItems.Count; i++)
-            {
-                RuleItem firstItem = ruleItems[i];
-                List<RuleItem> itemsForLoop = new List<RuleItem>(ruleItems);
-                itemsForLoop.RemoveAt(i);
-                for (int j = 0; j < itemsForLoop.Count; j++)
-                {
-                    RuleItem secondItem = itemsForLoop[j];
+            IEnumerable<IGrouping<int, RuleItem>> groupingItems = ruleItems
+                .GroupBy(ri => ri.GetHashCode())
+                .Where(gr => gr.Count() > 1);
 
-                    if (secondItem.Equals(firstItem))
-                    {
-                        doubledItems.Add(firstItem);
-                        doubledItems.Add(secondItem);
-                        continue;
-                    }
-                    if (firstItem.builtInCategoryName.Equals(secondItem.builtInCategoryName)
-                        && ParamUtils.nameChecker(firstItem.familyNameValue, secondItem.familyNameValue)
-                        && ParamUtils.nameChecker(firstItem.typeNameValue, secondItem.typeNameValue))
-                    {
-                        if (secondItem.typeNameValue.Replace("!", "").Equals(firstItem.typeNameValue) ||
-                            firstItem.typeNameValue.Replace("!", "").Equals(secondItem.typeNameValue))
-                        {
-                            continue;
-                        }
-                        doubledItems.Add(firstItem);
-                        doubledItems.Add(secondItem);
-                        continue;
-                    }
-                }
-            }
-            foreach (RuleItem item in doubledItems)
+            if (groupingItems.Any())
             {
-                item.colourOfRule = ColourUtils.DOUBLED_RULE;
-            }
-            foreach (RuleItem item in ruleItems)
-            {
-                if (!doubledItems.Contains(item) && item.colourOfRule.Equals(ColourUtils.DOUBLED_RULE))
+                foreach (IGrouping<int, RuleItem> gr in groupingItems)
                 {
-                    item.colourOfRule = ColourUtils.NEW_RULE;
+                    foreach (RuleItem item in gr)
+                    {
+                        item.colourOfRule = ColourUtils.DOUBLED_RULE;
+                    }
                 }
             }
-            return doubledItems.Count == 0 ? false : true;
+
+            foreach (RuleItem otherItem in ruleItems)
+            {
+                bool existsInGroupingItems = groupingItems
+                   .SelectMany(gr => gr)
+                   .Any(item => item.GetHashCode() == otherItem.GetHashCode());
+                if (!existsInGroupingItems && otherItem.colourOfRule.Equals(ColourUtils.DOUBLED_RULE))
+                    otherItem.colourOfRule = ColourUtils.NEW_RULE;
+            }
+
+            return groupingItems.Any();
         }
     }
 }

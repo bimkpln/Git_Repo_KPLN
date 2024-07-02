@@ -146,7 +146,6 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="App.cs" />
     <Compile Include="Availability\StaticAvailable.cs" />
     <Compile Include="Commands\CommandFindAllElementsInModel.cs" />
     <Compile Include="Commands\CommandFindElementsInModel.cs" />

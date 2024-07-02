@@ -29,12 +29,9 @@ namespace KPLN_Classificator.Forms
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.btnCancel = new System.Windows.Forms.Button();
-            this.btnOk = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
-            this.radioButtonInstanceParams = new System.Windows.Forms.RadioButton();
-            this.radioButtonTypeParams = new System.Windows.Forms.RadioButton();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.checkBoxDebug = new System.Windows.Forms.CheckBox();
             this.buttonChooseFile = new System.Windows.Forms.Button();
             this.textBoxFileInfo = new System.Windows.Forms.TextBox();
@@ -44,13 +41,15 @@ namespace KPLN_Classificator.Forms
             this.buttonSaveFile = new System.Windows.Forms.Button();
             this.buttonChooseLastFile = new System.Windows.Forms.Button();
             this.checkBoxColour = new System.Windows.Forms.CheckBox();
-            this.groupBox1.SuspendLayout();
+            this.btnRun = new System.Windows.Forms.Button();
+            this.toolTip_btnRun = new System.Windows.Forms.ToolTip(this.components);
+            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnCancel.Location = new System.Drawing.Point(12, 494);
+            this.btnCancel.Location = new System.Drawing.Point(15, 485);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 1;
@@ -58,70 +57,20 @@ namespace KPLN_Classificator.Forms
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
-            // btnOk
-            // 
-            this.btnOk.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnOk.Location = new System.Drawing.Point(252, 494);
-            this.btnOk.Name = "btnOk";
-            this.btnOk.Size = new System.Drawing.Size(141, 23);
-            this.btnOk.TabIndex = 2;
-            this.btnOk.Text = "Классифицировать!";
-            this.btnOk.UseVisualStyleBackColor = true;
-            this.btnOk.Click += new System.EventHandler(this.btnOk_Click);
-            // 
             // label1
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 325);
+            this.label1.Location = new System.Drawing.Point(9, 263);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(373, 13);
+            this.label1.Size = new System.Drawing.Size(347, 13);
             this.label1.TabIndex = 3;
-            this.label1.Text = "Выберите категории для классификации (для опытных пользователей):";
-            // 
-            // radioButtonInstanceParams
-            // 
-            this.radioButtonInstanceParams.AutoSize = true;
-            this.radioButtonInstanceParams.Checked = true;
-            this.radioButtonInstanceParams.Enabled = false;
-            this.radioButtonInstanceParams.Location = new System.Drawing.Point(6, 42);
-            this.radioButtonInstanceParams.Name = "radioButtonInstanceParams";
-            this.radioButtonInstanceParams.Size = new System.Drawing.Size(153, 17);
-            this.radioButtonInstanceParams.TabIndex = 4;
-            this.radioButtonInstanceParams.TabStop = true;
-            this.radioButtonInstanceParams.Text = "Заполние по экземпляру";
-            this.radioButtonInstanceParams.UseVisualStyleBackColor = true;
-            this.radioButtonInstanceParams.CheckedChanged += new System.EventHandler(this.radioButtonInstanceParams_CheckedChanged);
-            // 
-            // radioButtonTypeParams
-            // 
-            this.radioButtonTypeParams.AutoSize = true;
-            this.radioButtonTypeParams.Enabled = false;
-            this.radioButtonTypeParams.Location = new System.Drawing.Point(6, 19);
-            this.radioButtonTypeParams.Name = "radioButtonTypeParams";
-            this.radioButtonTypeParams.Size = new System.Drawing.Size(114, 17);
-            this.radioButtonTypeParams.TabIndex = 5;
-            this.radioButtonTypeParams.Text = "Заполние по типу";
-            this.radioButtonTypeParams.UseVisualStyleBackColor = true;
-            this.radioButtonTypeParams.CheckedChanged += new System.EventHandler(this.radioButtonTypeParams_CheckedChanged);
-            // 
-            // groupBox1
-            // 
-            this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox1.Controls.Add(this.radioButtonTypeParams);
-            this.groupBox1.Controls.Add(this.radioButtonInstanceParams);
-            this.groupBox1.Location = new System.Drawing.Point(12, 12);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(289, 71);
-            this.groupBox1.TabIndex = 6;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Алгоритм";
+            this.label1.Text = "Выберите категории для параметризации (частичное заполнение):";
             // 
             // checkBoxDebug
             // 
             this.checkBoxDebug.AutoSize = true;
-            this.checkBoxDebug.Location = new System.Drawing.Point(21, 89);
+            this.checkBoxDebug.Location = new System.Drawing.Point(20, 432);
             this.checkBoxDebug.Name = "checkBoxDebug";
             this.checkBoxDebug.Size = new System.Drawing.Size(174, 17);
             this.checkBoxDebug.TabIndex = 7;
@@ -131,9 +80,9 @@ namespace KPLN_Classificator.Forms
             // 
             // buttonChooseFile
             // 
-            this.buttonChooseFile.Location = new System.Drawing.Point(12, 136);
+            this.buttonChooseFile.Location = new System.Drawing.Point(104, 12);
             this.buttonChooseFile.Name = "buttonChooseFile";
-            this.buttonChooseFile.Size = new System.Drawing.Size(110, 23);
+            this.buttonChooseFile.Size = new System.Drawing.Size(116, 28);
             this.buttonChooseFile.TabIndex = 8;
             this.buttonChooseFile.Text = "Выбрать файл...";
             this.buttonChooseFile.UseVisualStyleBackColor = true;
@@ -141,32 +90,32 @@ namespace KPLN_Classificator.Forms
             // 
             // textBoxFileInfo
             // 
-            this.textBoxFileInfo.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.textBoxFileInfo.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxFileInfo.Location = new System.Drawing.Point(12, 165);
+            this.textBoxFileInfo.Location = new System.Drawing.Point(12, 93);
             this.textBoxFileInfo.Multiline = true;
             this.textBoxFileInfo.Name = "textBoxFileInfo";
             this.textBoxFileInfo.ReadOnly = true;
             this.textBoxFileInfo.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBoxFileInfo.Size = new System.Drawing.Size(381, 157);
+            this.textBoxFileInfo.Size = new System.Drawing.Size(381, 158);
             this.textBoxFileInfo.TabIndex = 9;
             // 
             // checkedListBox1
             // 
-            this.checkedListBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            this.checkedListBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.checkedListBox1.CheckOnClick = true;
             this.checkedListBox1.FormattingEnabled = true;
-            this.checkedListBox1.Location = new System.Drawing.Point(12, 341);
+            this.checkedListBox1.Location = new System.Drawing.Point(12, 279);
             this.checkedListBox1.Name = "checkedListBox1";
-            this.checkedListBox1.Size = new System.Drawing.Size(381, 139);
+            this.checkedListBox1.Size = new System.Drawing.Size(381, 124);
             this.checkedListBox1.TabIndex = 10;
             // 
             // buttonOpenConfiguration
             // 
             this.buttonOpenConfiguration.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonOpenConfiguration.Location = new System.Drawing.Point(307, 20);
+            this.buttonOpenConfiguration.Location = new System.Drawing.Point(12, 46);
             this.buttonOpenConfiguration.Name = "buttonOpenConfiguration";
             this.buttonOpenConfiguration.Size = new System.Drawing.Size(86, 28);
             this.buttonOpenConfiguration.TabIndex = 11;
@@ -177,7 +126,7 @@ namespace KPLN_Classificator.Forms
             // buttonCreateNewConfiguration
             // 
             this.buttonCreateNewConfiguration.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonCreateNewConfiguration.Location = new System.Drawing.Point(307, 55);
+            this.buttonCreateNewConfiguration.Location = new System.Drawing.Point(12, 12);
             this.buttonCreateNewConfiguration.Name = "buttonCreateNewConfiguration";
             this.buttonCreateNewConfiguration.Size = new System.Drawing.Size(86, 28);
             this.buttonCreateNewConfiguration.TabIndex = 12;
@@ -188,9 +137,9 @@ namespace KPLN_Classificator.Forms
             // buttonSaveFile
             // 
             this.buttonSaveFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSaveFile.Location = new System.Drawing.Point(283, 136);
+            this.buttonSaveFile.Location = new System.Drawing.Point(104, 46);
             this.buttonSaveFile.Name = "buttonSaveFile";
-            this.buttonSaveFile.Size = new System.Drawing.Size(110, 23);
+            this.buttonSaveFile.Size = new System.Drawing.Size(116, 28);
             this.buttonSaveFile.TabIndex = 13;
             this.buttonSaveFile.Text = "Сохранить файл";
             this.buttonSaveFile.UseVisualStyleBackColor = true;
@@ -198,9 +147,9 @@ namespace KPLN_Classificator.Forms
             // 
             // buttonChooseLastFile
             // 
-            this.buttonChooseLastFile.Location = new System.Drawing.Point(128, 136);
+            this.buttonChooseLastFile.Location = new System.Drawing.Point(226, 12);
             this.buttonChooseLastFile.Name = "buttonChooseLastFile";
-            this.buttonChooseLastFile.Size = new System.Drawing.Size(110, 23);
+            this.buttonChooseLastFile.Size = new System.Drawing.Size(116, 28);
             this.buttonChooseLastFile.TabIndex = 14;
             this.buttonChooseLastFile.Text = "Последний файл";
             this.buttonChooseLastFile.UseVisualStyleBackColor = true;
@@ -209,13 +158,44 @@ namespace KPLN_Classificator.Forms
             // checkBoxColour
             // 
             this.checkBoxColour.AutoSize = true;
-            this.checkBoxColour.Location = new System.Drawing.Point(21, 112);
+            this.checkBoxColour.Location = new System.Drawing.Point(20, 409);
             this.checkBoxColour.Name = "checkBoxColour";
             this.checkBoxColour.Size = new System.Drawing.Size(336, 17);
             this.checkBoxColour.TabIndex = 15;
             this.checkBoxColour.Text = "Раскрасить обработанные элементы (запускать на 3D виде)";
             this.checkBoxColour.UseVisualStyleBackColor = true;
             this.checkBoxColour.CheckedChanged += new System.EventHandler(this.checkBoxColour_CheckedChanged);
+            // 
+            // btnRun
+            // 
+            this.btnRun.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRun.BackColor = System.Drawing.SystemColors.MenuHighlight;
+            this.btnRun.Location = new System.Drawing.Point(226, 473);
+            this.btnRun.Name = "btnRun";
+            this.btnRun.Size = new System.Drawing.Size(167, 35);
+            this.btnRun.TabIndex = 2;
+            this.btnRun.Text = "Параметризировать выборку эл-в/категорий";
+            this.toolTip_btnRun.SetToolTip(this.btnRun, "Параметризация будет осуществлена по указанным из файла правилам, для всех выделе" +
+        "нных категорий в окне выше, ИЛИ для всех выделенных в проекте элементов");
+            this.btnRun.UseVisualStyleBackColor = false;
+            this.btnRun.Click += new System.EventHandler(this.btnRun_Click);
+            // 
+            // toolTip_btnRun
+            // 
+            this.toolTip_btnRun.AutoPopDelay = 10000;
+            this.toolTip_btnRun.InitialDelay = 500;
+            this.toolTip_btnRun.ReshowDelay = 100;
+            this.toolTip_btnRun.ToolTipTitle = "Внимание!";
+            // 
+            // label2
+            // 
+            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(12, 77);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(135, 13);
+            this.label2.TabIndex = 3;
+            this.label2.Text = "ИНФО по конфигурации:";
             // 
             // ClassificatorForm
             // 
@@ -231,9 +211,9 @@ namespace KPLN_Classificator.Forms
             this.Controls.Add(this.textBoxFileInfo);
             this.Controls.Add(this.buttonChooseFile);
             this.Controls.Add(this.checkBoxDebug);
-            this.Controls.Add(this.groupBox1);
+            this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.btnOk);
+            this.Controls.Add(this.btnRun);
             this.Controls.Add(this.btnCancel);
             this.MinimumSize = new System.Drawing.Size(420, 565);
             this.Name = "ClassificatorForm";
@@ -242,8 +222,6 @@ namespace KPLN_Classificator.Forms
             this.TopMost = true;
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ClassificatorForm_FormClosing);
             this.VisibleChanged += new System.EventHandler(this.ClassificatorForm_VisibleChanged);
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -251,11 +229,7 @@ namespace KPLN_Classificator.Forms
 
         #endregion
         private System.Windows.Forms.Button btnCancel;
-        private System.Windows.Forms.Button btnOk;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.RadioButton radioButtonInstanceParams;
-        private System.Windows.Forms.RadioButton radioButtonTypeParams;
-        private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.CheckBox checkBoxDebug;
         private System.Windows.Forms.Button buttonChooseFile;
         private System.Windows.Forms.TextBox textBoxFileInfo;
@@ -265,5 +239,8 @@ namespace KPLN_Classificator.Forms
         private System.Windows.Forms.Button buttonSaveFile;
         private System.Windows.Forms.Button buttonChooseLastFile;
         private System.Windows.Forms.CheckBox checkBoxColour;
+        private System.Windows.Forms.ToolTip toolTip_btnRun;
+        private System.Windows.Forms.Button btnRun;
+        private System.Windows.Forms.Label label2;
     }
 }

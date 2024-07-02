@@ -1,19 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using ElementId = Autodesk.Revit.DB.ElementId;
-using Category = Autodesk.Revit.DB.Category;
-using BuiltInCategory = Autodesk.Revit.DB.BuiltInCategory;
+﻿using KPLN_Classificator.Data;
 using KPLN_Classificator.Utils;
-using System.Windows.Interop;
-using KPLN_Classificator.Data;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Windows.Forms;
 using static KPLN_Classificator.ApplicationConfig;
+using BuiltInCategory = Autodesk.Revit.DB.BuiltInCategory;
 
 namespace KPLN_Classificator.Forms
 {
@@ -49,10 +42,8 @@ namespace KPLN_Classificator.Forms
             colourMode = checkBoxColour.Checked;
             textBoxFileInfo.Text = "Конфигурационный файл не выбран.";
             textBoxFileInfo.Text += Environment.NewLine;
-            btnOk.Enabled = false;
+            btnRun.Enabled = false;
             checkedCats = new List<BuiltInCategory>();
-            if (radioButtonTypeParams.Checked) instanceOrType = 2;
-            else if (radioButtonInstanceParams.Checked) instanceOrType = 1;
             buttonOpenConfiguration.Enabled = false;
             buttonSaveFile.Enabled = false;
             this.mparams = mparams;
@@ -70,7 +61,7 @@ namespace KPLN_Classificator.Forms
             }
         }
 
-        private void btnOk_Click(object sender, EventArgs e)
+        private void btnRun_Click(object sender, EventArgs e)
         {
             if (ApplicationConfig.isDocumentAvailable)
             {
@@ -132,35 +123,10 @@ namespace KPLN_Classificator.Forms
         {
             colourMode = checkBoxColour.Checked;
         }
-        private void radioButtonTypeParams_CheckedChanged(object sender, EventArgs e)
-        {
-            RadioButton radioButton = (RadioButton)sender;
-            if (radioButton.Checked)
-            {
-                instanceOrType = 2;
-            }
-            if (storage != null)
-            {
-                checkFileIsCorrect();
-            }
-        }
-
-        private void radioButtonInstanceParams_CheckedChanged(object sender, EventArgs e)
-        {
-            RadioButton radioButton = (RadioButton)sender;
-            if (radioButton.Checked)
-            {
-                instanceOrType = 1;
-            }
-            if (storage != null)
-            {
-                checkFileIsCorrect();
-            }
-        }
 
         private bool checkFileIsCorrect()
         {
-            if ((storage.instanceOrType == 1 && instanceOrType == 1) || (storage.instanceOrType == 2 && instanceOrType == 2))
+            if ((storage.instanceOrType == 1) || (storage.instanceOrType == 2))
             {
                 textBoxFileInfo.Text = "";
                 textBoxFileInfo.Text += "Выбран конфигурационный файл:" + Environment.NewLine;
@@ -177,7 +143,7 @@ namespace KPLN_Classificator.Forms
                 {
                     getInfoAboutFileClassification();
                 }
-                btnOk.Enabled = true;
+                btnRun.Enabled = true;
 
                 checkedListBox1.Items.Clear();
                 foreach (BuiltInCategory bic in storage.classificator.Select(x => x.BuiltInName).ToHashSet().ToList())
@@ -202,7 +168,7 @@ namespace KPLN_Classificator.Forms
                 checkedListBox1.Items.Clear();
                 textBoxFileInfo.Text = "";
                 textBoxFileInfo.Text += "НЕКОРРЕКТНАЯ НАСТРОЙКА КОНФИГУРАЦИОННОГО ФАЙЛА!";
-                btnOk.Enabled = false;
+                btnRun.Enabled = false;
                 buttonSaveFile.Enabled = false;
                 return false;
             }
@@ -221,15 +187,9 @@ namespace KPLN_Classificator.Forms
         private void setRadioButton()
         {
             if (storage != null && storage.instanceOrType == 1)
-            {
-                radioButtonInstanceParams.Checked = true;
                 buttonSaveFile.Enabled = true;
-            }
             else if (storage != null && storage.instanceOrType == 2)
-            {
-                radioButtonTypeParams.Checked = true;
                 buttonSaveFile.Enabled = true;
-            }
         }
 
         private void buttonOpenConfiguration_Click(object sender, EventArgs e)

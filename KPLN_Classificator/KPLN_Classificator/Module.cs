@@ -39,18 +39,18 @@ namespace KPLN_Classificator
 
             PushButtonData btnHostMark = new PushButtonData(
                 "ClassificatorCompleteCommand",
-                "Заполнить\nклассификатор",
+                "Заполнить\nпараметры",
                 assemblyPath,
-                typeof(CommandOpenClassificatorForm).FullName);
-
-            btnHostMark.LargeImage = PngImageSource("KPLN_Classificator.Resources.Classificator_large.PNG");
-            btnHostMark.Image = PngImageSource("KPLN_Classificator.Resources.Classificator.PNG");
-            btnHostMark.ToolTip = "Параметризация элементов согласно заданным правилам.";
-            btnHostMark.LongDescription = "Возможности:\n" +
-                "Задание правил для параметризации элементов;\n" +
-                "Маппинг параметров (передача значений между параметрами элемента);\n" +
-                "Сохранение конфигурационного файла с возможностью повторного использования;\n";
-            btnHostMark.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=669"));
+                typeof(CommandOpenClassificatorForm).FullName)
+            {
+                LargeImage = PngImageSource("KPLN_Classificator.Resources.Classificator_large.PNG"),
+                Image = PngImageSource("KPLN_Classificator.Resources.Classificator.PNG"),
+                ToolTip = "Параметризация элементов согласно заданным правилам.",
+                LongDescription = "Возможности:\n" +
+                "\t1. Задание правил для параметризации элементов;\n" +
+                "\t2. Маппинг параметров (передача значений между параметрами элемента);\n" +
+                "\t3. Сохранение конфигурационного файла с возможностью повторного использования;\n"
+            };
             btnHostMark.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
             panel.AddItem(btnHostMark);
