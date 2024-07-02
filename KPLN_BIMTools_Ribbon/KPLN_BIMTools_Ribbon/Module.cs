@@ -54,7 +54,7 @@ namespace KPLN_BIMTools_Ribbon
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "BIM");
 
             //Добавляю выпадающий список pullDown
-            PulldownButtonData pullDownData = new PulldownButtonData("Выгрзка", "Выгрзка")
+            PulldownButtonData pullDownData = new PulldownButtonData("Выгрузка", "Выгрузка")
             {
                 ToolTip = "Плагины по выгрузке моделей",
                 LargeImage = PngImageSource("KPLN_BIMTools_Ribbon.Imagens.mainLoadBig.png"),
