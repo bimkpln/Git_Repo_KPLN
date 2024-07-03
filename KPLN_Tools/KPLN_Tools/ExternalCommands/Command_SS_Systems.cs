@@ -8,13 +8,8 @@ using KPLN_Tools.Common.SS_System;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.Linq;
-using System.Windows.Controls;
-using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Shapes;
-using static Autodesk.Revit.DB.SpecTypeId;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -280,7 +275,7 @@ namespace KPLN_Tools.ExternalCommands
             #region "КП_И_Адрес текущий"
             Parameter currentSysNameParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_sysParamName) ??
                 throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_sysParamName}");
-            
+
             Parameter currentElemPositionParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_positionParamName) ??
                 _currentSystemEntity.CurrentFamInst.Symbol.LookupParameter(_positionParamName) ??
                 throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_positionParamName}");
@@ -294,7 +289,7 @@ namespace KPLN_Tools.ExternalCommands
             {
                 Parameter previousAdressParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_previousAdressParamName) ??
                     throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_previousAdressParamName}");
-            
+
                 Parameter previousSysNameParam = _previosSystemEntity.CurrentFamInst.LookupParameter(_sysParamName) ??
                     throw new Exception($"У элемента с id: {_previosSystemEntity.CurrentElem.Id} нет параметра {_sysParamName}");
 
@@ -352,7 +347,7 @@ namespace KPLN_Tools.ExternalCommands
         /// <returns></returns>
         private bool DrawSystemLines()
         {
-            if (_previosSystemEntity.CurrentFamInst.Location is LocationPoint prevLocPnt 
+            if (_previosSystemEntity.CurrentFamInst.Location is LocationPoint prevLocPnt
                 && _currentSystemEntity.CurrentFamInst.Location is LocationPoint currLocPnt)
             {
                 List<XYZ> resultPnts = new List<XYZ>();
@@ -446,18 +441,18 @@ namespace KPLN_Tools.ExternalCommands
                     using (Transaction trans = new Transaction(_doc, "KPLN: Параметры эл-та"))
                     {
                         trans.Start();
-                        
+
                         SetElementSystemData();
-                        
+
                         trans.Commit();
                     }
-                        
+
                     if (_previosSystemEntity != null)
                     {
                         using (Transaction trans = new Transaction(_doc, "KPLN: Создание и параметры цепи"))
                         {
                             trans.Start();
-                            
+
                             ElectricalSystem newElSys = ElectricalSystem
                                 .Create(_doc, new List<ElementId> { _currentSystemEntity.CurrentElem.Id }, viewEntity.SelectedSystemType);
                             newElSys.SelectPanel(_previosSystemEntity.CurrentFamInst);
@@ -465,13 +460,13 @@ namespace KPLN_Tools.ExternalCommands
 
                             if (_mainWindow.CurrentSS_SystemViewEntity.IsLineDraw)
                                 DrawSystemLines();
-                            
+
                             trans.Commit();
                         }
                     }
 
                     _previosSystemEntity = _currentSystemEntity;
-                        
+
                     _mainWindow.CurrentSS_SystemViewEntity.StartNumber++;
                 }
                 catch (Autodesk.Revit.Exceptions.ArgumentException)

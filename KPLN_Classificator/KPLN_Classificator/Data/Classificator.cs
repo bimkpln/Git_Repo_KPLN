@@ -30,16 +30,6 @@ namespace KPLN_Classificator
         /// </summary>
         public string ParameterValue;
 
-        /// <summary>
-        /// Парамтер для фильтрации
-        /// </summary>
-        public string ParameterName;
-
-        /// <summary>
-        /// Значение параметра для фильтрации
-        /// </summary>
-        public string ParameterValue;
-
         public Classificator()
         {
         }

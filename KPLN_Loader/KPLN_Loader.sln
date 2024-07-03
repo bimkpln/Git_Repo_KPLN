@@ -9,11 +9,13 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+		Revit2020|Any CPU = Revit2020|Any CPU
 		Revit2023|Any CPU = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution

@@ -35,7 +35,7 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
-    <OutputPath>bin\Revit2020\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2020\</OutputPath>
     <DefineConstants>
     </DefineConstants>
     <Optimize>true</Optimize>

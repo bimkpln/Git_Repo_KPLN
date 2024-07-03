@@ -58,9 +58,10 @@ namespace KPLN_Classificator
                 }
                 else
                 {
+                    Parameter famNameParam = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM);
                     if (famNameParam != null)
                         familyName = famNameParam.AsValueString();
-                    Parameter famNameParam = elem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM);
+                    
                     familyName = familyName == null || familyName.Length == 0 ? (elem as ElementType).FamilyName : familyName;
                 }
 

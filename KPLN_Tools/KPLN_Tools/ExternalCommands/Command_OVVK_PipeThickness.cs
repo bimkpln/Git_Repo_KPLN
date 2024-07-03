@@ -19,7 +19,12 @@ namespace KPLN_Tools.ExternalCommands
         /// Параметр толщины стенки труб
         /// </summary>
         private readonly Guid _thicknessParam = new Guid("381b467b-3518-42bb-b183-35169c9bdfb3");
-        private readonly ForgeTypeId _millimetersForgeTypeID = new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1");
+#if Revit2020
+        private readonly DisplayUnitType _millimetersRevitType = DisplayUnitType.DUT_MILLIMETERS;
+#endif
+#if Revit2023 || Debug
+        private readonly ForgeTypeId _millimetersRevitType = new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1");
+#endif
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -45,7 +50,7 @@ namespace KPLN_Tools.ExternalCommands
                 Parameter diameterParameter = pipe.get_Parameter(BuiltInParameter.RBS_PIPE_DIAMETER_PARAM);
                 if (diameterParameter != null && diameterParameter.HasValue)
                 {
-                    double diameter = Math.Round(UnitUtils.ConvertFromInternalUnits(diameterParameter.AsDouble(), _millimetersForgeTypeID), 1);
+                    double diameter = Math.Round(UnitUtils.ConvertFromInternalUnits(diameterParameter.AsDouble(), _millimetersRevitType), 1);
                     if (pipeDict.TryGetValue(typeId, out List<double> diams) && !diams.Contains(diameter))
                         pipeDict[typeId].Add(diameter);
                 }
@@ -71,13 +76,13 @@ namespace KPLN_Tools.ExternalCommands
                         Parameter diameterParameter = pipe.get_Parameter(BuiltInParameter.RBS_PIPE_DIAMETER_PARAM);
                         if (diameterParameter != null && diameterParameter.HasValue)
                         {
-                            double diameter = Math.Round(UnitUtils.ConvertFromInternalUnits(diameterParameter.AsDouble(), _millimetersForgeTypeID), 1);
+                            double diameter = Math.Round(UnitUtils.ConvertFromInternalUnits(diameterParameter.AsDouble(), _millimetersRevitType), 1);
                             foreach (PipeThicknessEntity entity in mainForm.PipeThicknessEntities)
                             {
                                 if (pipeTypeId.Equals(entity.CurrentPipeType.Id))
                                 {
                                     double currentThickness = GetThicknessByPipeThicknessEntityAndDiam(entity, diameter);
-                                    thicknessParameter.Set(UnitUtils.ConvertToInternalUnits(currentThickness, _millimetersForgeTypeID));
+                                    thicknessParameter.Set(UnitUtils.ConvertToInternalUnits(currentThickness, _millimetersRevitType));
                                     break;
                                 }
                             }

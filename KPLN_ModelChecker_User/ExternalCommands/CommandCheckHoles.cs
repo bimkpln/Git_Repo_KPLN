@@ -96,7 +96,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (var hd in holesData)
             {
-                hd.SetIntersectsData(mepBBoxData, _notCriticalErrorElemColl);
+                hd.SetIntersectsData(mepBBoxData);
             }
 
             return PrepareHolesIntersectsWPFEntity(doc, holesData);
@@ -219,10 +219,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         List<CheckHolesMEPData> updateMEPElemEntities = new List<CheckHolesMEPData>(trueMEPElemEntities.Count());
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
                         {
-                            if (mepElementEntity.CurrentElement.Id.IntegerValue == 6431351)
-                            {
-                                var a = 1;
-                            }
                             #region Блок дополнительной фильтрации
                             if (mepElementEntity.CurrentElement is FamilyInstance mepFI)
                             {

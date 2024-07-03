@@ -57,7 +57,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Задать коллецию элементов и рассчитать площадь пересечения элементов, которые пересекаются с отверстием
         /// </summary>
         /// <param name="mepElements">Коллекция элементов ИОС, которые нужно проверить на пересечение</param>
-        public void SetIntersectsData(List<CheckHolesMEPData> mepElements, List<CheckCommandError> notCriticalErrorElemColl)
+        public void SetIntersectsData(List<CheckHolesMEPData> mepElements)
         {
             XYZ currentCentroid = this.CurrentSolid.ComputeCentroid();
             foreach (CheckHolesMEPData mepData in mepElements)

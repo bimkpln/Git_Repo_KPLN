@@ -149,24 +149,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
 
         /// <summary>
-        /// Вывод предупреждений пользователю об НЕ критичных ошибках
-        /// </summary>
-        /// <param name="doc">Revit-документ</param>
-        /// <param name="wpfEntityColl">Коллеция WPFEntity элементов для генерации отчета</param>
-        /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
-        /// <returns>Окно для вывода пользователю</returns>
-        internal void ShowNotCriticalErrors()
-        {
-            if (_notCriticalErrorElemColl.Any())
-            {
-                foreach (CheckCommandError error in _notCriticalErrorElemColl)
-                {
-                    Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", KPLN_Loader.Preferences.MessageType.Warning);
-                }
-            }
-        }
-
-        /// <summary>
         /// Проверка элементов перед запуском
         /// </summary>
         /// <param name="doc">Revit-документ</param>

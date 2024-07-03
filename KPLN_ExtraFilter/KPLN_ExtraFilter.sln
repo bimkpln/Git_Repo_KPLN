@@ -9,6 +9,7 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
+		Revit2020|x64 = Revit2020|x64
 		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -16,6 +17,8 @@ Global
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Debug|x64.Build.0 = Debug|x64
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Release|x64.ActiveCfg = Release|x64
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Release|x64.Build.0 = Release|x64
+		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2020|x64.ActiveCfg = Revit2020|Any CPU
+		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2020|x64.Build.0 = Revit2020|Any CPU
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection

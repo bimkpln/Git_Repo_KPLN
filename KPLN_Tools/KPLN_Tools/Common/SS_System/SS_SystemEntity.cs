@@ -15,7 +15,9 @@ namespace KPLN_Tools.Common.SS_System
             if (CurrentFamInst == null)
                 throw new Exception($"Не удалось преобразовать в FamilyInstance: {CurrentElem.Id}. Скинь разработчику!");
 
+#if Revit2023 || Debug
             CurrentElSystemSet = CurrentFamInst.MEPModel.GetElectricalSystems();
+#endif
         }
 
         public Element CurrentElem { get; private set; }

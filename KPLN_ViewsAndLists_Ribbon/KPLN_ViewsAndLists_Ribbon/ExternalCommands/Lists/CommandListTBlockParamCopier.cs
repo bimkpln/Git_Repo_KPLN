@@ -7,6 +7,7 @@ using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Controls;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
@@ -102,9 +103,16 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             foreach (ViewSheet sheet in sheetsList)
             {
                 IList<ElementId> dependentElemsColl = sheet.GetDependentElements(null);
+#if Revit2020
+                IEnumerable<Element> tBlocksOnView = dependentElemsColl
+                    .Select(id => doc.GetElement(id))
+                    .Where(el => el.Category != null && (BuiltInCategory)el.Category.Id.IntegerValue == BuiltInCategory.OST_TitleBlocks);
+#endif
+#if Revit2023
                 IEnumerable<Element> tBlocksOnView = dependentElemsColl
                     .Select(id => doc.GetElement(id))
                     .Where(el => el.Category != null && el.Category.BuiltInCategory == BuiltInCategory.OST_TitleBlocks);
+#endif
                 result.Add(new TBlockEntity(sheet, tBlocksOnView));
             }
 
@@ -131,8 +139,14 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 string vSheetParamValue = vSheetParam.AsValueString();
                 if (elem is FamilyInstance famInst)
                 {
-                    if (famInst.Category.BuiltInCategory != BuiltInCategory.OST_TitleBlocks)
+#if Revit2020
+                    if ((BuiltInCategory)famInst.Category.Id.IntegerValue != BuiltInCategory.OST_TitleBlocks)
                         throw new Exception("Скинь разработчику - в коллекцию TBlockEntity попали НЕ только OST_TitleBlocks");
+#endif
+#if Revit2023
+                if (famInst.Category.BuiltInCategory != BuiltInCategory.OST_TitleBlocks)
+                        throw new Exception("Скинь разработчику - в коллекцию TBlockEntity попали НЕ только OST_TitleBlocks");
+#endif
 
                     Parameter currentTBlockParam = famInst.LookupParameter(tBlockParamName);
                     if (currentTBlockParam.IsReadOnly)
