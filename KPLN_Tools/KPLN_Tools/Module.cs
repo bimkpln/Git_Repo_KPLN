@@ -144,6 +144,20 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
 
+            PushButtonData set_ChangeRSLinks = CreateBtnData("СЕТ: Обновить связи",
+                "СЕТ: Обновить связи",
+                "Обновляет связи между ревит-серверами",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Command_SETLinkChanger).FullName,
+                "KPLN_Tools.Imagens.smlt_Small.png",
+                "KPLN_Tools.Imagens.smlt_Small.png",
+                "http://moodle");
+
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
                 "Общая коллекция мини-плагинов",
@@ -163,6 +177,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
+            sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
             #endregion
 
             #region Инструменты СС
