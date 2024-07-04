@@ -117,6 +117,7 @@
     <Compile Include="Core\SQLiteData\DBUser.cs" />
     <Compile Include="FactoryParts\Common\DbService.cs" />
     <Compile Include="FactoryParts\Common\AbsCreatorDbService.cs" />
+    <Compile Include="FactoryParts\CreatorProjectMatrixDbService.cs" />
     <Compile Include="FactoryParts\CreatorRevitDocExchangesDbService.cs" />
     <Compile Include="FactoryParts\CreatorRevitDialogtDbService.cs" />
     <Compile Include="FactoryParts\CreatorSubDepartmentCodeMatrixDbService.cs" />
@@ -130,6 +131,7 @@
     <Compile Include="FactoryParts\ProjectDbService.cs" />
     <Compile Include="FactoryParts\SubDepartmentCodeMatrixDbService.cs" />
     <Compile Include="FactoryParts\SubDepartmentDbService.cs" />
+    <Compile Include="FactoryParts\ProjectMatrixDbService.cs" />
     <Compile Include="FactoryParts\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

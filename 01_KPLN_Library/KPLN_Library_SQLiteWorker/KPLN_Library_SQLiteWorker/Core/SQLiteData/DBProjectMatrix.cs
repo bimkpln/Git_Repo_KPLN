@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
 {
     /// <summary>
-    /// Матрица допуска к проектам KPLN
+    /// Строка матрицы допуска к проектам KPLN
     /// </summary>
     public class DBProjectMatrix : IDBEntity
     {

@@ -14,6 +14,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         {
         }
 
+        #region Read
         /// <summary>
         /// Получить коллекцию ВСЕХ проектов
         /// </summary>
@@ -37,5 +38,6 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBProject.Id)}='{id}';")
             .FirstOrDefault();
+        #endregion
     }
 }

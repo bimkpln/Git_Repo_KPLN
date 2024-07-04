@@ -1,11 +1,8 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace KPLN_Looker.Services
@@ -18,23 +15,26 @@ namespace KPLN_Looker.Services
         private readonly UserDbService _userDbService;
         private readonly DocumentDbService _documentDbService;
         private readonly ProjectDbService _projectDbService;
+        private readonly ProjectMatrixDbService _projectMatrixDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;
         private DBUser _dBUser;
+        private DBProjectMatrix[] _dbProjectMatrixColl;
         private DBSubDepartment _dBSubDepartment;
 
         internal DBWorkerService()
         {
+            // Создаю сервисы работы с БД
             _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-
             _documentDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
             _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
+            _projectMatrixDbService = (ProjectMatrixDbService)new CreatorProjectMatrixDbService().CreateService();
             _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
         }
 
         /// <summary>
         /// Ссылка на текущего пользователя из БД
         /// </summary>
-        internal DBUser CurrentDBUser 
+        internal DBUser CurrentDBUser
         {
             get
             {
@@ -42,7 +42,7 @@ namespace KPLN_Looker.Services
                     _dBUser = _userDbService.GetCurrentDBUser();
 
                 return _dBUser;
-            } 
+            }
         }
 
         /// <summary>
@@ -56,6 +56,20 @@ namespace KPLN_Looker.Services
                     _dBSubDepartment = _subDepartmentDbService.GetDBSubDepartment_ByDBUser(CurrentDBUser);
 
                 return _dBSubDepartment;
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на коллекцию DBProjectMatrix - матрицу допуска к проектам KPLN
+        /// </summary>
+        internal DBProjectMatrix[] CurrentDBProjectMatrixColl
+        {
+            get
+            {
+                if (_dbProjectMatrixColl == null)
+                    _dbProjectMatrixColl = _projectMatrixDbService.GetDBProjectMatrix().ToArray();
+
+                return _dbProjectMatrixColl;
             }
         }
 
@@ -95,7 +109,7 @@ namespace KPLN_Looker.Services
         /// </summary>
         /// <param name="fileName">Имя открытого файла Ревит</param>
         /// <returns></returns>
-        internal DBProject Get_DBProjectByRevitDocFile(string fileName) => 
+        internal DBProject Get_DBProjectByRevitDocFile(string fileName) =>
             _projectDbService.GetDBProjects().FirstOrDefault(p => fileName.Contains(p.MainPath) || fileName.Contains(p.RevitServerPath));
 
         /// <summary>
