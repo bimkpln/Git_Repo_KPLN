@@ -115,7 +115,7 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Получить активный документ из БД по открытому проекту Ревит и по проекту из БД
         /// </summary>
-        /// <param name="fileName">Имя открытого файла Ревит</param>
+        /// <param name="centralPath">Путь открытого файла Ревит</param>
         /// <param name="dBProject">Проект из БД</param>
         /// <returns></returns>
         internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject) =>

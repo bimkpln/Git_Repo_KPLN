@@ -8,6 +8,7 @@ using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -110,6 +111,14 @@ namespace KPLN_Looker
 
                 #region Обработка проектов КПЛН
                 DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+                // У Сетуни 2 ревит сервера, что являеться жестким исключением, поэтому её захардкодил сюда
+                if (centralPath.Contains("Самолет_Сетунь") && dBProject == null)
+                {
+                    string[] splitName = centralPath.Split(new string[] { "RSN://rs01/" }, StringSplitOptions.None);
+                    centralPath = Path.Combine("RSN://192.168.0.5/", splitName[1]);
+                    dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+                }
+
                 if (dBProject != null)
                 {
                     // Ищу документ
