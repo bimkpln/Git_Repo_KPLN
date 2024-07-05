@@ -169,74 +169,85 @@ namespace KPLN_BIMTools_Ribbon.Common
                 RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
                 //RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
 
-                DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
-                _sourceProjectName = dBProject.Name;
-
-                ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, CurrentRevitDocExchangestDbService, dBProject, revitDocExchangeEnum);
-                configDispatcher.ShowDialog();
-                if (configDispatcher.IsRun)
+                // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
+                try
                 {
-                    Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}]");
+                    DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
+                    _sourceProjectName = dBProject.Name;
 
-                    foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
+                    ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, CurrentRevitDocExchangestDbService, dBProject, revitDocExchangeEnum);
+                    configDispatcher.ShowDialog();
+                    if (configDispatcher.IsRun)
                     {
-                        SQLiteService sqliteService = new SQLiteService(Logger, currentDocExchange.SettingDBFilePath, revitDocExchangeEnum);
-                        IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
-                        foreach (DBConfigEntity config in configs)
-                        {
-                            List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
-                            if (fileFromPathes.Count == 0)
-                            {
-                                Logger.Error($"Не удалось найти Revit-файлы из папки: {config.PathFrom}");
-                                return false;
-                            }
+                        Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}]");
 
-                            // Проверяю, что это папка, если нет - то ревит-сервер
-                            if (Directory.Exists(config.PathTo))
+                        foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
+                        {
+                            SQLiteService sqliteService = new SQLiteService(Logger, currentDocExchange.SettingDBFilePath, revitDocExchangeEnum);
+                            IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
+                            foreach (DBConfigEntity config in configs)
                             {
-                                foreach (string fileFromPath in fileFromPathes)
+                                List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
+                                if (fileFromPathes.Count == 0)
                                 {
-                                    CountSourceDocs++;
-                                    string newFilePath = ExchangeFile(uiapp.Application, fileFromPath, config);
-                                    if (newFilePath != null)
-                                    {
-                                        CountProcessedDocs++;
-                                        Logger.Info($"Файл {newFilePath} успешно сохранен!\n");
-                                    }
-                                    else
-                                        Logger.Error($"Ошибки с файлом {config.Name} описаны выше.\n");
+                                    Logger.Error($"Не удалось найти Revit-файлы из папки: {config.PathFrom}");
+                                    return false;
                                 }
-                            }
-                            // Обрабатываю ревит-сервер
-                            else
-                            {
-                                foreach (string fileFromPath in fileFromPathes)
+
+                                // Проверяю, что это папка, если нет - то ревит-сервер
+                                if (Directory.Exists(config.PathTo))
                                 {
-                                    CountSourceDocs++;
-                                    string newFilePath = ExchangeFile(uiapp.Application, fileFromPath, config, "RSN:");
-                                    if (newFilePath != null)
+                                    foreach (string fileFromPath in fileFromPathes)
                                     {
-                                        CountProcessedDocs++;
-                                        Logger.Info($"Файл {newFilePath} успешно сохранен!\n");
+                                        CountSourceDocs++;
+                                        string newFilePath = ExchangeFile(uiapp.Application, fileFromPath, config);
+                                        if (newFilePath != null)
+                                        {
+                                            CountProcessedDocs++;
+                                            Logger.Info($"Файл {newFilePath} успешно сохранен!\n");
+                                        }
+                                        else
+                                            Logger.Error($"Ошибки с файлом {config.Name} описаны выше.\n");
+                                    }
+                                }
+                                // Обрабатываю ревит-сервер
+                                else
+                                {
+                                    foreach (string fileFromPath in fileFromPathes)
+                                    {
+                                        CountSourceDocs++;
+                                        string newFilePath = ExchangeFile(uiapp.Application, fileFromPath, config, "RSN:");
+                                        if (newFilePath != null)
+                                        {
+                                            CountProcessedDocs++;
+                                            Logger.Info($"Файл {newFilePath} успешно сохранен!\n");
+                                        }
                                     }
                                 }
                             }
                         }
+
+                        SendResultMsg($"Плагин экспорта: [{revitDocExchangeEnum}]");
+                        Logger.Info($"Файлы успешно экспортированы: [{revitDocExchangeEnum}]");
+
+                        revitEventWorker.Dispose();
+
+                        return true;
                     }
-
-                    SendResultMsg($"Плагин экспорта: [{revitDocExchangeEnum}]");
-                    Logger.Info($"Файлы успешно экспортированы: [{revitDocExchangeEnum}]");
-
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+                finally
+                {
                     //Отписка от событий
                     RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
                     RevitUIControlledApp.ControlledApplication.DocumentOpened -= revitEventWorker.OnDocumentOpened;
                     RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
                     //RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
-
-                    revitEventWorker.Dispose();
-
-                    return true;
                 }
+                
             }
 
             return false;
@@ -264,7 +275,10 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// </summary>
         private protected void SetOpenOptions(IList<WorksetId> worksetIds)
         {
-            _openOptions = new OpenOptions() { DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets };
+            _openOptions = new OpenOptions() 
+            { 
+                DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets 
+            };
             WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
             openConfig.Open(worksetIds);
             _openOptions.SetOpenWorksetsConfiguration(openConfig);
@@ -275,8 +289,15 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// </summary>
         private protected void SetSaveAsOptions()
         {
-            _saveAsOptions = new SaveAsOptions() { OverwriteExistingFile = true };
-            WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() { SaveAsCentral = true };
+            _saveAsOptions = new SaveAsOptions() 
+            { 
+                OverwriteExistingFile = true 
+            };
+            WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() 
+            { 
+                SaveAsCentral = true, 
+                OpenWorksetsDefault = SimpleWorksetConfiguration.AskUserToSpecify 
+            };
             _saveAsOptions.SetWorksharingOptions(worksharingSaveAsOptions);
         }
 
@@ -337,6 +358,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 string[] pathParts = pathFrom.Split('\\');
 
                 string rsHostName = pathParts[2];
+                int pathPartsLenght = pathParts.Length;
                 if (rsHostName == null)
                 {
                     Logger.Error($"Ошибка заполнения пути для копирования с Revit-Server: ({pathFrom}). Путь должен быть в формате '\\\\HOSTNAME\\PATH'");
@@ -345,10 +367,27 @@ namespace KPLN_BIMTools_Ribbon.Common
                 try
                 {
                     RevitServer server = new RevitServer(rsHostName, int.Parse(RevitVersion));
-                    FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathParts.Length - 3));
-                    foreach (var model in folderContents.Models)
+                    // Проверяю ссылку на конечный файл. Добавляю файл
+                    if (pathFrom.ToLower().Contains("rvt"))
                     {
-                        fileFromPathes.Add($"RSN:{pathFrom}{model.Name}");
+                        FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathPartsLenght - 4));
+                        foreach (var model in folderContents.Models)
+                        {
+                            if (model.Name == pathParts[pathPartsLenght - 1])
+                            {
+                                fileFromPathes.Add($"RSN:{pathFrom}");
+                                break;
+                            }
+                        }
+                    }
+                    // Значит ссылка на папку. Добавляю файлы
+                    else
+                    {
+                        FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathPartsLenght - 3));
+                        foreach (var model in folderContents.Models)
+                        {
+                            fileFromPathes.Add($"RSN:{pathFrom}{model.Name}");
+                        }
                     }
                 }
                 catch (Exception ex)

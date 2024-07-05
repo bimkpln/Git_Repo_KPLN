@@ -3,19 +3,10 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
-using KPLN_BIMTools_Ribbon.Core;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
-using KPLN_BIMTools_Ribbon.Forms;
-using KPLN_Library_Forms.Common;
-using KPLN_Library_Forms.UI;
-using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using RevitServerAPILib;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime;
-using System.Windows.Shapes;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_BIMTools_Ribbon.ExternalCommands
@@ -67,7 +58,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 // Подготовка к открытию
                 SetOpenOptions(WorksetConfigurationOption.CloseAllWorksets);
                 SetSaveAsOptions();
-                
+
                 // Открываем документ по указанному пути
                 Document doc = app.OpenDocumentFile(
                     ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath),
@@ -80,6 +71,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
                     doc.SaveAs(newModelPath, _saveAsOptions);
                     CurrentDocName = doc.Title;
+                    WorksharingUtils.RelinquishOwnership(doc, new RelinquishOptions(true), new TransactWithCentralOptions());
                     doc.Close(false);
 
                     return newPath;

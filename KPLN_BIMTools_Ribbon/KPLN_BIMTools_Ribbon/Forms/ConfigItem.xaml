@@ -24,11 +24,14 @@
                         Text="{Binding Name}"
                         TextWrapping="Wrap"
                         HorizontalAlignment="Stretch"
-                        ToolTip="Нажми ПКМ, чтобы удалить файл/группу файлов"
+                        ToolTip="Нажми ПКМ, чтобы изменить или удалить файл/группу файлов"
                         Margin="2"/>
                 </ListBox.Items>
                 <ListBox.ContextMenu>
                     <ContextMenu>
+                        <MenuItem 
+                            Header="Изменить" 
+                            Click="LBMenuItem_Update_Click"/>
                         <MenuItem 
                             Header="Удалить" 
                             Click="LBMenuItem_Delete_Click"/>

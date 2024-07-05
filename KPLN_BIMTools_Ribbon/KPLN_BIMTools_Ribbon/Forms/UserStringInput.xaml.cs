@@ -1,22 +1,34 @@
-﻿using System.Media;
+﻿using System.ComponentModel;
+using System.Media;
+using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace KPLN_BIMTools_Ribbon.Forms
 {
-    public partial class UserStringInput : Window
+    public partial class UserStringInput : Window, INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private bool _canRunByName;
         private bool _canRunByPathTo;
+        private string _userInputName;
+        private string _userInputPath;
 
         public UserStringInput()
         {
             InitializeComponent();
+            DataContext = this;
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
             PreviewKeyDown += new KeyEventHandler(HandleEnter);
             SystemSounds.Beep.Play();
+        }
+
+        public UserStringInput(string lastName, string lastPath) : this()
+        {
+            UserInputName = lastName;
+            UserInputPath = lastPath;
         }
 
         /// <summary>
@@ -24,9 +36,50 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// </summary>
         public bool IsRun { get; private set; }
 
-        public string UserInputName { get; private set; }
-        
-        public string UserInputPath { get; private set; }
+        public string UserInputName
+        {
+            get => _userInputName;
+            set
+            {
+                if (value != _userInputName)
+                {
+                    _userInputName = value;
+                    OnPropertyChanged();
+                    // Меняю настройки кликабельности кнопок
+                    if (!string.IsNullOrWhiteSpace(_userInputName) && _userInputName.Length > 5)
+                        _canRunByName = true;
+                    else
+                        _canRunByName = false;
+
+                    BtnEnableSwitch();
+                }
+            }
+        }
+
+        public string UserInputPath
+        {
+            get => _userInputPath;
+            set
+            {
+                if (value != _userInputPath)
+                {
+                    _userInputPath = value;
+                    OnPropertyChanged();
+                    // Меняю настройки кликабельности кнопок
+                    if (!string.IsNullOrWhiteSpace(_userInputPath) && _userInputPath.Length > 10)
+                        _canRunByPathTo = true;
+                    else
+                        _canRunByPathTo = false;
+
+                    BtnEnableSwitch();
+                }
+            }
+        }
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
@@ -56,32 +109,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             IsRun = true;
             Close();
-        }
-
-        private void NameChanged(object sender, TextChangedEventArgs e)
-        {
-            TextBox textBox = sender as TextBox;
-            UserInputName = textBox.Text;
-
-            if (!string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text.Length > 5)
-                _canRunByName = true;
-            else
-                _canRunByName = false;
-
-            BtnEnableSwitch();
-        }
-
-        private void PathChanged(object sender, TextChangedEventArgs e)
-        {
-            TextBox textBox = sender as TextBox;
-            UserInputPath = textBox.Text;
-
-            if (!string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text.Length > 10)
-                _canRunByPathTo = true;
-            else
-                _canRunByPathTo = false;
-
-            BtnEnableSwitch();
         }
 
         /// <summary>

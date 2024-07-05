@@ -7,8 +7,8 @@
         mc:Ignorable="d" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
         Title="KPLN: Ввод данных" 
-        Width="600" 
-        SizeToContent="WidthAndHeight" 
+        Width="900" 
+        SizeToContent="Height" 
         Background="#FF292D36" 
         WindowStartupLocation="CenterScreen" 
         ResizeMode="CanResize" 
@@ -67,19 +67,35 @@
                 Text="Собирательное имя для папки, или имя файла:"
                 Foreground="White"/>
             <TextBox 
+                x:Name="InputName"
                 Grid.Row="2"
                 FontSize="16" 
-                TextChanged="NameChanged"/>
+                Text="{Binding UserInputName}">
+                <TextBox.ToolTip>
+                    <TextBlock 
+                        Width="300"
+                        Text="Данное поле должно иметь МИНИМУМ 5 символов"
+                        TextWrapping="Wrap"/>
+                </TextBox.ToolTip>
+            </TextBox>
             <TextBlock 
                 Grid.Column="0"
                 Grid.Row="3"
                 FontSize="16"
-                Text="Путь к папке с исходными файлами, или полный путь к файлу:"
+                Text="Путь к папке с исходными файлами, или полный путь к файлу (обязательно укажии расширение '.rvt'):"
                 Foreground="White"/>
             <TextBox 
+                x:Name="InputPath"
                 Grid.Row="4"
                 FontSize="16" 
-                TextChanged="PathChanged"/>
+                Text="{Binding UserInputPath}">
+                <TextBox.ToolTip>
+                    <TextBlock 
+                        Width="300"
+                        Text="Данное поле должно иметь МИНИМУМ 10 символов. Если укажешь путь к папке - плагин заберёт из неё ВСЕ файлы. Для Revit-Server нужно указывать путь в фортмате '\\\\HOSTNAME\\FULLPATH.rvt'"
+                        TextWrapping="Wrap"/>
+                </TextBox.ToolTip>
+            </TextBox>
         </Grid>
         <Rectangle Fill="White" RadiusX="3" RadiusY="3" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.1"/>
         <StackPanel Margin="0,5,0,5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
@@ -101,7 +117,8 @@
             Grid.Row="2" 
             Grid.Column="0" 
             Grid.ColumnSpan="2" 
-            Text="Примечание: Укажи путь к папке, чтобы обработать ВСЕ файлы, либо укажи путь к конкретному файлу. В том числе - и на RevitServer" 
+            Text="Примечание: Укажи путь к папке, чтобы обработать ВСЕ файлы, либо укажи путь к конкретному файлу (нужно указать расширение '.rvt'). Особенно актуально для RevitServer - для него все только через это окно" 
+            TextWrapping="Wrap"
             Opacity="0.5"/>
     </Grid>
 </Window>

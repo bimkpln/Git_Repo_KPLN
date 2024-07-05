@@ -11,7 +11,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -81,7 +80,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 SQLiteService tempSqliteService = null;
                 if (_sqliteService.CurrentDBFullPath != CurrentDBRevitDocExchanges.SettingDBFilePath)
                     tempSqliteService = new SQLiteService(_logger, CurrentDBRevitDocExchanges.SettingDBFilePath, _revitDocExchangeEnum);
-                else 
+                else
                     tempSqliteService = _sqliteService;
 
                 // Добавляю общие настройки конфига (которые дублируются по каждтому DBConfigEntity)
@@ -261,6 +260,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private void LBMenuItem_Update_Click(object sender, RoutedEventArgs e)
+        {
+            if ((MenuItem)e.Source is MenuItem menuItem)
+            {
+                if (menuItem.DataContext is FileEntity fileEntity)
+                {
+                    UserStringInput userStringInput = new UserStringInput(fileEntity.Name, fileEntity.Path);
+                    userStringInput.ShowDialog();
+                    if (userStringInput.IsRun)
+                    {
+                        // Обновляю основную коллекцию новыми данными
+                        int index = FileEntitiesList.IndexOf(fileEntity);
+                        if (index >= 0)
+                        {
+                            // Уведомить об изменении элемента
+                            FileEntitiesList[index] = new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath);
+                        }
+                    }
+                }
+            }
+        }
+
         private void LBMenuItem_Delete_Click(object sender, RoutedEventArgs e)
         {
             if ((MenuItem)e.Source is MenuItem menuItem)
@@ -324,7 +345,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     IEnumerable<DBNWConfigData> dBNWConfigDatas = FileEntitiesList
                         .Select(fe => new DBNWConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(sharedDBNWConfigData));
-                    
+
                     if (_sqliteService.GetConfigItems().Count() == 0)
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
                     else
