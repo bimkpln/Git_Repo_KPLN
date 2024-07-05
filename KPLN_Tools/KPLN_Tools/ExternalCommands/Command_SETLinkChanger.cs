@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
+using Autodesk.Windows;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using RevitServerAPILib;
 using System.Collections.Generic;
@@ -18,6 +20,10 @@ namespace KPLN_Tools.ExternalCommands
         /// Путь к RS#1
         /// </summary>
         private readonly string _rs1Path = "192.168.0.5";
+        /// <summary>
+        /// Второй путь к RS#1 (сис админ что-то накрутил...)
+        /// </summary>
+        private readonly string _rs1Path2 = "192.168.20.7";
         /// <summary>
         /// Путь к RS#2
         /// </summary>
@@ -44,112 +50,186 @@ namespace KPLN_Tools.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+
             //Get application and documnet objects
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            #region Вывожу окно с запросом на обновление файла-конфига (только для BIM-отдела)
-            if (Module.CurrentDBUser.SubDepartmentId == 8)
+            // Подписка на события
+            commandData.Application.DialogBoxShowing += OnDialogBoxShowing;
+
+            try
             {
-                TaskDialog td = new TaskDialog("ОШИБКА")
+                #region Вывожу окно с запросом на обновление файла-конфига (только для BIM-отдела)
+                if (Module.CurrentDBUser.SubDepartmentId == 8)
                 {
-                    MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                    MainInstruction = $"Обновить файл со списком Revit-файлов с сервера {_rs2Path}?",
-                    FooterText = "Занимает много времени, т.к. всё нужно обновить. Лучше запускать этот алгоритм только в случае необходимости (например: в проекте добавились новые файлы)",
-                    CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
-                };
-
-                TaskDialogResult tdResult = td.Show();
-                if (tdResult == TaskDialogResult.Yes)
-                {
-                    // Коллекция моделей РС№2
-                    RevitServer rs2 = new RevitServer(_rs2Path, _rsVersion);
-                    Task<IList<Model>> rs2ModelsTask = new Task<IList<Model>>(() =>
+                    Autodesk.Revit.UI.TaskDialog td = new Autodesk.Revit.UI.TaskDialog("ОШИБКА")
                     {
-                        return GetFilesFromRSFolder(rs2, "Самолет_Сетунь");
-                    });
-                    rs2ModelsTask.Start();
+                        MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconWarning,
+                        MainInstruction = $"Обновить файл со списком Revit-файлов с сервера {_rs2Path}?",
+                        FooterText = "Занимает много времени, т.к. всё нужно обновить. Лучше запускать этот алгоритм только в случае необходимости (например: в проекте добавились новые файлы)",
+                        CommonButtons = Autodesk.Revit.UI.TaskDialogCommonButtons.Yes | Autodesk.Revit.UI.TaskDialogCommonButtons.No,
+                    };
 
-                    rs2ModelsTask.Wait();
-
-                    // Запись строк в файл
-                    using (StreamWriter writer = new StreamWriter(_pathDBFileRS2))
+                    Autodesk.Revit.UI.TaskDialogResult tdResult = td.Show();
+                    if (tdResult == Autodesk.Revit.UI.TaskDialogResult.Yes)
                     {
-                        foreach (Model model in rs2ModelsTask.Result)
+                        // Коллекция моделей РС№2
+                        RevitServer rs2 = new RevitServer(_rs2Path, _rsVersion);
+                        Task<IList<Model>> rs2ModelsTask = new Task<IList<Model>>(() =>
                         {
-                            writer.WriteLine(model.Path);
+                            return GetFilesFromRSFolder(rs2, "Самолет_Сетунь");
+                        });
+                        rs2ModelsTask.Start();
+
+                        rs2ModelsTask.Wait();
+
+                        // Запись строк в файл
+                        using (StreamWriter writer = new StreamWriter(_pathDBFileRS2))
+                        {
+                            foreach (Model model in rs2ModelsTask.Result)
+                            {
+                                writer.WriteLine(model.Path);
+                            }
                         }
                     }
                 }
-            }
-            #endregion
+                #endregion
 
-            Task<List<string>> getDBFilesRS2Task = new Task<List<string>>(() =>
-            {
-                List<string> pathes = new List<string>();
-                // Чтение строк из файла
-                using (StreamReader reader = new StreamReader(_pathDBFileRS2))
+                Task<List<string>> getDBFilesRS2Task = new Task<List<string>>(() =>
                 {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    List<string> pathes = new List<string>();
+                    // Чтение строк из файла
+                    using (StreamReader reader = new StreamReader(_pathDBFileRS2))
                     {
-                        pathes.Add(line);
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            pathes.Add(line);
+                        }
+
+                        return pathes;
                     }
+                });
+                getDBFilesRS2Task.Start();
 
-                    return pathes;
-                }
-            });
-            getDBFilesRS2Task.Start();
+                WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.OpenAllWorksets);
 
-            WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.OpenAllWorksets);
-
-            Element[] linkDocColl = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkType)).ToArray();
-            int succsesSteps = 0;
-            int allModlesForChange = 0;
-            foreach (Element linkElem in linkDocColl)
-            {
-                if (linkElem is RevitLinkType linkType)
+                Element[] linkDocColl = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkType)).ToArray();
+                int succsesSteps = 0;
+                int allModlesForChange = 0;
+                foreach (Element linkElem in linkDocColl)
                 {
-                    // Анализирую тип связи
-                    if (linkType.PathType != PathType.Server)
-                        continue;
-
-                    // Анализирую имя проекта на наличие в списке для РС№2 ТОЛЬКО для АР (для остальных - меняются все ссылки)
-                    string linkName = linkType.Name;
-                    if (doc.Title.Contains("АР") && _fileNameAbrCollForAR.Count(abbr => linkName.Contains(abbr)) == 0)
-                        continue;
-
-                    // Анализирую положение связи для РС№2
-                    ExternalFileReference extFileRef = linkType.GetExternalFileReference();
-                    ModelPath modelPath = extFileRef.GetAbsolutePath();
-                    if (!modelPath.CentralServerPath.Contains(_rs1Path))
-                        continue;
-
-                    // Генерю новый путь
-                    allModlesForChange++;
-                    getDBFilesRS2Task.Wait();
-                    string currentNewRSModelPath = getDBFilesRS2Task.Result.Where(p => p.Contains(linkName)).FirstOrDefault();
-                    if (string.IsNullOrEmpty(currentNewRSModelPath))
+                    if (linkElem is RevitLinkType linkType)
                     {
-                        HtmlOutput.Print(
-                            $"У файла {linkName} не удалось найти дубликат на сервере {_rs2Path}. Скинь в БИМ-отдел, им нужно обновить файл со списком Revit-файлов с сервера {_rs2Path}",
-                            MessageType.Error);
-                        continue;
-                    }
+                        // Анализирую тип связи
+                        if (linkType.PathType != PathType.Server)
+                            continue;
 
-                    ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rs2Path}\\{currentNewRSModelPath}");
-                    // Обновляю по новому пути
-                    linkType.LoadFrom(newModelPath, openConfig);
-                    succsesSteps++;
+                        // Анализирую имя проекта на наличие в списке для РС№2 ТОЛЬКО для АР (для остальных - меняются все ссылки)
+                        string linkName = linkType.Name;
+                        if (doc.Title.Contains("АР") || _fileNameAbrCollForAR.Count(abbr => linkName.Contains(abbr)) == 0)
+                            continue;
+
+                        // Анализирую положение связи для РС№2
+                        ExternalFileReference extFileRef = linkType.GetExternalFileReference();
+                        ModelPath modelPath = extFileRef.GetAbsolutePath();
+                        if (!modelPath.CentralServerPath.Contains(_rs1Path) && !modelPath.CentralServerPath.Contains(_rs1Path2))
+                            continue;
+
+                        // Генерю новый путь
+                        allModlesForChange++;
+                        getDBFilesRS2Task.Wait();
+                        string currentNewRSModelPath = getDBFilesRS2Task.Result.Where(p => p.Contains(linkName)).FirstOrDefault();
+                        if (string.IsNullOrEmpty(currentNewRSModelPath))
+                        {
+                            HtmlOutput.Print(
+                                $"У файла {linkName} не удалось найти дубликат на сервере {_rs2Path}. Скинь в БИМ-отдел, им нужно обновить файл со списком Revit-файлов с сервера {_rs2Path}",
+                                MessageType.Error);
+                            continue;
+                        }
+
+                        ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rs2Path}\\{currentNewRSModelPath}");
+
+                        // Проверка РН, что он открыт, иначе - насильно открываю (только через создание элемента в проекте)
+                        WorksetId linkWorksetId = linkType.WorksetId;
+                        Workset linkWorkset = new FilteredWorksetCollector(doc)
+                            .OfKind(WorksetKind.UserWorkset)
+                            .Where(ws => ws.Id.IntegerValue == linkWorksetId.IntegerValue)
+                            .FirstOrDefault();
+                        if (linkWorkset != null
+                            && !linkWorkset.IsOpen)
+                        {
+                            using (Transaction t = new Transaction(doc))
+                            {
+                                t.Start("KPLN: Открываю РН");//Crating temporary cable tray
+                                ElementId typeID = new FilteredElementCollector(doc).OfClass(typeof(Wall)).WhereElementIsElementType().ToElementIds().FirstOrDefault();
+                                ElementId levelID = new FilteredElementCollector(doc).OfClass(typeof(Level)).ToElementIds().First();
+                                XYZ point_a = new XYZ(-100, 0, 0);
+                                XYZ point_b = new XYZ(100, 0, 0); // for start try making a wall in one plane
+                                Curve line = Line.CreateBound(point_a, point_b) as Curve;
+                                Wall wall = Wall.Create(doc, line, levelID, false);
+                                ElementId elementId = wall.Id;
+
+                                //Changing workset of cable tray to workset which we want to open
+                                Autodesk.Revit.DB.Parameter wsparam = wall.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM);
+                                if (wsparam != null && !wsparam.IsReadOnly) wsparam.Set(linkWorkset.Id.IntegerValue);
+
+                                List<ElementId> ids = new List<ElementId>
+                                {
+                                    elementId
+                                };
+
+                                //This command will actualy open workset
+                                uidoc.ShowElements(ids);
+
+                                //Delete temporary cable tray
+                                doc.Delete(elementId);
+
+                                t.Commit();
+                            }
+                        }
+
+                        // Обновляю по новому пути
+                        linkType.LoadFrom(newModelPath, openConfig);
+                        succsesSteps++;
+                    }
                 }
+
+                HtmlOutput.Print(
+                    $"Успешно для {succsesSteps} моделей из {allModlesForChange} моделей, подлежащих замене пути",
+                    MessageType.Success);
             }
 
-            HtmlOutput.Print(
-                $"Успешно для {succsesSteps} моделей из {allModlesForChange} моделей, подлежащих замене пути",
-                MessageType.Success);
+            catch (System.Exception ex)
+            {
+                HtmlOutput.Print($"{ex}", MessageType.Error);
+            }
+
+            commandData.Application.DialogBoxShowing -= OnDialogBoxShowing;
 
             return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Обработка события всплывающего окна Ревит
+        /// </summary>=
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
+        internal void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
+        {
+
+            TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
+            if (taskDialogShowingEventArgs.Message.Contains("Не существует открытого вида"))
+            {
+                args.OverrideResult(5);
+            }
+            else if (taskDialogShowingEventArgs.Message.Contains("Невозможно подобрать подходящий вид"))
+            {
+                args.OverrideResult(1);
+            }
+
         }
 
         private List<Model> GetFilesFromRSFolder(RevitServer rs, string path)
