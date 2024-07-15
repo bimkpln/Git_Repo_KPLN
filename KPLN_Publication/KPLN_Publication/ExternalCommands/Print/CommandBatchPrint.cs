@@ -63,9 +63,15 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                     // Анализирую листы на наличие 2х основных надписей в одном месте
                     List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>(); 
-                    FilteredElementCollector tBlocksColl = new FilteredElementCollector(mainDoc, sheet.Id)
+                    FamilyInstance[] tBlocksColl = new FilteredElementCollector(mainDoc, sheet.Id)
                         .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                        .WhereElementIsNotElementType();
+                        .WhereElementIsNotElementType()
+                        .Cast<FamilyInstance>()
+                        .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись"))
+                        .ToArray();
+
+                    if (tBlocksColl.Count() == 0)
+                        listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Не имеет экземпляров основной надписи с именем 'Основная надпись'");
 
                     foreach(FamilyInstance tBlock in tBlocksColl)
                     {

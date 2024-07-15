@@ -55,7 +55,8 @@ namespace KPLN_Publication
             btnCreate.LargeImage = PngImageSource("KPLN_Publication.Resources.PrintBig.png");
             btnCreate.Image = PngImageSource("KPLN_Publication.Resources.PrintSmall.png");
             btnCreate.ToolTip = "Пакетная печать выбранных листов «на бумагу» или в PDF с автоматическим разделением по форматам.";
-            btnCreate.LongDescription = "Возможности:\n" +
+            btnCreate.LongDescription = string.Format(
+                "Возможности:\n" +
                 " - Автоматическое определение форматов;\n" +
                 " - Печать «на бумагу» и в формат PDF;\n" +
                 " - Обработка нестандартных форматов - А2х3 и любых произвольных размеров (нужны права администратора);\n" +
@@ -63,7 +64,12 @@ namespace KPLN_Publication
                 " - Печать спецификаций, разделенных на несколько листов;\n" +
                 " - Печать листов из связанного файла;\n" +
                 " - Объединение листов в один PDF;\n" +
-                " - Авто именование PDF файлов по маске;\n\n";
+                " - Авто именование PDF файлов по маске." +
+                "\n\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                    );
             btnCreate.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, @"http://moodle/mod/book/view.php?id=502&chapterid=667"));
 
             // Stacked items: Обновить спецификации, создание наборов публикаций и набор действий перед выдачей
