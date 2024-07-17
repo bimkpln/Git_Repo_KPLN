@@ -102,6 +102,18 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <Choose>
+    <When Condition=" '$(Configuration)'=='Debug' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
         <Reference Include="RevitAPI">
@@ -181,6 +193,9 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Forms\Progress_Single.resx">
+      <DependentUpon>Progress_Single.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Imagens\auditParams.png" />
     <EmbeddedResource Include="Imagens\copyProjectParams.png" />
     <EmbeddedResource Include="Imagens\gripParams.png" />

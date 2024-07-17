@@ -32,6 +32,7 @@
             this.Header_lbl = new System.Windows.Forms.Label();
             this.Add_lbl = new System.Windows.Forms.Label();
             this.Titile_lbl = new System.Windows.Forms.Label();
+            this.Btn_Ok = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // progressBar1
@@ -75,22 +76,35 @@
             this.Titile_lbl.TabIndex = 3;
             this.Titile_lbl.Text = "Инициализация";
             // 
+            // Btn_Ok
+            // 
+            this.Btn_Ok.Enabled = false;
+            this.Btn_Ok.Location = new System.Drawing.Point(150, 120);
+            this.Btn_Ok.Name = "Btn_Ok";
+            this.Btn_Ok.Size = new System.Drawing.Size(75, 23);
+            this.Btn_Ok.TabIndex = 4;
+            this.Btn_Ok.Text = "Ok!";
+            this.Btn_Ok.UseVisualStyleBackColor = true;
+            this.Btn_Ok.Visible = false;
+            this.Btn_Ok.Click += new System.EventHandler(this.Btn_Ok_Click);
+            // 
             // Progress_Single
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.HighlightText;
-            this.ClientSize = new System.Drawing.Size(400, 125);
+            this.ClientSize = new System.Drawing.Size(400, 150);
             this.ControlBox = false;
+            this.Controls.Add(this.Btn_Ok);
             this.Controls.Add(this.Titile_lbl);
-            this.Controls.Add(this.Add_lbl);
             this.Controls.Add(this.Header_lbl);
+            this.Controls.Add(this.Add_lbl);
             this.Controls.Add(this.progressBar1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
-            this.MaximumSize = new System.Drawing.Size(400, 125);
+            this.MaximumSize = new System.Drawing.Size(400, 150);
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(400, 125);
+            this.MinimumSize = new System.Drawing.Size(400, 150);
             this.Name = "Progress_Single";
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
@@ -108,5 +122,6 @@
         private System.Windows.Forms.Label Header_lbl;
         private System.Windows.Forms.Label Add_lbl;
         private System.Windows.Forms.Label Titile_lbl;
+        private System.Windows.Forms.Button Btn_Ok;
     }
 }

@@ -102,6 +102,48 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-        <Button x:Name="BtnRun" IsEnabled="False" Grid.Row="3" Margin="5,10,0,10" Content="Запустить" Background="White" HorizontalAlignment="Left" Click="OnBtnRun" IsDefault="True"/>
+
+        <StackPanel
+            Grid.Row="3"
+            Orientation="Horizontal">
+            <Button 
+                x:Name="BtnRunWithoutGroups" 
+                Margin="5,10,0,10" 
+                IsEnabled="False"
+                Content="Запустить БЕЗ учета парамтеров групп" 
+                Background="White" 
+                HorizontalAlignment="Left" 
+                Click="OnBtnRun_WithoutGroups" 
+                IsDefault="True">
+                <Button.ToolTip>
+                    <ToolTip Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25">
+                        <StackPanel>
+                            <TextBlock>Этот сценарий НЕ изменяет параметры, которые не могут отличаться по экземплярам групп.</TextBlock>
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
+            </Button>
+
+            <Button 
+                x:Name="BtnRunWithGroups" 
+                Margin="5,10,0,10" 
+                IsEnabled="False"
+                Content="Запустить С учетом парамтеров групп" 
+                Background="White" 
+                HorizontalAlignment="Left" 
+                Click="OnBtnRun_WithGroups" 
+                IsDefault="True">
+                <Button.ToolTip>
+                    <ToolTip Foreground="Black" HasDropShadow="False" Placement="Relative" HorizontalOffset="15" VerticalOffset="25">
+                        <StackPanel>
+                            <TextBlock>Этот сценарий ВСЕ изменяет параметры, включая парамтеры, которые не могут отличаться по экземплярам групп.</TextBlock>
+                            <TextBlock Foreground="Red">ВАЖНО: </TextBlock>
+                            <TextBlock>Группы в этом случае БУДУТ расформированы</TextBlock>
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
+            </Button>
+
+        </StackPanel>
     </Grid>
 </Window>
