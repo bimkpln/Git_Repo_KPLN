@@ -4,22 +4,277 @@ using KPLN_Loader.Common;
 using KPLN_Parameters_Ribbon.Common.CopyElemParamData;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
+using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
+using static System.Windows.Forms.AxHost;
 
 namespace KPLN_Parameters_Ribbon.Command
 {
     public class CommandWriteValues : IExecutableCommand
     {
-        private List<ParameterRuleElement> Rules { get; set; }
+        private readonly List<ParameterRuleElement> _rules;
+        private readonly bool _isWriteInGroups;
 
-        public CommandWriteValues(ObservableCollection<ParameterRuleElement> rules)
+        public CommandWriteValues(ObservableCollection<ParameterRuleElement> rules, bool isWriteInGroups)
         {
-            Rules = rules.ToList();
+            _rules = rules.ToList();
+            _isWriteInGroups = isWriteInGroups;
         }
 
-        private Parameter GetParameterByElement(Element element, ListBoxElement rule)
+        public Result Execute(UIApplication app)
+        {
+            Document doc = app.ActiveUIDocument.Document;
+            int max = 0;
+            foreach (ParameterRuleElement rule in _rules)
+            {
+                max += new FilteredElementCollector(doc)
+                    .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
+                    .WhereElementIsNotElementType()
+                    .ToElements()
+                    .Count;
+            }
+            string format = "{0} из " + max.ToString() + " параметров обработано";
+            Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, true);
+            pb.SetProggresValues(max, 0);
+            pb.ShowProgress();
+
+            try
+            {
+                #region Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами, И они в группе
+                if (_isWriteInGroups)
+                {
+                    #region Архивная наработка, которую не пустить в релиз - работает только с группами, которые не имеют пространственных разночтений с исходниокм (вращение)
+                    // Проблема НЕ решается (ручные правки в модели, или попытка эмитации в ревит не приносят результатов - группы вращаются в положение исходной)
+                    // Проблема должна быть решена расшиернием API, но все никак: https://forums.autodesk.com/t5/revit-ideas/group-edit-mode-in-api/idc-p/10293127
+
+                    //using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: анализ групп"))
+                    //{
+                    //    t.Start();
+
+                    //    GroupType[] groupTypeArr = new FilteredElementCollector(doc)
+                    //        .OfClass(typeof(GroupType))
+                    //        .Cast<GroupType>()
+                    //        .ToArray();
+                    //    HashSet<ElementId> delGroupsSet = new HashSet<ElementId>();
+                    //    foreach (GroupType groupType in groupTypeArr)
+                    //    {
+                    //        GroupSet groupSet = groupType.Groups;
+                    //        if (groupSet.Size != 0)
+                    //        {
+                    //            IEnumerator groupEnmu = groupSet.GetEnumerator();
+                    //            // Получаю новую группу
+                    //            int count = 0;
+                    //            while (groupEnmu.MoveNext())
+                    //            {
+                    //                Group currentNewGroup = null;
+                    //                count++;
+
+                    //                if (groupEnmu.Current is Group currentGroup)
+                    //                {
+                    //                    string currentGroupOldName = currentGroup.Name;
+                    //                    ElementId[] groupElemIDsArr = currentGroup.UngroupMembers().ToArray();
+                    //                    foreach (ParameterRuleElement rule in _rules)
+                    //                    {
+                    //                        Category selectedRuleCat = rule.SelectedCategory.Data as Category ?? throw new Exception($"Не удалось получить категрию элемнтов для одного из правил. Обратись к разработчику");
+
+                    //                        foreach (ElementId elemId in groupElemIDsArr)
+                    //                        {
+                    //                            Element elem = doc.GetElement(elemId);
+
+                    //                            if (elem is SketchPlane || elem is SketchBase)
+                    //                                continue;
+
+                    //                            Category elemCat = elem.Category;
+                    //                            if (elemCat == null)
+                    //                                Print($"Не удалось получить категрию элемнта с ID: {elemId} и именем {elem.Name}. Он пропущен в анализе, нужен ручной анализ со стороны пользователя", MessageType.Error);
+                    //                            else if (elemCat.Id == selectedRuleCat.Id)
+                    //                            {
+                    //                                Parameter sourceParameter = GetParameterByElement(elem, rule.SelectedSourceParameter);
+                    //                                Parameter targetParameter = GetParameterByElement(elem, rule.SelectedTargetParameter);
+
+                    //                                if (targetParameter.Definition is InternalDefinition intParamDef)
+                    //                                {
+                    //                                    // Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами (иной вариант устанавливается ниже)
+                    //                                    if (!intParamDef.VariesAcrossGroups)
+                    //                                    {
+                    //                                        SetElemParamByRule(sourceParameter, targetParameter, pb);
+                    //                                        pb.AddProgress(groupSet.Size - 1);
+                    //                                        delGroupsSet.Add(currentGroup.Id);
+                    //                                    }
+                    //                                }
+                    //                            }
+                    //                        }
+                    //                    }
+
+                    //                    string currentGroupNewName = $"{currentGroupOldName}_ZhvBlr{count}";
+                    //                    currentNewGroup = doc.Create.NewGroup(groupElemIDsArr);
+                    //                    currentNewGroup.GroupType.Name = currentGroupNewName;
+                    //                }
+                    //            }
+
+                    //        }
+                    //    }
+
+                    //    // Удаляю старую версию
+                    //    foreach(ElementId groupId in delGroupsSet)
+                    //    {
+                    //        doc.Delete(groupId);
+                    //    }
+
+                    //    t.Commit();
+                    //}
+
+                    //using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: очистка групп"))
+                    //{
+                    //    t.Start();
+
+                    //    GroupType[] groupTypeArr = new FilteredElementCollector(doc)
+                    //        .OfClass(typeof(GroupType))
+                    //        .Cast<GroupType>()
+                    //        .ToArray();
+
+                    //    foreach (GroupType groupType in groupTypeArr)
+                    //    {
+                    //        GroupType tempGroupType = groupType;
+                    //        string[] splitedNameArr = groupType.Name.Split(new string[] { "_ZhvBlr" }, StringSplitOptions.None);
+                    //        if (splitedNameArr.Length > 1)
+                    //        {
+                    //            string cleareadNewGroupName = splitedNameArr[0];
+                    //            GroupType[] groupClearedTypeNames = new FilteredElementCollector(doc)
+                    //                .OfClass(typeof(GroupType))
+                    //                .Cast<GroupType>()
+                    //                .Where(gt => gt.Name == cleareadNewGroupName)
+                    //                .ToArray();
+
+                    //            GroupSet groupSet = groupType.Groups;
+                    //            if (groupSet.Size != 0)
+                    //            {
+                    //                IEnumerator groupEnmu = groupSet.GetEnumerator();
+                    //                // Получаю новую группу
+                    //                bool isDeletable = false;
+                    //                while (groupEnmu.MoveNext())
+                    //                {
+                    //                    if (groupEnmu.Current is Group currentGroup)
+                    //                    {
+                    //                        if (!groupClearedTypeNames.Any())
+                    //                            groupType.Name = cleareadNewGroupName;
+                    //                        else
+                    //                        {
+                    //                            tempGroupType = groupClearedTypeNames.FirstOrDefault();
+                    //                            isDeletable = true;
+                    //                        }
+
+                    //                        LocationPoint oldLocation = currentGroup.Location as LocationPoint;
+                    //                        Line oldAxis = Line.CreateUnbound(oldLocation.Point, XYZ.BasisZ);
+                    //                        currentGroup.GroupType = tempGroupType;
+                    //                        doc.Regenerate();
+
+                    //                        LocationPoint newLocation = currentGroup.Location as LocationPoint;
+                    //                        Line newAxis = Line.CreateUnbound(newLocation.Point, XYZ.BasisZ);
+
+                    //                        XYZ translation = oldLocation.Point - newLocation.Point;
+                    //                        ElementTransformUtils.MoveElement(doc, currentGroup.Id, translation);
+
+
+                    //                    }
+                    //                }
+
+                    //                // Удаляю старую версию
+                    //                if (isDeletable)
+                    //                    doc.Delete(groupType.Id);
+                    //            }
+
+                    //        }
+                    //    }
+
+                    //    t.Commit();
+                    //}
+                    #endregion
+
+                    using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: ВСЕ"))
+                    {
+                        t.Start();
+
+                        foreach (ParameterRuleElement rule in _rules)
+                        {
+                            Element[] elemArr = new FilteredElementCollector(doc)
+                                .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
+                                .WhereElementIsNotElementType()
+                                .ToArray();
+
+                            foreach (Element element in elemArr)
+                            {
+                                Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
+                                Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter);
+                                if (targetParameter.Definition is InternalDefinition intParamDef)
+                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
+                                else
+                                    throw new Exception($"Не удалось преобразовать в InternalDefinition для парамтера {targetParameter.Definition.Name}");
+                            }
+                        }
+
+                        t.Commit();
+                    }
+
+                }
+                #endregion
+
+                #region Сеттинг параметров, для которых возможен вариант разных значений между группами, или параметр может отличаться между экземплярами групп 
+                using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: ВНЕ групп"))
+                {
+                    t.Start();
+
+                    foreach (ParameterRuleElement rule in _rules)
+                    {
+                        Element[] elemArr = new FilteredElementCollector(doc)
+                            .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
+                            .WhereElementIsNotElementType()
+                            .ToArray();
+
+                        foreach (Element element in elemArr)
+                        {
+                            Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
+                            Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter);
+                            if (targetParameter.Definition is InternalDefinition intParamDef)
+                            {
+                                // Сеттинг параметров, для которых возможен вариант разных значений между группами
+                                if (intParamDef.VariesAcrossGroups)
+                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
+                                // Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами, НО они не в группе
+                                else if (element.GroupId.IntegerValue == -1)
+                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
+                            }
+                            else
+                                throw new Exception($"Не удалось преобразовать в InternalDefinition для парамтера {targetParameter.Definition.Name}");
+                        }
+
+                    }
+
+                    t.Commit();
+                }
+                #endregion
+                
+                return Result.Succeeded;
+            }
+            catch (Exception ex)
+            {
+                pb.Update(0, "ОТКОЛНЕНО");
+
+                PrintError(ex);
+
+                return Result.Cancelled;
+            }
+            finally
+            {
+                pb.SetBtn_Ok_Enabled();
+            }
+        }
+
+        private static Parameter GetParameterByElement(Element element, ListBoxElement rule)
         {
             foreach (Parameter p in element.Parameters)
             {
@@ -44,83 +299,40 @@ namespace KPLN_Parameters_Ribbon.Command
             return null;
         }
 
-        public Result Execute(UIApplication app)
+        private static void SetElemParamByRule(Parameter sourceParameter, Parameter targetParameter, Progress_Single pb)
         {
-            try
+            pb.Increment("Заполнение параметров");
+
+            if (sourceParameter != null && targetParameter != null)
             {
-                Document doc = app.ActiveUIDocument.Document;
-                int max = 0;
-                foreach (ParameterRuleElement rule in Rules)
+                switch (targetParameter.StorageType)
                 {
-                    if (rule.SelectedCategory.Data == null || rule.SelectedSourceParameter == null || rule.SelectedTargetParameter == null) { continue; }
-                    max += new FilteredElementCollector(doc).OfCategoryId((rule.SelectedCategory.Data as Category).Id).ToElements().Count;
-                }
-                string format = "{0} из " + max.ToString() + " элементов обработано";
-                using (Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, max))
-                {
-                    using (Transaction t = new Transaction(doc, "KPLN: Копирование параметров"))
-                    {
-                        t.Start();
-                        try
+                    case StorageType.Double:
+                        double? dv = GetDoubleValue(sourceParameter);
+                        if (dv != null)
                         {
-                            foreach (ParameterRuleElement rule in Rules)
-                            {
-                                try
-                                {
-                                    if (rule.SelectedCategory.Data == null || rule.SelectedSourceParameter == null || rule.SelectedTargetParameter == null) { continue; }
-                                    foreach (Element element in new FilteredElementCollector(doc).OfCategoryId((rule.SelectedCategory.Data as Category).Id).ToElements())
-                                    {
-                                        pb.Increment();
-                                        try
-                                        {
-                                            Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
-                                            Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter);
-                                            if (sourceParameter != null && targetParameter != null)
-                                            {
-                                                switch (targetParameter.StorageType)
-                                                {
-                                                    case StorageType.Double:
-                                                        double? dv = GetDoubleValue(sourceParameter);
-                                                        if (dv != null)
-                                                        {
-                                                            targetParameter.Set((double)dv);
-                                                        }
-                                                        break;
-                                                    case StorageType.Integer:
-                                                        int? iv = GetIntegerValue(sourceParameter);
-                                                        if (iv != null)
-                                                        {
-                                                            targetParameter.Set((int)iv);
-                                                        }
-                                                        break;
-                                                    case StorageType.String:
-                                                        string sv = GetStringValue(sourceParameter);
-                                                        if (sv != null && sv != " " && sv != string.Empty)
-                                                        {
-                                                            targetParameter.Set(sv);
-                                                        }
-                                                        break;
-                                                }
-                                            }
-                                        }
-                                        catch (Exception) { continue; }
-                                    }
-                                }
-                                catch (Exception) { continue; }
-                            }
-                            t.Commit();
+                            targetParameter.Set((double)dv);
                         }
-                        catch (Exception) { t.RollBack(); }
-                    }
+                        break;
+                    case StorageType.Integer:
+                        int? iv = GetIntegerValue(sourceParameter);
+                        if (iv != null)
+                        {
+                            targetParameter.Set((int)iv);
+                        }
+                        break;
+                    case StorageType.String:
+                        string sv = GetStringValue(sourceParameter);
+                        if (sv != null && sv != " " && sv != string.Empty)
+                        {
+                            targetParameter.Set(sv);
+                        }
+                        break;
                 }
-                return Result.Succeeded;
-            }
-            catch (Exception)
-            {
-                return Result.Failed;
             }
         }
-        public double? GetDoubleValue(Parameter p)
+
+        private static double? GetDoubleValue(Parameter p)
         {
             try
             {
@@ -138,7 +350,8 @@ namespace KPLN_Parameters_Ribbon.Command
             }
             catch (Exception) { return null; }
         }
-        public int? GetIntegerValue(Parameter p)
+
+        private static int? GetIntegerValue(Parameter p)
         {
             try
             {
@@ -159,7 +372,8 @@ namespace KPLN_Parameters_Ribbon.Command
                 return null;
             }
         }
-        public string GetStringValue(Parameter p)
+
+        private static string GetStringValue(Parameter p)
         {
             try
             {

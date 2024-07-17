@@ -50,7 +50,7 @@ namespace KPLN_Parameters_Ribbon
                 typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
                 "KPLN_Parameters_Ribbon.Imagens.paramSetter.png",
-                "http://moodle");
+                "http://moodle/mod/book/view.php?id=502&chapterid=992");
 
             //Добавляю кнопку в панель
             AddPushButtonDataInPanel(

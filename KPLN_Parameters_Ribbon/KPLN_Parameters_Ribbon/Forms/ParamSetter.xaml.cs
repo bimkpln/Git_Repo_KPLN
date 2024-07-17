@@ -15,24 +15,26 @@ namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class ParamSetter : Window
     {
-        private Document Doc { get; set; }
-
-        public ObservableCollection<ListBoxElement> BoxElemsList;
+        private readonly Document _doc;
+        private readonly HashSet<string> _allIDs = new HashSet<string>();
+        private readonly ObservableCollection<ListBoxElement> _heapElemCats = new ObservableCollection<ListBoxElement>();
+        private readonly ObservableCollection<ListBoxElement> _allParams = new ObservableCollection<ListBoxElement>();
+        private readonly ObservableCollection<ListBoxElement> _boxElemsList;
 
         public ParamSetter(Document doc)
         {
-            Doc = doc;
-            ObservableCollection<ListBoxElement> heapElemCats = new ObservableCollection<ListBoxElement>();
-            HashSet<string> all_ids = new HashSet<string>();
-            ObservableCollection<ListBoxElement> all_parameters = new ObservableCollection<ListBoxElement>();
-            List<Category> categories = CategoriesList(Doc);
+            _doc = doc;
+            List<Category> categories = CategoriesList(_doc);
             Array bics = Enum.GetValues(typeof(BuiltInCategory));
 
             int max = categories.Count;
             string format = "{0} из " + max.ToString() + " категорий проанализировано";
 
-            using (Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, max))
+            using (Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, false))
             {
+                pb.SetProggresValues(max, 0);
+                pb.ShowProgress();
+
                 max = 0;
                 foreach (Category cat in categories)
                 {
@@ -42,74 +44,30 @@ namespace KPLN_Parameters_Ribbon.Forms
                         HashSet<string> ids = new HashSet<string>();
                         ElementId catId = cat.Id;
                         ObservableCollection<ListBoxElement> heapElemParams = new ObservableCollection<ListBoxElement>();
+                        
+                        Element[] catElemsColl = new FilteredElementCollector(_doc)
+                            .OfCategoryId(catId)
+                            .ToArray();
+                        if (catElemsColl.Count() == 0) 
+                            continue;
 
-                        FilteredElementCollector typeElemsColl = new FilteredElementCollector(Doc).OfCategoryId(catId).WhereElementIsElementType();
-                        FilteredElementCollector instanceElemsColl = new FilteredElementCollector(Doc).OfCategoryId(catId).WhereElementIsNotElementType();
-                        if (typeElemsColl.Count() + instanceElemsColl.Count() == 0) { continue; }
+                        ListBoxElement lbElement = new ListBoxElement(cat, cat.Name);
 
-                        ListBoxElement lbElement = new ListBoxElement(cat, cat.Name); ;
-
-                        // Обрабатываю параметры типа
-                        foreach (ElementType elemType in typeElemsColl)
+                        // Обрабатываю параметры
+                        foreach (Element elem in catElemsColl)
                         {
-                            try
-                            {
-                                foreach (Parameter p in elemType.Parameters)
-                                {
-                                    try
-                                    {
-                                        if (p.StorageType == StorageType.ElementId || p.StorageType == StorageType.None) { continue; }
-                                        if (!ids.Contains(p.Definition.Name))
-                                        {
-                                            ids.Add(p.Definition.Name);
-                                            heapElemParams.Add(new ListBoxElement(p, p.Definition.Name, string.Format("{0} : <{1}>", LabelUtils.GetLabelFor(p.Definition.ParameterGroup), p.StorageType.ToString("G"))));
-                                        }
-                                        if (!all_ids.Contains(p.Definition.Name))
-                                        {
-                                            all_ids.Add(p.Definition.Name);
-                                            all_parameters.Add(new ListBoxElement(p, p.Definition.Name, "Параметры с одним и тем же именем в разных категориях могут отличаться типом данных!"));
-                                        }
-                                    }
-                                    catch (Exception) { }
-                                }
-                            }
-                            catch (Exception) { }
-                        }
-
-                        // Обрабатываю параметры экземпляра
-                        foreach (Element element in instanceElemsColl)
-                        {
-                            try
-                            {
-                                foreach (Parameter p in element.Parameters)
-                                {
-                                    try
-                                    {
-                                        if (p.StorageType == StorageType.ElementId || p.StorageType == StorageType.None) { continue; }
-                                        if (!ids.Contains(p.Definition.Name))
-                                        {
-                                            ids.Add(p.Definition.Name);
-                                            heapElemParams.Add(new ListBoxElement(p, p.Definition.Name, string.Format("{0} : <{1}>", LabelUtils.GetLabelFor(p.Definition.ParameterGroup), p.StorageType.ToString("G"))));
-                                        }
-                                        if (!all_ids.Contains(p.Definition.Name))
-                                        {
-                                            all_ids.Add(p.Definition.Name);
-                                            all_parameters.Add(new ListBoxElement(p, p.Definition.Name, "Параметры с одним и тем же именем в разных категориях могут отличаться типом данных!"));
-                                        }
-                                    }
-                                    catch (Exception) { }
-                                }
-                            }
-                            catch (Exception) { }
+                            AddParamFromElement(elem, ids, heapElemParams);
+                            if (elem is ElementType elemType)
+                                AddParamFromElement(elemType, ids, heapElemParams);
                         }
 
                         lbElement.SubElements = new ObservableCollection<ListBoxElement>(heapElemParams.OrderBy(x => x.Name).ThenBy(x => x.ToolTip));
-                        heapElemCats.Add(lbElement);
+                        _heapElemCats.Add(lbElement);
                     }
                     catch (Exception) { }
                 }
 
-                BoxElemsList = new ObservableCollection<ListBoxElement>(heapElemCats.OrderBy(x => x.Name));
+                _boxElemsList = new ObservableCollection<ListBoxElement>(_heapElemCats.OrderBy(x => x.Name));
             }
 
             InitializeComponent();
@@ -118,9 +76,39 @@ namespace KPLN_Parameters_Ribbon.Forms
 
         public void AddRule()
         {
-            ParameterRuleElement rule = new ParameterRuleElement(BoxElemsList);
+            ParameterRuleElement rule = new ParameterRuleElement(_boxElemsList);
             (this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Add(rule);
             UpdateRunEnability();
+        }
+
+        private void AddParamFromElement(Element elem, HashSet<string> ids, ObservableCollection<ListBoxElement> heapElemParams)
+        {
+            ParameterSet elemParamSet = elem.Parameters;
+            foreach (Parameter param in elemParamSet)
+            {
+                if (param.StorageType == StorageType.ElementId || param.StorageType == StorageType.None)
+                    continue;
+
+                if (!ids.Contains(param.Definition.Name))
+                {
+                    ids.Add(param.Definition.Name);
+                    heapElemParams.Add(new ListBoxElement(
+                        param,
+                        param.Definition.Name,
+                        string.Format("{0} : <{1}>",
+                        LabelUtils.GetLabelFor(param.Definition.ParameterGroup),
+                        param.StorageType.ToString("G"))));
+                }
+
+                if (!_allIDs.Contains(param.Definition.Name))
+                {
+                    _allIDs.Add(param.Definition.Name);
+                    _allParams.Add(new ListBoxElement(
+                        param,
+                        param.Definition.Name,
+                        "Параметры с одним и тем же именем в разных категориях могут отличаться типом данных!"));
+                }
+            }
         }
 
         private List<Category> CategoriesList(Document doc)
@@ -128,13 +116,10 @@ namespace KPLN_Parameters_Ribbon.Forms
             Categories categories = doc.Settings.Categories;
             List<Category> catList = new List<Category>(categories.Size);
 
-
             foreach (Category cat in categories)
             {
                 if (!cat.Name.Contains(".dwg") && (cat.CategoryType.Equals(CategoryType.Model) || cat.CategoryType.Equals(CategoryType.Internal)))
-                {
                     catList.Add(cat);
-                }
             }
 
             return catList;
@@ -147,16 +132,16 @@ namespace KPLN_Parameters_Ribbon.Forms
                 string path;
                 try
                 {
-                    if (Doc.IsWorkshared && !Doc.IsDetached)
+                    if (_doc.IsWorkshared && !_doc.IsDetached)
                     {
-                        FileInfo info = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(Doc.GetWorksharingCentralModelPath()));
+                        FileInfo info = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(_doc.GetWorksharingCentralModelPath()));
                         path = info.Directory.FullName;
                     }
                     else
                     {
-                        if (!Doc.IsDetached)
+                        if (!_doc.IsDetached)
                         {
-                            FileInfo info = new FileInfo(Doc.PathName);
+                            FileInfo info = new FileInfo(_doc.PathName);
                             path = info.Directory.FullName;
                         }
                         else
@@ -203,20 +188,11 @@ namespace KPLN_Parameters_Ribbon.Forms
             }
         }
 
-        private void OnClickSaveAs(object sender, RoutedEventArgs e)
-        {
-            Save();
-        }
+        private void OnClickSaveAs(object sender, RoutedEventArgs e) => Save();
 
-        private void OnClickGoToHelp(object sender, RoutedEventArgs e)
-        {
-            System.Diagnostics.Process.Start(@"http://moodle.stinproject.local/mod/book/view.php?id=502&chapterid=992");
-        }
+        private void OnClickGoToHelp(object sender, RoutedEventArgs e) => System.Diagnostics.Process.Start(@"http://moodle/mod/book/view.php?id=502&chapterid=992");
 
-        private void OnBtnAddRule(object sender, RoutedEventArgs e)
-        {
-            AddRule();
-        }
+        private void OnBtnAddRule(object sender, RoutedEventArgs e) => AddRule();
 
         private void Save()
         {
@@ -225,16 +201,16 @@ namespace KPLN_Parameters_Ribbon.Forms
                 string path;
                 try
                 {
-                    if (Doc.IsWorkshared && !Doc.IsDetached)
+                    if (_doc.IsWorkshared && !_doc.IsDetached)
                     {
-                        FileInfo info = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(Doc.GetWorksharingCentralModelPath()));
+                        FileInfo info = new FileInfo(ModelPathUtils.ConvertModelPathToUserVisiblePath(_doc.GetWorksharingCentralModelPath()));
                         path = info.Directory.FullName;
                     }
                     else
                     {
-                        if (!Doc.IsDetached)
+                        if (!_doc.IsDetached)
                         {
-                            FileInfo info = new FileInfo(Doc.PathName);
+                            FileInfo info = new FileInfo(_doc.PathName);
                             path = info.Directory.FullName;
                         }
                         else
@@ -276,42 +252,44 @@ namespace KPLN_Parameters_Ribbon.Forms
                 Show();
             }
         }
-        private void OnBtnRun(object sender, RoutedEventArgs e)
+
+        private void OnBtnRun_WithoutGroups(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>, false));
+            Close();
         }
 
-        private void SelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
+        private void OnBtnRun_WithGroups(object sender, RoutedEventArgs e)
         {
-            UpdateRunEnability();
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>, true));
+            Close();
         }
+        
+        private void SelectedCategoryChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
-        private void SelectedSourceParamChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateRunEnability();
-        }
+        private void SelectedSourceParamChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
-        private void SelectedTargetParamChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateRunEnability();
-        }
+        private void SelectedTargetParamChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
         private void UpdateRunEnability()
         {
             if ((this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Count == 0)
             {
-                BtnRun.IsEnabled = false;
+                BtnRunWithoutGroups.IsEnabled = false;
+                BtnRunWithGroups.IsEnabled = false;
                 return;
             }
             foreach (ParameterRuleElement el in this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)
             {
                 if (el.SelectedSourceParameter == null || el.SelectedTargetParameter == null)
                 {
-                    BtnRun.IsEnabled = false;
+                    BtnRunWithoutGroups.IsEnabled = false;
+                    BtnRunWithGroups.IsEnabled = false;
                     return;
                 }
             }
-            BtnRun.IsEnabled = true;
+            BtnRunWithoutGroups.IsEnabled = true;
+            BtnRunWithGroups.IsEnabled = true;
         }
 
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
@@ -331,6 +309,7 @@ namespace KPLN_Parameters_Ribbon.Forms
                     PrintError(e);
                 }
             }
+
             UpdateRunEnability();
         }
     }

@@ -38,8 +38,11 @@ namespace KPLN_Parameters_Ribbon.Common.CheckParam.Builder
                 int max = _builder.AllElementsCount;
                 string format = "{0} из " + max.ToString() + " элементов проверено";
 
-                using (Progress_Single pb = new Progress_Single("KPLN: Проверка факта заполнения парамтеров", format, max))
+                using (Progress_Single pb = new Progress_Single("KPLN: Проверка факта заполнения парамтеров", format, false))
                 {
+                    pb.SetProggresValues(max, 0);
+                    pb.ShowProgress();
+                    
                     bool writeLevelParams = _builder.ExecuteParamsAudit(pb);
                 }
 

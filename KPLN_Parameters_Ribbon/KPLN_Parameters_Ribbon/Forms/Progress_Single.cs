@@ -4,20 +4,30 @@ namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class Progress_Single : Form
     {
-        public string _format;
-        public Progress_Single(string header, string format, int max, int current = 0)
+        private readonly string _format;
+        
+        public Progress_Single(string header, string format, bool isBtnOkVisible)
         {
             _format = format;
             InitializeComponent();
+            
             Text = header;
             Header_lbl.Text = (null == format) ? header : string.Format(format, 0);
-            Add_lbl.Text = "инициализация...";
             Titile_lbl.Text = header;
+            this.Btn_Ok.Visible = isBtnOkVisible;
+        }
+
+        public void SetProggresValues(int max, int current)
+        {
             progressBar1.Minimum = 0;
             progressBar1.Maximum = max;
             progressBar1.Value = current;
-            Show();
-            System.Windows.Forms.Application.DoEvents();
+        }
+
+        public void ShowProgress()
+        {
+            this.Show();
+            Application.DoEvents();
         }
 
         /// <summary>
@@ -38,6 +48,17 @@ namespace KPLN_Parameters_Ribbon.Forms
                     Header_lbl.Text = string.Format(_format, progressBar1.Value);
                 }
             }
+            System.Windows.Forms.Application.DoEvents();
+        }
+
+        /// <summary>
+        /// Увеличение значения на 1
+        /// </summary>
+        /// <param name="value"></param>
+        public void AddProgress(int value)
+        {
+            progressBar1.Value += value;
+            Header_lbl.Text = string.Format(_format, progressBar1.Value);
             System.Windows.Forms.Application.DoEvents();
         }
 
@@ -71,6 +92,19 @@ namespace KPLN_Parameters_Ribbon.Forms
                 Header_lbl.Text = string.Format(_format, progressBar1.Value);
             }
             System.Windows.Forms.Application.DoEvents();
+        }
+
+        /// <summary>
+        /// Метод для отображения возможности закрытия окна, чтобы раньше времени не закрыть процесс
+        /// </summary>
+        public void SetBtn_Ok_Enabled()
+        {
+            this.Btn_Ok.Enabled = true;
+        }
+
+        private void Btn_Ok_Click(object sender, System.EventArgs e)
+        {
+            this.Close();
         }
     }
 }

@@ -17,11 +17,13 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             {
                 ParamSetter Form = new ParamSetter(commandData.Application.ActiveUIDocument.Document);
                 Form.Show();
+
                 return Result.Succeeded;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                PrintError(e);
+                PrintError(ex);
+
                 return Result.Failed;
             }
         }
