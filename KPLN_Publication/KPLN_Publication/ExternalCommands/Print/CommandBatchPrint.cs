@@ -61,25 +61,34 @@ namespace KPLN_Publication.ExternalCommands.Print
                     MySheet sheetInBase = allSheets[mainDocTitle].Where(i => i.sheet.Id.IntegerValue == sheet.Id.IntegerValue).First();
                     sheetInBase.IsPrintable = true;
 
-                    // Анализирую листы на наличие 2х основных надписей в одном месте
+                    // Анализирую листы на наличие 2х основных надписей в одном месте, а также фильтрую пользовательские семейства категории Основная надпись
                     List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>(); 
-                    FamilyInstance[] tBlocksColl = new FilteredElementCollector(mainDoc, sheet.Id)
+                    FamilyInstance[] tBlocksCollHeap = new FilteredElementCollector(mainDoc, sheet.Id)
                         .OfCategory(BuiltInCategory.OST_TitleBlocks)
                         .WhereElementIsNotElementType()
                         .Cast<FamilyInstance>()
-                        .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись"))
                         .ToArray();
 
-                    if (tBlocksColl.Count() == 0)
-                        listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Не имеет экземпляров основной надписи с именем 'Основная надпись'");
+                    FamilyInstance[] tBlocksColl = null;
+                    if (tBlocksCollHeap.Count() >= 1)
+                    {
+                        tBlocksColl = tBlocksCollHeap
+                            .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись") || fi.Symbol.FamilyName.Contains("Основные надписи"))
+                            .ToArray ();
+                    }
+
+                    if (tBlocksColl == null)
+                    {
+                        listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Имеет несколько экземпляров семейства категории \"Основные надписи\", но при этом - нет ни одного экземпляра семейства штампа КПЛН");
+                        continue;
+                    }
 
                     foreach(FamilyInstance tBlock in tBlocksColl)
                     {
                         if (listErrors.Contains(sheet.Name)) break;
 
                         List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
-                        BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet);
-                        if (boxXYZ == null) throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
+                        BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet) ?? throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
 
                         // Проверяю на дубликаты
                         if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
