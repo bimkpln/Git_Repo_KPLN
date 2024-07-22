@@ -64,7 +64,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
     <OutputPath>bin\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Revit2020</DefineConstants>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
@@ -110,6 +110,7 @@
     <Compile Include="Common\ButtonToRunEntity.cs" />
     <Compile Include="Common\ElementEntity.cs" />
     <Compile Include="Common\UIStatus.cs" />
+    <Compile Include="ExecutableCommand\ZoomElementCommand.cs" />
     <Compile Include="UI\ButtonToRun.xaml.cs">
       <DependentUpon>ButtonToRun.xaml</DependentUpon>
     </Compile>
