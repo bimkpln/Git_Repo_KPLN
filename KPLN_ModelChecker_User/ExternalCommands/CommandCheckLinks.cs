@@ -69,10 +69,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     if (element is RevitLinkInstance revitLink)
                     {
-                        Document document = revitLink.GetLinkDocument();
-                        if (document == null) throw new CheckerException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
+                        Document document = revitLink.GetLinkDocument() ?? throw new CheckerException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
                     }
-                    else throw new Exception("Ошибка определения RevitLinkInstance");
+                    else 
+                        throw new Exception("Ошибка определения RevitLinkInstance");
                 }
                 else throw new Exception("Ошибка анализируемой коллекции");
 

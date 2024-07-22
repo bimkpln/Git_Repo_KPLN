@@ -109,12 +109,13 @@ namespace KPLN_ModelChecker_User
                 CommandCheckLevels.ESEntity,
                 CommandCheckLinks.ESEntity,
                 //CommandCheckListAnnotations.ESEntity,
-                CommandCheckMEPHeight.ESEntity,
+                //CommandCheckMEPHeight.ESEntity,
                 CommandCheckMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA150")),
                 new ExtensibleStorageEntity("ОВ: Толщина воздуховодов", "KPLN_DuctSize", new Guid("753380C4-DF00-40F8-9745-D53F328AC139")),
                 new ExtensibleStorageEntity("ОВВК: Спецификации", "KPLN_IOSQuant", new Guid("720080C5-DA99-40D7-9445-E53F288AA140")),
+                new ExtensibleStorageEntity("ОВ: Клапаны ОЗК", "KPLN_OZKAccessory", new Guid("85c46d4e-fdc6-424e-909a-27af56597328")),
                 new ExtensibleStorageEntity("ИОС: Имя системы", "KPLN_SystemType", new Guid("be15305c-5249-4581-a4ca-01784efd8415")),
             };
             CommandCheckLaunchDate commandCheckLaunchDate = new CommandCheckLaunchDate(extensibleStorageEntities);
