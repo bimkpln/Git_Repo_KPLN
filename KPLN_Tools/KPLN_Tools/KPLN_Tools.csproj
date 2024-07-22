@@ -68,6 +68,10 @@
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Release\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_ExtensibleStorage">
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
@@ -172,6 +176,7 @@
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\OVVK_System\IJsonSerializable.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
+    <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
@@ -181,7 +186,10 @@
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
+    <Compile Include="ExecutableCommand\OZKDuctAccessoryMainCommand.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
+    <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
+    <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
     <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
@@ -198,6 +206,9 @@
     </Compile>
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\OV_OZKDuctAccessoryForm.xaml.cs">
+      <DependentUpon>OV_OZKDuctAccessoryForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\OVVK_PipeThocknessForm.xaml.cs">
       <DependentUpon>OVVK_PipeThocknessForm.xaml</DependentUpon>
@@ -246,6 +257,12 @@
     <EmbeddedResource Include="Imagens\changeLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <EmbeddedResource Include="Imagens\smlt_Small.png" />
+    <EmbeddedResource Include="Imagens\arMainBig.png" />
+    <EmbeddedResource Include="Imagens\arMainSmall.png" />
+    <EmbeddedResource Include="Imagens\ductThicknessBig.png" />
+    <EmbeddedResource Include="Imagens\ductThicknessSmall.png" />
+    <EmbeddedResource Include="Imagens\ozkDuctAccessoryBig.png" />
+    <EmbeddedResource Include="Imagens\ozkDuctAccessorySmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -264,6 +281,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\MonitoringParamSetter.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\OV_OZKDuctAccessoryForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

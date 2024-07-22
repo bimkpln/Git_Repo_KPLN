@@ -123,6 +123,26 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap ductThicknessBig {
+            get {
+                object obj = ResourceManager.GetObject("ductThicknessBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ductThicknessSmall {
+            get {
+                object obj = ResourceManager.GetObject("ductThicknessSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap holesBig {
             get {
                 object obj = ResourceManager.GetObject("holesBig", resourceCulture);
@@ -216,6 +236,26 @@ namespace KPLN_Tools.Properties {
         internal static System.Drawing.Bitmap monitorMainSmall {
             get {
                 object obj = ResourceManager.GetObject("monitorMainSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ozkDuctAccessoryBig {
+            get {
+                object obj = ResourceManager.GetObject("ozkDuctAccessoryBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ozkDuctAccessorySmall {
+            get {
+                object obj = ResourceManager.GetObject("ozkDuctAccessorySmall", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

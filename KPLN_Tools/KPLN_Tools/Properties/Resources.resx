@@ -136,6 +136,12 @@
   <data name="dimHeplerSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\dimHeplerSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="ductThicknessBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\ductThicknessBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ductThicknessSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\ductThicknessSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="holesBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\holesBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -165,6 +171,12 @@
   </data>
   <data name="monitorMainSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\monitorMainSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ozkDuctAccessoryBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\ozkDuctAccessoryBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ozkDuctAccessorySmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\ozkDuctAccessorySmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="pipeThicknessBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\pipeThicknessBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

@@ -281,10 +281,42 @@ namespace KPLN_Tools
                     ),
                     typeof(ExternalCommands.Command_OVVK_PipeThickness).FullName,
                     "KPLN_Tools.Imagens.pipeThicknessSmall.png",
-                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "KPLN_Tools.Imagens.pipeThicknessBig.png",
+                    "http://moodle");
+
+                PushButtonData ov_ductThickness = CreateBtnData(
+                    "ОВ: Толщина воздуховодов",
+                    "ОВ: Толщина воздуховодов",
+                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_OV_DuctThickness).FullName,
+                    "KPLN_Tools.Imagens.ductThicknessSmall.png",
+                    "KPLN_Tools.Imagens.ductThicknessBig.png",
+                    "http://moodle");
+
+                PushButtonData ov_ozkDuctAccessory = CreateBtnData(
+                    "ОВ: Клапаны ОЗК",
+                    "ОВ: Клапаны ОЗК",
+                    "Заполняет данные по ОЗК клапанам",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_OV_OZKDuctAccessory).FullName,
+                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
+                    "KPLN_Tools.Imagens.ozkDuctAccessoryBig.png",
                     "http://moodle");
 
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
+                //ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
+                ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
             }
             #endregion
 
