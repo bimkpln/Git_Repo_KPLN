@@ -1,5 +1,4 @@
-﻿using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Common;
@@ -10,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Windows;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 using Application = Autodesk.Revit.ApplicationServices.Application;
 
@@ -79,7 +77,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "АКУС",
             "КАМ",
         };
-        
+
         public CommandCheckFamilies() : base()
         {
         }
@@ -103,7 +101,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
             Application app = uiapp.Application;
-            
+
             app.FailuresProcessing += FailuresProcessor;
 
             try
@@ -144,14 +142,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (Element elem in elemColl)
             {
                 // Проверяю семейства и их типоразмеры
-                //if (elem is Family currentFam)
-                //{
-                //    result.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
+                if (elem is Family currentFam)
+                {
+                    result.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
 
-                //    WPFEntity checkFamilyPath = CheckFamilyPath(doc, currentFam);
-                //    if (checkFamilyPath != null)
-                //        result.Add(checkFamilyPath);
-                //}
+                    WPFEntity checkFamilyPath = CheckFamilyPath(doc, currentFam);
+                    if (checkFamilyPath != null)
+                        result.Add(checkFamilyPath);
+                }
 
                 // Проверяю системные типоразмеры АР и КР
                 if (doc.PathName.Contains("АР_")
@@ -166,7 +164,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (elem is ElementType currentType)
                     {
                         WPFEntity typeNameError = CheckSysytemFamilyTypeName(currentType);
-                        if (typeNameError != null) 
+                        if (typeNameError != null)
                             result.Add(typeNameError);
                     }
                 }
@@ -375,7 +373,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Сейчас это значение не цифра, а: {totalThicknessStr}");
                     }
                 }
-                
+
                 double typeThickness = 0;
                 if (elemType is FloorType floorType)
                     typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
@@ -429,7 +427,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 return null;
 
             // Блок игнорирования семейств настроенных из шаблона (АР балясины, ограждения)
-            if (currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster 
+            if (currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster
                 || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingTermination
                 || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingSupport)
                 return null;
