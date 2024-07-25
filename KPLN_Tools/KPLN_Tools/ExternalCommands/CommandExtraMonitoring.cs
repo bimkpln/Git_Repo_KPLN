@@ -132,8 +132,6 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Получить коллекцию элементов из связи для пользовательской выборки
         /// </summary>
-        /// <param name="commandData"></param>
-        /// <returns></returns>
         private void SetMonitoredElemsFromUserSelect(Document doc, ElementId[] selectedIds)
         {
             // Очистка выборки от случайных элементов
@@ -163,21 +161,12 @@ namespace KPLN_Tools.ExternalCommands
             double maxX = locPntsFromUserSelection.Max(pnt => pnt.X);
             double maxY = locPntsFromUserSelection.Max(pnt => pnt.Y);
             double maxZ = locPntsFromUserSelection.Max(pnt => pnt.Z);
-            XYZ maxPoint = new XYZ(maxX, maxY, maxZ);
+            XYZ maxPoint = new XYZ(maxX + 0.5, maxY + 0.5, maxZ + 0.5);
 
             double minX = locPntsFromUserSelection.Min(pnt => pnt.X);
             double minY = locPntsFromUserSelection.Min(pnt => pnt.Y);
             double minZ = locPntsFromUserSelection.Min(pnt => pnt.Z);
-            XYZ minPoint = new XYZ(minX, minY, minZ);
-
-            // Расширяем для малой выборки
-            if (minPoint.IsAlmostEqualTo(maxPoint, 1))
-            {
-                maxPoint += new XYZ(1.0, 1.0, 1.0);
-                minPoint -= new XYZ(1.0, 1.0, 1.0);
-            }
-
-            BoundingBoxXYZ searchBbox = new BoundingBoxXYZ() { Max = maxPoint, Min = minPoint };
+            XYZ minPoint = new XYZ(minX - 0.5, minY - 0.5, minZ - 0.5);
             #endregion
 
             #region Обработка элементов
@@ -196,7 +185,7 @@ namespace KPLN_Tools.ExternalCommands
                         if (_currentLink == null)
                         {
                             _currentLink = currentLink;
-                            PreapareMonitorEntityColl(searchBbox);
+                            PreapareMonitorEntityColl(minPoint, maxPoint);
                         }
                         else if (_currentLink.Id.IntegerValue != currentLink.Id.IntegerValue)
                             throw new Exception($"Работа экстренно прекращена! Элемент с id:{element.Id} - имеет мониторинг из другой связи. Можно выполнить проверку только с разделением по связям.");
@@ -259,41 +248,26 @@ namespace KPLN_Tools.ExternalCommands
         /// Когда-нибудь - добавят в Revit API возможность забрать элемент из связи, а пока - работаем с геометрией.
         /// https://forums.autodesk.com/t5/revit-ideas/copy-monitor-api/idi-p/6322737
         /// </summary>
-        /// <returns></returns>
         [Obsolete]
-        private void PreapareMonitorEntityColl(BoundingBoxXYZ searchBbox)
+        private void PreapareMonitorEntityColl(XYZ minPoint, XYZ maxPoint)
         {
             if (!_monitorLinkEntiteDict.ContainsKey(_currentLink.Id))
                 _monitorLinkEntiteDict[_currentLink.Id] = new List<MonitorLinkEntity>();
 
             Transform linkTrans = _currentLink.GetTransform();
+            BoundingBoxIsInsideFilter bboxFilter = new BoundingBoxIsInsideFilter(new Outline(linkTrans.Inverse.OfPoint(minPoint), linkTrans.Inverse.OfPoint(maxPoint)), 1);
             foreach (BuiltInCategory bic in MonitoredBuiltInCatArr)
             {
                 // Добавяляю элементы из связи
-                IList<Element> bicElems = new FilteredElementCollector(_currentLink.GetLinkDocument())
+                Element[] intersectedBicElems = new FilteredElementCollector(_currentLink.GetLinkDocument())
                     .OfCategory(bic)
                     .WhereElementIsNotElementType()
-                    .ToElements();
-
-                List<Element> intersectedBicElems = new List<Element>();
-                foreach (Element el in bicElems)
-                {
-                    if (el.Location is LocationPoint locPoint)
-                    {
-                        XYZ elPntTransformed = linkTrans.OfPoint(locPoint.Point);
-                        if (elPntTransformed.X >= searchBbox.Min.X && elPntTransformed.X <= searchBbox.Max.X &&
-                            elPntTransformed.Y >= searchBbox.Min.Y && elPntTransformed.Y <= searchBbox.Max.Y &&
-                            elPntTransformed.Z >= searchBbox.Min.Z && elPntTransformed.Z <= searchBbox.Max.Z)
-                        {
-                            intersectedBicElems.Add(el);
-                        }
-                    }
-                    else
-                        ErrorDictSetting($"Элементы из связи {_currentLink.Name} - не удалось получить LocationPoint. Скинь в BIM-отдел:", el);
-                }
-
+                    .WherePasses(bboxFilter)
+                    .ToElements()
+                    .ToArray();
+                
                 // Добавляю параметры из связи
-                HashSet<Parameter> linkElemsParams = GetParametersFromElems(intersectedBicElems.ToArray());
+                HashSet<Parameter> linkElemsParams = GetParametersFromElems(intersectedBicElems);
 
                 foreach (Element el in intersectedBicElems)
                 {

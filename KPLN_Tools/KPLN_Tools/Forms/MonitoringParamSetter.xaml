@@ -51,35 +51,38 @@
                         <StackPanel Orientation="Vertical">
                             <Grid HorizontalAlignment="Left">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="270"/>
-                                    <ColumnDefinition Width="270"/>
+                                    <ColumnDefinition Width="260"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="260"/>
                                     <ColumnDefinition Width="30"/>
                                 </Grid.ColumnDefinitions>
                                 <ComboBox Name="SourceParam" VerticalAlignment="Bottom" MinHeight="24" Grid.Column="0" Margin="2" Background="White" 
-                                          SelectedItem="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                          SelectedValue="{Binding SelectedSourceParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                           ItemsSource="{Binding LinkParamColl}" 
+                                          IsEditable="True"
+                                          StaysOpenOnEdit="True"
+                                          IsTextSearchEnabled="False"
+                                          TextBoxBase.TextChanged="ParamCBox_TextChanged"
                                           SelectionChanged="SelectedSourceParamChanged">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <ListBoxItem>
-                                                <TextBlock Text="{Binding Definition.Name}" TextWrapping="Wrap"/>
-                                            </ListBoxItem>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <ComboBox Name="TargetParam" VerticalAlignment="Bottom" MinHeight="24" Grid.Column="1" Margin="2" Background="White" 
-                                          SelectedItem="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                <Button
+                                    x:Name="BtnRemoveBySource"
+                                    Grid.Column="1"
+                                    Margin="2"
+                                    IsEnabled="False"
+                                    Content="=>"
+                                    Click="BtnRemoveBySource_Click">
+                                </Button>
+                                <ComboBox Name="TargetParam" VerticalAlignment="Bottom" MinHeight="24" Grid.Column="2" Margin="2" Background="White" 
+                                          SelectedValue="{Binding SelectedTargetParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                           ItemsSource="{Binding DocParamColl}" 
+                                          IsEditable="True"
+                                          StaysOpenOnEdit="True"
+                                          IsTextSearchEnabled="False"
+                                          TextBoxBase.TextChanged="ParamCBox_TextChanged"
                                           SelectionChanged="SelectedTargetParamChanged">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <ListBoxItem>
-                                                <TextBlock Text="{Binding Definition.Name}" TextWrapping="Wrap"/>
-                                            </ListBoxItem>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <Button VerticalAlignment="Center" Grid.Column="2" Margin="2" Width="24" Height="24" Content="✖" Foreground="Red" Background="White" FontWeight="Bold" Click="OnBtnRemoveRule" BorderBrush="#FFE4E4E4"/>
+                                <Button VerticalAlignment="Center" Grid.Column="3" Margin="2" Width="24" Height="24" Content="✖" Foreground="Red" Background="White" FontWeight="Bold" Click="OnBtnRemoveRule" BorderBrush="#FFE4E4E4"/>
                             </Grid>
                             <Separator Margin="5,0,55,0" Height="5" Background="Gray"/>
                         </StackPanel>

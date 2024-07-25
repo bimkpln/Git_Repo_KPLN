@@ -1,22 +1,47 @@
-using Autodesk.Revit.DB;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace KPLN_Tools.Common
 {
-    public class MonitorParamRule
+    public class MonitorParamRule : INotifyPropertyChanged
     {
-        public ObservableCollection<Parameter> DocParamColl { get; set; }
+        public ObservableCollection<string> DocParamColl { get; set; }
+        public ObservableCollection<string> LinkParamColl { get; set; }
+        public event PropertyChangedEventHandler PropertyChanged;
 
-        public ObservableCollection<Parameter> LinkParamColl { get; set; }
+        private string _selectedSourceParameter;
+        private string _selectedTargetParameter;
 
-        public MonitorParamRule(ObservableCollection<Parameter> docParamColl, ObservableCollection<Parameter> linkParamColl)
+        public MonitorParamRule(ObservableCollection<string> docParamColl, ObservableCollection<string> linkParamColl)
         {
             DocParamColl = docParamColl;
             LinkParamColl = linkParamColl;
         }
 
-        public Parameter SelectedSourceParameter { get; set; }
+        public string SelectedSourceParameter 
+        {
+            get => _selectedSourceParameter;
+            set
+            {
+                _selectedSourceParameter = value;
+                NotifyPropertyChanged();
+            }
+        }
 
-        public Parameter SelectedTargetParameter { get; set; }
+        public string SelectedTargetParameter
+        {
+            get => _selectedTargetParameter;
+            set
+            {
+                _selectedTargetParameter = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

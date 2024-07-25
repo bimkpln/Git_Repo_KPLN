@@ -41,8 +41,8 @@ namespace KPLN_Tools.ExecutableCommand
                         Element sourceElement = monitorEntity.CurrentMonitorLinkEntity.LinkElement;
                         foreach (var paramRule in _paramRule)
                         {
-                            Parameter targetParam = targetElement.GetParameters(paramRule.SelectedTargetParameter.Definition.Name).FirstOrDefault();
-                            Parameter sourceParam = sourceElement.GetParameters(paramRule.SelectedSourceParameter.Definition.Name).FirstOrDefault();
+                            Parameter targetParam = targetElement.GetParameters(paramRule.SelectedTargetParameter).FirstOrDefault();
+                            Parameter sourceParam = sourceElement.GetParameters(paramRule.SelectedSourceParameter).FirstOrDefault();
                             if (sourceParam != null && targetParam != null)
                             {
                                 switch (targetParam.StorageType)
@@ -71,8 +71,8 @@ namespace KPLN_Tools.ExecutableCommand
                             }
 
                             else
-                                Print($"Проверь наличие параметра {paramRule.SelectedTargetParameter.Definition.Name} у элемента модели ({targetElement.Id}), " +
-                                    $"или параметра {paramRule.SelectedSourceParameter.Definition.Name} у элемента связи ({sourceElement.Id})", MessageType.Error);
+                                Print($"Проверь наличие параметра {paramRule.SelectedTargetParameter} у элемента модели ({targetElement.Id}), " +
+                                    $"или параметра {paramRule.SelectedSourceParameter} у элемента связи ({sourceElement.Id})", MessageType.Error);
                         }
                     }
                 }

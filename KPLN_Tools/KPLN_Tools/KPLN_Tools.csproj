@@ -42,7 +42,7 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\</OutputPath>
     <DefineConstants>DEBUG;Debug</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
