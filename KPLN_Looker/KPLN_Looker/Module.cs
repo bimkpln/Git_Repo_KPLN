@@ -3,13 +3,17 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -55,7 +59,7 @@ namespace KPLN_Looker
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
-                if (_dBWorkerService.CurrentDBUser.SubDepartmentId != 8)
+                if (!_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
 
                 return Result.Succeeded;
@@ -90,7 +94,7 @@ namespace KPLN_Looker
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
-            if (IsMonitoredFile(doc))
+            if (MonitoredFilePath(doc) != null)
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
@@ -167,7 +171,7 @@ namespace KPLN_Looker
                             taskDialog.Show();
                         }
                         // Отлов пользователей с ограничением допуска к работе в текщем проекте
-                        else if (currentPrjMatrixColl.Length > 0 && currentPrjMatrixColl.Any(prj => prj.UserId != _dBWorkerService.CurrentDBUser.Id))
+                        else if (currentPrjMatrixColl.Length > 0 && !currentPrjMatrixColl.Where(prj => prj.UserId == _dBWorkerService.CurrentDBUser.Id).Any())
                         {
                             _isProjectCloseToUser = true;
                             BitrixMessageSender.SendMsg_ToBIMChat(
@@ -207,24 +211,27 @@ namespace KPLN_Looker
         {
             Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
             #region Закрываю вид, если он для бим-отдела
-            if (activeView != null
-                && activeView is View3D _
-                && (activeView.Title.ToUpper().Contains("BIM360")
-                    || activeView.Title.ToUpper().Contains("NAVISWORKS")
-                    || activeView.Title.ToUpper().Contains("NWC")
-                    || activeView.Title.ToUpper().Contains("NWD"))
-                && !_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM")
-                )
+            if (MonitoredFilePath(args.Document) != null)
             {
-                TaskDialog td = new TaskDialog("ВНИМАНИЕ")
+                if (activeView != null
+                    && activeView is View3D _
+                    && (activeView.Title.ToUpper().Contains("BIM360")
+                        || activeView.Title.ToUpper().Contains("NAVISWORKS")
+                        || activeView.Title.ToUpper().Contains("GSTATION")
+                        || activeView.Title.ToUpper().Contains("NWC")
+                        || activeView.Title.ToUpper().Contains("NWD"))
+                    && !_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 {
-                    MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать. Вид будет закрыт",
-                    CommonButtons = TaskDialogCommonButtons.Ok,
-                };
-                td.Show();
+                    TaskDialog td = new TaskDialog("ВНИМАНИЕ")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconError,
+                        MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать. Вид будет закрыт",
+                        CommonButtons = TaskDialogCommonButtons.Ok,
+                    };
+                    td.Show();
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ViewCloser(activeView.Id));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ViewCloser(activeView.Id));
+                }
             }
             #endregion
         }
@@ -234,31 +241,11 @@ namespace KPLN_Looker
         /// </summary>
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            var a = 1;
-            //try
-            //{
-            //    #region Анализ триггерных изменений по проекту
-            //    Document doc = args.GetDocument();
-            //    // Игнорирую не для совместной работы
-            //    if (doc.IsWorkshared)
-            //    {
-            //        // Игнорирую файлы не с диска Y: и файлы концепции
-            //        string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            //        if (docPath.Contains("stinproject.local\\project\\")
-            //            && !(docPath.ToLower().Contains("кон") || docPath.ToLower().Contains("kon")))
-            //        {
-            //            IsFamilyLoadedFromOtherFile(args);
-            //        }
-            //    }
-            //    #endregion
-
-            //    if (FileActivityService.ActiveDocument != null && !FileActivityService.ActiveDocument.IsFamilyDocument && !FileActivityService.ActiveDocument.PathName.Contains(".rte"))
-            //    {
-            //        ActivityInfo info = new ActivityInfo(FileActivityService.ActiveDocument, Collections.BuiltInActivity.DocumentChanged);
-            //        FileActivityService.ActivityBag.Enqueue(info);
-            //    }
-            //}
-            //catch (Exception) { }
+            #region Анализ загрузки семейств путем копирования
+            Document doc = args.GetDocument();
+            if (MonitoredFilePath(doc) != null)
+                IsFamilyLoadedFromOtherFile(args);
+            #endregion
         }
 
         /// <summary>
@@ -267,7 +254,7 @@ namespace KPLN_Looker
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
-            if (IsMonitoredFile(doc))
+            if (MonitoredFilePath(doc) != null)
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
@@ -346,73 +333,86 @@ namespace KPLN_Looker
         /// </summary>
         private void OnFamilyLoadingIntoDocument(object sender, FamilyLoadingIntoDocumentEventArgs args)
         {
-            //// Игнорирую не для совместной работы
-            //if (!args.Document.IsWorkshared)
-            //    return;
+            Autodesk.Revit.ApplicationServices.Application app = sender as Autodesk.Revit.ApplicationServices.Application;
+            Document prjDoc = args.Document;
+            string familyName = args.FamilyName;
+            string familyPath = args.FamilyPath;
 
-            //Application app = sender as Application;
-            //Document prjDoc = args.Document;
-            //string familyName = args.FamilyName;
-            //string familyPath = args.FamilyPath;
+            string docPath = MonitoredFilePath(prjDoc);
+            if (docPath == null)
+                return;
 
-            //// Игнорирую файлы не с диска Y, файлы концепции
-            //string docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(prjDoc.GetWorksharingCentralModelPath());
-            //if (!docPath.Contains("stinproject.local\\project\\")
-            //    || docPath.ToLower().Contains("конц"))
-            //    return;
+            #region Игнорирую семейства, которые могут редактировать проектировщики
+            DocumentSet appDocsSet = app.Documents;
+            foreach (Document doc in appDocsSet)
+            {
+                if (doc.Title.Contains($"{familyName}"))
+                {
+                    if (doc.IsFamilyDocument)
+                    {
+                        Family family = doc.OwnerFamily;
+                        Category famCat = family.FamilyCategory;
+                        BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
 
-            //// Отлов семейств которые могут редактировать проектировщики
-            //DocumentSet appDocsSet = app.Documents;
-            //foreach (Document doc in appDocsSet)
-            //{
-            //    if (doc.Title.Contains($"{familyName}"))
-            //    {
-            //        if (doc.IsFamilyDocument)
-            //        {
-            //            Family family = doc.OwnerFamily;
-            //            Category famCat = family.FamilyCategory;
-            //            BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
+                        // Отлов семейств марок (могут разрабатывать все)
+                        if (bic.Equals(BuiltInCategory.OST_ProfileFamilies)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponents)
+                            || bic.Equals(BuiltInCategory.OST_GenericAnnotation)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
+                            || bic.Equals(BuiltInCategory.OST_DetailComponentTags))
+                            return;
 
-            //            // Отлов семейств марок (могут разрабатывать все)
-            //            if (bic.Equals(BuiltInCategory.OST_ProfileFamilies)
-            //                || bic.Equals(BuiltInCategory.OST_DetailComponents)
-            //                || bic.Equals(BuiltInCategory.OST_GenericAnnotation)
-            //                || bic.Equals(BuiltInCategory.OST_DetailComponentsHiddenLines)
-            //                || bic.Equals(BuiltInCategory.OST_DetailComponentTags))
-            //                return;
+                        // Отлов семейств марок (могут разрабатывать все), за исключением штампов, подписей и жуков
+                        if (famCat.CategoryType.Equals(CategoryType.Annotation)
+                            && !familyName.StartsWith("020_")
+                            && !familyName.StartsWith("022_")
+                            && !familyName.StartsWith("023_")
+                            && !familyName.ToLower().Contains("жук"))
+                            return;
 
-            //            // Отлов семейств марок (могут разрабатывать все), за исключением штампов, подписей и жуков
-            //            if (famCat.CategoryType.Equals(CategoryType.Annotation)
-            //                && !familyName.StartsWith("020_")
-            //                && !familyName.StartsWith("022_")
-            //                && !familyName.StartsWith("023_")
-            //                && !familyName.ToLower().Contains("жук"))
-            //                return;
+                        // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
+                        if (bic.Equals(BuiltInCategory.OST_GenericModel)
+                            && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
+                            return;
 
-            //            // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
-            //            if (bic.Equals(BuiltInCategory.OST_GenericModel)
-            //                && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
-            //                return;
+                        // Отлов семейств соед. деталей каб. лотков производителей: Ostec, Dkc
+                        if (bic.Equals(BuiltInCategory.OST_CableTrayFitting)
+                            && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc")))
+                            return;
+                    }
+                    else
+                        throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
+                }
+            }
+            #endregion
 
-            //            // Отлов семейств соед. деталей каб. лотков производителей: Ostec, Dkc
-            //            if (bic.Equals(BuiltInCategory.OST_CableTrayFitting)
-            //                && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc")))
-            //                return;
-            //        }
-            //        else
-            //            throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
-            //    }
-            //}
+            #region Отлов семейств, расположенных не на Х, не из плагинов и не из исключений выше (ФИНАЛИЗАЦИЯ ОШИБКИ И ВЫВОД ОКНА ПОЛЬЗОВАТЕЛЮ)
+            if (!familyPath.StartsWith("X:\\BIM")
+                && !familyPath.Contains("KPLN_Loader")
+                // Отлов проекта Школа 825. Его дорабатываем за другой организацией
+                && !docPath.ToLower().Contains("sh1-"))
+            {
+                UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
+                userVerify.ShowDialog();
+
+                if (userVerify.Status == UIStatus.RunStatus.CloseBecauseError)
+                {
+                    TaskDialog.Show("Заперщено", "Не верный пароль, в загрузке семейства отказано!");
+                    args.Cancel();
+                }
+                else if (userVerify.Status == UIStatus.RunStatus.Close)
+                {
+                    args.Cancel();
+                }
+            }
+            #endregion
 
         }
 
         /// <summary>
-        /// Проверка файла на наличие мониторинга (проверок)
+        /// Выдача имени файла с проверкой на необходимость в контроле действий
         /// </summary>
-        /// <param name="doc"></param>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        private bool IsMonitoredFile(Document doc)
+        private string MonitoredFilePath(Document doc)
         {
             string fileName;
             if (doc.IsWorkshared)
@@ -420,12 +420,88 @@ namespace KPLN_Looker
             else
                 fileName = doc.PathName;
 
-            return doc.IsWorkshared
+            if (doc.IsWorkshared
                 && !doc.IsDetached
                 && !doc.IsFamilyDocument
+                && (fileName.ToLower().Contains("stinproject.local\\project\\") || fileName.ToLower().Contains("rsn"))
                 && !fileName.EndsWith("rte")
                 && !fileName.ToLower().Contains("\\lib\\")
-                && !fileName.ToLower().Contains("концепция");
+                && !fileName.ToLower().Contains("конц")
+                && !fileName.ToLower().Contains("kon"))
+            {
+                return fileName;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Анализ семейств, загруженных из другого проекта (ctrl+c/ctrl+v)
+        /// </summary>
+        private void IsFamilyLoadedFromOtherFile(DocumentChangedEventArgs args)
+        {
+            Document doc = args.GetDocument();
+            string transName = args.GetTransactionNames().FirstOrDefault();
+            if (transName.Contains("Начальная вставка"))
+            {
+                List<FamilySymbol> addedFamilySymbols = new List<FamilySymbol>();
+                ICollection<ElementId> addedElems = args.GetAddedElementIds();
+                if (addedElems.Count() > 0)
+                {
+                    foreach (ElementId elemId in addedElems)
+                    {
+                        if (doc.GetElement(elemId) is FamilySymbol familySymbol)
+                            addedFamilySymbols.Add(familySymbol);
+                    }
+                }
+
+                if (addedFamilySymbols.Count() > 0)
+                {
+                    Element[] prjFamilies = new FilteredElementCollector(doc)
+                        .OfClass(typeof(FamilySymbol))
+                        .WhereElementIsElementType()
+                        .Where(fs => fs.Category.CategoryType == CategoryType.Model)
+                        .ToArray();
+                    bool isFamilyInclude = false;
+                    bool isFamilyNew = false;
+                    foreach (FamilySymbol fs in addedFamilySymbols)
+                    {
+                        string fsName = fs.FamilyName;
+                        string digitEndTrimmer = Regex.Match(fsName, @"\d*$").Value;
+                        // Осуществляю срез имени на найденные цифры в конце имени
+                        string truePartOfName = fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray());
+                        var includeFam = prjFamilies
+                            .FirstOrDefault(f => f.Name.Equals(fsName.TrimEnd(Regex.Match(fsName, @"\d*$").Value.ToArray())) && !f.Name.Equals(fsName));
+
+                        if (includeFam == null)
+                            isFamilyNew = true;
+                        else
+                            isFamilyInclude = true;
+                    }
+
+                    if (isFamilyInclude && isFamilyNew)
+                        MessageBox.Show(
+                            "Только что были скопированы семейства, которые являются как новыми, так и уже имеющимися в проекте. " +
+                            "Запусти плагин \"KPLN: Проверка семейств\" для проверки семейств на первоисточник",
+                            "Предупреждение",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Asterisk);
+                    else if (isFamilyInclude)
+                        MessageBox.Show(
+                            "Только что были скопированы семейства, которые уже имеющимися в проекте. " +
+                            "Запусти плагин \"KPLN: Проверка семейств\" для проверки семейств, чтобы избежать дублирования семейств",
+                            "Предупреждение",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Asterisk);
+                    else if (isFamilyNew)
+                        MessageBox.Show(
+                            "Только что были скопированы семейства, которые являются новыми. " +
+                            "Запусти плагин \"KPLN: Проверка семейств\" для проверки семейств, чтобы избежать наличия семейств из сторонних источников",
+                            "Предупреждение",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Asterisk);
+                }
+            }
         }
     }
 }
