@@ -324,7 +324,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: {_sourceProjectName}\n" +
                     $"Ошибки: См. файл логов у пользователя {CurrentDBUser.Surname} {CurrentDBUser.Name}.\n" +
-                    $"Путь к логам у пользователя: C:\\TEMP\\KPLN_Logs\\2023");
+                    $"Путь к логам у пользователя: C:\\TEMP\\KPLN_Logs\\{RevitVersion}");
             }
             else
             {
