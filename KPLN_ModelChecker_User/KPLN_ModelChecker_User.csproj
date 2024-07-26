@@ -90,6 +90,9 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="RevitTask, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\RevitTask.3.0.0\lib\net47\RevitTask.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -146,7 +149,6 @@
     <Compile Include="ExternalCommands\CommandCheckGrids.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
-    <Compile Include="ExecutableCommand\CommandZoomElement.cs" />
     <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputFormLaunchDate.xaml.cs">

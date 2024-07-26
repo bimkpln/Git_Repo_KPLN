@@ -10,6 +10,7 @@ namespace KPLN_ModelChecker_User.Common
         private readonly FaceArray _arElementDownFacesArray = new FaceArray();
         private readonly List<BoundingBoxXYZ> _arBBoxes = new List<BoundingBoxXYZ>();
         private Transform _arElemLinkTrans;
+        private static readonly object _locker = new object();
 
         public CheckMEPHeightARElemData(Element arElemen, RevitLinkInstance arElementLinkInst)
         {
@@ -41,8 +42,11 @@ namespace KPLN_ModelChecker_User.Common
             {
                 if (_arSolids.Count == 0)
                 {
-                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-                    opt.ComputeReferences = true;
+                    Options opt = new Options
+                    {
+                        DetailLevel = ViewDetailLevel.Fine,
+                        ComputeReferences = true
+                    };
                     GeometryElement geomElem = ARElement.get_Geometry(opt);
                     if (geomElem != null)
                     {
@@ -66,8 +70,11 @@ namespace KPLN_ModelChecker_User.Common
             {
                 if (_arBBoxes.Count == 0)
                 {
-                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-                    opt.ComputeReferences = true;
+                    Options opt = new Options
+                    {
+                        DetailLevel = ViewDetailLevel.Fine,
+                        ComputeReferences = true
+                    };
                     GeometryElement geometryElement = ARElement.get_Geometry(opt);
                     foreach (GeometryObject geomObject in geometryElement)
                     {
@@ -101,27 +108,30 @@ namespace KPLN_ModelChecker_User.Common
         {
             get
             {
-                if (_arElementDownFacesArray.IsEmpty)
+                lock (_locker)
                 {
-                    foreach(Solid solid in ARElemSolids)
+                    if (_arElementDownFacesArray.IsEmpty)
                     {
-                        FaceArray faceArray = solid.Faces;
-                        foreach (Face face in faceArray)
+                        foreach(Solid solid in ARElemSolids)
                         {
-                            // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
-                            if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z < 0))
-                                continue;
+                            FaceArray faceArray = solid.Faces;
+                            foreach (Face face in faceArray)
+                            {
+                                // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
+                                if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z < 0))
+                                    continue;
 
-                            // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
-                            if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z < 0))
-                                continue;
+                                // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
+                                if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z < 0))
+                                    continue;
 
-                            _arElementDownFacesArray.Append(face);
+                                _arElementDownFacesArray.Append(face);
+                            }
                         }
                     }
-                }
 
-                return _arElementDownFacesArray;
+                    return _arElementDownFacesArray;
+                }
             }
         }
 

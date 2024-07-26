@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -114,69 +115,87 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            #region Подготовливаю спец. классы отдельным потоком
-            CheckMEPHeightMEPData[] mepDataColl = null;
-            Task prepearMEPDataTask = Task.Run(() =>
+            #region Подготовливаю спец. классы
+            int totalLength = elemColl.Length;
+            // Инженерные элементы разделяю на 2 части и 2 таски. Часть 1
+            CheckMEPHeightMEPData[] mepDataColl1 = null;
+            Task prepareMEPDataTask1 = Task.Run(() =>
             {
-                mepDataColl = elemColl
-                .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
-                // Проверка элементов на предмет наличия геометрии
-                .Where(m => m.MEPElemSolids.Count != 0)
-                .ToArray();
+                mepDataColl1 = new ArraySegment<Element>(elemColl, 0, totalLength/2)
+                    .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
+                    // Проверка элементов на предмет наличия геометрии
+                    .Where(m => m.MEPElemSolids.Count != 0)
+                    .ToArray();
             });
-            #endregion
-
-            #region Подготовка элементов АР
-            //Подготовка связей АР
-            RevitLinkInstance[] arLinkInsts = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevitLinkInstance))
-                // Слабое место - имена файлов могут отличаться из-за требований Заказчика
-                .Where(lm =>
-                    (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
-                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
-                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                .Cast<RevitLinkInstance>()
-                .ToArray();
-
-            // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
-            if (arLinkInsts.Count() == 0)
-                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
-
-            // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
-            if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
-                throw new CheckerException("Перед запуском - открой все связи АР");
-
-            // Получаю список назначений помещений, которые необходимо проверить (ПОВЕСИТЬ НА КОНФИГ!!!!!)
-            string[] roomDepartmentColl = 
+            
+            // Часть 2
+            CheckMEPHeightMEPData[] mepDataColl2 = null;
+            Task prepareMEPDataTask2 = Task.Run(() =>
             {
-                "Кладовая",
-                "МОП",
-                "Технические помещения"
-            };
+                mepDataColl2 = new ArraySegment<Element>(elemColl, totalLength / 2, totalLength - totalLength / 2)
+                    .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
+                    // Проверка элементов на предмет наличия геометрии
+                    .Where(m => m.MEPElemSolids.Count != 0)
+                    .ToArray();
+            });
 
-            // Получаю список части имен помещений, которые НЕ являются ошибками (ПОВЕСИТЬ НА КОНФИГ!!!!!)
-            string[] roomNameExceptionColl =
+            // Архитектурные элементы помещений
+            CheckMEPHeightARRoomData[] checkMEPHeightARData = null;
+            Task checkMEPHeightARDataTask = Task.Run(() =>
             {
-                "итп",
-                "пространство",
-                "насосн",
-                "камера",
-            };
+                checkMEPHeightARData = PrepareARRoomData(doc);
+            });
 
-            List<CheckMEPHeightARRoomData> checkMEPHeightARData = CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts, roomDepartmentColl, roomNameExceptionColl);
+            Task.WaitAll(prepareMEPDataTask1, prepareMEPDataTask2, checkMEPHeightARDataTask);
+            
+            CheckMEPHeightMEPData[] mepDataColl = mepDataColl1.Concat(mepDataColl2).ToArray();
             #endregion
-
-            Task.WaitAll(prepearMEPDataTask);
 
             #region Обработка элементов ИОС
             // Анализ элементов ИОС на элементы АР
             foreach (CheckMEPHeightARRoomData arRoomData in checkMEPHeightARData)
             {
-                CheckMEPHeightMEPData[] currentRoomMEPDataColl = mepDataColl
-                    .Where(mep => mep.IsElemInCurrentRoom(arRoomData))
-                    .ToArray();
+                #region Инженерные элементы с привязкой к помещениям - разделяю на 2 части и 2 таски
+                totalLength = mepDataColl.Length;
+                CheckMEPHeightMEPData[] currentRoomMEPDataColl1 = null;
+                Task currentRoomMEPDataCollTask1 = Task.Run(() =>
+                {
+                    currentRoomMEPDataColl1 = new ArraySegment<CheckMEPHeightMEPData>(mepDataColl, 0, totalLength / 2)
+                        .Where(mep => mep.IsElemInCurrentRoom(arRoomData))
+                        .ToArray();
+                });
 
-                CheckMEPHeightMEPData[] errorMEPDataColl = CheckMEPHeightMEPData.CheckIOSElemsForMinDistErrorByAR(currentRoomMEPDataColl, arRoomData);
+                CheckMEPHeightMEPData[] currentRoomMEPDataColl2 = null;
+                Task currentRoomMEPDataCollTask2 = Task.Run(() =>
+                {
+                    currentRoomMEPDataColl2 = new ArraySegment<CheckMEPHeightMEPData>(mepDataColl, totalLength / 2, totalLength - totalLength / 2)
+                        .Where(mep => mep.IsElemInCurrentRoom(arRoomData))
+                        .ToArray();
+                });
+
+                Task.WaitAll(currentRoomMEPDataCollTask1, currentRoomMEPDataCollTask2);
+                CheckMEPHeightMEPData[] currentRoomMEPDataColl = currentRoomMEPDataColl1.Concat(currentRoomMEPDataColl2).ToArray();
+                #endregion
+
+                #region Инженерные элементы с нарушением высоты - разделяю на 2 части и 2 таски
+                totalLength = currentRoomMEPDataColl.Length;
+                CheckMEPHeightMEPData[] errorMEPDataColl1 = null;
+                Task errorMEPDataCollTask1 = Task.Run(() =>
+                {
+                    errorMEPDataColl1 = CheckMEPHeightMEPData
+                        .CheckIOSElemsForMinDistErrorByAR(new ArraySegment<CheckMEPHeightMEPData>(currentRoomMEPDataColl, 0, totalLength / 2), arRoomData);
+                });
+
+                CheckMEPHeightMEPData[] errorMEPDataColl2 = null;
+                Task errorMEPDataCollTask2 = Task.Run(() =>
+                {
+                    errorMEPDataColl2 = CheckMEPHeightMEPData
+                        .CheckIOSElemsForMinDistErrorByAR(new ArraySegment<CheckMEPHeightMEPData>(currentRoomMEPDataColl, totalLength / 2, totalLength - totalLength / 2), arRoomData);
+                });
+
+                Task.WaitAll(errorMEPDataCollTask1, errorMEPDataCollTask2);
+                CheckMEPHeightMEPData[] errorMEPDataColl = errorMEPDataColl1.Concat(errorMEPDataColl2).ToArray();
+                #endregion
 
                 List<Element> verticalCurveElemsFiltered_ErrorElemsColl = new List<Element>();
                 foreach (CheckMEPHeightMEPData mepData in errorMEPDataColl)
@@ -190,7 +209,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     else
                     {
-
                         isVerticalElem = CheckMEPHeightMEPData.VerticalCurveElementsFilteredWithTolerance(mepData.MEPElement, errorMEPDataColl);
                         if (isVerticalElem)
                             verticalCurveElemsFiltered_ErrorElemsColl.Add(mepData.MEPElement);
@@ -217,6 +235,53 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             report.SetWPFEntityFiltration_ByErrorHeader();
         }
+
+        /// <summary>
+        /// Метод подготовки элементов АР для последующего анализа
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <exception cref="CheckerException"></exception>
+        private CheckMEPHeightARRoomData[] PrepareARRoomData(Document doc)
+        {
+            //Подготовка связей АР
+            RevitLinkInstance[] arLinkInsts = new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                // Слабое место - имена файлов могут отличаться из-за требований Заказчика
+                .Where(lm =>
+                    (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
+                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
+                .Cast<RevitLinkInstance>()
+                .ToArray();
+
+            // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
+            if (arLinkInsts.Count() == 0)
+                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
+
+            // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
+            if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
+                throw new CheckerException("Перед запуском - открой все связи АР");
+
+            // Получаю список назначений помещений, которые необходимо проверить (ПОВЕСИТЬ НА КОНФИГ!!!!!)
+            string[] roomDepartmentColl =
+            {
+                "Кладовая",
+                "МОП",
+                "Технические помещения"
+            };
+
+            // Получаю список части имен помещений, которые НЕ являются ошибками (ПОВЕСИТЬ НА КОНФИГ!!!!!)
+            string[] roomNameExceptionColl =
+            {
+                "итп",
+                "пространство",
+                "насосн",
+                "камера",
+            };
+
+            return CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts, roomDepartmentColl, roomNameExceptionColl);
+        }
+
 
         /// <summary>
         /// Получение элементов ИОС по списку категорий, с учетом фильтрации

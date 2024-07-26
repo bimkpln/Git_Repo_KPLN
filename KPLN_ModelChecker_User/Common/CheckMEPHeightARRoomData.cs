@@ -23,7 +23,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Список вариантов названий лестничных клеток
         /// </summary>
-        private static readonly List<string> _arStairsNames = new List<string> { "лк", "лестничн", };
+        private readonly List<string> _arStairsNames = new List<string> { "лк", "лестничн", };
         /// <summary>
         /// Минимальная высота для проверки лестничных клеток
         /// </summary>
@@ -31,6 +31,7 @@ namespace KPLN_ModelChecker_User.Common
         private Transform _roomLinkTrans;
         private BoundingBoxXYZ _roomBBox;
         private Solid _roomSolid;
+        private static readonly object _lock = new object();
 
         private CheckMEPHeightARRoomData(Room room, RevitLinkInstance roomLinkInst)
         {
@@ -67,8 +68,11 @@ namespace KPLN_ModelChecker_User.Common
                 {
                     if (CurrentRoom == null) throw new Exception("Не определно помещение для анализа");
 
-                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-                    opt.ComputeReferences = true;
+                    Options opt = new Options
+                    {
+                        DetailLevel = ViewDetailLevel.Fine,
+                        ComputeReferences = true
+                    };
                     GeometryElement geometryElement = CurrentRoom.get_Geometry(opt);
                     foreach (GeometryObject geomObject in geometryElement)
                     {
@@ -99,8 +103,11 @@ namespace KPLN_ModelChecker_User.Common
                     if (CurrentRoom == null) 
                         throw new Exception("Не определно помещение для анализа");
 
-                    Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-                    opt.ComputeReferences = true;
+                    Options opt = new Options
+                    {
+                        DetailLevel = ViewDetailLevel.Fine,
+                        ComputeReferences = true
+                    };
                     GeometryElement geomElem = CurrentRoom.get_Geometry(opt);
                     foreach (GeometryObject gObj in geomElem)
                     {
@@ -125,13 +132,16 @@ namespace KPLN_ModelChecker_User.Common
         {
             get
             {
-                if (CurrentRoom == null) 
-                    throw new Exception("Не определно помещение для анализа");
+                lock(_lock)
+                {
+                    if (CurrentRoom == null) 
+                        throw new Exception("Не определно помещение для анализа");
 
-                if (_arStairsNames.Any(i => CurrentRoom.Name.ToLower().Contains(i)))
-                    return _minStairsDistance;
+                    if (_arStairsNames.Any(i => CurrentRoom.Name.ToLower().Contains(i)))
+                        return _minStairsDistance;
 
-                return _minRoomDistance;
+                    return _minRoomDistance;
+                }
             }
         }
 
@@ -144,7 +154,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Генерация коллекции CheckMEPHeightARData
         /// </summary>
         /// <param name="linkInsts">Файлы АР для анализа</param>
-        public static List<CheckMEPHeightARRoomData> PreapareMEPHeightARRoomDataColl(RevitLinkInstance[] linkInsts, string[] roomDepartmentColl, string[] roomNameExceptionColl)
+        public static CheckMEPHeightARRoomData[] PreapareMEPHeightARRoomDataColl(RevitLinkInstance[] linkInsts, string[] roomDepartmentColl, string[] roomNameExceptionColl)
         {
             List<CheckMEPHeightARRoomData> result = new List<CheckMEPHeightARRoomData>();
 
@@ -179,17 +189,17 @@ namespace KPLN_ModelChecker_User.Common
                 CheckMEPHeightARElemData[] quickFilteredArr = projectionElemsColl.Where(e => arRoomData.IsElemInCurrentRoom_QuickFilter(e.ARElemBBoxes)).ToArray();
                 foreach (CheckMEPHeightARElemData arElem in quickFilteredArr)
                 {
+
                     if (!arRoomData.SetRoomDownARElemsDataColl_ByIncludedToRoom(arElem))
-                    {
                         arRoomData.SetRoomDownARElemsDataColl_ByProjectedWithRoom(arElem);
-                    }
 
                 }
+
                 if (arRoomData.RoomDownARElemDataColl.Count == 0)
                     throw new CheckerException($"Не удалось получить нижние границы помещения с id: {arRoomData.CurrentRoom.Id} в связи: {arRoomData.RoomLinkInst.Name}");
             }
 
-            return result;
+            return result.ToArray();
         }
 
         /// <summary>
@@ -205,7 +215,7 @@ namespace KPLN_ModelChecker_User.Common
                 .OfCategory(BuiltInCategory.OST_Rooms)
                 .WhereElementIsNotElementType()
                 .Cast<Room>()
-                .Where(r => !roomNameExceptionColl.Any(i => r.Name.ToLower().Contains(i)))
+                .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0 && !roomNameExceptionColl.Any(i => r.Name.ToLower().Contains(i)))
                 .ToList();
 
             foreach (Room room in linkRooms)

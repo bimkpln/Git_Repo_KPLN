@@ -25,6 +25,7 @@ namespace KPLN_ModelChecker_User.Common
         /// Точность в проверке при анализе положения элементов
         /// </summary>
         private static readonly double _toleranceToCheck = 0.1;
+        private static readonly object _locker = new object();
 
         public CheckMEPHeightMEPData(Element elem)
         {
@@ -131,8 +132,11 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         public CheckMEPHeightMEPData SetCurrentSolidColl()
         {
-            Options opt = new Options() { DetailLevel = ViewDetailLevel.Fine };
-            opt.ComputeReferences = true;
+            Options opt = new Options
+            {
+                DetailLevel = ViewDetailLevel.Fine,
+                ComputeReferences = true
+            };
             GeometryElement geomElem = MEPElement.get_Geometry(opt);
             if (geomElem != null)
             {
@@ -152,9 +156,6 @@ namespace KPLN_ModelChecker_User.Common
                 _mepElemBBoxes.Add(GetBoundingBoxXYZ(solid));
             }
 
-            if (_mepElemBBoxes.Count == 0)
-                throw new Exception($"Не удалось получить BoundingBoxXYZ у элемента с id: {MEPElement.Id}");
-
             return this;
         }
 
@@ -171,15 +172,18 @@ namespace KPLN_ModelChecker_User.Common
                     && (arData.RoomBBox.Max.Y >= bbox.Min.Y && arData.RoomBBox.Min.Y <= bbox.Max.Y)
                     && (arData.RoomBBox.Max.Z + _bboxExpanded >= bbox.Min.Z && arData.RoomBBox.Min.Z <= bbox.Max.Z))
                 {
-                    // Более точная и длительная проверка на вхождение элемента в помещение (или над помещением, для органиченных помещений)
-                    if (arData.CurrentRoom.IsPointInRoom(bbox.Min) 
-                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 5))
-                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 2))
-                        || arData.CurrentRoom.IsPointInRoom(bbox.Max)
-                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 5))
-                        || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 2)))
+                    lock (_locker)
                     {
-                        return true;
+                        // Более точная и длительная проверка на вхождение элемента в помещение (или над помещением, для органиченных помещений)
+                        if (arData.CurrentRoom.IsPointInRoom(bbox.Min) 
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 5))
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 2))
+                            || arData.CurrentRoom.IsPointInRoom(bbox.Max)
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 5))
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 2)))
+                        {
+                            return true;
+                        }
                     }
                     
                     //// Более точная и длительная проверка на вхождение элемента в помещение
@@ -211,7 +215,7 @@ namespace KPLN_ModelChecker_User.Common
         /// </summary>
         /// <param name="currentRoomMEPDataColl">Коллекция спец. классов ИОС для проверки</param>
         /// <param name="arData">Спец. класс АР для проверки</param>
-        public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(CheckMEPHeightMEPData[] currentRoomMEPDataColl, CheckMEPHeightARRoomData arData) =>
+        public static CheckMEPHeightMEPData[] CheckIOSElemsForMinDistErrorByAR(ArraySegment<CheckMEPHeightMEPData> currentRoomMEPDataColl, CheckMEPHeightARRoomData arData) =>
             currentRoomMEPDataColl.Where(m => m.IsHeigtError(arData)).ToArray();
 
         /// <summary>

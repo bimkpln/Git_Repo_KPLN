@@ -1,6 +1,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.ExecutableCommand;
 using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
@@ -148,9 +149,9 @@ namespace KPLN_ModelChecker_User.Forms
                 if (wpfEntity.IsZoomElement)
                 {
                     if (wpfEntity.Element != null)
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ZoomElementCommand(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
                     else
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomElement(wpfEntity.ElementCollection));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ZoomElementCommand(wpfEntity.ElementCollection));
                 }
                 else
                     if (wpfEntity.Element != null)
