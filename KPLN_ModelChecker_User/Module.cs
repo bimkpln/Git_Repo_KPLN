@@ -85,7 +85,7 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckAnnotation",
                 new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898")));
             CommandCheckMEPHeight commandCheckMEPHeight = new CommandCheckMEPHeight(new ExtensibleStorageEntity(
-                "Проверка высоты эл-в ИОС",
+                "ИОС: Проверка высоты эл-в",
                 "KPLN_CheckMEPHeight",
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68"),
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69")));
@@ -109,7 +109,7 @@ namespace KPLN_ModelChecker_User
                 CommandCheckLevels.ESEntity,
                 CommandCheckLinks.ESEntity,
                 //CommandCheckListAnnotations.ESEntity,
-                //CommandCheckMEPHeight.ESEntity,
+                CommandCheckMEPHeight.ESEntity,
                 CommandCheckMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA150")),

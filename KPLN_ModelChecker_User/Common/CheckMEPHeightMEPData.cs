@@ -281,20 +281,20 @@ namespace KPLN_ModelChecker_User.Common
         /// Проверить элемент на факт нарушения высоты
         /// </summary>
         /// <param name="arData">Спец. класс для проверки</param>
+        /// <param name="minElemElevForCheck">Мин отметка, при которой элемент считается с потенциальным нарушением</param>
         private bool IsHeigtError(CheckMEPHeightARRoomData arData)
-        {
-            // Зада. мин длину, при которой элемент считается с потенциальным нарушением - выше 1.5 м
-            double minIntDist = 5;
+        {            
             double tempIntDist = Double.MaxValue;
+            double minElemElevForCheck = arData.CurrentRoomMinElemElevationForCheck / 304.8;
             foreach (BoundingBoxXYZ checkBBox in SplitedBBoxArray)
             {
-                #region Проверка вертикальных участков на вертикальную проходку между этажами (стояк). К ним отношу все участки, которые больше 1.5 м
+                #region Проверка вертикальных участков на вертикальную проходку между этажами (стояк). К ним отношу все участки, которые больше мин отметки для анализа
                 if (MEPElement.Location is LocationCurve locCurve)
                 {
                     if (locCurve.Curve is Line locLine)
                     {
                         XYZ direction = locLine.Direction;
-                        if (Math.Abs(direction.X) < _toleranceToCheck && Math.Abs(direction.Y) < _toleranceToCheck && locCurve.Curve.ApproximateLength > 5)
+                        if (Math.Abs(direction.X) < _toleranceToCheck && Math.Abs(direction.Y) < _toleranceToCheck && locCurve.Curve.ApproximateLength > minElemElevForCheck)
                             return false;
                     }
                     else
@@ -321,11 +321,11 @@ namespace KPLN_ModelChecker_User.Common
                             // Делаю инверсию точки элемента ИОС на координаты АР. Плоскость не подвергается трансформации координат, или созданию (нет конструктора)
                             XYZ inversedPoint = arElemData.ARElemLinkTrans.Inverse.OfPoint(point);
                             IntersectionResult intRes = face.Project(inversedPoint);
-                            if (intRes != null && intRes.Distance < tempIntDist && intRes.Distance > minIntDist)
+                            if (intRes != null && intRes.Distance < tempIntDist && intRes.Distance > minElemElevForCheck)
                             {
                                 tempIntDist = intRes.Distance;
                                 double iosDistance = inversedPoint.DistanceTo(intRes.XYZPoint);
-                                if (iosDistance < arData.RoomMinDistance)
+                                if (iosDistance * 304.8 < arData.CurrentRoomMinDistance)
                                     return true;
                             }
                         }

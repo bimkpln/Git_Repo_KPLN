@@ -9,7 +9,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -68,6 +67,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "960_",
         };
 
+        /// <summary>
+        /// Коллекция ViewModel для окна параметров помещений (далее будет синхрон со спец классами эл-тов моделей - CheckMEPHeightARRoomData)
+        /// </summary>
+        private CheckMEPHeightViewModel[] _checkMEPHeightViewModel;
+        private CheckMEPHeightARRoomData[] _checkMEPHeightARData;
+
         public CommandCheckMEPHeight() : base()
         {
         }
@@ -91,14 +96,44 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            #region Проверяю и обрабатываю элементы
-            WPFEntity[] wpfColl = CheckCommandRunner(doc, PreapareIOSElements(doc));
-            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            if (form != null) 
-                form.Show(); 
-            else 
-                return Result.Cancelled;
+
+            #region Подготовка связей АР
+            RevitLinkInstance[] arLinkInsts = new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                // Слабое место - имена файлов могут отличаться из-за требований Заказчика
+                .Where(lm =>
+                    (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
+                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
+                .Cast<RevitLinkInstance>()
+                .ToArray();
+
+            // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
+            if (arLinkInsts.Count() == 0)
+                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
+
+            // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
+            if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
+                throw new CheckerException("Перед запуском - открой все связи АР");
             #endregion
+
+            _checkMEPHeightViewModel = CheckMEPHeightARRoomData.PreapareMEPHeightViewModelDataDataColl(arLinkInsts);
+            CheckMEPHeight_ARDataForm arDataFrom = new CheckMEPHeight_ARDataForm(_uiApp, _checkMEPHeightViewModel);
+            arDataFrom.ShowDialog();
+
+            if (arDataFrom.IsRun)
+            {
+                var onlyCheckedVMColl = arDataFrom.ViewModelColl.Where(v => v.VMIsCheckRun);
+                _checkMEPHeightARData = CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(onlyCheckedVMColl, arLinkInsts);
+
+                WPFEntity[] wpfColl = CheckCommandRunner(doc, PreapareIOSElements(doc));
+                OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
+                if (form != null)
+                    form.Show();
+                else
+                    return Result.Cancelled;
+
+            }
 
             return Result.Succeeded;
         }
@@ -121,13 +156,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CheckMEPHeightMEPData[] mepDataColl1 = null;
             Task prepareMEPDataTask1 = Task.Run(() =>
             {
-                mepDataColl1 = new ArraySegment<Element>(elemColl, 0, totalLength/2)
+                mepDataColl1 = new ArraySegment<Element>(elemColl, 0, totalLength / 2)
                     .Select(e => new CheckMEPHeightMEPData(e).SetCurrentSolidColl().SetCurrentBBoxColl())
                     // Проверка элементов на предмет наличия геометрии
                     .Where(m => m.MEPElemSolids.Count != 0)
                     .ToArray();
             });
-            
+
             // Часть 2
             CheckMEPHeightMEPData[] mepDataColl2 = null;
             Task prepareMEPDataTask2 = Task.Run(() =>
@@ -139,21 +174,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     .ToArray();
             });
 
-            // Архитектурные элементы помещений
-            CheckMEPHeightARRoomData[] checkMEPHeightARData = null;
-            Task checkMEPHeightARDataTask = Task.Run(() =>
-            {
-                checkMEPHeightARData = PrepareARRoomData(doc);
-            });
+            Task.WaitAll(prepareMEPDataTask1, prepareMEPDataTask2);
 
-            Task.WaitAll(prepareMEPDataTask1, prepareMEPDataTask2, checkMEPHeightARDataTask);
-            
             CheckMEPHeightMEPData[] mepDataColl = mepDataColl1.Concat(mepDataColl2).ToArray();
             #endregion
 
             #region Обработка элементов ИОС
             // Анализ элементов ИОС на элементы АР
-            foreach (CheckMEPHeightARRoomData arRoomData in checkMEPHeightARData)
+            foreach (CheckMEPHeightARRoomData arRoomData in _checkMEPHeightARData)
             {
                 #region Инженерные элементы с привязкой к помещениям - разделяю на 2 части и 2 таски
                 totalLength = mepDataColl.Length;
@@ -221,7 +249,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         verticalCurveElemsFiltered_ErrorElemsColl,
                         CheckStatus.Error,
                         $"Недопустимая дистанция для помещения {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
-                        $"Минимально допустимая высота монтажа элементов по версии ГИ: {Math.Round((arRoomData.RoomMinDistance * 304.8), 0)}",
+                        $"Минимально допустимая высота монтажа элементов для данного помещения: {Math.Round((arRoomData.CurrentRoomMinDistance), 0)}",
                         true,
                         false));
                 }
@@ -235,53 +263,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             report.SetWPFEntityFiltration_ByErrorHeader();
         }
-
-        /// <summary>
-        /// Метод подготовки элементов АР для последующего анализа
-        /// </summary>
-        /// <param name="doc"></param>
-        /// <exception cref="CheckerException"></exception>
-        private CheckMEPHeightARRoomData[] PrepareARRoomData(Document doc)
-        {
-            //Подготовка связей АР
-            RevitLinkInstance[] arLinkInsts = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevitLinkInstance))
-                // Слабое место - имена файлов могут отличаться из-за требований Заказчика
-                .Where(lm =>
-                    (lm.Name.ToUpper().Contains("_AR_") || lm.Name.ToUpper().Contains("_АР_"))
-                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
-                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                .Cast<RevitLinkInstance>()
-                .ToArray();
-
-            // Проверка на то, чтобы файлы АР подверглись поиску по паттерну из проверки выше
-            if (arLinkInsts.Count() == 0)
-                throw new CheckerException("Не удалось идентифицировать связи - они либо названы не по внутреннему BEP KPLN (обр. в BIM-отдел), либо связи в модели отсутсвуют (подгрузи)");
-
-            // Проверка на то, чтобы ВСЕ файлы АР были открыты в модели
-            if (arLinkInsts.Where(rli => rli.GetLinkDocument() == null).Any())
-                throw new CheckerException("Перед запуском - открой все связи АР");
-
-            // Получаю список назначений помещений, которые необходимо проверить (ПОВЕСИТЬ НА КОНФИГ!!!!!)
-            string[] roomDepartmentColl =
-            {
-                "Кладовая",
-                "МОП",
-                "Технические помещения"
-            };
-
-            // Получаю список части имен помещений, которые НЕ являются ошибками (ПОВЕСИТЬ НА КОНФИГ!!!!!)
-            string[] roomNameExceptionColl =
-            {
-                "итп",
-                "пространство",
-                "насосн",
-                "камера",
-            };
-
-            return CheckMEPHeightARRoomData.PreapareMEPHeightARRoomDataColl(arLinkInsts, roomDepartmentColl, roomNameExceptionColl);
-        }
-
 
         /// <summary>
         /// Получение элементов ИОС по списку категорий, с учетом фильтрации

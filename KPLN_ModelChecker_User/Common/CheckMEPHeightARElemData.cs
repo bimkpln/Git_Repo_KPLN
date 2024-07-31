@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.Common
 {
-    internal class CheckMEPHeightARElemData
+    public class CheckMEPHeightARElemData
     {
         private readonly List<Solid> _arSolids = new List<Solid>();
         private readonly FaceArray _arElementDownFacesArray = new FaceArray();
