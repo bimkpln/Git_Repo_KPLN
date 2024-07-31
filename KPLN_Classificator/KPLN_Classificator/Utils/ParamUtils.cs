@@ -342,10 +342,10 @@ namespace KPLN_Classificator
 
         public static string getElemFamilyName(Element elem)
         {
-            string familyName = null;
+            string familyName;
             if (elem is Room)
             {
-                familyName = elem.get_Parameter(BuiltInParameter.ROOM_DEPARTMENT).AsString();
+                familyName = elem.get_Parameter(BuiltInParameter.ROOM_NAME).AsString();
             }
             else
             {
@@ -355,7 +355,7 @@ namespace KPLN_Classificator
             }
 
             if (familyName == null)
-                throw new Exception("Не удалось взять имя семейства! Обратись к разработчику");
+                throw new Exception($"Не удалось взять имя семейства/помещения для элемента с id: {elem.Id}! Обратись к разработчику");
 
             return familyName;
         }

@@ -45,9 +45,10 @@ namespace KPLN_Classificator
                 LongDescription = "Возможности:\n" +
                 "\t1. Задание правил для параметризации элементов;\n" +
                 "\t2. Маппинг параметров (передача значений между параметрами элемента);\n" +
-                "\t3. Сохранение конфигурационного файла с возможностью повторного использования;\n"
+                "\t3. Сохранение конфигурационного файла с возможностью повторного использования.\n" +
+                $"\nДата сборки: {Date}\nНомер сборки: {Version}\nИмя модуля: {ModuleName}",
+                AvailabilityClassName = typeof(Availability.StaticAvailable).FullName
             };
-            btnHostMark.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
             panel.AddItem(btnHostMark);
 

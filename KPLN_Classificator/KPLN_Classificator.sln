@@ -8,16 +8,31 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
 		Revit2020|Any CPU = Revit2020|Any CPU
+		Revit2020|x64 = Revit2020|x64
 		Revit2023|Any CPU = Revit2023|Any CPU
+		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Debug|x64.Build.0 = Debug|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Release|x64.ActiveCfg = Release|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Release|x64.Build.0 = Release|Any CPU
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|x64.ActiveCfg = Revit2020|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2020|x64.Build.0 = Revit2020|Any CPU
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
 		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2023|x64.ActiveCfg = Revit2023|Any CPU
+		{8FE2B971-0394-4113-8896-B96C3474D62A}.Revit2023|x64.Build.0 = Revit2023|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
