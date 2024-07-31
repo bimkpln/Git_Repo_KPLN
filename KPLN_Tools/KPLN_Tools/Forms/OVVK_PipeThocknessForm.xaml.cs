@@ -24,7 +24,7 @@ namespace KPLN_Tools.Forms
             _doc = document;
             ModelPath modelPath = _doc.GetWorksharingCentralModelPath() ?? throw new System.Exception("Работает только с моделями из хранилища");
             _modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath).Trim($"{_doc.Title}.rvt".ToArray());
-            _configPath = _modelPath + $"OVVKConfig\\PipeThicknessConfig.json";
+            _configPath = _modelPath + $"KPLNConfig\\OVVK_PipeThocknessConfig.json";
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
             // Файл конфига присутсвует. Читаю и чищу от неиспользуемых

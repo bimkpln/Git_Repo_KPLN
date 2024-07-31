@@ -75,7 +75,7 @@ namespace KPLN_BIMTools_Ribbon
                 typeof(CommandRSExchange).FullName,
                 pullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
-                "http://moodle.stinproject.local",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );
 
@@ -92,7 +92,7 @@ namespace KPLN_BIMTools_Ribbon
                 typeof(CommandNWExport).FullName,
                 pullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.nwExportSmall.png",
-                "http://moodle.stinproject.local",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );
             #endregion

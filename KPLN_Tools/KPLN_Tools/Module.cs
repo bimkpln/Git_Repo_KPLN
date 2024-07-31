@@ -57,7 +57,7 @@ namespace KPLN_Tools
                 typeof(ExternalCommands.CommandAutonumber).FullName,
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle");
+                "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
             PushButtonData searchUser = CreateBtnData(
                 "Найти пользователя",
@@ -108,7 +108,7 @@ namespace KPLN_Tools
                typeof(ExternalCommands.CommandExtraMonitoring).FullName,
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "KPLN_Tools.Imagens.monitorMainSmall.png",
-               "http://moodle/mod/book/view.php?id=502&chapterid=687");
+               "http://moodle");
 
             PushButtonData changeLevel = CreateBtnData(
                 "Изменение уровня",
