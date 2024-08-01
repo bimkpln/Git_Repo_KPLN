@@ -77,7 +77,7 @@ namespace KPLN_Loader.Services
             using (HttpClient client = new HttpClient())
             {
                 // Выполнение GET - запроса к странице
-                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/152/rud1zqq5p9ol00uk/user.search.json?NAME={name}&LAST_NAME={surname}");
+                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/152/7nqwflagfu7wnirl/user.search.json?NAME={name}&LAST_NAME={surname}");
                 if (response.IsSuccessStatusCode)
                 {
                     string content = await response.Content.ReadAsStringAsync();

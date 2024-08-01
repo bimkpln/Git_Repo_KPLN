@@ -5,6 +5,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace KPLN_Library_Bitrix24Worker
 {
@@ -109,7 +110,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client.GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/152/rud1zqq5p9ol00uk/user.search.json?LAST_NAME={0}", $"{dBUser.Surname}"));
+                    HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/152/7nqwflagfu7wnirl/user.search.json?NAME={dBUser.Name}&LAST_NAME={dBUser.Surname}");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
