@@ -5,7 +5,6 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml.Linq;
 
 namespace KPLN_Library_Bitrix24Worker
 {
@@ -39,7 +38,7 @@ namespace KPLN_Library_Bitrix24Worker
                 {
                     // Выполнение GET - запроса к странице
                     HttpResponseMessage response = await client
-                        .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/qd00y541wgy6wyyz/im.message.add.json?MESSAGE={0}&DIALOG_ID=chat4240", $"{msg}"));
+                        .GetAsync($"https://kpln.bitrix24.ru/rest/1310/b3zon6t9a38coxbq/im.message.add.json?MESSAGE={msg}&DIALOG_ID=chat4240");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -70,7 +69,7 @@ namespace KPLN_Library_Bitrix24Worker
                     {
                         // Выполнение GET - запроса к странице
                         HttpResponseMessage response = await client
-                            .GetAsync(String.Format(@"https://kpln.bitrix24.ru/rest/1310/c87h1w5xrelntkxh/im.message.add.json?MESSAGE={0}&DIALOG_ID={1}", $"{msg}", $"{bitrixUserId}"));
+                            .GetAsync($"https://kpln.bitrix24.ru/rest/1310/mfgd02ud186zswmp/im.message.add.json?MESSAGE={msg}&DIALOG_ID={bitrixUserId}");
                         if (response.IsSuccessStatusCode)
                         {
                             string content = await response.Content.ReadAsStringAsync();
@@ -94,7 +93,7 @@ namespace KPLN_Library_Bitrix24Worker
         {
             if (dBUser.BitrixUserID != -1)
                 return dBUser.BitrixUserID;
-            
+
             return await SetDBUserBitrixId_ByDBUserSurname(dBUser);
         }
 
@@ -126,7 +125,7 @@ namespace KPLN_Library_Bitrix24Worker
 
                 if (id == -1)
                     throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
-                
+
                 CurrentUserDbService.UpdateDBUser_BitrixUserID(dBUser, id);
             }
             catch (Exception ex)
