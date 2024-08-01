@@ -33,7 +33,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             InitializeComponent();
 
-            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(_revitDocExchangestDbService.GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project));
+            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(
+                _revitDocExchangestDbService
+                .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
+                .OrderBy(dExc => dExc.SettingName));
             DataContext = this;
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
@@ -96,9 +99,49 @@ namespace KPLN_BIMTools_Ribbon.Forms
             ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum);
             configItem.ShowDialog();
             if (configItem.IsRun)
+            {
                 CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                SortCurrentDBRevitDocExchanges();
+            }
         }
 
+        /// <summary>
+        /// Обновить сортировку можно только перезаписью коллекции. Сортировка не даёт сигнал на обновление
+        /// </summary>
+        private void SortCurrentDBRevitDocExchanges()
+        {
+            var sortedList = CurrentDBRevitDocExchanges.OrderBy(dExc => dExc.SettingName).ToList();
+            CurrentDBRevitDocExchanges.Clear();
+            foreach (var item in sortedList)
+            {
+                CurrentDBRevitDocExchanges.Add(item);
+            }
+        }
+
+        private void OnBtnDelConf(object sender, RoutedEventArgs e)
+        {
+            UserDialog cd = new UserDialog("ВНИМАНИЕ", "Сейчас будут удалены выбранные элементы. Продолжить?");
+            cd.ShowDialog();
+
+            if (cd.IsRun)
+            {
+                List<CheckBox> checkedCheckBoxesToDel = new List<CheckBox>(_checkedCheckBoxes.Count());
+                foreach (CheckBox chkBox in _checkedCheckBoxes)
+                {
+                    if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
+                    {
+                        DeleteDBRevitDocExchange(docExchanges);
+                        checkedCheckBoxesToDel.Add(chkBox);
+                    }
+                    else
+                        throw new Exception("Скинь разработчику: Не удалось преобразовать тип CheckBox в тип из БД DBRevitDocExchanges");
+                }
+
+                // Блокирую старт, т.к. ничего не выбрано
+                _checkedCheckBoxes.RemoveAll(chBx => checkedCheckBoxesToDel.Contains(chBx));
+                BtnEnableSwitch();
+            }
+        }
 
         private void MenuItem_Update_Click(object sender, RoutedEventArgs e)
         {
@@ -147,32 +190,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if ((MenuItem)e.Source is MenuItem menuItem)
             {
                 if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
-                    DeleteDBRevitDocExchange(docExchanges);
-            }
-        }
-
-        private void OnBtnDelConf(object sender, RoutedEventArgs e)
-        {
-            UserDialog cd = new UserDialog("ВНИМАНИЕ", "Сейчас будут удалены выбранные элементы. Продолжить?");
-            cd.ShowDialog();
-
-            if (cd.IsRun)
-            {
-                List<CheckBox> checkedCheckBoxesToDel = new List<CheckBox>(_checkedCheckBoxes.Count());
-                foreach (CheckBox chkBox in _checkedCheckBoxes)
                 {
-                    if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
-                    {
+                    UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchanges.SettingName}\". Продолжить?");
+                    cd.ShowDialog();
+                    
+                    if (cd.IsRun)
                         DeleteDBRevitDocExchange(docExchanges);
-                        checkedCheckBoxesToDel.Add(chkBox);
-                    }
-                    else
-                        throw new Exception("Скинь разработчику: Не удалось преобразовать тип CheckBox в тип из БД DBRevitDocExchanges");
                 }
-
-                // Блокирую старт, т.к. ничего не выбрано
-                _checkedCheckBoxes.RemoveAll(chBx => checkedCheckBoxesToDel.Contains(chBx));
-                BtnEnableSwitch();
             }
         }
 
