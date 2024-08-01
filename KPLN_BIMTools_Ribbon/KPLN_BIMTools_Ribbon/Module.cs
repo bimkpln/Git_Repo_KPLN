@@ -49,17 +49,16 @@ namespace KPLN_BIMTools_Ribbon
 
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
 
-            #region Добавляю кнопки для ручного запуска
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "BIM");
 
-            //Добавляю выпадающий список pullDown
-            PulldownButtonData pullDownData = new PulldownButtonData("Выгрузка", "Выгрузка")
+            #region Выпадающий список "Выгрузка"
+            PulldownButtonData uploadPullDownData = new PulldownButtonData("Выгрузка", "Выгрузка")
             {
                 ToolTip = "Плагины по выгрузке моделей",
                 LargeImage = PngImageSource("KPLN_BIMTools_Ribbon.Imagens.mainLoadBig.png"),
             };
-            PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
+            PulldownButton uploadPullDown = panel.AddItem(uploadPullDownData) as PulldownButton;
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -73,7 +72,7 @@ namespace KPLN_BIMTools_Ribbon
                     ModuleData.ModuleName
                 ),
                 typeof(CommandRSExchange).FullName,
-                pullDown,
+                uploadPullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
@@ -90,9 +89,36 @@ namespace KPLN_BIMTools_Ribbon
                     ModuleData.ModuleName
                 ),
                 typeof(CommandNWExport).FullName,
-                pullDown,
+                uploadPullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.nwExportSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
+                true
+            );
+            #endregion
+
+            #region Выпадающий список "Параметры"
+            PulldownButtonData paramPullDownData = new PulldownButtonData("Параметры", "Параметры")
+            {
+                ToolTip = "Плагины по работе с параметрами",
+                LargeImage = PngImageSource("KPLN_BIMTools_Ribbon.Imagens.mainParamBig.png"),
+            };
+            PulldownButton paramPullDown = panel.AddItem(paramPullDownData) as PulldownButton;
+
+            //Добавляю кнопки в выпадающий список pullDown
+            AddPushButtonDataInPullDown(
+                "LT: Экспорт",
+                "LT: Экспорт",
+                "Экспорт парамтеров из таблиц выбора (lookup tables), загруженных в семейство",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandLTablesExport).FullName,
+                paramPullDown,
+                "KPLN_BIMTools_Ribbon.Imagens.lookupSmall.png",
+                "http://moodle/",
                 true
             );
             #endregion
