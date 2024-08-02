@@ -132,6 +132,9 @@
     <Compile Include="UI\UserTextInput.xaml.cs">
       <DependentUpon>UserTextInput.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\UserDialog.xaml.cs">
+      <DependentUpon>UserDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\UserVerify.xaml.cs">
       <DependentUpon>UserVerify.xaml</DependentUpon>
     </Compile>
@@ -158,6 +161,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\UserTextInput.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\UserDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
