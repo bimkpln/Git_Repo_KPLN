@@ -119,7 +119,7 @@ namespace KPLN_BIMTools_Ribbon
                 paramPullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.lookupSmall.png",
                 "http://moodle/",
-                true
+                false
             );
             #endregion
 

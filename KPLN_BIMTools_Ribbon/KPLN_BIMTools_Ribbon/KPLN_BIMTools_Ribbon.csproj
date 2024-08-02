@@ -189,9 +189,6 @@
     <Compile Include="Forms\UserStringInput.xaml.cs">
       <DependentUpon>UserStringInput.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\UserDialog.xaml.cs">
-      <DependentUpon>UserDialog.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\ConfigDispatcher.xaml.cs">
       <DependentUpon>ConfigDispatcher.xaml</DependentUpon>
     </Compile>
@@ -227,10 +224,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\UserStringInput.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\UserDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
