@@ -2,6 +2,7 @@
 using System.Media;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -41,18 +42,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             get => _userInputName;
             set
             {
-                if (value != _userInputName)
-                {
-                    _userInputName = value;
-                    OnPropertyChanged();
-                    // Меняю настройки кликабельности кнопок
-                    if (!string.IsNullOrWhiteSpace(_userInputName) && _userInputName.Length > 5)
-                        _canRunByName = true;
-                    else
-                        _canRunByName = false;
-
-                    BtnEnableSwitch();
-                }
+                _userInputName = value;
+                OnPropertyChanged();
             }
         }
 
@@ -61,18 +52,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             get => _userInputPath;
             set
             {
-                if (value != _userInputPath)
-                {
-                    _userInputPath = value;
-                    OnPropertyChanged();
-                    // Меняю настройки кликабельности кнопок
-                    if (!string.IsNullOrWhiteSpace(_userInputPath) && _userInputPath.Length > 10)
-                        _canRunByPathTo = true;
-                    else
-                        _canRunByPathTo = false;
-
-                    BtnEnableSwitch();
-                }
+                _userInputPath = value;
+                OnPropertyChanged();
             }
         }
 
@@ -120,6 +101,32 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 btnOk.IsEnabled = true;
             else
                 btnOk.IsEnabled = false;
+        }
+
+        private void InputName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox tBox = sender as TextBox;
+
+            // Меняю настройки кликабельности кнопок
+            if (!string.IsNullOrWhiteSpace(tBox.Text) && tBox.Text.Length > 5)
+                _canRunByName = true;
+            else
+                _canRunByName = false;
+
+            BtnEnableSwitch();
+        }
+
+        private void InputPath_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox tBox = sender as TextBox;
+            
+            // Меняю настройки кликабельности кнопок
+            if (!string.IsNullOrWhiteSpace(tBox.Text) && tBox.Text.Length > 10)
+                _canRunByPathTo = true;
+            else
+                _canRunByPathTo = false;
+
+            BtnEnableSwitch();
         }
     }
 }

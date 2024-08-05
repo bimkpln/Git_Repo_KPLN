@@ -70,7 +70,8 @@
                 x:Name="InputName"
                 Grid.Row="2"
                 FontSize="16" 
-                Text="{Binding UserInputName}">
+                Text="{Binding UserInputName}"
+                TextChanged="InputName_TextChanged">
                 <TextBox.ToolTip>
                     <TextBlock 
                         Width="300"
@@ -88,7 +89,8 @@
                 x:Name="InputPath"
                 Grid.Row="4"
                 FontSize="16" 
-                Text="{Binding UserInputPath}">
+                Text="{Binding UserInputPath}"
+                TextChanged="InputPath_TextChanged">
                 <TextBox.ToolTip>
                     <TextBlock 
                         Width="300"
