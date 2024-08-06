@@ -10,12 +10,23 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
 {
     public class WorksetSetService
     {
-        public static bool ExecuteFromService(string folder, Document doc)
+        /// <summary>
+        /// Глобальный путь к папке с конфигами
+        /// </summary>
+        public static string WSPatternFolderPath = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
+
+        /// <summary>
+        /// Сервис по созданию рабочих наборов в проекте
+        /// </summary>
+        /// <param name="doc">Проект для создания РН</param>
+        /// <param name="links">Список связей, для которых нужно создать РНы</param>
+        /// <param name="modelElemWSCreating">Метка создания РН для элементов модели (кроме экземпляров связей)</param>
+        public static bool ExecuteFromService(Document doc, IEnumerable<RevitLinkInstance> links, bool modelElemWSCreating = true)
         {
             #region Вывод пользовательского окна с xml-шаблонами
             System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog
             {
-                InitialDirectory = folder,
+                InitialDirectory = WSPatternFolderPath,
                 Multiselect = false,
                 Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
             };
@@ -91,7 +102,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     Workset workset = param.GetWorkset(doc);
 
                     //Назначение рабочих наборов по категории
-                    if (param.BuiltInCategories.Count != 0)
+                    if (param.BuiltInCategories.Count != 0 && modelElemWSCreating)
                     {
                         foreach (BuiltInCategory bic in param.BuiltInCategories)
                         {
@@ -109,7 +120,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     }
 
                     //Назначение рабочих наборов по имени семейства
-                    if (param.FamilyNames.Count != 0)
+                    if (param.FamilyNames.Count != 0 && modelElemWSCreating)
                     {
                         List<FamilyInstance> famIns = new FilteredElementCollector(doc)
                             .WhereElementIsNotElementType()
@@ -130,7 +141,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     }
 
                     //Назначение рабочих наборов по имени типа
-                    if (param.TypeNames.Count != 0)
+                    if (param.TypeNames.Count != 0 && modelElemWSCreating)
                     {
                         List<Element> allModelElements = new FilteredElementCollector(doc)
                             .WhereElementIsNotElementType()
@@ -156,7 +167,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     }
 
                     //Назначение рабочих наборов по заполненному параметру
-                    if (param.SelectedParameters.Count != 0)
+                    if (param.SelectedParameters.Count != 0 && modelElemWSCreating)
                     {
                         List<Element> allModelElements = new FilteredElementCollector(doc)
                             .WhereElementIsNotElementType()
@@ -191,7 +202,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 }
 
                 //Назначение рабочих наборов для элементов с монитрингом (кроме осей и уровней)
-                if (useMonitoredElems)
+                if (useMonitoredElems && modelElemWSCreating)
                 {
                     Workset monitoredWorkset = CreateNewWorkset(doc, monitoredElementsName);
                     List<FamilyInstance> allModelElements = new FilteredElementCollector(doc)
@@ -211,9 +222,6 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 }
 
                 //Назначение рабочих наборов для связанных файлов
-                IEnumerable<RevitLinkInstance> links = new FilteredElementCollector(doc)
-                    .OfClass(typeof(RevitLinkInstance))
-                    .Cast<RevitLinkInstance>();
                 foreach (RevitLinkInstance linkInstance in links)
                 {
                     if (doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)

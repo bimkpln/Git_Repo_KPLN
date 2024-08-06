@@ -3,6 +3,8 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.WorksetUtil;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_ModelChecker_Debugger.ExternalCommands
 {
@@ -18,8 +20,11 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
             try
             {
-                string folder = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
-                if (WorksetSetService.ExecuteFromService(folder, doc))
+                IEnumerable<RevitLinkInstance> links = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Cast<RevitLinkInstance>();
+
+                if (WorksetSetService.ExecuteFromService(doc, links))
                     return Result.Succeeded;
                 else
                     return Result.Cancelled;
