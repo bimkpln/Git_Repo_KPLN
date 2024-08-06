@@ -223,6 +223,26 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap linkChangeBig {
+            get {
+                object obj = ResourceManager.GetObject("linkChangeBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap linkChangeSmall {
+            get {
+                object obj = ResourceManager.GetObject("linkChangeSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap monitorMainBig {
             get {
                 object obj = ResourceManager.GetObject("monitorMainBig", resourceCulture);

@@ -57,7 +57,7 @@ namespace KPLN_Tools.ExternalCommands
             }
 
             // Выводим окно пользователю
-            OVVK_PipeThocknessForm mainForm = new OVVK_PipeThocknessForm(doc, pipeDict);
+            OVVK_PipeThicknessForm mainForm = new OVVK_PipeThicknessForm(doc, pipeDict);
             mainForm.ShowDialog();
 
             if (mainForm.IsRun)

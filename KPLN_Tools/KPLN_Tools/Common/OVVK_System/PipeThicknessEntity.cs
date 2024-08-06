@@ -42,11 +42,6 @@ namespace KPLN_Tools.Common.OVVK_System
             }
         }
 
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
         public object ToJson()
         {
             return new
@@ -54,6 +49,11 @@ namespace KPLN_Tools.Common.OVVK_System
                 this.CurrentPipeTypeName,
                 this.CurrentPipeTypeDiamAndThickness
             };
+        }
+
+        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

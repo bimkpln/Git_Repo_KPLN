@@ -1,13 +1,12 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using Autodesk.Revit.DB.Architecture;
+using Autodesk.Revit.UI;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KPLN_Library_Forms;
-using KPLN_Library_Forms.Common;
-using KPLN_Library_Forms.UI;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -69,16 +68,16 @@ namespace KPLN_Tools.ExternalCommands
                 List<ButtonToRunEntity> btnColl = new List<ButtonToRunEntity>
                 {
                     new ButtonToRunEntity(
-                        "Восстановить связь у марок", 
+                        "Восстановить связь у марок",
                         "Сценарий, при котором марки помещений будут восстановлены (если это возможно)"),
                     new ButtonToRunEntity(
                         "Удалить испорченные марки",
                         "Сценарий, при котором марки помещений будут УДАЛЕНЫ"),
                 };
-                
+
                 ButtonToRun buttonToRun = new ButtonToRun("Выбери сценарий для запуска", btnColl);
                 buttonToRun.ShowDialog();
-                
+
                 if (buttonToRun.Status == UIStatus.RunStatus.Run && buttonToRun.SelectedButton != null)
                     _selectedBtn = buttonToRun.SelectedButton;
                 else
@@ -131,8 +130,8 @@ namespace KPLN_Tools.ExternalCommands
             List<ElementId> errorTags = new List<ElementId>();
 
             ICollection<ElementId> collection = new FilteredElementCollector(doc, viewId).OfCategory(BuiltInCategory.OST_RoomTags).WhereElementIsNotElementType().ToElementIds();
-                
-            
+
+
             foreach (ElementId elementId in collection)
             {
                 RoomTag roomTag = doc.GetElement(elementId) as RoomTag;
@@ -140,7 +139,7 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     errorTags.Add(elementId);
                 }
-                
+
             }
 
             if (errorTags.Count > 0)
@@ -168,7 +167,7 @@ namespace KPLN_Tools.ExternalCommands
                 Viewport vp = (Viewport)doc.GetElement(vpId);
                 ElementId viewId = vp.ViewId;
                 Element currentElement = doc.GetElement(viewId);
-                
+
                 // Анализирую только виды
                 if (currentElement.GetType().Equals(typeof(ViewPlan)))
                 {
@@ -191,10 +190,10 @@ namespace KPLN_Tools.ExternalCommands
                     || (linkInst.Name.ToLower().StartsWith("ar_") || linkInst.Name.ToLower().StartsWith("ар_")))
                 {
                     Document linkDoc = linkInst.GetLinkDocument();
-                    
-                    if (linkDoc != null) 
-                    { 
-                        
+
+                    if (linkDoc != null)
+                    {
+
                         foreach (KeyValuePair<ElementId, List<ElementId>> kvp in _errorDict)
                         {
                             foreach (ElementId elemId in kvp.Value)
@@ -207,7 +206,7 @@ namespace KPLN_Tools.ExternalCommands
                                 if (roomsColl.Count() > 0)
                                 {
                                     Transform linkTrans = linkInst.GetTransform();
-                                    
+
                                     RoomTag roomTag = doc.GetElement(elemId) as RoomTag;
                                     LocationPoint tagLocationPoint = roomTag.Location as LocationPoint;
                                     XYZ tagPoint = tagLocationPoint.Point;
@@ -243,17 +242,17 @@ namespace KPLN_Tools.ExternalCommands
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("KPLN_Почистить/починить марки помещений");
-                
+
                 if (_selectedBtn.Name == "Восстановить связь у марок")
                     CorrectedElements(doc);
-                
+
                 foreach (List<ElementId> values in _errorDict.Values)
                 {
                     _errorList.AddRange(values);
                 }
-                
+
                 doc.Delete(_errorList);
-                
+
                 t.Commit();
             }
 
@@ -266,7 +265,7 @@ namespace KPLN_Tools.ExternalCommands
                     TaskDialogCommonButtons.Ok
                 );
             }
-            else 
+            else
             {
                 TaskDialog.Show(
                     "Результат",

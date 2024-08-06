@@ -1,0 +1,294 @@
+﻿<Window x:Class="KPLN_Tools.Forms.RLinkMangerForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
+        Height="400"
+        MaxHeight="750"
+        ResizeMode="NoResize"
+        Topmost="True"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF292D36">
+    
+    <Window.Resources>
+        <Style x:Key="MainButtons" TargetType="{x:Type Button}">
+            <Setter Property="Padding" Value="5,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style x:Key="MainTBlock" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="TBlock" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style x:Key="TBox" TargetType="{x:Type TextBox}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style x:Key="CombBox" TargetType="ComboBox">
+            <Setter Property="Width" Value="Auto"/>
+            <Setter Property="MinWidth" Value="150"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="Rect" TargetType="{x:Type Rectangle}">
+            <Setter Property="Margin" Value="-5"/>
+            <Setter Property="RadiusX" Value="3"/>
+            <Setter Property="RadiusY" Value="3"/>
+            <Setter Property="Fill" Value="White"/>
+            <Setter Property="Stroke" Value="AliceBlue"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+        </Style>
+
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0.85*"/>
+            <RowDefinition Height="0.15*"/>
+        </Grid.RowDefinitions>
+
+        <!--Блок сущностей-настроек для замены связи-->
+        <Grid
+            Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="0.15*"/>
+                <RowDefinition Height="0.85*"/>
+            </Grid.RowDefinitions>
+            
+            <TextBlock 
+                Text="Список конфигураций для импорта/замены связей:" 
+                FontSize="16"
+                Foreground="White"
+                HorizontalAlignment="Left"
+                Style="{StaticResource MainTBlock}"/>
+
+            <ScrollViewer 
+                x:Name="ScrollViewer" 
+                Grid.Row="1"
+                PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                <StackPanel Orientation="Vertical">
+                    <ItemsControl 
+                        x:Name="LinkChangeColl"
+                        ItemsSource="{Binding LinkChangeEntityColl}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+
+                                    <Grid Margin="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="350"/>
+                                            <ColumnDefinition Width="250"/>
+                                            <ColumnDefinition Width="250"/>
+                                            <ColumnDefinition Width="150"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="0.15*"/>
+                                            <RowDefinition Height="0.85*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <Rectangle
+                                            Grid.ColumnSpan="4"
+                                            Grid.RowSpan="2"
+                                            Style="{StaticResource Rect}"/>
+
+                                        <TextBlock
+                                            Text="Имя файла:"
+                                            HorizontalAlignment="Left"
+                                            Style="{StaticResource MainTBlock}"/>
+                                        <StackPanel
+                                            Grid.Row="1"
+                                            Orientation="Vertical">
+                                            <TextBlock 
+                                                TextWrapping="Wrap"
+                                                Style="{StaticResource TBlock}"
+                                                Text="{Binding LinkName}"/>
+                                            <TextBlock 
+                                                TextWrapping="Wrap"
+                                                Style="{StaticResource TBlock}"
+                                                FontSize="10"
+                                                Text="{Binding LinkPath}"/>
+                                            <StackPanel.ToolTip>
+                                                <TextBlock 
+                                                    TextWrapping="Wrap" 
+                                                    FontSize="10"
+                                                    Text="Нажми ПКМ, чтобы удалить данную конфигурацию"/>
+                                            </StackPanel.ToolTip>
+                                            <StackPanel.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem 
+                                                        Header="Удалить" 
+                                                        Click="MenuItem_Delete_Click"/>
+                                                </ContextMenu>
+                                            </StackPanel.ContextMenu>
+                                        </StackPanel>
+
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Text="Размещение:"
+                                            Style="{StaticResource MainTBlock}"/>
+                                        <ComboBox
+                                            Grid.Row="1"
+                                            Grid.Column="1"
+                                            ItemsSource="{Binding LinkCoordinateTypeColl}"
+                                            SelectedItem="{Binding LinkCoordinateType, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                            DisplayMemberPath="Name"
+                                            Style="{StaticResource CombBox}">
+                                        </ComboBox>
+
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Text="Создать рабочий набор (запуск плагина 'Рабочие наборы')?"
+                                            Style="{StaticResource MainTBlock}"/>
+                                        <CheckBox
+                                            Grid.Row="1"
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            IsChecked="{Binding CreateWorksetForLinkInst}"/>
+
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            Text="Закрыть рабочие наборы (через ~):"
+                                            Style="{StaticResource MainTBlock}"/>
+                                        <TextBox
+                                            Grid.Row="1"
+                                            Grid.Column="3"
+                                            Style="{StaticResource TBox}"
+                                            MinWidth="50"
+                                            ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
+                                            Text="{Binding WorksetToCloseNamesStartWith, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                    </Grid>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!--Блок кнопок-->
+        <Grid
+            Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.6*"/>
+                <ColumnDefinition Width="0.4*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel 
+                Grid.Column="0"
+                Orientation="Horizontal"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center">
+
+                <Button 
+                     x:Name="SaveConfigBtn" 
+                     Content="Записать конфигурацию" 
+                     Click="SaveConfigBtn_Click"
+                     BorderBrush="Orange"
+                     Style="{StaticResource MainButtons}">
+                    <Button.ToolTip>
+                        <TextBlock
+                            TextWrapping="Wrap"
+                            Width="200"
+                            Text="Сохраняет конфигурацию в родительскую папку для текущего файла Revit. Может повторно применяться для всех файлов из папки текущего проекта"/>
+                    </Button.ToolTip>
+                </Button>
+
+                <Button 
+                     x:Name="LoadConfigBtn" 
+                     Content="Загрузить конфигурацию" 
+                     Click="LoadConfigBtn_Click"
+                     BorderBrush="Orange"
+                     Style="{StaticResource MainButtons}">
+                    <Button.ToolTip>
+                        <TextBlock
+                            TextWrapping="Wrap"
+                            Width="200"
+                            Text="Загружает конфигурацию из родительской папки для текущего файла Revit"/>
+                    </Button.ToolTip>
+                </Button>
+
+                <Button 
+                    x:Name="StartBtn" 
+                    Content="Выполнить" 
+                    Click="StartBtn_Click"
+                    BorderBrush="Green"
+                    Style="{StaticResource MainButtons}"/>
+            </StackPanel>
+
+            <StackPanel 
+                Grid.Column="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center">
+
+                <Button 
+                     x:Name="AddNewServLink" 
+                     Content="📁" 
+                     Click="AddNewServLink_Click"
+                     BorderBrush="Green"
+                     Style="{StaticResource MainButtons}">
+                    <Button.ToolTip>
+                        <TextBlock
+                            Text="Добавить новую связь с сервера KPLN (читай из папки)"/>
+                    </Button.ToolTip>
+                </Button>
+                <Button 
+                     x:Name="AddNewLinkByUserInput" 
+                     Content="🗃" 
+                     Click="AddNewLinkByUserInput_Click"
+                     BorderBrush="Green"
+                     Style="{StaticResource MainButtons}">
+                    <Button.ToolTip>
+                        <StackPanel>
+                            <TextBlock
+                                Text="1. Добавить новую связь с Revit-Server (отдельный файл, или все файлы из указанной папки);"/>
+                            <TextBlock
+                                Text="2. Добавить ВСЕ связи из указанной папки с сервера KPLN."/>
+                        </StackPanel>
+                    </Button.ToolTip>
+                </Button>
+                <Button 
+                    x:Name="ChangeLink" 
+                    Content="🔁" 
+                    Click="ChangeLink_Click"
+                    BorderBrush="Green"
+                    Style="{StaticResource MainButtons}"
+                    IsEnabled="False">
+                    <Button.ToolTip>
+                        <TextBlock
+                            Text="Заменить существующую связь"/>
+                    </Button.ToolTip>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+    </Grid>
+</Window>

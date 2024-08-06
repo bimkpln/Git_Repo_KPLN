@@ -84,6 +84,10 @@
       <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -166,6 +170,9 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\LinkManager\CoordinateType.cs" />
+    <Compile Include="Common\LinkManager\CoordinateTypeConverter.cs" />
+    <Compile Include="Common\LinkManager\LinkManagerEntity.cs" />
     <Compile Include="Common\MonitorLinkEntity.cs" />
     <Compile Include="Common\MonitorTool.cs" />
     <Compile Include="Common\MonitorParamRule.cs" />
@@ -178,16 +185,19 @@
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
+    <Compile Include="Common\EnvironmentService.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
     <Compile Include="Common\SS_System\PickFilter.cs" />
     <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
+    <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
-    <Compile Include="ExecutableCommand\OZKDuctAccessoryMainCommand.cs" />
+    <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
+    <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
@@ -204,14 +214,20 @@
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\UserPathInputForm.xaml.cs">
+      <DependentUpon>UserPathInputForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\RLinkMangerForm.xaml.cs">
+      <DependentUpon>RLinkMangerForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\OV_OZKDuctAccessoryForm.xaml.cs">
       <DependentUpon>OV_OZKDuctAccessoryForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\OVVK_PipeThocknessForm.xaml.cs">
-      <DependentUpon>OVVK_PipeThocknessForm.xaml</DependentUpon>
+    <Compile Include="Forms\OVVK_PipeThicknessForm.xaml.cs">
+      <DependentUpon>OVVK_PipeThicknessForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SS_Sysetm_Main.xaml.cs">
       <DependentUpon>SS_Sysetm_Main.xaml</DependentUpon>
@@ -263,6 +279,8 @@
     <EmbeddedResource Include="Imagens\ductThicknessSmall.png" />
     <EmbeddedResource Include="Imagens\ozkDuctAccessoryBig.png" />
     <EmbeddedResource Include="Imagens\ozkDuctAccessorySmall.png" />
+    <EmbeddedResource Include="Imagens\linkChangeBig.png" />
+    <EmbeddedResource Include="Imagens\linkChangeSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -280,7 +298,15 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\UserPathInputForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\MonitoringParamSetter.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\RLinkMangerForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -288,7 +314,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\OVVK_PipeThocknessForm.xaml">
+    <Page Include="Forms\OVVK_PipeThicknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

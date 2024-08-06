@@ -144,6 +144,20 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
 
+            PushButtonData changeRLinks = CreateBtnData("Менеджер rvt-связей",
+                "Менеджер rvt-связей",
+                "Загрузить/обновлят связи внутри проекта",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandRLinkManager).FullName,
+                "KPLN_Tools.Imagens.linkChangeSmall.png",
+                "KPLN_Tools.Imagens.linkChangeSmall.png",
+                "http://moodle");
+
             PushButtonData set_ChangeRSLinks = CreateBtnData("СЕТ: Обновить связи",
                 "СЕТ: Обновить связи",
                 "Обновляет связи между ревит-серверами",
@@ -177,6 +191,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
+            sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
             #endregion
 
