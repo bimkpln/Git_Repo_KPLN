@@ -78,6 +78,10 @@
       <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Release\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
@@ -99,9 +103,6 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ExternalCommands\Common\DTO\WorksetDTO.cs" />
-    <Compile Include="ExternalCommands\Common\WorksetModels\SelectedParameter.cs" />
-    <Compile Include="ExternalCommands\Common\WorksetModels\WorksetByCurrentParameter.cs" />
     <Compile Include="ExternalCommands\LevelAndGridsParamCopier.cs" />
     <Compile Include="ExternalCommands\Pinner.cs" />
     <Compile Include="ExternalCommands\Worksetter.cs" />
