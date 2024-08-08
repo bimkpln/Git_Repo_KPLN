@@ -239,11 +239,14 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                             return level;
                     }
                     else
-                        throw new CheckerException($"У уровня id {level.Id} не удалось получить int его номера");
+                        throw new CheckerException($"У уровня с id {level.Id} не удалось получить int его номера. Обратись к разработчику");
                 }
             }
             else
-                throw new CheckerException($"У уровня id {checkLevel.Id} не удалось получить int его номера");
+                throw new CheckerException(
+                    $"У уровня с id {checkLevel.Id} не удалось получить int его номера. Варианты ошибок:" +
+                    $"\n 1. Здание многосекционное/многокорпусное, но у уровня секции не указаны." +
+                    $"\n 2. Данные из параметра \"КП_О_Секция\" не совпадают с блоком в имени уровня, который отвечает за секцию/корпус");
 
             return null;
         }

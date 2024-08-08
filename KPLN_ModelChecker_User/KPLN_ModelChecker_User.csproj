@@ -73,7 +73,7 @@
     </Reference>
     <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
@@ -94,9 +94,6 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="RevitTask, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\RevitTask.3.0.0\lib\net47\RevitTask.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -112,17 +109,6 @@
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
-  <Choose>
-    <When Condition=" '$(Configuration)' == 'Debug' ">
-      <ItemGroup>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>True</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)' == 'Revit2023' " />
-  </Choose>
   <ItemGroup>
     <Compile Include="Common\CheckCommandError.cs" />
     <Compile Include="Common\CheckHolesEntity.cs" />
