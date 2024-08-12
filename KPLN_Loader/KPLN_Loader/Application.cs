@@ -164,11 +164,14 @@ namespace KPLN_Loader
                                     }
                                 }
 
-                                // Вывод в окно пользователя и лог
-                                string msg = $"Модуль-библиотека [{module.Name}] версии {moduleVersion} успешно скопирован!";
-                                _logger.Info(msg);
-                                LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Black);
-                                uploadModules++;
+                                if (isModuleLoad)
+                                {
+                                    // Вывод в окно пользователя и лог
+                                    string msg = $"Модуль-библиотека [{module.Name}] версии {moduleVersion} успешно скопирован!";
+                                    _logger.Info(msg);
+                                    LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Black);
+                                    uploadModules++;
+                                }
                             }
                             // Копирование и активация модулей (с имплементацией IExternalModule)
                             else
