@@ -59,8 +59,12 @@ namespace KPLN_Looker
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
+                #if DEBUG
+                application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
+                #else
                 if (!_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
+                #endif
 
                 return Result.Succeeded;
             }
@@ -373,6 +377,12 @@ namespace KPLN_Looker
                         // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
                         if (bic.Equals(BuiltInCategory.OST_GenericModel)
                             && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
+                            return;
+
+                        // Отлов семейств ферм, которые по форме зависят от проектов (могут разрабатывать КР)
+                        if ((_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM") 
+                            || _dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР"))
+                            && bic.Equals(BuiltInCategory.OST_Truss))
                             return;
 
                         // Отлов семейств соед. деталей каб. лотков производителей: Ostec, Dkc
