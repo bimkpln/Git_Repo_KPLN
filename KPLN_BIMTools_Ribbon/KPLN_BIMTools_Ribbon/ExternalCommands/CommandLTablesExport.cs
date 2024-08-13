@@ -536,7 +536,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
             // Выбор таблицы
             var selObjColl = SelectFromList("Выберите csv-таблицу для экспорта", sizeTableNames);
-            if (selObjColl.Count == 0)
+            if (selObjColl == null || selObjColl.Count == 0)
                 return Result.Cancelled;
 
             Dictionary<string, string> tableDataDict = new Dictionary<string, string>();
