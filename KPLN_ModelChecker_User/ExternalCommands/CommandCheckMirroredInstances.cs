@@ -161,12 +161,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private FilteredElementCollector FilteredByStringContainsColl(FilteredElementCollector currentColl)
         {
+            List<ElementFilter> resFilterColl = new List<ElementFilter>();
             foreach (string currentName in _exceptionMEPFamilyNameList)
             {
-                FilterRule fRule = ParameterFilterRuleFactory.CreateContainsRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateContainsRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, false);
                 ElementParameterFilter eFilter = new ElementParameterFilter(fRule);
-                currentColl.WherePasses(eFilter);
+                resFilterColl.Add(eFilter);
             }
+            
+            currentColl.WherePasses(new LogicalOrFilter(resFilterColl));
             return currentColl;
         }
     }

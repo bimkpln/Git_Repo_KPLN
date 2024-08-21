@@ -70,9 +70,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns>Коллекция WPFEntity для передачи в отчет пользовател</returns>
         internal WPFEntity[] CheckCommandRunner(Document doc, Element[] elemColl)
         {
-            
             if (ESEntity.CheckName == null || string.IsNullOrEmpty(ESEntity.CheckName))
                 throw new ArgumentNullException("Ты забыл инициировать основные поля. Это вынесено в класс Module, чтобы обработать плагином по выводу информации по запускам скриптов");
+            
+            if (!elemColl.Any())
+                return null;
             
             try
             {
