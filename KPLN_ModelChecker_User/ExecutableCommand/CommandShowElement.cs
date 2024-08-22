@@ -73,10 +73,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                                 $"Чтобы его найти, нужно чтобы основы размера были видны на плане: {viewPlan.Name}." +
                                 $"\nId элементов основы: {stringBuilder.ToString().TrimEnd('/')}");
                         }
-                        else
-                        {
+                        else if (dim.View is View view && view.ViewType == ViewType.Legend)
                             TaskDialog.Show("KPLN", $"Открой легенду ({dimView.Name}) вручную.");
-                        }
                     }
                 }
             }

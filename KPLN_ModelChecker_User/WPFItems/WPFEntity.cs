@@ -37,6 +37,8 @@ namespace KPLN_ModelChecker_User.WPFItems
                 ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
             if (Element is Family family)
                 CategoryName = family.FamilyCategory.Name;
+            else if (Element is ElementType elType)
+                CategoryName = elType.FamilyName;
             else
                 CategoryName = element.Category.Name;
             

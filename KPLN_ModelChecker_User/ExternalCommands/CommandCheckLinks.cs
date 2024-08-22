@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
+using static System.Windows.Forms.LinkLabel;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -106,9 +107,33 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            // Анализ ОП в линках
-            foreach (RevitLinkInstance link in rvtLinks)
+            IEnumerable<string> rvtLinkDocTitles = rvtLinks
+                .Cast<RevitLinkInstance>()
+                .Select(rli => rli.GetLinkDocument().Title);
+
+            foreach (RevitLinkInstance link in rvtLinks.Cast<RevitLinkInstance>())
             {
+                
+                // Анализ наличия нескольких экземпляров связей
+                if (rvtLinkDocTitles.Count(title => title == link.GetLinkDocument().Title) > 1)
+                {
+                    if (IsLinkWithSharedCoordByName(link))
+                    {
+                        result.Add(new WPFEntity(
+                            link,
+                            CheckStatus.Error,
+                            "Ошибка размещения",
+                            "Экземпляры данной связи размещены несколько раз",
+                            false,
+                            false,
+                            "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." +
+                            "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая"));
+                    }
+
+                    continue;
+                }
+
+                // Анализ ОП в линках
                 using (Transaction transaction = new Transaction(doc))
                 {
                     try
@@ -130,8 +155,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model."))
                         {
-                            // Слабоватый метод, т.к. имена со временем могут поменяться, но на текущий момент - другого не вижу
-                            if (link.Name.ToLower().Contains("<not shared>") || link.Name.ToLower().Contains("не общедоступное"))
+                            if (IsLinkWithSharedCoordByName(link))
                             {
                                 result.Add(new WPFEntity(
                                     link,
@@ -145,17 +169,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             else
                                 continue;
                         }
-                        else if (ioe.Message.Contains("Cannot acquire coordinates from a model placed multiple times."))
-                        {
-                            result.Add(new WPFEntity(
-                                link,
-                                CheckStatus.Warning,
-                                "Ошибка размещения",
-                                "Экземпляры данной связи размещены несколько раз",
-                                false,
-                                false,
-                                "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку"));
-                        }
                         else 
                             throw new Exception($"Ошибка проверки связей: {ioe.Message}");
                     }
@@ -165,9 +178,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                 }
             }
-
             return result;
         }
+
+        /// <summary>
+        /// Проверка экз. связи на наличие общей площадки из имени. ВАЖНО: Слабоватый метод, т.к. имена со временем могут поменяться, но на текущий момент - другого не вижу
+        /// </summary>
+        /// <param name="rli"></param>
+        /// <returns></returns>
+        [Obsolete]
+        private bool IsLinkWithSharedCoordByName(RevitLinkInstance rli) =>
+            rli.Name.ToLower().Contains("<not shared>") || rli.Name.ToLower().Contains("не общедоступное");
 
         /// <summary>
         /// Проверка закрепление (PIN)

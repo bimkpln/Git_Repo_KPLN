@@ -30,18 +30,19 @@ namespace KPLN_ModelChecker_User.Common
                                 CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Связь не найдена: «{element.Name}»",
-                                true,
+                                false,
                                 false,
                                 $"Элементу с ID {element.Id} необходимо исправить мониторинг"));
                         }
-                        else if (!link.Name.ToLower().Contains("разб"))
+                        else if (!link.Name.ToLower().Contains("разб") 
+                            && !link.Name.Contains("СЕТ_1_1-3_00_РФ"))
                         {
                             result.Add(new WPFEntity(
                                 element,
                                 CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Мониторинг не из разбивочного файла: «{element.Name}»",
-                                true,
+                                false,
                                 false,
                                 $"Элементу с ID {element.Id} необходимо исправить мониторинг, сейчас он присвоен связи {link.Name}"));
                         }
@@ -54,7 +55,7 @@ namespace KPLN_ModelChecker_User.Common
                         CheckStatus.Error,
                         "Отсутсвие мониторинга",
                         $"Элементу с ID {element.Id} необходимо задать мониторинг",
-                        true,
+                        false,
                         false));
                 }
 
@@ -65,7 +66,7 @@ namespace KPLN_ModelChecker_User.Common
                         CheckStatus.Error,
                         "Отсутсвие прикрепления (PIN)",
                         $"Элемент не прикреплен: «{element.Name}»",
-                        true,
+                        false,
                         false,
                         $"Элемент с ID {element.Id} необходимо прикрепить (PIN)"));
                 }
