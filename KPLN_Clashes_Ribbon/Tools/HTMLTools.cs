@@ -147,7 +147,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                     headers.Add(value);
                 }
             }
-            if (headers.Contains("Наименование конфликта") && headers.Contains("Изображение") && headers.Contains("Идентификатор элемента") && headers.Contains("Путь"))
+            if (headers.Contains("Наименование конфликта") && headers.Contains("Изображение") && headers.Contains("Объект Id") && headers.Contains("Путь"))
             {
                 result = headers;
                 decode = true;
@@ -165,7 +165,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                     headers.Add(value);
                 }
             }
-            if (headers.Contains("Наименование конфликта") && headers.Contains("Изображение") && headers.Contains("Идентификатор элемента") && headers.Contains("Путь"))
+            if (headers.Contains("Наименование конфликта") && headers.Contains("Изображение") && headers.Contains("Объект Id") && headers.Contains("Путь"))
             {
                 result = headers;
                 decode = false;

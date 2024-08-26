@@ -247,8 +247,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
                         image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
                         point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
                         reportParentGroupComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
@@ -262,8 +262,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
                         image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
                         point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
                         reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
@@ -276,8 +276,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
                         image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
                         point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
                         reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
@@ -291,8 +291,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
                         image = Path.Combine(file.DirectoryName, HTMLTools.GetImage(node, GetRowId(headers, "Изображение")));
                         point = HTMLTools.GetValue(node, GetRowId(headers, "Точка конфликта"), decode);
-                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента"), decode));
-                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Идентификатор элемента", true), decode));
+                        id1 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id"), decode));
+                        id2 = GetId(HTMLTools.GetValue(node, GetRowId(headers, "Объект Id", true), decode));
                         name1 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь"), decode));
                         name2 = OptimizeV(HTMLTools.GetValue(node, GetRowId(headers, "Путь", true), decode));
                         reportItemComments = HTMLTools.TryGetComments(HTMLTools.GetValue(node, GetRowId(headers, "Комментарии"), decode));
