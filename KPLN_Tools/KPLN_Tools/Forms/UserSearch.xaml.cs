@@ -58,10 +58,8 @@ namespace KPLN_Tools.Forms
 
             foreach (DBUser user in Collection)
             {
-                if (user.SystemName.ToLower().Contains(_searchName))
-                {
+                if (user.RevitUserName.ToLower().Contains(_searchName))
                     filteredElement.Add(user);
-                }
             }
 
             Users.ItemsSource = filteredElement;

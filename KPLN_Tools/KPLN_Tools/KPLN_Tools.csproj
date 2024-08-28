@@ -188,6 +188,8 @@
     <Compile Include="Common\EnvironmentService.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
+    <Compile Include="Common\SS_System\GraphicsStyleWrapper.cs" />
+    <Compile Include="Common\SS_System\NumberService.cs" />
     <Compile Include="Common\SS_System\PickFilter.cs" />
     <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
@@ -213,6 +215,9 @@
     <Compile Include="Forms\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
+      <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\UserPathInputForm.xaml.cs">
       <DependentUpon>UserPathInputForm.xaml</DependentUpon>
@@ -295,6 +300,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\FormChageLevel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

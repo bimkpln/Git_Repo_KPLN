@@ -21,7 +21,6 @@ namespace KPLN_Tools.ExternalCommands
             UserSearch searchForm = new UserSearch(dbUsers);
             searchForm.ShowDialog();
 
-
             return Result.Succeeded;
         }
     }

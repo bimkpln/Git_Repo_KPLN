@@ -157,7 +157,7 @@ namespace KPLN_Tools.ExternalCommands
             HashSet<Parameter> docElemsParams = GetParametersFromElems(trueElems);
             #endregion
 
-            #region Подготовка BoundingBoxXYZ для анализа связи
+            #region Подготовка крайних точек для Outline для анализа связи
             double maxX = locPntsFromUserSelection.Max(pnt => pnt.X);
             double maxY = locPntsFromUserSelection.Max(pnt => pnt.Y);
             double maxZ = locPntsFromUserSelection.Max(pnt => pnt.Z);
@@ -185,7 +185,31 @@ namespace KPLN_Tools.ExternalCommands
                         if (_currentLink == null)
                         {
                             _currentLink = currentLink;
-                            PreapareMonitorEntityColl(minPoint, maxPoint);
+
+                            Transform linkTrans = _currentLink.GetTransform();
+                            Outline outlineForFilter = new Outline(linkTrans.Inverse.OfPoint(minPoint), linkTrans.Inverse.OfPoint(maxPoint));
+                            // СЛАБОЕ МЕСТО: Если БТП имеют разное положение - при иверсии точек происходит смещение на Basic, и точки могут перевенуться
+                            if (outlineForFilter.IsEmpty)
+                            {
+                                double outMaxX = outlineForFilter.MaximumPoint.X;
+                                double outMaxY = outlineForFilter.MaximumPoint.Y;
+                                double outMaxZ = outlineForFilter.MaximumPoint.Z;
+
+                                double outMinX = outlineForFilter.MinimumPoint.X;
+                                double outMinY = outlineForFilter.MinimumPoint.Y;
+                                double outMinZ = outlineForFilter.MinimumPoint.Z;
+
+                                double resOutMaxX = outMaxX > outMinX ? outMaxX : outMinX;
+                                double resOutMaxY = outMaxY > outMinY ? outMaxY : outMinY;
+                                double resOutMaxZ = outMaxZ > outMinZ ? outMaxZ : outMinZ;
+
+                                double resOutMinX = outMaxX > outMinX ? outMinX : outMaxX;
+                                double resOutMinY = outMaxY > outMinY ? outMinY : outMaxY;
+                                double resOutMinZ = outMaxZ > outMinZ ? outMinZ : outMaxZ;
+
+                                outlineForFilter = new Outline(new XYZ(resOutMinX, resOutMinY, resOutMinZ), new XYZ(resOutMaxX, resOutMaxY, resOutMaxZ));
+                            }
+                            PreapareMonitorEntityColl(outlineForFilter);
                         }
                         else if (_currentLink.Id.IntegerValue != currentLink.Id.IntegerValue)
                             throw new Exception($"Работа экстренно прекращена! Элемент с id:{element.Id} - имеет мониторинг из другой связи. Можно выполнить проверку только с разделением по связям.");
@@ -249,13 +273,12 @@ namespace KPLN_Tools.ExternalCommands
         /// https://forums.autodesk.com/t5/revit-ideas/copy-monitor-api/idi-p/6322737
         /// </summary>
         [Obsolete]
-        private void PreapareMonitorEntityColl(XYZ minPoint, XYZ maxPoint)
+        private void PreapareMonitorEntityColl(Outline outlineForFilter)
         {
             if (!_monitorLinkEntiteDict.ContainsKey(_currentLink.Id))
                 _monitorLinkEntiteDict[_currentLink.Id] = new List<MonitorLinkEntity>();
 
-            Transform linkTrans = _currentLink.GetTransform();
-            BoundingBoxIsInsideFilter bboxFilter = new BoundingBoxIsInsideFilter(new Outline(linkTrans.Inverse.OfPoint(minPoint), linkTrans.Inverse.OfPoint(maxPoint)), 1);
+            BoundingBoxIntersectsFilter bboxFilter = new BoundingBoxIntersectsFilter(outlineForFilter, 1);
             foreach (BuiltInCategory bic in MonitoredBuiltInCatArr)
             {
                 // Добавяляю элементы из связи

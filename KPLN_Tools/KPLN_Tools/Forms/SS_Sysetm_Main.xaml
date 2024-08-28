@@ -22,18 +22,18 @@
             <Setter Property="Width" Value="150"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="FontSize" Value="12"/>
-
             <Setter Property="FontWeight" Value="Medium"/>
         </Style>
 
         <Style x:Key="MenuChBox" TargetType="{x:Type CheckBox}">
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Margin" Value="10,5,5,5"/>
         </Style>
 
         <Style x:Key="MainTBox" TargetType="{x:Type TextBox}">
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="Margin" Value="5,2,5,2"/>
+            <Setter Property="TextAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="MainLbl" TargetType="{x:Type Label}">
@@ -116,7 +116,7 @@
                     ItemsSource="{Binding LineStyles}"
                     DisplayMemberPath="Key"
                     SelectedValuePath="Value"
-                    SelectedValue="{Binding SelectedStyle}"/>
+                    SelectedValue="{Binding SelectedLineStyle}"/>
             </Grid>
         </Expander >
 
@@ -126,7 +126,7 @@
             Margin="5">
 
             <Label 
-                Content="Выберите ключевые парамтеры:"
+                Content="Выберите пар-ры новой цепи:"
                 Style="{StaticResource MainLbl}"
                 FontSize="14"/>
 
@@ -145,23 +145,45 @@
                 <Label 
                     Grid.Row="0"
                     Grid.Column="0"
-                    Content="Номер цепи:"  
+                    Content="Шаблон номера цепи:"  
                     Style="{StaticResource MainLbl}"/>
                 <TextBox 
                     Grid.Row="0"
                     Grid.Column="1"
                     Text="{Binding SystemNumber}" 
-                    Style="{StaticResource MainTBox}"/>
+                    Style="{StaticResource MainTBox}">
+                    <TextBox.ToolTip>
+                        <StackPanel>
+                            <TextBlock
+                                Text="1. В данную ячейку записывается шаблон индекса элемента цепи"/>
+                            <TextBlock
+                                Text="2. Приставка номера эл-та (например: 'BTH') - принимается из параметра 'КП_О_Позиция'"/>
+                            <TextBlock
+                                Text="3. Последняя цифра после разделителя - это порядковый номер следующего элемента"/>
+                            <TextBlock
+                                Text="4. Последний символ перед порядковым номером - будет выступать в роли разделителя между приставкой элемента, и шаблоном номера"/>
+                            <TextBlock
+                                Text="5. В качестве разделителя должны выступать символы ОТЛЧИНЫЕ от цифр, или букв, например: '.', ',', '~'"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
                 <Label 
                     Grid.Row="1"
                     Grid.Column="0"
-                    Content="Стартовый номер:"  
+                    Content="Номер след. эл-та:"  
                     Style="{StaticResource MainLbl}"/>
                 <TextBox 
                     Grid.Row="1"
                     Grid.Column="1"
                     Text="{Binding StartNumber}"
-                    Style="{StaticResource MainTBox}"/>
+                    Style="{StaticResource MainTBox}">
+                    <TextBox.ToolTip>
+                        <StackPanel>
+                            <TextBlock
+                                Text="Данная ячейка напрямую показывает/задаёт номер след. элемента (она связана с последней цифрой из ячейки выше)"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
             </Grid>
             
             <Label 
@@ -169,50 +191,60 @@
                 Style="{StaticResource MainLbl}"
                 FontSize="14"/>
 
-            <Button 
-                x:Name="consistentlySys"
-                Style="{StaticResource MainButtons}"
-                Content="Последовательная цепь" 
-                Click="OnConsistentlySys_Click"/>
-
-            <Button 
-                x:Name="parallelSys" 
-                Content="Параллельная цепь" 
-                Style="{StaticResource MainButtons}"
-                IsEnabled="False"
-                Click="OnParallelSys_Click" />
-            <Button 
-                x:Name="reculcSys" 
-                Content="Обновление после ручных изменений" 
-                IsEnabled="False"
-                Style="{StaticResource MainButtons}"
-                Click="OnReculcSys_Click" />
+            <DockPanel 
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <Button 
+                    x:Name="consistentlySys"
+                    Style="{StaticResource MainButtons}"
+                    Content="Новый последовательный участок"
+                    Width="210"
+                    ToolTip="Нажми, чтобы создать НОВУЮ последовательную цепь, либо участок для последующего объединения"
+                    Click="OnConsistentlySys_Click"/>
+                <Button
+                    x:Name="consistentlySysAdd"
+                    Style="{StaticResource MainButtons}"
+                    Content="+" 
+                    Width="30"
+                    ToolTip="Нажми, чтобы последовательно добавить элемент, или целый участок цепи к существующему"
+                    Click="OnConsistentlySysAdd_Click"/>
+            </DockPanel>
 
             <DockPanel 
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center">
                 <Button 
-                    x:Name="readress"
-                    Content="Обновить адресацию" 
+                    x:Name="parallelSys" 
                     Style="{StaticResource MainButtons}"
-                    Width="130"
+                    Content="Новый параллельный участок" 
+                    Width="210"
                     IsEnabled="False"
-                    Click="OnReadress_Click"/>
-                <Button 
-                    x:Name="incrementAdress" 
+                    ToolTip="Нажми, чтобы создать НОВУЮ параллельную цепь, либо участок для последующего объединения"
+                    Click="OnParallelSys_Click" />
+                <Button
+                    x:Name="parallelSysAdd"
+                    Style="{StaticResource MainButtons}"
                     Content="+" 
-                    Click="OnIncrementAdress_Clicked" 
-                    Width="50"
+                    Width="30"
                     IsEnabled="False"
-                    Style="{StaticResource MainButtons}"/>
-                <Button 
-                    x:Name="decrementAdress" 
-                    Content="-" 
-                    Click="OnDecrementAdress_Clicked" 
-                    Width="50"
-                    IsEnabled="False"
-                    Style="{StaticResource MainButtons}"/>
+                    ToolTip="Нажми, чтобы параллельно добавить элемент, или целый участок цепи к существующему"
+                    Click="OnParallelSysAdd_Click"/>
             </DockPanel>
+
+            <Button 
+                x:Name="RefreshSystem"
+                Style="{StaticResource MainButtons}"
+                Content="Обновить цепь" 
+                ToolTip="Нажми, чтобы обновить цепь (нумерация, данные цепи)"
+                Click="RefreshSystem_Click"/>
+
+            <Button 
+                x:Name="RefreshSystemByUser"
+                Style="{StaticResource MainButtons}"
+                Content="Обновить после ручного редактирования" 
+                ToolTip="Нажми, чтобы обновить цепь по ручным правкам (т.е. поменял нумерацию из марки => кнопка обновляет данные в элементах)"
+                IsEnabled="False"
+                Click="RefreshSystemByUser_Click"/>
 
             <DockPanel 
                 HorizontalAlignment="Center"
@@ -222,20 +254,14 @@
                     Content="?" 
                     Click="OnHelp_Click"
                     Width="50"
-                    IsEnabled="False"
                     Style="{StaticResource MainButtons}"/>
                 <Button 
                     x:Name="exit"
                     Content="Завершить" 
                     Click="OnExit_Click" 
-                    Width="130"
-                    Style="{StaticResource MainButtons}"/>
-                <Button 
-                    x:Name="new" 
-                    Content="New" 
-                    Click="OnNew_Click" 
-                    Width="50"
-                    IsEnabled="False"
+                    Width="190"
+                    BorderBrush="Red"
+                    BorderThickness="2"
                     Style="{StaticResource MainButtons}"/>
             </DockPanel>
 

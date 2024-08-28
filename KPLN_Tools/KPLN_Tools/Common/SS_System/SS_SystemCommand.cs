@@ -5,7 +5,7 @@ namespace KPLN_Tools.Common.SS_System
 {
     public class SS_SystemCommand : ICommand
     {
-        private Action _execute;
+        private readonly Action _execute;
         public event EventHandler CanExecuteChanged;
 
         public SS_SystemCommand(Action execute)

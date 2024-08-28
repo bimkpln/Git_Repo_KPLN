@@ -12,18 +12,23 @@ namespace KPLN_Tools.Forms
             SS_SystemViewEntity systemViewEntity,
             ICommand executeAddParamsCommand,
             ICommand executeCreateConsistSystem,
-            ICommand executeCreateParallelSystem)
+            ICommand executeAddToConsistSystem,
+            ICommand executeCreateParallelSystem,
+            ICommand executeRefreshSystemCommand)
         {
-            CurrentSS_SystemViewEntity = systemViewEntity;
+            CurrentSystemViewEntity = systemViewEntity;
             ExecuteAddParamsCommand = executeAddParamsCommand;
-            ExecuteCreateConsistSystem = executeCreateConsistSystem;
-            ExecuteCreateParallelSystem = executeCreateParallelSystem;
+            ExecuteCreateConsistSystemCommand = executeCreateConsistSystem;
+            ExecuteAddToConsistSystem = executeAddToConsistSystem;
+            ExecuteCreateParallelSystemCommand = executeCreateParallelSystem;
+            ExecuteRefreshSystemCommand = executeRefreshSystemCommand;
 
             InitializeComponent();
-            DataContext = CurrentSS_SystemViewEntity;
+
+            DataContext = CurrentSystemViewEntity;
         }
 
-        public SS_SystemViewEntity CurrentSS_SystemViewEntity { get; set; }
+        public SS_SystemViewEntity CurrentSystemViewEntity { get; set; }
 
         /// <summary>
         /// Комманда по добвалению параметров в проект
@@ -33,12 +38,22 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Комманда по созданию последовательной цепи СС
         /// </summary>
-        public ICommand ExecuteCreateConsistSystem { get; private set; }
+        public ICommand ExecuteCreateConsistSystemCommand { get; private set; }
+
+        /// <summary>
+        /// Комманда по ДОБАВЛЕНИЮ элемента к последовательной цепи СС
+        /// </summary>
+        public ICommand ExecuteAddToConsistSystem { get; private set; }
 
         /// <summary>
         /// Комманда по созданию параллельной цепи СС
         /// </summary>
-        public ICommand ExecuteCreateParallelSystem { get; private set; }
+        public ICommand ExecuteCreateParallelSystemCommand { get; private set; }
+
+        /// <summary>
+        /// Команда по переадресации после внесения измов (без добавления или удаления элементов)
+        /// </summary>
+        public ICommand ExecuteRefreshSystemCommand { get; private set; }
 
         private void OnMenuAddParamsBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -47,10 +62,20 @@ namespace KPLN_Tools.Forms
 
         private void OnConsistentlySys_Click(object sender, RoutedEventArgs e)
         {
-            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteCreateConsistSystem);
+            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteCreateConsistSystemCommand);
+        }
+
+        private void OnConsistentlySysAdd_Click(object sender, RoutedEventArgs e)
+        {
+            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteAddToConsistSystem);
         }
 
         private void OnParallelSys_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void OnParallelSysAdd_Click(object sender, RoutedEventArgs e)
         {
 
         }
@@ -60,36 +85,18 @@ namespace KPLN_Tools.Forms
 
         }
 
-        private void OnReadress_Click(object sender, RoutedEventArgs e)
+        private void RefreshSystem_Click(object sender, RoutedEventArgs e)
+        {
+            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteRefreshSystemCommand);
+        }
+
+        private void RefreshSystemByUser_Click(object sender, RoutedEventArgs e)
         {
 
         }
 
-        private void OnIncrementAdress_Clicked(object sender, RoutedEventArgs e)
-        {
+        private void OnHelp_Click(object sender, RoutedEventArgs e) => System.Diagnostics.Process.Start(@"http://moodle/mod/book/view.php?id=502&chapterid=685");
 
-        }
-
-        private void OnDecrementAdress_Clicked(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void OnHelp_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void OnExit_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
-
-        private void OnNew_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-
+        private void OnExit_Click(object sender, RoutedEventArgs e) => this.Close();
     }
 }

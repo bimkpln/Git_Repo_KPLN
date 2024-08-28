@@ -70,6 +70,12 @@ namespace KPLN_Tools.Forms
 
         private void SaveConfigBtn_Click(object sender, RoutedEventArgs e)
         {
+            if (LinkChangeEntityColl.Count == 0)
+            {
+                MessageBox.Show("Нельзя сохранять пустую конфигурацию. Сначала - заполни её строками, а уже потом - сохраняй");
+                return;
+            }
+
             if (!new FileInfo(_configPath).Exists)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
@@ -87,7 +93,7 @@ namespace KPLN_Tools.Forms
                 }
             }
 
-            MessageBox.Show("Конфигурации для проектов из этой папки сохаренено успешно!");
+            MessageBox.Show("Конфигурации для проектов из этой папки сохранены успешно!");
         }
 
         private void LoadConfigBtn_Click(object sender, RoutedEventArgs e)
@@ -96,6 +102,12 @@ namespace KPLN_Tools.Forms
             if (new FileInfo(_configPath).Exists)
             {
                 List<LinkManagerEntity> newEntities = ReadConfigFile();
+                if (newEntities == null || newEntities.Count() == 0)
+                {
+                    MessageBox.Show("Файл-конфигурации пуст. Пересохрани его с заполненными строками, и повтори попытку");
+                    return;
+                }
+
                 foreach (LinkManagerEntity entity in newEntities)
                 {
                     if (!LinkChangeEntityColl.Any(ent => ent.LinkName.Equals(entity.LinkName)))
@@ -171,7 +183,9 @@ namespace KPLN_Tools.Forms
             {
                 _initialDirectoryOrRS = userPathInputForm.UserInputPath;
                 List<string> fileFromPathes = EnvironmentService.GetFilePathesFromPath(_initialDirectoryOrRS, _uiapp.Application.VersionNumber);
-                if (fileFromPathes.Count == 0)
+                if (fileFromPathes == null) return;
+                
+                if (fileFromPathes == null || fileFromPathes.Count == 0)
                 {
                     CustomMessageBox cmb = new CustomMessageBox(
                         "Предупреждение",

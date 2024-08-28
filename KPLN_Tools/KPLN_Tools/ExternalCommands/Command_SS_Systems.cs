@@ -7,6 +7,7 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_Tools.Common.SS_System;
 using KPLN_Tools.Forms;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Input;
@@ -17,13 +18,10 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_SS_Systems : IExternalCommand
     {
-        private static readonly string _sysParamName = "КП_И_Адрес текущий";
-        private static readonly string _previousAdressParamName = "КП_И_Адрес предыдущий";
-        private static readonly string _adressParamName = "КП_И_Количество занимаемых адресов";
-        private static readonly string _positionParamName = "КП_О_Позиция";
-        private static readonly string _sysPrefixParamName = "КП_И_Префикс системы";
-        private static readonly string _currentAdressParamName = "КП_И_Адрес устройства";
-        private static readonly string _lenghtParamName = "КП_И_Длина линии";
+        /// <summary>
+        /// Queue для команд на выполнение по событию "OnIdling"
+        /// </summary>
+        public static Queue<ICommand> OnIdling_ICommandQueue = new Queue<ICommand>();
 
         private ExternalCommandData _commandData;
         private UIApplication _uiapp;
@@ -31,29 +29,14 @@ namespace KPLN_Tools.ExternalCommands
         private Document _doc;
 
         /// <summary>
-        /// Коллекция используемых параметров
-        /// </summary>
-        private readonly string[] _paramNames = new string[]
-        {
-            _sysParamName,
-            _positionParamName,
-            _sysPrefixParamName,
-            _adressParamName,
-            _previousAdressParamName,
-            _currentAdressParamName,
-            _lenghtParamName,
-
-        };
-
-        /// <summary>
         /// Коллекция типов линий в проекте
         /// </summary>
-        private readonly Dictionary<string, GraphicsStyle> _lineStyles = new Dictionary<string, GraphicsStyle>();
+        private readonly Dictionary<string, GraphicsStyleWrapper> _lineStyles = new Dictionary<string, GraphicsStyleWrapper>();
 
         /// <summary>
         /// Коллекция типов систем СС
         /// </summary>
-        private Dictionary<string, ElectricalSystemType> _electricalSystemTypes = new Dictionary<string, ElectricalSystemType>
+        private readonly Dictionary<string, ElectricalSystemType> _electricalSystemTypes = new Dictionary<string, ElectricalSystemType>
         {
             { "Пожарная сигнализация", ElectricalSystemType.FireAlarm },
             { "Силовая система", ElectricalSystemType.PowerCircuit },
@@ -67,11 +50,6 @@ namespace KPLN_Tools.ExternalCommands
         private SS_Sysetm_Main _mainWindow;
         private SS_SystemEntity _previosSystemEntity;
         private SS_SystemEntity _currentSystemEntity;
-
-        /// <summary>
-        /// Queue для команд на выполнение по событию "OnIdling"
-        /// </summary>
-        public static Queue<ICommand> OnIdling_ICommandQueue = new Queue<ICommand>();
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -94,31 +72,22 @@ namespace KPLN_Tools.ExternalCommands
                     && style.GraphicsStyleCategory.Parent.Id.IntegerValue == (int)BuiltInCategory.OST_Lines)
                 {
                     if (!_lineStyles.ContainsKey(style.Name))
-                        _lineStyles.Add(style.Name, style);
+                        _lineStyles.Add(style.Name, new GraphicsStyleWrapper (style));
                 }
             }
 
-            SS_SystemViewEntity sS_SystemViewEntity = new SS_SystemViewEntity
-            {
-                LineStyles = _lineStyles,
-                ElectricalSystemTypes = _electricalSystemTypes,
-                SystemNumber = "1.1",
-                StartNumber = 1,
-                SelectedSystemType = ElectricalSystemType.FireAlarm,
-            };
+            SS_SystemViewEntity sS_SystemViewEntity = new SS_SystemViewEntity(_lineStyles, _electricalSystemTypes);
 
             _mainWindow = new SS_Sysetm_Main(
                 sS_SystemViewEntity,
                 new SS_SystemCommand(AddParamsAction),
                 new SS_SystemCommand(CreateConsistSystemAction),
-                new SS_SystemCommand(CreateParallelSystemAction));
+                new SS_SystemCommand(AddToConsistSystemAction),
+                new SS_SystemCommand(CreateParallelSystemAction),
+                new SS_SystemCommand(RefreshSystemAction));
+
             _mainWindow.Show();
             #endregion
-
-            //uiapp.Application.DocumentChanged += (sender, args) =>
-            //{
-            //    uiapp.Idling -= Uiapp_Idling;
-            //};
 
             return Result.Succeeded;
         }
@@ -129,6 +98,7 @@ namespace KPLN_Tools.ExternalCommands
                 OnIdling_ICommandQueue.Dequeue().Execute(_commandData);
         }
 
+        #region Основные Action для кнопок
         /// <summary>
         /// Метод добавления параметров в проект
         /// </summary>
@@ -142,17 +112,17 @@ namespace KPLN_Tools.ExternalCommands
 
             app.SharedParametersFilename = @"X:\BIM\4_ФОП\КП_Файл общих парамеров.txt";
             DefinitionFile fopFile = app.OpenSharedParameterFile();
-            List<Definition> fopDefintionColl = new List<Definition>(_paramNames.Length);
+            List<Definition> fopDefintionColl = new List<Definition>(SS_SystemEntity.EntityParams.Length);
             foreach (DefinitionGroup defGroup in fopFile.Groups)
             {
                 Definitions defs = defGroup.Definitions;
                 if (defGroup.Name == "01 Обязательные ОБЩИЕ")
-                    fopDefintionColl.AddRange(defs.Where(d => _paramNames.Contains(d.Name)));
+                    fopDefintionColl.AddRange(defs.Where(d => SS_SystemEntity.EntityParams.Contains(d.Name)));
                 else if (defGroup.Name == "04 Обязательные ИНЖЕНЕРИЯ")
-                    fopDefintionColl.AddRange(defs.Where(d => _paramNames.Contains(d.Name)));
+                    fopDefintionColl.AddRange(defs.Where(d => SS_SystemEntity.EntityParams.Contains(d.Name)));
             }
 
-            if (fopDefintionColl.Count() < _paramNames.Length)
+            if (fopDefintionColl.Count() < SS_SystemEntity.EntityParams.Length)
                 throw new Exception("Не удалось получить ВСЕ необходимые параметры из ФОП");
 
             BindingMap bindMap = _doc.ParameterBindings;
@@ -189,38 +159,311 @@ namespace KPLN_Tools.ExternalCommands
         }
 
         /// <summary>
-        /// Выбор элементов в проекте
+        /// Создание последовательной цепи
         /// </summary>
-        /// <param name="uiapp"></param>
-        private SS_SystemEntity ElemPicker(UIApplication uiapp)
+        private void CreateConsistSystemAction()
+        {
+            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSystemViewEntity;
+            if (IsPrepareFormError())
+                return;
+
+            while (true)
+            {
+
+                string msgToPick;
+                if (_previosSystemEntity == null)
+                    msgToPick = "Выбери первый элемент. Чтобы прервать - нажми \"Esc\"!";
+                else
+                    msgToPick = "Выбери следующий элемент. По закончить цикл выбора - нажми \"Esc\"!";
+                _currentSystemEntity = ElemPicker(false, msgToPick);
+                
+                if (_currentSystemEntity == null) break;
+
+                try
+                {
+                    using (Transaction trans = new Transaction(_doc, "KPLN: 1.Пар-ры эл-та"))
+                    {
+                        trans.Start();
+
+                        SetElementSystemData();
+
+                        trans.Commit();
+                    }
+
+                    if (_previosSystemEntity != null)
+                    {
+                        using (Transaction trans = new Transaction(_doc, "KPLN: 2.Создание и пар-ры послед. цепи"))
+                        {
+                            trans.Start();
+
+                            ElectricalSystem newElSys = ElectricalSystem
+                                .Create(_doc, new List<ElementId> { _currentSystemEntity.CurrentFamInst.Id }, viewEntity.SelectedSystemType);
+                            newElSys.SelectPanel(_previosSystemEntity.CurrentFamInst);
+                            SetSystemSystemData(newElSys);
+
+                            if (_mainWindow.CurrentSystemViewEntity.IsLineDraw)
+                                DrawSystemLines();
+
+                            trans.Commit();
+                        }
+                    }
+
+                    _previosSystemEntity = _currentSystemEntity;
+
+                    _mainWindow.CurrentSystemViewEntity.StartNumber++;
+                }
+                catch (Autodesk.Revit.Exceptions.ArgumentException)
+                {
+                    TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconError,
+                        MainContent = "Варианты ошибок:" +
+                        "\n1. Элемент не содержит необходимого соединителя (нужно исправить семейство);" +
+                        "\n2. Вы пытаетесь выполнить подключение с игнорированием последовательности (одна за одной) создания цепей;" +
+                        "\n3. Вы пытаетесь подключить одну последовательную цепь в другую, что невозможно - у последовательной цепи ОДНА начальная панель." +
+                        "\n\n Отмените 3 предыдущих действия (ctrl+z)!",
+                        CommonButtons = TaskDialogCommonButtons.Ok,
+                    };
+                    taskDialog.Show();
+                }
+                catch (Exception ex)
+                {
+                    TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconError,
+                        MainContent = $"Устрани ошибку, или отправь разработчику: {ex.Message}",
+                        CommonButtons = TaskDialogCommonButtons.Ok,
+                    };
+                    taskDialog.Show();
+                }
+            }
+
+            _currentSystemEntity = null;
+            _previosSystemEntity = null;
+        }
+
+        private void AddToConsistSystemAction()
+        {
+            SS_SystemEntity startSystemEntity = ElemPicker(true, "Выбери элемент цепи, к которому будет подключаться новый элемент");
+        }
+
+        /// <summary>
+        /// Создание параллельной
+        /// </summary>
+        private void CreateParallelSystemAction()
+        {
+            UIApplication uiapp = _commandData.Application;
+            Autodesk.Revit.ApplicationServices.Application app = uiapp.Application;
+            UIDocument uidoc = uiapp.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+
+        }
+
+        /// <summary>
+        /// Команда для обновления цепи после внесения измов в цепь (без добавления или удаления элементов)
+        /// </summary>
+        private void RefreshSystemAction()
+        {
+            SS_SystemEntity startSystemEntity = ElemPicker(false, "Выбери ГОЛОВНОЙ элемент цепи, чтобы запустить анализ");
+            if (startSystemEntity.CurrentElSystemSet == null || startSystemEntity.CurrentElSystemSet.Count() == 0)
+            {
+                TaskDialog taskDialog = new TaskDialog("KPLN: Внимание!")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                    MainContent = "Элемент не подключен к цепи",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                taskDialog.Show();
+            }
+            else if (startSystemEntity.CurrentElSystemSet.Count() > 1)
+            {
+                TaskDialog taskDialog = new TaskDialog("KPLN: Внимание!")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                    MainContent = "Выбран промежуточный элемент. Анализ невозможен.",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                taskDialog.Show();
+            }
+            else
+            {
+                startSystemEntity.SetSysParamsInstData();
+                
+                List<SS_SystemEntity> allEntitesFromSystem = new List<SS_SystemEntity>();
+                
+                // Берем данные по базовому щиту для запуска группирования по цепи
+                FamilyInstance baseEquip = startSystemEntity.CurrentElSystemSet.FirstOrDefault().BaseEquipment;
+                if (baseEquip != null)
+                {
+                    SS_SystemEntity startEntity = new SS_SystemEntity(baseEquip, _mainWindow.CurrentSystemViewEntity.SelectedSystemType).SetSysParamsInstData();
+                    allEntitesFromSystem.Add(startEntity);
+
+                    AddSystemEntityByBaseEquip(allEntitesFromSystem, startEntity);
+                }
+                else
+                {
+                    TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                        MainContent = $"Не удалось определить стартовый щит для эл-та с id:{startSystemEntity.CurrentFamInst.Id}. Скинь разработчику!",
+                        CommonButtons = TaskDialogCommonButtons.Ok,
+                    };
+                    taskDialog.Show();
+                }
+
+                if (allEntitesFromSystem.Any())
+                {
+                    using (Transaction trans = new Transaction(_doc, "KPLN: Обновление цепи"))
+                    {
+                        trans.Start();
+                        
+                        Readress(allEntitesFromSystem);
+                        
+                        trans.Commit();
+                    }
+                }
+            }
+        }
+        #endregion
+
+        /// <summary>
+        /// Получить коллекцию SS_SystemEntity, которые объеденены в одну систему по спец. моделированию
+        /// </summary>
+        /// <param name="entitiesColl">Коллекция, которая будет содержать ВСЕ SS_SystemEntity</param>
+        /// <param name="entity">SS_SystemEntity, с каторого начинается система</param>
+        private void AddSystemEntityByBaseEquip(List<SS_SystemEntity> entitiesColl, SS_SystemEntity startEntity)
+        {
+            foreach(ElectricalSystem elSys in startEntity.CurrentElSystemSet)
+            {
+                ElementSet depElems = elSys.Elements;
+                if (depElems.Size > 1)
+                    throw new Exception($"Скинь разработчику: у цепи с id {elSys.Id} нарушена логика 1 участок цепи - 2 элемента.");
+
+                SS_SystemEntity depEntity;
+                IEnumerator depElemsEnum = depElems.GetEnumerator();
+                while (depElemsEnum.MoveNext())
+                {
+                    if (depElemsEnum.Current is FamilyInstance famInts)
+                    {
+                        // Получаю экземпляр SS_SystemEntity подключаемого элемента
+                        if (famInts.Id != startEntity.CurrentFamInst.Id && !entitiesColl.Select(ent => ent.CurrentFamInst.Id).Contains(famInts.Id))
+                        {
+                            depEntity = new SS_SystemEntity(famInts, _mainWindow.CurrentSystemViewEntity.SelectedSystemType).SetSysParamsInstData();
+                            entitiesColl.Add(depEntity);
+
+                            AddSystemEntityByBaseEquip(entitiesColl, depEntity);
+                        }
+                        // Запасной контроль наличия текущего эл-та в коллекции
+                        else if (!entitiesColl.Select(ent => ent.CurrentFamInst.Id).Contains(famInts.Id))
+                        {
+                            depEntity = new SS_SystemEntity(famInts, _mainWindow.CurrentSystemViewEntity.SelectedSystemType).SetSysParamsInstData();
+                            entitiesColl.Add(depEntity);
+                        }
+                    }
+                    else
+                        throw new Exception($"Для эл-та с id: {elSys.Id} - вы выбрали не экземпляр семейства, а что-то другое");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Переадресация внутри отсортированной ревит-цепи
+        /// </summary>
+        /// <param name="entitiesColl">Отсортированная цепь, от головы к хвосту</param>
+        private void Readress(List<SS_SystemEntity> entitiesColl)
+        {
+            SS_SystemEntity frstEnt = entitiesColl.FirstOrDefault();
+            int strNumber = frstEnt.CurrentAdressIndex - 1;
+
+            SS_SystemEntity tempPrevEnt = null;
+            foreach (SS_SystemEntity entity in entitiesColl)
+            {
+                if (tempPrevEnt != null)
+                {
+                    string prevAdress = tempPrevEnt
+                        .CurrentFamInst
+                        .LookupParameter(SS_SystemEntity.PreviousAdressParamName)
+                        .AsValueString();
+
+                    entity
+                        .CurrentFamInst
+                        .LookupParameter(SS_SystemEntity.PreviousAdressParamName)
+                        .Set($"{prevAdress}");
+                }
+                
+                strNumber += entity.CurrentAdressCountData;
+                entity
+                    .CurrentFamInst
+                    .LookupParameter(SS_SystemEntity.CurrentAdressParamName)
+                    .Set($"{entity.CurrentAdressSystemIndex}{entity.CurrentAdressSeparator}{strNumber}");
+                
+                tempPrevEnt = entity;
+            }
+        }
+
+        /// <summary>
+        /// Выбор элементов в проекте и генерация SS_SystemEntity
+        /// </summary>
+        private SS_SystemEntity ElemPicker(bool clearOldSys, string msg)
         {
             try
             {
                 ElementId selectedId = _uidoc
                     .Selection
-                    .PickObject(ObjectType.Element, new PickFilter(), "Выбери следующий элемент. По окончанию - нажми \"Esc\"!")
+                    .PickObject(ObjectType.Element, new PickFilter(), msg)
                     .ElementId;
-                SS_SystemEntity resultSysEntity = new SS_SystemEntity(_doc.GetElement(selectedId));
-                if (resultSysEntity.CurrentElSystemSet.Count() != 0)
-                {
-                    TaskDialog taskDialog = new TaskDialog("KPLN: Внимание!")
-                    {
-                        MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                        MainContent = "Элемент уже был подключен к системе, добавить его в текущую, удалив старую?",
-                        CommonButtons = TaskDialogCommonButtons.Ok | TaskDialogCommonButtons.Cancel,
-                    };
 
-                    TaskDialogResult tdResult = taskDialog.Show();
-                    if (tdResult == TaskDialogResult.Ok)
+                Element elem = _doc.GetElement(selectedId);
+                if (elem is FamilyInstance famInst)
+                {
+                    SS_SystemEntity resultSysEntity = new SS_SystemEntity(famInst, _mainWindow.CurrentSystemViewEntity.SelectedSystemType);
+
+                    IEnumerable<ElectricalSystem> sysColl = resultSysEntity
+                        .CurrentElSystemSet
+                        .Where(sys => sys.SystemType.Equals(_mainWindow.CurrentSystemViewEntity.SelectedSystemType));
+                    // Очистка от старой системы, если это нужно
+                    if (clearOldSys && sysColl.Count() > 1)
                     {
-                        foreach (ElectricalSystem sys in resultSysEntity.CurrentElSystemSet)
+                        string[] connPreviousAdressParamsData = sysColl
+                            .Select(sys => sys.LookupParameter(SS_SystemEntity.PreviousAdressParamName).AsValueString())
+                            .OrderBy(str => str)
+                            .ToArray();
+                        string[] connCurrentAdressParamsData = sysColl
+                            .Select(sys => sys.LookupParameter(SS_SystemEntity.CurrentAdressParamName).AsValueString())
+                            .OrderBy(str => str)
+                            .ToArray();
+
+                        SS_Sysetm_SelectIncludeElemAlg algForm = new SS_Sysetm_SelectIncludeElemAlg(
+                            "Внимание!", 
+                            "Элемент уже подключен к цепи с обеих сторон. Сейчас будет удалена цепь ПОСЛЕ текущего элемента. " +
+                            "\nВНИМАНИЕ: если дальше этот элемент не подключить - он будет выступать в роли новой панели, т.е. цепь разделиться на 2 участка.");
+                        algForm.AddCustomBtn($"{connPreviousAdressParamsData[1]}~{connCurrentAdressParamsData[1]}");
+                        if ((bool)algForm.ShowDialog())
                         {
-                            _doc.Delete(sys.Id);
+                            using (Transaction t = new Transaction(_doc, "KPLN: Удаление старой цепи"))
+                            {
+                                t.Start();
+                                
+                                _doc.Delete(resultSysEntity
+                                    .CurrentElSystemSet
+                                    .Where(sys => 
+                                        $"{sys.LookupParameter(SS_SystemEntity.PreviousAdressParamName).AsValueString()}~{sys.LookupParameter(SS_SystemEntity.CurrentAdressParamName).AsValueString()}"
+                                        .Equals(algForm.ClickedBtnContent))
+                                    .FirstOrDefault()
+                                    .Id);
+
+                                t.Commit();
+                            }
                         }
+                        else
+                            return null;
                     }
+
+                    return resultSysEntity;
                 }
 
-                return resultSysEntity;
+                return null;
             }
             catch (Autodesk.Revit.Exceptions.OperationCanceledException)
             {
@@ -234,7 +477,7 @@ namespace KPLN_Tools.ExternalCommands
         /// <returns>True если ошибка есть</returns>
         private bool IsPrepareFormError()
         {
-            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSS_SystemViewEntity;
+            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSystemViewEntity;
             if (viewEntity.SelectedSystemType == ElectricalSystemType.UndefinedSystemType)
             {
                 TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
@@ -248,7 +491,7 @@ namespace KPLN_Tools.ExternalCommands
                 return true;
             }
 
-            if (viewEntity.IsLineDraw == true && viewEntity.SelectedStyle == null)
+            if (viewEntity.IsLineDraw == true && viewEntity.SelectedLineStyle == null)
             {
                 TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
                 {
@@ -264,77 +507,85 @@ namespace KPLN_Tools.ExternalCommands
             return false;
         }
 
+
         /// <summary>
         /// Заполнение праматеров "КП_И_Адрес текущий", "КП_И_Адрес предыдущий" для ЭЛЕМЕНТОВ
         /// </summary>
-        /// <returns></returns>
-        private bool SetElementSystemData()
+        private void SetElementSystemData()
         {
-            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSS_SystemViewEntity;
+            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSystemViewEntity;
 
             #region "КП_И_Адрес текущий"
-            Parameter currentSysNameParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_sysParamName) ??
-                throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_sysParamName}");
+            Parameter currentSysNameParam = _currentSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.CurrentAdressParamName) ??
+                throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.CurrentAdressParamName}");
 
-            Parameter currentElemPositionParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_positionParamName) ??
-                _currentSystemEntity.CurrentFamInst.Symbol.LookupParameter(_positionParamName) ??
-                throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_positionParamName}");
+            Parameter currentElemPositionParam = _currentSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.PositionParamName) ??
+                _currentSystemEntity.CurrentFamInst.Symbol.LookupParameter(SS_SystemEntity.PositionParamName) ??
+                throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.PositionParamName}");
 
-            currentSysNameParam
-                .Set($"{currentElemPositionParam.AsString()}{viewEntity.UserSeparator}{viewEntity.UserSystemIndex}{viewEntity.UserSeparator}{viewEntity.StartNumber}");
+            string currentSysNameData = string.Format(
+                "{0}{1}{2}{1}{3}",
+                currentElemPositionParam.AsString(),
+                viewEntity.UserSeparator,
+                viewEntity.UserSystemIndex,
+                viewEntity.StartNumber);
+            currentSysNameParam.Set(currentSysNameData);
             #endregion
 
             #region "КП_И_Адрес предыдущий"
             if (_previosSystemEntity != null)
             {
-                Parameter previousAdressParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_previousAdressParamName) ??
-                    throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_previousAdressParamName}");
+                Parameter previousAdressParam = _currentSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.PreviousAdressParamName) ??
+                    throw new Exception($"У элемента с id: {_currentSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.PreviousAdressParamName}");
 
-                Parameter previousSysNameParam = _previosSystemEntity.CurrentFamInst.LookupParameter(_sysParamName) ??
-                    throw new Exception($"У элемента с id: {_previosSystemEntity.CurrentElem.Id} нет параметра {_sysParamName}");
+                Parameter previousSysNameParam = _previosSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.CurrentAdressParamName) ??
+                    throw new Exception($"У элемента с id: {_previosSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.CurrentAdressParamName}");
 
                 previousAdressParam.Set(previousSysNameParam.AsString());
             }
             #endregion
-
-            return false;
         }
 
         /// <summary>
-        /// Заполнение праматеров "КП_И_Адрес текущий", "КП_И_Адрес предыдущий", "КП_И_Префикс системы" для ЦЕПЕЦ
+        /// Заполнение праматеров "КП_И_Адрес текущий", "КП_И_Адрес предыдущий", "КП_И_Префикс системы" для ЦЕПЕЙ
         /// </summary>
         /// <returns></returns>
         private bool SetSystemSystemData(ElectricalSystem elSys)
         {
-            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSS_SystemViewEntity;
+            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSystemViewEntity;
 
             #region "КП_И_Адрес текущий"
-            Parameter currentSysNameParam = elSys.LookupParameter(_sysParamName) ??
-                throw new Exception($"У цепи с id: {elSys.Id} нет параметра {_sysParamName}");
+            Parameter currentSysNameParam = elSys.LookupParameter(SS_SystemEntity.CurrentAdressParamName) ??
+                throw new Exception($"У цепи с id: {elSys.Id} нет параметра {SS_SystemEntity.CurrentAdressParamName}");
 
-            Parameter currentElemPositionParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_positionParamName) ??
-                _currentSystemEntity.CurrentFamInst.Symbol.LookupParameter(_positionParamName) ??
-                throw new Exception($"У элемена с id: {elSys.Id} нет параметра {_positionParamName}");
+            Parameter currentElemPositionParam = _currentSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.PositionParamName) ??
+                _currentSystemEntity.CurrentFamInst.Symbol.LookupParameter(SS_SystemEntity.PositionParamName) ??
+                throw new Exception($"У элемена с id: {_currentSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.PositionParamName}");
 
-            currentSysNameParam
-                .Set($"{currentElemPositionParam.AsString()}{viewEntity.UserSeparator}{viewEntity.UserSystemIndex}{viewEntity.UserSeparator}{viewEntity.StartNumber}");
+            string currentSysNameData = string.Format(
+                "{0}{1}{2}{1}{3}",
+                currentElemPositionParam.AsString(), 
+                viewEntity.UserSeparator, 
+                viewEntity.UserSystemIndex, 
+                viewEntity.StartNumber);
+            currentSysNameParam.Set(currentSysNameData);
             #endregion
 
             #region "КП_И_Адрес предыдущий"
-            Parameter previousAdressParam = elSys.LookupParameter(_previousAdressParamName) ??
-               throw new Exception($"У цепи с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_previousAdressParamName}");
+            Parameter previousAdressParam = elSys.LookupParameter(SS_SystemEntity.PreviousAdressParamName) ??
+               throw new Exception($"У цепи с id: {elSys.Id} нет параметра {SS_SystemEntity.PreviousAdressParamName}");
 
-            Parameter previousElemAdressParam = _currentSystemEntity.CurrentFamInst.LookupParameter(_sysParamName) ??
-                throw new Exception($"У элемена с id: {_previosSystemEntity.CurrentElem.Id} нет параметра {_sysParamName}");
+            Parameter previousElemAdressParam = _previosSystemEntity.CurrentFamInst.LookupParameter(SS_SystemEntity.CurrentAdressParamName) ??
+                throw new Exception($"У элемена с id: {_previosSystemEntity.CurrentFamInst.Id} нет параметра {SS_SystemEntity.CurrentAdressParamName}");
 
             previousAdressParam.Set(previousElemAdressParam.AsString());
             #endregion
 
             #region "КП_И_Префикс системы"
-            Parameter sysPrefixParam = elSys.LookupParameter(_sysPrefixParamName) ??
-               throw new Exception($"У цепи с id: {_currentSystemEntity.CurrentElem.Id} нет параметра {_sysPrefixParamName}");
+            Parameter sysPrefixParam = elSys.LookupParameter(SS_SystemEntity.SysPrefixParamName) ??
+               throw new Exception($"У цепи с id: {elSys.Id} нет параметра {SS_SystemEntity.SysPrefixParamName}");
 
-            sysPrefixParam.Set(_mainWindow.CurrentSS_SystemViewEntity.UserSystemIndex);
+            sysPrefixParam.Set(_mainWindow.CurrentSystemViewEntity.UserSystemIndex);
             #endregion
 
 
@@ -390,7 +641,7 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     var line = Autodesk.Revit.DB.Line.CreateBound(prevPnt, resultPnts[0]);
                     DetailCurve detCurve = _doc.Create.NewDetailCurve(_doc.ActiveView, line);
-                    detCurve.LineStyle = _mainWindow.CurrentSS_SystemViewEntity.SelectedStyle;
+                    detCurve.LineStyle = _mainWindow.CurrentSystemViewEntity.SelectedLineStyle.RevitGraphicsStyle;
                 }
                 else
                 {
@@ -398,7 +649,7 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         var line = Autodesk.Revit.DB.Line.CreateBound(resultPnts[i], resultPnts[i + 1]);
                         DetailCurve detCurve = _doc.Create.NewDetailCurve(_doc.ActiveView, line);
-                        detCurve.LineStyle = _mainWindow.CurrentSS_SystemViewEntity.SelectedStyle;
+                        detCurve.LineStyle = _mainWindow.CurrentSystemViewEntity.SelectedLineStyle.RevitGraphicsStyle;
                     }
                 }
             }
@@ -412,101 +663,6 @@ namespace KPLN_Tools.ExternalCommands
         /// <param name="coord1">Координата 1</param>
         /// <param name="coord2">Координата 2</param>
         /// <param name="epsilon">Допуск на совпадение</param>
-        private bool AreEqual(double coord1, double coord2, double epsilon)
-        {
-            return Math.Abs(coord1 - coord2) < epsilon;
-        }
-
-        /// <summary>
-        /// Создание последовательной цепи
-        /// </summary>
-        private void CreateConsistSystemAction()
-        {
-            SS_SystemViewEntity viewEntity = _mainWindow.CurrentSS_SystemViewEntity;
-            if (IsPrepareFormError())
-                return;
-
-            while (true)
-            {
-
-                _currentSystemEntity = ElemPicker(_uiapp);
-                if (_currentSystemEntity == null)
-                {
-                    _mainWindow.CurrentSS_SystemViewEntity.StartNumber = 1;
-                    break;
-                }
-
-                try
-                {
-                    using (Transaction trans = new Transaction(_doc, "KPLN: Параметры эл-та"))
-                    {
-                        trans.Start();
-
-                        SetElementSystemData();
-
-                        trans.Commit();
-                    }
-
-                    if (_previosSystemEntity != null)
-                    {
-                        using (Transaction trans = new Transaction(_doc, "KPLN: Создание и параметры цепи"))
-                        {
-                            trans.Start();
-
-                            ElectricalSystem newElSys = ElectricalSystem
-                                .Create(_doc, new List<ElementId> { _currentSystemEntity.CurrentElem.Id }, viewEntity.SelectedSystemType);
-                            newElSys.SelectPanel(_previosSystemEntity.CurrentFamInst);
-                            SetSystemSystemData(newElSys);
-
-                            if (_mainWindow.CurrentSS_SystemViewEntity.IsLineDraw)
-                                DrawSystemLines();
-
-                            trans.Commit();
-                        }
-                    }
-
-                    _previosSystemEntity = _currentSystemEntity;
-
-                    _mainWindow.CurrentSS_SystemViewEntity.StartNumber++;
-                }
-                catch (Autodesk.Revit.Exceptions.ArgumentException)
-                {
-                    TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
-                    {
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                        MainContent = "Элемент не содержит необходимого соединителя. Нужно исправить семейство",
-                        CommonButtons = TaskDialogCommonButtons.Ok,
-                    };
-                    taskDialog.Show();
-                }
-                catch (Exception ex)
-                {
-                    TaskDialog taskDialog = new TaskDialog("KPLN: Ошибка!")
-                    {
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                        MainContent = $"Устрани ошибку: {ex.Message}",
-                        CommonButtons = TaskDialogCommonButtons.Ok,
-                    };
-                    taskDialog.Show();
-                }
-            }
-
-
-            _currentSystemEntity = null;
-            _previosSystemEntity = null;
-        }
-
-        /// <summary>
-        /// Создание параллельной
-        /// </summary>
-        private void CreateParallelSystemAction()
-        {
-            UIApplication uiapp = _commandData.Application;
-            Autodesk.Revit.ApplicationServices.Application app = uiapp.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
-
-
-        }
+        private bool AreEqual(double coord1, double coord2, double epsilon) => Math.Abs(coord1 - coord2) < epsilon;
     }
 }

@@ -50,7 +50,8 @@ namespace KPLN_Tools.Common
                     // Проверяю ссылку на конечный файл. Добавляю файл
                     if (pathFrom.ToLower().Contains("rvt"))
                     {
-                        FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathPartsLenght - 4));
+                        string folderPath = string.Join("\\", pathParts, 3, pathPartsLenght - 4);
+                        FolderContents folderContents = server.GetFolderContents(folderPath);
                         foreach (var model in folderContents.Models)
                         {
                             if (model.Name == pathParts[pathPartsLenght - 1])

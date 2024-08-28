@@ -1,28 +1,40 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Electrical;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using UIFramework;
 
 namespace KPLN_Tools.Common.SS_System
 {
     public class SS_SystemViewEntity : INotifyPropertyChanged
     {
-        private GraphicsStyle _selectedStyle;
-        private ElectricalSystemType _selectedSystemType;
-        private bool _isLineDraw = false;
-        private string _systemNumber;
-        private int _startNumber;
+        private static GraphicsStyleWrapper _selectedLineStyle;
+        private static ElectricalSystemType _selectedSystemType;
+        private static bool _isLineDraw = false;
+        private static string _systemNumber;
+        private static string _userSystemIndex;
+        private static string _userSeparator;
+        private static int _startNumber;
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        public SS_SystemViewEntity(Dictionary<string, GraphicsStyleWrapper> lineStyles, Dictionary<string, ElectricalSystemType> electricalSystemTypes)
+        {
+            LineStyles = lineStyles;
+            ElectricalSystemTypes = electricalSystemTypes;
+
+            if(SelectedSystemType == ElectricalSystemType.UndefinedSystemType)
+                SelectedSystemType = ElectricalSystemTypes.FirstOrDefault().Value;
+
+            if (string.IsNullOrEmpty(_systemNumber))
+                SystemNumber = "1.1";
+        }
 
         /// <summary>
         /// Коллекция типов линий в проекте
         /// </summary>
-        public Dictionary<string, GraphicsStyle> LineStyles {  get; set; }
+        public Dictionary<string, GraphicsStyleWrapper> LineStyles { get; set; }
 
         /// <summary>
         /// Коллекция типов систем СС
@@ -32,17 +44,17 @@ namespace KPLN_Tools.Common.SS_System
         /// <summary>
         /// Выбранный тип линии для построения в проекте
         /// </summary>
-        public GraphicsStyle SelectedStyle 
+        public GraphicsStyleWrapper SelectedLineStyle
         {
-            get => _selectedStyle;
+            get => _selectedLineStyle;
             set
             {
-                if (_selectedStyle != value)
+                if (_selectedLineStyle != value)
                 {
-                    _selectedStyle = value;
+                    _selectedLineStyle = value;
                     OnPropertyChanged();
                 }
-            } 
+            }
         }
 
         /// <summary>
@@ -73,6 +85,11 @@ namespace KPLN_Tools.Common.SS_System
                 {
                     _isLineDraw = value;
                     OnPropertyChanged();
+
+                    if (_isLineDraw)
+                        SelectedLineStyle = LineStyles.FirstOrDefault().Value;
+                    else
+                        SelectedLineStyle = null;
                 }
             }
         }
@@ -80,24 +97,21 @@ namespace KPLN_Tools.Common.SS_System
         /// <summary>
         /// Номер цепи
         /// </summary>
-        public string SystemNumber 
+        public string SystemNumber
         {
             get => _systemNumber;
-            set 
+            set
             {
                 if (_systemNumber != value)
                 {
                     _systemNumber = value;
                     OnPropertyChanged();
 
-                    string[] splitedNumber = SystemNumberSplit();
-                    if (!int.TryParse(splitedNumber[0], out int elemIndex))
-                        throw new Exception("Скинь разработчику: Не удалось преобразовать номер в тип int.");
-                    else
-                        StartNumber = elemIndex;
-
+                    string[] splitedNumber = NumberService.SystemNumberSplit(_systemNumber);
                     UserSystemIndex = splitedNumber[1];
                     UserSeparator = splitedNumber[2];
+                    
+                    StartNumber = int.Parse(splitedNumber[0]);
                 }
             }
         }
@@ -105,7 +119,7 @@ namespace KPLN_Tools.Common.SS_System
         /// <summary>
         /// Стартовый номер цепи
         /// </summary>
-        public int StartNumber 
+        public int StartNumber
         {
             get => _startNumber;
             set
@@ -114,6 +128,8 @@ namespace KPLN_Tools.Common.SS_System
                 {
                     _startNumber = value;
                     OnPropertyChanged();
+
+                    SystemNumber = string.Format("{0}{1}{2}", UserSeparator, UserSystemIndex, StartNumber);
                 }
             }
         }
@@ -121,36 +137,25 @@ namespace KPLN_Tools.Common.SS_System
         /// <summary>
         /// Пользовательский индекс системы
         /// </summary>
-        public string UserSystemIndex { get; private set; }
+        public string UserSystemIndex 
+        {
+            get => _userSystemIndex;
+            private set
+            {
+                _userSeparator = value;
+            }
+        }
 
         /// <summary>
         /// Пользовательский разделитель
         /// </summary>
-        public string UserSeparator { get; private set; }
-
-        /// <summary>
-        /// Метод разделения стартового номера на части
-        /// </summary>
-        /// <returns>Массив, где 1й элемент - стартовый номер (подвергается +1), 2й элемент - индекс системы (не меняется), 3й - разделитель</returns>
-        /// <exception cref="Exception">Ошибка, если номер не парситься</exception>
-        private string[] SystemNumberSplit()
+        public string UserSeparator 
         {
-            // Паттерн для поиска последней цифры
-            string pattern = @"([\W_]+)(\d+)$";
-            Match match = Regex.Match(SystemNumber, pattern);
-            if (match.Success)
+            get => _userSeparator;
+            private set
             {
-                // Получаем символ, который отделяет части
-                string separator = match.Groups[1].Value;
-                // Получаем последнюю цифру
-                string lastDigit = match.Groups[2].Value;
-                // Все остальное до последней цифры
-                string beforeLastDigit = SystemNumber.Substring(0, match.Index);
-
-                return new string[] { lastDigit, beforeLastDigit, separator };
+                _userSystemIndex = value;
             }
-
-            throw new Exception("Непонятный формат ввода стартового номера. Он должен всегда в конце содержать цифру, чтобы её можно было увеличивать на +1");
         }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)

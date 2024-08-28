@@ -1,0 +1,54 @@
+﻿<Window x:Class="KPLN_Tools.Forms.SS_Sysetm_SelectIncludeElemAlg"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        SizeToContent="Height"
+        Width="500"
+        ResizeMode="NoResize"
+        Topmost="True"
+        Title="Задаётся через конструктор"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="MainButtons" TargetType="{x:Type Button}">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="10,5,10,5"/>
+            <Setter Property="Padding" Value="5,0,5,0"/>
+        </Style>
+
+        <Style x:Key="MainTxt" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="10,5,10,5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            x:Name="MainLable"
+            Text="Задаётся через конструктор"
+            Style="{StaticResource MainTxt}"/>
+
+        <StackPanel
+            Grid.Row="1"
+            x:Name="MainStackPanel"
+            Orientation="Horizontal">
+            <Button 
+                x:Name="Cancel"
+                Content="Отмена" 
+                Click="Cancel_Click" 
+                Style="{StaticResource MainButtons}"
+                BorderBrush="Red"/>
+        </StackPanel>
+    </Grid>
+</Window>
