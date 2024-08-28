@@ -229,7 +229,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                         || report.Element_2_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
                 bool checkIDData = !isEmptyIDData 
                     && (report.Element_1_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
-                        || report.Element_2_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
+                        || report.Element_2_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0)
+                    || (report.SubElements.Select(se => se.Element_1_Id.ToString()).Contains(_idDataTBx)
+                        || report.SubElements.Select(se => se.Element_2_Id.ToString()).Contains(_idDataTBx));
                     
                 if (checkConflData || checkConflictMetaData || checkIDData)
                 {
