@@ -22,7 +22,7 @@
 
         <!--Фильтрование по статусу замечания-->
         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical">
-            <TextBlock Margin="5,5,0,0" Text="Фильтр по статусу:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+            <TextBlock Margin="5,5,0,0" Text="(И) Фильтр по статусу:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
@@ -50,29 +50,77 @@
             </Button.ToolTip>
         </Button>
         
-        <!--Фильтрование по имени документа-->
-        <DockPanel Grid.Row="1" Grid.ColumnSpan="2">
-            <TextBlock 
-                Text="Фильтр по данным об эл-тах:" 
-                Margin="5" 
-                VerticalAlignment="Center" 
-                HorizontalAlignment="Left" 
-                FontWeight="Bold"/>
-            <TextBox 
-                Margin="5" 
-                VerticalAlignment="Center" 
-                HorizontalAlignment="Left" 
-                FontStretch="ExtraExpanded" 
-                TextAlignment="Left" 
-                MinHeight="20" 
-                MinWidth="200" 
-                DockPanel.Dock="Left"
-                TextChanged="UserInput_TextChanged"/>
-        </DockPanel>
+        <!--Фильтрование по атрибутам отчетов-->
+        <StackPanel 
+            Grid.Row="1" 
+            Grid.ColumnSpan="2">
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) Фильтр по имени конфликта/группы:" 
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontWeight="Bold"/>
+                <TextBox 
+                    x:Name="ConflictDataTBx"
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontStretch="ExtraExpanded" 
+                    TextAlignment="Left" 
+                    MinHeight="20" 
+                    MinWidth="180" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ConflictDataTBx_TextChanged"/>
+                <TextBlock 
+                    Text="(ИЛИ) Фильтр по ID-элемента:" 
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontWeight="Bold"/>
+                <TextBox 
+                    x:Name="IDDataTBx"
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontStretch="ExtraExpanded" 
+                    TextAlignment="Left" 
+                    MinHeight="20" 
+                    MinWidth="195" 
+                    DockPanel.Dock="Left"
+                    TextChanged="IDDataTBx_TextChanged"/>
+            </DockPanel>
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) Фильтр по данным об эл-тах:" 
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontWeight="Bold"/>
+                <TextBox 
+                    x:Name="ConflictMetaDataTBx"
+                    Margin="5" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left" 
+                    FontStretch="ExtraExpanded" 
+                    TextAlignment="Left" 
+                    MinHeight="20" 
+                    Width="580" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ConflictMetaDataTBx_TextChanged"/>
+            </DockPanel>
+        </StackPanel>
 
-        <ScrollViewer Margin="0,0,0,17" Grid.Row="2" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer 
+            Margin="0,0,0,17" 
+            Grid.Row="2" 
+            Grid.ColumnSpan="2" 
+            HorizontalScrollBarVisibility="Disabled" 
+            VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical">
-                <ItemsControl x:Name="ReportControll">
+                <ItemsControl 
+                    x:Name="ReportControll"
+                    ItemsSource="{Binding FilteredInstancesColl}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="7.5,10,7.5,5">

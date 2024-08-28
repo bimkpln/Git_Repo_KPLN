@@ -14,7 +14,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Input;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
@@ -29,23 +28,24 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private readonly Report _currentReport;
         private readonly SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
-        private ObservableCollection<ReportItem> _reportInstancesColl;
         private readonly ReportManager _reportManager;
         private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
-        private KPItemStatus _selectedKPItemStatus;
-        private string _searchData = string.Empty;
+
+        private string _conflictDataTBx = string.Empty;
+        private string _idDataTBx = string.Empty;
+        private string _conflictMetaDataTBx = string.Empty;
 
         public ReportWindow(Report report, bool isEnabled, ReportManager reportManager)
         {
             _currentReport = report;
+            _reportManager = reportManager;
+            
             _sqliteService_ReportInstanceDB = new SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
-            _reportManager = reportManager;
-
-            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             if (isEnabled)
             {
-                foreach (ReportItem instance in _reportInstancesColl)
+                foreach (ReportItem instance in ReportInstancesColl)
                 {
                     instance.IsControllsVisible = System.Windows.Visibility.Visible;
                     instance.IsControllsEnabled = true;
@@ -53,7 +53,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
             else
             {
-                foreach (ReportItem instance in _reportInstancesColl)
+                foreach (ReportItem instance in ReportInstancesColl)
                 {
                     instance.IsControllsVisible = System.Windows.Visibility.Collapsed;
                     instance.IsControllsEnabled = false;
@@ -63,26 +63,35 @@ namespace KPLN_Clashes_Ribbon.Forms
             InitializeComponent();
 
             Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
-
-            UpdateCollection(KPItemStatus.Opened);
+            DataContext = this;
 
             Closing += RemoveOnClose;
         }
+
+        /// <summary>
+        /// Исходная коллекция элементов
+        /// </summary>
+        public ObservableCollection<ReportItem> ReportInstancesColl { get; private set; }
+
+        /// <summary>
+        /// Отфильтрованная коллекция элементов, которая является контекстом для окна
+        /// </summary>
+        public ObservableCollection<ReportItem> FilteredInstancesColl { get; private set; } = new ObservableCollection<ReportItem>();
 
         /// <summary>
         /// Получить приоритетный статус из инстансов внутри одного отчета
         /// </summary>
         private KPItemStatus GetMainReportStatus()
         {
-            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
 
-            if (_reportInstancesColl.Any(c => c.Status == KPItemStatus.Opened))
+            if (ReportInstancesColl.Any(c => c.Status == KPItemStatus.Opened))
                 return KPItemStatus.Opened;
-            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Closed || c.Status == KPItemStatus.Approved))
+            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Closed || c.Status == KPItemStatus.Approved))
                 return KPItemStatus.Closed;
-            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Delegated))
+            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Delegated))
                 return KPItemStatus.Delegated;
-            else if (_reportInstancesColl.All(c => c.Status == KPItemStatus.Delegated || c.Status == KPItemStatus.Approved || c.Status == KPItemStatus.Closed))
+            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Delegated || c.Status == KPItemStatus.Approved || c.Status == KPItemStatus.Closed))
                 return KPItemStatus.Delegated;
             else
                 return KPItemStatus.Opened;
@@ -169,38 +178,67 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void UpdateCollection()
         {
-            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
-            foreach (ReportItem report in _reportInstancesColl)
+            foreach (ReportItem report in ReportInstancesColl)
             {
-                if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
-                    filtered_collection.Add(report);
+                AddToFilteredInstancesColl_ByUserFilterData(report);
             }
-            ReportControll.ItemsSource = filtered_collection;
         }
 
-        private void UpdateCollection(KPItemStatus status)
+        private void UpdateCollection_ByStatys(KPItemStatus status)
         {
-            _selectedKPItemStatus = status;
-
-            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
-            foreach (ReportItem report in _reportInstancesColl)
+            foreach (ReportItem report in ReportInstancesColl)
             {
-                if (_selectedKPItemStatus == KPItemStatus.Opened
-                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
-                {
-                    if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
-                        filtered_collection.Add(report);
-                }
-                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
-                {
-                    if (report.Status == _selectedKPItemStatus)
-                        filtered_collection.Add(report);
-                }
-
+                if (report.Status == status)
+                    AddToFilteredInstancesColl_ByUserFilterData(report);
+                else 
+                    FilteredInstancesColl.Remove(report);
             }
+        }
 
-            if (ReportControll != null)
-                ReportControll.ItemsSource = filtered_collection;
+        private void UpdateCollection_ByStatuses(KPItemStatus status1, KPItemStatus status2)
+        {
+            foreach (ReportItem report in ReportInstancesColl)
+            {
+                if (report.Status == status1 || report.Status == status2)
+                    AddToFilteredInstancesColl_ByUserFilterData(report);
+                else
+                    FilteredInstancesColl.Remove(report);
+            }
+        }
+
+        /// <summary>
+        /// Главный метод фильтарции отчетов по статусу и пользовательским полям
+        /// </summary>
+        /// <param name="report"></param>
+        private void AddToFilteredInstancesColl_ByUserFilterData(ReportItem report)
+        {
+            bool isEmptyConflData = string.IsNullOrEmpty(_conflictDataTBx);
+            bool isEmptyConflictMetaData = string.IsNullOrEmpty(_conflictMetaDataTBx);
+            bool isEmptyIDData = string.IsNullOrEmpty(_idDataTBx);
+
+            if (isEmptyConflData && isEmptyConflictMetaData && isEmptyIDData)
+            {
+                if (!FilteredInstancesColl.Contains(report))
+                    FilteredInstancesColl.Add(report);
+            }
+            else
+            {
+                bool checkConflData = !isEmptyConflData && report.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0;
+                bool checkConflictMetaData = !isEmptyConflictMetaData 
+                    && (report.Element_1_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0 
+                        || report.Element_2_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
+                bool checkIDData = !isEmptyIDData 
+                    && (report.Element_1_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
+                        || report.Element_2_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
+                    
+                if (checkConflData || checkConflictMetaData || checkIDData)
+                {
+                    if (!FilteredInstancesColl.Contains(report))
+                        FilteredInstancesColl.Add(report);
+                }
+                else
+                    FilteredInstancesColl.Remove(report);
+            }
         }
 
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -212,44 +250,63 @@ namespace KPLN_Clashes_Ribbon.Forms
                     UpdateCollection();
                     break;
                 case 1:
-                    UpdateCollection(KPItemStatus.Opened);
+                    UpdateCollection_ByStatuses(KPItemStatus.Opened, KPItemStatus.Delegated);
                     break;
                 case 2:
-                    UpdateCollection(KPItemStatus.Closed);
+                    UpdateCollection_ByStatys(KPItemStatus.Closed);
                     break;
                 case 3:
-                    UpdateCollection(KPItemStatus.Approved);
+                    UpdateCollection_ByStatys(KPItemStatus.Approved);
                     break;
                 case 4:
-                    UpdateCollection(KPItemStatus.Delegated);
+                    UpdateCollection_ByStatys(KPItemStatus.Delegated);
                     break;
             }
         }
 
-        private void UserInput_TextChanged(object sender, TextChangedEventArgs e)
+        private void OnBtnUpdate(object sender, RoutedEventArgs args)
         {
+            _reportManager.UpdateGroups();
+
+            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+
+            OnSelectionChanged(null, null);
+        }
+
+        private void ConflictDataTBx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            OnSelectionChanged(null, null);
+
             System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
-            _searchData = textBox.Text.ToLower();
+            _conflictDataTBx = textBox.Text;
 
-            ObservableCollection<ReportItem> filtered_collection = new ObservableCollection<ReportItem>();
-            foreach (ReportItem report in _reportInstancesColl)
-            {
-                if (_selectedKPItemStatus == KPItemStatus.Opened 
-                    && (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData)))
-                {
-                    if (report.Status == KPItemStatus.Opened || report.Status == KPItemStatus.Delegated)
-                        filtered_collection.Add(report);
-                }
-                else if (report.Element_1_Info.ToLower().Contains(_searchData) || report.Element_2_Info.ToLower().Contains(_searchData))
-                {
-                    if (report.Status == _selectedKPItemStatus)
-                        filtered_collection.Add(report);
-                }
+            UpdateCollection();
 
-            }
+            OnSelectionChanged(null, null);
+        }
 
-            if (ReportControll != null)
-                ReportControll.ItemsSource = filtered_collection;
+        private void IDDataTBx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            OnSelectionChanged(null, null);
+
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _idDataTBx = textBox.Text;
+
+            UpdateCollection();
+
+            OnSelectionChanged(null, null);
+        }
+
+        private void ConflictMetaDataTBx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            OnSelectionChanged(null, null);
+
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _conflictMetaDataTBx = textBox.Text;
+
+            UpdateCollection();
+
+            OnSelectionChanged(null, null);
         }
 
         /// <summary>
@@ -367,33 +424,6 @@ namespace KPLN_Clashes_Ribbon.Forms
                 else
                 { sdBtn.DelegateBtnBackground = Brushes.Transparent; }
 
-            }
-        }
-
-        private void OnBtnUpdate(object sender, RoutedEventArgs args)
-        {
-            _reportManager.UpdateGroups();
-
-            _reportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
-
-            int i = cbxFilter.SelectedIndex;
-            switch (i)
-            {
-                case 0:
-                    UpdateCollection();
-                    break;
-                case 1:
-                    UpdateCollection(KPItemStatus.Opened);
-                    break;
-                case 2:
-                    UpdateCollection(KPItemStatus.Closed);
-                    break;
-                case 3:
-                    UpdateCollection(KPItemStatus.Approved);
-                    break;
-                case 4:
-                    UpdateCollection(KPItemStatus.Delegated);
-                    break;
             }
         }
 
