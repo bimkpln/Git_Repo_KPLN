@@ -227,7 +227,39 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "http://moodle");
 
+                PushButtonData kpPozSum = CreateBtnData(
+                    "Заполнить КП_Позиция_Сумма",
+                    "Заполнить КП_Позиция_Сумма",
+                    "Заполнить КП_Позиция_Сумма",
+                    string.Format("Плагин заполняет параметр КП_Позиция_Сумма для одинаковых семейств на чертежном виде, собирая значения параметров КП_О_Позиция с учетом параметра КП_О_Группирование\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_kpPozSum).FullName,
+                    "KPLN_Tools.Imagens.FillInParamBig.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "http://moodle");
+
+                PushButtonData kpKolSpec = CreateBtnData(
+                    "Заполнить КП_И_КолСпецификация",
+                    "Заполнить КП_И_КолСпецификация",
+                    "Заполнить КП_И_КолСпецификация",
+                    string.Format("Плагин заполняет параметр КП_И_КолСпецификация для семейств категории `Элементы узлов` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Command_kpKolSpec).FullName,
+                    "KPLN_Tools.Imagens.FillInParamBig.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "http://moodle");
+
                 ssToolsPullDownBtn.AddPushButton(ssSystems);
+                ssToolsPullDownBtn.AddPushButton(kpPozSum);
+                ssToolsPullDownBtn.AddPushButton(kpKolSpec);
             }
             #endregion
 
