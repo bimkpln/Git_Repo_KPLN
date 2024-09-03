@@ -1,18 +1,9 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
-using Autodesk.Revit.UI.Selection;
-using KPLN_Tools.Common.SS_System;
-using KPLN_Tools.Forms;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Forms;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -77,6 +68,11 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
 
+            if (newDict.Count == 0)
+            {
+                MessageBox.Show("Нет параметров удовлетворяющих условиям", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
             using (Transaction t = new Transaction(_doc, "KPLN_Заполнение параметров"))
             {
                 t.Start();
@@ -98,6 +94,11 @@ namespace KPLN_Tools.ExternalCommands
                             paramToSet.Set(newValue);
                         }
                     }
+                }
+
+                if (newDict.Count != 0)
+                {
+                    MessageBox.Show("Все параметры были заполнены", "Результат", MessageBoxButtons.OK, MessageBoxIcon.Information);                   
                 }
 
                 t.Commit();
