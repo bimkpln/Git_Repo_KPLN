@@ -200,8 +200,7 @@
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
-    <Compile Include="ExternalCommands\Command_kpKolSpec.cs" />
-    <Compile Include="ExternalCommands\Command_kpPozSum.cs" />
+    <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
