@@ -21,45 +21,62 @@ namespace KPLN_Tools.ExternalCommands
     {     
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication _uiapp = commandData.Application;
-            UIDocument _uidoc = _uiapp.ActiveUIDocument;
-            Document _doc = _uidoc.Document;
+            Document _doc = commandData.Application.ActiveUIDocument.Document;
 
-            var familyInstances = new FilteredElementCollector(_doc, _doc.ActiveView.Id)
-            .OfClass(typeof(FamilyInstance))
-            .Cast<FamilyInstance>()
-            .Where(fi =>
-                fi.Symbol.FamilyName == "076_КШ_Короб перфорированный_(ЭлУзл)" ||
-                fi.Symbol.FamilyName == "076_КШ_DIN рейка_(ЭлУзл)");
+            FilteredElementCollector collector = new FilteredElementCollector(_doc);
 
-            double totalLength = 0;
+            IList<Element> connectionElements = collector
+                .OfCategory(BuiltInCategory.OST_StructConnections)
+                .WhereElementIsNotElementType()
+                .ToElements();
 
-            foreach (var familyInstance in familyInstances)
+            List<Element> elemsMatched = new List<Element>();
+            List<Element> elemsNotMatched = new List<Element>();
+
+            foreach (Element elem in connectionElements)
             {
-                Parameter groupingParam = familyInstance.LookupParameter("КП_О_Группирование");
+                ElementId typeId = elem.GetTypeId(); 
+                ElementType elemType = _doc.GetElement(typeId) as ElementType; 
 
-                if (groupingParam != null && groupingParam.AsInteger() == 1) 
+                if (elemType != null && (elemType.FamilyName == "076_КШ_Короб перфорированный_(ЭлУзл)" || elemType.FamilyName == "076_КШ_DIN рейка_(ЭлУзл)"))
                 {
-                    Parameter lengthParam = familyInstance.LookupParameter("Длина");
-                    if (lengthParam != null)
-                    {
-                        totalLength += lengthParam.AsDouble();
-                    }
+                    elemsMatched.Add(elem);
+                }
+                else
+                {
+                    elemsNotMatched.Add(elem);
                 }
             }
 
-            using (Transaction trans = new Transaction(_doc, "Запись длины в КП_И_КолСпецификация"))
+            using (Transaction trans = new Transaction(_doc, "Обновление параметров"))
             {
                 trans.Start();
-                double lengthInMeters = UnitUtils.ConvertFromInternalUnits(totalLength, UnitTypeId.Meters);
 
-                foreach (var familyInstance in familyInstances)
+                foreach (Element elem in elemsMatched)
                 {
-                    Parameter specParam = familyInstance.LookupParameter("КП_И_КолСпецификация");
-                    if (specParam != null)
+                    Parameter paramHeight = elem.LookupParameter("КП_Р_Высота");
+
+                    if (paramHeight != null && paramHeight.HasValue)
                     {
-                        specParam.Set(lengthInMeters);
+                        string heightValue = paramHeight.AsString();
+
+                        Parameter paramSpec = elem.LookupParameter("КП_И_КолСпецификация");
+
+                        if (paramSpec != null && !paramSpec.IsReadOnly)
+                        {
+                            paramSpec.Set(heightValue);
+                        }
                     }
+                }
+
+                foreach (Element elem in elemsNotMatched)
+                {
+                        Parameter paramSpec = elem.LookupParameter("КП_И_КолСпецификация");
+
+                        if (paramSpec != null && !paramSpec.IsReadOnly)
+                        {
+                            paramSpec.Set(1);
+                        }         
                 }
 
                 trans.Commit();
