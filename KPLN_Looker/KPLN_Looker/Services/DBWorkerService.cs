@@ -140,7 +140,7 @@ namespace KPLN_Looker.Services
         internal void Update_DBDocumentLastChangedData(DBDocument dBDocument) =>
             Task.Run(() =>
             {
-                _documentDbService.UpdateDBDocument_LastChangedData(dBDocument, CurrentTimeForDB());
+                _documentDbService.UpdateDBDocument_LastChangedData(dBDocument, CurrentDBUser, CurrentTimeForDB());
             });
 
         /// <summary>

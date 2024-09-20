@@ -43,11 +43,12 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                   $"SET {nameof(DBDocument.IsClosed)}='{dbProject.IsClosed}' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
 
         /// <summary>
-        /// Обновить дату последнего изменения документа
+        /// Обновить данные по последнему изменению документа (LastChangedUserId, LastChangedData)
         /// </summary>
-        public void UpdateDBDocument_LastChangedData(DBDocument dBDocument, string data) =>
+        public void UpdateDBDocument_LastChangedData(DBDocument dBDocument, DBUser dBUser, string data) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                  $"SET {nameof(DBDocument.LastChangedData)}='{data}' WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
+                $"SET {nameof(DBDocument.LastChangedUserId)}='{dBUser.Id}', {nameof(DBDocument.LastChangedData)}='{data}' " +
+                $"WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
 
     }
 }
