@@ -20,7 +20,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>C:\ProgramData\Autodesk\Revit\Addins\2020\KPLN_Loader\</OutputPath>
+    <OutputPath>C:\ProgramData\Autodesk\Revit\Addins\2023\KPLN_Loader\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>

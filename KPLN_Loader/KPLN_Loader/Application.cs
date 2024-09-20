@@ -142,11 +142,13 @@ namespace KPLN_Loader
 
                     try
                     {
+                        // Копирование модуля
                         DirectoryInfo targetDirInfo = _envService.CopyModule(module);
+                        
                         String[] spearator = { ".dll" };
                         if (targetDirInfo != null)
                         {
-                            // Копирование и активация библиотек (без имплементации IExternalModule)
+                            // Активация библиотеки (без имплементации IExternalModule)
                             if (module.IsLibraryModule)
                             {
                                 foreach (FileInfo file in targetDirInfo.GetFiles())
@@ -157,7 +159,7 @@ namespace KPLN_Loader
                                         // Если этого не сделать - будут проблемы с использованием загружаемых библиотек
                                         System.Reflection.Assembly moduleAssembly = System.Reflection.Assembly.LoadFrom(file.FullName);
                                         FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
-                                        if (fvi.FileName.Contains("KPLN"))
+                                        if (moduleAssembly.FullName.Contains("KPLN"))
                                             moduleVersion = fvi.FileVersion;
 
                                         isModuleLoad = true;
@@ -173,7 +175,7 @@ namespace KPLN_Loader
                                     uploadModules++;
                                 }
                             }
-                            // Копирование и активация модулей (с имплементацией IExternalModule)
+                            // Ативация модуля (с имплементацией IExternalModule)
                             else
                             {
                                 foreach (FileInfo file in targetDirInfo.GetFiles())
