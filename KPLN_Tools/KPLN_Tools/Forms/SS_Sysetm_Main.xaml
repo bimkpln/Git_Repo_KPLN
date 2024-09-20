@@ -13,7 +13,7 @@
     <Window.Resources>
         <Style x:Key="MainButtons" TargetType="{x:Type Button}">
             <Setter Property="Height" Value="30"/>
-            <Setter Property="Width" Value="250"/>
+            <Setter Property="Width" Value="260"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="5,5,5,5"/>
         </Style>
@@ -197,17 +197,17 @@
                 <Button 
                     x:Name="consistentlySys"
                     Style="{StaticResource MainButtons}"
-                    Content="Новый последовательный участок"
-                    Width="210"
-                    ToolTip="Нажми, чтобы создать НОВУЮ последовательную цепь, либо участок для последующего объединения"
+                    Content="Последовательный участок"
+                    Width="160"
+                    ToolTip="Нажми, чтобы создать последовательную цепь, либо участок для последующего объединения"
                     Click="OnConsistentlySys_Click"/>
                 <Button
                     x:Name="consistentlySysAdd"
                     Style="{StaticResource MainButtons}"
-                    Content="+" 
-                    Width="30"
-                    ToolTip="Нажми, чтобы последовательно добавить элемент, или целый участок цепи к существующему"
-                    Click="OnConsistentlySysAdd_Click"/>
+                    Content="Вернуть в щит" 
+                    Width="90"
+                    ToolTip="Нажми, чтобы подсоединить крайний элемент цепи в щит (закольцевать)"
+                    Click="OnConsistentlySysAddPanel_Click"/>
             </DockPanel>
 
             <DockPanel 
@@ -217,7 +217,7 @@
                     x:Name="parallelSys" 
                     Style="{StaticResource MainButtons}"
                     Content="Новый параллельный участок" 
-                    Width="210"
+                    Width="220"
                     IsEnabled="False"
                     ToolTip="Нажми, чтобы создать НОВУЮ параллельную цепь, либо участок для последующего объединения"
                     Click="OnParallelSys_Click" />
@@ -259,7 +259,7 @@
                     x:Name="exit"
                     Content="Завершить" 
                     Click="OnExit_Click" 
-                    Width="190"
+                    Width="200"
                     BorderBrush="Red"
                     BorderThickness="2"
                     Style="{StaticResource MainButtons}"/>

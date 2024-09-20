@@ -82,7 +82,7 @@ namespace KPLN_Tools.ExternalCommands
                 sS_SystemViewEntity,
                 new SS_SystemCommand(AddParamsAction),
                 new SS_SystemCommand(CreateConsistSystemAction),
-                new SS_SystemCommand(AddToConsistSystemAction),
+                new SS_SystemCommand(AddToConsistSystemPanelAction),
                 new SS_SystemCommand(CreateParallelSystemAction),
                 new SS_SystemCommand(RefreshSystemAction));
 
@@ -169,48 +169,59 @@ namespace KPLN_Tools.ExternalCommands
 
             while (true)
             {
-
                 string msgToPick;
                 if (_previosSystemEntity == null)
                     msgToPick = "Выбери первый элемент. Чтобы прервать - нажми \"Esc\"!";
                 else
                     msgToPick = "Выбери следующий элемент. По закончить цикл выбора - нажми \"Esc\"!";
-                _currentSystemEntity = ElemPicker(false, msgToPick);
+                _currentSystemEntity = ElemPicker(true, msgToPick);
                 
                 if (_currentSystemEntity == null) break;
 
                 try
                 {
-                    using (Transaction trans = new Transaction(_doc, "KPLN: 1.Пар-ры эл-та"))
+                    using (Transaction trans = new Transaction(_doc, "KPLN_CS: Цепь"))
                     {
                         trans.Start();
 
                         SetElementSystemData();
 
-                        trans.Commit();
-                    }
-
-                    if (_previosSystemEntity != null)
-                    {
-                        using (Transaction trans = new Transaction(_doc, "KPLN: 2.Создание и пар-ры послед. цепи"))
+                        if (_previosSystemEntity != null)
                         {
-                            trans.Start();
 
-                            ElectricalSystem newElSys = ElectricalSystem
-                                .Create(_doc, new List<ElementId> { _currentSystemEntity.CurrentFamInst.Id }, viewEntity.SelectedSystemType);
-                            newElSys.SelectPanel(_previosSystemEntity.CurrentFamInst);
-                            SetSystemSystemData(newElSys);
+                            #region Создаю цепь
+                            ConnectorSet mepConnectors = _currentSystemEntity.CurrentFamInst.MEPModel.ConnectorManager.Connectors;
+                            Connector currentSysTypeConn = null;
+                            foreach (Connector conn in mepConnectors)
+                            {
+                                if (conn.Domain == Domain.DomainElectrical
+                                    && conn.ElectricalSystemType == viewEntity.SelectedSystemType 
+                                    && conn.AllRefs.Size == 0)
+                                {
+                                    currentSysTypeConn = conn;
+                                    break;
+                                }
+                            }
+
+                            if (currentSysTypeConn == null)
+                                throw new Exception($"У семейства ID: {_currentSystemEntity.CurrentFamInst.Id} - не осталось свободного соединителя нужноного типа");
+
+                            ElectricalSystem elSys = ElectricalSystem.Create(currentSysTypeConn, viewEntity.SelectedSystemType);
+                            #endregion
+
+                            elSys.SelectPanel(_previosSystemEntity.CurrentFamInst);
+
+                            SetSystemSystemData(elSys);
 
                             if (_mainWindow.CurrentSystemViewEntity.IsLineDraw)
                                 DrawSystemLines();
-
-                            trans.Commit();
                         }
+
+                        _previosSystemEntity = _currentSystemEntity;
+                        _mainWindow.CurrentSystemViewEntity.StartNumber++;
+                        
+                        trans.Commit();
                     }
-
-                    _previosSystemEntity = _currentSystemEntity;
-
-                    _mainWindow.CurrentSystemViewEntity.StartNumber++;
                 }
                 catch (Autodesk.Revit.Exceptions.ArgumentException)
                 {
@@ -242,9 +253,23 @@ namespace KPLN_Tools.ExternalCommands
             _previosSystemEntity = null;
         }
 
-        private void AddToConsistSystemAction()
+        private void AddToConsistSystemPanelAction()
         {
-            SS_SystemEntity startSystemEntity = ElemPicker(true, "Выбери элемент цепи, к которому будет подключаться новый элемент");
+            SS_SystemEntity startSystemEntity = ElemPicker(true, "Выбери элемент цепи, который нужно закольцевать на щите\\панели");
+
+            //ConnectorSet mepConnectors = systemEntity.CurrentFamInst.MEPModel.ConnectorManager.Connectors;
+            //Connector currentSysTypeConn = null;
+            //foreach (Connector conn in mepConnectors)
+            //{
+            //    if (conn.ElectricalSystemType == viewEntity.SelectedSystemType && conn.AllRefs.Size == 0)
+            //    {
+            //        currentSysTypeConn = conn;
+            //        break;
+            //    }
+            //}
+
+            //if (currentSysTypeConn == null)
+            //    throw new Exception($"У семейства ID: {systemEntity.CurrentFamInst.Id} - не осталось свободного соединителя нужноного типа");
         }
 
         /// <summary>

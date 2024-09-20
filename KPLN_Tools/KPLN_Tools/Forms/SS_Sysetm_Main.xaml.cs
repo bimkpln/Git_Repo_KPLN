@@ -12,14 +12,14 @@ namespace KPLN_Tools.Forms
             SS_SystemViewEntity systemViewEntity,
             ICommand executeAddParamsCommand,
             ICommand executeCreateConsistSystem,
-            ICommand executeAddToConsistSystem,
+            ICommand executeAddToConsistSystemPanel,
             ICommand executeCreateParallelSystem,
             ICommand executeRefreshSystemCommand)
         {
             CurrentSystemViewEntity = systemViewEntity;
             ExecuteAddParamsCommand = executeAddParamsCommand;
             ExecuteCreateConsistSystemCommand = executeCreateConsistSystem;
-            ExecuteAddToConsistSystem = executeAddToConsistSystem;
+            ExecuteAddToConsistSystemPanel = executeAddToConsistSystemPanel;
             ExecuteCreateParallelSystemCommand = executeCreateParallelSystem;
             ExecuteRefreshSystemCommand = executeRefreshSystemCommand;
 
@@ -41,9 +41,9 @@ namespace KPLN_Tools.Forms
         public ICommand ExecuteCreateConsistSystemCommand { get; private set; }
 
         /// <summary>
-        /// Комманда по ДОБАВЛЕНИЮ элемента к последовательной цепи СС
+        /// Комманда по ДОБАВЛЕНИЮ элемента в щит\панель
         /// </summary>
-        public ICommand ExecuteAddToConsistSystem { get; private set; }
+        public ICommand ExecuteAddToConsistSystemPanel { get; private set; }
 
         /// <summary>
         /// Комманда по созданию параллельной цепи СС
@@ -65,9 +65,9 @@ namespace KPLN_Tools.Forms
             Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteCreateConsistSystemCommand);
         }
 
-        private void OnConsistentlySysAdd_Click(object sender, RoutedEventArgs e)
+        private void OnConsistentlySysAddPanel_Click(object sender, RoutedEventArgs e)
         {
-            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteAddToConsistSystem);
+            Command_SS_Systems.OnIdling_ICommandQueue.Enqueue(ExecuteAddToConsistSystemPanel);
         }
 
         private void OnParallelSys_Click(object sender, RoutedEventArgs e)
