@@ -69,7 +69,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_ExtensibleStorage">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
@@ -85,7 +85,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_ModelChecker_Lib">
-      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -200,6 +200,7 @@
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
+    <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
@@ -286,6 +287,8 @@
     <EmbeddedResource Include="Imagens\ozkDuctAccessorySmall.png" />
     <EmbeddedResource Include="Imagens\linkChangeBig.png" />
     <EmbeddedResource Include="Imagens\linkChangeSmall.png" />
+    <EmbeddedResource Include="Imagens\FillInParamBig.png" />
+    <EmbeddedResource Include="Imagens\FillInParamSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
