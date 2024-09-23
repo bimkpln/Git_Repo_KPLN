@@ -121,6 +121,23 @@ namespace KPLN_BIMTools_Ribbon
                 "http://moodle/",
                 false
             );
+
+            AddPushButtonDataInPullDown(
+                "Пакетное добавление параметров",
+                "Пакетное добавление параметров",
+                "Нужно написать описание",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandLTablesExport).FullName,
+                paramPullDown,
+                "KPLN_BIMTools_Ribbon.Imagens.lookupSmall.png",
+                "http://moodle/",
+                false
+            );
             #endregion
 
             #region Выполняю автоматический запуск
