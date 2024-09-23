@@ -232,7 +232,7 @@ namespace KPLN_Tools
                     "Заполнить параметры на чертежном виде",
                     "Заполнить параметры на чертежном виде",
                     string.Format("Плагин заполняет параметр ``КП_Позиция_Сумма`` для одинаковых семейств на чертежном виде, собирая значения параметров ``КП_О_Позиция`` с учетом параметра ``КП_О_Группирование``, " +
-                    "а также заполняет параметр ``КП_И_КолСпецификация`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
+                    "а также заполняет параметр ``КП_И_Количество в спецификацию`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
@@ -241,7 +241,7 @@ namespace KPLN_Tools
                     typeof(ExternalCommands.Command_FillInParametersSS).FullName,
                     "KPLN_Tools.Imagens.FillInParamBig.png",
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1319");
 
                 ssToolsPullDownBtn.AddPushButton(ssSystems);
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
