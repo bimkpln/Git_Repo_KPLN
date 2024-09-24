@@ -194,18 +194,19 @@ namespace KPLN_BIMTools_Ribbon.Common
                                     foreach (string fileFromPath in fileFromPathes)
                                     {
                                         string newFilePath = string.Empty;
-                                        ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
+                                        ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
 
-                                        // Проверка на ревит-сервер
-                                        if (!string.IsNullOrEmpty(docModelPath.CentralServerPath))
-                                            newFilePath = ExchangeFile(uiapp.Application, docModelPath, config, "RSN:");
-                                        // Если нет, то проверяю, что этот файл есть
-                                        else if (System.IO.File.Exists(config.PathFrom))
-                                            newFilePath = ExchangeFile(uiapp.Application, docModelPath, config);
+                                        // Проверяю КУДА копирвать.
+                                        // Это папка, если нет - то ревит-сервер
+                                        if (Directory.Exists(config.PathTo))
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
+                                        // Убеждаюсь и обрабатываю ревит-сервер
+                                        else if (CheckPathFoRevitServer(config.PathTo))
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
                                         // Если ничего из вышеописанного - то ошибка
                                         else
                                         {
-                                            Logger.Error($"Файл {config.PathFrom} не удалось определить!\n");
+                                            Logger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
                                             continue;
                                         }
 
@@ -393,6 +394,48 @@ namespace KPLN_BIMTools_Ribbon.Common
             }
 
             return fileFromPathes;
+        }
+
+        /// <summary>
+        /// Метод проверки пути на РС на наличие папки (RevitServerAPILib сам её может создать, но мне это не подходит)
+        /// </summary>
+        /// <param name="pathTo">Путь для проверки</param>
+        /// <returns></returns>
+        private bool CheckPathFoRevitServer(string pathTo)
+        {
+            if (Directory.Exists(pathTo))
+                return false;
+            
+            string[] pathParts = pathTo.Split('\\');
+            string rsHostName = pathParts[2];
+            int pathPartsLenght = pathParts.Length;
+            RevitServer server = new RevitServer(rsHostName, int.Parse(RevitVersion));
+            if (server != null)
+            {
+                try
+                {
+                    FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathPartsLenght - 3));
+                    if (folderContents != null) 
+                        return true;
+                    else 
+                        return false;
+
+                }
+                catch (System.Net.WebException wex)
+                {
+                    if (wex.Message.Contains("404"))
+                        return false;
+                    else
+                        throw wex;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+            }
+            else
+                return false;
         }
     }
 }
