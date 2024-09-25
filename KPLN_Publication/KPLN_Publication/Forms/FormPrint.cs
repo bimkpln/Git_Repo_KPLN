@@ -11,7 +11,9 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
+using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Publication.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,11 +23,11 @@ using System.Windows.Forms;
 
 namespace KPLN_Publication
 {
-    public partial class FormPrint : Form
+    public partial class FormPrint : System.Windows.Forms.Form
     {
         private YayPrintSettings _printSettings;
 
-        private ToolTip _toolTip = new ToolTip();
+        private System.Windows.Forms.ToolTip _toolTip = new System.Windows.Forms.ToolTip();
 
         public YayPrintSettings printSettings
         {
@@ -39,15 +41,14 @@ namespace KPLN_Publication
         public Dictionary<string, List<MySheet>> sheetsSelected =
             new Dictionary<string, List<MySheet>>();
 
-
         public bool printToFile = false;
 
-
-        public FormPrint(Dictionary<string, List<MySheet>> SheetsBase, YayPrintSettings printSettings, DBUser currentDBUser)
+        public FormPrint(Document doc, Dictionary<string, List<MySheet>> SheetsBase, YayPrintSettings printSettings, DBUser currentDBUser)
         {
             InitializeComponent();
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
+            this.pluginVersion.Text = $"v.{ModuleData.Version}";
 
             int userDepartment = currentDBUser.SubDepartmentId;
             if (userDepartment == 2 || userDepartment == 8)
@@ -72,19 +73,23 @@ namespace KPLN_Publication
                 treeView1.Nodes.Add(docNode);
             }
 
-            //заполняю параметры печати
+            #region Заполняю параметры печати PDF
             _printSettings = printSettings;
-            textBoxNameConstructor.Text = printSettings.nameConstructor;
-            txtBoxOutputFolder.Text = printSettings.outputFolder;
+            checkBox_isPDFExport.Checked = printSettings.isPDFExport;
+            textBox_PDFNameConstructor.Text = printSettings.pdfNameConstructor;
+            textBox_PDFPath.Text = printSettings.outputPDFFolder;
             checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
-
+            checkBoxOrientation.Checked = printSettings.isUseOrientation;
 
             List<string> printers = new List<string>();
             foreach (string printer in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
             {
                 printers.Add(printer);
             }
-            if (printers.Count == 0) throw new Exception("Cant find any installed printers");
+
+            if (printers.Count == 0)
+                throw new Exception("Cant find any installed printers");
+
             comboBoxPrinters.DataSource = printers;
 
             if (printers.Contains(_printSettings.printerName))
@@ -98,11 +103,8 @@ namespace KPLN_Publication
                 comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(selectedPrinterName)).First();
             }
 
-
-
             radioButtonPDF.Checked = comboBoxPrinters.SelectedItem.ToString().Contains("PDF");
             radioButtonPaper.Checked = !radioButtonPDF.Checked;
-
 
             if (_printSettings.hiddenLineProcessing == Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing)
             {
@@ -115,23 +117,37 @@ namespace KPLN_Publication
                 radioButtonRastr.Checked = true;
             }
 
-            List<Autodesk.Revit.DB.RasterQualityType> rasterTypes =
-                Enum.GetValues(typeof(Autodesk.Revit.DB.RasterQualityType))
-                .Cast<Autodesk.Revit.DB.RasterQualityType>()
+            List<RasterQualityType> rasterTypes =
+                Enum.GetValues(typeof(RasterQualityType))
+                .Cast<RasterQualityType>()
                 .ToList();
             comboBoxRasterQuality.DataSource = rasterTypes;
-            try
-            {
-                comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality;
-                //rasterQualityTypes.Where(i => Enum.GetName(typeof(Autodesk.Revit.DB.RasterQualityType), i).Equals()).First();
-            }
-            catch { }
+            comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality;
 
             List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
                 .Cast<ColorType>()
                 .ToList();
             comboBoxColors.DataSource = colorTypes;
             comboBoxColors.SelectedItem = _printSettings.colorsType;
+            #endregion
+
+            #region Заполняю параметры печати DWG
+            checkBox_isDWGExport.Checked = printSettings.isDWGExport;
+            textBox_DWGNameConstructor.Text = printSettings.dwgNameConstructor;
+            textBox_DWGPath.Text = printSettings.outputDWGFolder;
+
+            List<ExportDWGSettingsShell> dwgSettings = new FilteredElementCollector(doc)
+                .OfClass(typeof(ExportDWGSettings))
+                .Cast<ExportDWGSettings>()
+                .Select(eds => new ExportDWGSettingsShell(eds.Name, eds))
+                .ToList();
+            comboBoxDWGExportTypes.DataSource = dwgSettings;
+            comboBoxDWGExportTypes.DisplayMember = "Name";
+
+            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => _printSettings.dwgExportSettingShell != null && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
+            if (dwgExpTypeFromConfigIndex != -1)
+                comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
+            #endregion
         }
 
         private void cbx_Enter(object sender, EventArgs e)
@@ -141,7 +157,7 @@ namespace KPLN_Publication
                 "\n1. Скрывается цвет RGD '003,002,051', если он используется " +
                 "в проекте для документации - он тоже скроектся!" +
                 "\n2. Работает ТОЛЬКО с принтером PDFCreator.";
-            CheckBox cbx = sender as CheckBox;
+            System.Windows.Forms.CheckBox cbx = sender as System.Windows.Forms.CheckBox;
             _toolTip.Show(tt_text, cbx);
         }
 
@@ -169,47 +185,46 @@ namespace KPLN_Publication
                 sheetsSelected.Add(docNodeTitle, selectedSheetsInDoc);
             }
 
+            #region Обновление YayPrintSettings (изначально не реализован INotifyPrCh, продолжаю костыль)
+            // Экспорт в PDF
+            _printSettings.isPDFExport = checkBox_isPDFExport.Checked;
 
-            if (radioButtonVector.Checked)
-                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing;
-            //Enum.GetName(typeof(Autodesk.Revit.DB.HiddenLineViewsType), Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing);
-            else
-                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing;
-            //Enum.GetName(typeof(Autodesk.Revit.DB.HiddenLineViewsType), Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing);
-
-            _printSettings.rasterQuality = (Autodesk.Revit.DB.RasterQualityType)comboBoxRasterQuality.SelectedValue;
-            //Enum.GetName(typeof(Autodesk.Revit.DB.RasterQualityType), comboBoxRasterQuality.SelectedValue);
-            _printSettings.outputFolder = txtBoxOutputFolder.Text;
             _printSettings.printerName = comboBoxPrinters.SelectedItem.ToString();
-
+            _printSettings.outputPDFFolder = textBox_PDFPath.Text;
 
             bool checkConstructor = false;
-            string tempConstr = textBoxNameConstructor.Text;
+            string tempConstr = textBox_PDFNameConstructor.Text;
             if (tempConstr.Split('<').Length > 1)
             {
                 if (tempConstr.Split('<')[1].Contains(">"))
                     checkConstructor = true;
             }
             if (checkConstructor)
-            {
-                _printSettings.nameConstructor = textBoxNameConstructor.Text;
-            }
+                _printSettings.pdfNameConstructor = textBox_PDFNameConstructor.Text;
+
+            if (radioButtonVector.Checked)
+                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing;
             else
-            {
-                _printSettings.nameConstructor = "<Номер листа>_<Имя листа>.pdf";
-            }
+                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing;
+
+            _printSettings.rasterQuality = (Autodesk.Revit.DB.RasterQualityType)comboBoxRasterQuality.SelectedValue;
+
             _printSettings.isMergePdfs = checkBoxMergePdfs.Checked;
             _printSettings.isPrintToPaper = radioButtonPaper.Checked;
-            this.printToFile = radioButtonPDF.Checked;
-
-            //_printSettings.colorStamp = checkBoxColorStamp.Checked;
-            //_printSettings.excludeColors = textBoxExcludeColors.Text;
 
             _printSettings.colorsType = (ColorType)comboBoxColors.SelectedItem;
             _printSettings.isUseOrientation = checkBoxOrientation.Checked;
             _printSettings.isRefreshSchedules = checkBoxRefresh.Checked;
             _printSettings.isExcludeBorders = checkBoxExcludeBorders.Checked;
 
+            // Экспорт в DWG
+            _printSettings.isDWGExport = checkBox_isDWGExport.Checked;
+            _printSettings.dwgExportSettingShell = (ExportDWGSettingsShell)comboBoxDWGExportTypes.SelectedItem;
+            _printSettings.outputDWGFolder = textBox_DWGPath.Text;
+            _printSettings.dwgNameConstructor = textBox_DWGNameConstructor.Text;
+            #endregion
+
+            this.printToFile = radioButtonPDF.Checked;
             this.Close();
         }
 
@@ -219,39 +234,62 @@ namespace KPLN_Publication
             this.Close();
         }
 
-        private void buttonBrowse_Click(object sender, EventArgs e)
+        private void buttonPDFBrowse_Click(object sender, EventArgs e)
         {
-            FolderBrowserDialog fbDialog = new FolderBrowserDialog();
-            fbDialog.ShowNewFolderButton = true;
+            FolderBrowserDialog fbDialog = new FolderBrowserDialog
+            {
+                ShowNewFolderButton = true
+            };
             if (fbDialog.ShowDialog() == DialogResult.OK)
             {
                 string path = fbDialog.SelectedPath;
-                this.txtBoxOutputFolder.Text = path;
+                this.textBox_PDFPath.Text = path;
             }
         }
 
-        private void btnOpenNameConstructor_Click(object sender, EventArgs e)
+        private void buttonDWGBrowse_Click(object sender, EventArgs e)
         {
-            formNameConstructor formName = new KPLN_Publication.formNameConstructor(textBoxNameConstructor.Text);
+            FolderBrowserDialog fbDialog = new FolderBrowserDialog
+            {
+                ShowNewFolderButton = true
+            };
+            if (fbDialog.ShowDialog() == DialogResult.OK)
+            {
+                string path = fbDialog.SelectedPath;
+                textBox_DWGPath.Text = path;
+            }
+        }
+
+        private void btnPDFOpenNameConstructor_Click(object sender, EventArgs e)
+        {
+            formNameConstructor formName = new formNameConstructor(textBox_PDFNameConstructor.Text);
 
             if (formName.ShowDialog(this) == DialogResult.OK)
             {
-                textBoxNameConstructor.Text = formName.nameConstructor;
+                textBox_PDFNameConstructor.Text = formName.nameConstructor;
             }
+
             formName.Dispose();
         }
 
-        private void buttonFormatsSetup_Click(object sender, EventArgs e)
+        private void btnDWGOpenNameConstructor_Click(object sender, EventArgs e)
         {
+            formNameConstructor formName = new formNameConstructor(textBox_PDFNameConstructor.Text);
 
+            if (formName.ShowDialog(this) == DialogResult.OK)
+            {
+                textBox_DWGNameConstructor.Text = formName.nameConstructor;
+            }
+
+            formName.Dispose();
         }
 
         private void radioButtonPDF_CheckedChanged(object sender, EventArgs e)
         {
-            txtBoxOutputFolder.Enabled = true;
-            buttonBrowse.Enabled = true;
-            textBoxNameConstructor.Enabled = true;
-            btnOpenNameConstructor.Enabled = true;
+            textBox_PDFPath.Enabled = true;
+            buttonPDFBrowse.Enabled = true;
+            textBox_PDFNameConstructor.Enabled = true;
+            btnPDFOpenNameConstructor.Enabled = true;
             label5.Enabled = true;
             label6.Enabled = true;
             checkBoxMergePdfs.Enabled = true;
@@ -266,10 +304,10 @@ namespace KPLN_Publication
 
         private void radioButtonPaper_CheckedChanged(object sender, EventArgs e)
         {
-            txtBoxOutputFolder.Enabled = false;
-            buttonBrowse.Enabled = false;
-            textBoxNameConstructor.Enabled = false;
-            btnOpenNameConstructor.Enabled = false;
+            textBox_PDFPath.Enabled = false;
+            buttonPDFBrowse.Enabled = false;
+            textBox_PDFNameConstructor.Enabled = false;
+            btnPDFOpenNameConstructor.Enabled = false;
             label5.Enabled = false;
             label6.Enabled = false;
             checkBoxMergePdfs.Enabled = false;
@@ -284,14 +322,14 @@ namespace KPLN_Publication
         {
             if (checkBoxMergePdfs.Checked == true)
             {
-                textBoxNameConstructor.Enabled = false;
-                btnOpenNameConstructor.Enabled = false;
+                textBox_PDFNameConstructor.Enabled = false;
+                btnPDFOpenNameConstructor.Enabled = false;
                 label6.Enabled = false;
             }
             else
             {
-                textBoxNameConstructor.Enabled = true;
-                btnOpenNameConstructor.Enabled = true;
+                textBox_PDFNameConstructor.Enabled = true;
+                btnPDFOpenNameConstructor.Enabled = true;
                 label6.Enabled = true;
             }
         }

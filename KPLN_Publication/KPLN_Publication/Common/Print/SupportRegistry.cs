@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_Publication
 {
@@ -10,8 +6,6 @@ namespace KPLN_Publication
 
     public static class SupportRegistry
     {
-        
-
         public static void ActivateSettingsForPDFCreator(string outputFolder)
         {
             try

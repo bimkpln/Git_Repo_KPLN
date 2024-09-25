@@ -240,7 +240,6 @@ namespace KPLN_Publication.Forms
         
         private void OnSelectedSetChanged(object sender, SelectionChangedEventArgs e)
         {
-            //Print("OnSelectedSetChanged", KPLN_Loader.Preferences.MessageType.System_Regular);
             if (comboBoxDocumentSets.SelectedIndex != -1)
             {
                 ComboBoxSet set = comboBoxDocumentSets.SelectedItem as ComboBoxSet;
@@ -310,7 +309,7 @@ namespace KPLN_Publication.Forms
             }
             this.btnApplyChanges.Visibility = System.Windows.Visibility.Collapsed;
         }
-        
+
         private void OnUnchecked(object sender, RoutedEventArgs e)
         {
             //Print("OnUnchecked", KPLN_Loader.Preferences.MessageType.System_Regular);
@@ -344,18 +343,14 @@ namespace KPLN_Publication.Forms
                 int i = 0;
                 foreach (ComboBoxSet set in DocumentSets)
                 {
-                    try
+                    if (set.Set != null 
+                        && set.Set.Id.IntegerValue == pickedSet.Id.IntegerValue)
                     {
-                        if (set.Set.Id.IntegerValue == pickedSet.Id.IntegerValue)
-                        {
-                            comboBoxDocumentSets.SelectedIndex = i;
-                            comboBoxDocumentSets.SelectedItem = set;
-                            break;
-                        }
-                        i++;
+                        comboBoxDocumentSets.SelectedIndex = i;
+                        comboBoxDocumentSets.SelectedItem = set;
+                        break;
                     }
-                    catch (Exception)
-                    { }
+                    i++;
                 }
             }
             CollectionViewSource.GetDefaultView(comboBoxDocumentSets.ItemsSource).Refresh();
@@ -365,7 +360,6 @@ namespace KPLN_Publication.Forms
         
         private void OnBtnApplyChanges(object sender, RoutedEventArgs e)
         {
-            //Print("OnBtnApplyChanges", KPLN_Loader.Preferences.MessageType.System_Regular);
             List<View> views = new List<View>();
             foreach (ListBoxElement i in listBoxElements.ItemsSource)
             {
@@ -380,24 +374,18 @@ namespace KPLN_Publication.Forms
             comboBoxDocumentSets.SelectedIndex = 0;
             DocumentSets.Remove(set);
         }
-        
+
         private void OnItemDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            //Print("OnItemDoubleClick", KPLN_Loader.Preferences.MessageType.System_Regular);
-            try
+            View view = (listBoxElements.SelectedItem as ListBoxElement).View;
+            if (view != null)
             {
-                View view = (listBoxElements.SelectedItem as ListBoxElement).View;
-                if (view != null)
-                {
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSetActiveView(view));
-                }
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSetActiveView(view));
             }
-            catch (Exception) { }
         }
         
         private ObservableCollection<string> GetValues(WPFFilterElement filter)
         {
-            //Print("GetValues", KPLN_Loader.Preferences.MessageType.System_Regular);
             try
             {
                 if (filter.SelectedParameter == null)

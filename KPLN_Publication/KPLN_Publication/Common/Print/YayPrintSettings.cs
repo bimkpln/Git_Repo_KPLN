@@ -11,14 +11,11 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.DB.ExtensibleStorage;
+using KPLN_Publication.Common;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml.Serialization;
 
@@ -29,13 +26,15 @@ namespace KPLN_Publication
     /// </summary>
     public class YayPrintSettings
     {
+        #region Настройки экспорта в PDF
         public string printerName = new System.Drawing.Printing.PrinterSettings().PrinterName;
-        public string outputFolder = @"C:\PDF_Print";
-        public string nameConstructor = "<Номер листа>_<Имя листа>.pdf";
+        public string outputPDFFolder = @"C:\PDF_Print";
+        public string pdfNameConstructor = "<Номер листа>_<Имя листа>.pdf";
         public HiddenLineViewsType hiddenLineProcessing = HiddenLineViewsType.VectorProcessing;
         public ColorType colorsType = ColorType.Monochrome;
         public RasterQualityType rasterQuality = RasterQualityType.High;
 
+        public bool isPDFExport = true;
         public bool isMergePdfs = false;
         public bool isPrintToPaper = false;
         //public bool colorStamp;
@@ -45,6 +44,21 @@ namespace KPLN_Publication
 
         public List<PdfColor> excludeColors = new List<PdfColor>();
         public List<PdfColor> excludeBorderColors = new List<PdfColor>();
+        #endregion
+
+        #region Настройки экспорта в DWG
+        public bool isDWGExport = false;
+        public ExportDWGSettingsShell dwgExportSettingShell;
+        public string outputDWGFolder = @"C:\DWG_Print";
+        public string dwgNameConstructor = "<Номер листа>_<Имя листа>.dwg";
+        #endregion
+
+        /// <summary>
+        /// Беспараметрический конструктор для сериализатора
+        /// </summary>
+        public YayPrintSettings()
+        {
+        }
 
         /// <summary>
         /// Получение параметров печати
@@ -70,12 +84,14 @@ namespace KPLN_Publication
             }
             else
             {
-                ps = new YayPrintSettings();
-                ps.excludeColors = new List<PdfColor>
+                ps = new YayPrintSettings
                 {
-                    new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
-                    new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
-                    new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
+                    excludeColors = new List<PdfColor>
+                    {
+                        new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
+                        new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
+                        new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
+                    }
                 };
             }
 
@@ -85,72 +101,39 @@ namespace KPLN_Publication
                 new PdfColor(System.Drawing.Color.FromArgb(3,2,51))
             };
 
-            //PrintManager pManager = doc.PrintManager;
-            //ps.printerName = pManager.PrinterName;
-
             return ps;
         }
 
         public static bool SaveSettings(YayPrintSettings yps)
         {
             string xmlpath = ActivateFolder();
+            if (File.Exists(xmlpath)) 
+                File.Delete(xmlpath);
+            
             XmlSerializer serializer = new XmlSerializer(typeof(YayPrintSettings));
-            if (File.Exists(xmlpath)) File.Delete(xmlpath);
             using (FileStream writer = new FileStream(xmlpath, FileMode.OpenOrCreate))
             {
                 serializer.Serialize(writer, yps);
             }
+            
             return true;
         }
 
         private static string ActivateFolder()
         {
             string appdataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            
             string bspath = Path.Combine(appdataPath, "bim-starter");
-            if (!Directory.Exists(bspath)) Directory.CreateDirectory(bspath);
+            if (!Directory.Exists(bspath)) 
+                Directory.CreateDirectory(bspath);
+            
             string localFolder = Path.Combine(bspath, "KPLN_Publication");
-            if (!Directory.Exists(localFolder)) Directory.CreateDirectory(localFolder);
-            string xmlpath = Path.Combine(localFolder, "settings.xml");
+            if (!Directory.Exists(localFolder)) 
+                Directory.CreateDirectory(localFolder);
+            
+            string xmlpath = Path.Combine(localFolder, "yayPrintSettings.xml");
+            
             return xmlpath;
         }
-
-        /// <summary>
-        /// Беспараметрический конструктор для сериализатора
-        /// </summary>
-        public YayPrintSettings()
-        {
-
-        }
-
-
-
-        //private static YayPrintSettings GetDefault()
-        //{
-        //    System.Drawing.Printing.PrinterSettings winPrint =
-        //        new System.Drawing.Printing.PrinterSettings();
-        //    string winPrinterName = winPrint.PrinterName;
-        //    YayPrintSettings ps = new YayPrintSettings
-        //    {
-        //        colorsType = ColorType.GrayScale,
-        //        excludeColors = new List<PdfColor>
-        //        {
-        //            new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
-        //            new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
-        //            new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
-        //        },
-        //        hiddenLineProcessing = HiddenLineViewsType.RasterProcessing,
-        //        isMergePdfs = false,
-        //        nameConstructor = "<Номер листа>_<Имя листа>.pdf",
-        //        outputFolder = @"C:\PDF_Print",
-        //        printerName = winPrinterName, //doc.PrintManager.PrinterName,
-        //        isPrintToPaper = false,
-        //        rasterQuality = RasterQualityType.High,
-        //        isRefreshSchedules = true,
-        //        isUseOrientation = false
-        //    };
-
-        //    return ps;
-        //}
-
     }
 }

@@ -147,6 +147,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\ExportDWGSettingsShell.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandDelViews.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandDelLists.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandOpenSetManager.cs" />
