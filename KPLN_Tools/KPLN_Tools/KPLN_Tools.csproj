@@ -43,7 +43,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\</OutputPath>
-    <DefineConstants>DEBUG;Debug</DefineConstants>
+    <DefineConstants>DEBUG;Revit2023</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
@@ -170,6 +170,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
     <Compile Include="Common\LinkManager\CoordinateTypeConverter.cs" />
     <Compile Include="Common\LinkManager\LinkManagerEntity.cs" />
@@ -200,6 +201,7 @@
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
+    <Compile Include="ExternalCommands\CommandSendMsgToBitrix.cs" />
     <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
@@ -217,6 +219,8 @@
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
+    <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
     </Compile>
@@ -237,6 +241,9 @@
     </Compile>
     <Compile Include="Forms\SS_Sysetm_Main.xaml.cs">
       <DependentUpon>SS_Sysetm_Main.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SendMsgToBitrix.xaml.cs">
+      <DependentUpon>SendMsgToBitrix.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\UserSearch.xaml.cs">
       <DependentUpon>UserSearch.xaml</DependentUpon>
@@ -289,6 +296,8 @@
     <EmbeddedResource Include="Imagens\linkChangeSmall.png" />
     <EmbeddedResource Include="Imagens\FillInParamBig.png" />
     <EmbeddedResource Include="Imagens\FillInParamSmall.png" />
+    <EmbeddedResource Include="Imagens\sendMsgBig.png" />
+    <EmbeddedResource Include="Imagens\sendMsgSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -333,6 +342,10 @@
     <Page Include="Forms\SS_Sysetm_Main.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SendMsgToBitrix.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\UserSearch.xaml">
       <SubType>Designer</SubType>

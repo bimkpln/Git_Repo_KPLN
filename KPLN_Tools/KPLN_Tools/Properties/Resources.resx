@@ -196,6 +196,12 @@
   <data name="searchUserSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\searchUserSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="sendMsgBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\sendMsgBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="sendMsgSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\sendMsgSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="smlt_Small" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\smlt_Small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>

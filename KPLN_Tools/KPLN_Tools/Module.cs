@@ -65,7 +65,6 @@ namespace KPLN_Tools
                 "Выдает данные KPLN-пользователя Revit",
                 string.Format(
                     "Для поиска введи имя Revit-пользователя.\n" +
-                    "Доступно для пользователей KPLN_v.2.\n" +
                     "\n" +
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -76,6 +75,24 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.searchUserBig.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
                 "http://moodle");
+
+            PushButtonData sendMsgToBitrix = CreateBtnData(
+                "Отправить в Bitrix",
+                "Отправить в Bitrix",
+                "Отправляет данные по выделенному элементу пользователю в Bitrix",
+                string.Format(
+                    "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному/-ым пользователям Bitrix.\n" +
+                    "\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandSendMsgToBitrix).FullName,
+                "KPLN_Tools.Imagens.sendMsgBig.png",
+                "KPLN_Tools.Imagens.sendMsgSmall.png",
+                "http://moodle");
+            sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
             PushButtonData tagWiper = CreateBtnData(
                 "Очистить марки помещений",
@@ -188,6 +205,7 @@ namespace KPLN_Tools
 
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
+            sharedPullDownBtn.AddPushButton(sendMsgToBitrix);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
