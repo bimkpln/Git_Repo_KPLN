@@ -21,14 +21,13 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
-        private static int _restrictedUserSynch = 0;
-        private readonly DBWorkerService _dBWorkerService;
         private bool _isProjectCloseToUser = false;
 
         public Module()
         {
-            _dBWorkerService = new DBWorkerService();
+            DBWorkerService = new DBWorkerService();
         }
+        public static DBWorkerService DBWorkerService { get; private set; }
 
         /// <summary>
         /// Указатель на окно ревит
@@ -47,7 +46,7 @@ namespace KPLN_Looker
             try
             {
                 // Перезапись ini-файла
-                INIFileService iNIFileService = new INIFileService(_dBWorkerService.CurrentDBUser, application.ControlledApplication.VersionNumber);
+                INIFileService iNIFileService = new INIFileService(DBWorkerService.CurrentDBUser, application.ControlledApplication.VersionNumber);
                 if (!iNIFileService.OverwriteINIFile())
                 {
                     throw new Exception($"Ошибка при перезаписи ini-файла");
@@ -59,12 +58,12 @@ namespace KPLN_Looker
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
-                #if DEBUG
+#if DEBUG
                 application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
-                #else
-                if (!_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
+#else
+                if (!DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
-                #endif
+#endif
 
                 return Result.Succeeded;
             }
@@ -82,7 +81,7 @@ namespace KPLN_Looker
         /// <param name="e"></param>
         private void OnApplicationInitialized(object sender, ApplicationInitializedEventArgs e)
         {
-            if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+            if (DBWorkerService.CurrentDBUser.IsUserRestricted)
             {
                 MessageBox.Show(
                     $"Ваша работа ограничена работой в тестовых файлах. Любой факт попытки открытия/синхронизации при работе с файлами с диска Y:\\ - будет передан в BIM-отдел",
@@ -93,7 +92,7 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Событие на открытие документа
+        /// Событие на открытый документ
         /// </summary>
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
@@ -102,46 +101,46 @@ namespace KPLN_Looker
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-                if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+                if (DBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
                     BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
-                        $"Действие: Открыл проект {doc.Title}.");
+                        $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={DBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
+                        $"Действие: Открыл файл {doc.Title}.");
 
                     MessageBox.Show(
                         $"Вы открытли проект с диска Y:\\. Напомню - Ваша работа ограничена тестовыми файлами! Данные переданы в BIM-отдел",
-                        "Ошибка",
+                        "KPLN: Ошибка",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);
                 }
                 #endregion
 
                 #region Обработка проектов КПЛН
-                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+                DBProject dBProject = DBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
                 // У Сетуни 2 ревит сервера, что являеться жестким исключением, поэтому её захардкодил сюда
                 if (centralPath.Contains("Самолет_Сетунь") && dBProject == null)
                 {
                     string[] splitName = centralPath.Split(new string[] { "RSN://rs01/" }, StringSplitOptions.None);
                     centralPath = Path.Combine("RSN://192.168.0.5/", splitName[1]);
-                    dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+                    dBProject = DBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
                 }
 
                 if (dBProject != null)
                 {
                     // Ищу документ
-                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
+                    DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
                     if (dBDocument == null)
                     {
                         // Создаю, если не нашел
-                        DBSubDepartment dBSubDepartment = _dBWorkerService.CurrentDBUserSubDepartment;
-                        DBUser dbUser = _dBWorkerService.CurrentDBUser;
-                        dBDocument = _dBWorkerService.Create_DBDocument(
+                        DBSubDepartment dBSubDepartment = DBWorkerService.CurrentDBUserSubDepartment;
+                        DBUser dbUser = DBWorkerService.CurrentDBUser;
+                        dBDocument = DBWorkerService.Create_DBDocument(
                             centralPath,
                             dBProject.Id,
                             dBSubDepartment.Id,
                             dbUser.Id,
-                            _dBWorkerService.CurrentTimeForDB(),
+                            DBWorkerService.CurrentTimeForDB(),
                             false);
                     }
 
@@ -160,35 +159,40 @@ namespace KPLN_Looker
                     }
                     else
                     {
-                        _dBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
-                        DBProjectMatrix[] currentPrjMatrixColl = _dBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
+                        DBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
+                        DBProjectMatrix[] currentPrjMatrixColl = DBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
                         // Вывожу окно, если документ ЗАКРЫТ к редактированию
                         if (dBProject != null && dBProject.IsClosed)
                         {
-                            TaskDialog taskDialog = new TaskDialog("KPLN: Закрытый проект")
-                            {
-                                MainIcon = TaskDialogIcon.TaskDialogIconError,
-                                MainContent = "Вы пытаетесь работать в закрытом проекте. О факте синхранизации узнает BIM-отдел. " +
-                                    "Чтобы получить доступ на внесение изменений в этот проект - обратитесь в BIM-отдел",
-                                CommonButtons = TaskDialogCommonButtons.Ok,
-                            };
-                            taskDialog.Show();
+                            MessageBox.Show(
+                                "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на внесение изменений в этот проект - обратитесь в BIM-отдел" +
+                                "\nИНФО: Сейчас файл закроется",
+                                "KPLN: Закрытый проект",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+
+                            BitrixMessageSender.SendMsg_ToBIMChat(
+                                $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                                $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
+                                $"Действие: Открыл файл {doc.Title}.");
+
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
                         }
                         // Отлов пользователей с ограничением допуска к работе в текщем проекте
-                        else if (currentPrjMatrixColl.Length > 0 && !currentPrjMatrixColl.Where(prj => prj.UserId == _dBWorkerService.CurrentDBUser.Id).Any())
+                        else if (currentPrjMatrixColl.Length > 0 && !currentPrjMatrixColl.Where(prj => prj.UserId == DBWorkerService.CurrentDBUser.Id).Any())
                         {
                             _isProjectCloseToUser = true;
-                            BitrixMessageSender.SendMsg_ToBIMChat(
-                                $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                                $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
-                                $"Действие: Открыл проект {doc.Title}.");
-
                             MessageBox.Show(
                                 $"Вы открытли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика, и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
-                                $"\nИНФО: Если произвести синзронизацию проекта - он закроется",
-                                "Ошибка",
+                                $"\nИНФО: Если файл засинхронизировать - он закроется",
+                                "KPLN: Ограниченный проект",
                                 MessageBoxButtons.OK,
-                                MessageBoxIcon.Warning);
+                                MessageBoxIcon.Error);
+
+                            BitrixMessageSender.SendMsg_ToBIMChat(
+                                $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                                $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
+                                $"Действие: Открыл проект {doc.Title}.");
                         }
                     }
                 }
@@ -224,7 +228,7 @@ namespace KPLN_Looker
                         || activeView.Title.ToUpper().Contains("GSTATION")
                         || activeView.Title.ToUpper().Contains("NWC")
                         || activeView.Title.ToUpper().Contains("NWD"))
-                    && !_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
+                    && !DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 {
                     TaskDialog td = new TaskDialog("ВНИМАНИЕ")
                     {
@@ -262,69 +266,64 @@ namespace KPLN_Looker
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
                 #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-                if (_dBWorkerService.CurrentDBUser.IsUserRestricted)
+                if (DBWorkerService.CurrentDBUser.IsUserRestricted)
                 {
-                    _restrictedUserSynch++;
                     BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={_dBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
-                        $"Действие: Произвел синхронизацию проекта {doc.Title}.");
+                        $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={DBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
+                        $"Действие: Произвел синхронизацию файла {doc.Title}.");
+                    
+                    MessageBox.Show(
+                        $"Вы произвели синхронизацию проекта с диска Y:\\, хотя у вас нет к этому доступа (вы не сдали КЛ BIM-отделу). Данные переданы в BIM-отдел и ГИ бюро. Файл будет ЗАКРЫТ.",
+                        "KPLN: Ошибка",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
 
-                    if (_restrictedUserSynch == 1)
-                        MessageBox.Show(
-                            $"Вы произвели синхронизацию проекта с диска Y:\\, хотя у вас нет к этому доступа (вы не сдали КЛ BIM-отделу). Данные переданы в BIM-отдел и ГИ бюро. Следующая синхнронизация приведёт к ЗАКРЫТИЮ вашего файла.",
-                            "Ошибка",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-                    else
-                    {
-                        MessageBox.Show(
-                            $"Вы произвели синхронизацию проекта с диска Y:\\, хотя у вас нет к этому доступа (вы не сдали КЛ BIM-отделу). Данные переданы в BIM-отдел и ГИ бюро. Файл будет ЗАКРЫТ.",
-                            "Ошибка",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser());
-                    }
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
                 }
                 #endregion
 
                 #region Работа с проектами КПЛН
-                DBProject dBProject = _dBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+                DBProject dBProject = DBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
                 if (dBProject != null)
                 {
-                    DBDocument dBDocument = _dBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
+                    DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
                     if (dBDocument != null)
                     {
-                        _dBWorkerService.Update_DBDocumentLastChangedData(dBDocument);
-                        // Защита закрытого проекта от изменений
+                        DBWorkerService.Update_DBDocumentLastChangedData(dBDocument);
+                        // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
                         if (dBDocument.IsClosed)
                         {
-                            BitrixMessageSender
-                                .SendMsg_ToBIMChat($"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                                $"Действие: Синхронизиция в проекте {doc.Title}, который ЗАКРЫТ.");
+                            // Тут ничего делать не нужно, т.к. синхронизация запускается автоматом при открытии данного документа, чтобы освободить файл для закрытия (если не освободить - появляются доп. окна, которые невозможно отловить)
+                            
+                            //BitrixMessageSender.SendMsg_ToBIMChat(
+                            //    $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                            //    $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (блокировка открытия не сработала)\n" +
+                            //    $"Действие: Произвел синхронизацию в {doc.Title}.");
 
-                            MessageBox.Show(
-                                $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел.",
-                                "Ошибка",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
+                            //MessageBox.Show(
+                            //    $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                            //    "KPLN: Ошибка",
+                            //    MessageBoxButtons.OK,
+                            //    MessageBoxIcon.Error);
+
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
                         }
                         // Отлов пользователей с ограничением допуска к работе в текщем проекте
                         else if (_isProjectCloseToUser)
                         {
                             BitrixMessageSender.SendMsg_ToBIMChat(
-                                $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                                $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                                 $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
-                                $"Действие: Открыл проект {doc.Title}.");
+                                $"Действие: Произвел синхронизацию в {doc.Title}.");
 
                             MessageBox.Show(
                                 $"Вы открытли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика, и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел. Файл будет ЗАКРЫТ.",
-                                "Ошибка",
+                                "KPLN: Ошибка",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
 
-                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser());
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
                         }
                     }
                 }
@@ -380,8 +379,8 @@ namespace KPLN_Looker
                             return;
 
                         // Отлов семейств ферм, которые по форме зависят от проектов (могут разрабатывать КР)
-                        if ((_dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM") 
-                            || _dBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР"))
+                        if ((DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM")
+                            || DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР"))
                             && bic.Equals(BuiltInCategory.OST_Truss))
                             return;
 
