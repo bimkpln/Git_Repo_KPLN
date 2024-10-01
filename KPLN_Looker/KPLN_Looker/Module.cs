@@ -176,7 +176,7 @@ namespace KPLN_Looker
                                 $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
                                 $"Действие: Открыл файл {doc.Title}.");
 
-                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
                         }
                         // Отлов пользователей с ограничением допуска к работе в текщем проекте
                         else if (currentPrjMatrixColl.Length > 0 && !currentPrjMatrixColl.Where(prj => prj.UserId == DBWorkerService.CurrentDBUser.Id).Any())
@@ -279,7 +279,7 @@ namespace KPLN_Looker
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
 
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
                 }
                 #endregion
 
@@ -294,20 +294,18 @@ namespace KPLN_Looker
                         // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
                         if (dBDocument.IsClosed)
                         {
-                            // Тут ничего делать не нужно, т.к. синхронизация запускается автоматом при открытии данного документа, чтобы освободить файл для закрытия (если не освободить - появляются доп. окна, которые невозможно отловить)
-                            
-                            //BitrixMessageSender.SendMsg_ToBIMChat(
-                            //    $"Сотрудник: {_dBWorkerService.CurrentDBUser.Surname} {_dBWorkerService.CurrentDBUser.Name} из отдела {_dBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                            //    $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (блокировка открытия не сработала)\n" +
-                            //    $"Действие: Произвел синхронизацию в {doc.Title}.");
+                            BitrixMessageSender.SendMsg_ToBIMChat(
+                                $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                                $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (проект все же НЕ удалось закрыть)\n" +
+                                $"Действие: Произвел синхронизацию в {doc.Title}.");
 
-                            //MessageBox.Show(
-                            //    $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
-                            //    "KPLN: Ошибка",
-                            //    MessageBoxButtons.OK,
-                            //    MessageBoxIcon.Error);
+                            MessageBox.Show(
+                                $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                                "KPLN: Ошибка",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
 
-                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
                         }
                         // Отлов пользователей с ограничением допуска к работе в текщем проекте
                         else if (_isProjectCloseToUser)
@@ -323,7 +321,7 @@ namespace KPLN_Looker
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
 
-                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser));
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
                         }
                     }
                 }

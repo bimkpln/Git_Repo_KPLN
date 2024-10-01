@@ -3,10 +3,8 @@ using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
-using KPLN_Looker.Services;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -21,14 +19,18 @@ namespace KPLN_Looker.ExecutableCommand
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
-        
+
+        private static Document _doc;
         private static string _docName;
 
         private readonly DBUser _currentDBUser;
 
-        public DocCloser(DBUser currentDBUser)
+        public DocCloser(DBUser currentDBUser, Document doc)
         {
             _currentDBUser = currentDBUser;
+
+            _doc = doc;
+            _docName = _doc.Title;
         }
 
         public Result Execute(UIApplication app)
@@ -36,8 +38,6 @@ namespace KPLN_Looker.ExecutableCommand
             app.DialogBoxShowing += App_DialogBoxShowing;
 
             UIDocument uidoc = app.ActiveUIDocument;
-            Document doc = uidoc.Document;
-            _docName = doc.Title;
 
             IList<UIView> openedViewsColl = uidoc.GetOpenUIViews();
             try
