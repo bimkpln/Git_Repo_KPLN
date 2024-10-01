@@ -18,6 +18,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public string DialogId { get; set; }
 
         /// <summary>
+        /// Сообщение диалогового окна. Нужно для стандартных Message Boxes, т.к. DialogId у них пустой: https://www.revitapidocs.com/2020.1/7311c9d6-f223-f4c2-0b7a-197e42e5ee61.htm
+        /// </summary>
+        public string Message { get; set; }
+
+        /// <summary>
         /// Значение, необходимое для закрытия окна
         /// </summary>
         public string OverrideResult { get; set; }
