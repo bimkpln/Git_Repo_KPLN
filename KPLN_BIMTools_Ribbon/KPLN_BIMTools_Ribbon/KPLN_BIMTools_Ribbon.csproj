@@ -21,7 +21,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_BIMTools_Ribbon\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Revit2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -84,8 +84,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Looker">
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2023\KPLN_Looker.dll</HintPath>
@@ -175,9 +174,16 @@
     <Compile Include="Common\ExchangeService.cs" />
     <Compile Include="Core\SQLite\DBEnvironment.cs" />
     <Compile Include="Core\SQLite\SQLiteService.cs" />
+    <Compile Include="ExternalCommands\batchAddingParameters.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
     <Compile Include="ExternalCommands\CommandNWExport.cs" />
     <Compile Include="ExternalCommands\CommandRSExchange.cs" />
+    <Compile Include="Forms\batchAddingParametersWindowGeneral.xaml.cs">
+      <DependentUpon>batchAddingParametersWindowGeneral.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\batchAddingParametersWindowСhoice.xaml.cs">
+      <DependentUpon>batchAddingParametersWindowСhoice.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ConfigItem.xaml.cs">
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
@@ -215,6 +221,14 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\batchAddingParametersWindowGeneral.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\batchAddingParametersWindowСhoice.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\ConfigItem.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -249,6 +263,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Imagens\lookupBig.png" />
     <EmbeddedResource Include="Imagens\lookupSmall.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\batchAddingParameters.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

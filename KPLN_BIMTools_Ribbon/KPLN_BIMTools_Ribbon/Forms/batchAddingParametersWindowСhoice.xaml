@@ -1,0 +1,25 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.batchAddingParametersWindowСhoice"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontSize="14"
+        Title="KPLN: Пакетное добавление параметров" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
+        Width="400" 
+        Height="195" 
+        ResizeMode="NoResize"
+        Background="#FF292D36">
+    <Grid>
+        <StackPanel Margin="25,20,0,0">
+            <RadioButton x:Name="generalParam" Content="Пакетное добавление общих параметров" GroupName="typeParam" Foreground="White" Margin="0,0,0,5" IsChecked="True"/>
+            <RadioButton x:Name="familyParam" Content="Пакетное добавление параметров семейства" GroupName="typeParam" Foreground="White"/>
+        </StackPanel>
+        <Button Content="Новый файл конфигурации" VerticalAlignment="Top" Width="340px" Margin="0,80,0,0" Click="Button_NewParam"/>
+        <Button Content="Использовать готовый файл конфигурации" VerticalAlignment="Top" Width="340px" Margin="0,110,0,0" Click="Button_LoadParam"/>
+    </Grid>
+</Window>

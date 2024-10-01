@@ -1,0 +1,85 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.batchAddingParametersWindowGeneral"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontSize="14"
+        Title="KPLN: Пакетное добавление общих параметров" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
+        Width="1000" 
+        Height="520" 
+        ResizeMode="NoResize"
+        Background="#FF292D36">
+    <Grid>
+        
+        <StackPanel Margin="20">
+            <TextBlock Text="ФОП" FontWeight="Bold" Margin="0,0,0,5" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Left" Width="780px">
+                <TextBox x:Name="TB_filePath" IsReadOnly="True" Margin="0,0,10,0" Padding="8,3,0,0" Width="700px" Height="25px" HorizontalAlignment="Left"/>
+                <Button Content="Заменить" Margin="0,-25,-10,0" Width="80px" Height="26px" HorizontalAlignment="Right" Click="OpenFileButton_Click"/>
+            </StackPanel>
+        </StackPanel>
+
+
+
+        <StackPanel Margin="0,0,0,50" Width="950px" Height="350px" VerticalAlignment="Bottom" Background="#FF3E3E3E">
+            
+            <StackPanel Margin="45,5,0,0" Orientation="Horizontal" VerticalAlignment="Top">
+                <TextBlock TextWrapping="Wrap" Text="Параметр" VerticalAlignment="Top" Margin="-25,5,0,7"  FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Тип/Экземпляр" VerticalAlignment="Top" Margin="442,5,0,7" FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Группа" VerticalAlignment="Top" Margin="25,5,0,7" FontSize="11px" Foreground="White"/>
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Visible" Height="320px">
+
+                <StackPanel x:Name="SP_allPanelParamsFields">
+
+                    <StackPanel x:Name="SP_panelParamFields" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
+                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,4,0,0" SelectedIndex="0">
+                            <ComboBoxItem Content="" />
+                        </ComboBox>
+                            <ComboBox x:Name="CB_paramsType" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
+                            <ComboBoxItem Content="Тип" />
+                            <ComboBoxItem Content="Экземпляр" />
+                        </ComboBox>
+                            <ComboBox x:Name="CB_paramsGroup" SelectionChanged="OnGroupSelectionChanged" Width="270" Height="25" Padding="8,4,0,0">
+                        </ComboBox>
+                        <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
+
+                    </StackPanel>
+                
+                </StackPanel>
+               
+            </ScrollViewer>
+        </StackPanel>
+
+        <Button Content="Добавить параметры в семейство" Margin="15,0,0,13" Width="260px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+        <Button Content="Сохранить файл параметров" Margin="285,0,0,13" Width="220px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+
+        <Button Content="+ Добавить параметр" Width="180" Height="25" Margin="0,0,15,13" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderBrush="{x:Null}" Foreground="{x:Null}" Click="AddPanelParamFieldsButton_Click">
+            <Button.Style>
+                <Style TargetType="{x:Type Button}">
+                    <Setter Property="Background" Value="#FF04750B"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border Background="{TemplateBinding Background}">
+                                    <TextBlock Text="+ Добавить параметр" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#FF05860D"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Button.Style>
+        </Button>
+    </Grid>
+</Window>
