@@ -195,7 +195,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                     {
                                         string newFilePath = string.Empty;
                                         ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
-
+                                        
                                         // Проверяю КУДА копирвать.
                                         // Это папка, если нет - то ревит-сервер
                                         if (Directory.Exists(config.PathTo))

@@ -1,6 +1,7 @@
 ﻿﻿using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
 using System;
@@ -59,24 +60,28 @@ namespace KPLN_BIMTools_Ribbon.Common
             }
             else
             {
-                DBRevitDialog currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
-                if (currentDBDialog != null)
+                DBRevitDialog currentDBDialog = null;
+                if (string.IsNullOrEmpty(args.DialogId))
                 {
-                    if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
-                    {
-                        if (args.OverrideResult((int)taskDialogResult))
-                            _logger.Info($"Окно {args.DialogId} успешно закрыто. Была применена команда {currentDBDialog.OverrideResult}");
-                        else
-                            _logger.Error($"Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!");
-                    }
-                    else
-                        _logger.Error($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
-
+                    TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
+                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
                 }
                 else
-                {
+                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
+
+                if (currentDBDialog == null)
                     _logger.Error($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека");
+
+                
+                if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
+                {
+                    if (args.OverrideResult((int)taskDialogResult))
+                        _logger.Info($"Окно {args.DialogId} успешно закрыто. Была применена команда {currentDBDialog.OverrideResult}");
+                    else
+                        _logger.Error($"Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!");
                 }
+                else
+                    _logger.Error($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
             }
         }
 
