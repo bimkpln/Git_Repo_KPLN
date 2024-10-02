@@ -1,10 +1,12 @@
-﻿﻿using Autodesk.Revit.DB.Events;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_BIMTools_Ribbon.Common
@@ -85,9 +87,22 @@ namespace KPLN_BIMTools_Ribbon.Common
             }
         }
 
-        private void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
+        /// <summary>
+        /// Обработчик ошибок. Он нужен, когда закрывание окна не работает "Error dialog has no callback"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
+        internal void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
         {
-            // Пока не понятно, нужна ли реализация
+            FailuresAccessor fa = args.GetFailuresAccessor();
+            IList<FailureMessageAccessor> failures = fa.GetFailureMessages();
+            if (failures.Count > 0)
+            {
+                foreach (FailureMessageAccessor failure in failures)
+                {
+                    fa.DeleteWarning(failure);
+                }
+            }
         }
 
         private void SubscribeToFieldChangedEvent(object sender, FieldChangedEventArgs e)

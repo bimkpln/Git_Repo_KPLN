@@ -167,7 +167,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
                 RevitUIControlledApp.ControlledApplication.DocumentOpened += revitEventWorker.OnDocumentOpened;
                 RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
-                //RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
+                RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
 
                 // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
                 try
@@ -238,7 +238,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
                     RevitUIControlledApp.ControlledApplication.DocumentOpened -= revitEventWorker.OnDocumentOpened;
                     RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
-                    //RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
+                    RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
                 }
                 
             }
