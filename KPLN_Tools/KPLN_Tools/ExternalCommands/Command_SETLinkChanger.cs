@@ -1,13 +1,16 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
+using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker.FactoryParts;
 using RevitServerAPILib;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -15,40 +18,32 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class Command_SETLinkChanger : IExternalCommand
     {
-        /// <summary>
-        /// Путь к RS#1
-        /// </summary>
-        private readonly string _rs1Path = "192.168.0.5";
-        /// <summary>
-        /// Второй путь к RS#1 (сис админ что-то накрутил...)
-        /// </summary>
-        private readonly string _rs1Path2 = "192.168.20.7";
-        /// <summary>
-        /// Путь к RS#2
-        /// </summary>
-        private readonly string _rs2Path = "rs01";
-        private readonly int _rsVersion = 2020;
-        /// <summary>
-        /// Коллекция аббревиатур разделов, которые должны храниться на RS#2
-        /// </summary>
-        private readonly string[] _fileNameAbrCollForAR = new string[]
+        private static DBRevitDialog[] _dbRevitDialogs = null;
+
+        private readonly string _serverOLDPath = "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\";
+        private readonly string _rsOLDPath = "192.168.0.5";
+        private readonly string _rsOLDRKPath = "rs01";
+
+        private readonly string _rsARPath = "rs03";
+        private readonly string _rsKRPath = "rs04";
+        private readonly string _rsIOSPath = "rs05";
+
+
+        internal protected static UIControlledApplication RevitUIControlledApp { get; set; }
+
+        internal static void SetStaticEnvironment(UIControlledApplication application)
         {
-            "КР",
-            "ОВ",
-            "ПТ",
-            "ВК",
-            "ЭОМ",
-            "ПБ",
-            "АК",
-            "СС",
-        };
-        /// <summary>
-        /// Ссылка на файл со списком моделей с РС№2
-        /// </summary>
-        private readonly string _pathDBFileRS2 = @"Z:\Отдел BIM\03_Скрипты\СЕТ_Коллеция файлов с РС2.txt";
+            RevitUIControlledApp = application;
+        }
+
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            if (_dbRevitDialogs == null)
+            {
+                RevitDialogDbService currentRevitDialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
+                _dbRevitDialogs = currentRevitDialogDbService.GetDBRevitDialogs().ToArray();
+            }
 
             //Get application and documnet objects
             UIApplication uiapp = commandData.Application;
@@ -57,101 +52,112 @@ namespace KPLN_Tools.ExternalCommands
 
             // Подписка на события
             commandData.Application.DialogBoxShowing += OnDialogBoxShowing;
+            RevitUIControlledApp.ControlledApplication.FailuresProcessing += OnFailureProcessing;
 
-            try
+            string newModelPathString = string.Empty;
+            WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.OpenAllWorksets);
+
+            Element[] linkDocColl = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkType)).ToArray();
+            int succsesSteps = 0;
+            int allModlesForChange = 0;
+            foreach (Element linkElem in linkDocColl)
             {
-                #region Вывожу окно с запросом на обновление файла-конфига (только для BIM-отдела)
-                if (Module.CurrentDBUser.SubDepartmentId == 8)
+                
+                if (linkElem is RevitLinkType linkType)
                 {
-                    Autodesk.Revit.UI.TaskDialog td = new Autodesk.Revit.UI.TaskDialog("ОШИБКА")
+                    // Ручное регулирование обрабатываемых связей (перенос будет по частям - поэтому хардкодим)
+                    if (!linkElem.Name.Contains("РФ") && !linkElem.Name.Contains("АР") && !linkElem.Name.Contains("КР"))
+                        continue;
+
+                    ModelPath newModelPath = null;
+                    newModelPathString = string.Empty;
+                    try
                     {
-                        MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconWarning,
-                        MainInstruction = $"Обновить файл со списком Revit-файлов с сервера {_rs2Path}?",
-                        FooterText = "Занимает много времени, т.к. всё нужно обновить. Лучше запускать этот алгоритм только в случае необходимости (например: в проекте добавились новые файлы)",
-                        CommonButtons = Autodesk.Revit.UI.TaskDialogCommonButtons.Yes | Autodesk.Revit.UI.TaskDialogCommonButtons.No,
-                    };
-
-                    Autodesk.Revit.UI.TaskDialogResult tdResult = td.Show();
-                    if (tdResult == Autodesk.Revit.UI.TaskDialogResult.Yes)
-                    {
-                        // Коллекция моделей РС№2
-                        RevitServer rs2 = new RevitServer(_rs2Path, _rsVersion);
-                        Task<IList<Model>> rs2ModelsTask = new Task<IList<Model>>(() =>
-                        {
-                            return GetFilesFromRSFolder(rs2, "Самолет_Сетунь");
-                        });
-                        rs2ModelsTask.Start();
-
-                        rs2ModelsTask.Wait();
-
-                        // Запись строк в файл
-                        using (StreamWriter writer = new StreamWriter(_pathDBFileRS2))
-                        {
-                            foreach (Model model in rs2ModelsTask.Result)
-                            {
-                                writer.WriteLine(model.Path);
-                            }
-                        }
-                    }
-                }
-                #endregion
-
-                Task<List<string>> getDBFilesRS2Task = new Task<List<string>>(() =>
-                {
-                    List<string> pathes = new List<string>();
-                    // Чтение строк из файла
-                    using (StreamReader reader = new StreamReader(_pathDBFileRS2))
-                    {
-                        string line;
-                        while ((line = reader.ReadLine()) != null)
-                        {
-                            pathes.Add(line);
-                        }
-
-                        return pathes;
-                    }
-                });
-                getDBFilesRS2Task.Start();
-
-                WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.OpenAllWorksets);
-
-                Element[] linkDocColl = new FilteredElementCollector(doc).OfClass(typeof(RevitLinkType)).ToArray();
-                int succsesSteps = 0;
-                int allModlesForChange = 0;
-                foreach (Element linkElem in linkDocColl)
-                {
-                    if (linkElem is RevitLinkType linkType)
-                    {
-                        // Анализирую тип связи
-                        if (linkType.PathType != PathType.Server)
-                            continue;
-
-                        // Анализирую имя проекта на наличие в списке для РС№2 ТОЛЬКО для АР (для остальных - меняются все ссылки)
-                        string linkName = linkType.Name;
-                        if (doc.Title.Contains("АР") || _fileNameAbrCollForAR.Count(abbr => linkName.Contains(abbr)) == 0)
-                            continue;
-
-                        // Анализирую положение связи для РС№2
+                        // Анализирую положение связи 
                         ExternalFileReference extFileRef = linkType.GetExternalFileReference();
-                        ModelPath modelPath = extFileRef.GetAbsolutePath();
-                        if (!modelPath.CentralServerPath.Contains(_rs1Path) && !modelPath.CentralServerPath.Contains(_rs1Path2))
+                        ModelPath oldModelPath = extFileRef.GetAbsolutePath();
+                        string oldModelPathString = ModelPathUtils.ConvertModelPathToUserVisiblePath(oldModelPath);
+                        
+                        if (!oldModelPathString.Contains(_rsOLDPath) && !oldModelPathString.Contains(_rsOLDRKPath) && !oldModelPathString.Contains(_serverOLDPath))
                             continue;
-
-                        // Генерю новый путь
+                        
                         allModlesForChange++;
-                        getDBFilesRS2Task.Wait();
-                        string currentNewRSModelPath = getDBFilesRS2Task.Result.Where(p => p.Contains(linkName)).FirstOrDefault();
-                        if (string.IsNullOrEmpty(currentNewRSModelPath))
+
+                        #region Обрабатываю пути АР и файлов ОВ, которые остались на старом серваке
+                        if (oldModelPathString.Contains(_rsOLDPath) && (oldModelPathString.Contains("_АР_") || oldModelPathString.Contains("_РФ")))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsARPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_rsOLDPath) && oldModelPathString.Contains("_ОВ"))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+                        #endregion
+
+                        #region Обрабатываю пути КР
+                        if (oldModelPathString.Contains(_rsOLDRKPath))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDRKPath, $@"{_rsKRPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+                        #endregion
+
+                            #region Обрабатываю пути инженерки
+                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ЭОМ"))
+                        {
+                            if (oldModelPathString.Contains("К1"))
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К1");
+                            else if(oldModelPathString.Contains("К2"))
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К2");
+                            else if (oldModelPathString.Contains("К3"))
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К3");
+                            else if (oldModelPathString.Contains("СТЛ"))
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\СТЛ");
+
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ЭОМ\\{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ВК"))
+                        {
+                            newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.2.ВК\\1.RVT\\");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ВК\\{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_АУПТ"))
+                        {
+                            newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.3.АУПТ\\1.RVT\\");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\АУПТ\\{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ОВ"))
+                        {
+                            newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.4.ОВ\\1.RVT\\");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ОВ\\{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_serverOLDPath) 
+                            && (oldModelPathString.Contains("_СС.") || oldModelPathString.Contains("_ПБ.") || oldModelPathString.Contains("_АК.")))
+                        {
+                            newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.5.СС\\1.RVT\\");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\СС\\{newModelPathString}");
+                        }
+                        #endregion
+
+                        if (newModelPath == null)
                         {
                             HtmlOutput.Print(
-                                $"У файла {linkName} не удалось найти дубликат на сервере {_rs2Path}. Скинь в БИМ-отдел, им нужно обновить файл со списком Revit-файлов с сервера {_rs2Path}",
+                                $"Для пути {oldModelPathString} не подобралось нужного алгоритма замены. Либо файл уже заменен на актуальный (актуальные РС: АР - {_rsARPath}, КР - {_rsKRPath}, ИОС - {_rsIOSPath}), либо нужно скинуть ошибку разработчику",
+                                MessageType.Error);
+                            continue;
+                        }
+                        
+                        if (!newModelPath.IsValidObject)
+                        {
+                            HtmlOutput.Print(
+                                $"Для пути {oldModelPathString} переопределился новый путь {newModelPathString}, но это не путь к модели (ModelPath). Нужен конктроль разработчика!",
                                 MessageType.Error);
                             continue;
                         }
 
-                        ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rs2Path}\\{currentNewRSModelPath}");
-
-                        // Проверка РН, что он открыт, иначе - насильно открываю (только через создание элемента в проекте)
+                        #region Проверка РН, что он открыт, иначе - насильно открываю (только через создание элемента в проекте)
                         WorksetId linkWorksetId = linkType.WorksetId;
                         Workset linkWorkset = new FilteredWorksetCollector(doc)
                             .OfKind(WorksetKind.UserWorkset)
@@ -175,10 +181,7 @@ namespace KPLN_Tools.ExternalCommands
                                 Autodesk.Revit.DB.Parameter wsparam = wall.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM);
                                 if (wsparam != null && !wsparam.IsReadOnly) wsparam.Set(linkWorkset.Id.IntegerValue);
 
-                                List<ElementId> ids = new List<ElementId>
-                                {
-                                    elementId
-                                };
+                                List<ElementId> ids = new List<ElementId> { elementId };
 
                                 //This command will actualy open workset
                                 uidoc.ShowElements(ids);
@@ -189,22 +192,23 @@ namespace KPLN_Tools.ExternalCommands
                                 t.Commit();
                             }
                         }
+                        #endregion
 
                         // Обновляю по новому пути
+                        string resulModelPathString = ModelPathUtils.ConvertModelPathToUserVisiblePath(newModelPath);
                         linkType.LoadFrom(newModelPath, openConfig);
                         succsesSteps++;
                     }
+                    catch (FileArgumentNotFoundException)
+                    {
+                        HtmlOutput.Print($"Файла по переопределенному пути нет. Проверь наличие файла для обновления тут: {ModelPathUtils.ConvertModelPathToUserVisiblePath(newModelPath)}. Если она там есть - обратись к разработчику!", MessageType.Error);
+                    }
                 }
-
-                HtmlOutput.Print(
-                    $"Успешно для {succsesSteps} моделей из {allModlesForChange} моделей, подлежащих замене пути",
-                    MessageType.Success);
             }
 
-            catch (System.Exception ex)
-            {
-                HtmlOutput.Print($"{ex}", MessageType.Error);
-            }
+            HtmlOutput.Print(
+                $"Успешно для {succsesSteps} моделей из {allModlesForChange} моделей, подлежащих замене пути",
+                MessageType.Success);
 
             commandData.Application.DialogBoxShowing -= OnDialogBoxShowing;
 
@@ -218,17 +222,51 @@ namespace KPLN_Tools.ExternalCommands
         /// <param name="args"></param>
         internal void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
-
-            TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-            if (taskDialogShowingEventArgs.Message.Contains("Не существует открытого вида"))
+            if (args.Cancellable)
             {
-                args.OverrideResult(5);
+                args.Cancel();
             }
-            else if (taskDialogShowingEventArgs.Message.Contains("Невозможно подобрать подходящий вид"))
+            else
             {
-                args.OverrideResult(1);
-            }
+                DBRevitDialog currentDBDialog = null;
+                if (string.IsNullOrEmpty(args.DialogId))
+                {
+                    TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
+                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+                }
+                else
+                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
 
+                if (currentDBDialog == null)
+                    HtmlOutput.Print($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека", MessageType.Error);
+
+                if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
+                {
+                    bool isOverride = args.OverrideResult((int)taskDialogResult);
+                    if (!isOverride)
+                        HtmlOutput.Print($"Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!", MessageType.Error);
+                }
+                else
+                    HtmlOutput.Print($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!", MessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// Обработчик ошибок. Он нужен, когда закрывание окна не работает "Error dialog has no callback"
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
+        private void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
+        {
+            FailuresAccessor fa = args.GetFailuresAccessor();
+            IList<FailureMessageAccessor> failures = fa.GetFailureMessages();
+            if (failures.Count > 0)
+            {
+                foreach (FailureMessageAccessor failure in failures)
+                {
+                    fa.DeleteWarning(failure);
+                }
+            }
         }
 
         private List<Model> GetFilesFromRSFolder(RevitServer rs, string path)
@@ -245,10 +283,22 @@ namespace KPLN_Tools.ExternalCommands
 
                 if (folderFolders.Any())
                     resultModels.AddRange(GetFilesFromRSFolder(rs, folder.Path));
-
             }
 
             return resultModels;
+        }
+
+        private string RemoveSubstringIfExists(string originalString, string substring)
+        {
+            int index = originalString.IndexOf(substring);
+            if (index != -1)
+            {
+                // Удаляем подстроку, если она найдена
+                return originalString.Remove(index, substring.Length);
+            }
+
+            // Возвращаем исходную строку, если подстрока не найдена
+            return originalString;
         }
     }
 }

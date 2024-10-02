@@ -3,6 +3,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
+using KPLN_Tools.ExternalCommands;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media;
@@ -35,6 +36,8 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            Command_SETLinkChanger.SetStaticEnvironment(application);
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
 
