@@ -65,9 +65,9 @@ namespace KPLN_Tools.ExternalCommands
                 
                 if (linkElem is RevitLinkType linkType)
                 {
-                    // Ручное регулирование обрабатываемых связей (перенос будет по частям - поэтому хардкодим)
-                    if (!linkElem.Name.Contains("РФ") && !linkElem.Name.Contains("АР") && !linkElem.Name.Contains("КР"))
-                        continue;
+                    //// Ручное регулирование обрабатываемых связей (перенос будет по частям - поэтому хардкодим)
+                    //if (!linkElem.Name.Contains("РФ") && !linkElem.Name.Contains("АР") && !linkElem.Name.Contains("КР"))
+                    //    continue;
 
                     ModelPath newModelPath = null;
                     newModelPathString = string.Empty;
@@ -97,47 +97,89 @@ namespace KPLN_Tools.ExternalCommands
                         #endregion
 
                         #region Обрабатываю пути КР
-                        if (oldModelPathString.Contains(_rsOLDRKPath))
+                        else if (oldModelPathString.Contains(_rsOLDRKPath))
                         {
                             newModelPathString = oldModelPathString.Replace(_rsOLDRKPath, $@"{_rsKRPath}");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
                         }
                         #endregion
 
-                            #region Обрабатываю пути инженерки
+                        #region Обрабатываю пути инженерки
+                        // ЭОМ
                         else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ЭОМ"))
                         {
                             if (oldModelPathString.Contains("К1"))
-                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К1");
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К1\\");
                             else if(oldModelPathString.Contains("К2"))
-                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К2");
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К2\\");
                             else if (oldModelPathString.Contains("К3"))
-                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К3");
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\К3\\");
                             else if (oldModelPathString.Contains("СТЛ"))
-                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\СТЛ");
+                                newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.1.ЭОМ\\1.RVT\\СТЛ\\");
 
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ЭОМ\\{newModelPathString}");
                         }
-                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ВК"))
+                        else if (oldModelPathString.Contains(_rsOLDPath)
+                            && oldModelPathString.Contains("_ЭОМ"))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+
+                        //  ВК
+                        else if (oldModelPathString.Contains(_serverOLDPath) 
+                            && oldModelPathString.Contains("_ВК"))
                         {
                             newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.2.ВК\\1.RVT\\");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ВК\\{newModelPathString}");
                         }
-                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_АУПТ"))
+                        else if (oldModelPathString.Contains(_rsOLDPath)
+                            && oldModelPathString.Contains("_ВК"))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+
+                        // АУПТ
+                        else if (oldModelPathString.Contains(_serverOLDPath) 
+                            && oldModelPathString.Contains("_ПТ"))
                         {
                             newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.3.АУПТ\\1.RVT\\");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\АУПТ\\{newModelPathString}");
                         }
-                        else if (oldModelPathString.Contains(_serverOLDPath) && oldModelPathString.Contains("_ОВ"))
+                        else if (oldModelPathString.Contains(_rsOLDPath)
+                            && oldModelPathString.Contains("_ПТ"))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+
+                        // ОВ
+                        else if (oldModelPathString.Contains(_serverOLDPath) 
+                            && oldModelPathString.Contains("_ОВ"))
                         {
                             newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.4.ОВ\\1.RVT\\");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ОВ\\{newModelPathString}");
                         }
-                        else if (oldModelPathString.Contains(_serverOLDPath) 
-                            && (oldModelPathString.Contains("_СС.") || oldModelPathString.Contains("_ПБ.") || oldModelPathString.Contains("_АК.")))
+                        else if (oldModelPathString.Contains(_rsOLDPath)
+                            && oldModelPathString.Contains("_ОВ"))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
+                        }
+
+                        // СС
+                        else if (oldModelPathString.Contains(_serverOLDPath)
+                            && (oldModelPathString.Contains("_СС") || oldModelPathString.Contains("_ПБ") || oldModelPathString.Contains("_АК")))
                         {
                             newModelPathString = RemoveSubstringIfExists(oldModelPathString, $"{_serverOLDPath}7.5.СС\\1.RVT\\");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\СС\\{newModelPathString}");
+                        }
+                        else if (oldModelPathString.Contains(_rsOLDPath)
+                            && (oldModelPathString.Contains("_СС") || oldModelPathString.Contains("_ПБ") || oldModelPathString.Contains("_АК")))
+                        {
+                            newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
+                            newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
                         }
                         #endregion
 
