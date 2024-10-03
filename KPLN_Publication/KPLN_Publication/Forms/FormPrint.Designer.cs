@@ -386,9 +386,9 @@
             this.label4.AutoSize = true;
             this.label4.Location = new System.Drawing.Point(12, 12);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(101, 13);
+            this.label4.Size = new System.Drawing.Size(104, 13);
             this.label4.TabIndex = 6;
-            this.label4.Text = "Листы для печати:";
+            this.label4.Text = "Листы для выдачи:";
             // 
             // pluginVersion
             // 
@@ -544,7 +544,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "FormPrint";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Пакетная печать";
+            this.Text = "Пакетная выдача";
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);

@@ -25,21 +25,18 @@ namespace KPLN_Publication
 {
     public partial class FormPrint : System.Windows.Forms.Form
     {
-        private YayPrintSettings _printSettings;
+        private readonly YayPrintSettings _printSettings;
 
-        private System.Windows.Forms.ToolTip _toolTip = new System.Windows.Forms.ToolTip();
+        private readonly ToolTip _toolTip = new ToolTip();
 
-        public YayPrintSettings printSettings
+        public YayPrintSettings PrintSettings
         {
             get { return _printSettings; }
         }
 
-        //public List<MySheet> sheetsToPrint = new List<MySheet>();
-        private Dictionary<string, List<MySheet>> sheetsBaseToPrint =
-            new Dictionary<string, List<MySheet>>();
+        private readonly Dictionary<string, List<MySheet>> _sheetsBaseToPrint = new Dictionary<string, List<MySheet>>();
 
-        public Dictionary<string, List<MySheet>> sheetsSelected =
-            new Dictionary<string, List<MySheet>>();
+        public Dictionary<string, List<MySheet>> _sheetsSelected = new Dictionary<string, List<MySheet>>();
 
         public bool printToFile = false;
 
@@ -54,10 +51,10 @@ namespace KPLN_Publication
             if (userDepartment == 2 || userDepartment == 8)
                 this.checkBoxExcludeBorders.Enabled = true;
 
-            sheetsBaseToPrint = SheetsBase;
+            _sheetsBaseToPrint = SheetsBase;
 
             //заполняю treeView
-            foreach (var docWithSheets in sheetsBaseToPrint)
+            foreach (var docWithSheets in _sheetsBaseToPrint)
             {
                 TreeNode docNode = new TreeNode(docWithSheets.Key);
                 bool haveChecked = false;
@@ -175,14 +172,14 @@ namespace KPLN_Publication
                     if (!sheetNode.Checked) continue;
                     string sheetTitle = sheetNode.Text;
 
-                    var tempSheets = sheetsBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
+                    var tempSheets = _sheetsBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
                     if (tempSheets.Count == 0) throw new Exception("Cant get sheets from TreeNode");
                     MySheet msheet = tempSheets.First();
                     selectedSheetsInDoc.Add(msheet);
                 }
                 if (selectedSheetsInDoc.Count == 0) continue;
 
-                sheetsSelected.Add(docNodeTitle, selectedSheetsInDoc);
+                _sheetsSelected.Add(docNodeTitle, selectedSheetsInDoc);
             }
 
             #region Обновление YayPrintSettings (изначально не реализован INotifyPrCh, продолжаю костыль)
@@ -373,7 +370,7 @@ namespace KPLN_Publication
             FormExcludeColors form = new FormExcludeColors(_printSettings.excludeColors);
             if (form.ShowDialog() != DialogResult.OK) return;
 
-            printSettings.excludeColors = form.Colors;
+            PrintSettings.excludeColors = form.Colors;
         }
     }
 }

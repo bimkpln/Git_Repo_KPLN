@@ -157,7 +157,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 FormPrint form = new FormPrint(mainDoc, allSheets, printSettings, CurrentDBUser);
                 form.ShowDialog();
 
-                printSettings = form.printSettings;
+                printSettings = form.PrintSettings;
                 if (form.DialogResult != System.Windows.Forms.DialogResult.OK || (!printSettings.isPDFExport && !printSettings.isDWGExport))
                     return Result.Cancelled;
 
@@ -202,7 +202,7 @@ namespace KPLN_Publication.ExternalCommands.Print
         private int ExportToPDFEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MySheet>> allSheets, FormPrint form)
         {
             string printerName = printSettings.printerName;
-            allSheets = form.sheetsSelected;
+            allSheets = form._sheetsSelected;
             logger.Write("Выбранные для печати листы");
             foreach (var kvp in allSheets)
             {
@@ -583,7 +583,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 
         private int ExportToDWGEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MySheet>> allSheets, FormPrint form)
         {
-            allSheets = form.sheetsSelected;
+            allSheets = form._sheetsSelected;
             logger.Write("Выбранные для печати листы");
             foreach (var kvp in allSheets)
             {
@@ -711,7 +711,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write(" ");
                     logger.Write("Экспортируется лист: " + msheet.sheet.Name);
 
-                    ExportDWGSettings exportSettings = form.printSettings.dwgExportSettingShell.DWGExportSetting;
+                    ExportDWGSettings exportSettings = form.PrintSettings.dwgExportSettingShell.DWGExportSetting;
 
                     // Настраиваем параметры экспорта
                     DWGExportOptions dwgOptions = exportSettings.GetDWGExportOptions() ?? new DWGExportOptions();
@@ -721,7 +721,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     // Экспортируем лист в DWG
                     bool exportSuccess = openedDoc.Export(
                         outputFolder,
-                        msheet.NameByConstructor(form.printSettings.dwgNameConstructor),
+                        msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor),
                         new List<ElementId> { msheet.sheet.Id },
                         dwgOptions);
                     if (exportSuccess)
