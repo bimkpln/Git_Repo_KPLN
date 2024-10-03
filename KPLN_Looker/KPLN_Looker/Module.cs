@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -262,6 +263,28 @@ namespace KPLN_Looker
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
+            
+            #region Бэкап версий с РС на наш сервак по проекту Сетунь
+            if (args.Status == RevitAPIEventStatus.Succeeded)
+            {
+                // Хардкод для старой версии - бэкапим только проект Сетунь
+                if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_АР_"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\project\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_КР_"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ЭОМ"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ВК"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ПТ"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ОВ"))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
+                else if (doc.PathName.Contains("СЕТ_1") && (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_")))
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
+            }
+            #endregion
+
             if (MonitoredFilePath(doc) != null)
             {
                 string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
@@ -510,5 +533,75 @@ namespace KPLN_Looker
                 }
             }
         }
+
+        /// <summary>
+        /// У РС нет возможности откатиться. Делаю свой бэкап на наш сервак
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="pathTo"></param>
+        /// <returns></returns>
+        private bool RSBackupFile(Document doc, string pathTo)
+        {
+            string copyTaskMsg = string.Empty;
+            Task copyLocalFileTask = Task.Run(() =>
+            {
+                FileInfo localFI = new FileInfo(doc.PathName);
+                if (localFI.Exists)
+                {
+                    if (Directory.Exists(pathTo))
+                    {
+                        string archCopyPath = $"{pathTo}\\{doc.Title}_{DateTime.Now:MM_d_H_m}.rvt";
+                        FileInfo archCopyFI = localFI.CopyTo(archCopyPath);
+                        if (!archCopyFI.Exists)
+                            copyTaskMsg = "Не удалось сделать архивную копию. Обратись в BIM-отдел!";
+                    }
+                }
+                else
+                    copyTaskMsg = "Не удалось найти локальную копию. Обратись в BIM-отдел!";
+            });
+
+            string clearTaskMsg = string.Empty;
+            Task clearArchCopyFilesTask = Task.Run(() =>
+            {
+                // Лимит на архивные копии для конкретного файла
+                int archFilesLimit = 10;
+                string[] namePrepareArr = doc.Title.Split(new[] { $"_{DBWorkerService.CurrentDBUser.SystemName}" }, StringSplitOptions.None);
+                if (namePrepareArr.Length == 0)
+                    clearTaskMsg = $"Не удалось определить имя модели из хранилища для пользователя {DBWorkerService.CurrentDBUser.SystemName}. Обратись в BIM-отдел!";
+                else
+                {
+                    string centralFileName = namePrepareArr[0];
+                    if (Directory.Exists(pathTo))
+                    {
+                        string[] archFiles = Directory.GetFiles(pathTo);
+                        FileInfo[] currentCentralArchCopies = archFiles
+                            .Where(a => a.Contains(centralFileName))
+                            .Select(a => new FileInfo(a))
+                            .OrderBy(fi => fi.CreationTime)
+                            .ToArray();
+
+                        if (currentCentralArchCopies.Count() > archFilesLimit)
+                        {
+                            int startCount = currentCentralArchCopies.Count() - archFilesLimit;
+                            while (startCount > 0)
+                            {
+                                startCount--;
+                                FileInfo archCopyToDel = currentCentralArchCopies[startCount];
+                                archCopyToDel.Delete();
+                            }
+                        }
+                    }
+                }
+            });
+            Task.WaitAll(new Task[2] { copyLocalFileTask, clearArchCopyFilesTask });
+
+            if (copyTaskMsg != string.Empty)
+                Print($"Ошибка при копировании резервного файла: {copyTaskMsg}", MessageType.Error);
+
+            if (clearTaskMsg != string.Empty)
+                Print($"Ошибка при очистке старых резервных копий: {clearTaskMsg}", MessageType.Error);
+            return false;
+        }
+
     }
 }
