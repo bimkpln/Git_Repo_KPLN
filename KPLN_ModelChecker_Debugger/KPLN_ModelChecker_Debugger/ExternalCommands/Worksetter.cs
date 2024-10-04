@@ -20,11 +20,15 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
             try
             {
-                IEnumerable<RevitLinkInstance> links = new FilteredElementCollector(doc)
+                IEnumerable<RevitLinkInstance> rvtLinks = new FilteredElementCollector(doc)
                     .OfClass(typeof(RevitLinkInstance))
                     .Cast<RevitLinkInstance>();
 
-                if (WorksetSetService.ExecuteFromService(doc, links))
+                IEnumerable<ImportInstance> importInstances = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ImportInstance))
+                    .Cast<ImportInstance>();
+
+                if (WorksetSetService.ExecuteFromService(doc, rvtLinks, importInstances))
                     return Result.Succeeded;
                 else
                     return Result.Cancelled;

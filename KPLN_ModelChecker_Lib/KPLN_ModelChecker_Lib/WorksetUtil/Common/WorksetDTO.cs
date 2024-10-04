@@ -9,17 +9,22 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil.Common
         /// <summary>
         /// Префикс для связей
         /// </summary>
-        public string LinkedFilesPrefix;
+        public string LinkedFilesPrefix { get; set; }
+
+        /// <summary>
+        /// Имя рабоего набора для dwg-линков
+        /// </summary>
+        public string DWGLinksName { get; set; }
 
         /// <summary>
         /// Нужно ли использовать отдельные рабочие наборы для копируемых с мониторингом элементам?
         /// </summary>
-        public bool UseMonitoredElements;
+        public bool UseMonitoredElements { get; set; }
 
         /// <summary>
         /// Имя рабоего набора для скопированных элементов (кроме осей и уровней)
         /// </summary>
-        public string MonitoredElementsName;
+        public string MonitoredElementsName { get; set; }
 
         /// <summary>
         /// Список параметров, для фильтрации
