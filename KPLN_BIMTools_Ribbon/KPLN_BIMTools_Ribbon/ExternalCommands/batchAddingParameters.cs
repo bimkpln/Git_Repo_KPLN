@@ -1,10 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using KPLN_BIMTools_Ribbon.Forms;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_BIMTools_Ribbon.ExternalCommands
 {
