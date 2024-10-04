@@ -31,46 +31,57 @@ namespace KPLN_Tools.ExecutableCommand
             List<RevitLinkInstance> instForWS = new List<RevitLinkInstance>();
             using (Transaction t = new Transaction(doc, $"KPLN: Связи rvt"))
             {
+
+                IEnumerable<string> rvtLinkTypeNames = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkType))
+                    .Cast<RevitLinkType>()
+                    .Select(rlt => rlt.Name);
+
                 t.Start();
 
                 foreach (LinkManagerEntity linkChangeEntity in _linkChangeEntityColl)
                 {
-                    ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(linkChangeEntity.LinkPath);
-
-                    WorksetConfiguration wsConfig = CreatWSConfig(linkChangeEntity, docModelPath);
-                    // Для РС не подходит относительный путь, а другой в API не представлен
-                    bool isRelative = !linkChangeEntity.LinkPath.Contains("RSN");
-                    RevitLinkOptions rlOpt;
-                    if (wsConfig != null)
-                        rlOpt = new RevitLinkOptions(isRelative, wsConfig);
+                    if (rvtLinkTypeNames.Any(rltn => rltn == linkChangeEntity.LinkName))
+                        _sbWrnResult.AppendLine($"Связь '{linkChangeEntity.LinkName}' уже есть в проекте!\n");
                     else
-                        rlOpt = new RevitLinkOptions(isRelative);
+                    {
+                        ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(linkChangeEntity.LinkPath);
 
-                    LinkLoadResult loadResult = null;
-                    try
-                    {
-                        loadResult = RevitLinkType.Create(doc, docModelPath, rlOpt);
-                    }
-                    catch (ArgumentException)
-                    {
-                        _sbErrResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' уже существует, или путь указан не верно");
-                    }
-
-                    if (loadResult != null)
-                    {
-                        // Успешно загружено
-                        if (loadResult.LoadResult == LinkLoadResultType.LinkLoaded)
-                        {
-                            RevitLinkInstance linkInst = CreateLinkBySettings(doc, loadResult, linkChangeEntity);
-                            if (linkChangeEntity.CreateWorksetForLinkInst)
-                                instForWS.Add(linkInst);
-                        }
-                        else if (loadResult.LoadResult == LinkLoadResultType.SameModelAsHost)
-                            _sbWrnResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' нельзя загружать в такой же файл\n");
-                        // Остальные статусы загрузок не совсем доходят, т.к. скорее сбрасывается exception (поэтому выше есть cath на ArgumentException), но разные типы зачем-то существуют
-                        // Возможно будут изменения в будущем, или я не все учел
+                        WorksetConfiguration wsConfig = CreatWSConfig(linkChangeEntity, docModelPath);
+                        // Для РС не подходит относительный путь, а другой в API не представлен
+                        bool isRelative = !linkChangeEntity.LinkPath.Contains("RSN");
+                        RevitLinkOptions rlOpt;
+                        if (wsConfig != null)
+                            rlOpt = new RevitLinkOptions(isRelative, wsConfig);
                         else
-                            _sbErrResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' не обработана. Отправь разработчику\n");
+                            rlOpt = new RevitLinkOptions(isRelative);
+
+                        LinkLoadResult loadResult = null;
+                        try
+                        {
+                            loadResult = RevitLinkType.Create(doc, docModelPath, rlOpt);
+                        }
+                        catch (ArgumentException)
+                        {
+                            _sbErrResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' уже существует, или путь указан не верно");
+                        }
+
+                        if (loadResult != null)
+                        {
+                            // Успешно загружено
+                            if (loadResult.LoadResult == LinkLoadResultType.LinkLoaded)
+                            {
+                                RevitLinkInstance linkInst = CreateLinkBySettings(doc, loadResult, linkChangeEntity);
+                                if (linkChangeEntity.CreateWorksetForLinkInst)
+                                    instForWS.Add(linkInst);
+                            }
+                            else if (loadResult.LoadResult == LinkLoadResultType.SameModelAsHost)
+                                _sbWrnResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' нельзя загружать в такой же файл\n");
+                            // Остальные статусы загрузок не совсем доходят, т.к. скорее сбрасывается exception (поэтому выше есть cath на ArgumentException), но разные типы зачем-то существуют
+                            // Возможно будут изменения в будущем, или я не все учел
+                            else
+                                _sbErrResult.AppendLine($"Связь '{linkChangeEntity.LinkPath}' не обработана. Отправь разработчику\n");
+                        }
                     }
                 }
 
@@ -79,7 +90,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             // Создание отдельного РН, если нужно.
             if (instForWS.Count() > 0)
-                WorksetSetService.ExecuteFromService(doc, instForWS, false);
+                WorksetSetService.ExecuteFromService(doc, instForWS, null, false, false);
 
             if (_sbErrResult.Length != 0)
                 HtmlOutput.Print($"Ошибки при загрузке связей связей: \n{_sbErrResult}", MessageType.Error);
