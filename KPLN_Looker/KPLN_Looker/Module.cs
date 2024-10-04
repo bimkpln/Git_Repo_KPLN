@@ -231,15 +231,36 @@ namespace KPLN_Looker
                         || activeView.Title.ToUpper().Contains("NWD"))
                     && !DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 {
-                    TaskDialog td = new TaskDialog("ВНИМАНИЕ")
+                    Document doc = args.Document;
+                    UIDocument uidoc = new UIDocument(doc);
+                    if (uidoc != null)
                     {
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                        MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать. Вид будет закрыт",
-                        CommonButtons = TaskDialogCommonButtons.Ok,
-                    };
-                    td.Show();
+                        IList<UIView> openViews = uidoc.GetOpenUIViews();
 
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ViewCloser(activeView.Id));
+                        TaskDialog td;
+                        if (openViews.Count > 1)
+                        {
+                            td = new TaskDialog("ВНИМАНИЕ")
+                            {
+                                MainIcon = TaskDialogIcon.TaskDialogIconError,
+                                MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать, поэтому он зароектся",
+                                CommonButtons = TaskDialogCommonButtons.Ok,
+                            };
+
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ViewCloser(activeView.Id));
+                        }
+                        else
+                        {
+                            td = new TaskDialog("ВНИМАНИЕ: Закройте вид!")
+                            {
+                                MainIcon = TaskDialogIcon.TaskDialogIconError,
+                                MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать. Вид нужно закрыть",
+                                CommonButtons = TaskDialogCommonButtons.Ok,
+                            };
+                        }
+
+                        td?.Show();
+                    }
                 }
             }
             #endregion
