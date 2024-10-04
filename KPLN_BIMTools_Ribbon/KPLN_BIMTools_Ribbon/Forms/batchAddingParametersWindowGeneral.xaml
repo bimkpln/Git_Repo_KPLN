@@ -10,44 +10,53 @@
         WindowStyle="ToolWindow" 
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
-        Width="1000" 
-        Height="520" 
+        Width="1350" 
+        Height="580" 
         ResizeMode="NoResize"
         Background="#FF292D36">
     <Grid>
+
+        <StackPanel Margin="20,0,0,0">
+            <TextBlock Text="Семейство" FontWeight="Bold" Margin="0,10,0,5" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Left">
+                <TextBox x:Name="TB_familyName" IsReadOnly="True" Margin="0,0,10,0" Padding="8,3,0,0" Width="1150px" Height="25px" HorizontalAlignment="Left" Background="#FFCDD869"/>
+            </StackPanel>
+        </StackPanel>
         
-        <StackPanel Margin="20">
-            <TextBlock Text="ФОП" FontWeight="Bold" Margin="0,0,0,5" Foreground="White"/>
-            <StackPanel HorizontalAlignment="Left" Width="780px">
-                <TextBox x:Name="TB_filePath" IsReadOnly="True" Margin="0,0,10,0" Padding="8,3,0,0" Width="700px" Height="25px" HorizontalAlignment="Left"/>
-                <Button Content="Заменить" Margin="0,-25,-10,0" Width="80px" Height="26px" HorizontalAlignment="Right" Click="OpenFileButton_Click"/>
+        <StackPanel Margin="20,45,0,0">
+            <TextBlock Text="ФОП" FontWeight="Bold" Margin="0,20,0,5" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Left" Width="1100px" Orientation="Horizontal">
+                <TextBox x:Name="TB_filePath" IsReadOnly="True" Margin="0,0,0,0" Padding="8,3,0,0" Width="1000px" Height="25px" HorizontalAlignment="Left"/>
+                <Button Content="Заменить" Margin="10,0,0,0" Width="80px" Height="25px" HorizontalAlignment="Right" Click="OpenFileButton_Click"/>
             </StackPanel>
         </StackPanel>
 
 
 
-        <StackPanel Margin="0,0,0,50" Width="950px" Height="350px" VerticalAlignment="Bottom" Background="#FF3E3E3E">
+        <StackPanel Margin="0,0,0,60" Width="1290px" Height="350px" VerticalAlignment="Bottom" Background="#FF3E3E3E">
             
             <StackPanel Margin="45,5,0,0" Orientation="Horizontal" VerticalAlignment="Top">
-                <TextBlock TextWrapping="Wrap" Text="Параметр" VerticalAlignment="Top" Margin="-25,5,0,7"  FontSize="11px" Foreground="White"/>
-                <TextBlock TextWrapping="Wrap" Text="Тип/Экземпляр" VerticalAlignment="Top" Margin="442,5,0,7" FontSize="11px" Foreground="White"/>
-                <TextBlock TextWrapping="Wrap" Text="Группа" VerticalAlignment="Top" Margin="25,5,0,7" FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Группа" VerticalAlignment="Top" Margin="-25,5,0,7" FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Параметр" VerticalAlignment="Top" Margin="235,5,0,7"  FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Тип/Экземпляр" VerticalAlignment="Top" Margin="440,5,0,7" FontSize="11px" Foreground="White"/>
+                <TextBlock TextWrapping="Wrap" Text="Группирование" VerticalAlignment="Top" Margin="25,5,0,7" FontSize="11px" Foreground="White"/>
             </StackPanel>
 
             <ScrollViewer VerticalScrollBarVisibility="Visible" Height="320px">
 
                 <StackPanel x:Name="SP_allPanelParamsFields">
 
-                    <StackPanel x:Name="SP_panelParamFields" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
+                    <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
+                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="OnGroupSelectionChanged">
+                        </ComboBox>
                         <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,4,0,0" SelectedIndex="0">
                             <ComboBoxItem Content="" />
                         </ComboBox>
-                            <ComboBox x:Name="CB_paramsType" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
-                            <ComboBoxItem Content="Тип" />
-                            <ComboBoxItem Content="Экземпляр" />
+                        <ComboBox x:Name="CB_paramsType" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
                         </ComboBox>
-                            <ComboBox x:Name="CB_paramsGroup" SelectionChanged="OnGroupSelectionChanged" Width="270" Height="25" Padding="8,4,0,0">
+                        <ComboBox x:Name="CB_groupingName" Width="340" Height="25" Padding="8,4,0,0" SelectedIndex="21">
                         </ComboBox>
+
                         <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
 
                     </StackPanel>
@@ -57,8 +66,8 @@
             </ScrollViewer>
         </StackPanel>
 
-        <Button Content="Добавить параметры в семейство" Margin="15,0,0,13" Width="260px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
-        <Button Content="Сохранить файл параметров" Margin="285,0,0,13" Width="220px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+        <Button Content="Добавить параметры в семейство" Margin="15,0,0,13" Width="260px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="AddParamInFamilyButton_Click"/>
+        <Button Content="Сохранить файл параметров" Margin="285,0,0,13" Width="220px" Height="25px" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="SaveParamFileSettingsButton_Click"/>
 
         <Button Content="+ Добавить параметр" Width="180" Height="25" Margin="0,0,15,13" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderBrush="{x:Null}" Foreground="{x:Null}" Click="AddPanelParamFieldsButton_Click">
             <Button.Style>

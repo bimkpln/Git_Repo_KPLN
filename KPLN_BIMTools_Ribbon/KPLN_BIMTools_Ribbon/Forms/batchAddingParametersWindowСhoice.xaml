@@ -10,16 +10,19 @@
         WindowStyle="ToolWindow" 
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
-        Width="400" 
-        Height="195" 
+        Width="800" 
+        Height="180" 
         ResizeMode="NoResize"
         Background="#FF292D36">
     <Grid>
-        <StackPanel Margin="25,20,0,0">
+        <TextBox x:Name="familyName" IsReadOnly="True" Text="Имя выбраного семейства" VerticalAlignment="Top" Margin="0,15,0,0" Width="750" Height="20px" Padding="0,0.5,0,0" Background="#FFCDD869"/>
+        <StackPanel Margin="25,50,0,0">
             <RadioButton x:Name="generalParam" Content="Пакетное добавление общих параметров" GroupName="typeParam" Foreground="White" Margin="0,0,0,5" IsChecked="True"/>
             <RadioButton x:Name="familyParam" Content="Пакетное добавление параметров семейства" GroupName="typeParam" Foreground="White"/>
         </StackPanel>
-        <Button Content="Новый файл конфигурации" VerticalAlignment="Top" Width="340px" Margin="0,80,0,0" Click="Button_NewParam"/>
-        <Button Content="Использовать готовый файл конфигурации" VerticalAlignment="Top" Width="340px" Margin="0,110,0,0" Click="Button_LoadParam"/>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="20,10,10,15">
+            <Button Content="Новый файл конфигурации" Height="25px" Width="230px" Click="Button_NewParam"/>
+            <Button Content="Использовать готовый файл-конфигурации" Height="25px" Width="340px" Margin="175,0,0,0" Click="Button_LoadParam"/>
+        </StackPanel>
     </Grid>
 </Window>
