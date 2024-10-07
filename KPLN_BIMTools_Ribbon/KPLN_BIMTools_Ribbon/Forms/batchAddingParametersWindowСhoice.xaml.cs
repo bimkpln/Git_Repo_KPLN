@@ -1,6 +1,10 @@
 ﻿using Autodesk.Revit.UI;
 using System.Windows;
-using Newtonsoft.Json;
+using System.IO;
+using Newtonsoft.Json.Linq;
+using Autodesk.Revit.DB.Electrical;
+using System.Linq;
+
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -24,16 +28,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
         public string paramType;
         public string jsonFileSettingPath;
 
-        private void Button_NewParam(object sender, RoutedEventArgs e)
+        // Пакетное добавление общих параметров
+        private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
         {
             jsonFileSettingPath = "";
 
-            OpenBatchAddingParametersWindow(activeFamilyName, jsonFileSettingPath);
+            Close();
+            var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
+            var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+            window.ShowDialog();
         }
 
-        private void Button_LoadParam(object sender, RoutedEventArgs e)
+        // Пакетное добавление параметров семейства
+        private void Button_NewFamilyParam(object sender, RoutedEventArgs e)
         {
-           
+            System.Windows.Forms.MessageBox.Show("Пакетное добавление параметров семейства", "Скоро всё будет", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+        }
+
+
+
+        private void Button_LoadParam(object sender, RoutedEventArgs e)
+        {          
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
             openFileDialog.Filter = "Преднастройка (*.json)|*.json";
             bool? result = openFileDialog.ShowDialog();
@@ -42,21 +58,27 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 jsonFileSettingPath = openFileDialog.FileName;
 
-                OpenBatchAddingParametersWindow(activeFamilyName, jsonFileSettingPath);
-            }
-        }
+                string jsonContent = File.ReadAllText(jsonFileSettingPath);
+                dynamic jsonFile = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonContent);
 
-        private void OpenBatchAddingParametersWindow(string activeFamilyName, string jsonFileSettingPath)
-        {        
-            if (generalParam.IsChecked == true) 
-            {
-                Close();
-                var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
-                var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-                new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
-                window.ShowDialog();
-            } if (familyParam.IsChecked == true) {
-                // Окно параметры семейства
+                if (jsonFile is JArray && ((JArray)jsonFile).All(item =>
+                        item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null && item["grouping"] != null))
+                {
+                    Close();
+                    var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
+                    var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+                    new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+                    window.ShowDialog();
+                }
+                else if (jsonFile is JArray && ((JArray)jsonFile).Any(item => ((string)item["NE"])?.StartsWith("FamilyParamAdd") == true))
+                {
+                    Close();
+                    System.Windows.Forms.MessageBox.Show("Пакетное добавление параметров семейства", "Скоро всё будет", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                }
+                else{
+                    System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                }
+
             }
         }
     }

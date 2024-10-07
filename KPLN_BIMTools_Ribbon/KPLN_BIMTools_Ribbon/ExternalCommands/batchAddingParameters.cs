@@ -30,7 +30,6 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 return Result.Failed;
             }
 
-
             return Result.Succeeded;
         }
         
