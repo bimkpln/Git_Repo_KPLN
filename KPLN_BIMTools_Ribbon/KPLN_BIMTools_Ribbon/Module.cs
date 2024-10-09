@@ -158,7 +158,16 @@ namespace KPLN_BIMTools_Ribbon
         /// <param name="pullDownButton">Выпадающий список, в который добавляем кнопку</param>
         /// <param name="imageName">Имя иконки, как ресурса</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp, bool avclass)
+        private void AddPushButtonDataInPullDown(
+            string name,
+            string text, 
+            string shortDescription, 
+            string longDescription, 
+            string className, 
+            PulldownButton pullDownButton, 
+            string imageName, 
+            string contextualHelp, 
+            bool avclass)
         {
             PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = pullDownButton.AddPushButton(data) as PushButton;

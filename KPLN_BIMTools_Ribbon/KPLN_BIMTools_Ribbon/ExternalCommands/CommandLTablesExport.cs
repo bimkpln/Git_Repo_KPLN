@@ -645,6 +645,8 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             using (System.Windows.Forms.Form form = new System.Windows.Forms.Form())
             {
                 form.Text = title;
+                
+                // Добавление элементов в окно
                 ListBox listBox = new ListBox
                 {
                     Dock = DockStyle.Fill,
@@ -652,6 +654,18 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 };
                 listBox.Items.AddRange(options.ToArray());
                 form.Controls.Add(listBox);
+                
+                // Обработчик события двойного нажатия на элемент списка
+                listBox.DoubleClick += (sender, e) =>
+                {
+                    if (listBox.SelectedItem != null) // Убедимся, что что-то выбрано
+                    {
+                        form.DialogResult = DialogResult.OK;
+                        form.Close();
+                    }
+                };
+
+                // Добавление кнопки Выбрать
                 Button button = new Button
                 {
                     Text = "Выбрать",
@@ -659,7 +673,12 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 };
                 form.Controls.Add(button);
 
-                button.Click += (sender, e) => { form.DialogResult = DialogResult.OK; form.Close(); };
+                // Обработчик события нажатия кнопки "Выбрать"
+                button.Click += (sender, e) => 
+                { 
+                    form.DialogResult = DialogResult.OK; 
+                    form.Close(); 
+                };
 
                 return form.ShowDialog() == DialogResult.OK ? listBox.SelectedItems : null;
             }
