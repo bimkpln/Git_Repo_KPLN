@@ -306,12 +306,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             int delegatedCount = (int)Math.Round((double)(delegated * 100 / max));
             DelegationProgress = delegatedCount;
 
-            // Устанавливаю статус для смены пиктограммы при условии что все коллизии просмотрены (делегированы, либо устранены)
-            if (done + delegated == max && delegated > 0)
-            {
+            // Устанавливаю статус для смены пиктограммы при условии что все коллизии просмотрены (делегированы, либо устранены, либо открыты)
+            if (done == max)
+                Status = ClashesMainCollection.KPItemStatus.Closed;
+            else if (done + delegated == max && delegated > 0)
                 Status = ClashesMainCollection.KPItemStatus.Delegated;
-                _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Status, MainDB_Enumerator.Reports, Id);
-            }
+            else
+                Status = ClashesMainCollection.KPItemStatus.Opened;
+            
+            _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Status, MainDB_Enumerator.Reports, Id);
 
             PbEnabled = System.Windows.Visibility.Visible;
         }
