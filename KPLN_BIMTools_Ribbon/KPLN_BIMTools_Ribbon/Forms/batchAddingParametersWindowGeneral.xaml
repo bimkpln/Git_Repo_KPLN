@@ -47,14 +47,14 @@
                 <StackPanel x:Name="SP_allPanelParamsFields">
 
                     <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
-                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="OnGroupSelectionChanged">
+                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="ParamsGroupSelectionChanged">
                         </ComboBox>
-                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,4,0,0" SelectedIndex="0">
-                            <ComboBoxItem Content="" />
+                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,3,0,0"  IsEditable="True" StaysOpenOnEdit="True" IsTextSearchEnabled="False" 
+                                  TextBoxBase.TextChanged="ParamsNameTextChanged" Loaded="ParamsName_Loaded" DropDownOpened="ParamsNameDropDownOpened" SelectionChanged="ParamsNameSelectionChanged">
                         </ComboBox>
-                        <ComboBox x:Name="CB_paramsType" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
+                        <ComboBox x:Name="CB_typeInstance" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
                         </ComboBox>
-                        <ComboBox x:Name="CB_groupingName" Width="340" Height="25" Padding="8,4,0,0" SelectedIndex="21">
+                        <ComboBox x:Name="CB_grouping" Width="340" Height="25" Padding="8,4,0,0" SelectedIndex="21">
                         </ComboBox>
 
                         <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>

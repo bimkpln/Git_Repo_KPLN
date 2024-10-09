@@ -33,7 +33,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             jsonFileSettingPath = "";
 
-            Close();
             var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
             var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
             new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
@@ -43,10 +42,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
         // Пакетное добавление параметров семейства
         private void Button_NewFamilyParam(object sender, RoutedEventArgs e)
         {
-            System.Windows.Forms.MessageBox.Show("Пакетное добавление параметров семейства", "Скоро всё будет", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+            var window = new batchAddingParametersWindowFamily(uiapp, activeFamilyName, jsonFileSettingPath);
+            var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+            window.ShowDialog();
         }
-
-
 
         private void Button_LoadParam(object sender, RoutedEventArgs e)
         {          
@@ -64,7 +64,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 if (jsonFile is JArray && ((JArray)jsonFile).All(item =>
                         item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null && item["grouping"] != null))
                 {
-                    Close();
                     var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
                     var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
                     new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
@@ -72,8 +71,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
                 else if (jsonFile is JArray && ((JArray)jsonFile).Any(item => ((string)item["NE"])?.StartsWith("FamilyParamAdd") == true))
                 {
-                    Close();
-                    System.Windows.Forms.MessageBox.Show("Пакетное добавление параметров семейства", "Скоро всё будет", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                    var window = new batchAddingParametersWindowFamily(uiapp, activeFamilyName, jsonFileSettingPath);
+                    var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+                    new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+                    window.ShowDialog();
                 }
                 else{
                     System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);

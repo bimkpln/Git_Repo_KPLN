@@ -9,6 +9,9 @@ using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
 using System.Windows.Input;
+using static System.Net.Mime.MediaTypeNames;
+using System.Diagnostics;
+using System.Windows.Data;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -27,6 +30,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         public string SPFPath;
         public Dictionary<String, List<ExternalDefinition>> groupAndParametersFromSPFDict = new Dictionary<String, List<ExternalDefinition>>();
+        List<string> allParamNameList = new List<string>();
 
         public batchAddingParametersWindowGeneral(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
@@ -66,6 +70,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        // Создание List всех параметров из ФОП
+        static public List<string> CreateallParamNameList(Dictionary<String, List<ExternalDefinition>> groupAndParametersFromSPFDict)
+        {
+            List<string> allParamNameList = new List<string>();
+
+            foreach (var kvp in groupAndParametersFromSPFDict)
+            {
+                foreach (var param in kvp.Value)
+                {
+                    allParamNameList.Add(param.Name);
+                }
+            }
+
+            allParamNameList.Sort();
+
+            return allParamNameList;
+        }
+
         // Создание List для "Тип/Экземпляр"
         static public List<string> CreateTypeInstanceList()
         {
@@ -81,7 +103,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             foreach (string key in CreateTypeInstanceList())
             {
-                CB_paramsType.Items.Add(key);
+                CB_typeInstance.Items.Add(key);
             }
         }
 
@@ -144,7 +166,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             foreach (string groupName in CreateGroupingDictionary().Keys)
             {
-                CB_groupingName.Items.Add(groupName);
+                CB_grouping.Items.Add(groupName);
             }
         }
 
@@ -220,25 +242,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 SPFPath = "";
                 TB_filePath.Text = SPFPath;
+
+                return;
             }
+
+            allParamNameList = CreateallParamNameList(groupAndParametersFromSPFDict);
 
             foreach (var key in groupAndParametersFromSPFDict.Keys)
             {
                 CB_paramsGroup.Items.Add(key);
             }
-        }
-
-        // Обновление оригинального ComboBox "Параметры"
-        public void UpdateComboBoxField_Param(string selectParamGroup)
-        {
-            CB_paramsName.Items.Clear();
-
-            if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
+          
+            foreach (var param in allParamNameList)
             {
-                foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
-                {
-                    CB_paramsName.Items.Add(param.Name);
-                }
+                CB_paramsName.Items.Add(param);
             }
         }
 
@@ -440,8 +457,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return FieldsAreFilled;
         }
 
-        // Проверка заполнености полей ComboBox внутри #uniqueParameterField
-        public bool CheckingFillingComboBoxes()
+        // Проверка заполнености всех полей ComboBox внутри #uniqueParameterField
+        public bool CheckingFillingAllComboBoxes()
         {
             bool FieldsAreFilled = true;
 
@@ -461,18 +478,26 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return FieldsAreFilled;
         }
 
-        // Изменение стиля для ComboBox "Группа"
+        // Изменение стиля для ComboBox "Группа" и "Параметры"
         public void makeDisabledParamGroupField()
         {
             foreach (var stackPanel in SP_allPanelParamsFields.Children.OfType<StackPanel>())
             {
                 if (stackPanel.Tag?.ToString() == "uniqueParameterField")
                 {
-                    var comboBox = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
-                    if (comboBox != null)
+                    int count = 0;
+                    foreach (var comboBox in stackPanel.Children.OfType<System.Windows.Controls.ComboBox>())
                     {
-                        comboBox.Foreground = Brushes.Gray;
-                        comboBox.IsEnabled = false;
+                        if (count < 2)
+                        {
+                            comboBox.Foreground = Brushes.Gray;
+                            comboBox.IsEnabled = false;
+                            count++; 
+                        }
+                        else
+                        {
+                            break; 
+                        }
                     }
                 }
             }
@@ -481,10 +506,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Открытие файла ФОПа при помощи кнопки
         private void OpenFileButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!CheckingFillingComboBoxes()) 
+            if (!CheckingFillingAllComboBoxes()) 
             {
-                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные и повторите попытку.", "Не все поля заполнены", 
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены", 
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
             else
             {
@@ -503,17 +528,121 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Обновление ComboBox "Параметры" при вызове ComboBox "Группы"
-        private void OnGroupSelectionChanged(object sender, SelectionChangedEventArgs e)
+        //// XAML. Обработчик ComboBox "Группы": обновление оригинального ComboBox "Параметры"
+        private void ParamsGroupSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (CB_paramsGroup.SelectedItem != null)
+            if (CB_paramsGroup.SelectedItem != null && CB_paramsGroup.SelectedIndex != -1)
             {
                 string selectParamGroup = CB_paramsGroup.SelectedItem.ToString();
-                UpdateComboBoxField_Param(selectParamGroup);
+                var selectedParamName = CB_paramsName.SelectedItem;
+
+                if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
+                {
+                    CB_paramsName.Items.Clear();                   
+
+                    foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
+                    {
+                        CB_paramsName.Items.Add(param.Name);
+                    }
+
+                    if (selectedParamName != null && CB_paramsName.Items.Contains(selectedParamName))
+                    {
+                        CB_paramsName.SelectedItem = selectedParamName;
+                    }
+                }
             }    
         }
 
-        //// XAML. Удалить SP_panelParamFields через кнопку
+        //// XAML. Оригинальный ComboBox "Параметры": срабатывание фильтра
+        private void ParamsNameTextChanged(object sender, TextChangedEventArgs e)
+        {
+            System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
+
+            if (comboBox.SelectedItem != null)
+            {
+                var collectionViewOriginal = CollectionViewSource.GetDefaultView(comboBox.Items);
+                if (collectionViewOriginal != null)
+                {
+                    collectionViewOriginal.Filter = null;
+                    collectionViewOriginal.Refresh();
+                }
+                return;
+            }
+
+            string filterText = comboBox.Text.ToLower();
+            var collectionViewNew = CollectionViewSource.GetDefaultView(comboBox.Items);
+
+            if (collectionViewNew != null)
+            {
+                collectionViewNew.Filter = item =>
+                {
+                    if (item == null) return false;
+                    return item.ToString().ToLower().Contains(filterText);
+                };
+                collectionViewNew.Refresh();
+            }
+        }
+
+        //// XAML. Оригинальный ComboBox "Параметры": уставновка фокуса и расскрытие List
+        private void ParamsName_Loaded(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox != null)
+            {
+                System.Windows.Controls.TextBox textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as System.Windows.Controls.TextBox;
+
+                if (textBox != null)
+                {
+                    textBox.GotFocus += (s, args) => comboBox.IsDropDownOpen = true;
+                }
+            }
+        }
+
+        //// XAML.Оригинальный ComboBox "Параметры": обработчик открытия List
+        private void ParamsNameDropDownOpened(object sender, EventArgs e)
+        {
+            System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
+
+            if (comboBox.SelectedItem != null)
+            {
+                comboBox.SelectedItem = null;
+                comboBox.Text = string.Empty;
+
+                var collectionViewOriginal = CollectionViewSource.GetDefaultView(comboBox.Items);
+
+                if (collectionViewOriginal != null)
+                {
+                    collectionViewOriginal.Filter = null;
+                    collectionViewOriginal.Refresh();
+                }
+            }
+
+        }
+
+        //// XAML.Оригинальный ComboBox "Параметры": основной обработчик событий
+        private void ParamsNameSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CB_paramsName.SelectedItem != null)
+            {
+                string selectedParam = CB_paramsName.SelectedItem as String;
+
+                foreach (var kvp in groupAndParametersFromSPFDict)
+                {
+                    if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
+                    {
+
+                        if (CB_paramsGroup.SelectedItem == null)
+                        {
+                            CB_paramsGroup.SelectedItem = kvp.Key;
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
         private void RemovePanel(object sender, RoutedEventArgs e)
         {
             Button buttonDel = sender as Button;
@@ -681,18 +810,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     Tag = allParamInInterfaceFromJsonValues[0],
                     ToolTip = $"ФОП: {allParamInInterfaceFromJsonValues[0]}",
+                    IsEnabled = false,
                     Width = 270,
                     Height = 25,
                     Padding = new Thickness(8, 4, 0, 0),
-                    Foreground = Brushes.Gray,
-                    IsEnabled = false
+                    Foreground = Brushes.Gray
                 };
 
                 System.Windows.Controls.ComboBox cbParamsName = new System.Windows.Controls.ComboBox
                 {
+                    IsEnabled = false,
                     Width = 490,
                     Height = 25,
                     Padding = new Thickness(8, 4, 0, 0),
+                    Foreground = Brushes.Gray
                 };
 
                 foreach (var key in groupAndParametersFromSPFDict.Keys)
@@ -794,10 +925,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     "Чтобы добавить параметры в семейство, заполните хотя бы один параметр и повторите попытку.", "Нет параметров для добавления",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
             }
-            else if (!CheckingFillingComboBoxes())
+            else if (!CheckingFillingAllComboBoxes())
             {
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены\n" +
-                    "Чтобы добавить параметры в семейство, заполните отсутствующие данные и повторите попытку.", "Не все поля заполнены",
+                    "Чтобы добавить параметры в семейство, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
             } else
             {
@@ -810,17 +941,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Сохранение параметров в JSON-файл при нажатии на кнопку 
         private void SaveParamFileSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!CheckingFillingComboBoxes())
+            if (!CheckingFillingAllComboBoxes())
             {
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены.\n" +
-                    "Чтобы сохранить файл параметров, заполните отсутствующие данные и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                    "Чтобы сохранить файл параметров, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
             else if (!ExistenceCheckComboBoxes())
             {
                 System.Windows.Forms.MessageBox.Show("Нет заполненных параметров.\n" +
                     "Чтобы сохранить файл параметров, заполните хотя бы один параметр и повторите попытку.", "Нет параметров для добавления",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
             else
             {
@@ -873,6 +1004,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                 }
             }
-        }            
+        }
     }
 }
