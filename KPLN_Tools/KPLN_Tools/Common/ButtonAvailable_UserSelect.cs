@@ -49,7 +49,7 @@ namespace KPLN_Tools.Common
                 Selection selection = UIDoc.Selection;
                 if (selection != null)
                 {
-#if Revit2020
+#if Revit2020 || Debug2020
                     // Для 2020 - нет возможности получить элементы из связи. Это исправили в более поздних версиях
                     ICollection<ElementId> selIds = selection.GetElementIds();
                     if (selIds.Count == 0)

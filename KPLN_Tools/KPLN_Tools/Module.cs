@@ -57,7 +57,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandAutonumber).FullName,
+                typeof(CommandAutonumber).FullName,
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
@@ -74,10 +74,11 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandSearchRevitUser).FullName,
+                typeof(CommandSearchRevitUser).FullName,
                 "KPLN_Tools.Imagens.searchUserBig.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
-                "http://moodle");
+                "http://moodle",
+                true);
 
             PushButtonData sendMsgToBitrix = CreateBtnData(
                 "Отправить в Bitrix",
@@ -91,7 +92,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandSendMsgToBitrix).FullName,
+                typeof(CommandSendMsgToBitrix).FullName,
                 "KPLN_Tools.Imagens.sendMsgBig.png",
                 "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "http://moodle");
@@ -111,7 +112,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandTagWiper).FullName,
+                typeof(CommandTagWiper).FullName,
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
@@ -125,7 +126,7 @@ namespace KPLN_Tools
                    ModuleData.Version,
                    ModuleData.ModuleName
                ),
-               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
+               typeof(CommandExtraMonitoring).FullName,
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "http://moodle");
@@ -140,7 +141,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandChangeLevel).FullName,
+                typeof(CommandChangeLevel).FullName,
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "http://moodle/");
@@ -159,7 +160,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandDimensionHelper).FullName,
+                typeof(CommandDimensionHelper).FullName,
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
@@ -173,7 +174,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandRLinkManager).FullName,
+                typeof(CommandRLinkManager).FullName,
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "http://moodle");
@@ -187,7 +188,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Command_SETLinkChanger).FullName,
+                typeof(Command_SETLinkChanger).FullName,
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "http://moodle");
@@ -243,7 +244,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_SS_Systems).FullName,
+                    typeof(Command_SS_Systems).FullName,
                     "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "http://moodle");
@@ -259,7 +260,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_FillInParametersSS).FullName,
+                    typeof(Command_FillInParametersSS).FullName,
                     "KPLN_Tools.Imagens.FillInParamBig.png",
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1319");
@@ -298,7 +299,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                    typeof(Command_KR_SMNX_RebarHelper).FullName,
                     "KPLN_Tools.Imagens.wipeSmall.png",
                     "KPLN_Tools.Imagens.wipeSmall.png",
                     "http://moodle");
@@ -333,7 +334,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OVVK_PipeThickness).FullName,
+                    typeof(Command_OVVK_PipeThickness).FullName,
                     "KPLN_Tools.Imagens.pipeThicknessSmall.png",
                     "KPLN_Tools.Imagens.pipeThicknessBig.png",
                     "http://moodle");
@@ -348,7 +349,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OV_DuctThickness).FullName,
+                    typeof(Command_OV_DuctThickness).FullName,
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
                     "KPLN_Tools.Imagens.ductThicknessBig.png",
                     "http://moodle");
@@ -363,7 +364,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OV_OZKDuctAccessory).FullName,
+                    typeof(Command_OV_OZKDuctAccessory).FullName,
                     "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
                     "KPLN_Tools.Imagens.ozkDuctAccessoryBig.png",
                     "http://moodle");
@@ -403,7 +404,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
+                    typeof(CommandHolesManagerIOS).FullName,
                     "KPLN_Tools.Imagens.holesManagerSmall.png",
                     "KPLN_Tools.Imagens.holesManagerBig.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1245");
@@ -432,7 +433,8 @@ namespace KPLN_Tools
             string className,
             string smlImageName,
             string lrgImageName,
-            string contextualHelp)
+            string contextualHelp,
+            bool avclass = false)
         {
             PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className)
             {
@@ -443,6 +445,10 @@ namespace KPLN_Tools
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
+            if (avclass)
+            {
+                data.AvailabilityClassName = typeof(StaticAvailable).FullName;
+            }
 
             return data;
         }

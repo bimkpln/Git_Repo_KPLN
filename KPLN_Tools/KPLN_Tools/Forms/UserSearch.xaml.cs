@@ -1,11 +1,10 @@
 ﻿using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using Newtonsoft.Json;
+using KPLN_Tools.Forms.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,9 +13,9 @@ namespace KPLN_Tools.Forms
 {
     public partial class UserSearch : Window
     {
-        private readonly IEnumerable<DBUser> _collection;
+        private readonly IEnumerable<VM_UserEntity> _collection;
 
-        public UserSearch(IEnumerable<DBUser> collection)
+        public UserSearch(IEnumerable<VM_UserEntity> collection)
         {
             _collection = collection;
             InitializeComponent();
@@ -28,7 +27,7 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Коллекция элементов, которые будут отображаться в окне
         /// </summary>
-        public IEnumerable<DBUser> Collection { get { return _collection; } }
+        public IEnumerable<VM_UserEntity> Collection { get { return _collection; } }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
@@ -54,11 +53,12 @@ namespace KPLN_Tools.Forms
             TextBox textBox = (TextBox)sender;
             string _searchName = textBox.Text.ToLower();
 
-            ObservableCollection<DBUser> filteredElement = new ObservableCollection<DBUser>();
+            ObservableCollection<VM_UserEntity> filteredElement = new ObservableCollection<VM_UserEntity>();
 
-            foreach (DBUser user in Collection)
+            foreach (VM_UserEntity user in Collection)
             {
-                if (user.RevitUserName.ToLower().Contains(_searchName))
+                string revitUserName = user.DBUser.RevitUserName;
+                if (!string.IsNullOrEmpty(revitUserName) && revitUserName.ToLower().Contains(_searchName))
                     filteredElement.Add(user);
             }
 
@@ -68,10 +68,10 @@ namespace KPLN_Tools.Forms
         private async void Users_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             ListBox listBox = (ListBox)sender;
-            if (!(listBox.SelectedItem is DBUser dBUser))
+            if (!(listBox.SelectedItem is VM_UserEntity vmUserEntity))
                 throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД\n\n");
 
-            int id = await BitrixMessageSender.GetDBUserBitrixId_ByDBUser(dBUser);
+            int id = await BitrixMessageSender.GetDBUserBitrixId_ByDBUser(vmUserEntity.DBUser);
             Process.Start(new ProcessStartInfo($@"https://kpln.bitrix24.ru/company/personal/user/{id}/")
             {
                 UseShellExecute = true

@@ -30,7 +30,7 @@ namespace KPLN_Tools.ExternalCommands
             Selection selection = uidoc.Selection;
 
             bool checkLinkElem = false;
-#if Revit2020
+#if Revit2020 || Debug2020
             // Для 2020 - нет возможности получить элементы из связи. Это исправили в более поздних версиях
             ICollection<ElementId> selIds = selection.GetElementIds();
             foreach (ElementId elementId in selIds)

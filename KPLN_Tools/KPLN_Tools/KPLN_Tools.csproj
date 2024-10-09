@@ -14,15 +14,6 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2018|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RTls2018\</OutputPath>
-    <DefineConstants>Revit2018</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <Optimize>true</Optimize>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
@@ -32,20 +23,6 @@
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2022|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Common\RTls2022\</OutputPath>
-    <DefineConstants>Revit2022</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\</OutputPath>
-    <DefineConstants>DEBUG;Revit2020</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2023\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
@@ -54,6 +31,20 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>none</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
+    <DefineConstants>Debug2020</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2023\</OutputPath>
+    <DefineConstants>Debug2023</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -120,7 +111,7 @@
     </Reference>
   </ItemGroup>
   <Choose>
-    <When Condition=" '$(Configuration)'=='Debug' ">
+    <When Condition=" '$(Configuration)'=='Debug2020' ">
       <ItemGroup>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
@@ -132,6 +123,22 @@
         </Reference>
         <Reference Include="UIFramework">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\UIFramework.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Debug2023' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="UIFramework">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\UIFramework.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -195,6 +202,7 @@
     <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
+    <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
@@ -220,6 +228,7 @@
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
