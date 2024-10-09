@@ -566,7 +566,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 {
                     FamilySizeTableColumn columnHeader = selectedSizeTable.GetColumnHeader(i);
 
-    #if Revit2020
+#if Revit2020 || Debug2020
                     if (versionNumber <= 2020)
                     {
                         returnedHeader.AppendFormat("{0}##{1}##{2};",
@@ -574,9 +574,9 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                             columnHeader.UnitType.ToString().Replace("UT_", ""),
                             columnHeader.DisplayUnitType.ToString().Replace("DUT_", ""));
                     }
-    #endif
+#endif
 
-    #if Revit2023
+#if Revit2023 || Debug2023
                     if (versionNumber >= 2021)
                     {
                         try
@@ -591,7 +591,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                             returnedHeader.AppendFormat("{0}##Undefined##UNDEFINED;", columnHeader.Name);
                         }
                     }
-    #endif
+#endif
                 }
 
                 returnedHeader.Length--; // Удалить последний символ ';'
