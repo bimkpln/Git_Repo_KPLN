@@ -8,9 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
-using System.Windows.Input;
-using static System.Net.Mime.MediaTypeNames;
-using System.Diagnostics;
 using System.Windows.Data;
 
 
@@ -503,11 +500,33 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        // Очистка неправильно заполненных ComboBox "Параметры"
+        public void ClearingIncorrectlyFilledFieldsParams()
+        {
+            foreach (var child in SP_allPanelParamsFields.Children)
+            {
+                if (child is StackPanel stackPanel && stackPanel.Tag?.ToString() == "uniqueParameterField")
+                {
+                    var comboBoxes = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
+                    if (comboBoxes.Count >= 2)
+                    {
+                        var secondComboBox = comboBoxes[1];
+                        if (secondComboBox.SelectedItem == null)
+                        {
+                            secondComboBox.Text = "";
+                        }
+                    }
+                }
+            }
+        }
+
         //// XAML. Открытие файла ФОПа при помощи кнопки
         private void OpenFileButton_Click(object sender, RoutedEventArgs e)
         {
             if (!CheckingFillingAllComboBoxes()) 
             {
+                ClearingIncorrectlyFilledFieldsParams();
+
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены", 
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
@@ -550,6 +569,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         CB_paramsName.SelectedItem = selectedParamName;
                     }
                 }
+
+                ClearingIncorrectlyFilledFieldsParams();
             }    
         }
 
@@ -595,7 +616,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     textBox.GotFocus += (s, args) => comboBox.IsDropDownOpen = true;
                 }
-            }
+            }          
         }
 
         //// XAML.Оригинальный ComboBox "Параметры": обработчик открытия List
@@ -605,8 +626,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             if (comboBox.SelectedItem != null)
             {
+                string comboBoxValue = comboBox.SelectedItem.ToString();
                 comboBox.SelectedItem = null;
-                comboBox.Text = string.Empty;
+                comboBox.Text = comboBoxValue;
 
                 var collectionViewOriginal = CollectionViewSource.GetDefaultView(comboBox.Items);
 
@@ -661,6 +683,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Добавление новой панели параметров uniqueParameterField через кнопку
         private void AddPanelParamFieldsButton_Click(object sender, RoutedEventArgs e)
         {
+            ClearingIncorrectlyFilledFieldsParams();
+
             StackPanel newPanel = new StackPanel
             {
                 Tag = "uniqueParameterField",
@@ -680,9 +704,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             System.Windows.Controls.ComboBox cbParamsName = new System.Windows.Controls.ComboBox
             {
+                IsEditable = true,
+                StaysOpenOnEdit = true,
+                IsTextSearchEnabled = false,
                 Width = 490,
                 Height = 25,
-                Padding = new Thickness(8, 4, 0, 0),
+                Padding = new Thickness(8, 3, 0, 0),
             };
 
             foreach (var key in groupAndParametersFromSPFDict.Keys)
@@ -690,17 +717,113 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 cbParamsGroup.Items.Add(key);
             }
 
+            foreach (var param in allParamNameList)
+            {
+                cbParamsName.Items.Add(param);
+            }
+
             cbParamsGroup.SelectionChanged += (s, ev) =>
             {
-                cbParamsName.Items.Clear();
-
-                string selectedParamGroup = cbParamsGroup.SelectedItem.ToString();
-                
-                if (groupAndParametersFromSPFDict.ContainsKey(selectedParamGroup))
+                if (cbParamsGroup.SelectedItem != null && cbParamsGroup.SelectedIndex != -1)
                 {
-                    foreach (var param in groupAndParametersFromSPFDict[selectedParamGroup])
+                    string selectParamGroup = cbParamsGroup.SelectedItem.ToString();
+                    var selectedParamName = cbParamsName.SelectedItem;
+
+                    if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
                     {
-                        cbParamsName.Items.Add(param.Name);
+                        cbParamsName.Items.Clear();
+
+                        foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
+                        {
+                            cbParamsName.Items.Add(param.Name);
+                        }
+
+                        if (selectedParamName != null && cbParamsName.Items.Contains(selectedParamName))
+                        {
+                            cbParamsName.SelectedItem = selectedParamName;
+                        }
+                    }
+
+                    ClearingIncorrectlyFilledFieldsParams();
+                }
+            };
+
+            cbParamsName.Loaded += (s, ev) =>
+            {
+                if (cbParamsName != null)
+                {
+                    System.Windows.Controls.TextBox textBox = cbParamsName.Template.FindName("PART_EditableTextBox", cbParamsName) as System.Windows.Controls.TextBox;
+
+                    if (textBox != null)
+                    {
+                        textBox.TextChanged += (os, args) =>
+                        {
+                            if (cbParamsName.SelectedItem != null)
+                            {
+                                var collectionViewOriginal = CollectionViewSource.GetDefaultView(cbParamsName.Items);
+                                if (collectionViewOriginal != null)
+                                {
+                                    collectionViewOriginal.Filter = null;
+                                    collectionViewOriginal.Refresh();
+                                }
+                                return;
+                            }
+
+                            string filterText = cbParamsName.Text.ToLower();
+                            var collectionViewNew = CollectionViewSource.GetDefaultView(cbParamsName.Items);
+
+                            if (collectionViewNew != null)
+                            {
+                                collectionViewNew.Filter = item =>
+                                {
+                                    if (item == null) return false;
+                                    return item.ToString().ToLower().Contains(filterText);
+                                };
+                                collectionViewNew.Refresh();
+                            }
+                        };
+
+                        textBox.GotFocus += (os, args) => cbParamsName.IsDropDownOpen = true;
+                    }
+                }
+            };
+
+            cbParamsName.DropDownOpened += (s, ev) =>
+            {
+                if (cbParamsName.SelectedItem != null)
+                {
+                    string comboBoxValue = cbParamsName.SelectedItem.ToString();
+                    cbParamsName.SelectedItem = null;
+                    cbParamsName.Text = comboBoxValue;
+
+                    var collectionViewOriginal = CollectionViewSource.GetDefaultView(cbParamsName.Items);
+
+                    if (collectionViewOriginal != null)
+                    {
+                        collectionViewOriginal.Filter = null;
+                        collectionViewOriginal.Refresh();
+                    }
+                }
+            };
+
+            cbParamsName.SelectionChanged += (s, ev) =>
+            {
+                if (cbParamsName.SelectedItem != null)
+                {
+                    string selectedParam = cbParamsName.SelectedItem as String;
+
+                    foreach (var kvp in groupAndParametersFromSPFDict)
+                    {
+                        if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
+                        {
+
+                            if (cbParamsGroup.SelectedItem == null)
+                            {
+                                cbParamsGroup.SelectedItem = kvp.Key;
+                            }
+
+                            break;
+                        }
                     }
                 }
             };
@@ -927,6 +1050,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
             else if (!CheckingFillingAllComboBoxes())
             {
+                ClearingIncorrectlyFilledFieldsParams();
+
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены\n" +
                     "Чтобы добавить параметры в семейство, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
@@ -943,6 +1068,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             if (!CheckingFillingAllComboBoxes())
             {
+                ClearingIncorrectlyFilledFieldsParams();
+
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены.\n" +
                     "Чтобы сохранить файл параметров, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
