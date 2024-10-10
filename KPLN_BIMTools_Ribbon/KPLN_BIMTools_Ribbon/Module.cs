@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.ExternalCommands;
+using KPLN_BIMTools_Ribbon.Forms;
 using KPLN_Loader.Common;
 using NLog;
 using System;
@@ -125,16 +126,16 @@ namespace KPLN_BIMTools_Ribbon
             AddPushButtonDataInPullDown(
                 "Пакетное добавление параметров",
                 "Пакетное добавление параметров",
-                "Нужно написать описание",
+                "Пакетно добавить в семейство парамтеры",
                 string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(CommandLTablesExport).FullName,
+                typeof(batchAddingParameters).FullName,
                 paramPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.lookupSmall.png",
+                "KPLN_BIMTools_Ribbon.Imagens.batchAddingParameters.png",
                 "http://moodle/",
                 false
             );
