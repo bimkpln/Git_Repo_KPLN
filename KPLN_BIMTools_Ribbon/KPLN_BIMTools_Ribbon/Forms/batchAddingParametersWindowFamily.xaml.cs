@@ -56,53 +56,56 @@ namespace KPLN_BIMTools_Ribbon.Forms
         // Создание Dictionary с параметрами группирования для "Параметры группирования"
         static public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
-            Dictionary<string, BuiltInParameterGroup> groupingDict = new Dictionary<string, BuiltInParameterGroup>();
-
-            groupingDict.Add("Аналитическая модель", BuiltInParameterGroup.PG_ANALYTICAL_MODEL);
-            groupingDict.Add("Видимость", BuiltInParameterGroup.PG_VISIBILITY);
-            groupingDict.Add("Второстепенный конец", BuiltInParameterGroup.PG_SECONDARY_END);
-            groupingDict.Add("Выравнивание аналитической модели", BuiltInParameterGroup.PG_ANALYTICAL_ALIGNMENT);
-            groupingDict.Add("Геометрия разделения", BuiltInParameterGroup.PG_DIVISION_GEOMETRY);
-            groupingDict.Add("Графика", BuiltInParameterGroup.PG_GRAPHICS);
-            groupingDict.Add("Данные", BuiltInParameterGroup.PG_DATA);
-            groupingDict.Add("Зависимости", BuiltInParameterGroup.PG_CONSTRAINTS);
-            groupingDict.Add("Идентификация", BuiltInParameterGroup.PG_IDENTITY_DATA);
-            groupingDict.Add("Материалы и отделка", BuiltInParameterGroup.PG_MATERIALS);
-            groupingDict.Add("Механизмы", BuiltInParameterGroup.PG_MECHANICAL);
-            groupingDict.Add("Механизмы - Нагрузки", BuiltInParameterGroup.PG_MECHANICAL_LOADS);
-            groupingDict.Add("Механизмы - Расход", BuiltInParameterGroup.PG_MECHANICAL_AIRFLOW);
-            groupingDict.Add("Моменты", BuiltInParameterGroup.PG_MOMENTS);
-            groupingDict.Add("Набор", BuiltInParameterGroup.PG_COUPLER_ARRAY);
-            groupingDict.Add("Набор арматурных стержней", BuiltInParameterGroup.PG_REBAR_ARRAY);
-            groupingDict.Add("Несущие конструкции", BuiltInParameterGroup.PG_STRUCTURAL);
-            groupingDict.Add("Общая легенда", BuiltInParameterGroup.PG_OVERALL_LEGEND);
-            groupingDict.Add("Общие", BuiltInParameterGroup.PG_GENERAL);
-            groupingDict.Add("Основной конец", BuiltInParameterGroup.PG_PRIMARY_END);
-            groupingDict.Add("Параметры IFC", BuiltInParameterGroup.PG_IFC);
-            groupingDict.Add("Прочее", BuiltInParameterGroup.INVALID);
-            groupingDict.Add("Размеры", BuiltInParameterGroup.PG_GEOMETRY);
-            groupingDict.Add("Расчет несущих конструкций", BuiltInParameterGroup.PG_STRUCTURAL_ANALYSIS);
-            groupingDict.Add("Расчет энергопотребления", BuiltInParameterGroup.PG_ENERGY_ANALYSIS);
-            groupingDict.Add("Редактирование формы перекрытия", BuiltInParameterGroup.PG_SLAB_SHAPE_EDIT);
-            groupingDict.Add("Результат анализа", BuiltInParameterGroup.PG_ANALYSIS_RESULTS);
-            groupingDict.Add("Сантехника", BuiltInParameterGroup.PG_PLUMBING);
-            groupingDict.Add("Свойства модели", BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES);
-            groupingDict.Add("Свойства экологически чистого здания", BuiltInParameterGroup.PG_GREEN_BUILDING);
-            groupingDict.Add("Сегменты и соединительные детали", BuiltInParameterGroup.PG_SEGMENTS_FITTINGS);
-            groupingDict.Add("Силы", BuiltInParameterGroup.PG_FORCES);
-            groupingDict.Add("Система пожаротушения", BuiltInParameterGroup.PG_FIRE_PROTECTION);
-            groupingDict.Add("Слои", BuiltInParameterGroup.PG_REBAR_SYSTEM_LAYERS);
-            groupingDict.Add("Снятие связей/усилия для элемента", BuiltInParameterGroup.PG_RELEASES_MEMBER_FORCES);
-            groupingDict.Add("Стадии", BuiltInParameterGroup.PG_PHASING);
-            groupingDict.Add("Строительство", BuiltInParameterGroup.PG_CONSTRUCTION);
-            groupingDict.Add("Текст", BuiltInParameterGroup.PG_TEXT);
-            groupingDict.Add("Фотометрические", BuiltInParameterGroup.PG_LIGHT_PHOTOMETRICS);
-            groupingDict.Add("Шрифт заголовков", BuiltInParameterGroup.PG_TITLE);
-            groupingDict.Add("Электросети (PG_ELECTRICAL_ENGINEERING)", BuiltInParameterGroup.PG_ELECTRICAL_ENGINEERING);
-            groupingDict.Add("Электросети (PG_ELECTRICAL)", BuiltInParameterGroup.PG_ELECTRICAL);
-            groupingDict.Add("Электросети - Нагрузки", BuiltInParameterGroup.PG_ELECTRICAL_LOADS);
-            groupingDict.Add("Электросети - Освещение", BuiltInParameterGroup.PG_ELECTRICAL_LIGHTING);
-            groupingDict.Add("Электросети - Создание цепей", BuiltInParameterGroup.PG_ELECTRICAL_CIRCUITING);
+            Dictionary<string, BuiltInParameterGroup> groupingDict = new Dictionary<string, BuiltInParameterGroup>
+            {
+                { "Аналитическая модель", BuiltInParameterGroup.PG_ANALYTICAL_MODEL },
+                { "Видимость", BuiltInParameterGroup.PG_VISIBILITY },
+                { "Второстепенный конец", BuiltInParameterGroup.PG_SECONDARY_END },
+                { "Выравнивание аналитической модели", BuiltInParameterGroup.PG_ANALYTICAL_ALIGNMENT },
+                { "Геометрия разделения", BuiltInParameterGroup.PG_DIVISION_GEOMETRY },
+                { "Графика", BuiltInParameterGroup.PG_GRAPHICS },
+                { "Данные", BuiltInParameterGroup.PG_DATA },
+                { "Зависимости", BuiltInParameterGroup.PG_CONSTRAINTS },
+                { "Идентификация", BuiltInParameterGroup.PG_IDENTITY_DATA },
+                { "Материалы и отделка", BuiltInParameterGroup.PG_MATERIALS },
+                { "Механизмы", BuiltInParameterGroup.PG_MECHANICAL },
+                { "Механизмы - Нагрузки", BuiltInParameterGroup.PG_MECHANICAL_LOADS },
+                { "Механизмы - Расход", BuiltInParameterGroup.PG_MECHANICAL_AIRFLOW },
+                { "Моменты", BuiltInParameterGroup.PG_MOMENTS },
+                { "Набор", BuiltInParameterGroup.PG_COUPLER_ARRAY },
+                { "Набор арматурных стержней", BuiltInParameterGroup.PG_REBAR_ARRAY },
+                { "Несущие конструкции", BuiltInParameterGroup.PG_STRUCTURAL },
+                { "Общая легенда", BuiltInParameterGroup.PG_OVERALL_LEGEND },
+                { "Общие", BuiltInParameterGroup.PG_GENERAL },
+                { "Основной конец", BuiltInParameterGroup.PG_PRIMARY_END },
+                { "Параметры IFC", BuiltInParameterGroup.PG_IFC },
+                { "Прочее", BuiltInParameterGroup.INVALID },
+                { "Размеры", BuiltInParameterGroup.PG_GEOMETRY },
+                { "Расчет несущих конструкций", BuiltInParameterGroup.PG_STRUCTURAL_ANALYSIS },
+                { "Расчет энергопотребления", BuiltInParameterGroup.PG_ENERGY_ANALYSIS },
+                { "Редактирование формы перекрытия", BuiltInParameterGroup.PG_SLAB_SHAPE_EDIT },
+                { "Результат анализа", BuiltInParameterGroup.PG_ANALYSIS_RESULTS },
+                { "Сантехника", BuiltInParameterGroup.PG_PLUMBING },
+                { "Свойства модели", BuiltInParameterGroup.PG_ADSK_MODEL_PROPERTIES },
+                { "Свойства экологически чистого здания", BuiltInParameterGroup.PG_GREEN_BUILDING },
+                { "Сегменты и соединительные детали", BuiltInParameterGroup.PG_SEGMENTS_FITTINGS },
+                { "Силы", BuiltInParameterGroup.PG_FORCES },
+                { "Система пожаротушения", BuiltInParameterGroup.PG_FIRE_PROTECTION },
+                { "Слои", BuiltInParameterGroup.PG_REBAR_SYSTEM_LAYERS },
+                { "Снятие связей/усилия для элемента", BuiltInParameterGroup.PG_RELEASES_MEMBER_FORCES },
+                { "Стадии", BuiltInParameterGroup.PG_PHASING },
+                { "Строительство", BuiltInParameterGroup.PG_CONSTRUCTION },
+                { "Текст", BuiltInParameterGroup.PG_TEXT },
+                { "Фотометрические", BuiltInParameterGroup.PG_LIGHT_PHOTOMETRICS },
+                { "Шрифт заголовков", BuiltInParameterGroup.PG_TITLE },
+#if Revit2023 || Debug2023
+                { "Электросети (PG_ELECTRICAL_ENGINEERING)", BuiltInParameterGroup.PG_ELECTRICAL_ENGINEERING },
+#endif
+                { "Электросети (PG_ELECTRICAL)", BuiltInParameterGroup.PG_ELECTRICAL },
+                { "Электросети - Нагрузки", BuiltInParameterGroup.PG_ELECTRICAL_LOADS },
+                { "Электросети - Освещение", BuiltInParameterGroup.PG_ELECTRICAL_LIGHTING },
+                { "Электросети - Создание цепей", BuiltInParameterGroup.PG_ELECTRICAL_CIRCUITING }
+            };
 
             return groupingDict;
         }
