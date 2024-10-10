@@ -96,10 +96,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
             else
             {
-                CustomMessageBox cmb = new CustomMessageBox(
-                    "Ошибка",
-                    $"Путь \"{UserInputPath}\" к файлу/папке не соответвует критериям из описания. Исправь и повтори попытку");
-                cmb.ShowDialog();
+                UserDialog cd = new UserDialog("ОШИБКА", $"Путь \"{UserInputPath}\" к файлу/папке не соответвует критериям из описания. Исправь и повтори попытку");
+                cd.ShowDialog();
             }
         }
 

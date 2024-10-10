@@ -179,7 +179,8 @@ namespace KPLN_BIMTools_Ribbon.Common
                     configDispatcher.ShowDialog();
                     if (configDispatcher.IsRun)
                     {
-                        Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}]");
+                        string configNames = string.Join(" ~ ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
+                        Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}].\nКонфигурация/-ии: [{configNames}]");
 
                         foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
                         {
@@ -187,10 +188,10 @@ namespace KPLN_BIMTools_Ribbon.Common
                             IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
                             foreach (DBConfigEntity config in configs)
                             {
-                                CountSourceDocs++;
                                 List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
                                 if (fileFromPathes != null)
                                 {
+                                    CountSourceDocs += fileFromPathes.Count;
                                     foreach (string fileFromPath in fileFromPathes)
                                     {
                                         string newFilePath = string.Empty;
@@ -214,7 +215,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                         if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
                                             CountProcessedDocs++;
                                         else
-                                            Logger.Error($"Ошибки с файлом {config.Name} описаны выше.\n");
+                                            Logger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
                                     }
                                 }
                             }
