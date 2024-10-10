@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.ApplicationServices;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Windows.Media.Imaging;
 using KPLN_Loader.Common;
-using Autodesk.Revit.Attributes;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Windows.Media.Imaging;
 
 namespace KPLN_Publication
 {
@@ -28,9 +23,9 @@ namespace KPLN_Publication
         private void AddPushButtonData(PulldownButton pullDown, string name, string text, string className, string largeImage, string image, string tTip, string lDiscr, string contextualHelp)
         {
             PushButton button = pullDown.AddPushButton(new PushButtonData(
-                name, 
-                text, 
-                Assembly.GetExecutingAssembly().Location, 
+                name,
+                text,
+                Assembly.GetExecutingAssembly().Location,
                 className)
                 ) as PushButton;
             button.LargeImage = PngImageSource(largeImage);
@@ -48,17 +43,18 @@ namespace KPLN_Publication
             RibbonPanel panel1 = application.CreateRibbonPanel(tabName, "Печать, публикация");
             PushButton btnCreate = panel1.AddItem(new PushButtonData(
                 "CreateHoleTask",
-                "Пакетная\nпечать",
+                "Пакетная\nвыдача",
                 assemblyPath,
                 "KPLN_Publication.ExternalCommands.Print.CommandBatchPrint")
                 ) as PushButton;
             btnCreate.LargeImage = PngImageSource("KPLN_Publication.Resources.PrintBig.png");
             btnCreate.Image = PngImageSource("KPLN_Publication.Resources.PrintSmall.png");
-            btnCreate.ToolTip = "Пакетная печать выбранных листов «на бумагу» или в PDF с автоматическим разделением по форматам.";
+            btnCreate.ToolTip = "Пакетный перевод выбранных листов в PDF (с автоматическим разделением по форматам), DWG";
             btnCreate.LongDescription = string.Format(
                 "Возможности:\n" +
                 " - Автоматическое определение форматов;\n" +
                 " - Печать «на бумагу» и в формат PDF;\n" +
+                " - Экспорт в DWG;\n" +
                 " - Обработка нестандартных форматов - А2х3 и любых произвольных размеров (нужны права администратора);\n" +
                 " - Черно/белая печать с преобразованием в черный всех цветов кроме выбранных;\n" +
                 " - Печать спецификаций, разделенных на несколько листов;\n" +
@@ -103,12 +99,12 @@ namespace KPLN_Publication
             IList<RibbonItem> stackedGroup = panel1.AddStackedItems(btnRefresh, btnPublSets, pullDownData);
             PulldownButton pullDownPubl = stackedGroup[2] as PulldownButton;
             AddPushButtonData(
-                pullDownPubl, 
-                "delLists", 
+                pullDownPubl,
+                "delLists",
                 "Удалить листы",
                 "KPLN_Publication.ExternalCommands.BeforePublication.CommandDelLists",
                 "KPLN_Publication.Resources.DeleteLists.png",
-                "KPLN_Publication.Resources.DeleteLists.png", 
+                "KPLN_Publication.Resources.DeleteLists.png",
                 "Удаляет листы, которые не входят в параметры публикации",
                 "Выбираешь параметры публикации (можно несколько), которые будешь передавать Заказчику и все листы, которые в них не входят - удалятся",
                 "http://moodle"

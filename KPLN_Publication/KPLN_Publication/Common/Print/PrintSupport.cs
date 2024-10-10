@@ -11,44 +11,15 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
 
 namespace KPLN_Publication
 {
     public static class PrintSupport
     {
-
-        public static string CreateFolderToPrint(Document doc, string printerName, ref string outputFolder)
-        {
-            string folder2 = doc.Title + "_" + DateTime.Now.ToString();
-            folder2 = folder2.Replace(':', ' ');
-
-            outputFolder = System.IO.Path.Combine(outputFolder, folder2);
-            try
-            {
-                System.IO.Directory.CreateDirectory(outputFolder);
-            }
-            catch
-            {
-                return "Невозможно сохранить файлы папку\n" + outputFolder + "\nВыберите другой путь.";
-            }
-
-            outputFolder = outputFolder.Replace("\\", "\\\\");
-
-            //пробуем настроить PDFCreator через реестр Windows, для автоматической печати в папку
-            if (printerName == "PDFCreator")
-            {
-                SupportRegistry.ActivateSettingsForPDFCreator(outputFolder);
-            }
-            return string.Empty;
-        }
-
-
         /// <summary>
         /// Ищет и назначает форматы для листов, при необходимости создает форматы в Сервере печати
         /// </summary>
@@ -116,7 +87,7 @@ namespace KPLN_Publication
                 }
 
                 System.Drawing.Printing.PaperSize winPaperSize = PrinterUtility.GetPaperSize(printerName, widthMm, heigthMm, logger);
-                
+
 
                 if (winPaperSize != null) //есть подходящий формат
                 {
@@ -124,7 +95,7 @@ namespace KPLN_Publication
                     pManager = doc.PrintManager;
                     string paperSizeName = winPaperSize.PaperName;
                     PaperSize revitPaperSize = PrintSupport.SearchRevitPaperSizeByName(pManager, paperSizeName);
-                    
+
 
                     if (revitPaperSize == null)
                     {
@@ -183,31 +154,6 @@ namespace KPLN_Publication
 
             return string.Empty;
         }
-
-
-
-
-
-        /// <summary>
-        /// Печатает вид с заданными настройками печати.
-        /// </summary>
-        /// <param name="view"></param>
-        /// <param name="pManager"></param>
-        /// <param name="ps"></param>
-        /// <param name="fileName"></param>
-        public static void PrintView(View view, PrintManager pManager, PrintSetting ps, string fileName)
-        {
-            pManager.PrintSetup.CurrentPrintSetting = ps;
-
-            fileName = "C:\\" + fileName;
-
-            pManager.PrintToFileName = fileName;
-            pManager.Apply();
-            pManager.SubmitPrint(view);
-            pManager.Apply();
-        }
-
-
 
         /// <summary>
         /// Проверяет, были ли внесены изменения в параметры печати.

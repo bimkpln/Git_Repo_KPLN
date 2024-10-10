@@ -19,10 +19,10 @@ namespace KPLN_Tools.ExternalCommands
         /// Параметр толщины стенки труб
         /// </summary>
         private readonly Guid _thicknessParam = new Guid("381b467b-3518-42bb-b183-35169c9bdfb3");
-#if Revit2020
+#if Revit2020 || Debug2020
         private readonly DisplayUnitType _millimetersRevitType = DisplayUnitType.DUT_MILLIMETERS;
 #endif
-#if Revit2023 || Debug
+#if Revit2023 || Debug2023
         private readonly ForgeTypeId _millimetersRevitType = new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1");
 #endif
 

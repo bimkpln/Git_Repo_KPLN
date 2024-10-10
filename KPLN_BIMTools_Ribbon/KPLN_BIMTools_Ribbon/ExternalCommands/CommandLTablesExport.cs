@@ -566,7 +566,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 {
                     FamilySizeTableColumn columnHeader = selectedSizeTable.GetColumnHeader(i);
 
-    #if Revit2020
+#if Revit2020 || Debug2020
                     if (versionNumber <= 2020)
                     {
                         returnedHeader.AppendFormat("{0}##{1}##{2};",
@@ -574,9 +574,9 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                             columnHeader.UnitType.ToString().Replace("UT_", ""),
                             columnHeader.DisplayUnitType.ToString().Replace("DUT_", ""));
                     }
-    #endif
+#endif
 
-    #if Revit2023
+#if Revit2023 || Debug2023
                     if (versionNumber >= 2021)
                     {
                         try
@@ -591,7 +591,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                             returnedHeader.AppendFormat("{0}##Undefined##UNDEFINED;", columnHeader.Name);
                         }
                     }
-    #endif
+#endif
                 }
 
                 returnedHeader.Length--; // Удалить последний символ ';'
@@ -645,6 +645,8 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             using (System.Windows.Forms.Form form = new System.Windows.Forms.Form())
             {
                 form.Text = title;
+                
+                // Добавление элементов в окно
                 ListBox listBox = new ListBox
                 {
                     Dock = DockStyle.Fill,
@@ -652,6 +654,18 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 };
                 listBox.Items.AddRange(options.ToArray());
                 form.Controls.Add(listBox);
+                
+                // Обработчик события двойного нажатия на элемент списка
+                listBox.DoubleClick += (sender, e) =>
+                {
+                    if (listBox.SelectedItem != null) // Убедимся, что что-то выбрано
+                    {
+                        form.DialogResult = DialogResult.OK;
+                        form.Close();
+                    }
+                };
+
+                // Добавление кнопки Выбрать
                 Button button = new Button
                 {
                     Text = "Выбрать",
@@ -659,7 +673,12 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 };
                 form.Controls.Add(button);
 
-                button.Click += (sender, e) => { form.DialogResult = DialogResult.OK; form.Close(); };
+                // Обработчик события нажатия кнопки "Выбрать"
+                button.Click += (sender, e) => 
+                { 
+                    form.DialogResult = DialogResult.OK; 
+                    form.Close(); 
+                };
 
                 return form.ShowDialog() == DialogResult.OK ? listBox.SelectedItems : null;
             }

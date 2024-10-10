@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using KPLN_Library_Forms.UI;
+using System.ComponentModel;
 using System.Media;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -88,8 +89,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnOk(object sender, RoutedEventArgs e)
         {
-            IsRun = true;
-            Close();
+            if (UserInputPathVerify())
+            {
+                IsRun = true;
+                Close();
+            }
+            else
+            {
+                UserDialog cd = new UserDialog("ОШИБКА", $"Путь \"{UserInputPath}\" к файлу/папке не соответвует критериям из описания. Исправь и повтори попытку");
+                cd.ShowDialog();
+            }
         }
 
         /// <summary>
@@ -128,5 +137,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             BtnEnableSwitch();
         }
+
+        /// <summary>
+        /// Проверка корректности введенного пользователем пути
+        /// </summary>
+        /// <returns></returns>
+        private bool UserInputPathVerify() => UserInputPath.EndsWith(".rvt") || UserInputPath.EndsWith("\\");
     }
 }

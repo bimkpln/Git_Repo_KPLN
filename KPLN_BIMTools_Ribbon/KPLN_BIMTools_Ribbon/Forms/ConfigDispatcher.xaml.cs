@@ -22,8 +22,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
 
-        private List<CheckBox> _checkedCheckBoxes = new List<CheckBox>();
-        private ObservableCollection<DBRevitDocExchanges> _currentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>();
+        private readonly List<DBRevitDocExchanges> _selectedDocExchanges = new List<DBRevitDocExchanges>();
+        private readonly ObservableCollection<DBRevitDocExchanges> _nativeDBRevitDocExchanges;
 
         public ConfigDispatcher(Logger logger, RevitDocExchangestDbService revitDocExchangestDbService, DBProject project, RevitDocExchangeEnum revitDocExchangeEnum)
         {
@@ -34,13 +34,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             InitializeComponent();
 
-            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(
+            _nativeDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(
                 _revitDocExchangestDbService
                 .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
                 .OrderBy(dExc => dExc.SettingName));
+            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(_nativeDBRevitDocExchanges);
+
             DataContext = this;
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
+            FilterItems.Focus();
         }
 
         /// <summary>
@@ -66,26 +69,25 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnConfigChecked(object sender, RoutedEventArgs e)
         {
-            UpdateCheckedCheckBoxes(this.iControllGroups);
+            UpdateCheckedCheckBoxes();
             BtnEnableSwitch();
         }
 
         private void OnConfigUnChecked(object sender, RoutedEventArgs e)
         {
-            UpdateCheckedCheckBoxes(this.iControllGroups);
+            UpdateCheckedCheckBoxes();
             BtnEnableSwitch();
         }
 
         private void OnBtnRun(object sender, RoutedEventArgs e)
         {
             IsRun = true;
-            UpdateCheckedCheckBoxes(this.iControllGroups);
-            foreach (CheckBox chkBox in _checkedCheckBoxes)
+            
+            UpdateCheckedCheckBoxes();
+            
+            foreach (DBRevitDocExchanges docExch in _selectedDocExchanges)
             {
-                if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
-                    SelectedDBExchangeEntities.Add(docExchanges);
-                else
-                    throw new Exception("Скинь разработчику: Не удалось преобразовать тип CheckBox в тип из БД DBRevitDocExchanges");
+                SelectedDBExchangeEntities.Add(docExch);
             }
 
             this.Close();
@@ -126,20 +128,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             if (cd.IsRun)
             {
-                List<CheckBox> checkedCheckBoxesToDel = new List<CheckBox>(_checkedCheckBoxes.Count());
-                foreach (CheckBox chkBox in _checkedCheckBoxes)
+                foreach (DBRevitDocExchanges docExch in _selectedDocExchanges)
                 {
-                    if (chkBox.DataContext is DBRevitDocExchanges docExchanges)
-                    {
-                        DeleteDBRevitDocExchange(docExchanges);
-                        checkedCheckBoxesToDel.Add(chkBox);
-                    }
-                    else
-                        throw new Exception("Скинь разработчику: Не удалось преобразовать тип CheckBox в тип из БД DBRevitDocExchanges");
+                    DeleteDBRevitDocExchange(docExch);
                 }
 
                 // Блокирую старт, т.к. ничего не выбрано
-                _checkedCheckBoxes.RemoveAll(chBx => checkedCheckBoxesToDel.Contains(chBx));
+                _selectedDocExchanges.Clear();
                 BtnEnableSwitch();
             }
         }
@@ -192,11 +187,30 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
                 {
-                    UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchanges.SettingName}\". Продолжить?");
-                    cd.ShowDialog();
+                    if (_selectedDocExchanges.Count > 1)
+                    {
+                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалено {_selectedDocExchanges.Count} конфигурации. Продолжить?");
+                        cd.ShowDialog();
+                        if (cd.IsRun)
+                        {
+                            foreach (DBRevitDocExchanges docEcxh in _selectedDocExchanges)
+                            {
+                                DeleteDBRevitDocExchange(docEcxh);
+                            }
+
+                            // Блокирую старт, т.к. ничего не выбрано
+                            _selectedDocExchanges.Clear();
+                            BtnEnableSwitch();
+                        }
+                    }
+                    else
+                    {
+                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchanges.SettingName}\". Продолжить?");
+                        cd.ShowDialog();
                     
-                    if (cd.IsRun)
-                        DeleteDBRevitDocExchange(docExchanges);
+                        if (cd.IsRun)
+                            DeleteDBRevitDocExchange(docExchanges);
+                    }
                 }
             }
         }
@@ -213,31 +227,34 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 
         /// <summary>
-        /// Обновить коллекцию отмеченных CheckBoxe
+        /// Обновить коллекцию отмеченных CheckBoxes
         /// </summary>
-        private void UpdateCheckedCheckBoxes(ItemsControl itemsControl)
+        /// <param name="isReloadDataContext">Флаг обновления основной коллекции</param>
+        private void UpdateCheckedCheckBoxes(bool isReloadDataContext = false)
         {
-            // Перебор всех элементов в ItemsControl
-            for (int i = 0; i < itemsControl.Items.Count; i++)
+            // InvokeAsync - чтобы дать системе время на завершение отрисовки визуальных элементов перед тем, как пытаться искать чекбоксы
+            Dispatcher.InvokeAsync(() =>
             {
-                // Получение контейнера для элемента
-                var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
-
-                // Поиск CheckBox в контейнере
-                CheckBox checkBox = FindVisualChild<CheckBox>(container);
-
-                // Проверка и добавление в коллекцию, если CheckBox отмечен
-                if (checkBox != null && checkBox.IsChecked == true && !_checkedCheckBoxes.Contains(checkBox))
+                // Перебор всех элементов в ItemsControl
+                for (int i = 0; i < this.iControllGroups.Items.Count; i++)
                 {
-                    _checkedCheckBoxes.Add(checkBox);
+                    // Получение контейнера для элемента
+                    if (this.iControllGroups.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement container)
+                    {
+                        CheckBox checkBox = FindVisualChild<CheckBox>(container);
+                        if (checkBox != null && checkBox.DataContext is DBRevitDocExchanges docExchange)
+                        {
+                            // Если основная коллекция обновляется, нужно брать данные по ранее добавленым элементам из кэша (CheckBoxы все заново строятся)
+                            if (isReloadDataContext)
+                                checkBox.IsChecked = _selectedDocExchanges.Any(docExch => docExch.Id == docExchange.Id);
+                            else if (checkBox.IsChecked == true && !_selectedDocExchanges.Any(docExch => docExch.Id == docExchange.Id))
+                                _selectedDocExchanges.Add(docExchange);
+                            else if (!isReloadDataContext && checkBox.IsChecked == false)
+                                _selectedDocExchanges.Remove(docExchange);
+                        }
+                    }
                 }
-
-                // Проверка и удаление из коллекции, если CheckBox НЕ отмечен
-                if (checkBox != null && checkBox.IsChecked == false && _checkedCheckBoxes.Contains(checkBox))
-                {
-                    _checkedCheckBoxes.Remove(checkBox);
-                }
-            }
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         /// <summary>
@@ -249,16 +266,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 DependencyObject child = VisualTreeHelper.GetChild(parent, i);
                 if (child != null && child is T)
-                {
                     return (T)child;
-                }
                 else
                 {
                     T childOfChild = FindVisualChild<T>(child);
                     if (childOfChild != null)
-                    {
                         return childOfChild;
-                    }
                 }
             }
 
@@ -270,16 +283,41 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// </summary>
         private void BtnEnableSwitch()
         {
-            if (_checkedCheckBoxes.Count > 0)
+            // InvokeAsync - чтобы дать системе время на завершение отрисовки визуальных элементов перед тем, как пытаться искать чекбоксы
+            Dispatcher.InvokeAsync(() =>
             {
-                btnRun.IsEnabled = true;
-                btnDelConf.IsEnabled = true;
-            }
-            else
+                if (_selectedDocExchanges.Count > 0)
+                {
+                    btnRun.IsEnabled = true;
+                    btnDelConf.IsEnabled = true;
+                }
+                else
+                {
+                    btnRun.IsEnabled = false;
+                    btnDelConf.IsEnabled = false;
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void FilterItems_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextBox tBox = sender as TextBox; 
+            string userInput = tBox.Text.ToLower();
+            CurrentDBRevitDocExchanges.Clear();
+
+            DBRevitDocExchanges[] docExchangesNotContaines = _nativeDBRevitDocExchanges.Where(de =>  !de.SettingName.ToLower().Contains(userInput)).ToArray();
+            foreach(DBRevitDocExchanges docExcOut in docExchangesNotContaines)
             {
-                btnRun.IsEnabled = false;
-                btnDelConf.IsEnabled = false;
+                CurrentDBRevitDocExchanges.Remove(docExcOut);
             }
+
+            DBRevitDocExchanges[] docExchangesContaines = _nativeDBRevitDocExchanges.Where(de => de.SettingName.ToLower().Contains(userInput)).ToArray();
+            foreach (DBRevitDocExchanges docExcIn in docExchangesContaines)
+            {
+                CurrentDBRevitDocExchanges.Add(docExcIn);
+            }
+
+            UpdateCheckedCheckBoxes(true);
         }
     }
 }

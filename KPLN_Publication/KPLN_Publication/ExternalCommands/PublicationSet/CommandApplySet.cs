@@ -11,14 +11,15 @@ namespace KPLN_Publication.ExternalCommands.PublicationSet
     {
         List<View> Views { get; set; }
         ViewSheetSet Set { get; set; }
+        
         public CommandApplySet(List<View> views, ViewSheetSet set)
         {
             Views = views;
             Set = set;
         }
+        
         public Result Execute(UIApplication app)
         {
-            //Print("Execute CommandApplySet", KPLN_Loader.Preferences.MessageType.System_Regular);
             Document doc = app.ActiveUIDocument.Document;
             string name = Set.Name;
             try

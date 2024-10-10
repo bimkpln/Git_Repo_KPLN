@@ -475,11 +475,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                     Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
                     report.GetProgress();
                 }
+                
                 if (sender.GetType() == typeof(TextBlock))
                 {
                     Report report = (sender as TextBlock).DataContext as Report;
                     report.GetProgress();
                 }
+                
                 if (sender.GetType() == typeof(Image))
                 {
                     Report report = (sender as Image).DataContext as Report;

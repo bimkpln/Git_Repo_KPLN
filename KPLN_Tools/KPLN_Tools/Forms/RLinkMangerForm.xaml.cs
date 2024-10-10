@@ -6,6 +6,7 @@ using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.ExecutableCommand;
 using Microsoft.Win32;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -42,8 +43,10 @@ namespace KPLN_Tools.Forms
                 docPath = _doc.PathName;
 
             string folderPath = docPath.Trim($"{_doc.Title}.rvt".ToArray());
+            if (!Directory.Exists(folderPath))
+                folderPath = @"C:\temp\";
             _initialDirectoryForOpenFileDialog = folderPath;
-            _configPath = folderPath + $"KPLNConfig\\RLinkManager.json";
+            _configPath = folderPath + $"KPLN_Config\\RLinkManager.json";
             LinkChangeEntityColl = new ObservableCollection<LinkManagerEntity>();
 
             InitializeComponent();
@@ -183,9 +186,25 @@ namespace KPLN_Tools.Forms
             {
                 _initialDirectoryOrRS = userPathInputForm.UserInputPath;
                 List<string> fileFromPathes = EnvironmentService.GetFilePathesFromPath(_initialDirectoryOrRS, _uiapp.Application.VersionNumber);
-                if (fileFromPathes == null) return;
+
+                string docName = string.Empty;
+                string[] docTitleParts = _doc.Title.Split(new string[] { $"_{Module.CurrentDBUser.RevitUserName}" }, StringSplitOptions.None);
+                if (docTitleParts.Length > 0)
+                    docName = docTitleParts[0];
+                else
+                    docName = _doc.Title;
                 
-                if (fileFromPathes == null || fileFromPathes.Count == 0)
+                string errorFromPath = fileFromPathes.Where(ffp => ffp.Contains(docName)).FirstOrDefault();
+                if (!string.IsNullOrEmpty(errorFromPath))
+                {
+                    CustomMessageBox cmb = new CustomMessageBox(
+                        "Предупреждение",
+                        $"Была попытка загрузить в файл {errorFromPath} в файл {errorFromPath} (то есть в себя же). Данный файл удален из списка на загрузку");
+                    cmb.ShowDialog();
+                    
+                    fileFromPathes.Remove(errorFromPath);
+                }
+                else if (fileFromPathes == null || fileFromPathes.Count == 0)
                 {
                     CustomMessageBox cmb = new CustomMessageBox(
                         "Предупреждение",
@@ -196,7 +215,16 @@ namespace KPLN_Tools.Forms
 
                 foreach (LinkManagerEntity entity in EnvironmentService.PrepareLCEntityByPathes(fileFromPathes))
                 {
-                    LinkChangeEntityColl.Add(entity);
+                    if (LinkChangeEntityColl.Any(lcec => lcec.LinkPath == entity.LinkPath))
+                    {
+                        CustomMessageBox cmb = new CustomMessageBox(
+                            "Предупреждение",
+                            $"Файл уже есть в списке на загрузку. Путь: {entity.LinkPath}");
+                        cmb.ShowDialog();
+                    }
+                    else
+                        LinkChangeEntityColl.Add(entity);
+                    
                 }
             }
         }

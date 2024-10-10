@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using Microsoft.Win32;
@@ -229,6 +230,32 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 btnOk.IsEnabled = false;
         }
 
+        /// <summary>
+        /// Обработка прокрутки колесика на части окна с файлами
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void FileWrapPanel_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            // Передаём событие ScrollViewer'у
+            if (FileStackScroll != null)
+            {
+                // Если крутим вниз, увеличиваем вертикальное смещение
+                if (e.Delta < 0)
+                {
+                    FileStackScroll.ScrollToVerticalOffset(FileStackScroll.VerticalOffset + 20); // Примерный шаг прокрутки
+                }
+                // Если крутим вверх, уменьшаем вертикальное смещение
+                else if (e.Delta > 0)
+                {
+                    FileStackScroll.ScrollToVerticalOffset(FileStackScroll.VerticalOffset - 20);
+                }
+
+                // Указываем, что событие обработано
+                e.Handled = true;
+            }
+        }
+
         #region Добавление/удаление файлов
         private void OnWindowsAddFile(object sender, RoutedEventArgs e)
         {
@@ -262,9 +289,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void LBMenuItem_Update_Click(object sender, RoutedEventArgs e)
         {
-            if ((MenuItem)e.Source is MenuItem menuItem)
+            // Получаем выбранные элементы
+            var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
+            if (selectedItems.Count != 1)
             {
-                if (menuItem.DataContext is FileEntity fileEntity)
+                UserDialog cd = new UserDialog("Предупреждение", $"Изменять можно только ОТДЕЛЬНЫЕ элементы. Сейчас выбрано несколько");
+                cd.ShowDialog();
+            }
+            else
+            {
+                if (selectedItems.FirstOrDefault() is FileEntity fileEntity)
                 {
                     UserStringInput userStringInput = new UserStringInput(fileEntity.Name, fileEntity.Path);
                     userStringInput.ShowDialog();
@@ -284,9 +318,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void LBMenuItem_Delete_Click(object sender, RoutedEventArgs e)
         {
-            if ((MenuItem)e.Source is MenuItem menuItem)
+            // Получаем выбранные элементы
+            var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
+
+            // Удаляем каждый выбранный элемент из коллекции
+            foreach (var item in selectedItems)
             {
-                if (menuItem.DataContext is FileEntity fileEntity)
+                if (item is FileEntity fileEntity)
                     FileEntitiesList.Remove(fileEntity);
             }
         }

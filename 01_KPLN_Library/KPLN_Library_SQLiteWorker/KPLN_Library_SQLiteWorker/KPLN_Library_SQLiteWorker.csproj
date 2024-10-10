@@ -51,6 +51,24 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug2023\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug2020\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.2.0.143\lib\net461\Dapper.dll</HintPath>
@@ -65,7 +83,8 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <HintPath>..\..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>

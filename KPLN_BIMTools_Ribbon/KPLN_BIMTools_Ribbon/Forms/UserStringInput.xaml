@@ -42,6 +42,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        
         <Grid Grid.Row="0" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -99,6 +100,7 @@
                 </TextBox.ToolTip>
             </TextBox>
         </Grid>
+        
         <Rectangle Fill="White" RadiusX="3" RadiusY="3" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.1"/>
         <StackPanel Margin="0,5,0,5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
             <Button 
@@ -113,14 +115,22 @@
                 Content="Отмена" 
                 Click="OnCancel"/>
         </StackPanel>
-        <TextBlock 
-            x:Name="tbFooter" 
-            Style="{StaticResource TXT}" 
+        
+        <StackPanel
             Grid.Row="2" 
             Grid.Column="0" 
-            Grid.ColumnSpan="2" 
-            Text="Примечание: Укажи путь к папке, чтобы обработать ВСЕ файлы, либо укажи путь к конкретному файлу (нужно указать расширение '.rvt'). Особенно актуально для RevitServer - для него все только через это окно" 
-            TextWrapping="Wrap"
-            Opacity="0.5"/>
+            Grid.ColumnSpan="2">
+            <TextBlock 
+                Style="{StaticResource TXT}" 
+                Text="Примечание 1: Укажи путь в формате \\АдресRS\ПолныйПуть\, например: \\192.168.0.5\СТАК\Стадия_Р\ВК\" 
+                TextWrapping="Wrap"
+                Opacity="0.5"/>
+            <TextBlock 
+                Style="{StaticResource TXT}" 
+                Grid.ColumnSpan="2" 
+                Text="Примечание 2: Укажи путь к папке, чтобы обработать ВСЕ файлы, либо укажи путь к конкретному файлу (нужно указать расширение '.rvt')" 
+                TextWrapping="Wrap"
+                Opacity="0.5"/>
+        </StackPanel>
     </Grid>
 </Window>

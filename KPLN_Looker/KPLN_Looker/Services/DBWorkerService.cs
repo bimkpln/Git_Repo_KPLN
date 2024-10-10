@@ -1,7 +1,6 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -10,13 +9,14 @@ namespace KPLN_Looker.Services
     /// <summary>
     /// Сервис по обращению к БД
     /// </summary>
-    internal class DBWorkerService
+    public class DBWorkerService
     {
         private readonly UserDbService _userDbService;
         private readonly DocumentDbService _documentDbService;
         private readonly ProjectDbService _projectDbService;
         private readonly ProjectMatrixDbService _projectMatrixDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;
+        private readonly RevitDialogDbService _dialogDbService;
         private DBUser _dBUser;
         private DBProjectMatrix[] _dbProjectMatrixColl;
         private DBSubDepartment _dBSubDepartment;
@@ -29,6 +29,7 @@ namespace KPLN_Looker.Services
             _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
             _projectMatrixDbService = (ProjectMatrixDbService)new CreatorProjectMatrixDbService().CreateService();
             _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
+            _dialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
         }
 
         /// <summary>
@@ -71,6 +72,14 @@ namespace KPLN_Looker.Services
 
                 return _dbProjectMatrixColl;
             }
+        }
+
+        /// <summary>
+        /// Список диалогов из БД
+        /// </summary>
+        internal DBRevitDialog[] DBRevitDialogs
+        {
+            get => _dialogDbService.GetDBRevitDialogs().ToArray();
         }
 
 

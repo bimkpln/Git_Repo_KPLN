@@ -75,8 +75,8 @@
       <HintPath>packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="HtmlAgilityPack, Version=1.11.51.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
-      <HintPath>packages\HtmlAgilityPack.1.11.51\lib\Net45\HtmlAgilityPack.dll</HintPath>
+    <Reference Include="HtmlAgilityPack, Version=1.11.66.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
+      <HintPath>packages\HtmlAgilityPack.1.11.66\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
@@ -274,7 +274,7 @@
   <Import Project="packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <PropertyGroup>
     <PreBuildEvent>IF "$(ConfigurationName)" == "Debug" (
-    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+    xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
 )
 IF "$(ConfigurationName)" == "Revit2020" (
     xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2020\"

@@ -34,8 +34,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             try
             {
-                if (!StartService(uiapp, revitDocExchangeEnum))
-                    return Result.Cancelled;
+                StartService(uiapp, revitDocExchangeEnum);
             }
             catch (Exception ex)
             {
@@ -50,7 +49,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         /// <summary>
         /// Метод открытия и копирования файла по новому пути
         /// </summary>
-        private protected override string ExchangeFile(Application app, string fileFromPath, DBConfigEntity configEntity, string rsn = "")
+        private protected override string ExchangeFile(Application app, ModelPath modelPathFrom, DBConfigEntity configEntity, string rsn = "")
         {
             //Апкастинг в настройку для экспорта в RS
             if (configEntity is DBRSConfigData rsConfigData)
@@ -61,7 +60,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
                 // Открываем документ по указанному пути
                 Document doc = app.OpenDocumentFile(
-                    ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath),
+                    modelPathFrom,
                     _openOptions);
 
                 if (doc != null)
@@ -77,7 +76,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     return newPath;
                 }
                 else
-                    Logger.Error($"Не удалось открыть Revit-документ ({fileFromPath}). Нужно вмешаться человеку");
+                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку");
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRSConfigData)}");

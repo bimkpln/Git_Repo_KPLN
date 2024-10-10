@@ -27,7 +27,7 @@ namespace KPLN_Library_Bitrix24Worker
         }
 
         /// <summary>
-        /// Отправить сообщение в чат бим-отдела от имени спец. пользователя
+        /// Отправить сообщение в чат бим-отдела
         /// </summary>
         /// <param name="msg">Сообщение, которое будет отправлено</param>
         public static async void SendMsg_ToBIMChat(string msg)
@@ -54,7 +54,7 @@ namespace KPLN_Library_Bitrix24Worker
         }
 
         /// <summary>
-        /// Отправить сообщение в чат бим-отдела от имени спец. пользователя
+        /// Отправить сообщение в чат пользователя от имени спец. пользователя
         /// </summary>
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
         /// <param name="msg">Сообщение, которое будет отправлено</param>

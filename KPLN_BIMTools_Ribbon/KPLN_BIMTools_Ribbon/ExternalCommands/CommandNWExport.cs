@@ -35,8 +35,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             try
             {
-                if (!StartService(uiapp, revitDocExchangeEnum))
-                    return Result.Cancelled;
+                StartService(uiapp, revitDocExchangeEnum);
             }
             catch (Exception ex)
             {
@@ -47,15 +46,13 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override string ExchangeFile(Application app, string fileFromPath, DBConfigEntity configEntity, string rsn = "")
+        private protected override string ExchangeFile(Application app, ModelPath modelPathFrom, DBConfigEntity configEntity, string rsn = "")
         {
             //Апкастинг в настройку для экспорта в NW
             if (configEntity is DBNWConfigData nwConfigData)
             {
-                ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
-
                 #region Анализ и открытие рабочих наборов
-                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
+                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(modelPathFrom);
                 IList<WorksetId> worksetIds = new List<WorksetId>();
 
                 string[] wsExceptions = nwConfigData.WorksetToCloseNamesStartWith.Split('~');
@@ -83,11 +80,11 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 #endregion
 
                 // Открываем документ по указанному пути
-                Document doc = app.OpenDocumentFile(docModelPath, _openOptions);
+                Document doc = app.OpenDocumentFile(modelPathFrom, _openOptions);
 
                 if (doc != null)
                 {
-                    #region Поиск вида для экспорта
+                    #region Поиск и проверка вида для экспорта
                     IEnumerable<View3D> currentDoc3DViews = new FilteredElementCollector(doc)
                         .OfClass(typeof(View3D))
                         .WhereElementIsNotElementType()
@@ -98,7 +95,21 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                         Logger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
                         return null;
                     }
-                    exportOptions.ViewId = currentDoc3DViews.First().Id;
+
+                    ElementId viewId = currentDoc3DViews.First().Id;
+
+                    var viewElemsColl = new FilteredElementCollector(doc, viewId)
+                        .WhereElementIsNotElementType()
+                        .Where(e => e.Category != null && e.Category.IsVisibleInUI)
+                        .ToArray();
+                    
+                    if (viewElemsColl.Length == 0)
+                    {
+                        Logger.Error($"На вид с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
+                        return null;
+                    }
+
+                    exportOptions.ViewId = viewId;
                     #endregion
 
                     #region Экспорт в Navisworks
@@ -112,7 +123,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     #endregion
                 }
                 else
-                    Logger.Error($"Не удалось открыть Revit-документ ({fileFromPath}). Нужно вмешаться человеку");
+                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку");
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBNWConfigData)}");

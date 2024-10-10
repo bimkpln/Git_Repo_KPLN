@@ -97,6 +97,9 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        /// <summary>
+        /// Имя учетки пользователя, который создал отчет
+        /// </summary>
         public string UserCreated
         {
             get => _userCreated;
@@ -106,6 +109,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 {
                     _userCreated = value;
                     NotifyPropertyChanged();
+                    NotifySelectedPropertyChanged(nameof(UserCreatedFullName));
                 }
             }
         }
@@ -123,6 +127,9 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        /// <summary>
+        /// Имя учетки пользователя, который внес последние изменения
+        /// </summary>
         public string UserLast
         {
             get => _userLast;
@@ -142,17 +149,31 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// <summary>
         /// Специальный формат для вывода в окно пользователя
         /// </summary>
-        public string LastUserFullName
+        public string UserCreatedFullName
         {
-            get => $"{CurrentDBUser.Name} {CurrentDBUser.Surname}";
+            get
+            {
+                DBUser dBUser = ClashesMainCollection.GetDBUser_ByUserName(UserCreated);
+                if (dBUser == null)
+                    return "Не установлено :(";
+                
+                return $"{dBUser.Name} {dBUser.Surname}";
+            } 
         }
 
         /// <summary>
         /// Специальный формат для вывода в окно пользователя
         /// </summary>
-        public string UserCreatedFullName
+        public string LastUserFullName
         {
-            get => $"{CurrentDBUser.Name} {CurrentDBUser.Surname}";
+            get
+            {
+                DBUser dBUser = ClashesMainCollection.GetDBUser_ByUserName(UserLast);
+                if (dBUser == null)
+                    return "Не установлено :(";
+
+                return $"{dBUser.Name} {dBUser.Surname}";
+            }
         }
 
         /// <summary>

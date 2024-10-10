@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI;
+using System.ComponentModel;
 using System.Media;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -75,8 +77,18 @@ namespace KPLN_Tools.Forms
 
         private void OnOk(object sender, RoutedEventArgs e)
         {
-            IsRun = true;
-            Close();
+            if (UserInputPathVerify())
+            {
+                IsRun = true;
+                Close();
+            }
+            else
+            {
+                CustomMessageBox cmb = new CustomMessageBox(
+                    "Ошибка",
+                    $"Путь \"{UserInputPath}\" к файлу/папке не соответвует критериям из описания. Исправь и повтори попытку");
+                cmb.ShowDialog();
+            }
         }
 
         /// <summary>
@@ -102,5 +114,11 @@ namespace KPLN_Tools.Forms
 
             BtnEnableSwitch();
         }
+
+        /// <summary>
+        /// Проверка корректности введенного пользователем пути
+        /// </summary>
+        /// <returns></returns>
+        private bool UserInputPathVerify() => UserInputPath.EndsWith(".rvt") || UserInputPath.EndsWith("\\");
     }
 }

@@ -27,5 +27,13 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             ExecuteQuery<DBRevitDialog>(
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBRevitDialog.DialogId)}='{dialogId}';");
+
+        /// <summary>
+        /// Получить RevitDialog по полному совпадению Message
+        /// </summary>
+        public IEnumerable<DBRevitDialog> GetDBRevitDialog_ByEqualMessage(string message) =>
+            ExecuteQuery<DBRevitDialog>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBRevitDialog.Message)}='{message}';");
     }
 }

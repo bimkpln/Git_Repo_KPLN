@@ -3,6 +3,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
+using KPLN_Tools.ExternalCommands;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media;
@@ -35,6 +36,8 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            Command_SETLinkChanger.SetStaticEnvironment(application);
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
 
@@ -54,7 +57,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandAutonumber).FullName,
+                typeof(CommandAutonumber).FullName,
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
@@ -65,17 +68,35 @@ namespace KPLN_Tools
                 "Выдает данные KPLN-пользователя Revit",
                 string.Format(
                     "Для поиска введи имя Revit-пользователя.\n" +
-                    "Доступно для пользователей KPLN_v.2.\n" +
                     "\n" +
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandSearchRevitUser).FullName,
+                typeof(CommandSearchRevitUser).FullName,
                 "KPLN_Tools.Imagens.searchUserBig.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
+                "http://moodle",
+                true);
+
+            PushButtonData sendMsgToBitrix = CreateBtnData(
+                "Отправить в Bitrix",
+                "Отправить в Bitrix",
+                "Отправляет данные по выделенному элементу пользователю в Bitrix",
+                string.Format(
+                    "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному/-ым пользователям Bitrix.\n" +
+                    "\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandSendMsgToBitrix).FullName,
+                "KPLN_Tools.Imagens.sendMsgBig.png",
+                "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "http://moodle");
+            sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
             PushButtonData tagWiper = CreateBtnData(
                 "Очистить марки помещений",
@@ -91,7 +112,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandTagWiper).FullName,
+                typeof(CommandTagWiper).FullName,
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "KPLN_Tools.Imagens.wipeSmall.png",
                 "http://moodle");
@@ -105,7 +126,7 @@ namespace KPLN_Tools
                    ModuleData.Version,
                    ModuleData.ModuleName
                ),
-               typeof(ExternalCommands.CommandExtraMonitoring).FullName,
+               typeof(CommandExtraMonitoring).FullName,
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "KPLN_Tools.Imagens.monitorMainSmall.png",
                "http://moodle");
@@ -120,7 +141,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandChangeLevel).FullName,
+                typeof(CommandChangeLevel).FullName,
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "http://moodle/");
@@ -139,7 +160,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandDimensionHelper).FullName,
+                typeof(CommandDimensionHelper).FullName,
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
@@ -153,7 +174,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.CommandRLinkManager).FullName,
+                typeof(CommandRLinkManager).FullName,
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "http://moodle");
@@ -167,7 +188,7 @@ namespace KPLN_Tools
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Command_SETLinkChanger).FullName,
+                typeof(Command_SETLinkChanger).FullName,
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "http://moodle");
@@ -188,6 +209,7 @@ namespace KPLN_Tools
 
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
+            sharedPullDownBtn.AddPushButton(sendMsgToBitrix);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
@@ -222,7 +244,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_SS_Systems).FullName,
+                    typeof(Command_SS_Systems).FullName,
                     "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "KPLN_Tools.Imagens.ssSystemsSmall.png",
                     "http://moodle");
@@ -232,16 +254,16 @@ namespace KPLN_Tools
                     "Заполнить параметры на чертежном виде",
                     "Заполнить параметры на чертежном виде",
                     string.Format("Плагин заполняет параметр ``КП_Позиция_Сумма`` для одинаковых семейств на чертежном виде, собирая значения параметров ``КП_О_Позиция`` с учетом параметра ``КП_О_Группирование``, " +
-                    "а также заполняет параметр ``КП_И_КолСпецификация`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
+                    "а также заполняет параметр ``КП_И_Количество в спецификацию`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_FillInParametersSS).FullName,
+                    typeof(Command_FillInParametersSS).FullName,
                     "KPLN_Tools.Imagens.FillInParamBig.png",
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1319");
 
                 ssToolsPullDownBtn.AddPushButton(ssSystems);
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
@@ -277,7 +299,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_KR_SMNX_RebarHelper).FullName,
+                    typeof(Command_KR_SMNX_RebarHelper).FullName,
                     "KPLN_Tools.Imagens.wipeSmall.png",
                     "KPLN_Tools.Imagens.wipeSmall.png",
                     "http://moodle");
@@ -312,7 +334,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OVVK_PipeThickness).FullName,
+                    typeof(Command_OVVK_PipeThickness).FullName,
                     "KPLN_Tools.Imagens.pipeThicknessSmall.png",
                     "KPLN_Tools.Imagens.pipeThicknessBig.png",
                     "http://moodle");
@@ -327,7 +349,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OV_DuctThickness).FullName,
+                    typeof(Command_OV_DuctThickness).FullName,
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
                     "KPLN_Tools.Imagens.ductThicknessBig.png",
                     "http://moodle");
@@ -342,7 +364,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.Command_OV_OZKDuctAccessory).FullName,
+                    typeof(Command_OV_OZKDuctAccessory).FullName,
                     "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
                     "KPLN_Tools.Imagens.ozkDuctAccessoryBig.png",
                     "http://moodle");
@@ -382,7 +404,7 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(ExternalCommands.CommandHolesManagerIOS).FullName,
+                    typeof(CommandHolesManagerIOS).FullName,
                     "KPLN_Tools.Imagens.holesManagerSmall.png",
                     "KPLN_Tools.Imagens.holesManagerBig.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1245");
@@ -411,7 +433,8 @@ namespace KPLN_Tools
             string className,
             string smlImageName,
             string lrgImageName,
-            string contextualHelp)
+            string contextualHelp,
+            bool avclass = false)
         {
             PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className)
             {
@@ -422,6 +445,10 @@ namespace KPLN_Tools
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
+            if (avclass)
+            {
+                data.AvailabilityClassName = typeof(StaticAvailable).FullName;
+            }
 
             return data;
         }

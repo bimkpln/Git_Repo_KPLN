@@ -35,14 +35,40 @@
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" MinHeight="20"/>
+            <RowDefinition Height="Auto" MinHeight="20"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!--Фильтр-->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.2*"/>
+                <ColumnDefinition Width="0.7*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock 
+                Text="Фильтр по имени:" 
+                Margin="0,0,0,5" 
+                TextWrapping="Wrap"
+                FontWeight="Bold" 
+                FontSize="14"
+                Foreground="White"/>
+            <TextBox 
+                x:Name="FilterItems"
+                Grid.Column="1"
+                TextWrapping="Wrap"
+                HorizontalContentAlignment="Stretch"
+                TextAlignment="Left"
+                TextChanged="FilterItems_TextChanged"/>
+        </Grid>
+        <!--Фильтр-->
+        
         <!--Заголовок-->
         <TextBlock 
+            Grid.Row="1"
             Text="Доступные конфигурации:" 
+            TextWrapping="Wrap"
             Margin="0,0,0,5" 
             FontWeight="Bold" 
             FontSize="14"
@@ -52,7 +78,7 @@
         <!--Блок с набором конфигов-->
         <ScrollViewer 
             Padding="0,0,5,0" 
-            Grid.Row="1" 
+            Grid.Row="2" 
             HorizontalScrollBarVisibility="Disabled" 
             VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" x:Name="sp">
@@ -76,6 +102,7 @@
 
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <CheckBox
+                                        x:Name="DocExchangeChBx"
                                         IsChecked="False"
                                         Checked="OnConfigChecked"
                                         Unchecked="OnConfigUnChecked"/>
@@ -121,7 +148,7 @@
         <!--Блок с набором конфигов-->
 
         <!--Нижний блок кнопок-->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.2*"/>
                 <ColumnDefinition Width="0.8*"/>

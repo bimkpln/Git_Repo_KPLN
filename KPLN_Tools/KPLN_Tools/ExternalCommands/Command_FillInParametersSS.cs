@@ -95,7 +95,7 @@ namespace KPLN_Tools.ExternalCommands
                 t.Commit();
             }
 
-            // Заполнение параметров: КП_И_КолСпецификация
+            // Заполнение параметров: КП_И_Количество в спецификацию
             List<Element> connectionElements = new List<Element>();
             FilteredElementCollector collector = new FilteredElementCollector(_doc);
 
@@ -125,7 +125,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
 
-            using (Transaction t2 = new Transaction(_doc, "KPLN_Заполнение параметров: КП_И_КолСпецификация"))
+            using (Transaction t2 = new Transaction(_doc, "KPLN_Заполнение параметров: КП_И_Количество в спецификацию"))
             {
                 t2.Start();
 
@@ -136,7 +136,7 @@ namespace KPLN_Tools.ExternalCommands
                     if (paramHeight != null && paramHeight.HasValue)
                     {
                         double heightValue = paramHeight.AsDouble() * 304.8;
-                        Parameter paramSpec = elem.LookupParameter("КП_И_КолСпецификация");
+                        Parameter paramSpec = elem.LookupParameter("КП_И_Количество в спецификацию");
 
                         if (paramSpec != null && !paramSpec.IsReadOnly)
                         {
@@ -147,7 +147,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 foreach (Element elem in elemsNotMatched)
                 {
-                    Parameter paramSpec = elem.LookupParameter("КП_И_КолСпецификация");
+                    Parameter paramSpec = elem.LookupParameter("КП_И_Количество в спецификацию");
 
                     if (paramSpec != null && !paramSpec.IsReadOnly)
                     {

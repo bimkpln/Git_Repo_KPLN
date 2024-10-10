@@ -13,45 +13,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
     /// </summary>
     internal abstract class AbstrGripBuilder
     {
-        /// <summary>
-        /// Документ Ревит
-        /// </summary>
-        protected internal readonly Document Doc;
-
-        /// <summary>
-        /// Имя документа Ревит
-        /// </summary>
-        internal readonly string DocMainTitle;
-
-        /// <summary>
-        /// Имя параметра, в который осуществляется запись уровня
-        /// </summary>
-        internal readonly string LevelParamName;
-
-        /// <summary>
-        /// Индекс, указывающий номер этажа, после разделения имени уровня по разделителю
-        /// </summary>
-        internal readonly int LevelNumberIndex;
-
-        /// <summary>
-        /// Имя параметра, в который осуществляется запись секции
-        /// </summary>
-        internal readonly string SectionParamName;
-
-        /// <summary>
-        /// Толщина смещения относительно уровня (чаще всего - стяжка пола). Нужна для перекидки значения элементов в стяжке на этаж выше
-        /// </summary>
-        internal readonly double FloorScreedHeight;
-
-        /// <summary>
-        /// Размер увеличения нижнего и вехнего боксов. Нужна для привязки элементов, расположенных за пределами крайних уровней
-        /// </summary>
-        internal readonly double DownAndTopExtra;
-
-        /// <summary>
-        /// Счетчик выпроненных операций по записи данных
-        /// </summary>
-        internal int PbCounter = 0;
 
         /// <summary>
         ///  GUID параметра для исключения перезаписи ("ПЗ_Перезаписать")
@@ -66,6 +27,57 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private List<GripParamError> _errorElements = new List<GripParamError>();
         private int _allElementsCount = 0;
         private int _hostElementsCount = 0;
+
+        public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra)
+        {
+            Doc = doc;
+            DocMainTitle = docMainTitle;
+            LevelParamName = levelParamName;
+            LevelNumberIndex = levelNumberIndex;
+            SectionParamName = sectionParamName;
+            FloorScreedHeight = floorScreedHeight;
+            DownAndTopExtra = downAndTopExtra;
+        }
+
+        /// <summary>
+        /// Документ Ревит
+        /// </summary>
+        protected internal Document Doc { get; }
+
+        /// <summary>
+        /// Имя документа Ревит
+        /// </summary>
+        internal string DocMainTitle { get; }
+
+        /// <summary>
+        /// Имя параметра, в который осуществляется запись уровня
+        /// </summary>
+        internal string LevelParamName { get; }
+
+        /// <summary>
+        /// Индекс, указывающий номер этажа, после разделения имени уровня по разделителю
+        /// </summary>
+        internal int LevelNumberIndex { get; }
+
+        /// <summary>
+        /// Имя параметра, в который осуществляется запись секции
+        /// </summary>
+        internal string SectionParamName { get; }
+
+        /// <summary>
+        /// Толщина смещения относительно уровня (чаще всего - стяжка пола). Нужна для перекидки значения элементов в стяжке на этаж выше
+        /// </summary>
+        internal double FloorScreedHeight { get; }
+
+        /// <summary>
+        /// Размер увеличения нижнего и вехнего боксов. Нужна для привязки элементов, расположенных за пределами крайних уровней
+        /// </summary>
+        internal double DownAndTopExtra { get; }
+
+        /// <summary>
+        /// Счетчик выпроненных операций по записи данных
+        /// </summary>
+        internal int PbCounter { get; private set; } = 0;
 
         /// <summary>
         /// Коллекция элементов на уровне
@@ -164,17 +176,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             {
                 _errorElements = value;
             }
-        }
-
-        public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra)
-        {
-            Doc = doc;
-            DocMainTitle = docMainTitle;
-            LevelParamName = levelParamName;
-            LevelNumberIndex = levelNumberIndex;
-            SectionParamName = sectionParamName;
-            FloorScreedHeight = floorScreedHeight;
-            DownAndTopExtra = downAndTopExtra;
         }
 
         /// <summary>

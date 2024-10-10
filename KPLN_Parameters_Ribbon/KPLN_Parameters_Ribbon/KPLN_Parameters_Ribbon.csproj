@@ -83,7 +83,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_ModelChecker_Lib">
-      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Revit2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />

@@ -30,9 +30,16 @@ namespace KPLN_Tools.Common
             // https://www.nuget.org/packages/RevitServerAPILib
             else
             {
+                #region Предобработка переданного пути
+                pathFrom = RemoveSubstringIfExists(pathFrom, "http:");
 
                 string[] pathParts = pathFrom.Split('\\');
+                if (pathParts.Length < 2)
+                    pathParts = pathFrom.Split('/');
 
+                if (pathParts.Length < 2)
+                    return null;
+                
                 string rsHostName = pathParts[2];
                 int pathPartsLenght = pathParts.Length;
                 if (rsHostName == null)
@@ -43,6 +50,7 @@ namespace KPLN_Tools.Common
                     cmb.ShowDialog();
                     return null;
                 }
+                #endregion
 
                 try
                 {
@@ -94,6 +102,12 @@ namespace KPLN_Tools.Common
             foreach (string path in fileFromPathes)
             {
                 string[] pathParts = path.Split('\\');
+                if (pathParts.Length < 2)
+                    pathParts = path.Split('/');
+
+                if (pathParts.Length < 2)
+                    throw new Exception($"Проблемы в конвертации указанного пути - нет возможности получить имя файла. Путь: {path}");
+
                 string modelName = pathParts.Where(x => x.EndsWith("rvt")).FirstOrDefault();
                 if (modelName == null)
                     throw new Exception($"Не удалось получить имя файла по пути: {path}");
@@ -102,6 +116,19 @@ namespace KPLN_Tools.Common
             }
 
             return result;
+        }
+
+        private static string RemoveSubstringIfExists(string originalString, string substring)
+        {
+            int index = originalString.IndexOf(substring);
+            if (index != -1)
+            {
+                // Удаляем подстроку, если она найдена
+                return originalString.Remove(index, substring.Length);
+            }
+
+            // Возвращаем исходную строку, если подстрока не найдена
+            return originalString;
         }
     }
 }

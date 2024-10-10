@@ -19,9 +19,14 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         /// Сервис по созданию рабочих наборов в проекте
         /// </summary>
         /// <param name="doc">Проект для создания РН</param>
-        /// <param name="links">Список связей, для которых нужно создать РНы</param>
+        /// <param name="rvtLinks">Список связей, для которых нужно создать РНы</param>
         /// <param name="modelElemWSCreating">Метка создания РН для элементов модели (кроме экземпляров связей)</param>
-        public static bool ExecuteFromService(Document doc, IEnumerable<RevitLinkInstance> links, bool modelElemWSCreating = true)
+        public static bool ExecuteFromService(
+            Document doc, 
+            IEnumerable<RevitLinkInstance> rvtLinks, 
+            IEnumerable<ImportInstance> importInstances, 
+            bool impInstWSCreating = true, 
+            bool modelElemWSCreating = true)
         {
             #region Вывод пользовательского окна с xml-шаблонами
             System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog
@@ -86,17 +91,74 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
             }
             #endregion
 
-            //Создание рабочих наборов
+            # region Создание рабочих наборов по конфигам
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("KPLN_Создание рабочих наборов");
 
                 // Общие поля класса WorksetDTO
                 string linkedFilesPrefix = dto.LinkedFilesPrefix;
+                string dwgLinksName = dto.DWGLinksName;
                 bool useMonitoredElems = dto.UseMonitoredElements;
                 string monitoredElementsName = dto.MonitoredElementsName;
 
-                //Назначение рабочих наборов для элементов модели по правилам из поля класса WorksetDTO
+                //Назначение рабочих наборов для связанных файлов
+                foreach (RevitLinkInstance linkInstance in rvtLinks)
+                {
+                    if (doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)
+                    {
+                        if (linkFileType.IsNestedLink) continue;
+
+                        string linkWorksetName1 = linkInstance.Name.Split(':')[0];
+                        string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
+                        string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
+                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+
+                        WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
+                        WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
+                    }
+                }
+
+                //Назначение рабочих наборов для dwg-импорта/связей
+                if (impInstWSCreating)
+                {
+                    foreach (ImportInstance importInstance in importInstances)
+                    {
+                        // Обход конфиогов, где НЕ нужно генерить РН под cad (например: Сетунь)
+                        if (string.IsNullOrEmpty(dwgLinksName))
+                            break;
+                    
+                        if (doc.GetElement(importInstance.GetTypeId()) is CADLinkType cadLinkType)
+                        {
+                            Workset cadWorkset = CreateNewWorkset(doc, dwgLinksName);
+
+                            WorksetByCurrentParameter.SetWorkset(importInstance, cadWorkset);
+                            WorksetByCurrentParameter.SetWorkset(cadLinkType, cadWorkset);
+                        }
+                    }
+                }
+
+                //Назначение рабочих наборов для элементов с монитрингом (кроме осей и уровней)
+                if (useMonitoredElems && modelElemWSCreating)
+                {
+                    Workset monitoredWorkset = CreateNewWorkset(doc, monitoredElementsName);
+                    List<FamilyInstance> allModelElements = new FilteredElementCollector(doc)
+                        .OfClass(typeof(FamilyInstance))
+                        .Cast<FamilyInstance>()
+                        .ToList();
+
+                    foreach (Element elem in allModelElements)
+                    {
+                        if ((elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Grids)
+                            && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Levels)
+                            && (elem.IsMonitoringLinkElement() || elem.IsMonitoringLocalElement()))
+                        {
+                            WorksetByCurrentParameter.SetWorkset(elem, monitoredWorkset);
+                        }
+                    }
+                }
+
+                // Назначение рабочих наборов по WorksetByCurrentParameter
                 foreach (WorksetByCurrentParameter param in dto.WorksetByCurrentParameterList)
                 {
                     Workset workset = param.GetWorkset(doc);
@@ -201,45 +263,9 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     }
                 }
 
-                //Назначение рабочих наборов для элементов с монитрингом (кроме осей и уровней)
-                if (useMonitoredElems && modelElemWSCreating)
-                {
-                    Workset monitoredWorkset = CreateNewWorkset(doc, monitoredElementsName);
-                    List<FamilyInstance> allModelElements = new FilteredElementCollector(doc)
-                        .OfClass(typeof(FamilyInstance))
-                        .Cast<FamilyInstance>()
-                        .ToList();
-
-                    foreach (Element elem in allModelElements)
-                    {
-                        if ((elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Grids)
-                            && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Levels)
-                            && (elem.IsMonitoringLinkElement() || elem.IsMonitoringLocalElement()))
-                        {
-                            WorksetByCurrentParameter.SetWorkset(elem, monitoredWorkset);
-                        }
-                    }
-                }
-
-                //Назначение рабочих наборов для связанных файлов
-                foreach (RevitLinkInstance linkInstance in links)
-                {
-                    if (doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)
-                    {
-                        if (linkFileType.IsNestedLink) continue;
-
-                        string linkWorksetName1 = linkInstance.Name.Split(':')[0];
-                        string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
-                        string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
-                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
-
-                        WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
-                        WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
-                    }
-                }
-
                 t.Commit();
             }
+            #endregion
 
             List<string> emptyWorksetsNames = GetEmptyWorksets(doc);
             if (emptyWorksetsNames.Count > 0)

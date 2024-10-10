@@ -13,6 +13,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         {
         }
 
+        #region Create
         /// <summary>
         /// Создать новый документ в БД
         /// </summary>
@@ -24,6 +25,15 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"VALUES (@{nameof(DBDocument.CentralPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
             dBDocument);
         }
+        #endregion
+
+        #region Read
+        /// <summary>
+        /// Получить коллекцию ВСЕХ документов
+        /// </summary>
+        public IEnumerable<DBDocument> GetDBDocuments() =>
+            ExecuteQuery<DBDocument>(
+                $"SELECT * FROM {_dbTableName};");
 
         /// <summary>
         /// Получить документы по id проекта и отдела
@@ -33,8 +43,9 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBDocument.ProjectId)}='{projectId}'" +
                 $"AND {nameof(DBDocument.SubDepartmentId)}='{subDepartmentId}';");
+        #endregion
 
-
+        #region Update
         /// <summary>
         /// Обновить статус IsClosed документа по статусу проекта
         /// </summary>
@@ -49,6 +60,6 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                 $"SET {nameof(DBDocument.LastChangedUserId)}='{dBUser.Id}', {nameof(DBDocument.LastChangedData)}='{data}' " +
                 $"WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
-
+        #endregion
     }
 }
