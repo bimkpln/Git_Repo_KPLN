@@ -17,9 +17,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
+            // На будущее - может имеет смысл посадить на конфиги, но в целом - лучше хардкодить, чтобы никто случайно не влез. Конфиги нужно прятать от юзеров
+            string paramName = "КП_О_Секция";
+            if (doc.Title.StartsWith("СЕТ_1"))
+                paramName = "СМ_Секция";
+
             try
             {
-                List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, "КП_О_Секция");
+                List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, paramName);
 
                 using (Transaction t = new Transaction(doc))
                 {

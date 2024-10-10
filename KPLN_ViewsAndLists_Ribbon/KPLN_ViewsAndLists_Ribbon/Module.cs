@@ -52,6 +52,23 @@ namespace KPLN_ViewsAndLists_Ribbon
             );
 
             AddPushButtonDataInPullDown(
+                "ViewTemplateCopy",
+                "Копировать\nшаблоны вида",
+                "Копировать шаблоны вида из другого проекта",
+                string.Format(
+                    "Копирует шаблоны вида из указанного проекта, в текущий (на котором плагин запустили)." +
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Views.CommandViewTemplateCopy).FullName,
+                pullDown_Views,
+                "KPLN_ViewsAndLists_Ribbon.Resources.ViewTemplateCopy_small.png",
+                "http://moodle/"
+            );
+
+            AddPushButtonDataInPullDown(
                 "BatchCreate",
                 "Создать\nфильтры",
                 "Создать фильтры",
