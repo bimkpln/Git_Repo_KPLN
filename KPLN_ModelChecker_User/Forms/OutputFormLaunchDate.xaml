@@ -6,7 +6,8 @@
         xmlns:local="clr-namespace:KPLN_ModelChecker_User.Forms"
         mc:Ignorable="d" 
         Width="1050"
-        SizeToContent="WidthAndHeight"
+        MaxHeight="750"
+        SizeToContent="Height"
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
         Title="[KPLN]: Проверка запуска" 
         WindowStyle="ToolWindow" 
@@ -17,7 +18,7 @@
     <Window.Resources>
         <Style x:Key="TXT_H" TargetType="TextBlock">
             <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="0,1,0,1"/>
+            <Setter Property="Margin" Value="5,1,5,1"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -42,8 +43,13 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" BorderBrush="Black" BorderThickness="0,1,0,1"/>
-        <Border Grid.Column="1" BorderBrush="Black" BorderThickness="1,1,0,1"/>
+        <Border 
+            BorderBrush="Black" 
+            BorderThickness="0,1,0,1"/>
+        <Border 
+            Grid.Column="1" 
+            BorderBrush="Black" 
+            BorderThickness="1,1,0,1"/>
 
         <TextBlock 
             Style="{StaticResource TXT_H}"
@@ -57,36 +63,56 @@
             VerticalAlignment="Center"
             HorizontalAlignment="Center"/>
 
-        <Grid Grid.Row="1" Grid.ColumnSpan="2">
-            <ListBox x:Name="modulesListBox"
-                    Grid.Row="1" 
-                    HorizontalAlignment="Stretch" 
-                    VerticalAlignment="Stretch">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="195"/>
-                                <ColumnDefinition Width="825"/>
-                            </Grid.ColumnDefinitions>
-                            <Border BorderBrush="Black" Width="Auto" Margin="-6,0,0,0" BorderThickness="1,1,1,1"/>
-                            <Border BorderBrush="Black" Grid.Column="1" Margin="0,0,-6,0" Width="Auto" BorderThickness="0,1,1,1"/>
-                            <TextBlock 
-                                Grid.Column="0"
-                                Style="{StaticResource TXT_H}"
-                                Text="{Binding Path=CheckName}" 
-                                Foreground="{Binding Path=TextColor}"
-                                HorizontalAlignment="Left" />
-                            <TextBlock 
-                                Grid.Column="1"
-                                Style="{StaticResource TXT_D}"
-                                Text="{Binding Path=LastRunText}" 
-                                Foreground="{Binding Path=TextColor}"
-                                HorizontalAlignment="Left" />
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Grid>
+        <StackPanel 
+            x:Name="ModuleLogsStack"
+            Grid.Row="1"
+            Grid.ColumnSpan="2"
+            Orientation="Vertical"
+            MinHeight="500">
+            <ScrollViewer
+                x:Name="ModuleLogsStackScroll"
+                VerticalScrollBarVisibility="Auto"
+                Height="{Binding ElementName=ModuleLogsStack, Path=ActualHeight}">
+                <ItemsControl 
+                    x:Name="ModuleLogsListBox"
+                    PreviewMouseWheel="ModulesListBox_PreviewMouseWheel">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="850"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <Border 
+                                    Margin="-10,0,0,0" 
+                                    Width="Auto" 
+                                    BorderThickness="1,1,1,1"
+                                    BorderBrush="Black" />
+                                <Border 
+                                    Grid.Column="1" 
+                                    Margin="0,0,-10,0" 
+                                    Width="Auto" 
+                                    BorderThickness="0,1,1,1"
+                                    BorderBrush="Black" />
+                            
+                                <TextBlock 
+                                    Grid.Column="0"
+                                    Style="{StaticResource TXT_H}"
+                                    Text="{Binding Path=CheckName}" 
+                                    Foreground="{Binding Path=TextColor}"
+                                    HorizontalAlignment="Left" />
+                                <TextBlock 
+                                    Grid.Column="1"
+                                    Style="{StaticResource TXT_D}"
+                                    Text="{Binding Path=LastRunText}" 
+                                    Foreground="{Binding Path=TextColor}"
+                                    HorizontalAlignment="Left" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
     </Grid>
 </Window>
