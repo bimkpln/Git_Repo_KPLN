@@ -152,7 +152,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
 
                 // Проверяю системные типоразмеры АР и КР
-                if (doc.PathName.Contains("АР_")
+                else if (doc.PathName.Contains("АР_")
                     || doc.PathName.Contains("_АР_")
                     || doc.PathName.Contains("AR_")
                     || doc.PathName.Contains("_AR_")
@@ -253,7 +253,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     currentFam,
                     CheckStatus.Warning,
                     "Предупреждение семейства",
-                    $"Возможно семейство является копией семейства «{similarFamilyName}»",
+                    $"Возможно семейство является копией семейства \"{similarFamilyName}\"",
                     false,
                     false,
                     "Копий семейств в проекте быть не должно."));
@@ -278,7 +278,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     currentFam,
                     CheckStatus.Warning,
                     "Предупреждение типоразмера",
-                    $"Возможно тип является копией типоразмера «{similarSymbolName}»",
+                    $"Возможно тип является копией типоразмера \"{similarSymbolName}\"",
                     false,
                     false,
                     "Копии необходимо наименовывать корректно, либо избегать появления копий в проекте!"));
@@ -332,7 +332,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (sliceCode.ToUpper().Equals("ВН") || sliceCode.ToUpper().Equals("НА"))
                     sliceCode = typeSplitedName[2];
 
-                if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ"))
+                if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ") && !sliceCode.ToUpper().StartsWith("К"))
                 {
                     return new WPFEntity(
                         elemType,
@@ -341,7 +341,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Код '00_' может содержать только несущие конструкции",
                         false,
                         true,
-                        $"Несущий стены/перекрытия - это ЖБ (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон (нет ЖБ): {sliceCode}");
+                        $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"");
                 }
                 if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
                 {
@@ -352,7 +352,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"ЖБ вне несущего слоя",
                         false,
                         true,
-                        $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а {typeSplitedName[0]})");
+                        $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")");
                 }
                 #endregion
 
@@ -363,29 +363,45 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     totalThicknessStr = typeSplitedName[typeSplitedName.Length - 2];
                     if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 2], out totalThickness))
                     {
-                        return new WPFEntity(
+                        totalThicknessStr = typeSplitedName[typeSplitedName.Length - 3];
+                        if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 3], out totalThickness))
+                        {
+                            return new WPFEntity(
                             elemType,
                             CheckStatus.Error,
                             "Ошибка типоразмера системного",
                             $"Ошибка индекса положения суммарной толщины",
                             false,
                             true,
-                            $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Сейчас это значение не цифра, а: {totalThicknessStr}");
+                            $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
+                            $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.");
+                        }
                     }
                 }
 
                 double typeThickness = 0;
                 if (elemType is FloorType floorType)
+#if Revit2020 || Debug2020
                     typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
+                        DisplayUnitType.DUT_MILLIMETERS);
+#endif
+#if Revit2023 || Debug2023
+                typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
                         new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+#endif
                 else if (elemType is WallType wallType)
                 {
                     Parameter widthParam = wallType.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM);
                     if (widthParam == null)
                         return null;
-
+#if Revit2020 || Debug2020
+                    typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
+                        DisplayUnitType.DUT_MILLIMETERS);
+#endif
+#if Revit2023 || Debug2023
                     typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
                         new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+#endif
                 }
 
                 if (Math.Abs(totalThickness - typeThickness) > 0.1)
@@ -397,7 +413,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Сумма слоёв не совпадает с описанием",
                         false,
                         true,
-                        $"Толщина слоя в имени указана как {totalThicknessStr}, хотя на самом деле она составляет {typeThickness}");
+                        $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"");
                 }
                 #endregion
             }

@@ -51,7 +51,8 @@ namespace KPLN_ModelChecker_User
             CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
                 "Проверка семейств",
                 "KPLN_CommandCheckFamilies",
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807")));
+                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
+                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
             CommandCheckGrids commandCheckGrids = new CommandCheckGrids(new ExtensibleStorageEntity(
                 "Проверка осей",
                 "KPLN_CommandCheckGrids",
