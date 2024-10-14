@@ -2,7 +2,6 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using static KPLN_Library_Forms.Common.UIStatus;
@@ -11,7 +10,6 @@ namespace KPLN_Tools.Forms
 {
     public partial class SendMsgToBitrix : Window
     {
-
         public SendMsgToBitrix(ObservableCollection<SendMsgToBitrix_UserEntity> userEntitysCollection)
         {
             CurrentViewModel = new SendMsgToBitrix_ViewModel(userEntitysCollection);
@@ -63,39 +61,7 @@ namespace KPLN_Tools.Forms
                 RunBtn_Click(sender, e);
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Keyboard.Focus(UserInput_Surname);
-
-            // Подписываюсь на выбор элемента (IsChecked) в Users
-            foreach (var item in Users.Items)
-            {
-                // Получаем контейнер для элемента
-                if (Users.ItemContainerGenerator.ContainerFromItem(item) is FrameworkElement container)
-                {
-                    // Ищем CheckBox в визуальном дереве контейнера
-                    var checkBox = FindVisualChild<CheckBox>(container);
-                    if (checkBox != null)
-                    {
-                        checkBox.Checked += CheckBox_Checked;
-                        checkBox.Unchecked += CheckBox_Unchecked;
-                    }
-                }
-            }
-        }
-
-        private void CheckBox_Checked(object sender, RoutedEventArgs e) => UpdateRunButtonState();
-
-        private void CheckBox_Unchecked(object sender, RoutedEventArgs e) => UpdateRunButtonState();
-
-        private void UpdateRunButtonState()
-        {
-            // Проверим, есть ли выбранные CheckBox
-            RunBtn.IsEnabled = Users.Items.Cast<object>()
-                .Select(item => Users.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement)
-                .Select(container => FindVisualChild<CheckBox>(container))
-                .Any(cb => cb != null && cb.IsChecked == true);
-        }
+        private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(UserInput_Surname);
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -112,6 +78,8 @@ namespace KPLN_Tools.Forms
                 Status = RunStatus.Run;
                 this.Close();
             }
+            else
+                System.Windows.Forms.MessageBox.Show("Сначала выбери адресат/-ы для отправки сообщения", "Внимание", System.Windows.Forms.MessageBoxButtons.OK);
         }
     }
 }

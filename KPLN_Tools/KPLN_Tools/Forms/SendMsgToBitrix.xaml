@@ -78,7 +78,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="0,9*"/>
-            <RowDefinition Height="60"/>
+            <RowDefinition Height="0,5*"/>
             <RowDefinition Height="35"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -179,8 +179,7 @@
             Grid.ColumnSpan="2"
             Style="{StaticResource BTN}" 
             Content="Отправить!" 
-            IsEnabled="False"
-            ToolTip="Выбери пользователя/-ей, чтобы отправить ему/им сообщение"
+            ToolTip="Отправить выбранному пользователю/-ям"
             Click="RunBtn_Click"/>
     </Grid>
 </Window>
