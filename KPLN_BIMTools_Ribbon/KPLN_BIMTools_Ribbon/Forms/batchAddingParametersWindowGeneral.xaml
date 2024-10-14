@@ -46,18 +46,19 @@
 
                 <StackPanel x:Name="SP_allPanelParamsFields">
 
-                    <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
-                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="ParamsGroupSelectionChanged">
+                    <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Height="52" Orientation="Horizontal" VerticalAlignment="Top">
+                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="ParamsGroupSelectionChanged" VerticalAlignment="Top">
                         </ComboBox>
-                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,3,0,0"  IsEditable="True" StaysOpenOnEdit="True" IsTextSearchEnabled="False" 
+                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" VerticalAlignment="Top" Padding="8,3,0,0" IsEditable="True" StaysOpenOnEdit="True" IsTextSearchEnabled="False" 
                                   TextBoxBase.TextChanged="ParamsNameTextChanged" Loaded="ParamsName_Loaded" DropDownOpened="ParamsNameDropDownOpened" SelectionChanged="ParamsNameSelectionChanged">
                         </ComboBox>
-                        <ComboBox x:Name="CB_typeInstance" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
+                        <ComboBox x:Name="CB_typeInstance" Width="105" Height="25" VerticalAlignment="Top" Padding="8,4,0,0" SelectedIndex="0">
                         </ComboBox>
-                        <ComboBox x:Name="CB_grouping" Width="340" Height="25" Padding="8,4,0,0" SelectedIndex="21">
+                        <ComboBox x:Name="CB_grouping" Width="340" Height="25" VerticalAlignment="Top" Padding="8,4,0,0" SelectedIndex="21">
                         </ComboBox>
+                        <Button Content="X" Width="30" Height="25" VerticalAlignment="Top" Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
 
-                        <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
+                        <TextBox x:Name="TB_paramValue" Text="Значение параметра" Width="1245" Height="25" VerticalAlignment="Bottom" Margin="-1250, 0, 0, 0" Padding="15,3,0,0" Background="#FFFBFFD5"></TextBox>
 
                     </StackPanel>
                 

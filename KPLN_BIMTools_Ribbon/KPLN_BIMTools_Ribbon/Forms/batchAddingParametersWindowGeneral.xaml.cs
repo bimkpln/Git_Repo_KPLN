@@ -9,6 +9,7 @@ using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
 using System.Windows.Data;
+using Autodesk.Revit.DB.ExtensibleStorage;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -197,6 +198,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 newParamList[nameParameter].Add(entry["nameParameter"]);
                 newParamList[nameParameter].Add(entry["instance"]);
                 newParamList[nameParameter].Add(entry["grouping"]);
+                newParamList[nameParameter].Add(entry["parameterValue"]);
             }
 
             return newParamList;
@@ -273,19 +275,35 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     string stackPanelKey = $"ParamFromSPFAdd-{stackPanelIndex}";
                  
                     var comboBoxes = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
-                    List<string> comboBoxValues = new List<string>();
+                    var textBoxes= stackPanel.Children.OfType<System.Windows.Controls.TextBox>().ToList();
+
+                    List<string> contentsOfDataFields = new List<string>();
 
                     if (comboBoxes.Count >= 4)
                     {
                         string firstComboBoxTag = comboBoxes[0].Tag?.ToString() ?? "";
-                        comboBoxValues.Add(firstComboBoxTag);
+                        contentsOfDataFields.Add(firstComboBoxTag);
 
                         foreach (var comboBox in comboBoxes.Take(4))
                         {
-                            comboBoxValues.Add(comboBox.SelectedItem?.ToString() ?? "");
+                            contentsOfDataFields.Add(comboBox.SelectedItem?.ToString() ?? "");
                         }
 
-                        interfaceParamDict.Add(stackPanelKey, comboBoxValues);
+                        foreach (var textBox in textBoxes)
+                        {
+                            string textBoxValue = textBox.Text;
+
+                            if (textBoxValue == "" || textBoxValue == "Значение параметра")
+                            {
+                                contentsOfDataFields.Add("None");
+                            }
+                            else
+                            {
+                                contentsOfDataFields.Add(textBoxValue);
+                            }
+                        }
+
+                        interfaceParamDict.Add(stackPanelKey, contentsOfDataFields);
                     }
                 }
             }
@@ -573,7 +591,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                 }
 
-                ClearingIncorrectlyFilledFieldsParams();
+                ClearingIncorrectlyFilledFieldsParams();               
             }    
         }
 
@@ -656,9 +674,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
                     {
 
+                        TB_paramValue.Text = "Значение параметра";
+
                         if (CB_paramsGroup.SelectedItem == null)
                         {
-                            CB_paramsGroup.SelectedItem = kvp.Key;
+                            CB_paramsGroup.SelectedItem = kvp.Key;                           
                         }
 
                         break;
@@ -693,6 +713,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Tag = "uniqueParameterField",
                 ToolTip = $"ФОП: {SPFPath}",
                 Orientation = Orientation.Horizontal,
+                Height = 52,
                 Margin = new Thickness(20, 0, 20, 12)
             };
 
@@ -702,6 +723,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ToolTip = $"ФОП: {SPFPath}",
                 Width = 270,
                 Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
                 Padding = new Thickness(8, 4, 0, 0)
             };
 
@@ -712,6 +734,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 IsTextSearchEnabled = false,
                 Width = 490,
                 Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
                 Padding = new Thickness(8, 3, 0, 0),
             };
 
@@ -809,32 +832,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
-            cbParamsName.SelectionChanged += (s, ev) =>
-            {
-                if (cbParamsName.SelectedItem != null)
-                {
-                    string selectedParam = cbParamsName.SelectedItem as String;
-
-                    foreach (var kvp in groupAndParametersFromSPFDict)
-                    {
-                        if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
-                        {
-
-                            if (cbParamsGroup.SelectedItem == null)
-                            {
-                                cbParamsGroup.SelectedItem = kvp.Key;
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            };
 
             System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
             {
                 Width = 105,
                 Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
                 Padding = new Thickness(8, 4, 0, 0),
                 SelectedIndex = 0
             };
@@ -848,6 +851,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 Width = 340,
                 Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
                 Padding = new Thickness(8, 4, 0, 0),
                 SelectedIndex = 21
             };
@@ -861,6 +865,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 Width = 30,
                 Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
                 Content = "X",
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
                 Foreground = new SolidColorBrush(Colors.White)
@@ -871,11 +876,47 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 SP_allPanelParamsFields.Children.Remove(newPanel);
             };
 
+            System.Windows.Controls.TextBox textBoxParamsValue = new System.Windows.Controls.TextBox
+            {
+                Text = "Значение параметра",
+                Width = 1245,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(-1250, 0, 0, 0),
+                Padding = new Thickness(15, 3, 0, 0),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
+            };
+
+            cbParamsName.SelectionChanged += (s, ev) =>
+            {
+                if (cbParamsName.SelectedItem != null)
+                {
+                    string selectedParam = cbParamsName.SelectedItem as String;
+
+                    foreach (var kvp in groupAndParametersFromSPFDict)
+                    {
+                        if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
+                        {
+
+                            textBoxParamsValue.Text = "Значение параметра";
+
+                            if (cbParamsGroup.SelectedItem == null)
+                            {
+                                cbParamsGroup.SelectedItem = kvp.Key;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            };
+
             newPanel.Children.Add(cbParamsGroup);
             newPanel.Children.Add(cbParamsName);
             newPanel.Children.Add(cbTypeInstance);
             newPanel.Children.Add(cbGrouping);
             newPanel.Children.Add(removeButton);
+            newPanel.Children.Add(textBoxParamsValue);
 
             SP_allPanelParamsFields.Children.Add(newPanel);
         }
@@ -929,6 +970,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Tag = "uniqueParameterField",
                     ToolTip = $"ФОП: {allParamInInterfaceFromJsonValues[0]}",
                     Orientation = Orientation.Horizontal,
+                    Height = 52,
                     Margin = new Thickness(20, 0, 20, 12)
                 };
 
@@ -939,6 +981,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     IsEnabled = false,
                     Width = 270,
                     Height = 25,
+                    VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
                     Foreground = Brushes.Gray
                 };
@@ -948,6 +991,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     IsEnabled = false,
                     Width = 490,
                     Height = 25,
+                    VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
                     Foreground = Brushes.Gray
                 };
@@ -978,6 +1022,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     Width = 105,
                     Height = 25,
+                    VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
                     SelectedIndex = 0
                 };
@@ -999,6 +1044,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     Width = 340,
                     Height = 25,
+                    VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
                     SelectedIndex = 21
                 };
@@ -1021,6 +1067,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     Width = 30,
                     Height = 25,
+                    VerticalAlignment = VerticalAlignment.Top,
                     Content = "X",
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
                     Foreground = new SolidColorBrush(Colors.White)
@@ -1031,11 +1078,27 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     SP_allPanelParamsFields.Children.Remove(newPanel);
                 };
 
+                System.Windows.Controls.TextBox textBoxParamsValue = new System.Windows.Controls.TextBox
+                {
+                    Text = "Значение параметра",
+                    IsEnabled = false,
+                    Width = 1245,
+                    Height = 25,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(-1250, 0, 0, 0),
+                    Padding = new Thickness(15, 3, 0, 0),
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)),
+                    Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(162, 162, 162))
+                };
+
+                textBoxParamsValue.Text = allParamInInterfaceFromJsonValues[5];
+
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);
                 newPanel.Children.Add(cbTypeInstance);
                 newPanel.Children.Add(cbGrouping);
                 newPanel.Children.Add(removeButton);
+                newPanel.Children.Add(textBoxParamsValue);
 
                 SP_allPanelParamsFields.Children.Add(newPanel);
                 TB_filePath.Text = allParamInInterfaceFromJsonValues[0];
@@ -1117,7 +1180,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             { "groupParameter", entry.Value[1] },
                             { "nameParameter", entry.Value[2] },
                             { "instance", entry.Value[3] },
-                            { "grouping", entry.Value[4] }
+                            { "grouping", entry.Value[4] },
+                            { "parameterValue", entry.Value[5] },
                         };
                             parameterList.Add(parameterEntry);
                         }

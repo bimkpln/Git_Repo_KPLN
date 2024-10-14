@@ -62,7 +62,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 dynamic jsonFile = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonContent);
 
                 if (jsonFile is JArray && ((JArray)jsonFile).All(item =>
-                        item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null && item["grouping"] != null))
+                        item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null && item["grouping"] != null && item["parameterValue"] != null))
                 {
                     var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
                     var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
