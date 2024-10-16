@@ -190,6 +190,7 @@
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\OVVK_System\IJsonSerializable.cs" />
+    <Compile Include="Common\OVVK_System\DuctThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
@@ -207,10 +208,12 @@
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
+    <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
     <Compile Include="ExternalCommands\CommandSendMsgToBitrix.cs" />
     <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
+    <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChangerOLD.cs" />
@@ -231,6 +234,9 @@
     <Compile Include="Forms\Models\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
+    <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
+      <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
     </Compile>
@@ -308,6 +314,8 @@
     <EmbeddedResource Include="Imagens\FillInParamSmall.png" />
     <EmbeddedResource Include="Imagens\sendMsgBig.png" />
     <EmbeddedResource Include="Imagens\sendMsgSmall.png" />
+    <EmbeddedResource Include="Imagens\systemMangerBig.png" />
+    <EmbeddedResource Include="Imagens\systemMangerSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -322,6 +330,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\FormChageLevel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\OV_DuctThicknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

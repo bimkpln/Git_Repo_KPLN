@@ -75,7 +75,7 @@ namespace KPLN_Tools
                     ModuleData.ModuleName
                 ),
                 typeof(CommandSearchRevitUser).FullName,
-                "KPLN_Tools.Imagens.searchUserBig.png",
+                "KPLN_Tools.Imagens.searchUserSmall.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
                 "http://moodle",
                 true);
@@ -93,7 +93,7 @@ namespace KPLN_Tools
                     ModuleData.ModuleName
                 ),
                 typeof(CommandSendMsgToBitrix).FullName,
-                "KPLN_Tools.Imagens.sendMsgBig.png",
+                "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
@@ -261,7 +261,7 @@ namespace KPLN_Tools
                         ModuleData.ModuleName
                     ),
                     typeof(Command_FillInParametersSS).FullName,
-                    "KPLN_Tools.Imagens.FillInParamBig.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1319");
 
@@ -336,13 +336,32 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OVVK_PipeThickness).FullName,
                     "KPLN_Tools.Imagens.pipeThicknessSmall.png",
-                    "KPLN_Tools.Imagens.pipeThicknessBig.png",
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "http://moodle");
+
+                PushButtonData ovvk_systemManager = CreateBtnData(
+                    "Менеджер систем",
+                    "Менеджер систем",
+                    "Управление системами в проекте",
+                    string.Format(
+                        "Функционал:" +
+                            "\n1. Обновляет имя систем;" +
+                            "\n2. Объединяет системы в группы для специфицирования и генерации видов;" +
+                            "\n3. Генерация видов." +
+                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_OVVK_SystemManager).FullName,
+                    "KPLN_Tools.Imagens.systemMangerSmall.png",
+                    "KPLN_Tools.Imagens.systemMangerSmall.png",
                     "http://moodle");
 
                 PushButtonData ov_ductThickness = CreateBtnData(
                     "ОВ: Толщина воздуховодов",
                     "ОВ: Толщина воздуховодов",
-                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты",
+                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты согласно СП.60 и СП.7",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
@@ -351,7 +370,7 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OV_DuctThickness).FullName,
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
-                    "KPLN_Tools.Imagens.ductThicknessBig.png",
+                    "KPLN_Tools.Imagens.ductThicknessSmall.png",
                     "http://moodle");
 
                 PushButtonData ov_ozkDuctAccessory = CreateBtnData(
@@ -366,12 +385,13 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OV_OZKDuctAccessory).FullName,
                     "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "KPLN_Tools.Imagens.ozkDuctAccessoryBig.png",
+                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
                     "http://moodle");
 
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
-                //ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
+                ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
+                ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
             }
             #endregion
 
@@ -406,7 +426,7 @@ namespace KPLN_Tools
                     ),
                     typeof(CommandHolesManagerIOS).FullName,
                     "KPLN_Tools.Imagens.holesManagerSmall.png",
-                    "KPLN_Tools.Imagens.holesManagerBig.png",
+                    "KPLN_Tools.Imagens.holesManagerSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1245");
 
                 holesPullDownBtn.AddPushButton(holesManagerIOS);

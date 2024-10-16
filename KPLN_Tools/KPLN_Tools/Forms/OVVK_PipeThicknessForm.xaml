@@ -11,6 +11,7 @@
         MaxHeight="750"
         ResizeMode="NoResize"
         Topmost="True"
+        Title="KPLN: Толщина стенки труб"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <Style x:Key="MainButtons" TargetType="{x:Type Button}">
