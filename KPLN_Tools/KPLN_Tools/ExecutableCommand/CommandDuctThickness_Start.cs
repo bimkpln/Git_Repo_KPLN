@@ -75,6 +75,24 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         /// <summary>
+        /// Добавить эл-т ревит к замечанию
+        /// </summary>
+        /// <param name="errMsg"></param>
+        /// <param name="elementId"></param>
+        private void AddToErrorDict(string errMsg, ElementId elementId)
+        {
+            if (_errorDict.ContainsKey(errMsg))
+            {
+                List<ElementId> ids = _errorDict[errMsg];
+                ids.Add(elementId);
+
+                _errorDict[errMsg] = ids;
+            }
+            else
+                _errorDict.Add(errMsg, new List<ElementId> { elementId });
+        }
+
+        /// <summary>
         /// Вывод ошибок пользователю
         /// </summary>
         private void PrintErrors()
@@ -236,24 +254,6 @@ namespace KPLN_Tools.ExecutableCommand
                 else
                     paramToSet.Set(0.9 / 304.8);
             }
-        }
-
-        /// <summary>
-        /// Добавить эл-т ревит к замечанию
-        /// </summary>
-        /// <param name="errMsg"></param>
-        /// <param name="elementId"></param>
-        private void AddToErrorDict(string errMsg, ElementId elementId)
-        {
-            if (_errorDict.ContainsKey(errMsg))
-            {
-                List<ElementId> ids = _errorDict[errMsg];
-                ids.Add(elementId);
-
-                _errorDict[errMsg] = ids;
-            }
-            else
-                _errorDict.Add(errMsg, new List<ElementId> { elementId });
         }
     }
 }

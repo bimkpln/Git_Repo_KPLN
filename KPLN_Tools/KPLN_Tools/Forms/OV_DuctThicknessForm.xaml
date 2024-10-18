@@ -90,22 +90,20 @@
                 Style="{StaticResource TBlock}"/>
             <Grid
                 Grid.Column="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="175"/>
-                    <ColumnDefinition Width="25"/>
-                </Grid.ColumnDefinitions>
-                <TextBox
-                    Text="{Binding ParameterName}"
-                    Style="{StaticResource TBox}"
-                    ToolTip="Данный параметр должен быть у воздуховодов и соед. деталей воздуховодов"/>
-                <Button
-                    x:Name="BtnParamSearch"
-                    Grid.Column="1"
-                    Margin="0,0,5,0"
-                    VerticalAlignment="Center"
-                    Content="🔍"
-                    ToolTip="Найти общий для воздуховодов и соед. деталей параметр"
-                    Click="BtnParamSearch_Click"/>
+                <StackPanel
+                    Orientation="Horizontal">
+                    <TextBox
+                        Text="{Binding ParameterName}"
+                        Style="{StaticResource TBox}"
+                        Width="165"
+                        ToolTip="Данный параметр должен быть у воздуховодов и соед. деталей воздуховодов"/>
+                    <Button
+                        x:Name="BtnParamSearch"
+                        Grid.Column="1"
+                        Content="🔍"
+                        ToolTip="Найти общий для воздуховодов и соед. деталей параметр"
+                        Click="BtnParamSearch_Click"/>
+                </StackPanel>
             </Grid>
             
 

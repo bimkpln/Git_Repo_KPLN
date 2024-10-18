@@ -79,6 +79,11 @@
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -204,6 +209,7 @@
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
+    <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
@@ -226,14 +232,21 @@
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandSearchRevitUser.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
+    <Compile Include="ExternalCommands\Command_SET_ElementsNotModeled.cs" />
+    <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
     <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
-    <Compile Include="Forms\EmptyStringToDashConverter.cs" />
+    <Compile Include="Forms\Converters\EmptyStringToDashConverter.cs" />
+    <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\Models\VM_UserEntity.cs" />
+    <Compile Include="Forms\Models\OVVK_SystemManager_ViewModel.cs" />
+    <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
+    <Compile Include="Forms\OVVK_SystemManagerForm.xaml.cs">
+      <DependentUpon>OVVK_SystemManagerForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
       <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
     </Compile>
@@ -246,8 +259,8 @@
     <Compile Include="Forms\MonitoringParamSetter.xaml.cs">
       <DependentUpon>MonitoringParamSetter.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\RLinkMangerForm.xaml.cs">
-      <DependentUpon>RLinkMangerForm.xaml</DependentUpon>
+    <Compile Include="Forms\RLinkManagerForm.xaml.cs">
+      <DependentUpon>RLinkManagerForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\OV_OZKDuctAccessoryForm.xaml.cs">
       <DependentUpon>OV_OZKDuctAccessoryForm.xaml</DependentUpon>
@@ -333,6 +346,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\OVVK_SystemManagerForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\OV_DuctThicknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -349,7 +366,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\RLinkMangerForm.xaml">
+    <Page Include="Forms\RLinkManagerForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
