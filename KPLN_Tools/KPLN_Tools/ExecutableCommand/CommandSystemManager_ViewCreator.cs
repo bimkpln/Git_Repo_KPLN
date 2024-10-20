@@ -3,6 +3,7 @@ using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using KPLN_Tools.ExternalCommands;
+using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
@@ -11,14 +12,9 @@ namespace KPLN_Tools.ExecutableCommand
 {
     internal class CommandSystemManager_ViewCreator : IExecutableCommand
     {
-        private readonly string _sysParamName;
-        private readonly string _sysNameSeparator;
+        private readonly OVVK_SystemManager_ViewModel _currentViewModel;
         private readonly List<Element> _docElemsColl = new List<Element>();
         private readonly List<ElementId> _docCatIdColl = new List<ElementId>();
-        /// <summary>
-        /// Коллекция - затычка. Далее этот этап нужно подсвечивать в стартовом окне, и передавать сюда как исходник
-        /// </summary>
-        private readonly List<string> _sysNamesColl = new List<string>();
 
         /// <summary>
         /// Словарь элементов, где ключ - текст ошибки, значения - список элементов
@@ -29,16 +25,15 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_ViewCreator(string sysParamName, string sysNameSeparator)
+        public CommandSystemManager_ViewCreator(OVVK_SystemManager_ViewModel vm)
         {
-            _sysParamName = sysParamName;
-            _sysNameSeparator = sysNameSeparator;
+            _currentViewModel = vm;
         }
 
         public Result Execute(UIApplication app)
         {
             #region Подготовка коллекции и элементов
-            Document doc = app.ActiveUIDocument.Document;
+            Document doc = _currentViewModel.CurrentDoc;
             Autodesk.Revit.DB.View activeView = doc.ActiveView;
 
             // Анализ вида
@@ -69,33 +64,9 @@ namespace KPLN_Tools.ExecutableCommand
                 _docElemsColl.AddRange(new FilteredElementCollector(doc, activeView.Id)
                     .OfCategory(bic)
                     .WhereElementIsNotElementType());
-
             }
 
             _docCatIdColl.AddRange(_docElemsColl.Select(e => e.Category.Id));
-
-            // Проверка эл-в и подготовка коллекции имен систем
-            // Этот блок убрать после подачи списка систем из окна!!!!!!!!!!!
-            foreach (Element elem in _docElemsColl)
-            {
-                Parameter sysParam = elem.LookupParameter(_sysParamName);
-                if (sysParam == null)
-                    AddToErrorDict(_errorDict, $"Отсутсвует параметр {sysParam.Definition.Name}", elem.Id);
-
-                string sysParamData = sysParam.AsString();
-                // Анализ и корректировка значения пар-ра для вложенных общих семейств
-                if (elem is FamilyInstance famInst && string.IsNullOrEmpty(sysParamData) && famInst.SuperComponent != null)
-                {
-                    Element parentElem = RecGetMainParentElement(famInst);
-                    Parameter sysParentParam = parentElem.LookupParameter(_sysParamName);
-                    sysParamData = sysParentParam.AsString();
-                }
-                
-                if (string.IsNullOrEmpty(sysParamData))
-                    AddToErrorDict(_errorDict, $"Параметр {sysParam.Definition.Name} имеет пустое занчение", elem.Id);
-                else if (!_sysNamesColl.Contains(sysParamData))
-                    _sysNamesColl.Add(sysParamData);
-            }
 
             // Вывод критических ошибок и остановка работы
             if (_errorDict.Keys.Count != 0)
@@ -163,7 +134,10 @@ namespace KPLN_Tools.ExecutableCommand
                 t.Start();
 
                 if (!CreateViews(doc, viewTempl))
+                {
                     t.RollBack();
+                    return Result.Cancelled;
+                }
                 else
                     t.Commit();
             }
@@ -195,11 +169,11 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private bool CreateViews(Document doc, Autodesk.Revit.DB.View viewTempl)
         {
-            foreach (string sysName in _sysNamesColl)
+            foreach (string sysName in _currentViewModel.SystemSumParameters)
             {
-                string filterName = $"prog_{_sysParamName} = !*{sysName}*!";
+                string filterName = $"prog_{_currentViewModel.ParameterName} = !*{sysName}*!";
 
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotContainsRule(_docElemsColl.FirstOrDefault().LookupParameter(_sysParamName).Id, sysName, false);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotContainsRule(_docElemsColl.FirstOrDefault().LookupParameter(_currentViewModel.ParameterName).Id, sysName, false);
                 ElementParameterFilter filterRules = new ElementParameterFilter(fRule);
                 ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, _docCatIdColl, filterRules);
                 ElementId newViewFilterId = newViewFilter.Id;
@@ -211,30 +185,13 @@ namespace KPLN_Tools.ExecutableCommand
                 if (viewTempl != null)
                     newView.ApplyViewTemplateParameters(viewTempl);
 
-                if (sysName.Contains(_sysNameSeparator))
+                if (sysName.Contains(_currentViewModel.SysNameSeparator))
                     newView.Name = $"Схема систем_{sysName}";
                 else
                     newView.Name = $"Схема системы_{sysName}";
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Поиск основного родительского семейства для элемента
-        /// </summary>
-        private Element RecGetMainParentElement(FamilyInstance famInst)
-        {
-            if (famInst.SuperComponent != null)
-            {
-                Element supElem = famInst.SuperComponent;
-                if (supElem is FamilyInstance fi)
-                    return RecGetMainParentElement(fi);
-                else
-                    throw new System.Exception("Скинь разработчику - ОШИБКА приведения вложенного элемента");
-            }
-            else
-                return famInst;
         }
 
         /// <summary>

@@ -1,9 +1,12 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Tools.Common.OVVK_System;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -11,17 +14,9 @@ namespace KPLN_Tools.Forms
 {
     public partial class OVVK_SystemManagerForm : Window
     {
-        private readonly List<Element> _elemsInModel;
-
-        public OVVK_SystemManagerForm(List<Element> elemsInModel)
+        public OVVK_SystemManagerForm(Document doc, List<Element> elemsInModel)
         {
-            _elemsInModel = elemsInModel;
-            CurrentViewModel = new OVVK_SystemManager_ViewModel()
-            {
-                ParameterName = "ASML_Имя системы",
-                SysNameSeparator = "/",
-                SystemSumParameters = new ObservableCollection<string>() { "<данный функционал в разработке...>", "<данный функционал в разработке...>" }
-            };
+            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc, elemsInModel);
 
             InitializeComponent();
 
@@ -39,14 +34,31 @@ namespace KPLN_Tools.Forms
 
         private void BtnParamSearch_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("упс.... в разработке, пока пиши имя вручную");
+            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(CurrentViewModel.CurrentDoc, CurrentViewModel.ElementColl, StorageType.String);
+            paramForm.ShowDialog();
+
+            if (paramForm.SelectedElement != null)
+                CurrentViewModel.ParameterName = paramForm.SelectedElement.Name;
+
+            UpdateEnable();
         }
 
         private void BtnCreateViews_Click(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(CurrentViewModel.ParameterName, CurrentViewModel.SysNameSeparator));
-
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(CurrentViewModel));
             Close();
+        }
+
+        private void BtnSelectWarningsElems_Click(object sender, RoutedEventArgs e)
+        {
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(CurrentViewModel.WarningsElementColl));
+            Close();
+        }
+
+        private void UpdateEnable()
+        {
+            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any();
+            BtnSelectWarningsElems.IsEnabled = CurrentViewModel.WarningsElementColl.Any();
         }
     }
 }

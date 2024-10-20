@@ -49,7 +49,8 @@ namespace KPLN_Tools.ExternalCommands
             !x.Symbol.FamilyName.StartsWith("500_")
             && !x.Symbol.FamilyName.StartsWith("501_")
             && !x.Symbol.FamilyName.StartsWith("502_")
-            && !x.Symbol.FamilyName.StartsWith("503_");
+            && !x.Symbol.FamilyName.StartsWith("503_")
+            && !x.Symbol.FamilyName.StartsWith("ClashPoint");
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -83,7 +84,7 @@ namespace KPLN_Tools.ExternalCommands
                 return Result.Cancelled;
             }
 
-            OVVK_SystemManagerForm form = new OVVK_SystemManagerForm(docElemsColl);
+            OVVK_SystemManagerForm form = new OVVK_SystemManagerForm(doc, docElemsColl);
             form.ShowDialog();
 
             return Result.Succeeded;

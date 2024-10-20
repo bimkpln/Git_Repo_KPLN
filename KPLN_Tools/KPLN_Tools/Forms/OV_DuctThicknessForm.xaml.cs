@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExecutableCommand;
 using Newtonsoft.Json;
@@ -12,11 +14,15 @@ namespace KPLN_Tools.Forms
 {
     public partial class OV_DuctThicknessForm : Window
     {
+        private readonly Document _doc;
         private readonly Element[] _elementsToSet;
         private readonly string _configPath;
 
         public OV_DuctThicknessForm(Document doc, Element[] elementsToSet)
         {
+            _doc = doc;
+            _elementsToSet = elementsToSet;
+            
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new System.Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath).Trim($"{doc.Title}.rvt".ToArray());
             _configPath = strDocModelPath + $"KPLN_Config\\OV_DuctThickness.json";
@@ -35,9 +41,6 @@ namespace KPLN_Tools.Forms
                 };
             }
             #endregion
-
-
-            _elementsToSet = elementsToSet;
 
             InitializeComponent();
 
@@ -66,7 +69,11 @@ namespace KPLN_Tools.Forms
 
         private void BtnParamSearch_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("упс.... в разработке, пока пиши имя вручную");
+            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(_doc, _elementsToSet, StorageType.Double);
+            paramForm.ShowDialog();
+
+            if (paramForm.SelectedElement != null)
+                CurrentDuctThicknessEntity.ParameterName = paramForm.SelectedElement.Name;
         }
 
         /// <summary>

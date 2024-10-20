@@ -92,9 +92,10 @@
                 Grid.Column="1">
                 <StackPanel
                     Orientation="Horizontal">
-                    <TextBox
+                    <TextBlock
                         Text="{Binding ParameterName}"
-                        Style="{StaticResource TBox}"
+                        Style="{StaticResource TBlock}"
+                        HorizontalAlignment="Center"
                         Width="165"
                         ToolTip="Данный параметр должен быть у воздуховодов и соед. деталей воздуховодов"/>
                     <Button

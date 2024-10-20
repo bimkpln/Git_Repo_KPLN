@@ -48,7 +48,10 @@ namespace KPLN_Tools.ExecutableCommand
                 #endregion
 
                 if (!SetDuctThicknessData())
+                {
                     t.RollBack();
+                    return Result.Cancelled;
+                }
                 else
                     t.Commit();
             }

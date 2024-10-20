@@ -209,6 +209,7 @@
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
+    <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
