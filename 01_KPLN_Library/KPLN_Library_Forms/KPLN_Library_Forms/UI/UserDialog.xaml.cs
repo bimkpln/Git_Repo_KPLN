@@ -15,6 +15,11 @@ namespace KPLN_Library_Forms.UI
             SystemSounds.Beep.Play();
         }
 
+        public UserDialog(string header, string body, string footer) : this (header, body)
+        {
+            tbFooter.Text = footer;
+        }
+
         /// <summary>
         /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
         /// </summary>

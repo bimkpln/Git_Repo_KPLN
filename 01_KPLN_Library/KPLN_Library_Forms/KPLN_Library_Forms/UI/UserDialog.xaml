@@ -30,6 +30,15 @@
             <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
+        <Style TargetType="TextBox" x:Key="TBX">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="5">
@@ -42,11 +51,13 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        
         <Grid Grid.Row="0" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+            
             <TextBlock 
                 x:Name="tbHeader" 
                 TextWrapping="Wrap" 
@@ -56,17 +67,49 @@
                 FontWeight="Bold" 
                 FontSize="16" 
                 Foreground="White"/>
-            <TextBlock 
+
+            <TextBox  
                 x:Name="tbBody" 
-                Style="{StaticResource TXT}" 
                 Grid.Row="1" 
+                Style="{StaticResource TBX}" 
                 Text="С другой стороны укрепление и развитие структуры требуют от нас анализа модели развития."/>
         </Grid>
-        <Rectangle Fill="White" RadiusX="3" RadiusY="3" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.1"/>
-        <StackPanel Margin="0,5,0,5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
-            <Button x:Name="btnOk" Style="{StaticResource BTN}" Content="Ок" IsDefault="True" Click="OnOk"/>
-            <Button x:Name="btnCancel" Style="{StaticResource BTN}" Content="Отмена" Click="OnCancel"/>
+        
+        <Rectangle 
+            Grid.Row="1" 
+            Grid.Column="0"
+            Grid.ColumnSpan="2" 
+            Fill="White" 
+            RadiusX="3" 
+            RadiusY="3" 
+            Opacity="0.1"/>
+        
+        <StackPanel 
+            Grid.Row="1" 
+            Grid.Column="0" 
+            Grid.ColumnSpan="2" 
+            Margin="0,5,0,5" 
+            Orientation="Horizontal">
+            <Button 
+                x:Name="btnOk" 
+                Style="{StaticResource BTN}"
+                Content="Ок" 
+                IsDefault="True" 
+                Click="OnOk"/>
+            <Button 
+                x:Name="btnCancel" 
+                Style="{StaticResource BTN}" 
+                Content="Отмена" 
+                Click="OnCancel"/>
         </StackPanel>
-        <TextBlock x:Name="tbFooter" Style="{StaticResource TXT}" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Примечание" Opacity="0.5"/>
+        
+        <TextBlock 
+            x:Name="tbFooter" 
+            Grid.Row="2" 
+            Grid.Column="0"
+            Grid.ColumnSpan="2" 
+            Style="{StaticResource TXT}" 
+            Text="Примечание" 
+            Opacity="0.5"/>
     </Grid>
 </Window>
