@@ -32,8 +32,7 @@ namespace KPLN_Library_Forms.UIFactory
         /// <summary>
         /// Запуск окна выбора проекта
         /// </summary>
-        /// <returns>Возвращает выбранный проект, или null, если нужно выбрать всё</returns>
-        /// <exception cref="Exception"></exception>
+        /// <returns>Возвращает выбранный проект</returns>
         public static ElementSinglePick CreateForm()
         {
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
@@ -47,9 +46,9 @@ namespace KPLN_Library_Forms.UIFactory
                     projects.Add(new ElementEntity(prj, prj.MainPath));
             }
 
-            ElementSinglePick _pickForm = new ElementSinglePick(projects.OrderBy(p => p.Name), "Выбери проект");
+            ElementSinglePick pickForm = new ElementSinglePick(projects.OrderBy(p => p.Name), "Выбери проект");
 
-            return _pickForm;
+            return pickForm;
         }
     }
 }

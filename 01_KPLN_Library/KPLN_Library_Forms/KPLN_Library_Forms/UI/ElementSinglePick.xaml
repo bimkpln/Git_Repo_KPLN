@@ -8,14 +8,15 @@
         Width="400" 
         Height="400"
         MaxHeight="750"
+        MaxWidth="750"
+        ResizeMode="CanResizeWithGrip" 
+        SizeToContent="Height" 
         Title="KPLN: Окно выбора" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
-        ResizeMode="CanResizeWithGrip" 
         WindowStyle="ToolWindow" 
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         Closing="Window_Closing" 
-        SizeToContent="Height" 
         Loaded="OnLoaded">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">
@@ -100,7 +101,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="35"/>
             <RowDefinition/>
-            <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition></ColumnDefinition>
@@ -115,7 +115,8 @@
             <TextBox 
                 x:Name="SearchText"
                 Style="{StaticResource TXTBX}" 
-                Grid.Row="0" TextChanged="SearchText_Changed"
+                Grid.Row="0" 
+                TextChanged="SearchText_Changed"
                 TextAlignment="Left" 
                 VerticalAlignment="Center" 
                 DockPanel.Dock="Right" 
@@ -159,15 +160,5 @@
             Grid.ColumnSpan ="1" 
             VerticalAlignment="Bottom" 
             HorizontalAlignment="Stretch"/>
-
-        <Button 
-            x:Name="RunWithoutFilter" 
-            Grid.Row="2" 
-            Margin="2"
-            Style="{StaticResource RunBTN}" 
-            Content="Выбрать всё без фильтрации" 
-            ToolTip="Нажми, если хочешь выбрать все элементы из представленного списка" 
-            Click="OnRunWithoutFilterClick"/>
-
     </Grid>
 </Window>
