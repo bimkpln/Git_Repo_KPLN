@@ -166,16 +166,53 @@ namespace KPLN_Looker
                         if (dBProject != null && dBProject.IsClosed)
                         {
                             MessageBox.Show(
-                                "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на внесение изменений в этот проект - обратитесь в BIM-отдел" +
+                                "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
+                                "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
                                 "\nИНФО: Сейчас файл закроется",
                                 "KPLN: Закрытый проект",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
 
+                            #region Извещение в чат bim-отдела
                             BitrixMessageSender.SendMsg_ToBIMChat(
                                 $"Сотрудник: {DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name} из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                                 $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
                                 $"Действие: Открыл файл {doc.Title}.");
+                            #endregion
+
+
+                            #region Извещение пользователю как делать правильно
+                            int currentUserBitrixId = DBWorkerService.CurrentDBUser.BitrixUserID;
+                            if (currentUserBitrixId != -1)
+                            {
+                                string jsonRequestToUser = $@"{{
+                                    ""DIALOG_ID"": ""{currentUserBitrixId}"",
+                                    ""MESSAGE"": ""Стадия проекта {doc.Title} закрыта. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
+                                    ""ATTACH"": [
+                                        {{
+                                            ""IMAGE"": {{
+                                                ""NAME"": ""KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""LINK"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""PREVIEW"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""WIDTH"": ""1000"",
+                                                ""HEIGHT"": ""1000""
+                                            }}
+                                        }}
+                                    ]
+                                }}";
+
+                                BitrixMessageSender.SendMsg_ToUser_ByWebhookKeyANDJSONRequest(
+                                    "https://kpln.bitrix24.ru/rest/1310/pzyudfrm0pp3gq19/im.message.add.json",
+                                    jsonRequestToUser);
+                            }
+                            else
+                            {
+                                BitrixMessageSender.SendMsg_ToUser_ByDBUser(
+                                    DBWorkerService.CurrentDBUser,
+                                    $"Стадия проекта {doc.Title} закрыта. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]");
+                            }
+                            
+                            #endregion
 
                             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
                         }
