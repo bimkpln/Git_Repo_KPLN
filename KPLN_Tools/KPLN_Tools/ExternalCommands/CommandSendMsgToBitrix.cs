@@ -178,7 +178,7 @@ namespace KPLN_Tools.ExternalCommands
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(entity.DBUser, msg);
                 }
 
-                MessageBox.Show($"Сообщение успешно отправлено!", "KPLN", MessageBoxButtons.OK);
+                MessageBox.Show($"Сообщение успешно отправлено! Скоро с вами свяжется выбранный специалист, ожидайте...", "KPLN", MessageBoxButtons.OK);
 
                 return Result.Succeeded;
             }

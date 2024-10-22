@@ -421,7 +421,7 @@ namespace KPLN_Tools
 
 
                 ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
-                ovvkToolsPullDownBtn.AddPushButton(set_ElementsNotModeled);
+                //ovvkToolsPullDownBtn.AddPushButton(set_ElementsNotModeled);
 #endif
 
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
