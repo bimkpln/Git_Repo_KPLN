@@ -9,7 +9,6 @@ using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
 using System.Windows.Data;
-using Autodesk.Revit.DB.ExtensibleStorage;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -46,6 +45,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             FillingComboBoxTypeInstance();
             FillingComboBoxGroupingName();
 
+ 
             if (!string.IsNullOrEmpty(jsonFileSettingPath))
             {
                 StackPanel parentContainer = (StackPanel)SP_panelParamFields.Parent;
@@ -62,10 +62,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 HandlerGeneralParametersFile(SPFPath);
 
                 TB_filePath.Text = SPFPath;
-                SP_panelParamFields.ToolTip = $"ФОП: {SPFPath}";        
-                CB_paramsGroup.Tag = SPFPath;               
+                SP_panelParamFields.ToolTip = $"ФОП: {SPFPath}";
+                CB_paramsGroup.Tag = SPFPath;
                 CB_paramsGroup.ToolTip = $"ФОП: {SPFPath}";
-            }
+            }         
         }
 
         // Создание List всех параметров из ФОП
@@ -199,11 +199,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 newParamList[nameParameter].Add(entry["instance"]);
                 newParamList[nameParameter].Add(entry["grouping"]);
                 newParamList[nameParameter].Add(entry["parameterValue"]);
+                newParamList[nameParameter].Add(entry["parameterValueDataType"]);
             }
 
             return newParamList;
         }
-    
+
         // Обработчик ФОПа; 
         public void HandlerGeneralParametersFile(string filePath)
         {
@@ -254,7 +255,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 CB_paramsGroup.Items.Add(key);
             }
-          
+
             foreach (var param in allParamNameList)
             {
                 CB_paramsName.Items.Add(param);
@@ -273,9 +274,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     int stackPanelIndex = interfaceParamDict.Count + 1;
                     string stackPanelKey = $"ParamFromSPFAdd-{stackPanelIndex}";
-                 
+
                     var comboBoxes = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
-                    var textBoxes= stackPanel.Children.OfType<System.Windows.Controls.TextBox>().ToList();
+                    var textBoxes = stackPanel.Children.OfType<System.Windows.Controls.TextBox>().ToList();
 
                     List<string> contentsOfDataFields = new List<string>();
 
@@ -293,13 +294,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             string textBoxValue = textBox.Text;
 
-                            if (textBoxValue == "" || textBoxValue == "Значение параметра")
+                            if (textBoxValue == "" || textBoxValue.Contains("При необходимости, вы можете указать значение параметра"))
                             {
                                 contentsOfDataFields.Add("None");
+                                contentsOfDataFields.Add(comboBoxes[1].Tag?.ToString() ?? "NoneType");
                             }
                             else
                             {
-                                contentsOfDataFields.Add(textBoxValue);
+                                contentsOfDataFields.Add(textBoxValue);          
+                                contentsOfDataFields.Add(comboBoxes[1].Tag?.ToString() ?? "NoneType");
                             }
                         }
 
@@ -366,13 +369,736 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        // Функция соотношения параметра с типом данных.
+        // Возвращает "red" - значение параметра не прошло проверку;
+        // Возвращает "blue" - невозможно проверить значение параметра;
+        // Возвращает "yellow" - параметр пуст или указан неверно;
+        // Возвращает "green" - значение параметра прошло проверку;
+
+        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox ComboBox, System.Windows.Controls.TextBox textBox, ParameterType paramType)
+        {
+            var textInField = textBox.Text;
+
+            if (ComboBox.SelectedItem == null)
+            {
+                return "yellow";
+            }
+
+            if (paramType == ParameterType.MultilineText || paramType == ParameterType.Text || paramType == ParameterType.URL)
+            {
+                if (!string.IsNullOrEmpty(textInField))
+                {
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.YesNo)
+            {
+                if (textBox.Text == "0" || textBox.Text == "1")
+                {
+                    return "green";
+                }
+                else
+                {
+                    textBox.Text = "Необходимо указать: ``1`` - да; ``0`` - нет";
+                    return "red";
+                }
+            }
+
+            if (paramType == ParameterType.Integer)
+            {
+                if (textInField.Contains(","))
+                {
+                    return "red";
+                }
+
+                if (int.TryParse(textInField, out int resultInt))
+                {
+                    textBox.Text = resultInt.ToString();
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.ElectricalCableTraySize || paramType == ParameterType.ElectricalConduitSize || paramType == ParameterType.ForceLengthPerAngle || paramType == ParameterType.HVACDuctSize || paramType == ParameterType.HVACDuctLiningThickness 
+                || paramType == ParameterType.HVACDuctInsulationThickness || paramType == ParameterType.HVACEnergy || paramType == ParameterType.LinearForceLengthPerAngle || paramType == ParameterType.PipeSize || paramType == ParameterType.PipeInsulationThickness 
+                || paramType == ParameterType.PipingVolume)
+            {
+                if (double.TryParse(textInField, out double resultDouble_1))
+                {
+                    textBox.Text = resultDouble_1.ToString("F1");
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.Angle || paramType == ParameterType.AreaForce || paramType == ParameterType.AreaForcePerLength || paramType == ParameterType.BarDiameter || paramType == ParameterType.ColorTemperature || paramType == ParameterType.CrackWidth 
+                || paramType == ParameterType.Currency || paramType == ParameterType.DisplacementDeflection || paramType == ParameterType.ElectricalApparentPower || paramType == ParameterType.ElectricalCurrent || paramType == ParameterType.ElectricalEfficacy 
+                || paramType == ParameterType.ElectricalIlluminance || paramType == ParameterType.ElectricalLuminance || paramType == ParameterType.ElectricalFrequency || paramType == ParameterType.ElectricalLuminousIntensity || paramType == ParameterType.ElectricalLuminousFlux 
+                || paramType == ParameterType.ElectricalPotential || paramType == ParameterType.ElectricalPower || paramType == ParameterType.ElectricalPowerDensity || paramType == ParameterType.ElectricalTemperature || paramType == ParameterType.ElectricalTemperatureDifference 
+                || paramType == ParameterType.ElectricalWattage || paramType == ParameterType.Force || paramType == ParameterType.ForcePerLength || paramType == ParameterType.HVACAirflow || paramType == ParameterType.HVACAirflowDensity 
+                || paramType == ParameterType.HVACAirflowDividedByCoolingLoad || paramType == ParameterType.HVACAirflowDividedByVolume || paramType == ParameterType.HVACAreaDividedByCoolingLoad || paramType == ParameterType.HVACCoolingLoad 
+                || paramType == ParameterType.HVACCoolingLoadDividedByArea || paramType == ParameterType.HVACCoolingLoadDividedByVolume || paramType == ParameterType.HVACCrossSection || paramType == ParameterType.HVACHeatGain || paramType == ParameterType.HVACHeatingLoad 
+                || paramType == ParameterType.HVACHeatingLoadDividedByArea || paramType == ParameterType.HVACHeatingLoadDividedByVolume || paramType == ParameterType.HVACPower || paramType == ParameterType.HVACPowerDensity || paramType == ParameterType.HVACPressure 
+                || paramType == ParameterType.HVACRoughness || paramType == ParameterType.HVACTemperature || paramType == ParameterType.HVACTemperatureDifference || paramType == ParameterType.HVACThermalMass || paramType == ParameterType.HVACVelocity 
+                || paramType == ParameterType.Length || paramType == ParameterType.LinearForce || paramType == ParameterType.LinearForcePerLength || paramType == ParameterType.LinearMoment || paramType == ParameterType.MassPerUnitArea || paramType == ParameterType.Moment 
+                || paramType == ParameterType.MomentOfInertia || paramType == ParameterType.PipeDimension || paramType == ParameterType.PipingFlow || paramType == ParameterType.PipingPressure || paramType == ParameterType.PipingTemperature 
+                || paramType == ParameterType.PipingTemperatureDifference || paramType == ParameterType.PipingVelocity || paramType == ParameterType.ReinforcementArea || paramType == ParameterType.ReinforcementCover ||  paramType == ParameterType.ReinforcementLength 
+                || paramType == ParameterType.ReinforcementSpacing || paramType == ParameterType.ReinforcementVolume || paramType == ParameterType.SectionProperty || paramType == ParameterType.SectionArea || paramType == ParameterType.SectionDimension 
+                || paramType == ParameterType.SectionModulus || paramType == ParameterType.StructuralFrequency || paramType == ParameterType.StructuralVelocity || paramType == ParameterType.UnitWeight || paramType == ParameterType.Weight 
+                || paramType == ParameterType.WeightPerUnitLength || paramType == ParameterType.WireSize)
+            {
+                if (double.TryParse(textInField, out double resultDouble_2))
+                {
+                    textBox.Text = resultDouble_2.ToString("F2");
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.Slope)
+            {
+                if (double.TryParse(textInField, out double resultDouble_2) && resultDouble_2 >= -89.98 && resultDouble_2 <= 89.98)
+                {
+                    textBox.Text = resultDouble_2.ToString("F2");
+                    return "green";
+                }
+                else
+                {
+                    textBox.Text = "Необходимо указать: диапазон от -89.98 до 89.98";
+                }
+            }
+
+            if (paramType == ParameterType.Area || paramType == ParameterType.Acceleration || paramType == ParameterType.Energy || paramType == ParameterType.Mass || paramType == ParameterType.MassPerUnitLength || paramType == ParameterType.Period 
+                || paramType == ParameterType.PipeMass || paramType == ParameterType.PipeMassPerUnitLength || paramType == ParameterType.PipingRoughness || paramType == ParameterType.Pulsation || paramType == ParameterType.ReinforcementAreaPerUnitLength
+                || paramType == ParameterType.Rotation || paramType == ParameterType.Speed || paramType == ParameterType.SurfaceArea || paramType == ParameterType.TimeInterval || paramType == ParameterType.Volume || paramType == ParameterType.WarpingConstant)
+            {
+                if (double.TryParse(textInField, out double resultDouble_3))
+                {
+                    textBox.Text = resultDouble_3.ToString("F3");
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.ElectricalDemandFactor || paramType == ParameterType.ElectricalResistivity
+                || paramType == ParameterType.HVACCoefficientOfHeatTransfer || paramType == ParameterType.HVACAreaDividedByHeatingLoad || paramType == ParameterType.HVACFactor || paramType == ParameterType.HVACFriction || paramType == ParameterType.HVACPermeability
+                || paramType == ParameterType.HVACThermalConductivity || paramType == ParameterType.HVACSlope || paramType == ParameterType.HVACSpecificHeat || paramType == ParameterType.HVACSpecificHeatOfVaporization || paramType == ParameterType.HVACViscosity 
+                || paramType == ParameterType.PipingFriction || paramType == ParameterType.HVACThermalResistance || paramType == ParameterType.PipingSlope || paramType == ParameterType.PipingViscosity)
+            {
+                if (double.TryParse(textInField, out double resultDouble_4))
+                {
+                    textBox.Text = resultDouble_4.ToString("F4");
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.FixtureUnit || paramType == ParameterType.HVACDensity || paramType == ParameterType.MassDensity || paramType == ParameterType.Number || paramType == ParameterType.PipingDensity || paramType == ParameterType.Stress)
+            {
+                if (double.TryParse(textInField, out double resultDouble_6))
+                {
+                    textBox.Text = resultDouble_6.ToString("F6");
+                    return "green";
+                }
+            }
+
+            if (paramType == ParameterType.ThermalExpansion)
+            {
+                if (double.TryParse(textInField, out double resultDouble_8))
+                {
+                    textBox.Text = resultDouble_8.ToString("F8");
+                    return "green";
+                }
+            }
+
+            /////////////////////////////////////////////////////////////////////////////////////////// Тест
+            if (paramType == ParameterType.Image || paramType == ParameterType.FamilyType || paramType == ParameterType.Material || paramType == ParameterType.LoadClassification)
+            {
+                if (!string.IsNullOrEmpty(textInField))
+                {
+                    return "blue";
+                }
+            }
+
+            return "red";
+        }
+
+
+
+
+
+        // Функция соотношенияч типа данных со значением при добавлении параметра в семейство
+        public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, String parameterValue, String parameterValueDataType)
+        {
+            switch (parameterValueDataType)
+            {
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                // Это пока добавляется, как текст (потом нужно что-то думать)
+                case "Image":
+                case "FamilyType":
+                case "Material":
+                case "LoadClassification":
+                    familyManager.Set(familyParam, parameterValue);
+                    break;
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                //////////////////
+                /////////////////////////////////////////////////////////////////////////////////////////// Тест
+
+                case "HVACPermeability":
+                    if (double.TryParse(parameterValue, out double nanogramsPerPascalSecondSquareMeterValue))
+                    {
+                        double convertedNanogramsPerPascalSecondSquareMeter = UnitUtils.ConvertToInternalUnits(nanogramsPerPascalSecondSquareMeterValue, DisplayUnitType.DUT_NANOGRAMS_PER_PASCAL_SECOND_SQUARE_METER);
+                        familyManager.Set(familyParam, convertedNanogramsPerPascalSecondSquareMeter);
+                    }
+                    break;
+
+
+                /// 
+                /// Типы без конверсии
+                /// 
+                case "Text":
+                case "MultilineText":
+                case "URL":
+                    familyManager.Set(familyParam, parameterValue);
+                    break;
+
+                case "Integer":
+                case "NumberOfPoles":
+                case "YesNo":
+                    if (int.TryParse(parameterValue, out int intBoolValue))
+                    {
+                        familyManager.Set(familyParam, intBoolValue);
+                    }
+                    break;
+
+                case "ColorTemperature":
+                case "Currency":
+                case "ElectricalCurrent":
+                case "ElectricalFrequency":
+                case "ElectricalLuminousFlux":
+                case "ElectricalLuminousIntensity":
+                case "ElectricalPowerDensity":
+                case "ElectricalTemperatureDifference":
+                case "FixtureUnit":
+                case "HVACCoolingLoadDividedByArea":
+                case "HVACHeatingLoadDividedByArea":              
+                case "HVACCoefficientOfHeatTransfer":
+                case "HVACThermalResistance":
+                case "HVACTemperatureDifference":              
+                case "HVACPowerDensity":                
+                case "Mass":
+                case "Number":
+                case "Period":
+                case "PipeMass":
+                case "PipingTemperatureDifference":                
+                case "Pulsation":
+                case "Rotation":
+                case "StructuralFrequency":
+                case "TimeInterval":
+                case "ThermalExpansion":
+                    if (double.TryParse(parameterValue, out double resultNumber))
+                    {
+                        familyManager.Set(familyParam, resultNumber);
+                    }
+                    break;
+
+                /// 
+                /// Типы с прямой конверсией
+                /// 
+                case "BarDiameter":
+                case "CrackWidth":
+                case "ElectricalCableTraySize":
+                case "ElectricalConduitSize":               
+                case "HVACDuctSize":
+                case "HVACDuctLiningThickness":
+                case "HVACDuctInsulationThickness":
+                case "HVACRoughness":
+                case "Length":
+                case "PipeDimension":               
+                case "PipeInsulationThickness":
+                case "PipingRoughness":
+                case "PipeSize":
+                case "ReinforcementCover":
+                case "ReinforcementLength":
+                case "ReinforcementSpacing":
+                case "WireSize":
+                    if (double.TryParse(parameterValue, out double millimetersValue))
+                    {
+                        double convertedMillimeters = UnitUtils.ConvertToInternalUnits(millimetersValue, DisplayUnitType.DUT_MILLIMETERS);
+                        familyManager.Set(familyParam, convertedMillimeters);
+                    }
+                    break;
+
+                case "HVACCrossSection":
+                    if (double.TryParse(parameterValue, out double squareMillimetersValue))
+                    {
+                        double convertedSquareMillimeters = UnitUtils.ConvertToInternalUnits(squareMillimetersValue, DisplayUnitType.DUT_SQUARE_MILLIMETERS);
+                        familyManager.Set(familyParam, convertedSquareMillimeters);
+                    }
+                    break;
+
+                case "DisplacementDeflection":
+                case "SectionDimension":                
+                case "SectionProperty":
+                    if (double.TryParse(parameterValue, out double centimetrsValue))
+                    {
+                        double convertedCentimetrs = UnitUtils.ConvertToInternalUnits(centimetrsValue, DisplayUnitType.DUT_CENTIMETERS);
+                        familyManager.Set(familyParam, convertedCentimetrs);
+                    }
+                    break;
+
+                case "ReinforcementArea":
+                case "SectionArea":
+                    if (double.TryParse(parameterValue, out double squareCentimetersValue))
+                    {
+                        double convertedSquareCentimeters = UnitUtils.ConvertToInternalUnits(squareCentimetersValue, DisplayUnitType.DUT_SQUARE_CENTIMETERS);
+                        familyManager.Set(familyParam, convertedSquareCentimeters);
+                    }
+                    break;
+
+                case "ReinforcementVolume":
+                case "SectionModulus":
+                    if (double.TryParse(parameterValue, out double cubicCentimetersValue))
+                    {
+                        double convertedCubicCentimeters = UnitUtils.ConvertToInternalUnits(cubicCentimetersValue, DisplayUnitType.DUT_CUBIC_CENTIMETERS);
+                        familyManager.Set(familyParam, convertedCubicCentimeters);
+                    }
+                    break;
+
+                case "MomentOfInertia":
+                    if (double.TryParse(parameterValue, out double centimetrsP4Value))
+                    {
+                        double convertedCentimetrsP6 = UnitUtils.ConvertToInternalUnits(centimetrsP4Value, DisplayUnitType.DUT_CENTIMETERS_TO_THE_FOURTH_POWER);
+                        familyManager.Set(familyParam, convertedCentimetrsP6);
+                    }
+                    break;
+
+                case "WarpingConstant":
+                    if (double.TryParse(parameterValue, out double centimetrsP6Value))
+                    {
+                        double convertedCentimetrsP6 = UnitUtils.ConvertToInternalUnits(centimetrsP6Value, DisplayUnitType.DUT_CENTIMETERS_TO_THE_SIXTH_POWER);
+                        familyManager.Set(familyParam, convertedCentimetrsP6);
+                    }
+                    break;
+
+                case "ReinforcementAreaPerUnitLength":
+                    if (double.TryParse(parameterValue, out double squareCentimetersPerMeterValue))
+                    {
+                        double convertedSquareCentimetersPerMeter = UnitUtils.ConvertToInternalUnits(squareCentimetersPerMeterValue, DisplayUnitType.DUT_SQUARE_CENTIMETERS_PER_METER);
+                        familyManager.Set(familyParam, convertedSquareCentimetersPerMeter);
+                    }
+                    break;
+
+                case "Area":
+                    if (double.TryParse(parameterValue, out double sqMetersValue))
+                    {
+                        double convertedSqMeters = UnitUtils.ConvertToInternalUnits(sqMetersValue, DisplayUnitType.DUT_SQUARE_METERS);
+                        familyManager.Set(familyParam, convertedSqMeters);
+                    }
+                    break;
+
+                case "Volume":
+                    if (double.TryParse(parameterValue, out double cubMetersValue))
+                    {
+                        double convertedCubMeters = UnitUtils.ConvertToInternalUnits(cubMetersValue, DisplayUnitType.DUT_CUBIC_METERS);
+                        familyManager.Set(familyParam, convertedCubMeters);
+
+                    }
+                    break;
+
+                case "HVACVelocity":
+                case "PipingVelocity":
+                case "StructuralVelocity":
+                    if (double.TryParse(parameterValue, out double meterPerSecValue))
+                    {
+
+                        double convertedMeterPerSec = UnitUtils.ConvertToInternalUnits(meterPerSecValue, DisplayUnitType.DUT_METERS_PER_SECOND);
+                        familyManager.Set(familyParam, convertedMeterPerSec);
+                    }
+                    break;
+
+                case "Acceleration":
+                    if (double.TryParse(parameterValue, out double meterPerSecSquaredValue))
+                    {
+                        double convertedMeterPerSecSquared = UnitUtils.ConvertToInternalUnits(meterPerSecSquaredValue, DisplayUnitType.DUT_METERS_PER_SECOND_SQUARED);
+                        familyManager.Set(familyParam, convertedMeterPerSecSquared);
+                    }
+                    break;
+
+                case "SurfaceArea":
+                    if (double.TryParse(parameterValue, out double sqareMetersPerMeterValue))
+                    {
+                        double convertedSqareMetersPerMeter = UnitUtils.ConvertToInternalUnits(sqareMetersPerMeterValue, DisplayUnitType.DUT_SQUARE_METERS_PER_METER);
+                        familyManager.Set(familyParam, convertedSqareMetersPerMeter);
+                    }
+                    break;
+                
+                case "HVACAreaDividedByCoolingLoad":
+                case "HVACAreaDividedByHeatingLoad":
+                    if (double.TryParse(parameterValue, out double squareMeterPerKilowattsValue))
+                    {
+                        double convertedSquareMeterPerKilowatts = UnitUtils.ConvertToInternalUnits(squareMeterPerKilowattsValue, DisplayUnitType.DUT_SQUARE_METERS_PER_KILOWATTS);
+                        familyManager.Set(familyParam, convertedSquareMeterPerKilowatts);
+                    }
+                    break;
+
+                case "HVACAirflowDividedByCoolingLoad":
+                    if (double.TryParse(parameterValue, out double cubicMeterPerSecondValue))
+                    {
+                        double convertedCubicMeterPerSecond = UnitUtils.ConvertToInternalUnits(cubicMeterPerSecondValue, DisplayUnitType.DUT_CUBIC_METERS_PER_SECOND);
+                        familyManager.Set(familyParam, convertedCubicMeterPerSecond);
+                    }
+                    break;
+
+                case "Speed":
+                    if (double.TryParse(parameterValue, out double kilMeterPerhHourValue))
+                    {
+                        double convertedKilMeterPerhHour = UnitUtils.ConvertToInternalUnits(kilMeterPerhHourValue, DisplayUnitType.DUT_KILOMETERS_PER_HOUR);
+                        familyManager.Set(familyParam, convertedKilMeterPerhHour);
+                    }
+                    break;
+
+                case "ElectricalDemandFactor":
+                case "HVACFactor":
+                case "HVACSlope":
+                case "PipingSlope":
+                    if (double.TryParse(parameterValue, out double percentageValue))
+                    {
+                        double convertedPercentage = UnitUtils.ConvertToInternalUnits(percentageValue, DisplayUnitType.DUT_PERCENTAGE);
+                        familyManager.Set(familyParam, convertedPercentage);
+                    }
+                    break;
+
+                case "Angle":
+                    if (double.TryParse(parameterValue, out double decDegreesValue))
+                    {
+                        double convertedDecDegrees = UnitUtils.ConvertToInternalUnits(decDegreesValue, DisplayUnitType.DUT_DECIMAL_DEGREES);
+                        familyManager.Set(familyParam, convertedDecDegrees);
+                    }
+                    break;
+
+                case "Slope":
+                    if (double.TryParse(parameterValue, out double slopeDegreesValue))
+                    {
+                        double convertedSlopeDegrees = UnitUtils.ConvertToInternalUnits(slopeDegreesValue, DisplayUnitType.DUT_SLOPE_DEGREES);
+                        familyManager.Set(familyParam, convertedSlopeDegrees);
+                    }
+                    break;
+
+                case "HVACEnergy":
+                    if (double.TryParse(parameterValue, out double joulesValue))
+                    {
+                        double convertedJoules= UnitUtils.ConvertToInternalUnits(joulesValue, DisplayUnitType.DUT_JOULES);
+                        familyManager.Set(familyParam, convertedJoules);
+                    }
+                    break;
+
+                case "HVACSpecificHeatOfVaporization":
+                    if (double.TryParse(parameterValue, out double joulesPerGramValue))
+                    {
+                        double convertedJoulesPerGram = UnitUtils.ConvertToInternalUnits(joulesPerGramValue, DisplayUnitType.DUT_JOULES_PER_GRAM);
+                        familyManager.Set(familyParam, convertedJoulesPerGram);
+                    }
+                    break;
+
+                case "HVACSpecificHeat":
+                    if (double.TryParse(parameterValue, out double joulesPerKilogramCelsiusValue))
+                    {
+                        double convertedJoulesPerKilogramCelsius = UnitUtils.ConvertToInternalUnits(joulesPerKilogramCelsiusValue, DisplayUnitType.DUT_JOULES_PER_KILOGRAM_CELSIUS);
+                        familyManager.Set(familyParam, convertedJoulesPerKilogramCelsius);
+                    }
+                    break;
+
+                case "Energy":
+                    if (double.TryParse(parameterValue, out double kilojoulesValue))
+                    {
+                        double convertedKilojoules = UnitUtils.ConvertToInternalUnits(kilojoulesValue, DisplayUnitType.DUT_KILOJOULES);
+                        familyManager.Set(familyParam, convertedKilojoules);
+                    }
+                    break;
+
+                case "HVACThermalMass":
+                    if (double.TryParse(parameterValue, out double kilojoulesPerKelvinValue))
+                    {
+                        double convertedKilojoulesPerKelvin = UnitUtils.ConvertToInternalUnits(kilojoulesPerKelvinValue, DisplayUnitType.DUT_KILOJOULES_PER_KELVIN);
+                        familyManager.Set(familyParam, convertedKilojoulesPerKelvin);
+                    }
+                    break;
+
+                case "ElectricalPotential":
+                    if (double.TryParse(parameterValue, out double voltsValue))
+                    {
+                        double convertedVolts = UnitUtils.ConvertToInternalUnits(voltsValue, DisplayUnitType.DUT_VOLTS);
+                        familyManager.Set(familyParam, convertedVolts);
+                    }
+                    break;
+
+                case "ElectricalApparentPower":
+                    if (double.TryParse(parameterValue, out double voltAmperesValue))
+                    {
+                        double convertedVoltAmperes = UnitUtils.ConvertToInternalUnits(voltAmperesValue, DisplayUnitType.DUT_VOLT_AMPERES);
+                        familyManager.Set(familyParam, convertedVoltAmperes);
+                    }
+                    break;
+
+                case "ElectricalPower":
+                case "HVACCoolingLoad":
+                case "HVACHeatGain":
+                case "HVACHeatingLoad":
+                case "HVACPower":
+                case "ElectricalWattage":                
+                    if (double.TryParse(parameterValue, out double wattsValue))
+                    {
+                        double convertedWatts = UnitUtils.ConvertToInternalUnits(wattsValue, DisplayUnitType.DUT_WATTS);
+                        familyManager.Set(familyParam, convertedWatts);
+                    }
+                    break;
+
+                case "HVACHeatingLoadDividedByVolume":
+                case "HVACCoolingLoadDividedByVolume":
+                    if (double.TryParse(parameterValue, out double watsPerCubicMeterValue))
+                    {
+                        double convertedWatsPerCubicMeter = UnitUtils.ConvertToInternalUnits(watsPerCubicMeterValue, DisplayUnitType.DUT_WATTS_PER_CUBIC_METER);
+                        familyManager.Set(familyParam, convertedWatsPerCubicMeter);
+                    }
+                    break;
+
+                case "HVACThermalConductivity":
+                    if (double.TryParse(parameterValue, out double wattsPerMeterKelvinValue))
+                    {
+                        double convertedWattsPerMeterKelvin = UnitUtils.ConvertToInternalUnits(wattsPerMeterKelvinValue, DisplayUnitType.DUT_WATTS_PER_METER_KELVIN);
+                        familyManager.Set(familyParam, convertedWattsPerMeterKelvin);
+                    }
+                    break;
+
+                case "ElectricalResistivity":
+                    if (double.TryParse(parameterValue, out double ohmMetersValue))
+                    {
+                        double convertedOhmMeters = UnitUtils.ConvertToInternalUnits(ohmMetersValue, DisplayUnitType.DUT_OHM_METERS);
+                        familyManager.Set(familyParam, convertedOhmMeters);
+                    }
+                    break;
+
+                case "HVACPressure":
+                case "PipingPressure":
+                    if (double.TryParse(parameterValue, out double pascValue))
+                    {
+                        double convertedPasc = UnitUtils.ConvertToInternalUnits(pascValue, DisplayUnitType.DUT_PASCALS);
+                        familyManager.Set(familyParam, convertedPasc);
+
+                    }
+                    break;
+
+                case "HVACFriction":
+                case "PipingFriction":
+                    if (double.TryParse(parameterValue, out double pascalPerMeterValue))
+                    {
+                        double convertedPascalPerMeter = UnitUtils.ConvertToInternalUnits(pascalPerMeterValue, DisplayUnitType.DUT_PASCALS_PER_METER);
+                        familyManager.Set(familyParam, convertedPascalPerMeter);
+                    }
+                    break;
+
+                case "HVACViscosity":
+                case "PipingViscosity":
+                    if (double.TryParse(parameterValue, out double pascalSecondsValue))
+                    {
+                        double convertedPascalSeconds = UnitUtils.ConvertToInternalUnits(pascalSecondsValue, DisplayUnitType.DUT_PASCAL_SECONDS);
+                        familyManager.Set(familyParam, convertedPascalSeconds);
+                    }
+                    break;
+
+                case "Stress":
+                    if (double.TryParse(parameterValue, out double megaPascalValue))
+                    {
+                        double convertedMegaPascal = UnitUtils.ConvertToInternalUnits(megaPascalValue, DisplayUnitType.DUT_MEGAPASCALS);
+                        familyManager.Set(familyParam, convertedMegaPascal);
+                    }
+                    break;
+
+                case "Force":
+                case "Weight":
+                    if (double.TryParse(parameterValue, out double kilonewtonsValue))
+                    {
+                        double convertedKilonewtons = UnitUtils.ConvertToInternalUnits(kilonewtonsValue, DisplayUnitType.DUT_KILONEWTONS);
+                        familyManager.Set(familyParam, convertedKilonewtons);
+                    }
+                    break;
+
+                case "Moment":
+                    if (double.TryParse(parameterValue, out double kilonewtonMeterValue))
+                    {
+                        double convertedKilonewtonMeter = UnitUtils.ConvertToInternalUnits(kilonewtonMeterValue, DisplayUnitType.DUT_KILONEWTON_METERS);
+                        familyManager.Set(familyParam, convertedKilonewtonMeter);
+                    }
+                    break;
+
+                case "ForcePerLength":
+                case "LinearForce":
+                    if (double.TryParse(parameterValue, out double kilonewtonPerMeterValue))
+                    {
+                        double convertedKilonewtonPerMeter = UnitUtils.ConvertToInternalUnits(kilonewtonPerMeterValue, DisplayUnitType.DUT_KILONEWTONS_PER_METER);
+                        familyManager.Set(familyParam, convertedKilonewtonPerMeter);
+                    }
+                    break;
+
+                case "LinearMoment":
+                    if (double.TryParse(parameterValue, out double kilonewtonMeterPerMeterValue))
+                    {
+                        double convertedKilonewtonMeterPerMeter = UnitUtils.ConvertToInternalUnits(kilonewtonMeterPerMeterValue, DisplayUnitType.DUT_KILONEWTON_METERS_PER_METER);
+                        familyManager.Set(familyParam, convertedKilonewtonMeterPerMeter);
+                    }
+                    break;
+
+                case "AreaForce":
+                case "LinearForcePerLength":
+                    if (double.TryParse(parameterValue, out double kilonewtonsPerSquareMeterValue))
+                    {
+                        double convertedKilonewtonsPerSquareMeter = UnitUtils.ConvertToInternalUnits(kilonewtonsPerSquareMeterValue, DisplayUnitType.DUT_KILONEWTONS_PER_SQUARE_METER);
+                        familyManager.Set(familyParam, convertedKilonewtonsPerSquareMeter);
+                    }
+                    break;
+
+                case "AreaForcePerLength":
+                case "UnitWeight":
+                    if (double.TryParse(parameterValue, out double kilonewtonsPerCubicMeterValue))
+                    {
+                        double convertedKilonewtonsPerCubicMeter = UnitUtils.ConvertToInternalUnits(kilonewtonsPerCubicMeterValue, DisplayUnitType.DUT_KILONEWTONS_PER_CUBIC_METER);
+                        familyManager.Set(familyParam, convertedKilonewtonsPerCubicMeter);
+                    }
+                    break;
+
+                case "ForceLengthPerAngle":
+                    if (double.TryParse(parameterValue, out double kilonewtonMetersPerDegreeValue))
+                    {
+                        double convertedKilonewtonMetersPerDegree = UnitUtils.ConvertToInternalUnits(kilonewtonMetersPerDegreeValue, DisplayUnitType.DUT_KILONEWTON_METERS_PER_DEGREE);
+                        familyManager.Set(familyParam, convertedKilonewtonMetersPerDegree);
+                    }
+                    break;
+
+                case "LinearForceLengthPerAngle":
+                    if (double.TryParse(parameterValue, out double kilonewtonMetersPerDegreePerMeterValue))
+                    {
+                        double convertedKilonewtonMetersPerDegreePerMeter = UnitUtils.ConvertToInternalUnits(kilonewtonMetersPerDegreePerMeterValue, DisplayUnitType.DUT_KILONEWTON_METERS_PER_DEGREE_PER_METER);
+                        familyManager.Set(familyParam, convertedKilonewtonMetersPerDegreePerMeter);
+                    }
+                    break;
+
+                case "HVACDensity":
+                case "MassDensity":
+                case "PipingDensity":
+                    if (double.TryParse(parameterValue, out double kgPerCubMeterValue))
+                    {
+                        double convertedKgPerCubMeter = UnitUtils.ConvertToInternalUnits(kgPerCubMeterValue, DisplayUnitType.DUT_KILOGRAMS_PER_CUBIC_METER);
+                        familyManager.Set(familyParam, convertedKgPerCubMeter);
+                    }
+                    break;
+
+                case "WeightPerUnitLength":
+                    if (double.TryParse(parameterValue, out double kilForcePerMeterValue))
+                    {
+                        double convertedKilForcePerMeter = UnitUtils.ConvertToInternalUnits(kilForcePerMeterValue, DisplayUnitType.DUT_KILOGRAMS_FORCE_PER_METER);
+                        familyManager.Set(familyParam, convertedKilForcePerMeter);
+                    }
+                    break;
+
+                case "MassPerUnitLength":
+                case "PipeMassPerUnitLength":
+                    if (double.TryParse(parameterValue, out double killogramMassPerMeterValue))
+                    {
+                        double convertedKillogramMassPerMeter = UnitUtils.ConvertToInternalUnits(killogramMassPerMeterValue, DisplayUnitType.DUT_KILOGRAMS_MASS_PER_METER);
+                        familyManager.Set(familyParam, convertedKillogramMassPerMeter);
+                    }
+                    break;
+
+                case "MassPerUnitArea":
+                    if (double.TryParse(parameterValue, out double killogramMassPerSquareMeterValue))
+                    {
+                        double convertedKillogramMassPerSquareMeter = UnitUtils.ConvertToInternalUnits(killogramMassPerSquareMeterValue, DisplayUnitType.DUT_KILOGRAMS_MASS_PER_SQUARE_METER);
+                        familyManager.Set(familyParam, convertedKillogramMassPerSquareMeter);
+                    }
+                    break;
+
+                case "PipingVolume":
+                    if (double.TryParse(parameterValue, out double litersValue))
+                    {
+                        double convertedLiters = UnitUtils.ConvertToInternalUnits(litersValue, DisplayUnitType.DUT_LITERS);
+                        familyManager.Set(familyParam, convertedLiters);
+                    }
+                    break;
+
+                case "HVACAirflow":
+                case "PipingFlow":
+                    if (double.TryParse(parameterValue, out double litersPerSecondValue))
+                    {
+                        double convertedLitersPerSecond = UnitUtils.ConvertToInternalUnits(litersPerSecondValue, DisplayUnitType.DUT_LITERS_PER_SECOND);
+                        familyManager.Set(familyParam, convertedLitersPerSecond);
+                    }
+                    break;
+
+                case "HVACAirflowDensity":
+                    if (double.TryParse(parameterValue, out double litersPerSecondSquareMeterValue))
+                    {
+                        double convertedLitersPerSecondSquareMeter = UnitUtils.ConvertToInternalUnits(litersPerSecondSquareMeterValue, DisplayUnitType.DUT_LITERS_PER_SECOND_SQUARE_METER);
+                        familyManager.Set(familyParam, convertedLitersPerSecondSquareMeter);
+                    }
+                    break;
+
+                case "HVACAirflowDividedByVolume":
+                    if (double.TryParse(parameterValue, out double litersPerSecondCubicMeterValue))
+                    {
+                        double convertedLitersPerSecondCubicMeter = UnitUtils.ConvertToInternalUnits(litersPerSecondCubicMeterValue, DisplayUnitType.DUT_LITERS_PER_SECOND_CUBIC_METER);
+                        familyManager.Set(familyParam, convertedLitersPerSecondCubicMeter);
+                    }
+                    break;
+
+                case "ElectricalIlluminance":
+                    if (double.TryParse(parameterValue, out double luxValue))
+                    {
+                        double convertedLux = UnitUtils.ConvertToInternalUnits(luxValue, DisplayUnitType.DUT_LUX);
+                        familyManager.Set(familyParam, convertedLux);
+                    }
+                    break;
+
+                case "ElectricalEfficacy":
+                    if (double.TryParse(parameterValue, out double lumensPerWattValue))
+                    {
+                        double convertedLumensPerWatt = UnitUtils.ConvertToInternalUnits(lumensPerWattValue, DisplayUnitType.DUT_LUMENS_PER_WATT);
+                        familyManager.Set(familyParam, convertedLumensPerWatt);
+                    }
+                    break;
+
+                case "ElectricalLuminance":
+                    if (double.TryParse(parameterValue, out double candelasPerSquareMeterValue))
+                    {
+                        double convertedCandelasPerSquareMeter = UnitUtils.ConvertToInternalUnits(candelasPerSquareMeterValue, DisplayUnitType.DUT_CANDELAS_PER_SQUARE_METER);
+                        familyManager.Set(familyParam, convertedCandelasPerSquareMeter);
+                    }
+                    break;
+
+                case "ElectricalTemperature":
+                case "HVACTemperature":
+                case "PipingTemperature":
+                    if (double.TryParse(parameterValue, out double celsiusValue))
+                    {
+                        double convertedCelsius = UnitUtils.ConvertToInternalUnits(celsiusValue, DisplayUnitType.DUT_CELSIUS);
+                        familyManager.Set(familyParam, convertedCelsius);
+                    }
+                    break;    
+            }
+        }
+
         // Добавление параметров в семейство
         public void AddParametersToFamily(Document _doc, string activeFamilyName, Dictionary<string, List<string>> allParametersForAddDict)
         {
-            string logFile = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:";
-            string messageBoxText = "";
+            string logFile = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n";
+            bool starusAddParametersToFamily = false;
 
-            Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();
+            Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();           
 
             using (Transaction trans = new Transaction(_doc, "KPLN. Пакетное добавление параметров в семейство"))
             {
@@ -386,6 +1112,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     string parameterGroup = paramDetails[1];
                     string parameterName = paramDetails[2];
                     string typeOrInstance = paramDetails[3];
+                    string parameterValue = paramDetails[5];
+                    string parameterValueDataType = paramDetails[6];
 
                     BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
 
@@ -409,23 +1137,75 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (existingParam == null)
                     {
                         FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
+                        starusAddParametersToFamily = true;
 
-                        if (familyParam == null)
+                        if (familyParam != null && parameterValue != "None")
                         {
-                            logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}.\n";
+                            try
+                            {
+                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                                starusAddParametersToFamily = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
+                                paramDetails[5] = "!ОШИБКА";
+                            }
                         }
                     }
-                    else
+                    else if (existingParam != null && parameterValue != "None")
                     {
-                        messageBoxText += $"{parameterGroup} - {parameterName};\n";
+                        try
+                        {
+                            RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
+                            starusAddParametersToFamily = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
+                            paramDetails[5] = "!ОШИБКА";
+                        }
+
                     }
                 }
 
                 trans.Commit();
 
-                // Отчёт о результате выполнения в виде диалоговых окон
+                // Отчёт о результате выполнения в виде диалоговых окон + обновлкение полей с неисправными параметрами
                 if (logFile.Contains("Error"))
                 {
+                    int index = 0;
+
+                    foreach (StackPanel uniqueParameterField in SP_allPanelParamsFields.Children)
+                    {
+                        if (uniqueParameterField.Tag?.ToString() == "uniqueParameterField")
+                        {
+                            if (index < allParametersForAddDict.Count)
+                            {
+                                List<string> parameterValues = allParametersForAddDict.ElementAt(index).Value;
+
+                                if (parameterValues.Count > 5)
+                                {
+                                    foreach (var element in uniqueParameterField.Children)
+                                    {
+                                        if (element is System.Windows.Controls.TextBox textBox)
+                                        {
+                                            textBox.Text = parameterValues[5];
+
+                                            if (parameterValues[5] == "!ОШИБКА")
+                                            {
+                                                textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                index++;
+                            }
+                        }
+                    }
+
                     System.Windows.Forms.MessageBox.Show("Параметры были добавлены добавлены в семейство с ошибками.\n" +
                         "Вы можете сохранить отчёт об ошибках в следующем диалоговом окне.", "Ошибка добавления параметров в семейство",
                         System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
@@ -441,17 +1221,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             string filePath = saveFileDialog.FileName;
 
-                            File.WriteAllText(filePath, logFile);
+                            System.IO.File.WriteAllText(filePath, logFile);
                         }
                     }
                 }
-                else if (messageBoxText.Contains(";"))
-                {
-                    System.Windows.Forms.MessageBox.Show("Все параметры добавлены в семейство, кроме тех, которые уже находятся в семействе:\n" +
-                        $"{messageBoxText}", "Все параметры были добавлены в семейство",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                }
-                else
+                else if (starusAddParametersToFamily)
                 {
                     System.Windows.Forms.MessageBox.Show("Все параметры были добавлены в семейство", "Все параметры были добавлены в семейство",
                         System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
@@ -496,6 +1270,27 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return FieldsAreFilled;
         }
 
+        // Проверка заполнености поля со значение мпараметра внутри #uniqueParameterField
+        public bool CheckingFillingValidDataInParamValue()
+        {
+            bool validDataValue = true;
+
+            var uniquePanels = SP_allPanelParamsFields.Children.OfType<StackPanel>()
+                .Where(sp => sp.Tag != null && sp.Tag.ToString() == "uniqueParameterField");
+
+            foreach (var panel in uniquePanels)
+            {
+                var textBox = panel.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+
+                if (textBox != null && textBox.Tag != null && textBox.Tag.ToString() == "invalid")
+                {
+                    validDataValue = false;
+                }
+            }
+
+                return validDataValue;
+        }
+
         // Изменение стиля для ComboBox "Группа" и "Параметры"
         public void makeDisabledParamGroupField()
         {
@@ -510,11 +1305,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             comboBox.Foreground = Brushes.Gray;
                             comboBox.IsEnabled = false;
-                            count++; 
+                            count++;
                         }
                         else
                         {
-                            break; 
+                            break;
                         }
                     }
                 }
@@ -544,18 +1339,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Открытие файла ФОПа при помощи кнопки
         private void OpenFileButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!CheckingFillingAllComboBoxes()) 
+            if (!CheckingFillingAllComboBoxes())
             {
                 ClearingIncorrectlyFilledFieldsParams();
 
-                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены", 
+                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
             else
             {
                 Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
 
-                openFileDialog.InitialDirectory = System.IO.Path.GetDirectoryName(revitApp.SharedParametersFilename);
+                openFileDialog.InitialDirectory = System.IO.Path.GetDirectoryName(null);
 
                 if (openFileDialog.ShowDialog() == true)
                 {
@@ -578,7 +1373,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
                 {
-                    CB_paramsName.Items.Clear();                   
+                    CB_paramsName.Items.Clear();
+                    TB_paramValue.Text = "Выберите значение в поле ``Параметр``";
 
                     foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
                     {
@@ -591,8 +1387,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                 }
 
-                ClearingIncorrectlyFilledFieldsParams();               
-            }    
+                ClearingIncorrectlyFilledFieldsParams();
+            }
         }
 
         //// XAML. Оригинальный ComboBox "Параметры": срабатывание фильтра
@@ -637,7 +1433,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     textBox.GotFocus += (s, args) => comboBox.IsDropDownOpen = true;
                 }
-            }          
+            }
         }
 
         //// XAML.Оригинальный ComboBox "Параметры": обработчик открытия List
@@ -659,7 +1455,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     collectionViewOriginal.Refresh();
                 }
             }
-
         }
 
         //// XAML.Оригинальный ComboBox "Параметры": основной обработчик событий
@@ -674,15 +1469,102 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
                     {
 
-                        TB_paramValue.Text = "Значение параметра";
-
                         if (CB_paramsGroup.SelectedItem == null)
                         {
                             CB_paramsGroup.SelectedItem = kvp.Key;                           
                         }
-
+                      
                         break;
                     }
+                }
+
+                if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
+                {
+                    try
+                    {
+                        revitApp.SharedParametersFilename = TB_filePath.Text;
+
+                        DefinitionFile defFile = revitApp.OpenSharedParameterFile();
+                        DefinitionGroup defGroup = defFile.Groups.get_Item(CB_paramsGroup.SelectedItem.ToString());
+                        ExternalDefinition def = defGroup.Definitions.get_Item(CB_paramsName.SelectedItem.ToString()) as ExternalDefinition;
+
+                        ParameterType paramType = def.ParameterType;
+
+                        CB_paramsName.Tag = paramType;
+                        TB_paramValue.IsEnabled = true;                       
+                        TB_paramValue.Tag = "nonestatus";
+                        TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {paramType.ToString()})";
+                        TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    }
+                    catch (Exception ex)
+                    {
+                        TB_paramValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
+                        CB_paramsName.Tag = "ОШИБКА";
+                        TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    }
+                }
+            }          
+        }
+
+        //// XAML.Оригинальный ComboBox "Параметры": потеря фокуса
+        private void ParamsName_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (CB_paramsName.SelectedItem == null)
+            {
+                CB_paramsName.Text = "";
+                TB_paramValue.IsEnabled = false;
+                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));                
+                TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+            }
+        }
+
+        //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
+        private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
+        {
+            String textInField = TB_paramValue.Text;
+
+            if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
+                || textInField.Contains("Необходимо указать:"))               
+            {
+                TB_paramValue.Clear();
+            }
+        }
+
+        //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса
+        private void DataVerification_LostFocus(object sender, RoutedEventArgs e)
+        {         
+            if (string.IsNullOrEmpty(TB_paramValue.Text))
+            {
+                TB_paramValue.Tag = "nonestatus";
+                TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {CB_paramsName.Tag})";
+                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+            } 
+            else 
+            {
+                ParameterType paramType = (ParameterType)CB_paramsName.Tag;
+
+                if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "red")
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                    TB_paramValue.Tag = "invalid";
+                }
+                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "green")
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                    TB_paramValue.Tag = "valid";
+                }
+                else if (CheckingValueOfAParameter(CB_paramsName,TB_paramValue, paramType) == "blue")
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                    TB_paramValue.Tag = "valid";
+                }
+                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "yellow")
+                {
+                    CB_paramsName.Text = "";
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый                   
+                    TB_paramValue.IsEnabled = false;
+                    TB_paramValue.Tag = "nonestatus";
+                    TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
             }
         }
@@ -743,10 +1625,68 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 cbParamsGroup.Items.Add(key);
             }
 
+            allParamNameList = CreateallParamNameList(groupAndParametersFromSPFDict);
+
             foreach (var param in allParamNameList)
             {
                 cbParamsName.Items.Add(param);
             }
+                  
+            System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
+            {
+                Width = 105,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(8, 4, 0, 0),
+                SelectedIndex = 0
+            };
+
+            foreach (string key in CreateTypeInstanceList())
+            {
+                cbTypeInstance.Items.Add(key);
+            }
+
+            System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
+            {
+                Width = 340,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(8, 4, 0, 0),
+                SelectedIndex = 21
+            };
+
+            foreach (string key in CreateGroupingDictionary().Keys)
+            {
+                cbGrouping.Items.Add(key);
+            }
+
+            Button removeButton = new Button
+            {
+                Width = 30,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Content = "X",
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+
+            removeButton.Click += (s, ev) =>
+            {
+                SP_allPanelParamsFields.Children.Remove(newPanel);
+            };
+
+            System.Windows.Controls.TextBox tbParamValue = new System.Windows.Controls.TextBox
+            {
+                Text = "Выберите значение в поле ``Группа`` или ``Параметр``",
+                IsEnabled = false,
+                Width = 1245,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(-1250, 0, 0, 0),
+                Padding = new Thickness(15, 3, 0, 0),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
+            };
+
 
             cbParamsGroup.SelectionChanged += (s, ev) =>
             {
@@ -758,6 +1698,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
                     {
                         cbParamsName.Items.Clear();
+                        tbParamValue.Text = "Выберите значение в поле ``Параметр``";
 
                         foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
                         {
@@ -832,61 +1773,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
-
-            System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
-            {
-                Width = 105,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Padding = new Thickness(8, 4, 0, 0),
-                SelectedIndex = 0
-            };
-
-            foreach (string key in CreateTypeInstanceList())
-            {
-                cbTypeInstance.Items.Add(key);
-            }
-
-            System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
-            {
-                Width = 340,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Padding = new Thickness(8, 4, 0, 0),
-                SelectedIndex = 21
-            };
-
-            foreach (string key in CreateGroupingDictionary().Keys)
-            {
-                cbGrouping.Items.Add(key);
-            }
-
-            Button removeButton = new Button
-            {
-                Width = 30,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Content = "X",
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
-                Foreground = new SolidColorBrush(Colors.White)
-            };
-
-            removeButton.Click += (s, ev) =>
-            {
-                SP_allPanelParamsFields.Children.Remove(newPanel);
-            };
-
-            System.Windows.Controls.TextBox textBoxParamsValue = new System.Windows.Controls.TextBox
-            {
-                Text = "Значение параметра",
-                Width = 1245,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(-1250, 0, 0, 0),
-                Padding = new Thickness(15, 3, 0, 0),
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
-            };
-
             cbParamsName.SelectionChanged += (s, ev) =>
             {
                 if (cbParamsName.SelectedItem != null)
@@ -897,9 +1783,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     {
                         if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
                         {
-
-                            textBoxParamsValue.Text = "Значение параметра";
-
                             if (cbParamsGroup.SelectedItem == null)
                             {
                                 cbParamsGroup.SelectedItem = kvp.Key;
@@ -907,6 +1790,91 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                             break;
                         }
+                    }
+
+                    if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
+                    {
+                        try
+                        {
+                            revitApp.SharedParametersFilename = TB_filePath.Text;
+
+                            DefinitionFile defFile = revitApp.OpenSharedParameterFile();
+                            DefinitionGroup defGroup = defFile.Groups.get_Item(cbParamsGroup.SelectedItem.ToString());
+                            ExternalDefinition def = defGroup.Definitions.get_Item(cbParamsName.SelectedItem.ToString()) as ExternalDefinition;
+
+                            ParameterType paramType = def.ParameterType;
+                            cbParamsName.Tag = paramType;
+                            tbParamValue.IsEnabled = true;
+                            tbParamValue.Tag = "nonestatus";
+                            tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {paramType.ToString()})";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                        }
+                        catch (Exception ex)
+                        {
+                            tbParamValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
+                            cbParamsName.Tag = "ОШИБКА";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                        }
+                    }
+                }
+            };
+
+            cbParamsName.LostFocus += (s, ev) =>
+            {
+                if (cbParamsName.SelectedItem == null)
+                {
+                    cbParamsName.Text = "";
+                    tbParamValue.IsEnabled = false;
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                }
+            };
+
+            tbParamValue.GotFocus += (s, ev) =>
+            {
+                String textInField = tbParamValue.Text;
+
+                if (textInField.Contains("При необходимости, вы можете указать значение параметра")
+                    || textInField.Contains("Необходимо указать:"))
+                {
+                    tbParamValue.Clear();
+                }
+            };
+
+            tbParamValue.LostFocus += (s, ev) =>
+            {
+                if (string.IsNullOrEmpty(tbParamValue.Text))
+                {
+                    tbParamValue.Tag = "nonestatus";
+                    tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {cbParamsName.Tag})";
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                }
+                else
+                {
+                    ParameterType paramType = (ParameterType)cbParamsName.Tag;
+
+                    if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                        tbParamValue.Tag = "invalid";
+                    }
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                        tbParamValue.Tag = "valid";
+                    }
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                        tbParamValue.Tag = "valid";
+                    }
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                    {
+                        cbParamsName.Text = "";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
+                        tbParamValue.Tag = "nonestatus";
+                        tbParamValue.IsEnabled = false;
+                        tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                     }
                 }
             };
@@ -916,7 +1884,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             newPanel.Children.Add(cbTypeInstance);
             newPanel.Children.Add(cbGrouping);
             newPanel.Children.Add(removeButton);
-            newPanel.Children.Add(textBoxParamsValue);
+            newPanel.Children.Add(tbParamValue);
 
             SP_allPanelParamsFields.Children.Add(newPanel);
         }
@@ -930,7 +1898,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 groupAndParametersFromSPFDict.Clear();
 
                 List<string> allParamInInterfaceFromJsonValues = keyDict.Value;
-                revitApp.SharedParametersFilename = allParamInInterfaceFromJsonValues[0];
+
+                SPFPath = allParamInInterfaceFromJsonValues[0];
+                revitApp.SharedParametersFilename = SPFPath;
+                TB_filePath.Text = SPFPath;
 
                 try
                 {
@@ -938,7 +1909,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     if (defFile == null)
                     {
-                        System.Windows.Forms.MessageBox.Show($"ФОП ``{allParamInInterfaceFromJsonValues[0]}``\n" +
+                        System.Windows.Forms.MessageBox.Show($"ФОП ``{SPFPath}``\n" +
                         "не найден или неисправен. Работа плагина остановлена", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
 
                         break;
@@ -958,7 +1929,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.Forms.MessageBox.Show($"ФОП ``{allParamInInterfaceFromJsonValues[0]}``\n" +
+                    System.Windows.Forms.MessageBox.Show($"ФОП ``{SPFPath}``\n" +
                         "не найден или неисправен. Работа плагина остановлена", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
 
                     break;
@@ -968,7 +1939,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 StackPanel newPanel = new StackPanel
                 {
                     Tag = "uniqueParameterField",
-                    ToolTip = $"ФОП: {allParamInInterfaceFromJsonValues[0]}",
+                    ToolTip = $"ФОП: {SPFPath}",
                     Orientation = Orientation.Horizontal,
                     Height = 52,
                     Margin = new Thickness(20, 0, 20, 12)
@@ -976,8 +1947,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 System.Windows.Controls.ComboBox cbParamsGroup = new System.Windows.Controls.ComboBox
                 {
-                    Tag = allParamInInterfaceFromJsonValues[0],
-                    ToolTip = $"ФОП: {allParamInInterfaceFromJsonValues[0]}",
+                    Tag = SPFPath,
+                    ToolTip = $"ФОП: {SPFPath}",
                     IsEnabled = false,
                     Width = 270,
                     Height = 25,
@@ -985,6 +1956,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Padding = new Thickness(8, 4, 0, 0),
                     Foreground = Brushes.Gray
                 };
+
+                cbParamsGroup.SelectedItem = allParamInInterfaceFromJsonValues[1];
 
                 System.Windows.Controls.ComboBox cbParamsName = new System.Windows.Controls.ComboBox
                 {
@@ -995,28 +1968,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Padding = new Thickness(8, 4, 0, 0),
                     Foreground = Brushes.Gray
                 };
-
-                foreach (var key in groupAndParametersFromSPFDict.Keys)
-                {
-                    cbParamsGroup.Items.Add(key);
-                }
-
-                cbParamsGroup.SelectedItem = allParamInInterfaceFromJsonValues[1];
-
-                if (!groupAndParametersFromSPFDict.ContainsKey(allParamInInterfaceFromJsonValues[1]))
-                {
-                    System.Windows.Forms.MessageBox.Show($"Параметр ``{allParamInInterfaceFromJsonValues[1]}`` не найден в ФОП\n" +
-                        $"(``{allParamInInterfaceFromJsonValues[0]})\n" +
-                        "Работа плагина остановлена.\n", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                    break;
-                }
+               
+                cbParamsName.SelectedItem = allParamInInterfaceFromJsonValues[2];
+                cbParamsName.Tag = allParamInInterfaceFromJsonValues[6];
 
                 foreach (var param in groupAndParametersFromSPFDict[allParamInInterfaceFromJsonValues[1]])
                 {
                     cbParamsName.Items.Add(param.Name);
                 }
-
-                cbParamsName.SelectedItem = allParamInInterfaceFromJsonValues[2];
 
                 System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
                 {
@@ -1032,14 +1991,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     cbTypeInstance.Items.Add(key);
                 }
 
-                if (CreateTypeInstanceList().Contains(allParamInInterfaceFromJsonValues[3]))
+                foreach (var key in groupAndParametersFromSPFDict.Keys)
                 {
-                    cbTypeInstance.SelectedItem = allParamInInterfaceFromJsonValues[3];
-                } else 
-                {
-                    cbTypeInstance.SelectedIndex = -1;
+                    cbParamsGroup.Items.Add(key);
                 }
-               
+
                 System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
                 {
                     Width = 340,
@@ -1052,15 +2008,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 foreach (string key in CreateGroupingDictionary().Keys)
                 {
                     cbGrouping.Items.Add(key);
-                }
-
-                if (CreateGroupingDictionary().ContainsKey(allParamInInterfaceFromJsonValues[4]))
-                {
-                    cbGrouping.SelectedItem = allParamInInterfaceFromJsonValues[4];
-                }
-                else
-                {
-                    cbGrouping.SelectedIndex = -1;
                 }
 
                 Button removeButton = new Button
@@ -1078,31 +2025,139 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     SP_allPanelParamsFields.Children.Remove(newPanel);
                 };
 
-                System.Windows.Controls.TextBox textBoxParamsValue = new System.Windows.Controls.TextBox
+                System.Windows.Controls.TextBox tbParamValue = new System.Windows.Controls.TextBox
                 {
-                    Text = "Значение параметра",
-                    IsEnabled = false,
                     Width = 1245,
                     Height = 25,
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Margin = new Thickness(-1250, 0, 0, 0),
                     Padding = new Thickness(15, 3, 0, 0),
-                    Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)),
-                    Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(162, 162, 162))
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
                 };
 
-                textBoxParamsValue.Text = allParamInInterfaceFromJsonValues[5];
+                tbParamValue.Text = allParamInInterfaceFromJsonValues[5];
+
+                if (!groupAndParametersFromSPFDict.ContainsKey(allParamInInterfaceFromJsonValues[1]))
+                {
+                    System.Windows.Forms.MessageBox.Show($"Параметр ``{allParamInInterfaceFromJsonValues[1]}`` не найден в ФОП\n" +
+                        $"(``{SPFPath})\n" +
+                        "Работа плагина остановлена.\n", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    break;
+                }
+                              
+                if (CreateTypeInstanceList().Contains(allParamInInterfaceFromJsonValues[3]))
+                {
+                    cbTypeInstance.SelectedItem = allParamInInterfaceFromJsonValues[3];
+                } else 
+                {
+                    cbTypeInstance.SelectedIndex = -1;
+                }             
+
+                if (CreateGroupingDictionary().ContainsKey(allParamInInterfaceFromJsonValues[4]))
+                {
+                    cbGrouping.SelectedItem = allParamInInterfaceFromJsonValues[4];
+                }
+                else
+                {
+                    cbGrouping.SelectedIndex = -1;
+                }
+              
+                tbParamValue.Loaded += (s, ev) =>
+                {
+                    if (tbParamValue.Text == "None")
+                    {
+                        tbParamValue.Tag = "nonestatus";
+                        tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {allParamInInterfaceFromJsonValues[6]})";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    }
+                    else
+                    {
+                        ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
+
+                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                            tbParamValue.Tag = "invalid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                        {
+                            cbParamsName.Text = "";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
+                            tbParamValue.Tag = "nonestatus";
+                            tbParamValue.IsEnabled = false;
+                            tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                        }
+                    }
+                };
+
+                tbParamValue.GotFocus += (s, ev) =>
+                {
+                    String textInField = tbParamValue.Text;
+
+                    if (textInField.Contains("При необходимости, вы можете указать значение параметра")
+                        || textInField.Contains("Необходимо указать:"))
+                    {
+                        tbParamValue.Clear();
+                    }
+                };
+
+                tbParamValue.LostFocus += (s, ev) =>
+                {
+                    if (string.IsNullOrEmpty(tbParamValue.Text))
+                    {
+                        tbParamValue.Tag = "nonestatus";
+                        tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {allParamInInterfaceFromJsonValues[6]})";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    }
+                    else
+                    {
+                        ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
+
+                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                            tbParamValue.Tag = "invalid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                        {
+                            cbParamsName.Text = "";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
+                            tbParamValue.Tag = "nonestatus";
+                            tbParamValue.IsEnabled = false;
+                            tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                        }
+                    }
+                };
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);
                 newPanel.Children.Add(cbTypeInstance);
                 newPanel.Children.Add(cbGrouping);
                 newPanel.Children.Add(removeButton);
-                newPanel.Children.Add(textBoxParamsValue);
+                newPanel.Children.Add(tbParamValue);
 
-                SP_allPanelParamsFields.Children.Add(newPanel);
-                TB_filePath.Text = allParamInInterfaceFromJsonValues[0];
-            }
+                SP_allPanelParamsFields.Children.Add(newPanel);               
+            }          
         }
 
         //// XAML. Добавление параметров в семейство при нажатии на кнопку
@@ -1121,7 +2176,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 System.Windows.Forms.MessageBox.Show("Не все поля заполнены\n" +
                     "Чтобы добавить параметры в семейство, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-            } else
+            } else if (!CheckingFillingValidDataInParamValue())
+            {
+                System.Windows.Forms.MessageBox.Show("Не все значения параметров заполнены\n" +
+                    "Чтобы добавить параметры в семейство, заполните неверно заполененые значения параметров и повторите попытку.", "Не все поля заполнены",
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+            }
+            else
             {
                 Dictionary<string, List<string>> allParametersForAddDict = CreateInterfaceParamDict();
 
@@ -1145,6 +2206,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 System.Windows.Forms.MessageBox.Show("Нет заполненных параметров.\n" +
                     "Чтобы сохранить файл параметров, заполните хотя бы один параметр и повторите попытку.", "Нет параметров для добавления",
                     System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+            }
+            else if (!CheckingFillingValidDataInParamValue())
+            {
+                System.Windows.Forms.MessageBox.Show("Не все значения параметров заполнены\n" +
+                    "Чтобы сохранить файл параметров, заполните неверно заполененые значения параметров и повторите попытку.", "Не все поля заполнены",
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
             }
             else
             {
@@ -1182,6 +2249,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             { "instance", entry.Value[3] },
                             { "grouping", entry.Value[4] },
                             { "parameterValue", entry.Value[5] },
+                            { "parameterValueDataType", entry.Value[6] },
                         };
                             parameterList.Add(parameterEntry);
                         }
