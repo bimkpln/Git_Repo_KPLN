@@ -34,7 +34,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
-    
+
+#if Revit2020 || Debug2020
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
@@ -46,7 +47,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
             return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramType);
         }
-
+#endif
         public batchAddingParametersWindowGeneral(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
             InitializeComponent();
@@ -372,6 +373,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
 
+#if Revit2020 || Debug2020
                     if (existingParam == null)
                     {
                         FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
@@ -405,6 +407,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
 
                     }
+#endif
                 }
 
                 trans.Commit();
@@ -715,7 +718,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         break;
                     }
                 }
-
+#if Revit2020 || Debug2020
                 if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
                 {
                     try
@@ -761,6 +764,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
+#endif
             }          
         }
 
@@ -819,6 +823,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             } 
             else 
             {
+#if Revit2020 || Debug2020
                 ParameterType paramType = (ParameterType)CB_paramsName.Tag;
 
                 if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "red")
@@ -844,6 +849,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.Tag = "nonestatus";
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
+#endif
             }
         }
 
@@ -1072,6 +1078,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
                     {
+#if Revit2020 || Debug2020
                         try
                         {
                             revitApp.SharedParametersFilename = TB_filePath.Text;
@@ -1113,6 +1120,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             cbParamsName.Tag = "ОШИБКА";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
+#endif
                     }
                 }
             };
@@ -1169,6 +1177,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
                 else
                 {
+#if Revit2020 || Debug2020
                     ParameterType paramType = (ParameterType)cbParamsName.Tag;
 
                     if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
@@ -1194,6 +1203,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         tbParamValue.IsEnabled = false;
                         tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                     }
+#endif
                 }
             };
 
@@ -1411,6 +1421,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
+#if Revit2020 || Debug2020
                         ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
 
                         if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
@@ -1436,6 +1447,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             tbParamValue.IsEnabled = false;
                             tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                         }
+#endif
                     }
                 };
 
@@ -1480,6 +1492,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
+#if Revit2020 || Debug2020
                         ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
 
                         if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
@@ -1505,6 +1518,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             tbParamValue.IsEnabled = false;
                             tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                         }
+#endif
                     }
                 };
 
