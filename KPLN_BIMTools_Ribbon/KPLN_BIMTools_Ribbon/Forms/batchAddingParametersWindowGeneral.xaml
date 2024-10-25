@@ -11,7 +11,7 @@
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         Width="1350" 
-        Height="580" 
+        Height="595" 
         ResizeMode="NoResize"
         Background="#FF292D36">
     <Grid>
@@ -33,7 +33,7 @@
 
 
 
-        <StackPanel Margin="0,0,0,60" Width="1290px" Height="350px" VerticalAlignment="Bottom" Background="#FF3E3E3E">
+        <StackPanel Margin="0,0,0,55" Width="1290px" Height="365px" VerticalAlignment="Bottom" Background="#FF3E3E3E">
             
             <StackPanel Margin="45,5,0,0" Orientation="Horizontal" VerticalAlignment="Top">
                 <TextBlock TextWrapping="Wrap" Text="Группа" VerticalAlignment="Top" Margin="-25,5,0,7" FontSize="11px" Foreground="White"/>
@@ -42,22 +42,25 @@
                 <TextBlock TextWrapping="Wrap" Text="Группирование" VerticalAlignment="Top" Margin="25,5,0,7" FontSize="11px" Foreground="White"/>
             </StackPanel>
 
-            <ScrollViewer VerticalScrollBarVisibility="Visible" Height="320px">
+            <ScrollViewer VerticalScrollBarVisibility="Visible" Height="335px">
 
                 <StackPanel x:Name="SP_allPanelParamsFields">
 
-                    <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Orientation="Horizontal" VerticalAlignment="Top">
-                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="ParamsGroupSelectionChanged">
+                    <StackPanel x:Name="SP_panelParamFields" Tag="uniqueParameterField" Margin="20, 0, 20, 12" Height="52" Orientation="Horizontal" VerticalAlignment="Top">
+                        <ComboBox x:Name="CB_paramsGroup" Width="270" Height="25" Padding="8,4,0,0" SelectionChanged="ParamsGroupSelectionChanged" VerticalAlignment="Top">
                         </ComboBox>
-                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" Padding="8,3,0,0"  IsEditable="True" StaysOpenOnEdit="True" IsTextSearchEnabled="False" 
-                                  TextBoxBase.TextChanged="ParamsNameTextChanged" Loaded="ParamsName_Loaded" DropDownOpened="ParamsNameDropDownOpened" SelectionChanged="ParamsNameSelectionChanged">
+                        <ComboBox x:Name="CB_paramsName" Width="490" Height="25" VerticalAlignment="Top" Padding="8,3,0,0" IsEditable="True" StaysOpenOnEdit="True" IsTextSearchEnabled="False" 
+                                  TextBoxBase.TextChanged="ParamsNameTextChanged" Loaded="ParamsName_Loaded" LostFocus="ParamsName_LostFocus" DropDownOpened="ParamsNameDropDownOpened" SelectionChanged="ParamsNameSelectionChanged">
                         </ComboBox>
-                        <ComboBox x:Name="CB_typeInstance" Width="105" Height="25" Padding="8,4,0,0" SelectedIndex="0">
+                        <ComboBox x:Name="CB_typeInstance" Width="105" Height="25" VerticalAlignment="Top" Padding="8,4,0,0" SelectedIndex="0">
                         </ComboBox>
-                        <ComboBox x:Name="CB_grouping" Width="340" Height="25" Padding="8,4,0,0" SelectedIndex="21">
+                        <ComboBox x:Name="CB_grouping" Width="340" Height="25" VerticalAlignment="Top" Padding="8,4,0,0" SelectedIndex="21">
                         </ComboBox>
+                        <Button Content="X" Width="30" Height="25" VerticalAlignment="Top" Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
 
-                        <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel"/>
+                        <TextBox x:Name="TB_paramValue" Text="Выберите значение в поле ``Группа`` или ``Параметр``" Width="1245" Height="25" VerticalAlignment="Bottom" Margin="-1250, 0, 0, 0" Padding="15,3,0,0" Background="#FFFBFFD5" 
+                                 IsEnabled="False" GotFocus="DataVerification_GotFocus" LostFocus="DataVerification_LostFocus">
+                        </TextBox>
 
                     </StackPanel>
                 
