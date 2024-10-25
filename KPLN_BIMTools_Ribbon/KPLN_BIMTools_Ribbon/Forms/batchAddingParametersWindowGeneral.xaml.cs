@@ -200,7 +200,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     groupAndParametersFromSPFDict[group.Name] = parametersList;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 System.Windows.Forms.MessageBox.Show($"{SPFPath}\n" +
                         "Пожалуйста, выберете другой ФОП.", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
@@ -386,7 +386,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
                                 starusAddParametersToFamily = true;
                             }
-                            catch (Exception ex)
+                            catch (Exception)
                             {
                                 logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                 paramDetails[5] = "!ОШИБКА";
@@ -400,7 +400,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
                             starusAddParametersToFamily = true;
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                             paramDetails[5] = "!ОШИБКА";
@@ -757,7 +757,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         TB_paramValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
                         CB_paramsName.Tag = "ОШИБКА";
@@ -1116,7 +1116,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                             }                                                     
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             tbParamValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
                             cbParamsName.Tag = "ОШИБКА";
@@ -1257,7 +1257,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         groupAndParametersFromSPFDict[group.Name] = parametersList;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     System.Windows.Forms.MessageBox.Show($"ФОП ``{SPFPath}``\n" +
                         "не найден или неисправен. Работа плагина остановлена", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
