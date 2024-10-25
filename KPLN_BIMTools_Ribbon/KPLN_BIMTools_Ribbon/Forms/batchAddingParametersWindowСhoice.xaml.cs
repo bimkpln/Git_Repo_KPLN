@@ -87,6 +87,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return groupingDict;
         }
 
+#if Revit2020 || Debug2020
         // Функция соотношения параметра с типом данных и установки нужного кол-ва знаков после запятой.
         // Возвращает "yellow" - параметр пуст или указан неверно;
         // Возвращает "blue" - невозможно проверить значение параметра;
@@ -267,7 +268,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return "red";
         }
 
-
         // Функция соотношенияч типа данных со значением при добавлении параметра в семейство
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, String parameterValue, String parameterValueDataType)
         {
@@ -292,18 +292,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
-
-#if Revit2020 || Debug2020
-                ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, imagePath);
-                familyManager.Set(familyParam, newImageTypeOld.Id);
-#endif
-
-#if Revit2023 || Debug2023
-                ImageTypeOptions imageTypeOptions = new ImageTypeOptions(imagePath, false, ImageTypeSource.Imported);
-                ImageType newImageTypeNew = ImageType.Create(uiapp.ActiveUIDocument.Document, imageTypeOptions);
-                familyManager.Set(familyParam, newImageTypeNew.Id);
-#endif  
-
+                        ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, imagePath);
+                        familyManager.Set(familyParam, newImageTypeOld.Id);
                     }
                     break;
 
@@ -863,6 +853,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     break;
             }
         }
+#endif
 
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
@@ -916,7 +907,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 else{
                     System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                 }
-
             }
         }
     }

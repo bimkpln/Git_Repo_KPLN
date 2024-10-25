@@ -34,7 +34,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
-    
+
+#if Revit2020 || Debug2020
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
@@ -46,7 +47,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
             return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramType);
         }
-
+#endif
         public batchAddingParametersWindowGeneral(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
             InitializeComponent();
@@ -372,6 +373,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
 
+#if Revit2020 || Debug2020
                     if (existingParam == null)
                     {
                         FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
@@ -405,6 +407,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
 
                     }
+#endif
                 }
 
                 trans.Commit();
@@ -715,7 +718,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         break;
                     }
                 }
-
+#if Revit2020 || Debug2020
                 if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
                 {
                     try
@@ -761,6 +764,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
+#endif
             }          
         }
 
@@ -776,9 +780,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+
         //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
         private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
         {
+#if Revit2020 || Debug2020
             String textInField = TB_paramValue.Text;
 
             if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
@@ -786,11 +792,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 TB_paramValue.Clear();
             }
+#endif
         }
 
         //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса
         private void DataVerification_LostFocus(object sender, RoutedEventArgs e)
-        {         
+        {
+#if Revit2020 || Debug2020
             if (string.IsNullOrEmpty(TB_paramValue.Text))
             {
                 TB_paramValue.Tag = "nonestatus";
@@ -845,6 +853,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
             }
+#endif
         }
 
         //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
@@ -1069,7 +1078,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             break;
                         }
                     }
-
+#if Revit2020 || Debug2020
                     if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
                     {
                         try
@@ -1114,6 +1123,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                     }
+#endif
                 }
             };
 
@@ -1128,6 +1138,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
+#if Revit2020 || Debug2020
             tbParamValue.GotFocus += (s, ev) =>
             {
                 String textInField = tbParamValue.Text;
@@ -1195,7 +1206,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                     }
                 }
-            };
+        };
+#endif
 
             newPanel.Children.Add(cbParamsGroup);
             newPanel.Children.Add(cbParamsName);
@@ -1379,7 +1391,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     cbGrouping.SelectedIndex = -1;
                 }
-              
+
+#if Revit2020 || Debug2020
                 tbParamValue.Loaded += (s, ev) =>
                 {
                     if (tbParamValue.Text == "None")
@@ -1443,8 +1456,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     String textInField = tbParamValue.Text;
 
-                    if (textInField.Contains("При необходимости, вы можете указать значение параметра")
-                        || textInField.Contains("Необходимо указать:"))
+                    if (textInField.Contains("При необходимости, вы можете указать значение параметра") || textInField.Contains("Необходимо указать:"))
                     {
                         tbParamValue.Clear();
                     }
@@ -1507,6 +1519,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                     }
                 };
+#endif
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);
