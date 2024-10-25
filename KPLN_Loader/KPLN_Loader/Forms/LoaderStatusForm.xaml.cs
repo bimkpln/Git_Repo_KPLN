@@ -75,10 +75,10 @@ namespace KPLN_Loader.Forms
         /// <summary>
         /// Добавляет маркер при дебаге модулей
         /// </summary>
-        /// <param name="user">Пользователь</param>
-        internal void CheckAndSetDebugStatusByUser(User user)
+        /// <param name="isDebugMode">Указатель</param>
+        internal void SetDebugStatus(bool isDebugMode)
         {
-            if (user.IsDebugMode)
+            if (isDebugMode)
                 DebugModeTxt.Visibility = Visibility.Visible;
         }
 

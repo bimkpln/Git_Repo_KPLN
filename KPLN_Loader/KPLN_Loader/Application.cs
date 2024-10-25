@@ -98,7 +98,7 @@ namespace KPLN_Loader
                 string mainDBPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("KPLN_Loader_MainDB")).Path;
                 _dbService = new SQLiteService(_logger, mainDBPath);
                 CurrentRevitUser = _dbService.Authorization();
-                loaderStatusForm.CheckAndSetDebugStatusByUser(CurrentRevitUser);
+                loaderStatusForm.SetDebugStatus(CurrentRevitUser.IsDebugMode);
                 CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
                 loaderStatusForm.UpdateLayout();
 
@@ -143,7 +143,7 @@ namespace KPLN_Loader
                     try
                     {
                         // Копирование модуля
-                        DirectoryInfo targetDirInfo = _envService.CopyModule(module);
+                        DirectoryInfo targetDirInfo = _envService.CopyModule(module, CurrentRevitUser.IsDebugMode);
                         
                         String[] spearator = { ".dll" };
                         if (targetDirInfo != null)
