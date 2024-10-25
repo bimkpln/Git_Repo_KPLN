@@ -854,6 +854,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 #endif
+
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
         {
@@ -906,7 +907,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 else{
                     System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                 }
-
             }
         }
     }
