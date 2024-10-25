@@ -7,20 +7,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_HoleManager", "KPLN_Ho
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
-		Revit2020|Any CPU = Revit2020|Any CPU
-		Revit2023|Any CPU = Revit2023|Any CPU
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2020|Any CPU.ActiveCfg = Revit2020|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2020|Any CPU.Build.0 = Revit2020|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2023|Any CPU.ActiveCfg = Revit2023|Any CPU
-		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2023|Any CPU.Build.0 = Revit2023|Any CPU
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug2020|x64.Build.0 = Debug2020|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Debug2023|x64.Build.0 = Debug2023|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2020|x64.Build.0 = Revit2020|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{E45D3272-105C-4BFC-8E52-DD3D2611FB0E}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

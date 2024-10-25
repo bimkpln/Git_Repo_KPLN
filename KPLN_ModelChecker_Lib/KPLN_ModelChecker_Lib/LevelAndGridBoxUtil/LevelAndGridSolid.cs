@@ -1,8 +1,10 @@
 using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Windows;
 
 namespace KPLN_ModelChecker_Lib
 {
@@ -37,19 +39,21 @@ namespace KPLN_ModelChecker_Lib
         /// Подготовка коллекции солидов с данными по секциям
         /// </summary>
         /// <param name="doc">Revit-документ</param>
-        /// <param name="gridSeparParamName">Параметр для разделения осей по секциям</param>
+        /// <param name="sectSeparParamName">Параметр для разделения осей и уровней по секциям</param>
+        /// <param name="levelIndexParamName">Параметр для разделения уровней по этажам</param>
         /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
-        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string gridSeparParamName, double floorScreedHeight = 0, double downAndTopExtra = 3)
+        /// <param name="downAndTopExtra">Расширение границ для самого нижнего и самого верхнего уровней</param>
+        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string sectSeparParamName, string levelIndexParamName, double floorScreedHeight = 0, double downAndTopExtra = 3)
         {
             List<LevelAndGridSolid> result = new List<LevelAndGridSolid>();
 
-            List<GridData> gridDatas = GridData.GridPrepare(doc, gridSeparParamName);
+            List<GridData> gridDatas = GridData.GridPrepare(doc, sectSeparParamName);
             HashSet<string> multiGridsSet = new HashSet<string>(gridDatas.Select(g => g.CurrentSection));
             List<LevelData> levelDatas = new List<LevelData>();
             if (multiGridsSet.Count == 1)
-                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, multiGridsSet.FirstOrDefault());
+                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName, levelIndexParamName, multiGridsSet);
             else
-                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra);
+                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName, levelIndexParamName);
 
             // Подготовка предварительной коллекции элементов
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
@@ -120,7 +124,7 @@ namespace KPLN_ModelChecker_Lib
                         Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.CurrentlSolid, secData2.CurrentlSolid, BooleanOperationsType.Intersect);
                         if (intersectionSolid != null && intersectionSolid.Volume > 0)
                             throw new CheckerException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
-                                $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id} и {secData2.CurrentLevelData.CurrentLevel.Id} " +
+                                $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id}, {secData2.CurrentLevelData.CurrentLevel.Id} " +
                                 $"для секции №{secData1.GridData.CurrentSection}");
                     }
                 }
@@ -183,27 +187,72 @@ namespace KPLN_ModelChecker_Lib
             List<XYZ> pointsOfGridsIntersect = new List<XYZ>();
             foreach (Grid grid1 in grids)
             {
-                if (grid1 == null) continue;
+                if (grid1 == null) 
+                    continue;
+                
                 Curve curve1 = grid1.Curve;
                 foreach (Grid grid2 in grids)
                 {
-                    if (grid2 == null) continue;
-                    if (grid1.Id == grid2.Id) continue;
+                    if (grid2 == null) 
+                        continue;
+                    
+                    if (grid1.Id == grid2.Id) 
+                        continue;
+                    
                     Curve curve2 = grid2.Curve;
                     IntersectionResultArray intersectionResultArray = new IntersectionResultArray();
                     curve1.Intersect(curve2, out intersectionResultArray);
 
-                    if (intersectionResultArray == null || intersectionResultArray.IsEmpty) continue;
-
-                    foreach (IntersectionResult intersection in intersectionResultArray)
+                    // Линии не пересекаются. Нужно проверить векторами
+                    if (intersectionResultArray == null || intersectionResultArray.IsEmpty)
                     {
-                        XYZ point = intersection.XYZPoint;
-                        if (!pointsOfGridsIntersect.Any(pgi => point.IsAlmostEqualTo(pgi)))
-                            pointsOfGridsIntersect.Add(point);
+                        XYZ vectorIntersection = GetVectorsIntersectPnt(curve1.GetEndPoint(0), curve1.GetEndPoint(1), curve2.GetEndPoint(0), curve2.GetEndPoint(1));
+                        if (vectorIntersection != null && !pointsOfGridsIntersect.Any(pgi => vectorIntersection.IsAlmostEqualTo(pgi))) 
+                            pointsOfGridsIntersect.Add(vectorIntersection);
+                    }
+                    // Линии пересекаются, получаем результат
+                    else
+                    {
+                        foreach (IntersectionResult intersection in intersectionResultArray)
+                        {
+                            XYZ point = intersection.XYZPoint;
+                            if (!pointsOfGridsIntersect.Any(pgi => point.IsAlmostEqualTo(pgi)))
+                                pointsOfGridsIntersect.Add(point);
+                        }
                     }
                 }
             }
             return pointsOfGridsIntersect;
+        }
+
+        private static XYZ GetVectorsIntersectPnt(XYZ startPoint1, XYZ endPoint1, XYZ startPoint2, XYZ endPoint2)
+        {
+            XYZ direction1 = endPoint1 - startPoint1;
+            XYZ direction2 = endPoint2 - startPoint2;
+
+            // Проверяем на параллельность (если векторное произведение = 0, то линии параллельны)
+            XYZ crossProduct = direction1.CrossProduct(direction2);
+            
+            // Линии параллельны и не пересекаются
+            if (crossProduct.IsZeroLength())
+                return null;
+            // Линии не параллельны, проверим их на пересечение
+            else
+            {
+                // Рассчитываем параметр t1 для пересечения первой линии с продолжением второй линии
+                double t1 = ((startPoint2 - startPoint1).CrossProduct(direction2)).DotProduct(crossProduct) / crossProduct.DotProduct(crossProduct);
+
+                // Рассчитываем параметр t2 для пересечения второй линии с продолжением первой линии
+                double t2 = ((startPoint2 - startPoint1).CrossProduct(direction1)).DotProduct(crossProduct) / crossProduct.DotProduct(crossProduct);
+
+                // Проверяем t1 и t2. Если хотя бы одно из них далеко от границ отрезков (например, удалено больше чем на 30 м), то считаем, что пересечения нет.
+                if (Math.Abs(t1) > 100 || Math.Abs(t2) > 100)
+                    return null;
+
+                // 𝑡2 даёт точку пересечения на второй линии, но в нашем случае достаточно использовать только t1, чтобы получить ту же самую точку пересечения в мировых координатах.
+                // То есть одной точки пересечения достаточно, и мы можем выбрать любую из двух линий для её вычисления.
+                return startPoint1 + t1 * direction1;
+            }
         }
 
         /// <summary>

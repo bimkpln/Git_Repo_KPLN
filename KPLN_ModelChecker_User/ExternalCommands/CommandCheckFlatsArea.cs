@@ -85,7 +85,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             _uiApp = uiapp;
             // Из-за сторонней библиотеки (на python) - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
-            ESEntity.ESBuildergMarker = new ExtensibleStorageBuilder(ESEntity.MarkerGuid, ESEntity.MarkerFieldName, "storage");
+            ESEntity.ESBuildergMarker = new ExtensibleStorageBuilder(ESEntity.MarkerGuid, "Last_Run", "KPLN_ARArea");
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;

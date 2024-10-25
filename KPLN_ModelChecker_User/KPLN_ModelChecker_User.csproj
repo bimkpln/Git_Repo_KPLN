@@ -24,7 +24,7 @@
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <Optimize>true</Optimize>
     <Prefer32Bit>false</Prefer32Bit>
     <DebugType>pdbonly</DebugType>
@@ -70,11 +70,6 @@
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -111,6 +106,11 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -121,6 +121,11 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -135,6 +140,11 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -145,6 +155,11 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

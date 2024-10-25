@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_Lib;
 using System;
 using System.Collections.Generic;
@@ -18,17 +19,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // На будущее - может имеет смысл посадить на конфиги, но в целом - лучше хардкодить, чтобы никто случайно не влез. Конфиги нужно прятать от юзеров
-            string paramName = "КП_О_Секция";
+            string sectParamName = "КП_О_Секция";
+            string lvlIndexParamName = "КП_О_Этаж";
             if (doc.Title.StartsWith("СЕТ_1"))
-                paramName = "СМ_Секция";
+            {
+                sectParamName = "СМ_Секция";
+                lvlIndexParamName = "СМ_Этаж";
+            }
 
             try
             {
-                List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, paramName);
+                List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, sectParamName, lvlIndexParamName);
 
                 using (Transaction t = new Transaction(doc))
                 {
-                    t.Start("КП: Построение боксов");
+                    t.Start("KPLN: Построение боксов");
 
                     foreach (LevelAndGridSolid sectDataSolid in sectDataSolids)
                     {
@@ -45,11 +50,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 if (ex is CheckerException _)
                 {
-                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
-                    {
-                        MainContent = ex.Message
-                    };
-                    taskDialog.Show();
+                    UserDialog ud = new UserDialog("ОШИБКА: Выполни инструкцию", ex.Message);
+                    ud.Show();
                 }
 
                 else if (ex.InnerException != null)

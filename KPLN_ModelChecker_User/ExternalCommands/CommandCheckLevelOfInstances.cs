@@ -46,6 +46,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         private List<Element> _errorGeomCheckedElements = new List<Element>();
 
+        private string _sectParamName;
+        private string _lvlIndexParamName;
+
         public CommandCheckLevelOfInstances() : base()
         {
         }
@@ -145,7 +148,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             });
             #endregion
 
-            List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, "КП_О_Секция");
+            _sectParamName = "КП_О_Секция";
+            _lvlIndexParamName = "КП_О_Этаж";
+            if (doc.Title.StartsWith("СЕТ_1"))
+            {
+                _sectParamName = "СМ_Секция";
+                _lvlIndexParamName = "СМ_Этаж";
+            }
+            List<LevelAndGridSolid> sectDataSolids = LevelAndGridSolid.PrepareSolids(doc, _sectParamName, _lvlIndexParamName);
 
             // 15 с
             Task.WaitAll(prepDataTask);
@@ -302,8 +312,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Level chkLvlUp = instData.CurrentElemProjectUpLevel;
             if (chkLvlDown != null && chkLvlUp != null)
             {
-                string chkLvlDownNumber = LevelData.GetLevelNumber(chkLvlDown);
-                string chkLvlUpNumber = LevelData.GetLevelNumber(chkLvlUp);
+                string chkLvlDownNumber = LevelData.GetLevelNumber(chkLvlDown, _lvlIndexParamName);
+                string chkLvlUpNumber = LevelData.GetLevelNumber(chkLvlUp, _lvlIndexParamName);
                 if (int.TryParse(chkLvlDownNumber, out int chkDownNumber) && int.TryParse(chkLvlUpNumber, out int chkUpNumber))
                 {
                     int lvlDiff = Math.Abs(Math.Abs(chkUpNumber) - Math.Abs(chkDownNumber));
@@ -464,15 +474,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             double instSolidValue = instData.CurrentSolidColl.Sum(ids => ids.Volume);
             double intersectSolidsArea = intersectSolids?.Sum(intS => intS.SurfaceArea) ?? 0;
             double intersectSolidsValue = intersectSolids?.Sum(intS => intS.Volume) ?? 0;
-            string instPrjLvlNumber = LevelData.GetLevelNumber(instData.CurrentElemProjectDownLevel);
+            string instPrjLvlNumber = LevelData.GetLevelNumber(instData.CurrentElemProjectDownLevel, _lvlIndexParamName);
             string sectCurrentLvlDownNumber = sectData.CurrentLevelData.CurrentDownLevel != null
-                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentDownLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentDownLevel, _lvlIndexParamName)
                 : string.Empty;
             string sectDataLvlCurrnetNumber = sectData.CurrentLevelData.CurrentLevel != null
-                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentLevel, _lvlIndexParamName)
                 : string.Empty;
             string sectDataLvlAboveNumber = sectData.CurrentLevelData.CurrentAboveLevel != null
-                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentAboveLevel)
+                ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentAboveLevel, _lvlIndexParamName)
                 : string.Empty;
 
             // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки, стены)

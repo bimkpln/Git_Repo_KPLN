@@ -137,7 +137,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 //ProjectRating.Worker.Execute(commandData);
 
                 //очистка старых Schema при необходимости
-#if Revit2020
+#if Revit2020 || Debug2020
                 try
                 {
                     Autodesk.Revit.DB.ExtensibleStorage.Schema sch = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD4"));

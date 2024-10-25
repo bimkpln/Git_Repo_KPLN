@@ -101,28 +101,55 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// </summary>
         /// <param name="doc">Revit-документ для анализа</param>
         /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
-        /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
-        /// <param name="singleSectionNumber">Номер секции, если здание с одной секцией</param>
-        internal static List<LevelData> LevelPrepare(Document doc, double floorScreedHeight, double downAndTopExtra, string singleSectionNumber = null)
+        /// <param name="downAndTopExtra">Расширение дампозона для самого нижнего и самого верхнего уровней</param>
+        /// <param name="sectSeparParamName">Параметр для разделения осей и уровней по секциям (ОБЯЗАТЕЛЬНО заполнять разделителями как по ВЕР для блока "Секция/Корпус")</param>
+        /// <param name="levelIndexParamName">Параметр для разделения уровней по этажам</param>
+        /// <param name="multiGridsSet">Массив из одного номер секции, если здание с одной секцией</param>
+        internal static List<LevelData> LevelPrepare(
+            Document doc, 
+            double floorScreedHeight, 
+            double downAndTopExtra, 
+            string sectSeparParamName, 
+            string levelIndexParamName, 
+            HashSet<string> multiGridsSet = null)
         {
-            _singleSectionNumber = singleSectionNumber;
+            if (multiGridsSet != null && multiGridsSet.Count() != 1)
+                throw new CheckerException($"Системная ошибка - отправь разработчику: нарушена логика для односекционных зданий");
+            else if (multiGridsSet != null)
+                _singleSectionNumber = multiGridsSet.FirstOrDefault();
+            
             List<LevelData> preapareLevels = new List<LevelData>();
 
-            Level[] levelColl = new FilteredElementCollector(doc)
+
+            Level[] levelColl;
+            if (doc.Title.StartsWith("СЕТ_1"))
+            {
+                levelColl = new FilteredElementCollector(doc)
+                    .OfClass(typeof(Level))
+                    .WhereElementIsNotElementType()
+                    .Cast<Level>()
+                    .OrderBy(x => x.Elevation)
+                    .Where(x => !x.Name.Contains("КР_"))
+                    .ToArray();
+            }
+            else
+            {
+                levelColl = new FilteredElementCollector(doc)
                     .OfClass(typeof(Level))
                     .WhereElementIsNotElementType()
                     .Cast<Level>()
                     .OrderBy(x => x.Elevation)
                     .ToArray();
+            }
 
             foreach (Level level in levelColl)
             {
-                string lvlNumber = GetLevelNumber(level);
-                List<string> lvlSections = GetLevelSections(level);
+                string lvlNumber = GetLevelNumber(level, levelIndexParamName);
+                List<string> lvlSections = GetLevelSections(level, sectSeparParamName);
                 foreach (string levelSection in lvlSections)
                 {
-                    Level aboveLevel = GetAboveLevel(levelColl, level, levelSection);
-                    Level downLevel = GetDownLevel(levelColl, level, levelSection);
+                    Level aboveLevel = GetAboveLevel(levelColl, level, levelSection, levelIndexParamName, sectSeparParamName);
+                    Level downLevel = GetDownLevel(levelColl, level, levelSection, levelIndexParamName, sectSeparParamName);
                     LevelData myLevel = new LevelData(level, lvlNumber, levelSection, aboveLevel, downLevel, floorScreedHeight, downAndTopExtra);
                     preapareLevels.Add(myLevel);
                 }
@@ -135,45 +162,71 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// Взять индекс уровня (номер этажа)
         /// </summary>
         /// <param name="level">Уровень на проверку</param>
-        public static string GetLevelNumber(Level level)
+        /// <param name="levelIndexParamName">Параметр для разделения уровней по этажам</param>
+        public static string GetLevelNumber(Level level, string levelIndexParamName)
         {
-            string levname = level.Name;
-            string[] splitname = levname.Split('_');
-            if (splitname.Length < 2)
-                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
-
-            // Обработка проектов без деления на секции
-            if(!splitname[0].Any(char.IsLetter)
-                && !string.IsNullOrEmpty(_singleSectionNumber))
-                return splitname[0];
+            // Блок, когда параметр индекса уровня заполнен
+            Parameter lvlIndParam = level.LookupParameter(levelIndexParamName);
+            if (lvlIndParam != null && !string.IsNullOrEmpty(lvlIndParam.AsString()))
+            {
+                string result = lvlIndParam.AsString();
+                // Подрезаю имена для СЕТ_1
+                if (result.Contains("_этаж"))
+                    result = result.Split(new string[] { "_этаж" }, StringSplitOptions.None)[0];
+                if (result.Contains("_Кровля"))
+                    result = result.Split(new string[] { "_Кровля" }, StringSplitOptions.None)[0];
+                return result;
+            }
+            // Блок, когда индекс пытаемся найти по имени уровня (по ВЕР КПЛН)
             else
-                return splitname[1];
+            {
+                string levname = level.Name;
+                string[] splitname = levname.Split('_');
+                if (splitname.Length < 2)
+                    throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
+
+                // Обработка проектов без деления на секции
+                if(!splitname[0].Any(char.IsLetter)
+                    && !string.IsNullOrEmpty(_singleSectionNumber))
+                    return splitname[0];
+                else
+                    return splitname[1];
+            }
         }
 
         /// <summary>
         /// Взять секции, к которым относится уровень
         /// </summary>
-        /// <param name="level"></param>
-        private static List<string> GetLevelSections(Level level)
+        /// <param name="level">Уровень на проверку</param>
+        /// <param name="sectSeparParamName">Параметр для разделения осей и уровней по секциям (ОБЯЗАТЕЛЬНО заполнять разделителями как по ВЕР для блока "Секция/Корпус")</param>
+        private static List<string> GetLevelSections(Level level, string sectSeparParamName)
         {
-            string levname = level.Name;
-            string[] splitname = levname.Split('_');
-            if (splitname.Length < 2)
-                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
+            // Блок, когда параметр секции уровня заполнен
+            Parameter sectParam = level.LookupParameter(sectSeparParamName);
+            if (sectParam != null && !string.IsNullOrEmpty(sectParam.AsString()))
+                return GetSections(sectParam.AsString());
+            // Блок, когда секцию пытаемся найти по имени уровня (по ВЕР КПЛН)
+            else
+            {
+                string levname = level.Name;
+                string[] splitname = levname.Split('_');
+                if (splitname.Length < 2)
+                    throw new CheckerException($"Некорректное имя уровня (см. ВЕР, паттерн: С1_01_+0.000_Технический этаж). Id: {level.Id}");
 
-            if (splitname[0].Any(char.IsLetter)
-                && !splitname[0].Contains(SectLvlName) 
-                && !splitname[0].Contains(KorpLvlName) 
-                && !splitname[0].Contains(ParLvlName) 
-                && !splitname[0].Contains(StilLvlName))
-                throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
+                if (splitname[0].Any(char.IsLetter)
+                    && !splitname[0].Contains(SectLvlName) 
+                    && !splitname[0].Contains(KorpLvlName) 
+                    && !splitname[0].Contains(ParLvlName) 
+                    && !splitname[0].Contains(StilLvlName))
+                    throw new CheckerException($"Некорректное имя уровня (см. ВЕР, кодировка секции/корпуса: С1/С1.2/С1-6/К1/ПАР/СТЛ. Id: {level.Id}");
 
-            // Обработка проектов без деления на секции
-            if (!splitname[0].Any(char.IsLetter)
-                && !string.IsNullOrEmpty(_singleSectionNumber))
-                return new List<string> { _singleSectionNumber };
+                // Обработка проектов без деления на секции
+                if (!splitname[0].Any(char.IsLetter)
+                    && !string.IsNullOrEmpty(_singleSectionNumber))
+                    return new List<string> { _singleSectionNumber };
             
-            return GetSections(splitname[0]);
+                return GetSections(splitname[0]);
+            }
         }
 
         private static List<string> GetSections(string input)
@@ -210,9 +263,9 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// <param name="levelColl">Коллекция уровней для проверки</param>
         /// <param name="checkLevel">Уровень, по которому проверяем</param>
         /// <param name="levelSection">Номер секции</param>
-        private static Level GetAboveLevel(Level[] levelColl, Level checkLevel, string levelSection)
+        private static Level GetAboveLevel(Level[] levelColl, Level checkLevel, string levelSection, string levelIndexParamName, string sectSeparParamName)
         {
-            string chkLvlNumber = GetLevelNumber(checkLevel);
+            string chkLvlNumber = GetLevelNumber(checkLevel, levelIndexParamName);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
                 if (chkNumber == 0)
@@ -220,9 +273,10 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 
                 foreach (Level level in levelColl)
                 {
-                    string lvlNumber = GetLevelNumber(level);
+                    string lvlNumber = GetLevelNumber(level, levelIndexParamName);
+                    var a = GetLevelSections(level, sectSeparParamName);
                     if (chkLvlNumber.Equals(lvlNumber)
-                        || !GetLevelSections(level).Contains(levelSection))
+                        || !GetLevelSections(level, sectSeparParamName).Contains(levelSection))
                         continue;
 
                     if (int.TryParse(lvlNumber, out int number))
@@ -232,8 +286,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 
                         if (chkNumber < 0
                             && number > 0
-                            && chkNumber - number == -2
-                            )
+                            && chkNumber - number == -2)
                             return level;
                         else if (number - chkNumber == 1)
                             return level;
@@ -246,7 +299,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 throw new CheckerException(
                     $"У уровня с id {checkLevel.Id} не удалось получить int его номера. Варианты ошибок:" +
                     $"\n 1. Здание многосекционное/многокорпусное, но у уровня секции не указаны." +
-                    $"\n 2. Данные из параметра \"КП_О_Секция\" не совпадают с блоком в имени уровня, который отвечает за секцию/корпус");
+                    $"\n 2. Данные из параметра секции не совпадают с блоком в имени уровня, который отвечает за секцию/корпус");
 
             return null;
         }
@@ -257,9 +310,9 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// <param name="levelColl">Коллекция уровней для проверки</param>
         /// <param name="checkLevel">Уровень, по которому проверяем</param>
         /// <param name="levelSection">Номер секции</param>
-        private static Level GetDownLevel(Level[] levelColl, Level checkLevel, string levelSection)
+        private static Level GetDownLevel(Level[] levelColl, Level checkLevel, string levelSection, string levelIndexParamName, string sectSeparParamName)
         {
-            string chkLvlNumber = GetLevelNumber(checkLevel);
+            string chkLvlNumber = GetLevelNumber(checkLevel, levelIndexParamName);
             if (int.TryParse(chkLvlNumber, out int chkNumber))
             {
                 if (chkNumber == 0)
@@ -267,9 +320,9 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 
                 foreach (Level level in levelColl)
                 {
-                    string lvlNumber = GetLevelNumber(level);
+                    string lvlNumber = GetLevelNumber(level, levelIndexParamName);
                     if (chkLvlNumber.Equals(lvlNumber)
-                        || !GetLevelSections(level).Contains(levelSection))
+                        || !GetLevelSections(level, sectSeparParamName).Contains(levelSection))
                         continue;
 
                     if (int.TryParse(lvlNumber, out int number))

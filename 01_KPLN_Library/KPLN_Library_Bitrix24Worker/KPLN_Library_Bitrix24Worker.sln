@@ -7,14 +7,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Bitrix24Worker
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2020|x64.Build.0 = Debug2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2023|x64.Build.0 = Debug2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|x64.Build.0 = Revit2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
