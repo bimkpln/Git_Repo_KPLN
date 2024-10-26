@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
     <OutputPath>bin\Debug\2020\</OutputPath>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
@@ -11,7 +11,7 @@
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
     <OutputPath>bin\Debug\2023\</OutputPath>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
@@ -20,7 +20,7 @@
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
@@ -30,7 +30,7 @@
     <DebugType>pdbonly</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2023\</OutputPath>
     <Prefer32Bit>false</Prefer32Bit>
@@ -108,7 +108,7 @@
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
           <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -125,7 +125,7 @@
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
           <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

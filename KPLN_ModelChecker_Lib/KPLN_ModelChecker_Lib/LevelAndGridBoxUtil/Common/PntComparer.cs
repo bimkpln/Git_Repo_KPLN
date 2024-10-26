@@ -1,5 +1,7 @@
+using System;
 using Autodesk.Revit.DB;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 {
@@ -14,8 +16,12 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
 
         public int Compare(XYZ pointA, XYZ pointB)
         {
+            if (pointA is null || pointB is null)
+                return -1;
+            
             if (pointA.X - _centerPoint.X >= 0 && pointB.X - _centerPoint.X < 0)
                 return 1;
+            
             if (pointA.X - _centerPoint.X < 0 && pointB.X - _centerPoint.X >= 0)
                 return -1;
 
@@ -27,12 +33,13 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                     else return -1;
                 if (pointB.Y > pointA.Y)
                     return 1;
-                else return -1;
+                    
+                return -1;
             }
 
             // compute the cross product of vectors (CenterPoint -> a) x (CenterPoint -> b)
             double det = (pointA.X - _centerPoint.X) * (pointB.Y - _centerPoint.Y) -
-                             (pointB.X - _centerPoint.X) * (pointA.Y - _centerPoint.Y);
+                         (pointB.X - _centerPoint.X) * (pointA.Y - _centerPoint.Y);
             if (det < 0)
                 return 1;
             if (det > 0)
@@ -41,12 +48,14 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             // points a and b are on the same line from the CenterPoint
             // check which point is closer to the CenterPoint
             double d1 = (pointA.X - _centerPoint.X) * (pointA.X - _centerPoint.X) +
-                            (pointA.Y - _centerPoint.Y) * (pointA.Y - _centerPoint.Y);
+                        (pointA.Y - _centerPoint.Y) * (pointA.Y - _centerPoint.Y);
+            
             double d2 = (pointB.X - _centerPoint.X) * (pointB.X - _centerPoint.X) +
-                            (pointB.Y - _centerPoint.Y) * (pointB.Y - _centerPoint.Y);
+                        (pointB.Y - _centerPoint.Y) * (pointB.Y - _centerPoint.Y);
             if (d1 > d2)
                 return 1;
-            else return -1;
+            
+            return -1;
         }
     }
 }

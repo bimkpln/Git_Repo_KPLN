@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
@@ -314,6 +314,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 string chkLvlDownNumber = LevelData.GetLevelNumber(chkLvlDown, _lvlIndexParamName);
                 string chkLvlUpNumber = LevelData.GetLevelNumber(chkLvlUp, _lvlIndexParamName);
+                
                 if (int.TryParse(chkLvlDownNumber, out int chkDownNumber) && int.TryParse(chkLvlUpNumber, out int chkUpNumber))
                 {
                     int lvlDiff = Math.Abs(Math.Abs(chkUpNumber) - Math.Abs(chkDownNumber));
@@ -346,11 +347,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             string msg = string.Empty;
             if (Math.Abs(instData.DownOffset) > 20 && Math.Abs(instData.UpOffset) > 20)
-                msg = $"Отсутп снизу составляет {instData.DownOffset}, оступ сверху состовляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+                msg = $"Отсуп снизу составляет {instData.DownOffset}, отступ сверху составляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
             else if (Math.Abs(instData.DownOffset) > 20)
-                msg = $"Отсутп снизу составляет {instData.DownOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+                msg = $"Отсуп снизу составляет {instData.DownOffset}. Запрещено моделировать элементы без корректного назначения уровня";
             else if (Math.Abs(instData.UpOffset) > 20)
-                msg = $"Отсутп сверху составляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
+                msg = $"Отсуп сверху составляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
             
             if (!string.IsNullOrEmpty(msg))
             {
@@ -375,63 +376,63 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// Предварительная (элементы внутри секции) проверка элементов на принадлежность к секции и своему уровню
         /// </summary>
         /// <param name="instData">Элемент на проверку</param>
-        /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
+        /// <param name="sectDatas">Коллекция солидов для проверки на принадлежность к уровню/секции</param>
         private WPFEntity Draft_CheckElemsBySectionData(CheckLevelOfInstanceData instData, List<LevelAndGridSolid> sectDatas)
         {
-            // Предварительная проверка на отсутсвие привязки выполнить ранее!
-            if (instData.CurrentElemProjectDownLevel != null)
+            // Предварительная проверка на отсутствие привязки выполнить ранее!
+            if (instData.CurrentElemProjectDownLevel == null) 
+                return null;
+            
+            foreach (LevelAndGridSolid sectData in sectDatas)
             {
-                foreach (LevelAndGridSolid sectData in sectDatas)
-                {
-                    //if (instData.CurrentElem.Id.IntegerValue == 29545897)
-                    //{
-                    //    var a = 1;
-                    //}
+                //if (instData.CurrentElem.Id.IntegerValue == 29545897)
+                //{
+                //    var a = 1;
+                //}
                     
-                    // Игнорирую заведомо отличающиеся по отметкам секции
-                    if (Math.Abs(instData.MinAndMaxElevation[0] - sectData.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
-                        && Math.Abs(instData.MinAndMaxElevation[1] - sectData.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
-                        continue;
+                // Игнорирую заведомо отличающиеся по отметкам секции
+                if (Math.Abs(instData.MinAndMaxElevation[0] - sectData.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
+                    && Math.Abs(instData.MinAndMaxElevation[1] - sectData.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
+                    continue;
 
-                    List<Solid> intersectSolids = new List<Solid>();
-                    try
+                List<Solid> intersectSolids = new List<Solid>();
+                try
+                {
+                    foreach (Solid instSolid in instData.CurrentSolidColl)
                     {
-                        foreach (Solid instSolid in instData.CurrentSolidColl)
-                        {
-                            if (instSolid.Volume == 0)
-                                continue;
+                        if (instSolid.Volume == 0)
+                            continue;
 
-                            // Првоеряю положение в секции
-                            Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
-                            if (checkSectSolid != null && checkSectSolid.Volume > 0)
-                            {
-                                Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
-                                if (resSolid != null)
-                                    intersectSolids.Add(resSolid);
-                            }
-                        }
-
-                        if (intersectSolids.Count != 0)
-                        {
-                            // Выставляю флаг, что элемент принадлежит хоть какой-то секции, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
-                            instData.IsEmptyChecked = false;
-                            WPFEntity checkSolids = CheckSolids(instData, intersectSolids, sectData);
-                            if (checkSolids != null)
-                                return checkSolids;
-                        }
+                        // Проверяю положение в секции
+                        Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, sectData.CurrentSolid, BooleanOperationsType.Intersect);
+                        if (checkSectSolid == null || !(checkSectSolid.Volume > 0)) 
+                            continue;
+                            
+                        Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
+                        if (resSolid != null)
+                            intersectSolids.Add(resSolid);
                     }
-                    // Отлов ошибки для сложной геометрии, для которой невозможно выполнить анализ на коллизии (нужно перемоделить элемент, что не приемлемо)
-                    catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+
+                    if (intersectSolids.Count != 0)
                     {
+                        // Выставляю флаг, что элемент принадлежит хоть какой-то секции, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
                         instData.IsEmptyChecked = false;
-                        _errorGeomCheckedElements.Add(instData.CurrentElem);
-                        return null;
+                        WPFEntity checkSolids = CheckSolids(instData, intersectSolids, sectData);
+                        if (checkSolids != null)
+                            return checkSolids;
                     }
-                    catch (Exception ex)
-                    {
-                        Print($"Первичная проверка: Что-то непонятное с элементом с id: {instData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}", MessageType.Error);
-                        return null;
-                    }
+                }
+                // Отлов ошибки для сложной геометрии, для которой невозможно выполнить анализ на коллизии (нужно перемоделить элемент, что не приемлемо)
+                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                {
+                    instData.IsEmptyChecked = false;
+                    _errorGeomCheckedElements.Add(instData.CurrentElem);
+                    return null;
+                }
+                catch (Exception ex)
+                {
+                    Print($"Первичная проверка: Что-то непонятное с элементом с id: {instData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}", MessageType.Error);
+                    return null;
                 }
             }
 
@@ -447,14 +448,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private Solid GetIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
             // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета (проблемы с элементами "по касательной")
-            Transform sectTransform = sectData.CurrentlSolid.GetBoundingBox().Transform;
+            Transform sectTransform = sectData.CurrentSolid.GetBoundingBox().Transform;
             Transform instTransform = instSolid.GetBoundingBox().Transform;
             Transform instInverseTransform = instTransform.Inverse;
             Solid instZerotransformSolid = SolidUtils.CreateTransformed(instSolid, instInverseTransform);
             sectTransform.Origin = new XYZ(sectTransform.Origin.X, sectTransform.Origin.Y, instTransform.Origin.Z);
 
             Solid transformedBySectdInstSolid = SolidUtils.CreateTransformed(instZerotransformSolid, sectTransform);
-            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
+            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentSolid, BooleanOperationsType.Intersect);
             if (intersectSolid != null && intersectSolid.Volume > 0)
                 return intersectSolid;
 
@@ -464,9 +465,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Проанализировать CheckLevelOfInstanceData и его коллекцию солидов, пересекающихся с солидом CheckLevelOfInstanceSectionData 
         /// </summary>
-        /// <param name="instData">Спец. класс эл-та Ревит</param>
-        /// <param name="intersectSolids">Список солидов, эл-та ревит, которые пересекаются с солидом спец. класса секции Ревит</param>
-        /// <param name="sectData">Спец. класс секции Ревит</param>
+        /// <param name="instData">Спец. Класс эл-та Ревит</param>
+        /// <param name="intersectSolids">Список солидов, эл-та ревит, которые пересекаются с солидом спец. Класса секции Ревит</param>
+        /// <param name="sectData">Спец. Класс секции Ревит</param>
         /// <returns></returns>
         private WPFEntity CheckSolids(CheckLevelOfInstanceData instData, List<Solid> intersectSolids, LevelAndGridSolid sectData)
         {
@@ -478,7 +479,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             string sectCurrentLvlDownNumber = sectData.CurrentLevelData.CurrentDownLevel != null
                 ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentDownLevel, _lvlIndexParamName)
                 : string.Empty;
-            string sectDataLvlCurrnetNumber = sectData.CurrentLevelData.CurrentLevel != null
+            string sectDataLvlCurrentNumber = sectData.CurrentLevelData.CurrentLevel != null
                 ? LevelData.GetLevelNumber(sectData.CurrentLevelData.CurrentLevel, _lvlIndexParamName)
                 : string.Empty;
             string sectDataLvlAboveNumber = sectData.CurrentLevelData.CurrentAboveLevel != null
@@ -486,11 +487,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 : string.Empty;
 
             // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки, стены)
-            if (((instData.CurrentElem is FamilyInstance familyInstance && _hardCheckFamilyNamesList.Where(hn => familyInstance.Symbol.FamilyName.Contains(hn)).Count() > 0) 
-                    || instData.CurrentElem as Ceiling != null)
+            if (((instData.CurrentElem is FamilyInstance familyInstance 
+                  && _hardCheckFamilyNamesList.Any(hn => familyInstance.Symbol.FamilyName.Contains(hn))) 
+                    || instData.CurrentElem is Ceiling)
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && intersectSolidsValue > instSolidValue * 0.80
-                && !instPrjLvlNumber.Equals(sectDataLvlCurrnetNumber)
+                && !instPrjLvlNumber.Equals(sectDataLvlCurrentNumber)
                 )
             {
                 WPFEntity hardError = new WPFEntity(
@@ -506,10 +508,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             // Анализ на смещение относительно уровня на 1 уровень ниже, или на текущем уровне - ТОЛЬКО для перекрытий
-            else if (instData.CurrentElem as Floor != null
+            else if (instData.CurrentElem is Floor
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && sectData.CurrentLevelData.CurrentAboveLevel != null
-                && !instPrjLvlNumber.Equals(sectDataLvlCurrnetNumber)
+                && !instPrjLvlNumber.Equals(sectDataLvlCurrentNumber)
                 && !instPrjLvlNumber.Equals(sectDataLvlAboveNumber)
                 )
             {
@@ -526,8 +528,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             // Анализ на смещение стен
-            else if ((instData.CurrentElem as Wall != null)
-                && !instPrjLvlNumber.Equals(sectDataLvlCurrnetNumber)
+            else if ((instData.CurrentElem is Wall)
+                && !instPrjLvlNumber.Equals(sectDataLvlCurrentNumber)
                 )
             {
                 // Относительно уровня на более чем 1 для стен (УТОЧНИТЬ ПО ЭЛ-ТАМ КР!!!)
@@ -570,12 +572,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             // Анализ на смещение относительно уровня на 50% по НЕ однозначным элементам
-            else if (instData.CurrentElem as Floor == null
-                && !(instData.CurrentElem is FamilyInstance famInst && _hardCheckFamilyNamesList.Where(hn => famInst.Symbol.FamilyName.Contains(hn)).Count() > 0)
-                && instData.CurrentElem as Wall == null
+            else if (!(instData.CurrentElem is Floor)
+                && !(instData.CurrentElem is FamilyInstance famInst && _hardCheckFamilyNamesList.Any(hn => famInst.Symbol.FamilyName.Contains(hn)))
+                && !(instData.CurrentElem is Wall)
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && intersectSolidsValue > instSolidValue * 0.50
-                && !instPrjLvlNumber.Equals(sectDataLvlCurrnetNumber)
+                && !instPrjLvlNumber.Equals(sectDataLvlCurrentNumber)
                 )
             {
                 WPFEntity warning = new WPFEntity(
@@ -597,54 +599,53 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// Повторная (элементы за пределами секции) проверка элементов на принадлежность к секции
         /// </summary>
         /// <param name="instDataColl">Коллекция на проверку</param>
-        /// <param name="sectDatas">Коллекция Solidов для проверки на пренадлежность к уровню/секции</param>
+        /// <param name="sectDatas">Коллекция солидов для проверки на принадлежность к уровню/секции</param>
         private IEnumerable<WPFEntity> Reapeted_CheckElemsBySectionData(CheckLevelOfInstanceData[] instDataColl, List<LevelAndGridSolid> sectDatas)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
             foreach (CheckLevelOfInstanceData instData in instDataColl)
             {
-                // Предварительная проверка на отсутсвие привязки выполнить ранее!
-                if (instData.CurrentElemProjectDownLevel != null && instData.IsEmptyChecked)
+                // Предварительная проверка на отсутствие привязки выполнить ранее!
+                if (instData.CurrentElemProjectDownLevel == null || !instData.IsEmptyChecked) 
+                    continue;
+                
+                LevelAndGridSolid sectData = GetNearestSecData(instData, sectDatas);
+                if (sectData == null) 
+                    continue;
+                
+                try
                 {
-
-                    LevelAndGridSolid sectData = GetNearestSecData(instData, sectDatas);
-                    if (sectData != null)
+                    List<Solid> intersectSolids = new List<Solid>();
+                    foreach (Solid instSolid in instData.CurrentSolidColl)
                     {
-                        try
-                        {
-                            List<Solid> intersectSolids = new List<Solid>();
-                            foreach (Solid instSolid in instData.CurrentSolidColl)
-                            {
-                                if (instSolid.Volume == 0)
-                                    continue;
+                        if (instSolid.Volume == 0)
+                            continue;
 
-                                Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
-                                if (resSolid != null)
-                                    intersectSolids.Add(resSolid);
-                            }
-
-                            if (intersectSolids.Count == 0)
-                                continue;
-                            else
-                            {
-                                // Выставляю флаг, что элемент принадлежит хоть какой-то секции, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
-                                instData.IsEmptyChecked = false;
-                                WPFEntity checkSolids = CheckSolids(instData, intersectSolids, sectData);
-                                if (checkSolids != null)
-                                    result.Add(checkSolids);
-                            }
-                        }
-                        catch (Autodesk.Revit.Exceptions.InvalidOperationException)
-                        {
-                            instData.IsEmptyChecked = false;
-                            _errorGeomCheckedElements.Add(instData.CurrentElem);
-                        }
-                        catch (Exception ex)
-                        {
-                            Print($"Что-то непонятное с элементом с id: {instData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}", MessageType.Error);
-                        }
+                        Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
+                        if (resSolid != null)
+                            intersectSolids.Add(resSolid);
                     }
+
+                    if (intersectSolids.Count == 0)
+                        continue;
+                    else
+                    {
+                        // Выставляю флаг, что элемент принадлежит хоть какой-то секции, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
+                        instData.IsEmptyChecked = false;
+                        WPFEntity checkSolids = CheckSolids(instData, intersectSolids, sectData);
+                        if (checkSolids != null)
+                            result.Add(checkSolids);
+                    }
+                }
+                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                {
+                    instData.IsEmptyChecked = false;
+                    _errorGeomCheckedElements.Add(instData.CurrentElem);
+                }
+                catch (Exception ex)
+                {
+                    Print($"Что-то непонятное с элементом с id: {instData.CurrentElem.Id}. Отправь разработчику:\n {ex.Message}", MessageType.Error);
                 }
             }
 
@@ -667,7 +668,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (sectDataCurrentLvlElev > instDataDownLvlElev + 30)
                     continue;
                 
-                FaceArray sectDataFaces = sectData.CurrentlSolid.Faces;
+                FaceArray sectDataFaces = sectData.CurrentSolid.Faces;
                 foreach (XYZ instGeomCenter in instData.CurrentGeomCenterColl)
                 {
                     foreach (Face face in sectDataFaces)

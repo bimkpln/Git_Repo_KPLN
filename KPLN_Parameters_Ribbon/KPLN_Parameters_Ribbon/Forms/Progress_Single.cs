@@ -4,7 +4,7 @@ namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class Progress_Single : Form
     {
-        private readonly string _format;
+        private string _format;
         
         public Progress_Single(string header, string format, bool isBtnOkVisible)
         {
@@ -76,21 +76,21 @@ namespace KPLN_Parameters_Ribbon.Forms
             {
                 Header_lbl.Text = string.Format(_format, progressBar1.Value);
             }
+
             System.Windows.Forms.Application.DoEvents();
         }
 
 
         public void Update(int progressvalue, string value = null)
         {
-            if (value != null)
-            {
+            if (!string.IsNullOrEmpty(value) && !Add_lbl.Text.Equals(value))
                 Add_lbl.Text = value;
-            }
+            
             progressBar1.Value = progressvalue;
-            if (null != _format)
-            {
-                Header_lbl.Text = string.Format(_format, progressBar1.Value);
-            }
+
+            if (!string.IsNullOrEmpty(_format))
+                Header_lbl.Text = string.Format(_format, progressvalue);
+
             System.Windows.Forms.Application.DoEvents();
         }
 

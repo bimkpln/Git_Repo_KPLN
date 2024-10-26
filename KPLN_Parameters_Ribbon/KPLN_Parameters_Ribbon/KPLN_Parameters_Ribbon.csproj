@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{8A7CF55B-E30A-4A97-8BEA-BFD209230860}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -14,7 +14,7 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -24,7 +24,7 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -34,7 +34,7 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Parameters_Ribbon\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <Optimize>true</Optimize>
@@ -43,7 +43,7 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Parameters_Ribbon\2023\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
     <Optimize>true</Optimize>
@@ -53,17 +53,12 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_ModelChecker_Lib">
-      <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -88,6 +83,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -102,6 +101,10 @@
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2023\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -120,6 +123,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -132,8 +139,12 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
       <ItemGroup>
-      <Reference Include="KPLN_Library_Forms">
+        <Reference Include="KPLN_Library_Forms">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">

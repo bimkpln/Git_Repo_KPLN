@@ -29,29 +29,50 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 if (userDepartment == 2 || userDepartment == 8 && docPath.Contains("АР"))
                 {
                     if (docPath.StartsWith("ИЗМЛ"))
-                        gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", 
+                            1, "КП_О_Секция", 0.328, 10);
                     
                     if (docPath.StartsWith("СЕТ_1"))
-                        gripBuilder = new GripBuilder_AR(doc, "СЕТ_1", "СМ_Этаж", 1, "СМ_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_AR(doc, "СЕТ_1", "СМ_Этаж", 
+                            1, "СМ_Секция", 0.328, 10);
                 }
                 else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("КР"))
                 {
                     if (docPath.StartsWith("ИЗМЛ"))
-                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 1, "КП_О_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", 
+                            1, "КП_О_Секция", 0.328, 10);
                     
                     if (docPath.StartsWith("СЕТ_1"))
-                        gripBuilder = new GripBuilder_KR(doc, "СЕТ_1", "СМ_Этаж", 1, "СМ_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_KR(doc, "СЕТ_1", "СМ_Этаж", 
+                            1, "СМ_Секция", 0.328, 10);
                 }
-                else if (userDepartment == 4 || userDepartment == 5 || userDepartment == 6 || userDepartment == 7 || userDepartment == 8 && (docPath.Contains("ОВ") || docPath.Contains("ВК") || docPath.Contains("АУПТ") || docPath.Contains("ЭОМ") || docPath.Contains("СС") || docPath.Contains("АВ")))
+                else if (userDepartment == 4 
+                         || userDepartment == 5 
+                         || userDepartment == 6 
+                         || userDepartment == 7 
+                         || userDepartment == 8 
+                         && (docPath.Contains("ОВ") 
+                             || docPath.Contains("ВК") 
+                             || docPath.Contains("АУПТ") 
+                             || docPath.Contains("ЭОМ") 
+                             || docPath.Contains("СС") 
+                             || docPath.Contains("АВ")))
                 {
                     if (docPath.StartsWith("ОБДН"))
-                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "КП_О_Этаж", 
+                            1, "КП_О_Секция", 0.328, 10);
 
                     if (docPath.StartsWith("ИЗМЛ"))
-                        gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 1, "КП_О_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 
+                            1, "КП_О_Секция", 0.328, 10);
+                    
+                    if (docPath.StartsWith("ПШМ1"))
+                        gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", 
+                            1, "КП_О_Секция", 0.328, 10);
 
                     if (docPath.StartsWith("СЕТ_1"))
-                        gripBuilder = new GripBuilder_IOS(doc, "СЕТ_1", "СМ_Этаж", 1, "СМ_Секция", 0.328, 10);
+                        gripBuilder = new GripBuilder_IOS(doc, "СЕТ_1", "СМ_Этаж", 
+                            1, "СМ_Секция", 0.328, 10);
                 }
                 else
                 {

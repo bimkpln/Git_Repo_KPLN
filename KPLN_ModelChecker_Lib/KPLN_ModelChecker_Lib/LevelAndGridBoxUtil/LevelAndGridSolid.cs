@@ -1,22 +1,21 @@
-using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Windows;
+using Autodesk.Revit.DB;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 
-namespace KPLN_ModelChecker_Lib
+namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
 {
     /// <summary>
-    /// Класс для генерации солида между уровнем и оргаждающими секциями
+    /// Класс для генерации солида между уровнем и ограждающими секциями
     /// </summary>
     public class LevelAndGridSolid
     {
         /// <summary>
         /// Солид в границах уровней и осей
         /// </summary>
-        public Solid CurrentlSolid { get; private set; }
+        public Solid CurrentSolid { get; private set; }
 
         /// <summary>
         /// Ссылка на текущий CheckLevelOfInstanceLevelData
@@ -30,7 +29,7 @@ namespace KPLN_ModelChecker_Lib
 
         private LevelAndGridSolid(Solid solid, LevelData currentLevel, GridData gData)
         {
-            CurrentlSolid = solid;
+            CurrentSolid = solid;
             CurrentLevelData = currentLevel;
             GridData = gData;
         }
@@ -43,17 +42,18 @@ namespace KPLN_ModelChecker_Lib
         /// <param name="levelIndexParamName">Параметр для разделения уровней по этажам</param>
         /// <param name="floorScreedHeight">Толщина стяжки пола АР</param>
         /// <param name="downAndTopExtra">Расширение границ для самого нижнего и самого верхнего уровней</param>
-        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string sectSeparParamName, string levelIndexParamName, double floorScreedHeight = 0, double downAndTopExtra = 3)
+        public static List<LevelAndGridSolid> PrepareSolids(Document doc, string sectSeparParamName,
+            string levelIndexParamName, double floorScreedHeight = 0, double downAndTopExtra = 3)
         {
             List<LevelAndGridSolid> result = new List<LevelAndGridSolid>();
 
             List<GridData> gridDatas = GridData.GridPrepare(doc, sectSeparParamName);
             HashSet<string> multiGridsSet = new HashSet<string>(gridDatas.Select(g => g.CurrentSection));
-            List<LevelData> levelDatas = new List<LevelData>();
-            if (multiGridsSet.Count == 1)
-                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName, levelIndexParamName, multiGridsSet);
-            else
-                levelDatas = LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName, levelIndexParamName);
+            List<LevelData> levelDatas = multiGridsSet.Count == 1
+                ? LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName,
+                    levelIndexParamName, multiGridsSet)
+                : LevelData.LevelPrepare(doc, floorScreedHeight, downAndTopExtra, sectSeparParamName,
+                    levelIndexParamName);
 
             // Подготовка предварительной коллекции элементов
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
@@ -73,21 +73,23 @@ namespace KPLN_ModelChecker_Lib
             // Очистка от солидов, для вспомогательных уровней внутри секций
             foreach (LevelAndGridSolid secData in preResult)
             {
-                IEnumerable<LevelAndGridSolid> currentSectionAndAboveLevelsColl = null;
+                LevelAndGridSolid[] currentSectionAndAboveLevelsColl;
                 if (secData.CurrentLevelData.CurrentAboveLevel != null)
                 {
                     currentSectionAndAboveLevelsColl = preResult
                         .Where(r =>
                             r.GridData.CurrentSection.Equals(secData.GridData.CurrentSection)
                             && r.CurrentLevelData.CurrentAboveLevel != null
-                            && r.CurrentLevelData.CurrentAboveLevel.Id == secData.CurrentLevelData.CurrentAboveLevel.Id);
+                            && r.CurrentLevelData.CurrentAboveLevel.Id == secData.CurrentLevelData.CurrentAboveLevel.Id)
+                        .ToArray();
                 }
                 else
                 {
                     currentSectionAndAboveLevelsColl = preResult
                         .Where(r =>
                             r.GridData.CurrentSection.Equals(secData.GridData.CurrentSection)
-                            && r.CurrentLevelData.CurrentAboveLevel == null);
+                            && r.CurrentLevelData.CurrentAboveLevel == null)
+                        .ToArray();
                 }
 
                 if (currentSectionAndAboveLevelsColl.Count() == 1)
@@ -95,7 +97,11 @@ namespace KPLN_ModelChecker_Lib
                 else if (currentSectionAndAboveLevelsColl.Any())
                 {
                     LevelAndGridSolid minSecData = currentSectionAndAboveLevelsColl
-                        .Aggregate((lvlMinElv, x) => (x.CurrentLevelData.CurrentLevel.Elevation < lvlMinElv.CurrentLevelData.CurrentLevel.Elevation) ? x : lvlMinElv);
+                        .Aggregate((lvlMinElv, x) =>
+                            (x.CurrentLevelData.CurrentLevel.Elevation <
+                             lvlMinElv.CurrentLevelData.CurrentLevel.Elevation)
+                                ? x
+                                : lvlMinElv);
                     if (!result.Contains(minSecData))
                         result.Add(minSecData);
                 }
@@ -118,20 +124,25 @@ namespace KPLN_ModelChecker_Lib
                         || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
                         ) 
                         continue;
+
+                    if (secData1.Equals(secData2)) 
+                        continue;
                     
-                    if (!secData1.Equals(secData2))
-                    {
-                        Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(secData1.CurrentlSolid, secData2.CurrentlSolid, BooleanOperationsType.Intersect);
-                        if (intersectionSolid != null && intersectionSolid.Volume > 0)
-                            throw new CheckerException("Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). Отправь разработчику: " +
-                                $"Уровень id: {secData1.CurrentLevelData.CurrentLevel.Id}, {secData2.CurrentLevelData.CurrentLevel.Id} " +
-                                $"для секции №{secData1.GridData.CurrentSection}");
-                    }
+                    Solid intersectionSolid = BooleanOperationsUtils
+                        .ExecuteBooleanOperation(secData1.CurrentSolid,
+                            secData2.CurrentSolid, BooleanOperationsType.Intersect);
+                    if (intersectionSolid != null && intersectionSolid.Volume > 0)
+                        throw new CheckerException(
+                            "Солиды уровней пересекаются (ошибка в заполнении параметров сепарации объекта, либо уровни названы не по BEP). " +
+                            "Отправь разработчику: " +
+                            $"Уровни id: {secData1.CurrentLevelData.CurrentLevel.Id}, " +
+                            $"{secData2.CurrentLevelData.CurrentLevel.Id} " +
+                            $"для секции №{secData1.GridData.CurrentSection} и " +
+                            $"для секции №{secData2.GridData.CurrentSection}");
                 }
             }
 
             return result;
-
         }
 
         /// <summary>
@@ -170,16 +181,18 @@ namespace KPLN_ModelChecker_Lib
                 StringBuilder sb = new StringBuilder();
                 foreach (Grid gr in grData.CurrentGrids)
                 {
-                    sb.Append(gr.Id.ToString());
+                    sb.Append(gr.Id);
                     sb.Append(", ");
                 }
 
-                throw new CheckerException($"Пограничные оси обязательно должны пересекаться! Проверь оси id: {sb.ToString().TrimEnd(", ".ToArray())}");
+                throw new CheckerException(
+                    "Пограничные оси обязательно должны пересекаться! Проверь оси id: " +
+                    $"{sb.ToString().TrimEnd(", ".ToArray())}");
             }
         }
 
         /// <summary>
-        /// Точка пересечения осей
+        /// Точки пересечения осей
         /// </summary>
         /// <param name="grids">Список осей</param>
         private static List<XYZ> GetPointsOfGridsIntersection(HashSet<Grid> grids)
@@ -200,15 +213,22 @@ namespace KPLN_ModelChecker_Lib
                         continue;
                     
                     Curve curve2 = grid2.Curve;
-                    IntersectionResultArray intersectionResultArray = new IntersectionResultArray();
-                    curve1.Intersect(curve2, out intersectionResultArray);
+                    curve1.Intersect(curve2, out IntersectionResultArray intersectionResultArray);
 
                     // Линии не пересекаются. Нужно проверить векторами
                     if (intersectionResultArray == null || intersectionResultArray.IsEmpty)
                     {
-                        XYZ vectorIntersection = GetVectorsIntersectPnt(curve1.GetEndPoint(0), curve1.GetEndPoint(1), curve2.GetEndPoint(0), curve2.GetEndPoint(1));
-                        if (vectorIntersection != null && !pointsOfGridsIntersect.Any(pgi => vectorIntersection.IsAlmostEqualTo(pgi))) 
+                        XYZ vectorIntersection = GetVectorsIntersectPnt(
+                            curve1.GetEndPoint(0), 
+                            curve1.GetEndPoint(1), 
+                            curve2.GetEndPoint(0), 
+                            curve2.GetEndPoint(1));
+
+                        if (vectorIntersection != null
+                            && !pointsOfGridsIntersect.Any(pgi => vectorIntersection.IsAlmostEqualTo(pgi)))
+                        {
                             pointsOfGridsIntersect.Add(vectorIntersection);
+                        }
                     }
                     // Линии пересекаются, получаем результат
                     else
@@ -222,6 +242,7 @@ namespace KPLN_ModelChecker_Lib
                     }
                 }
             }
+            
             return pointsOfGridsIntersect;
         }
 
@@ -240,13 +261,17 @@ namespace KPLN_ModelChecker_Lib
             else
             {
                 // Рассчитываем параметр t1 для пересечения первой линии с продолжением второй линии
-                double t1 = ((startPoint2 - startPoint1).CrossProduct(direction2)).DotProduct(crossProduct) / crossProduct.DotProduct(crossProduct);
+                double t1 = ((startPoint2 - startPoint1).CrossProduct(direction2)).DotProduct(crossProduct) 
+                            / crossProduct.DotProduct(crossProduct);
 
                 // Рассчитываем параметр t2 для пересечения второй линии с продолжением первой линии
-                double t2 = ((startPoint2 - startPoint1).CrossProduct(direction1)).DotProduct(crossProduct) / crossProduct.DotProduct(crossProduct);
+                double t2 = ((startPoint2 - startPoint1).CrossProduct(direction1)).DotProduct(crossProduct) 
+                            / crossProduct.DotProduct(crossProduct);
 
-                // Проверяем t1 и t2. Если хотя бы одно из них далеко от границ отрезков (например, удалено больше чем на 30 м), то считаем, что пересечения нет.
-                if (Math.Abs(t1) > 100 || Math.Abs(t2) > 100)
+                // Анализ точки пересечения на избыточную удаленность (например, удалено больше чем на 30 м)
+                XYZ tempIntersectionPnt = startPoint1 + t1 * direction1;
+                double distance = Math.Abs(startPoint1.DistanceTo(tempIntersectionPnt)) - Math.Abs(startPoint1.DistanceTo(endPoint1));
+                if (Math.Abs(distance) > 100 )
                     return null;
 
                 // 𝑡2 даёт точку пересечения на второй линии, но в нашем случае достаточно использовать только t1, чтобы получить ту же самую точку пересечения в мировых координатах.
@@ -262,12 +287,14 @@ namespace KPLN_ModelChecker_Lib
         private static XYZ GetCenterPointOfPoints(List<XYZ> pointsOfGridsIntersect)
         {
             double totalX = 0, totalY = 0, totalZ = 0;
+            
             foreach (XYZ xyz in pointsOfGridsIntersect)
             {
                 totalX += xyz.X;
                 totalY += xyz.Y;
                 totalZ += xyz.Z;
             }
+            
             double centerX = totalX / pointsOfGridsIntersect.Count;
             double centerY = totalY / pointsOfGridsIntersect.Count;
             double centerZ = totalZ / pointsOfGridsIntersect.Count;
