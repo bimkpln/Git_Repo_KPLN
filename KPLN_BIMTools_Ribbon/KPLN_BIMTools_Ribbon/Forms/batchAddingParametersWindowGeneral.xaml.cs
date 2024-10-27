@@ -9,7 +9,6 @@ using System.Linq;
 using System.IO;
 using Newtonsoft.Json;
 using System.Windows.Data;
-using RevitServerAPILib;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -35,19 +34,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
 
-#if Revit2020 || Debug2020
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
             choiceWindow.RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
         }
-
-        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, ParameterType paramType)
+        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, string paramTypeName)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
-            return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramType);
+            return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramTypeName);
+        }
+#if Revit2023 || Debug2023
+        public string GetParamTypeName(ExternalDefinition def, ForgeTypeId value)
+        {
+            batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
+            return choiceWindow.GetParamTypeName(def, value);
         }
 #endif
+
         public batchAddingParametersWindowGeneral(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
             InitializeComponent();
@@ -373,47 +377,113 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
 
-#if Revit2020 || Debug2020
                     if (existingParam == null)
                     {
-                        FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
-                        starusAddParametersToFamily = true;
+                        try
+                        {
+                            FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
+                            starusAddParametersToFamily = true;
 
-                        if (familyParam != null && parameterValue != "None")
+                            if (familyParam != null && parameterValue != "None")
+                            {
+                                try
+                                {
+                                    RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                                    starusAddParametersToFamily = true;
+                                }
+                                catch (Exception ex)
+                                {
+                                    logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
+                                    paramDetails[5] = "!ОШИБКА";
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            paramDetails[5] = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
+                            starusAddParametersToFamily = true;
+                        }
+                    }
+                    else if (existingParam != null)
+                    {
+                        if (parameterValue != "None") 
                         {
                             try
                             {
-                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
                                 starusAddParametersToFamily = true;
                             }
                             catch (Exception ex)
                             {
-                                logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
+                                logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                 paramDetails[5] = "!ОШИБКА";
                             }
                         }
-                    }
-                    else if (existingParam != null && parameterValue != "None")
-                    {
-                        try
+                        else
                         {
-                            RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
                             starusAddParametersToFamily = true;
                         }
-                        catch (Exception ex)
-                        {
-                            logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
-                            paramDetails[5] = "!ОШИБКА";
-                        }
-
                     }
-#endif
                 }
 
                 trans.Commit();
 
                 // Отчёт о результате выполнения в виде диалоговых окон + обновлкение полей с неисправными параметрами
-                if (logFile.Contains("Error"))
+                if (allParametersForAddDict.Values.Any(list => list.Contains("Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой")))
+                {
+                    int index = 0;
+
+                    foreach (StackPanel uniqueParameterField in SP_allPanelParamsFields.Children)
+                    {
+                        if (uniqueParameterField.Tag?.ToString() == "uniqueParameterField")
+                        {
+                            if (index < allParametersForAddDict.Count)
+                            {
+                                List<string> parameterValues = allParametersForAddDict.ElementAt(index).Value;
+
+                                if (parameterValues.Count > 5)
+                                {
+                                    foreach (var element in uniqueParameterField.Children)
+                                    {
+                                        if (element is System.Windows.Controls.TextBox textBox)
+                                        {
+                                            textBox.Text = parameterValues[5];
+
+                                            if (parameterValues[5] == "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой")
+                                            {
+                                                textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                                                textBox.Tag = "invalid";
+                                                textBox.IsEnabled = false;
+                                            }
+                                            else if (parameterValues[5] == "None")
+                                            {
+                                                textBox.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {parameterValues[6]})";
+                                            }
+
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                index++;
+                            }
+                        }
+                    }
+                    if (!logFile.Contains("Error"))
+                    {
+                        System.Windows.Forms.MessageBox.Show("В семейство не добавлены параметры типа FamilyType.\n" +
+                        "Удалите параметры типа FamilyType для повторной попытки.", "Не все параметры были добавлены в семейство",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("В семейство не добавлены параметры типа FamilyType,\n" +
+                            "а также часть параметров была добавлена с ошибками.\n" +
+                        "Удалите параметры типа FamilyType для повторной попытки.", "Не все параметры были добавлены в семейство",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    }
+                }
+                else if (logFile.Contains("Error"))
                 {
                     int index = 0;
 
@@ -718,7 +788,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         break;
                     }
                 }
-#if Revit2020 || Debug2020
                 if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
                 {
                     try
@@ -729,7 +798,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         DefinitionGroup defGroup = defFile.Groups.get_Item(CB_paramsGroup.SelectedItem.ToString());
                         ExternalDefinition def = defGroup.Definitions.get_Item(CB_paramsName.SelectedItem.ToString()) as ExternalDefinition;
 
+#if Revit2020 || Debug2020
                         ParameterType paramType = def.ParameterType;
+#endif
+
+#if Revit2023 || Debug2023
+                        ForgeTypeId paramTypeId = def.GetDataType();
+                        string paramType = GetParamTypeName(def, paramTypeId);
+#endif
 
                         CB_paramsName.Tag = paramType;
                         TB_paramValue.IsEnabled = true;                       
@@ -764,7 +840,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
-#endif
             }          
         }
 
@@ -780,11 +855,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-
         //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
         private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
         {
-#if Revit2020 || Debug2020
             String textInField = TB_paramValue.Text;
 
             if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
@@ -792,13 +865,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 TB_paramValue.Clear();
             }
-#endif
         }
 
         //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса
         private void DataVerification_LostFocus(object sender, RoutedEventArgs e)
         {
-#if Revit2020 || Debug2020
             if (string.IsNullOrEmpty(TB_paramValue.Text))
             {
                 TB_paramValue.Tag = "nonestatus";
@@ -827,24 +898,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
             } 
             else 
             {
-                ParameterType paramType = (ParameterType)CB_paramsName.Tag;
+                string paramTypeName = CB_paramsName.Tag.ToString();
 
-                if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "red")
+                if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "red")
                 {
                     TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
                     TB_paramValue.Tag = "invalid";
                 }
-                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "green")
+                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "green")
                 {
                     TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
                     TB_paramValue.Tag = "valid";
                 }
-                else if (CheckingValueOfAParameter(CB_paramsName,TB_paramValue, paramType) == "blue")
+                else if (CheckingValueOfAParameter(CB_paramsName,TB_paramValue, paramTypeName) == "blue")
                 {
                     TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
                     TB_paramValue.Tag = "valid";
                 }
-                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramType) == "yellow")
+                else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "yellow")
                 {
                     CB_paramsName.Text = "";
                     TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый                   
@@ -853,7 +924,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
             }
-#endif
         }
 
         //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
@@ -1078,7 +1148,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             break;
                         }
                     }
-#if Revit2020 || Debug2020
                     if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
                     {
                         try
@@ -1089,7 +1158,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             DefinitionGroup defGroup = defFile.Groups.get_Item(cbParamsGroup.SelectedItem.ToString());
                             ExternalDefinition def = defGroup.Definitions.get_Item(cbParamsName.SelectedItem.ToString()) as ExternalDefinition;
 
+#if Revit2020 || Debug2020
                             ParameterType paramType = def.ParameterType;
+#endif
+#if Revit2023 || Debug2023
+                            ForgeTypeId paramTypeId = def.GetDataType();
+                            string paramType = GetParamTypeName(def, paramTypeId);
+#endif
+
                             cbParamsName.Tag = paramType;
                             tbParamValue.IsEnabled = true;
                             tbParamValue.Tag = "nonestatus";
@@ -1123,7 +1199,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                     }
-#endif
                 }
             };
 
@@ -1138,7 +1213,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
-#if Revit2020 || Debug2020
             tbParamValue.GotFocus += (s, ev) =>
             {
                 String textInField = tbParamValue.Text;
@@ -1180,24 +1254,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
                 else
                 {
-                    ParameterType paramType = (ParameterType)cbParamsName.Tag;
+                    string paramTypeName = cbParamsName.Tag.ToString(); ;
 
-                    if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                    if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                     {
                         tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
                         tbParamValue.Tag = "invalid";
                     }
-                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                     {
                         tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
                         tbParamValue.Tag = "valid";
                     }
-                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue")
                     {
                         tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
                         tbParamValue.Tag = "valid";
                     }
-                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                    else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                     {
                         cbParamsName.Text = "";
                         tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
@@ -1207,7 +1281,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                 }
         };
-#endif
 
             newPanel.Children.Add(cbParamsGroup);
             newPanel.Children.Add(cbParamsName);
@@ -1392,7 +1465,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     cbGrouping.SelectedIndex = -1;
                 }
 
-#if Revit2020 || Debug2020
                 tbParamValue.Loaded += (s, ev) =>
                 {
                     if (tbParamValue.Text == "None")
@@ -1424,24 +1496,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
-                        ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
+                        string paramTypeName = allParamInInterfaceFromJsonValues[6];
 
-                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
                             tbParamValue.Tag = "invalid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
                             tbParamValue.Tag = "valid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
                             tbParamValue.Tag = "valid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                         {
                             cbParamsName.Text = "";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
@@ -1492,24 +1564,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
-                        ParameterType paramType = (ParameterType)Enum.Parse(typeof(ParameterType), allParamInInterfaceFromJsonValues[6]);
+                        string paramTypeName = allParamInInterfaceFromJsonValues[6];
 
-                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "red")
+                        if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
                             tbParamValue.Tag = "invalid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "green")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
                             tbParamValue.Tag = "valid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "blue")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue")
                         {
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
                             tbParamValue.Tag = "valid";
                         }
-                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramType) == "yellow")
+                        else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                         {
                             cbParamsName.Text = "";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
@@ -1519,7 +1591,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                     }
                 };
-#endif
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);
