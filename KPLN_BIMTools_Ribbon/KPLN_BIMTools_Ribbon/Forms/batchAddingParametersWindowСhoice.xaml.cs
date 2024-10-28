@@ -131,7 +131,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return "yellow";
             }
 
-            if (paramTypeName == "Autodesk.Revit.DB.ForgeTypeId" ||  paramTypeName == "Image")
+            if (paramTypeName == "Image")
             {
                 if (!string.IsNullOrEmpty(textInField))
                 {
@@ -139,7 +139,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             }
 
-          if (paramTypeName == "Material")
+            if (paramTypeName == "Autodesk.Revit.DB.ForgeTypeId")
+            {
+                if (!string.IsNullOrEmpty(textInField))
+                    if (double.TryParse(textInField, out double anyNumber))
+                    {
+                        return "green";
+                    }
+                    else
+                    {
+                        return "red";
+                    }
+            }
+
+            if (paramTypeName == "Material")
             {
                 List<string> materialNames = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
                                 .OfClass(typeof(Material))
