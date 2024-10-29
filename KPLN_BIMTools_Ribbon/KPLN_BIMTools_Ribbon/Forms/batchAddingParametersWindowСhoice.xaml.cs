@@ -328,7 +328,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
 #endif
             }
         }
-#endif
 
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
