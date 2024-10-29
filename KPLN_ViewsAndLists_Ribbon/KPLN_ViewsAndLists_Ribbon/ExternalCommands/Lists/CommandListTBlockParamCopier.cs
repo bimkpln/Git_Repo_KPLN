@@ -103,12 +103,12 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             foreach (ViewSheet sheet in sheetsList)
             {
                 IList<ElementId> dependentElemsColl = sheet.GetDependentElements(null);
-#if Revit2020
+#if Revit2020 || Debug2020
                 IEnumerable<Element> tBlocksOnView = dependentElemsColl
                     .Select(id => doc.GetElement(id))
                     .Where(el => el.Category != null && (BuiltInCategory)el.Category.Id.IntegerValue == BuiltInCategory.OST_TitleBlocks);
 #endif
-#if Revit2023
+#if Revit2023 || Debug2023
                 IEnumerable<Element> tBlocksOnView = dependentElemsColl
                     .Select(id => doc.GetElement(id))
                     .Where(el => el.Category != null && el.Category.BuiltInCategory == BuiltInCategory.OST_TitleBlocks);

@@ -28,6 +28,10 @@ namespace KPLN_Library_Forms.Common
             // Анбоксинг на Element Revit
             else if (elem is Element element)
                 Name = element.Name;
+
+            // Анбоксинг на Parameter Revit
+            else if (elem is Parameter param)
+                Name = param.Definition.Name;
         }
 
         public ElementEntity(object elem, string tooltip) : this(elem)

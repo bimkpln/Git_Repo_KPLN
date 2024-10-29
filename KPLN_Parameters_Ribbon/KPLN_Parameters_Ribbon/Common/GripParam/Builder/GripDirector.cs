@@ -30,7 +30,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 t.Start($"{_builder.DocMainTitle}: Параметры захваток_Geom");
 
                 string format = "{0} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
-                Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка парамтеров захваток по геометрии", format, false);
+                Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка парамеров захваток по геометрии", format, false);
                 pb.SetProggresValues(_builder.AllElementsCount, 0);
                 pb.ShowProgress();
 
@@ -46,7 +46,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             {
                 t.Start($"{_builder.DocMainTitle}: Параметры захваток_Host");
 
-                string format = $"{_builder.PbCounter} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
+                string format = "{0} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
                 Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка парамтеров захваток по геометрии", format, true);
                 pb.SetProggresValues(_builder.AllElementsCount, _builder.PbCounter);
                 pb.ShowProgress();

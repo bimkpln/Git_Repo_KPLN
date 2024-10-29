@@ -7,7 +7,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
     public class GridData
     {
         /// <summary>
-        /// Коллеция осей для секции
+        /// Коллекция осей для секции
         /// </summary>
         public HashSet<Grid> CurrentGrids { get; private set; }
 
@@ -29,7 +29,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
         /// <param name="paramName">Имя параметра для сепарации</param>
         internal static List<GridData> GridPrepare(Document doc, string paramName)
         {
-            List<GridData> preapareGrids = new List<GridData>();
+            List<GridData> prepareGrids = new List<GridData>();
 
             Grid[] grids = new FilteredElementCollector(doc)
                 .WhereElementIsNotElementType()
@@ -39,37 +39,43 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             foreach (Grid grid in grids)
             {
                 Parameter param = grid.LookupParameter(paramName);
-                if (param != null && param.AsString() != null && param.AsString().Length != 0)
+                if (param?.AsString() == null || param.AsString().Length == 0) 
+                    continue;
+                
+                foreach (string sect in param.AsString().Split('/'))
                 {
-                    foreach (string sect in param.AsString().Split('-'))
+                    List<GridData> equalSections = prepareGrids
+                        .Where(g => g.CurrentSection.Equals(sect)).ToList();
+                    
+                    if (equalSections.Any())
                     {
-                        List<GridData> equalSections = preapareGrids.Where(g => g.CurrentSection.Equals(sect)).ToList();
-                        if (equalSections.Count > 0)
+                        foreach (GridData gd in equalSections)
                         {
-                            foreach (GridData gd in equalSections)
-                            {
-                                gd.CurrentGrids.Add(grid);
-                            }
+                            gd.CurrentGrids.Add(grid);
                         }
-                        else
-                        {
-                            preapareGrids.Add(new GridData(sect, new HashSet<Grid>() { grid }));
-                        }
+                    }
+                    else
+                    {
+                        prepareGrids.Add(new GridData(sect, new HashSet<Grid>() { grid }));
                     }
                 }
             }
 
             // Проверка полученных данных
-            foreach (GridData gd in preapareGrids)
+            foreach (GridData gd in prepareGrids)
             {
                 if (gd.CurrentGrids.Count < 4)
-                    throw new CheckerException($"Количество осей с номером секции: {gd.CurrentSection} меньше 4. Проверьте назначение параметров у осей!");
+                    throw new CheckerException(
+                        $"Количество осей с номером секции: {gd.CurrentSection} меньше 4. " +
+                        $"Проверьте назначение параметров у осей!");
             }
 
-            if (preapareGrids.Count == 0)
-                throw new CheckerException($"Для заполнения номера секции в элементах, необходимо заполнить параметр: {paramName} в осях! Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
+            if (prepareGrids.Count == 0)
+                throw new CheckerException(
+                    $"Для заполнения номера секции в элементах, необходимо заполнить параметр: {paramName} в осях! " +
+                    $"Значение указывается через \"-\" для осей, относящихся к нескольким секциям.");
 
-            return preapareGrids;
+            return prepareGrids;
         }
     }
 }

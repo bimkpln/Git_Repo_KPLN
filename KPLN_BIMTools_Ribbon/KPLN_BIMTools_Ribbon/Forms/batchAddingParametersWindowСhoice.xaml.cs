@@ -12,6 +12,7 @@ using RevitServerAPILib;
 using System.Data.Common;
 
 
+
 namespace KPLN_BIMTools_Ribbon.Forms
 {
     /// <summary>
@@ -116,6 +117,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return value.ToString();
         }
 #endif
+
 
         // Функция соотношения параметра с типом данных и установки нужного кол-ва знаков после запятой.
         // Возвращает "yellow" - параметр пуст или указан неверно;
@@ -228,7 +230,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             switch (parameterValueDataType)
             {
-        
                 case "Material":
                     Material material = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
                         .OfClass(typeof(Material))
@@ -327,6 +328,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 #endif
             }
         }
+#endif
 
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)

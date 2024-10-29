@@ -3,6 +3,8 @@ using KPLN_Library_SQLiteWorker.FactoryParts;
 using Newtonsoft.Json;
 using System;
 using System.Net.Http;
+using System.Security.Policy;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -38,7 +40,7 @@ namespace KPLN_Library_Bitrix24Worker
                 {
                     // Выполнение GET - запроса к странице
                     HttpResponseMessage response = await client
-                        .GetAsync($"https://kpln.bitrix24.ru/rest/1310/b3zon6t9a38coxbq/im.message.add.json?MESSAGE={msg}&DIALOG_ID=chat4240");
+                        .GetAsync($"https://kpln.bitrix24.ru/rest/1310/b3zon6t9a38coxbq/im.message.add.json?MESSAGE={msg}&DIALOG_ID=chat99642");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -82,6 +84,40 @@ namespace KPLN_Library_Bitrix24Worker
                 {
                     MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Отправить сообщение по вебхуку и запросу в JSON
+        /// </summary>
+        /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
+        /// <param name="wh">Вебхук подготовленный в Битрикс</param>
+        /// <param name="strJSON">Сообщение, которое будет отправлено в формате JSON</param>
+        public static async void SendMsg_ToUser_ByWebhookKeyANDJSONRequest(string url, string json)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    // Наладжваем загалоўкі, каб паказаць, што запыт JSON
+                    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+                    // Падрыхтоўка кантэнту з JSON
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    // Адпраўка POST-запыту
+                    HttpResponseMessage response = await client.PostAsync(url, content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string responseContent = await response.Content.ReadAsStringAsync();
+                        if (string.IsNullOrEmpty(responseContent))
+                            throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

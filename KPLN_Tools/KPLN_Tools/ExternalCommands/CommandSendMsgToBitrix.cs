@@ -21,6 +21,8 @@ namespace KPLN_Tools.ExternalCommands
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Document selectedDoc = null;
+            string selectedDocTitle = string.Empty;
+            string selectedDocPath = string.Empty;
             List<string> selectedIds = new List<string>();
 
             #region Анализ выборки пользователем
@@ -102,6 +104,37 @@ namespace KPLN_Tools.ExternalCommands
 
             if (selectedIds.Count == 0)
                 throw new System.Exception("Ошибка получения списка ID элементов. Отправь разработчику!");
+            
+            // Настраиваю имя и путь к проекту (юзерфрендли)
+            if (selectedDoc.IsWorkshared)
+            {
+                ModelPath selectedDocModelPath = selectedDoc.GetWorksharingCentralModelPath();
+                // Обработка РС
+                if (selectedDocModelPath.ServerPath)
+                {
+                    string centralDocPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(selectedDoc.GetWorksharingCentralModelPath());
+                    string[] centralDocPathParts = centralDocPath.Split('/');
+
+                    selectedDocPath = $"\n\t[i]Адрес Revit-Server[/i]: http://{centralDocPathParts[2]}/RevitServerAdmin{uiapp.Application.VersionNumber}\n\t[i]Путь по структуре: [/i]" 
+                        + string.Join("/", centralDocPathParts.Where(str => !str.Contains(".rvt")));
+                    selectedDocTitle = centralDocPathParts.FirstOrDefault(str => str.Contains(".rvt"));
+                }
+                // Остлаьные файлы (подразумевается сервер КПЛН)
+                else
+                {
+                    string centralDocPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(selectedDoc.GetWorksharingCentralModelPath());
+                    string[] centralDocPathParts = centralDocPath.Split('\\');
+
+                    selectedDocPath = string.Join("\\", centralDocPathParts.Where(str => !str.Contains(".rvt")));
+                    selectedDocTitle = centralDocPathParts.FirstOrDefault(str => str.Contains(".rvt"));
+                }
+            }
+            else
+            {
+                selectedDocPath = selectedDoc.PathName;
+                selectedDocTitle = selectedDoc.Title;
+            }
+            
             #endregion
 
             #region Обработка данных по пользователям
@@ -129,8 +162,8 @@ namespace KPLN_Tools.ExternalCommands
             #region Обработка результата
             if (form.Status == KPLN_Library_Forms.Common.UIStatus.RunStatus.Run)
             {
-                form.CurrentViewModel.MessageToSend_MainData = $"[u]Проект:[/u] {selectedDoc.Title}\n" +
-                    $"[u]Путь к проету:[/u] {selectedDoc.PathName}\n" +
+                form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +
+                    $"[u]Путь к проету:[/u] {selectedDocPath}\n" +
                     $"[u]ID элемента/-ов:[/u] {string.Join(", ", selectedIds)}";
 
                 // ДОПИЛИТЬ ВВОД КОММЕНТАРИЯ ОТ СОТРУДНИКА
@@ -145,7 +178,7 @@ namespace KPLN_Tools.ExternalCommands
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(entity.DBUser, msg);
                 }
 
-                MessageBox.Show($"Сообщение успешно отправлено!", "KPLN", MessageBoxButtons.OK);
+                MessageBox.Show($"Сообщение успешно отправлено! Скоро с вами свяжется выбранный специалист, ожидайте...", "KPLN", MessageBoxButtons.OK);
 
                 return Result.Succeeded;
             }

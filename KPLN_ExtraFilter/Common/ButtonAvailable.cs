@@ -15,11 +15,11 @@ namespace KPLN_ExtraFilter.Common
             get => _uiAppData;
             private set
             {
-                if (value != _uiAppData)
-                {
-                    _uiAppData = value;
-                    _uidoc = _uiAppData?.ActiveUIDocument;
-                }
+                if (value == _uiAppData) 
+                    return;
+                
+                _uiAppData = value;
+                _uidoc = _uiAppData?.ActiveUIDocument;
             }
         }
 
@@ -27,21 +27,18 @@ namespace KPLN_ExtraFilter.Common
         {
             UIAppData = applicationData;
 
-            if (_uidoc != null)
+            Selection selection = _uidoc?.Selection;
+            if (selection == null) 
+                return false;
+                
+            ICollection<ElementId> selectedIds = selection.GetElementIds();
+            if (selectedIds.Count != 1) 
+                return false;
+            
+            foreach (Category c in selectedCategories)
             {
-                Selection selection = _uidoc.Selection;
-                if (selection != null)
-                {
-                    ICollection<ElementId> selectedIds = selection.GetElementIds();
-                    if (selectedIds.Count == 1)
-                    {
-                        foreach (Category c in selectedCategories)
-                        {
-                            if (c.Id.IntegerValue != (int)BuiltInCategory.OST_Views)
-                                return true;
-                        }
-                    }
-                }
+                if (c.Id.IntegerValue != (int)BuiltInCategory.OST_Views)
+                    return true;
             }
 
             return false;

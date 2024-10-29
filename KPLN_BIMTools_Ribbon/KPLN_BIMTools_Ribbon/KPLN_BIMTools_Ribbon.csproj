@@ -4,7 +4,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{1CEF5799-1CD8-4E86-8283-2BFFBFDC9142}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -17,7 +17,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -30,7 +30,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_BIMTools_Ribbon\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
@@ -39,7 +39,7 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\BIMTools_Ribbon\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <Optimize>true</Optimize>
@@ -49,7 +49,7 @@
     <ErrorReport>prompt</ErrorReport>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\BIMTools_Ribbon\2023\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
     <Optimize>true</Optimize>
@@ -74,6 +74,7 @@
     </Reference>
     <Reference Include="KPLN_Library_Bitrix24Worker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms, Version=1.3.5.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
@@ -86,6 +87,7 @@
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Looker">
       <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2023\KPLN_Looker.dll</HintPath>
@@ -93,6 +95,7 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
       <HintPath>..\packages\NLog.5.2.3\lib\net46\NLog.dll</HintPath>

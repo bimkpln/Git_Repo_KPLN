@@ -29,12 +29,12 @@ namespace KPLN_ExtraFilter.Common
         {
             ElementParameterFilter resultFilter;
 
-            string userSelTypeName;
             Parameter userSelTypeParam = userSelElem.get_Parameter(bip);
             if (userSelTypeParam != null)
             {
-                userSelTypeName = userSelTypeParam.AsValueString();
-                FilterRule rule = ParameterFilterRuleFactory.CreateEqualsRule(userSelTypeParam.Id, userSelTypeName);
+                string userSelTypeName = userSelTypeParam.AsValueString();
+                FilterRule rule = ParameterFilterRuleFactory
+                    .CreateEqualsRule(userSelTypeParam.Id, userSelTypeName);
                 resultFilter = new ElementParameterFilter(rule);
             }
             else
@@ -58,7 +58,8 @@ namespace KPLN_ExtraFilter.Common
                 resultFilter = new ElementWorksetFilter(workset.Id);
             }
             else
-                throw new Exception($"Отправь разработчику: Не удалось реализовать поиск по рабочему набору для эл-та: {userSelElem.Id}");
+                throw new Exception(
+                    $"Отправь разработчику: Не удалось реализовать поиск по рабочему набору для эл-та: {userSelElem.Id}");
 
             return resultFilter;
         }

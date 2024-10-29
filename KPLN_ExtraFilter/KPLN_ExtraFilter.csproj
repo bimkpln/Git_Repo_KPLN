@@ -2,8 +2,8 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -14,46 +14,36 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <OutputPath>bin\Debug\2020\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\2023\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU' ">
-    <OutputPath>bin\Revit2023\</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ExtraFilter\2020\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>Debug</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Release\</OutputPath>
-    <Optimize>true</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <PlatformTarget>x64</PlatformTarget>
@@ -61,24 +51,17 @@
     <Optimize>true</Optimize>
     <DefineConstants>Revit2023</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ExtraFilter\2020\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
-    <OutputPath>bin\x64\Revit2020\</OutputPath>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -105,11 +88,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
-    <Compile Include="Common\SelectionExpandedEntity.cs" />
+    <Compile Include="Common\IJsonSerializable.cs" />
+    <Compile Include="Forms\Entities\SelectionByClickEntity.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
-    <Compile Include="ExternalCommands\SelectionExpandedCommand.cs" />
-    <Compile Include="Forms\SelectionExpandedForm.xaml.cs">
-      <DependentUpon>SelectionExpandedForm.xaml</DependentUpon>
+    <Compile Include="ExecutableCommand\SetParamsByFrameExcCommandStart.cs" />
+    <Compile Include="ExternalCommands\SetParamsByFrameExtCommand.cs" />
+    <Compile Include="ExternalCommands\SelectionByClickExtCommand.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\ParamEntity.cs" />
+    <Compile Include="Forms\SetParamsByFrameForm.xaml.cs">
+      <DependentUpon>SetParamsByFrameForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SelectionByClickForm.xaml.cs">
+      <DependentUpon>SelectionByClickForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -120,7 +111,10 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\FrameLarge.png" />
+    <EmbeddedResource Include="Imagens\FrameSmall.png" />
+  </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -128,14 +122,21 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Forms\SelectionExpandedForm.xaml">
+    <Page Include="Forms\SetParamsByFrameForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SelectionByClickForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\clickLarge.png" />
-    <EmbeddedResource Include="Imagens\clickSmall.png" />
+    <EmbeddedResource Include="Imagens\ClickLarge.png" />
+    <EmbeddedResource Include="Imagens\ClickSmall.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

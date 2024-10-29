@@ -51,7 +51,8 @@ namespace KPLN_ModelChecker_User
             CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
                 "Проверка семейств",
                 "KPLN_CommandCheckFamilies",
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807")));
+                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
+                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
             CommandCheckGrids commandCheckGrids = new CommandCheckGrids(new ExtensibleStorageEntity(
                 "Проверка осей",
                 "KPLN_CommandCheckGrids",
@@ -61,7 +62,7 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckFlatsArea",
                 new Guid("720080C5-DA99-40D7-9445-E53F288AA150"),
                 new Guid("720080C5-DA99-40D7-9445-E53F288AA151"),
-                new Guid("720080C5-DA99-40D7-9445-E53F288AA149")));
+                new Guid("720080C5-DA99-40D7-9445-E53F288AA155")));
             CommandCheckHoles commandCheckHoles = new CommandCheckHoles(new ExtensibleStorageEntity(
                 "АР: Проверка отверстий",
                 "KPLN_CheckHoles",
@@ -112,7 +113,7 @@ namespace KPLN_ModelChecker_User
                 CommandCheckMEPHeight.ESEntity,
                 CommandCheckMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
-                new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA150")),
+                new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
                 new ExtensibleStorageEntity("ОВ: Толщина воздуховодов", "KPLN_DuctSize", new Guid("753380C4-DF00-40F8-9745-D53F328AC139")),
                 new ExtensibleStorageEntity("ОВВК: Спецификации", "KPLN_IOSQuant", new Guid("720080C5-DA99-40D7-9445-E53F288AA140")),
                 new ExtensibleStorageEntity("ОВ: Клапаны ОЗК", "KPLN_OZKAccessory", new Guid("85c46d4e-fdc6-424e-909a-27af56597328")),

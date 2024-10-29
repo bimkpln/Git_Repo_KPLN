@@ -1,6 +1,6 @@
-using Autodesk.Revit.DB;
 using System;
-using System.Collections.Generic;
+using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI.HtmlWindow;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User.Common
         {
             CurrentElement = elem;
         }
-        
+
         public CheckHolesEntity(Element elem, RevitLinkInstance linkInstance) : this(elem)
         {
             CurrentLinkInstance = linkInstance;
@@ -26,10 +26,10 @@ namespace KPLN_ModelChecker_User.Common
         public Solid CurrentSolid { get; set; }
 
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
-        
+
         public RevitLinkInstance CurrentLinkInstance { get; } = null;
 
-        public Transform CurrentLinkTransform 
+        public Transform CurrentLinkTransform
         {
             get
             {
@@ -70,7 +70,20 @@ namespace KPLN_ModelChecker_User.Common
                         }
                     }
                 }
-                CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
+
+                if (resultSolid != null)
+                    CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
+                // Фильтрация семейств без геометрии от Ostec, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
+                else if (CurrentElement is FamilyInstance famInst)
+                {
+                    FamilySymbol famSymb = famInst.Symbol;
+                    string famName = famSymb.FamilyName;
+                    if (!famName.ToLower().Contains("ostec") 
+                        && !famName.ToLower().Contains("757_опора_неподвижная_(армтр)") 
+                        && famInst.SuperComponent == null)
+                        HtmlOutput.Print($"У элемента семейства {famName} " +
+                            $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);
+                }
             }
             #endregion
 

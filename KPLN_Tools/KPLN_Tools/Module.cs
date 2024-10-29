@@ -43,6 +43,19 @@ namespace KPLN_Tools
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
+            PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
+                "Общие",
+                "Общая коллекция мини-плагинов",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                PngImageSource("KPLN_Tools.Imagens.toolBoxSmall.png"),
+                PngImageSource("KPLN_Tools.Imagens.toolBoxBig.png"),
+                panel,
+                false);
+
             PushButtonData autonumber = CreateBtnData(
                 "Нумерация",
                 "Нумерация",
@@ -75,7 +88,7 @@ namespace KPLN_Tools
                     ModuleData.ModuleName
                 ),
                 typeof(CommandSearchRevitUser).FullName,
-                "KPLN_Tools.Imagens.searchUserBig.png",
+                "KPLN_Tools.Imagens.searchUserSmall.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
                 "http://moodle",
                 true);
@@ -93,7 +106,7 @@ namespace KPLN_Tools
                     ModuleData.ModuleName
                 ),
                 typeof(CommandSendMsgToBitrix).FullName,
-                "KPLN_Tools.Imagens.sendMsgBig.png",
+                "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "KPLN_Tools.Imagens.sendMsgSmall.png",
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
@@ -179,6 +192,7 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "http://moodle");
 
+#if Revit2020 || Debug2020
             PushButtonData set_ChangeRSLinks = CreateBtnData("СЕТ: Обновить связи",
                 "СЕТ: Обновить связи",
                 "Обновляет связи между ревит-серверами",
@@ -192,21 +206,9 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "KPLN_Tools.Imagens.smlt_Small.png",
                 "http://moodle");
-
-            PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
-                "Общие",
-                "Общая коллекция мини-плагинов",
-                string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxBig.png"),
-                panel,
-                false);
-
-
+            sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
+#endif
+            
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(sendMsgToBitrix);
@@ -214,8 +216,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
-            sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
-            #endregion
+#endregion
 
             #region Инструменты СС
             if (CurrentDBUser.SubDepartmentId == 7 || CurrentDBUser.SubDepartmentId == 8)
@@ -261,7 +262,7 @@ namespace KPLN_Tools
                         ModuleData.ModuleName
                     ),
                     typeof(Command_FillInParametersSS).FullName,
-                    "KPLN_Tools.Imagens.FillInParamBig.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1319");
 
@@ -336,13 +337,32 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OVVK_PipeThickness).FullName,
                     "KPLN_Tools.Imagens.pipeThicknessSmall.png",
-                    "KPLN_Tools.Imagens.pipeThicknessBig.png",
+                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
+                    "http://moodle");
+
+                PushButtonData ovvk_systemManager = CreateBtnData(
+                    "Менеджер систем",
+                    "Менеджер систем",
+                    "Управление системами в проекте",
+                    string.Format(
+                        "Функционал:" +
+                            "\n1. Обновляет имя систем;" +
+                            "\n2. Объединяет системы в группы для специфицирования и генерации видов;" +
+                            "\n3. Генерация видов." +
+                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_OVVK_SystemManager).FullName,
+                    "KPLN_Tools.Imagens.systemMangerSmall.png",
+                    "KPLN_Tools.Imagens.systemMangerSmall.png",
                     "http://moodle");
 
                 PushButtonData ov_ductThickness = CreateBtnData(
                     "ОВ: Толщина воздуховодов",
                     "ОВ: Толщина воздуховодов",
-                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты",
+                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты согласно СП.60 и СП.7",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
@@ -351,7 +371,7 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OV_DuctThickness).FullName,
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
-                    "KPLN_Tools.Imagens.ductThicknessBig.png",
+                    "KPLN_Tools.Imagens.ductThicknessSmall.png",
                     "http://moodle");
 
                 PushButtonData ov_ozkDuctAccessory = CreateBtnData(
@@ -366,14 +386,50 @@ namespace KPLN_Tools
                     ),
                     typeof(Command_OV_OZKDuctAccessory).FullName,
                     "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "KPLN_Tools.Imagens.ozkDuctAccessoryBig.png",
+                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
                     "http://moodle");
 
+#if Revit2020 || Debug2020
+                PushButtonData set_InsulationPipes = CreateBtnData(
+                    "ОВВК: СЕТ_Изоляция",
+                    "ОВВК: СЕТ_Изоляция",
+                    "(ИСПРАВЛЕННАЯ ВЕРСИЯ СМЛТ): Заполняет данные по изоляции",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_SET_InsulationPipes).FullName,
+                    "KPLN_Tools.Imagens.smlt_Small.png",
+                    "KPLN_Tools.Imagens.smlt_Small.png",
+                    "http://moodle");
+                PushButtonData set_ElementsNotModeled = CreateBtnData(
+                    "ОВВК: СЕТ_Немоделируемые",
+                    "ОВВК: СЕТ_Немоделируемые",
+                    "(ИСПРАВЛЕННАЯ ВЕРСИЯ СМЛТ): Расчет краски, металла и добавление семейств в проект",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExternalCommands.Specification.Command_SET_ElementsNotModeled).FullName,
+                    "KPLN_Tools.Imagens.smlt_Small.png",
+                    "KPLN_Tools.Imagens.smlt_Small.png",
+                    "http://moodle");
+
+
+                ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
+                //ovvkToolsPullDownBtn.AddPushButton(set_ElementsNotModeled);
+#endif
+
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
-                //ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
+                ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
+                ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
             }
-            #endregion
+#endregion
 
             #region Отверстия
             // Наполняю плагинами в зависимости от отдела
@@ -406,7 +462,7 @@ namespace KPLN_Tools
                     ),
                     typeof(CommandHolesManagerIOS).FullName,
                     "KPLN_Tools.Imagens.holesManagerSmall.png",
-                    "KPLN_Tools.Imagens.holesManagerBig.png",
+                    "KPLN_Tools.Imagens.holesManagerSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1245");
 
                 holesPullDownBtn.AddPushButton(holesManagerIOS);

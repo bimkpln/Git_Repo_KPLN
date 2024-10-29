@@ -106,7 +106,7 @@ namespace KPLN_Loader.Services
         internal IEnumerable<Module> GetModulesForCurrentUser(User currentUser)
         {
             IEnumerable<Module> modules;
-            // Модули-библиотеки нужны при любом режиме, для них статус IsDebugMode - не играет роли
+            // Модули-библиотеки статуса Debug хранятся в спец. папках "Debug", а далее - по аналогии с остальными модулями
             if (currentUser.IsDebugMode)
             {
                 modules = ExecuteQuery<Module>($"SELECT * FROM {MainDB_Tables.Modules} " +
@@ -120,6 +120,7 @@ namespace KPLN_Loader.Services
                         $"AND ({nameof(Module.SubDepartmentId)}=1 OR {nameof(Module.SubDepartmentId)}={currentUser.SubDepartmentId}) " +
                         $"AND ({nameof(Module.IsLibraryModule)}='True' OR {nameof(Module.IsDebugMode)}='False');");
             }
+
             return modules;
         }
 

@@ -34,6 +34,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
 
+
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
@@ -204,7 +205,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     groupAndParametersFromSPFDict[group.Name] = parametersList;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 System.Windows.Forms.MessageBox.Show($"{SPFPath}\n" +
                         "Пожалуйста, выберете другой ФОП.", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
@@ -377,6 +378,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
 
+#if Revit2020 || Debug2020
                     if (existingParam == null)
                     {
                         try
@@ -428,7 +430,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 familyManager.SetFormula(existingParam, parameterFormula);
                                 starusAddParametersToFamily = true;
                             }
-                            catch (Exception ex)
+                            catch (Exception)
                             {
                                 logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                 paramDetails[5] = "!ОШИБКА";
@@ -452,6 +454,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             starusAddParametersToFamily = true;
                         }
                     }
+#endif
                 }
 
                 trans.Commit();
@@ -816,6 +819,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         break;
                     }
                 }
+
                 if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
                 {
                     try
@@ -861,13 +865,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         TB_paramValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
                         CB_paramsName.Tag = "ОШИБКА";
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
+#endif
             }          
         }
 
@@ -883,9 +888,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+
         //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
         private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
         {
+#if Revit2020 || Debug2020
             String textInField = TB_paramValue.Text;
 
             if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
@@ -893,11 +900,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 TB_paramValue.Clear();
             }
+#endif
         }
 
         //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса
         private void DataVerification_LostFocus(object sender, RoutedEventArgs e)
         {
+
             if (string.IsNullOrEmpty(TB_paramValue.Text))
             {
                 TB_paramValue.Tag = "nonestatus";
@@ -952,6 +961,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
             }
+#endif
         }
 
         //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
@@ -1176,6 +1186,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             break;
                         }
                     }
+
                     if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
                     {
                         try
@@ -1220,13 +1231,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                             }                                                     
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             tbParamValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
                             cbParamsName.Tag = "ОШИБКА";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                     }
+#endif
                 }
             };
 
@@ -1241,6 +1253,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
+#if Revit2020 || Debug2020
             tbParamValue.GotFocus += (s, ev) =>
             {
                 String textInField = tbParamValue.Text;
@@ -1311,6 +1324,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
         };
 
+
             newPanel.Children.Add(cbParamsGroup);
             newPanel.Children.Add(cbParamsName);
             newPanel.Children.Add(cbTypeInstance);
@@ -1359,7 +1373,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         groupAndParametersFromSPFDict[group.Name] = parametersList;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     System.Windows.Forms.MessageBox.Show($"ФОП ``{SPFPath}``\n" +
                         "не найден или неисправен. Работа плагина остановлена", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
@@ -1494,6 +1508,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     cbGrouping.SelectedIndex = -1;
                 }
 
+
                 tbParamValue.Loaded += (s, ev) =>
                 {
                     if (tbParamValue.Text == "None")
@@ -1620,6 +1635,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                     }
                 };
+#endif
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);

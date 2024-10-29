@@ -3,6 +3,7 @@ using Autodesk.Revit.DB.Architecture;
 using KPLN_ModelChecker_Lib;
 using System.Linq;
 using System.Threading.Tasks;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -17,7 +18,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, FloorScreedHeight);
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName, 
+                    FloorScreedHeight, DownAndTopExtra);
             });
 
             // Таска на подготовку элементов на основе (ByHost)

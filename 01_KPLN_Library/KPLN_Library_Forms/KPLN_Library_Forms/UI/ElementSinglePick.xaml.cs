@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_Forms.Common;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -95,6 +96,7 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Запуск без фильтрации
         /// </summary>
+        [Obsolete("Данная кнопка не имеет смысла. Если нужен множественный выбор используй ElementMultiPick")]
         private void OnRunWithoutFilterClick(object sender, RoutedEventArgs e)
         {
             SelectedElement = null;

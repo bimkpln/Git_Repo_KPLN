@@ -263,6 +263,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="wpfEntityColl">Коллекция WPFEntity для вывода</param>
         private WPFReportCreator CreateReport(Document doc, WPFEntity[] wpfEntityColl, bool isMarkered)
         {
+            WPFReportCreator result = null;
             if (wpfEntityColl.Any())
             {
                 #region Настройка информации по логам проека
@@ -271,38 +272,40 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 ResultMessage esMsgMarker = ESEntity.ESBuildergMarker.GetResMessage_Element(piElem);
                 #endregion
 
-                if (ESEntity.ESBuildergMarker.Guid.Equals(Guid.Empty)) 
-                    return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
+                if (ESEntity.ESBuildergMarker.Guid.Equals(Guid.Empty))
+                    result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
                 else
                 {
                     switch (esMsgMarker.CurrentStatus)
                     {
                         case MessageStatus.Ok:
-                            return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description, esMsgMarker.Description);
+                            result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description, esMsgMarker.Description);
+                            break;
 
                         case MessageStatus.Error:
                             if (isMarkered)
                             {
                                 TaskDialog taskDialog = new TaskDialog("[ОШИБКА]")
                                 {
-                                    MainInstruction = esMsgMarker.Description
+                                    MainInstruction = $"АР_П: Фиксация площадей: {esMsgMarker.Description}"
                                 };
                                 taskDialog.Show();
                                 return null;
                             }
-                            else return new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
+                            else
+                                result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
+                            
+                            break;
                     }
                 }
             }
             else 
-            { 
                 Print($"[{ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
 
-                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
-            } 
+            // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
 
-            return null;
+            return result;
         }
     }
 }

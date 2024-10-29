@@ -17,7 +17,7 @@ using System.Windows.Input;
 
 namespace KPLN_Tools.Forms
 {
-    public partial class RLinkMangerForm : Window
+    public partial class RLinkManagerForm : Window
     {
         /// <summary>
         /// Кэширование пути для выбора файлов с сервера
@@ -31,7 +31,7 @@ namespace KPLN_Tools.Forms
         private readonly Document _doc;
         private readonly string _configPath;
 
-        public RLinkMangerForm(UIApplication uiapp)
+        public RLinkManagerForm(UIApplication uiapp)
         {
             _uiapp = uiapp;
             _doc = _uiapp.ActiveUIDocument.Document;

@@ -19,7 +19,7 @@ namespace KPLN_Tools.ExternalCommands
             //Get application and documnet objects
             UIApplication uiapp = commandData.Application;
 
-            RLinkMangerForm rlinkLoaderForm = new RLinkMangerForm(uiapp);
+            RLinkManagerForm rlinkLoaderForm = new RLinkManagerForm(uiapp);
             rlinkLoaderForm.Show();
 
             return Result.Succeeded;

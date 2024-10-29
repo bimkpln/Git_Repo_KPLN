@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -167,23 +168,55 @@ namespace KPLN_Loader.Services
         /// </summary>
         /// <param name="userModule">Модуль для копирования</param>
         /// <returns>DirectoryInfo скопированного модуля</returns>
-        internal DirectoryInfo CopyModule(Module userModule)
+        internal DirectoryInfo CopyModule(Module userModule, bool isDebugModule)
         {
+            DirectoryInfo trueDirInfo = null;
             string targetDir = Path.Combine(_modulesLocation.FullName, userModule.Name);
-            DirectoryInfo moduleRevitVersionDirInfo = new DirectoryInfo(Path.Combine(userModule.Path, _revitVersion));
+            
             DirectoryInfo moduleDirInfo = new DirectoryInfo(userModule.Path);
-            if (moduleRevitVersionDirInfo.Exists)
+            if (moduleDirInfo.Exists)
             {
-                CopyDirectory(moduleRevitVersionDirInfo.FullName, targetDir);
+                DirectoryInfo[] currentDirs = moduleDirInfo.GetDirectories();
+                // Для дебаг статуса и библиотек выбрана спец. структура директорий - разделена по версиям ревит, только все спрятано в папку Debug
+                if (isDebugModule && userModule.IsLibraryModule)
+                {
+                    IEnumerable<DirectoryInfo> debugDirs = currentDirs.Where(dir => dir.Name.Equals("Debug"));
+                    if (debugDirs.Any())
+                        trueDirInfo = new DirectoryInfo(Path.Combine(debugDirs.FirstOrDefault().FullName, _revitVersion));
+                }
+                else
+                {
+                    IEnumerable<DirectoryInfo> revitVersionDirs = currentDirs.Where(dir => dir.Name.Equals(_revitVersion));
+                    // Забираю по папкам для версий Ревит
+                    if (revitVersionDirs.Any())
+                        trueDirInfo = revitVersionDirs.FirstOrDefault();
+                }
             }
-            else if (moduleDirInfo.Exists)
-            {
-                CopyDirectory(moduleDirInfo.FullName, targetDir);
-            }
-            else
-                _logger.Error($"Ошибка при проверке наличия модуля {userModule.Name} - путь в БД указан не верно: {userModule.Path}");
 
+            if(trueDirInfo == null || !trueDirInfo.Exists)
+            {
+                _logger.Error($"Ошибка при проверке наличия модуля {userModule.Name} - путь в БД указан не верно: {userModule.Path}");
+                return null;
+            }
+
+            CopyDirectory(trueDirInfo.FullName, targetDir);
             return new DirectoryInfo(targetDir);
+
+
+            //DirectoryInfo moduleRevitVersionDirInfo = new DirectoryInfo(Path.Combine(userModule.Path, _revitVersion));
+            //DirectoryInfo moduleDirInfo = new DirectoryInfo(userModule.Path);
+            //if (moduleRevitVersionDirInfo.Exists)
+            //{
+            //    CopyDirectory(moduleRevitVersionDirInfo.FullName, targetDir);
+            //}
+            //else if (moduleDirInfo.Exists)
+            //{
+            //    CopyDirectory(moduleDirInfo.FullName, targetDir);
+            //}
+            //else
+            //    _logger.Error($"Ошибка при проверке наличия модуля {userModule.Name} - путь в БД указан не верно: {userModule.Path}");
+
+            //return new DirectoryInfo(targetDir);
         }
 
         /// <summary>

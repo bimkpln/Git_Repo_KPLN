@@ -1,5 +1,5 @@
 using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
@@ -22,7 +22,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private List<InstanceElemData> _elemsByHost = new List<InstanceElemData>();
         private List<InstanceElemData> _elemsUnderLevel = new List<InstanceElemData>();
         private List<InstanceElemData> _stairsElems = new List<InstanceElemData>();
-        public List<InstanceElemData> _allElements = new List<InstanceElemData>();
+        private List<InstanceElemData> _allElements = new List<InstanceElemData>();
         private List<LevelAndGridSolid> _sectDataSolids = new List<LevelAndGridSolid>();
         private List<GripParamError> _errorElements = new List<GripParamError>();
         private int _allElementsCount = 0;
@@ -209,14 +209,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
-                //if (instElemData.CurrentElem.Id.IntegerValue == 5137353)
-                //{
-                //    var a = 1;
-                //}
-                InstanceGeomData instGeomData = (InstanceGeomData)instElemData;
-                if (instGeomData == null) 
-                    throw new GripParamExection($"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без гометриии. Обратись к разработчику\n");
-
+                InstanceGeomData instGeomData = (InstanceGeomData)instElemData 
+                    ?? throw new GripParamExection(
+                        $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без гометриии. Обратись к разработчику\n");
+                
                 LevelAndGridSolid maxIntersectInstance = GetMaxIntersectedLevelAndGridSolid(instGeomData);
                 if (maxIntersectInstance == null)
                 {
@@ -226,7 +222,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     {
                         ErrorElements.Add(new GripParamError(
                             instElemData.CurrentElem,
-                            "Геометрия: Элементу не удалось присвоить данные по геомертии"));
+                            "Геометрия: Элементу не удалось присвоить данные по геометрии"));
                         continue;
                     }
                 }
@@ -240,13 +236,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             foreach (InstanceElemData instElemData in ElemsUnderLevel)
             {
-                //if (instElemData.CurrentElem.Id.IntegerValue == 5137353)
-                //{
-                //    var a = 1;
-                //}
-                InstanceGeomData instGeomData = (InstanceGeomData)instElemData;
-                if (instGeomData == null) 
-                    throw new GripParamExection($"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент ьбез гометриии. Обратись к разработчику");
+                InstanceGeomData instGeomData = (InstanceGeomData)instElemData ??
+                    throw new GripParamExection(
+                        $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент ьбез гометриии. Обратись к разработчику");
 
                 LevelAndGridSolid maxIntersectInstance = GetMaxIntersectedLevelAndGridSolid(instGeomData);
                 if (maxIntersectInstance == null)
@@ -257,7 +249,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     {
                         ErrorElements.Add(new GripParamError(
                             instElemData.CurrentElem,
-                            "Геометрия: Элементу не удалось присвоить данные по геомертии"));
+                            "Геометрия: Элементу не удалось присвоить данные по геометрии"));
                         continue;
                     }
                 }
@@ -323,7 +315,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         }
 
         /// <summary>
-        /// Метод проверки и очичтки элементов
+        /// Метод проверки и очистки элементов
         /// </summary>
         /// <param name="checkColl">Коллекция для проверки</param>
         /// <returns></returns>
@@ -337,7 +329,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 Parameter levParam = elem.LookupParameter(LevelParamName);
                 if (sectParam == null || levParam == null)
                 {
-                    throw new GripParamExection($"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа). " +
+                    throw new GripParamExection(
+                        $"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа). " +
                         $"Пример: \nКатегория: {elem.Category.Name} / id: {elem.Id}");
                 }
 
@@ -355,14 +348,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private Solid GetHorizontalIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
             // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета
-            Transform sectTransform = sectData.CurrentlSolid.GetBoundingBox().Transform;
+            Transform sectTransform = sectData.CurrentSolid.GetBoundingBox().Transform;
             Transform instTransform = instSolid.GetBoundingBox().Transform;
             Transform instInverseTransform = instTransform.Inverse;
             Solid instZerotransformSolid = SolidUtils.CreateTransformed(instSolid, instInverseTransform);
             sectTransform.Origin = new XYZ(sectTransform.Origin.X, sectTransform.Origin.Y, instTransform.Origin.Z);
 
             Solid transformedBySectdInstSolid = SolidUtils.CreateTransformed(instZerotransformSolid, sectTransform);
-            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
+            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentSolid, BooleanOperationsType.Intersect);
             if (intersectSolid != null && intersectSolid.Volume > 0)
                 return intersectSolid;
 
@@ -378,14 +371,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private Solid GetVerticalIntesectedInstSolid(Solid instSolid, LevelAndGridSolid sectData)
         {
             // Необходимо "притянуть" через Transform элемент в центр солида секции, чтобы улучшить точность подсчета
-            Transform sectTransform = sectData.CurrentlSolid.GetBoundingBox().Transform;
+            Transform sectTransform = sectData.CurrentSolid.GetBoundingBox().Transform;
             Transform instTransform = instSolid.GetBoundingBox().Transform;
             Transform instInverseTransform = instTransform.Inverse;
             Solid instZerotransformSolid = SolidUtils.CreateTransformed(instSolid, instInverseTransform);
             sectTransform.Origin = new XYZ(instTransform.Origin.X, instTransform.Origin.Y, sectTransform.Origin.Z);
 
             Solid transformedBySectdInstSolid = SolidUtils.CreateTransformed(instZerotransformSolid, sectTransform);
-            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentlSolid, BooleanOperationsType.Intersect);
+            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(transformedBySectdInstSolid, sectData.CurrentSolid, BooleanOperationsType.Intersect);
             if (intersectSolid != null && intersectSolid.Volume > 0)
                 return intersectSolid;
 
@@ -434,9 +427,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             double maxIntersectValue = 0;
             foreach (LevelAndGridSolid levelAndGridSolid in SectDataSolids)
             {
-                // Игнорирую заведомо отличающиеся по отметкам секции
-                if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
-                    && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
+                // Игнорирую заведомо отличающиеся по отметкам секции (9-10 м)
+                if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 30
+                    && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 30)
                     continue;
 
                 double tempIntersectValue = 0;
@@ -447,14 +440,18 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         if (instSolid.Volume == 0)
                             continue;
 
-                        // Првоеряю положение в секции
-                        Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, levelAndGridSolid.CurrentlSolid, BooleanOperationsType.Intersect);
-                        if (checkSectSolid != null && checkSectSolid.Volume > 0)
-                        {
-                            Solid resSolid = GetHorizontalIntesectedInstSolid(instSolid, levelAndGridSolid);
-                            if (resSolid != null)
-                                tempIntersectValue += Math.Round(resSolid.Volume, 3);
-                        }
+                        // Проверяю положение в секции
+                        Solid checkIntersectSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
+                            instSolid, 
+                            levelAndGridSolid.CurrentSolid, 
+                            BooleanOperationsType.Intersect);
+
+                        if (checkIntersectSectSolid == null || !(checkIntersectSectSolid.Volume > 0)) 
+                            continue;
+                        
+                        Solid resSolid = GetHorizontalIntesectedInstSolid(instSolid, levelAndGridSolid);
+                        if (resSolid != null)
+                            tempIntersectValue += Math.Round(resSolid.Volume, 10);
                     }
 
                     if (tempIntersectValue > 0 && maxIntersectValue <= tempIntersectValue)
@@ -499,16 +496,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             foreach (LevelAndGridSolid levelAndGridSolid in SectDataSolids)
             {
-                // Игнорирую заведомо отличающиеся по отметкам секции
-                if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
-                    && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
+                // Игнорирую заведомо отличающиеся по отметкам секции (9-10 м)
+                if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 30
+                    && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 30)
                     continue;
 
                 double tempIntersectValue = 0;
                 double tempPrjDistanceValue = 15;
                 try
                 {
-                    FaceArray levelAndGridFaceArray = levelAndGridSolid.CurrentlSolid.Faces;
+                    FaceArray levelAndGridFaceArray = levelAndGridSolid.CurrentSolid.Faces;
 
                     #region Првоеряю положение в секции в плоскости XY
                     foreach (Solid instSolid in instGeomData.CurrentSolidColl)

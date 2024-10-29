@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace KPLN_Library_ExtensibleStorage
+﻿namespace KPLN_Library_ExtensibleStorage
 {
     public enum MessageStatus
     {

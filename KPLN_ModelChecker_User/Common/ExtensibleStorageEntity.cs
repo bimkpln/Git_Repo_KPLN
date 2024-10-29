@@ -79,7 +79,7 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
-        /// Extensible Storage для ключевого комментария
+        /// Extensible Storage для ключевого комментария (помечает факт запуска проектировщиком)
         /// </summary>
         internal ExtensibleStorageBuilder ESBuildergMarker
         {
