@@ -56,7 +56,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Release\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_ExtensibleStorage">
@@ -184,7 +184,6 @@
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
-    <Compile Include="Common\LinkManager\CoordinateTypeConverter.cs" />
     <Compile Include="Common\LinkManager\LinkManagerEntity.cs" />
     <Compile Include="Common\MonitorLinkEntity.cs" />
     <Compile Include="Common\MonitorTool.cs" />
