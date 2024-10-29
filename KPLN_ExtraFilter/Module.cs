@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.Common;
 using KPLN_Loader.Common;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media;
@@ -22,52 +23,40 @@ namespace KPLN_ExtraFilter
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Выбор элементов");
 
-            //Добавляю кнопку в панель (тут приведен пример поиска панели, вместо этого - панель можно создать)
-            AddPushButtonDataInPanel(
-                "Выбор\nпо эл-ту",
-                "Выбор\nпо эл-ту",
-                "Для выбора элементов в проекте, которые похожи/связаны с выбранным",
-                string.Format(
-                    "Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExternalCommands.SelectionExpandedCommand).FullName,
-                panel,
-                "KPLN_ExtraFilter.Imagens.clickLarge.png",
-                "http://moodle.stinproject.local",
-                true
-            );
+            PushButtonData btnSelectByClick = new PushButtonData(
+                "По элементу",
+                "По элементу",
+                _assemblyPath,
+                typeof(ExternalCommands.SelectionByClickExtCommand).FullName)
+            {
+                LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.ClickLarge.png"),
+                Image = PngImageSource("KPLN_ExtraFilter.Imagens.ClickSmall.png"),
+                ToolTip = "Для выбора элементов в проекте, которые похожи/связаны с выбранным.\nВАЖНО: Сначала выдели 1 эл-т.",
+                LongDescription = "Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов" +
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                AvailabilityClassName = typeof(ButtonAvailable).FullName,
+            };
+            btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+
+            PushButtonData btnSetPramsByFrame = new PushButtonData(
+                "Задать рамкой",
+                "Задать рамкой",
+                _assemblyPath,
+                typeof(ExternalCommands.SetParamsByFrameExtCommand).FullName)
+            {
+                LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.FrameLarge.png"),
+                Image = PngImageSource("KPLN_ExtraFilter.Imagens.FrameSmall.png"),
+                ToolTip = "Позволяет выбрать элементы рамкой с расширенным функционалом и задать параметры",
+                LongDescription = "Можно добавлять несколько параметров. При выделении дополнительно выделятся:" +
+                    "\n  1. Вложенные элементы семейств." +
+                    "\n  2. Отдельные элементы групп (важно, чтобы параметр мог меняться по экземплярам групп." +
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+            };
+            btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+
+            IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
 
             return Result.Succeeded;
-        }
-
-        /// <summary>
-        /// Метод для добавления отдельной в панель
-        /// </summary>
-        /// <param name="name">Внутреннее имя кнопки</param>
-        /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
-        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
-        /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="panel">Панель, в которую добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки, как ресурса</param>
-        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        /// <param name="isSelectedCheck">Проверка на предварительный выбор элементов в модели</param>
-        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp, bool isSelectedCheck)
-        {
-            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
-            PushButton button = panel.AddItem(data) as PushButton;
-            button.ToolTip = shortDescription;
-            button.LongDescription = longDescription;
-            button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
-            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-
-            if (isSelectedCheck)
-                button.AvailabilityClassName = typeof(ButtonAvailable).FullName;
         }
 
         /// <summary>

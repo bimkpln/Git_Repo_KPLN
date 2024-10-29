@@ -52,8 +52,16 @@
     <DefineConstants>Revit2023</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -80,11 +88,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
-    <Compile Include="Common\SelectionExpandedEntity.cs" />
+    <Compile Include="Common\IJsonSerializable.cs" />
+    <Compile Include="Forms\Entities\SelectionByClickEntity.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
-    <Compile Include="ExternalCommands\SelectionExpandedCommand.cs" />
-    <Compile Include="Forms\SelectionExpandedForm.xaml.cs">
-      <DependentUpon>SelectionExpandedForm.xaml</DependentUpon>
+    <Compile Include="ExecutableCommand\SetParamsByFrameExcCommandStart.cs" />
+    <Compile Include="ExternalCommands\SetParamsByFrameExtCommand.cs" />
+    <Compile Include="ExternalCommands\SelectionByClickExtCommand.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\ParamEntity.cs" />
+    <Compile Include="Forms\SetParamsByFrameForm.xaml.cs">
+      <DependentUpon>SetParamsByFrameForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SelectionByClickForm.xaml.cs">
+      <DependentUpon>SelectionByClickForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -95,7 +111,10 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\FrameLarge.png" />
+    <EmbeddedResource Include="Imagens\FrameSmall.png" />
+  </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -103,14 +122,21 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Forms\SelectionExpandedForm.xaml">
+    <Page Include="Forms\SetParamsByFrameForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SelectionByClickForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\clickLarge.png" />
-    <EmbeddedResource Include="Imagens\clickSmall.png" />
+    <EmbeddedResource Include="Imagens\ClickLarge.png" />
+    <EmbeddedResource Include="Imagens\ClickSmall.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

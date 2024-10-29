@@ -63,9 +63,9 @@ namespace KPLN_ExtraFilter.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap clickLarge {
+        internal static System.Drawing.Bitmap ClickLarge {
             get {
-                object obj = ResourceManager.GetObject("clickLarge", resourceCulture);
+                object obj = ResourceManager.GetObject("ClickLarge", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -73,9 +73,29 @@ namespace KPLN_ExtraFilter.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap clickSmall {
+        internal static System.Drawing.Bitmap ClickSmall {
             get {
-                object obj = ResourceManager.GetObject("clickSmall", resourceCulture);
+                object obj = ResourceManager.GetObject("ClickSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap FrameLarge {
+            get {
+                object obj = ResourceManager.GetObject("FrameLarge", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap FrameSmall {
+            get {
+                object obj = ResourceManager.GetObject("FrameSmall", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
