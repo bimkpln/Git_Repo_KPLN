@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_Looker\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -29,7 +29,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_Looker\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -144,6 +144,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="ExecutableCommand\DocCloser.cs" />
+    <Compile Include="ExecutableCommand\UndoEvantHandler.cs" />
     <Compile Include="ExecutableCommand\ViewCloser.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
