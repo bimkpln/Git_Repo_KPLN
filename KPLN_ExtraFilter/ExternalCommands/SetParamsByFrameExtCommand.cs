@@ -210,14 +210,11 @@ namespace KPLN_ExtraFilter.ExternalCommands
         {
             List<Element> result = new List<Element>(selectedElems);
 
-            ElementClassFilter pipeInsulFilter = new ElementClassFilter(typeof(PipeInsulation));
-            ElementClassFilter ductInsulFilter = new ElementClassFilter(typeof(DuctInsulation));
             ElementClassFilter famIsntFilter = new ElementClassFilter(typeof(FamilyInstance));
 
+            // Изоляция воздуховодов и труб выделяется рамкой селектора
             List<ElementFilter> filters = new List<ElementFilter>()
             {
-                pipeInsulFilter,
-                ductInsulFilter,
                 famIsntFilter,
             };
             LogicalOrFilter resultFilter = new LogicalOrFilter(filters);

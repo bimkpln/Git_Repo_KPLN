@@ -13,7 +13,6 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _currentName;
-        private Parameter _currentParam;
         private int _currentParamIntId;
         private string _currentToolTip;
 

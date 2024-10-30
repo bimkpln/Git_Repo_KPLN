@@ -131,7 +131,7 @@
             <Button
                 x:Name="ClearBtn"
                 Style="{StaticResource BTN}"
-                ToolTip="Очистить список параметров"
+                ToolTip="Очистить ВЕСЬ список параметров (выборочно можно удалить через ПКМ)"
                 Click="ClearBtn_Click">
                 <Button.Content>
                     <TextBlock
@@ -144,7 +144,8 @@
                 x:Name="RunBtn"
                 Style="{StaticResource BTN}"
                 BorderBrush="Green"
-                Content="Заполнить!"
+                Content="{Binding RunButtonName}"
+                ToolTip="{Binding RunButtonTooltip}"
                 Click="RunBtn_Click"/>
         </StackPanel>
     </Grid>
