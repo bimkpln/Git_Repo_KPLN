@@ -330,6 +330,21 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 #endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
         {
@@ -365,14 +380,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 dynamic jsonFile = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonContent);
 
                 if (jsonFile is JArray && ((JArray)jsonFile).All(item =>
-                        item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null && item["grouping"] != null && item["parameterValue"] != null && item["parameterValueDataType"] != null))
+                        item["NE"] != null && item["pathFile"] != null && item["groupParameter"] != null && item["nameParameter"] != null && item["instance"] != null 
+                        && item["grouping"] != null && item["parameterValue"] != null && item["parameterValueDataType"] != null))
                 {
                     var window = new batchAddingParametersWindowGeneral(uiapp, activeFamilyName, jsonFileSettingPath);
                     var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
                     new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
                     window.ShowDialog();
                 }
-                else if (jsonFile is JArray && ((JArray)jsonFile).Any(item => ((string)item["NE"])?.StartsWith("FamilyParamAdd") == true))
+                else if (jsonFile is JArray && ((JArray)jsonFile).All(item =>
+                        item["NE"] != null && item["quantity"] != null && item["parameterName"] != null && item["instance"] != null && item["categoryType"] != null 
+                        && item["dataType"] != null && item["grouping"] != null && item["parameterValue"] != null && item["comment"] != null))
                 {
                     var window = new batchAddingParametersWindowFamily(uiapp, activeFamilyName, jsonFileSettingPath);
                     var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
