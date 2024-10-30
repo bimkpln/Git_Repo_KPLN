@@ -206,7 +206,7 @@ namespace KPLN_Looker
                     throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
             }
 
-            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X");
+            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X (из папки проекта, если она есть)");
             userVerify.ShowDialog();
 
             switch (userVerify.Status)
@@ -257,13 +257,32 @@ namespace KPLN_Looker
             string familyName,
             string familyPath = null)
         {
-            // Глобальный отлов по пути семейства (если оно задано)
+            // Глобальный отлов по пути семейства (если оно задано).
+            // Уточнение для ЛОКАЛЬНЫХ проектов
             if (!string.IsNullOrEmpty(familyPath)
-                // Локальные библиотеки для проектов
-                && (doc.Title.Contains("СЕТ_1") && (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-                // Все остальные проекты
-                && (familyPath.StartsWith("X:\\BIM") || familyPath.Contains("KPLN_Loader")))
+                && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
+                && (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
                 return false;
+            // Игнор локальных проектов. Для СЕТ плохой пример, на будущее - лучше библиотеку под проект выносить в другой корень, иначе это усложняет анализ
+            else if (!string.IsNullOrEmpty(familyPath)
+                && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
+                && (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+                return false;
+
+
+            //// Глобальный отлов по пути семейства (если оно задано).
+            //if (!string.IsNullOrEmpty(familyPath)
+            //&& (familyPath.StartsWith("X:\\BIM") || familyPath.Contains("KPLN_Loader")))
+            //{
+            //    bool docCheck = false;
+            //    // Уточнение для ЛОКАЛЬНЫХ проектов
+            //    if (doc.Title.Contains("СЕТ_1") &&
+            //        !(familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+            //        docCheck = true;
+
+            //    if (!docCheck)
+            //        return false;
+            //}
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
             // Отлов семейств марок (могут разрабатывать все)
