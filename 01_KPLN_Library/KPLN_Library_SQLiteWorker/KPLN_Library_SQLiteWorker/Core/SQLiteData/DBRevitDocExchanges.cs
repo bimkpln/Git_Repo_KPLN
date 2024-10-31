@@ -30,6 +30,16 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public string SettingName { get; set; }
 
         /// <summary>
+        /// Путь к месту сохранения результатов конфига
+        /// </summary>
+        public string SettingResultPath { get; set; }
+
+        /// <summary>
+        /// Количество элементов, которые конфиг обработает
+        /// </summary>
+        public int SettingCountItem { get; set; }
+
+        /// <summary>
         /// Путь к файлу конфигураций по обмену
         /// </summary>
         public string SettingDBFilePath { get; set; }
@@ -39,10 +49,6 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// </summary>
         public bool IsActive { get; set; }
 
-        /// <summary>
-        /// Общий комментарий для пользователя
-        /// </summary>
-        public string DescriptionForShow { get; set; }
         #endregion
 
         /// <summary>
