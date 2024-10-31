@@ -21,7 +21,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 #endif
 
 
-#if DEBUG
+#if Debug2020 || Debug2023
             //Получение объектов приложения и документа
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;

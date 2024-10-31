@@ -56,6 +56,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                              || docPath.Contains("АУПТ") 
                              || docPath.Contains("ЭОМ") 
                              || docPath.Contains("СС") 
+                             || docPath.Contains("АК")
                              || docPath.Contains("АВ")))
                 {
                     if (docPath.StartsWith("ОБДН"))
@@ -78,18 +79,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 {
                     TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
                     {
-                        MainContent = "Ошибка номера отдела в БД. Обратись в BIM-отдел",
-                        MainIcon = TaskDialogIcon.TaskDialogIconInformation
-                    };
-                    taskDialog.Show();
-                    return Result.Failed;
-                }
-
-                if (gripBuilder == null)
-                {
-                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
-                    {
-                        MainContent = "Ошибка определения проекта. Обратись в BIM-отдел",
+                        MainContent = "Ошибка определения проекта/пользователя. Обратись в BIM-отдел",
                         MainIcon = TaskDialogIcon.TaskDialogIconInformation
                     };
                     taskDialog.Show();
