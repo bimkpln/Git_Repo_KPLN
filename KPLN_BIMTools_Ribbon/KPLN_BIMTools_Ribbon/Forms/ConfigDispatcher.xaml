@@ -131,10 +131,25 @@
                                         </TextBlock.ContextMenu>
                                         <TextBlock.Inlines>
                                             <Run Text="{Binding SettingName}"/>
+                                            
                                             <LineBreak/>
                                             <Run FontSize="10" 
-                                                    Foreground="Gray" 
-                                                    Text="{Binding DescriptionForShow}"/>
+                                                Foreground="Gray" 
+                                                FontWeight="Bold"
+                                                Text="Путь для сохранения:"/>
+                                            <LineBreak/>
+                                            <Run FontSize="10" 
+                                                Foreground="Gray" 
+                                                Text="{Binding SettingResultPath}"/>
+                                            
+                                            <LineBreak/>
+                                            <Run FontSize="10" 
+                                                Foreground="Gray" 
+                                                FontWeight="Bold"
+                                                Text="Кол-во файлов/сборок:"/>
+                                            <Run FontSize="10" 
+                                                Foreground="Gray" 
+                                                Text="{Binding SettingCountItem}"/>
                                         </TextBlock.Inlines>
                                     </TextBlock>
                                 </StackPanel>

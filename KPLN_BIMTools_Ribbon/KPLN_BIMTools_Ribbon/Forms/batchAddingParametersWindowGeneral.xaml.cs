@@ -393,7 +393,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                     familyManager.SetFormula(familyParam, parameterFormula);
                                     starusAddParametersToFamily = true;
                                 }
-                                catch (Exception ex)
+                                catch (Exception)
                                 {
                                     logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                     paramDetails[5] = "!ОШИБКА";
@@ -406,14 +406,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                     RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
                                     starusAddParametersToFamily = true;
                                 }
-                                catch (Exception ex)
+                                catch (Exception)
                                 {
                                     logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                     paramDetails[5] = "!ОШИБКА";
                                 }
                             }
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             paramDetails[5] = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
                             starusAddParametersToFamily = true;
@@ -442,7 +442,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
                                 starusAddParametersToFamily = true;
                             }
-                            catch (Exception ex)
+                            catch (Exception)
                             {
                                 logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
                                 paramDetails[5] = "!ОШИБКА";

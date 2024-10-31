@@ -117,7 +117,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             TextBox tBox = sender as TextBox;
 
             // Меняю настройки кликабельности кнопок
-            if (!string.IsNullOrWhiteSpace(tBox.Text) && tBox.Text.Length > 5)
+            if (!string.IsNullOrWhiteSpace(tBox.Text) && tBox.Text.Length > 2)
                 _canRunByName = true;
             else
                 _canRunByName = false;

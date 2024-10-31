@@ -86,8 +86,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 // Добавляю общие настройки конфига (которые дублируются по каждтому DBConfigEntity)
                 IEnumerable<DBConfigEntity> dBConfigEntities = tempSqliteService.GetConfigItems();
-                SetExtraSettings_DBConfigEntity(dBConfigEntities.FirstOrDefault());
-                SharedPathTo = dBConfigEntities.FirstOrDefault().PathTo;
+                if (dBConfigEntities.Any())
+                {
+                    SetExtraSettings_DBConfigEntity(dBConfigEntities.FirstOrDefault());
+                }
+                SharedPathTo = CurrentDBRevitDocExchanges.SettingResultPath;
 
                 // Добавляю список файлов
                 FileEntitiesList = new ObservableCollection<FileEntity>(dBConfigEntities.Select(ent => new FileEntity(ent.Name, ent.PathFrom)));
@@ -348,9 +351,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     ProjectId = _project.Id,
                     RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
-                    SettingName = this.SettingName,
+                    SettingName = SettingName,
+                    SettingResultPath = SharedPathTo,
+                    SettingCountItem = FileEntitiesList.Count,
                     SettingDBFilePath = _sqliteService.CurrentDBFullPath,
-                    DescriptionForShow = $"Путь для сохранения: {SharedPathTo}\nКол-во файлов/сборок: {FileEntitiesList.Count}"
                 };
             }
             else
@@ -360,9 +364,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Id = CurrentDBRevitDocExchanges.Id,
                     ProjectId = _project.Id,
                     RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
-                    SettingName = this.SettingName,
+                    SettingName = SettingName,
+                    SettingResultPath = SharedPathTo,
+                    SettingCountItem = FileEntitiesList.Count,
                     SettingDBFilePath = _sqliteService.CurrentDBFullPath,
-                    DescriptionForShow = $"Путь для сохранения: {SharedPathTo}\nКол-во файлов/сборок: {FileEntitiesList.Count}",
                 };
             }
 

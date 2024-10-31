@@ -76,7 +76,7 @@
                 <TextBox.ToolTip>
                     <TextBlock 
                         Width="300"
-                        Text="Данное поле должно иметь МИНИМУМ 5 символов"
+                        Text="Данное поле должно иметь МИНИМУМ 2 символа"
                         TextWrapping="Wrap"/>
                 </TextBox.ToolTip>
             </TextBox>
