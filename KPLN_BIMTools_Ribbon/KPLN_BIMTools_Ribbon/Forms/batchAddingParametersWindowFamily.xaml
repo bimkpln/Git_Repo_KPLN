@@ -44,7 +44,7 @@
                         </ComboBox>
                         <Button Content="X" Width="30" Height="25"  Background="#FF9E0303" Foreground="White" Click="RemovePanel" VerticalAlignment="Top"/>
                         <TextBox x:Name="TB_paramValue" TextWrapping="Wrap" Width="1360" Height="25" Margin="-1360,0,0,40" Padding="5,3,0,0" VerticalAlignment="Bottom" Background="#FFFBFFD5"
-                                 GotFocus="TB_paramValue_GotFocus" LostFocus="TB_paramValue_LostFocus" Loaded="TB_paramValue_Loaded" IsEnabled="False"/>
+                                 GotFocus="TB_paramValue_GotFocus" LostFocus="TB_paramValue_LostFocus" Loaded="TB_paramValue_Loaded"/>
                         <TextBox x:Name="TB_comment" Text="При необходимости, вы можете указать описание подсказки" TextWrapping="Wrap" Width="1360" Height="40" Margin="-1360, 0, 0, 0" Padding="5,3,0,0" VerticalAlignment="Bottom" Background="#FFFBFFD5"
                                  AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                  GotFocus="TB_comment_GotFocus" LostFocus="TB_comment_LostFocus"/>

@@ -891,7 +891,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
         private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
         {
-#if Revit2020 || Debug2020
             String textInField = TB_paramValue.Text;
 
             if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
@@ -899,7 +898,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 TB_paramValue.Clear();
             }
-#endif
         }
 
         //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса

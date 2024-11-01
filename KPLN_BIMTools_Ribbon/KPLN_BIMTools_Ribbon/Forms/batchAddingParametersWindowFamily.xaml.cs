@@ -54,6 +54,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
 
+        public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
+        {
+            batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
+            choiceWindow.RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+        }
+
+        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, string paramTypeName)
+        {
+            batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
+            return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramTypeName);
+        }
+
+
         public batchAddingParametersWindowFamily(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
             InitializeComponent();
@@ -297,7 +310,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     {
                         if (element is System.Windows.Controls.TextBox textBox)
                         {
-                            if (textBox.Text.ToString().StartsWith("При необходимости, вы можете указать"))
+                            if (textBox.Text.ToString().StartsWith("При необходимости, вы можете указать") 
+                                || textBox.Text.ToString() == "Вы не можете заполнить значение для данного параметра")
                             {
                                 values.Add ("None");
                             }
@@ -417,7 +431,25 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (CB_dataType.SelectedItem != null) 
             {
                 CB_dataType.ToolTip = CB_dataType.SelectedItem.ToString();
-                TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
+
+                if (CB_dataType.SelectedItem.ToString() == "Классификация нагрузок")
+                {
+                    TB_paramValue.IsEnabled = false;
+                    TB_paramValue.Text = "Вы не можете заполнить значение для данного параметра";
+                }
+                else if (CB_dataType.SelectedItem.ToString() == "Изображение")
+                {
+                    TB_paramValue.IsEnabled = true;
+                    TB_paramValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                }
+                else
+                {
+                    TB_paramValue.IsEnabled = true;
+                    TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
+                }
+
+                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
             }
         }
 
@@ -426,7 +458,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
 
-            if (textBox.Text.Contains("При необходимости, вы можете указать значение параметра"))
+            if (textBox.Text.Contains("При необходимости, вы можете указать значение параметра") 
+                || textBox.Text.ToString().StartsWith("Необходимо указать:"))
             {
                 textBox.Text = "";
             }
@@ -441,14 +474,35 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Поведение (!) оригинальный textBox "Значение параметра" - Потеря фокуса
         private void TB_paramValue_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (TB_paramValue.Text == "")
+            if (CB_dataType.SelectedItem.ToString() == "Изображение" && TB_paramValue.Text == "")
+            {
+                TB_paramValue.IsEnabled = true;
+                TB_paramValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+            }
+            else if (TB_paramValue.Text == "")
             {
                 TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
+                TB_paramValue.Tag = "invalid";
                 TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
             }
             else
             {
-                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
+                if (CheckingValueOfAParameter(CB_dataType, TB_paramValue, CB_dataType.SelectedItem.ToString()) == "blue" || TB_paramValue.Text.ToString().StartsWith("="))
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                    TB_paramValue.Tag = "valid";
+                }
+                else if (CheckingValueOfAParameter(CB_dataType, TB_paramValue, CB_dataType.SelectedItem.ToString()) == "green")
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
+                    TB_paramValue.Tag = "valid";
+                }
+                else if (CheckingValueOfAParameter(CB_dataType, TB_paramValue, CB_dataType.SelectedItem.ToString()) == "red")
+                {
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    TB_paramValue.Tag = "invalid";
+                }
             }
         }
 
@@ -642,14 +696,36 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             tbParamValue.LostFocus += (s, ev) =>
             {
-                if (tbParamValue.Text == "")
+
+                if (cbDataType.SelectedItem.ToString() == "Изображение" && tbParamValue.Text == "")
+                {
+                    tbParamValue.IsEnabled = true;
+                    tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                }
+                else if (tbParamValue.Text == "")
                 {
                     tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
+                    tbParamValue.Tag = "invalid";
                     tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                 }
                 else
                 {
-                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
+                    if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); 
+                        tbParamValue.Tag = "valid";
+                    }
+                    else if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "green")
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); 
+                        tbParamValue.Tag = "valid";
+                    }
+                    else if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "red")
+                    {
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                        tbParamValue.Tag = "invalid";
+                    }
                 }
             };
 
@@ -663,7 +739,25 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 if (cbDataType.SelectedItem != null)
                 {
                     cbDataType.ToolTip = cbDataType.SelectedItem.ToString();
-                    tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
+
+                    if (cbDataType.SelectedItem.ToString() == "Классификация нагрузок")
+                    {
+                        tbParamValue.IsEnabled = false;
+                        tbParamValue.Text = "Вы не можете заполнить значение для данного параметра";
+                    }
+                    else if (cbDataType.SelectedItem.ToString() == "Изображение")
+                    {
+                        tbParamValue.IsEnabled = true;
+                        tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); 
+                    }
+                    else
+                    {
+                        tbParamValue.IsEnabled = true;
+                        tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
+                    }
+
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                 }
             };
 
@@ -729,7 +823,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                         string dataType = paramDetails[4]; 
 
-                        string paramValue = paramDetails[6];
+                        string parameterValue = paramDetails[6];
                         string comment = paramDetails[7];
 
                         for (int i = 0; i < quantity; i++)
@@ -745,6 +839,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                             try
                             {
+
 #if Revit2020 || Debug2020
                                 BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
 
@@ -763,6 +858,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 FamilyParameter familyParameter = familyManager.AddParameter(fParamName, groupType, paramType, isInstance);
 #endif
 
+                                if (parameterValue.StartsWith("="))
+                                {
+                                    familyManager.SetFormula(familyParameter, parameterValue.Substring(1));
+                                }
+                                else if (parameterValue != "None")
+                                {
+                                    RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParameter, parameterValue, dataType);
+                                }
+
                                 if (familyParameter != null)
                                 {
                                     familyManager.SetDescription(familyParameter, comment);
@@ -773,7 +877,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             catch 
                             {
                                 problematicParametersLog += $"Error: КОЛ-ВО: {quantity}. ИМЯ_ПАРАМЕТРА: {paramName}. ЭКЗЕМПЛЯР: {isInstance}. ТИП ДАННЫХ: {dataType}. ГРУППИРОВАНИЕ: {paramDetails[5]}.\n" +
-                                    $"ОПИСАНИЕ ПОДСКАЗК: {comment}\n\n";
+                                    $"ОПИСАНИЕ ПОДСКАЗКИ: {comment}\n\n";
 
                                 successfulResult = false;
                             }
@@ -1060,14 +1164,36 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 tbParamValue.LostFocus += (s, ev) =>
                 {
-                    if (tbParamValue.Text == "")
+                    if (cbDataType.SelectedItem.ToString() == "Изображение" && tbParamValue.Text == "")
+                    {
+                        tbParamValue.IsEnabled = true;
+                        tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                    }
+                    else if (tbParamValue.Text == "")
                     {
                         tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
+                        tbParamValue.Tag = "invalid";
                         tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                     }
                     else
                     {
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
+                        if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "green")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
+                            tbParamValue.Tag = "valid";
+                        }
+                        else if (CheckingValueOfAParameter(cbDataType, tbParamValue, cbDataType.SelectedItem.ToString()) == "red")
+                        {
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                            tbParamValue.Tag = "invalid";
+                        }
+
                     }
                 };
 
@@ -1076,9 +1202,26 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (cbDataType.SelectedItem != null)
                     {
                         cbDataType.ToolTip = cbDataType.SelectedItem.ToString();
-                        tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
-                    }
 
+                        if (cbDataType.SelectedItem.ToString() == "Классификация нагрузок")
+                        {
+                            tbParamValue.IsEnabled = false;
+                            tbParamValue.Text = "Вы не можете заполнить значение для данного параметра";
+                        }
+                        else if (cbDataType.SelectedItem.ToString() == "Изображение")
+                        {
+                            tbParamValue.IsEnabled = true;
+                            tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                        }
+                        else
+                        {
+                            tbParamValue.IsEnabled = true;
+                            tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
+                        }
+
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    }
                 };
 
                 System.Windows.Controls.TextBox tbComment = new System.Windows.Controls.TextBox

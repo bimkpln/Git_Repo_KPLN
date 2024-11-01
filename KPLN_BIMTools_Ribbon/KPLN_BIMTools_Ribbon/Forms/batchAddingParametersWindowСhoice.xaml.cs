@@ -363,18 +363,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 default: return SpecTypeId.String.Text;
             }
         }
-#endif
 
-
-
-
-
-
-
-
-#if Revit2023 || Debug2023
         /// <summary>
-        /// Функция предопределения типа для ForgeTypeId (числовые значения и FamilyType)
+        /// Функция предопределения базовых типов для ForgeTypeId при создании параметра. 
+        /// Все числовые значения и (!) FamilyType попадают в Autodesk.Revit.DB.ForgeTypeId
         /// </summary>
         public string GetParamTypeName(ExternalDefinition def, ForgeTypeId value)
         {
@@ -400,172 +392,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return value.ToString();
         }
 #endif
-
-        /// <summary>
-        /// Функция соотношения параметра с типом данных: "yellow" (пустой параметр), "blue" (невозможно проверить), "green" (проверка пройдена), "red" (проверка не пройдена);
-        /// </summary>
-        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, string paramTypeName)
-        {
-            string textInField = textBox.Text;
-
-            if (comboBox.SelectedItem == null) return "yellow";
-            if (string.IsNullOrEmpty(textInField)) return paramTypeName == "Image" ? "blue" : "red";
-
-            switch (paramTypeName)
-            {
-                case "MultilineText":
-                case "Text":
-                case "URL":
-                    return "green";
-
-                case "Integer":
-                    if (textInField.Contains(",")) return "red";
-                    if (int.TryParse(textInField, out int resultInt))
-                    {
-                        textBox.Text = resultInt.ToString();
-                        return "green";
-                    }
-                    break;
-
-                case "NumberOfPoles":
-                    if (int.TryParse(textInField, out int resultIntU) && resultIntU >= 1 && resultIntU <= 3)
-                    {
-                        textBox.Text = resultIntU.ToString();
-                        return "green";
-                    }
-                    textBox.Text = "Необходимо указать: диапазон от 1 до 3";
-                    return "red";
-
-                case "YesNo":
-                    if (textInField == "0" || textInField == "1") return "green";
-                    textBox.Text = "Необходимо указать: ``1`` - да; ``0`` - нет";
-                    return "red";
-
-                case "Material":
-                    var materialNames = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
-                                        .OfClass(typeof(Material))
-                                        .Cast<Material>()
-                                        .Select(m => m.Name.ToLower())
-                                        .ToList();
-                    return materialNames.Contains(textInField.ToLower()) ? "green" : "red";
-
-                case "Autodesk.Revit.DB.ForgeTypeId":
-                    return double.TryParse(textInField, out _) ? "green" : "red";
-            }
-
-            return double.TryParse(textInField, out double resultDouble) ? "green" : "red";
-        }
-
-        /// <summary>
-        /// Функция соотношенияч типа данных со значением при добавлении параметра в семейство
-        /// </summary>
-        public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, String parameterValue, String parameterValueDataType)
-        {
-            switch (parameterValueDataType)
-            {
-                case "Text":
-                case "MultilineText":
-                case "URL":
-                    familyManager.Set(familyParam, parameterValue);
-                    break;
-
-                case "Integer":
-                case "YesNo":
-                case "NumberOfPoles":
-                    if (int.TryParse(parameterValue, out int intBoolValue))
-                    {
-                        familyManager.Set(familyParam, intBoolValue);
-                    }
-                    break;
-
-                case "Material":
-                    Material material = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
-                        .OfClass(typeof(Material))
-                        .Cast<Material>()
-                        .FirstOrDefault(m => m.Name.Equals(parameterValue));
-
-                    if (material != null)
-                    {
-                        ElementId materialId = material.Id;
-
-                        familyManager.Set(familyParam, materialId);
-                    }
-                    break;
-
-#if Revit2020 || Debug2020
-                case "Image":
-                    string imagePath = parameterValue;
-
-                    FilteredElementCollector collector = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
-                        .OfClass(typeof(ImageType));
-
-                    ImageType imageType = collector
-                        .Cast<ImageType>()
-                        .FirstOrDefault(img => img.Name.Equals(Path.GetFileName(imagePath), StringComparison.OrdinalIgnoreCase));
-
-                    if (imageType != null)
-                    {
-                        familyManager.Set(familyParam, imageType.Id);
-                    }
-                    else
-                    {
-                        ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, imagePath);
-                        familyManager.Set(familyParam, newImageTypeOld.Id);
-                    }
-                    break;
-
-                default:
-                    if (double.TryParse(parameterValue, out double millimetersValue))
-                    {
-                        UnitType unitType = familyParam.Definition.UnitType;
-                        DisplayUnitType displayUnitType = uiapp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(unitType).DisplayUnits;
-
-                        double convertedValue = UnitUtils.ConvertToInternalUnits(millimetersValue, displayUnitType);
-                        familyManager.Set(familyParam, convertedValue);
-                    }
-                    break;
-#endif
-#if Revit2023 || Debug2023
-                case "Image":
-                    string imagePath = parameterValue;
-
-                    FilteredElementCollector collector = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
-                        .OfClass(typeof(ImageType));
-
-                    ImageType imageType = collector
-                        .Cast<ImageType>()
-                        .FirstOrDefault(img => img.Name.Equals(Path.GetFileName(imagePath), StringComparison.OrdinalIgnoreCase));
-
-                    if (imageType != null)
-                    {
-                        familyManager.Set(familyParam, imageType.Id);
-                    }
-                    else
-                    {
-                        ImageTypeOptions options = new ImageTypeOptions(imagePath, false, ImageTypeSource.Import);
-                        ImageType newImageType = ImageType.Create(uiapp.ActiveUIDocument.Document, options);
-                        familyManager.Set(familyParam, newImageType.Id);
-                    }
-                    break;
-
-                default:
-                    if (double.TryParse(parameterValue, out double millimetersValue))
-                    {
-                        ForgeTypeId forgeTypeId = familyParam.Definition.GetDataType();
-                        FormatOptions formatOptions = uiapp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(forgeTypeId);
-
-                        double convertedValue = UnitUtils.ConvertToInternalUnits(millimetersValue, formatOptions.GetUnitTypeId());
-                        familyManager.Set(familyParam, convertedValue);
-                    }
-                    break;
-#endif
-            }
-        }
-
-
-
-
-
 
         /// <summary>
         /// Создание Dictionary с параметрами группирования для ComboBox "Параметры группирования"
@@ -688,6 +514,185 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 #endif
 
+        /// <summary>
+        /// Функция соотношенияч типа данных со значением при добавлении параметра в семейство
+        /// </summary>
+        public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, String parameterValue, String parameterValueDataType)
+        {
+            switch (parameterValueDataType)
+            {
+                case "Text":
+                case "Текст":
+                case "MultilineText":
+                case "Многострочный текст":
+                case "URL":
+                    familyManager.Set(familyParam, parameterValue);
+                    break;
+
+                case "Integer":
+                case "Целое":
+                case "YesNo":
+                case "Да/Нет":
+                case "NumberOfPoles":
+                case "Количество полюсов":
+                    if (int.TryParse(parameterValue, out int intBoolValue))
+                    {
+                        familyManager.Set(familyParam, intBoolValue);
+                    }
+                    break;
+
+                case "Material":
+                case "Материал":
+                    Material material = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
+                        .OfClass(typeof(Material))
+                        .Cast<Material>()
+                        .FirstOrDefault(m => m.Name.Equals(parameterValue));
+
+                    if (material != null)
+                    {
+                        ElementId materialId = material.Id;
+
+                        familyManager.Set(familyParam, materialId);
+                    }
+                    break;
+
+#if Revit2020 || Debug2020
+                case "Image":
+                case "Изображение":
+                    string imagePath = parameterValue;
+
+                    FilteredElementCollector collector = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
+                        .OfClass(typeof(ImageType));
+
+                    ImageType imageType = collector
+                        .Cast<ImageType>()
+                        .FirstOrDefault(img => img.Name.Equals(Path.GetFileName(imagePath), StringComparison.OrdinalIgnoreCase));
+
+                    if (imageType != null)
+                    {
+                        familyManager.Set(familyParam, imageType.Id);
+                    }
+                    else
+                    {
+                        ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, imagePath);
+                        familyManager.Set(familyParam, newImageTypeOld.Id);
+                    }
+                    break;
+
+                default:
+                    if (double.TryParse(parameterValue, out double millimetersValue))
+                    {
+                        UnitType unitType = familyParam.Definition.UnitType;
+                        DisplayUnitType displayUnitType = uiapp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(unitType).DisplayUnits;
+
+                        double convertedValue = UnitUtils.ConvertToInternalUnits(millimetersValue, displayUnitType);
+                        familyManager.Set(familyParam, convertedValue);
+                    }
+                    break;
+#endif
+#if Revit2023 || Debug2023
+                case "Image":
+                case "Изображение":
+                    string imagePath = parameterValue;
+
+                    FilteredElementCollector collector = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
+                        .OfClass(typeof(ImageType));
+
+                    ImageType imageType = collector
+                        .Cast<ImageType>()
+                        .FirstOrDefault(img => img.Name.Equals(Path.GetFileName(imagePath), StringComparison.OrdinalIgnoreCase));
+
+                    if (imageType != null)
+                    {
+                        familyManager.Set(familyParam, imageType.Id);
+                    }
+                    else
+                    {
+                        ImageTypeOptions options = new ImageTypeOptions(imagePath, false, ImageTypeSource.Import);
+                        ImageType newImageType = ImageType.Create(uiapp.ActiveUIDocument.Document, options);
+                        familyManager.Set(familyParam, newImageType.Id);
+                    }
+                    break;
+
+                default:
+                    if (double.TryParse(parameterValue, out double millimetersValue))
+                    {
+                        ForgeTypeId forgeTypeId = familyParam.Definition.GetDataType();
+                        FormatOptions formatOptions = uiapp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(forgeTypeId);
+
+                        double convertedValue = UnitUtils.ConvertToInternalUnits(millimetersValue, formatOptions.GetUnitTypeId());
+                        familyManager.Set(familyParam, convertedValue);
+                    }
+                    break;
+#endif
+            }
+        }
+
+        /// <summary>
+        /// Функция проверки введённого значения в поле параметра: 
+        /// "yellow" (пустой параметр), "blue" (невозможно проверить), "green" (проверка пройдена), "red" (проверка не пройдена);
+        /// </summary>
+        public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, string paramTypeName)
+        {
+            string textInField = textBox.Text;
+
+            if (comboBox.SelectedItem == null) return "yellow";
+            if (textBox.Text.ToString().StartsWith("=") || paramTypeName == "Image" || paramTypeName == "Изображение") return "blue";
+
+            switch (paramTypeName)
+            {
+                case "Text":
+                case "Текст":
+                case "MultilineText":
+                case "Многострочный текст":
+                case "URL":
+                    return "green";
+
+                case "Integer":
+                case "Целое":
+                    if (textInField.Contains(",")) return "red";
+                    if (int.TryParse(textInField, out int resultInt))
+                    {
+                        textBox.Text = resultInt.ToString();
+                        return "green";
+                    }
+                    break;
+
+                case "NumberOfPoles":             
+                case "Количество полюсов":
+                    if (int.TryParse(textInField, out int resultIntU) && resultIntU >= 1 && resultIntU <= 3)
+                    {
+                        textBox.Text = resultIntU.ToString();
+                        return "green";
+                    }
+                    textBox.Text = "Необходимо указать: диапазон от 1 до 3";
+                    return "red";
+
+                case "YesNo":
+                case "Да/Нет":
+                    if (textInField == "0" || textInField == "1") return "green";
+                    textBox.Text = "Необходимо указать: ``1`` - да; ``0`` - нет";
+                    return "red";
+
+                case "Material":
+                case "Материал":
+                    var materialNames = new FilteredElementCollector(uiapp.ActiveUIDocument.Document)
+                                        .OfClass(typeof(Material))
+                                        .Cast<Material>()
+                                        .Select(m => m.Name.ToLower())
+                                        .ToList();
+                    return materialNames.Contains(textInField.ToLower()) ? "green" : "red";
+            }
+
+            if (double.TryParse(textInField, out double resultDouble))
+            {
+                return "green";
+            }
+
+            return "red";
+        }
+
+
         ///////////////////////////////////////////////
         //// XAML. Пакетное добавление общих параметров
         private void Button_NewGeneralParam(object sender, RoutedEventArgs e)
@@ -742,7 +747,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     window.ShowDialog();
                 }
                 else{
-                    System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    System.Windows.Forms.MessageBox.Show("Ваш JSON-файл не является файлом преднастроек или повреждён. " +
+                        "Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                 }
             }
         }
