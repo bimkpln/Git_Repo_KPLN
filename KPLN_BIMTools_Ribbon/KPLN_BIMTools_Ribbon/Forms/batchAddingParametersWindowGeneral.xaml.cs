@@ -872,7 +872,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
-#endif
             }          
         }
 
@@ -961,7 +960,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                 }
             }
-#endif
         }
 
         //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
@@ -1238,7 +1236,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                     }
-#endif
                 }
             };
 
@@ -1253,7 +1250,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
-#if Revit2020 || Debug2020
             tbParamValue.GotFocus += (s, ev) =>
             {
                 String textInField = tbParamValue.Text;
@@ -1635,7 +1631,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                     }
                 };
-#endif
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);

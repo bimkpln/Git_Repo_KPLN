@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,6 +25,29 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         public string activeFamilyName;
         public string jsonFileSettingPath;
+
+        // Определение функций-словарей
+        public List<string> CreateTypeInstanceList()
+        {
+            return batchAddingParametersWindowСhoice.CreateTypeInstanceList();
+        }
+
+#if Revit2020 || Debug2020
+        public ParameterType GetParameterTypeFromString(string dataType)
+        {
+            return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
+        }
+#endif
+#if Revit2023 || Debug2023
+        public ForgeTypeId GetParameterTypeFromString(string dataType)
+        {
+            return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
+        }
+        public ForgeTypeId GetParameterGroupFromString(string group)
+        {
+            return batchAddingParametersWindowСhoice.GetParameterGroupFromString(group);
+        }
+#endif
 
         public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
@@ -56,46 +78,74 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        // Словарь Dictionary<string, List<string>> для "Категории параметров" и "Тип данных"
+        // Создание Dictionary<string, List<string>> для "Категории параметров" и "Тип данных"
         static public Dictionary<string, List<string>> CategoryParameterDataTypes = new Dictionary<string, List<string>>
         {
+#if Revit2020 || Debug2020
             { "Общие", new List<string>(){
-                "Текст", "Целое", "Число", "Длина", "Площадь", "Объем (Общие)", "Угол (Общие)", "Уклон", "Денежная единица", "Массовая плотность", "Время", "Скорость (Общие)", "URL", "Материал", "Изображение", "Да/Нет", "Многострочный текст"} },
+                "Текст", "Целое", "Число", "Длина", "Площадь", "Объем (Общие)", "Угол", "Уклон (Общие)", "Денежная единица", "Массовая плотность", "Время", "Скорость (Общие)", "URL", "Материал", 
+                "Изображение", "Да/Нет", "Многострочный текст"} },
             { "Несущие конструкции", new List<string>(){
-                "Усилие", "Распределенная нагрузка по линии", "Распределенная нагрузка", "Момент", "Линейный момент", "Напряжение", "Удельный вес", "Вес", "Масса (Несущие конструкции)", "Масса на единицу площади", "Коэффициент теплового расширения",
-                "Сосредоточенный коэффициент упругости", "Линейный коэффициент упругости", "Коэффициент упругости среды", "Сосредоточенный угловой коэффициент упругости", "Линейный угловой коэффициент упругости", "Смещение/прогиб",
-                "Вращение", "Период", "Частота (Несущие конструкции)", "Пульсация", "Скорость (Несущие конструкции)", "Ускорение", "Энергия (Несущие конструкции)", "Объем арматуры", "Длина армирования", "Армирование по площади", "Армирование по площади на единицу длины", "Интервал арматирования",
-                "Защитный слой арматирования", "Диаметр стержня", "Ширина трещины", "Размеры сечения", "Свойство сечения", "Площадь сечения", "Момент сопротивления сечения", "Момент инерции", "Постоянная перекоса",
-                "Масса на единицу длины (Несущие конструкции)", "Вес на единицу длины", "Площадь поверхности на единицу длины"} },
+                "Усилие", "Распределенная нагрузка по линии", "Распределенная нагрузка", "Момент", "Линейный момент", "Напряжение", "Удельный вес", "Вес", "Масса (Несущие конструкции)", "Масса на единицу площади", 
+                "Коэффициент теплового расширения", "Сосредоточенный коэффициент упругости", "Линейный коэффициент упругости", "Коэффициент упругости среды", "Сосредоточенный угловой коэффициент упругости", 
+                "Линейный угловой коэффициент упругости", "Смещение/прогиб", "Вращение", "Период", "Частота (Несущие конструкции)", "Пульсация", "Скорость (Несущие конструкции)", "Ускорение", "Энергия (Несущие конструкции)", 
+                "Объем арматуры", "Длина армирования", "Армирование по площади", "Армирование по площади на единицу длины", "Интервал арматирования", "Защитный слой арматирования", "Диаметр стержня", "Ширина трещины", 
+                "Размеры сечения", "Свойство сечения", "Площадь сечения", "Момент сопротивления сечения", "Момент инерции", "Постоянная перекоса", "Масса на единицу длины (Несущие конструкции)", "Вес на единицу длины", 
+                "Площадь поверхности на единицу длины"}},
             { "ОВК", new List<string>(){
-                "Плотность (ОВК)", "Трение (ОВК)", "Мощность", "Удельная мощность (ОВК)", "Давление (ОВК)", "Температура (ОВК)", "Разность температур (ОВК)", "Скорость (ОВК)", "Воздушный поток", "Размер воздуховода", "Поперечный разрез", "Теплоприток", "Шероховатость (ОВК)",
-                "Динамическая вязкость (ОВК)", "Плотность воздушного потока", "Холодильная нагрузка", "Отопительная нагрузка", "Холодильная нагрузка на единицу площади", "Отопительная нагрузка на единицу площади", "Холодильная нагрузка на единицу объема",
-                "Отопительная нагрузка на единицу объема", "Воздушный поток на единицу объема", "Воздушный поток, отнесенный к холодильной нагрузке", "Площадь, отнесенная к холодильной нагрузке", "Площадь на единицу отопительной нагрузки", "Уклон (ОВК)",
-                "Коэффициент", "Толщина изоляции воздуховода", "Толщина внутренней изоляции воздуховода" } },
+                "Плотность (ОВК)", "Трение (ОВК)", "Мощность (ОВК)", "Удельная мощность (ОВК)", "Давление (ОВК)", "Температура (ОВК)", "Разность температур (ОВК)", "Скорость (ОВК)", "Воздушный поток", "Размер воздуховода", 
+                "Поперечный разрез", "Теплоприток", "Шероховатость (ОВК)", "Динамическая вязкость (ОВК)", "Плотность воздушного потока", "Холодильная нагрузка", "Отопительная нагрузка", "Холодильная нагрузка на единицу площади", 
+                "Отопительная нагрузка на единицу площади", "Холодильная нагрузка на единицу объема", "Отопительная нагрузка на единицу объема", "Воздушный поток на единицу объема", "Воздушный поток, отнесенный к холодильной нагрузке", 
+                "Площадь, отнесенная к холодильной нагрузке", "Площадь на единицу отопительной нагрузки", "Уклон (ОВК)", "Коэффициент", "Толщина изоляции воздуховода", "Толщина внутренней изоляции воздуховода"}},
             { "Электросети", new List<string>(){
-                "Ток", "Электрический потенциал", "Частота (Электросети)", "Освещенность", "Яркость", "Световой поток", "Сила света", "Эффективность", "Мощность (ElectricalWattage)", "Мощность (ElectricalPower)", "Цветовая температура", "Полная установленная мощность",
-                "Удельная мощность (Электросети)", "Электрическое удельное сопротивление", "Диаметр провода", "Температура (Электросети)", "Разность температур (Электросети)", "Размер кабельного лотка", "Размер короба", "Коэффициент спроса нагрузки", "Количество полюсов", "Классификация нагрузок" } },
+                "Ток", "Электрический потенциал", "Частота (Электросети)", "Освещенность", "Яркость", "Световой поток", "Сила света", "Эффективность", "Мощность (ElectricalWattage)", "Мощность (ElectricalPower)", "Цветовая температура", 
+                "Полная установленная мощность", "Удельная мощность (Электросети)", "Электрическое удельное сопротивление", "Диаметр провода", "Температура (Электросети)", "Разность температур (Электросети)", "Размер кабельного лотка", 
+                "Размер короба", "Коэффициент спроса нагрузки", "Количество полюсов", "Классификация нагрузок"}},
             { "Трубопроводы", new List<string>(){
-                "Плотность (Трубопроводы)", "Расход", "Трение (Трубопроводы)", "Давление (Трубопроводы)", "Температура (Трубопроводы)", "Разность температур (Трубопроводы)", "Скорость (Трубопроводы)", "Динамическая вязкость (Трубопроводы)", "Размер трубы", "Шероховатость (Трубопроводы)",
-                "Объем (Трубопроводы)", "Уклон", "Толщина изоляции трубы", "Размер трубы (PipeSize)", "Размер трубы (PipeDimension)", "Масса (Трубопроводы)", "Масса на единицу длины (Трубопроводы)", "Расход приборов" } },
+                "Плотность (Трубопроводы)", "Расход", "Трение (Трубопроводы)", "Давление (Трубопроводы)", "Температура (Трубопроводы)", "Разность температур (Трубопроводы)", "Скорость (Трубопроводы)", 
+                "Динамическая вязкость (Трубопроводы)", "Размер трубы", "Шероховатость (Трубопроводы)", "Объем (Трубопроводы)", "Уклон (Трубопроводы)", "Толщина изоляции трубы", "Размер трубы (PipeSize)", "Размер трубы (PipeDimension)", 
+                "Масса (Трубопроводы)", "Масса на единицу длины (Трубопроводы)", "Расход приборов"}},
             { "Энергия", new List<string>(){
-                "Энергия (Энергия)", "Коэффициент теплопередачи", "Термостойкость", "Тепловая нагрузка", "Теплопроводность", "Удельная теплоемкость", "Удельная теплоемкость парообразования", "Проницаемость" } }
+                "Энергия (Энергия)", "Коэффициент теплопередачи", "Термостойкость", "Тепловая нагрузка", "Теплопроводность", "Удельная теплоемкость", "Удельная теплоемкость парообразования", "Проницаемость"}}
+#endif
+#if Revit2023 || Debug2023
+            { "Общие", new List<string>(){
+                "Текст", "Целое", "Угол", "Площадь", "Стоимость на единицу площади", "Расстояние", "Длина", "Массовая плотность", "Число", "Угол поворота", "Уклон (Общие)", "Скорость (Общие)", "Время", "Объем (Общие)", 
+                "Денежная единица", "URL", "Материал", "Образец заливки", "Изображение", "Да/Нет", "Многострочный текст"}},
+            { "Электросети", new List<string>() {
+                "Полная установленная мощность", "Полная удельная мощность", "Размер кабельного лотка", "Цветовая температура", "Размер короба", "Норма затрат на электроэнергию", "Норма затрат на энергопотребление", "Ток", 
+                "Коэффициент спроса нагрузки", "Эффективность", "Частота (Электросети)", "Освещенность", "Яркость", "Световой поток", "Сила света", "Электрический потенциал", "Мощность (Электросети)",
+                "Удельная мощность (Электросети)", "Мощность на единицу длины", "Электрическое удельное сопротивление", "Температура (Электросети)", "Перепад температур (Электросети)", 
+                "Активная мощность", "Диаметр провода", "Количество полюсов","Классификация нагрузок"}},
+            { "Энергия", new List<string>() {
+                "Энергия (Энергия)", "Нагревающая способность на единицу площади", "Коэффициент теплопередачи", "Изотермическая влагоемкость", "Проницаемость", "Удельная теплоемкость", "Удельная теплоемкость парообразования", 
+                "Теплопроводность", "Коэффициент температурного градиента для влагоемкости", "Тепловая нагрузка", "Термостойкость"}},
+            { "ОВК", new List<string>() {
+                "Воздушный поток", "Плотность воздушного потока", "Воздушный поток, разделенный на холодильную нагрузку", "Воздушный поток, разделенный на объем", "Угловая скорость", "Площадь, отнесенная к холодильной нагрузке", 
+                "Площадь на единицу отопительной нагрузки", "Холодильная нагрузка", "Холодильная нагрузка на единицу площади", "Холодильная нагрузка, разделенная на объем", "Поперечное сечение", "Плотность (ОВК)", 
+                "Коэффициент температуропроводимости", "Толщина изоляции воздуховода", "Толщина внутренней изоляции воздуховода", "Размер воздуховода", "Коэффициент", "Поток на единицу мощности", "Трение (ОВК)", 
+                "Теплоприток","Отопительная нагрузка", "Отопительная нагрузка на единицу площади", "Отопительная нагрузка, разделенная на объем", "Масса на единицу времени (ОВК)", "Мощность (ОВК)", 
+                "Удельная мощность (ОВК)", "Мощность на единицу потока", "Давление (ОВК)", "Шероховатость (ОВК)", "Уклон (ОВК)", "Температура (ОВК)", "Перепад температур (ОВК)", "Скорость (ОВК)", 
+                "Динамическая вязкость (ОВК)"}},
+            { "Инфраструктура", new List<string>() {
+                "Пикетаж", "Интенрвал пикетов"}},
+            { "Трубопроводы", new List<string>() {
+                "Плотность (Трубопровод)", "Расход", "Трение (Трубопроводы)", "Масса (Трубопроводы)", "Масса на единицу времени (Трубопроводы)", "Величина трубы", "Толщина изоляции трубы", "Масса на единицу длины (Трубопроводы)", 
+                "Размер трубы", "Давление (Трубопроводы)", "Шероховатость (Трубопроводы)", "Уклон (Трубопроводы)", "Температура (Трубопроводы)", "Перепад температур (Трубопроводы)", "Скорость (Трубопроводы)", 
+                "Динамическая вязкость (Трубопроводы)", "Объем (Трубопроводы)"}},
+            { "Несущие конструкции", new List<string>() {
+                "Ускорение", "Распределенная нагрузка", "Коэффициент упругости среды", "Диаметр стержня", "Ширина трещины", "Смещение/прогиб", "Энергия (Несущие конструкции)", "Усилие", "Частота (Несущие конструкции)", 
+                "Линейный коэффициент упругости", "Распределенная нагрузка по линии", "Линейный момент", "Масса (Несущие конструкции)", "Масса на единицу площади", "Масса на единицу длины (Несущие конструкции)", "Момент", 
+                "Момент инерции", "Период", "Сосредоточенный коэффициент упругости", "Пульсация", "Площадь армирования","Армирование по площади на единицу длины", "Защитный слой армирования", "Длина армирования",
+                "Интервал армирования", "Объем арматуры", "Поворот", "Линейный угловой коэффициент упругости", "Сосредоточенный угловой коэффициент упругости", "Площадь сечения", "Размеры сечения", "Момент сопротивления сечения", 
+                "Свойство сечения", "Напряжение", "Площадь поверхности на единицу длины", "Коэффициент теплового расширения", "Удельный вес", "Скорость (Несущие конструкции)", "Постоянная перекоса", "Вес", "Вес на единицу длины"}}
+#endif
         };
-
+ 
         // Регулярное выражение для целых чисел (для кол-во параметров)
         public static bool IsTextAllowed(string text)
         {
             return Regex.IsMatch(text, @"^[0-9]+$");
-        }
-     
-        // Создание List для "Тип/Экземпляр"
-        static public List<string> CreateTypeInstanceList()
-        {
-            List<string> typeInstanceList = new List<string>();
-            typeInstanceList.Add("Тип");
-            typeInstanceList.Add("Экземпляр");
-
-            return typeInstanceList;
         }
 
         // Заполнение оригинального ComboBox "Тип/Экземпляр"
@@ -116,7 +166,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 CB_categoryDataType.Items.Add(categoryDataType);
             }
 
-            CB_categoryDataType.SelectedIndex = 0;
+            CB_categoryDataType.SelectedItem = "Общие";
         }
 
         // Заполнение оригинального ComboBox "Группирование"
@@ -126,7 +176,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 CB_grouping.Items.Add(groupName);
             }
-            CB_grouping.SelectedIndex = 22;
+            CB_grouping.SelectedItem = "Размеры";
         }
 
         // Создание словаря со всеми параметрами указанными в интерфейсе
@@ -135,12 +185,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             var parametersDictionary = new Dictionary<string, List<string>>();
 
             //// Проверка на неверные значения параметров в интерфейсе
+            bool uniqueParameterFieldFound = false;
             string errorValueString = "";
 
             foreach (var child in SP_allPanelParamsFields.Children)
             {
                 if (child is StackPanel panel && panel.Tag?.ToString() == "uniqueParameterField")
                 {
+                    uniqueParameterFieldFound = true;
+
                     foreach (var innerChild in panel.Children)
                     {
                         if (innerChild is System.Windows.Controls.TextBox textBox && textBox.Tag?.ToString() == "invalid")
@@ -152,7 +205,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             }
 
-            if (errorValueString.Contains("Введите имя параметра"))
+            if (!uniqueParameterFieldFound)
+            {
+                System.Windows.Forms.MessageBox.Show($"Нет параметров для добавления.\n"
+                    + $"Исправьте это и повторите попытку.", "Параметров нет",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+
+                return parametersDictionary;
+            }
+            else if (errorValueString.Contains("Введите имя параметра"))
             {
                 System.Windows.Forms.MessageBox.Show($"Не все имена параметров заполнены.\n"
                     + $"Исправьте это и повторите попытку.", "Имена не заполнены",
@@ -258,14 +319,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
          
             return parametersDictionary;
         }
-
-        //// XAML. Поведение оригинальный textBox "Кол-во" - Ввод текста
+     
+        //// XAML. Поведение textBox "Кол-во" - Ввод текста
         private void TB_quantity_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !IsTextAllowed(e.Text);
         }
 
-        //// XAML. Поведение оригинальный textBox "Кол-во" - Потеря фокуса
+        //// XAML. Поведение textBox "Кол-во" - Потеря фокуса
         private void TB_quantity_LostFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -283,27 +344,26 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Кол-во" - Прекращение ввода текста
+        //// XAML. Поведение textBox "Кол-во" - Прекращение ввода текста
         private void TB_quantity_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Space)
                 e.Handled = true;
         }
 
-
-        //// XAML. Поведение оригинальный textBox "Имя параметра" - Получение фокуса
+        //// XAML. Поведение textBox "Имя параметра" - Получение фокуса
         private void TB_paramsName_GotFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
 
-            if (textBox.Text == "Введите имя параметра")
+            if (textBox.Text == "Введите имя параметра" || textBox.Text == "Используется недопустимый символ")
             {
                 textBox.Text = "";
                 textBox.Tag = "invalid";
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Имя параметра" - Потеря фокуса
+        //// XAML. Поведение textBox "Имя параметра" - Потеря фокуса
         private void TB_paramsName_LostFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -314,6 +374,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 textBox.Tag = "invalid";
                 textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
             }
+            else if (textBox.Text.ToString().Contains(";") 
+                || textBox.Text.ToString().Contains("{") || textBox.Text.ToString().Contains("}")
+                || textBox.Text.ToString().Contains("[") || textBox.Text.ToString().Contains("]"))
+            {
+                textBox.Text = "Используется недопустимый символ";
+                textBox.Tag = "invalid";
+                textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+            }
             else
             {
                 textBox.Tag = "valid";
@@ -321,7 +389,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный comboBox "Категория" - Основной обработчик
+        //// XAML. Поведение (!) оригинальный comboBox "Категория" - Основной обработчик
         private void CB_categoryDataType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             CB_dataType.Items.Clear();
@@ -335,7 +403,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             if (CB_categoryDataType.SelectedItem.ToString() == "Общие")
             {
-                CB_dataType.SelectedIndex = 3;
+                CB_dataType.SelectedItem = "Длина";
             }
             else
             {
@@ -343,7 +411,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный comboBox "Тип данных" - Основной обработчик
+        //// XAML. Поведение (!) оригинальный comboBox "Тип данных" - Основной обработчик
         private void CB_dataType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CB_dataType.SelectedItem != null) 
@@ -353,13 +421,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Значение параметра" - Загрузка
-        private void TB_paramValue_Loaded(object sender, RoutedEventArgs e)
-        {
-            TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
-        }
-
-        //// XAML. Поведение оригинальный textBox "Значение параметра" - Получение фокуса
+        //// XAML. Поведение textBox "Значение параметра" - Получение фокуса
         private void TB_paramValue_GotFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -370,7 +432,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Значение параметра" - Потеря фокуса
+        //// XAML. Поведение (!) оригинальный textBox "Значение параметра" - Загрузка
+        private void TB_paramValue_Loaded(object sender, RoutedEventArgs e)
+        {
+            TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
+        }
+
+        //// XAML. Поведение (!) оригинальный textBox "Значение параметра" - Потеря фокуса
         private void TB_paramValue_LostFocus(object sender, RoutedEventArgs e)
         {
             if (TB_paramValue.Text == "")
@@ -384,7 +452,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Подсказка" - Получение фокуса
+        //// XAML. Поведение textBox "Подсказка" - Получение фокуса
         private void TB_comment_GotFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -395,7 +463,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение оригинальный textBox "Подсказка" - Потеря фокуса
+        //// XAML. Поведение textBox "Подсказка" - Потеря фокуса
         private void TB_comment_LostFocus(object sender, RoutedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -411,7 +479,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Удалить оригинальный SP_panelParamFields через кнопку
+        //// XAML. Удалить SP_panelParamFields через кнопку
         private void RemovePanel(object sender, RoutedEventArgs e)
         {
             Button buttonDel = sender as Button;
@@ -499,7 +567,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             System.Windows.Controls.ComboBox cbDataType = new System.Windows.Controls.ComboBox
             {
-                Width = 210,
+                Width = 240,
                 Height = 25,
                 Padding = new Thickness(8, 4, 0, 0),
                 VerticalAlignment = VerticalAlignment.Top
@@ -510,7 +578,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 cbDataType.Items.Add(dataType);
             }
 
-            cbDataType.SelectedIndex = 3;
+            cbDataType.SelectedItem = "Длина";
 
             cbCategoryDataType.SelectionChanged += (s, ev) =>
             {
@@ -525,7 +593,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 if (cbCategoryDataType.SelectedItem.ToString() == "Общие")
                 {
-                    cbDataType.SelectedIndex = 3;
+                    cbDataType.SelectedItem = "Длина";
                 }
                 else
                 {
@@ -535,7 +603,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
             {
-                Width = 340,
+                Width = 310,
                 Height = 25,
                 Padding = new Thickness(8, 4, 0, 0),
                 VerticalAlignment = VerticalAlignment.Top
@@ -545,7 +613,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 cbGrouping.Items.Add(groupName);
             }
-            cbGrouping.SelectedIndex = 22;
+            cbGrouping.SelectedItem = "Размеры";
 
             Button btnRemove = new Button
             {
@@ -597,7 +665,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     cbDataType.ToolTip = cbDataType.SelectedItem.ToString();
                     tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
                 }
-
             };
 
             System.Windows.Controls.TextBox tbComment = new System.Windows.Controls.TextBox
@@ -628,7 +695,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             SP_allPanelParamsFields.Children.Add(newPanel);
         }
 
-
         //// XAML. Добавление параметров в семейство при нажатии на кнопку 
         private void AddParamsInFamilyButton_Click(object sender, RoutedEventArgs e)
         {
@@ -636,8 +702,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             if (allParamSettingsDict.Count == 0)
             {
-                System.Windows.Forms.MessageBox.Show("Для добавления параметров исправьте все ошибки", 
-                    "Предупреждение", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Asterisk);
+                return;
             }
             else
             {
@@ -647,6 +712,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     FamilyManager familyManager = _doc.FamilyManager;
                     Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();
+
+                    bool successfulResult = false;
+                    string problematicParametersLog = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n\n";
 
                     foreach (var kvp in allParamSettingsDict)
                     {                       
@@ -660,13 +728,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         bool isInstance = typeOrInstance.Equals("Экземпляр", StringComparison.OrdinalIgnoreCase);
 
                         string dataType = paramDetails[4]; 
-
-                        BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
-
-                        if (groupParameterDictionary.TryGetValue(paramDetails[5], out BuiltInParameterGroup builtInParameterGroup))
-                        {
-                            grouping = builtInParameterGroup;
-                        }
 
                         string paramValue = paramDetails[6];
                         string comment = paramDetails[7];
@@ -684,192 +745,73 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                             try
                             {
-                                var paramType = GetParameterTypeFromString(dataType);
+#if Revit2020 || Debug2020
+                                BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
+
+                                if (groupParameterDictionary.TryGetValue(paramDetails[5], out BuiltInParameterGroup builtInParameterGroup))
+                                {
+                                    grouping = builtInParameterGroup;
+                                }
+
+                                ParameterType paramType = GetParameterTypeFromString(dataType);
                                 FamilyParameter familyParameter = familyManager.AddParameter(fParamName, grouping, paramType, isInstance);
+#endif
+#if Revit2023 || Debug2023
+                                ForgeTypeId groupType = GetParameterGroupFromString(paramDetails[5]);
+                                ForgeTypeId paramType = GetParameterTypeFromString(dataType);
+
+                                FamilyParameter familyParameter = familyManager.AddParameter(fParamName, groupType, paramType, isInstance);
+#endif
 
                                 if (familyParameter != null)
                                 {
                                     familyManager.SetDescription(familyParameter, comment);
                                 }
+
+                                successfulResult = true;
                             }
-                            catch { }
-                        }
+                            catch 
+                            {
+                                problematicParametersLog += $"Error: КОЛ-ВО: {quantity}. ИМЯ_ПАРАМЕТРА: {paramName}. ЭКЗЕМПЛЯР: {isInstance}. ТИП ДАННЫХ: {dataType}. ГРУППИРОВАНИЕ: {paramDetails[5]}.\n" +
+                                    $"ОПИСАНИЕ ПОДСКАЗК: {comment}\n\n";
+
+                                successfulResult = false;
+                            }
+                        }                       
                     }
 
                     trans.Commit();
+
+                    if (successfulResult)
+                    {
+                        System.Windows.Forms.MessageBox.Show("Все параметры добавлены в семейство", "Успех", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("Параметры были добавлены добавлены в семейство с ошибками.\n" +
+                        "Вы можете сохранить отчёт об ошибках в следующем диалоговом окне.", "Ошибка добавления параметров в семейство",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                        using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
+                        {
+                            saveFileDialog.FileName = $"addParamLogFile_{DateTime.Now:yyyyMMddHHmmss}.txt";
+                            saveFileDialog.InitialDirectory = @"X:\BIM";
+
+                            saveFileDialog.Filter = "Отчёт об ошибках (*.txt)|*.txt";
+
+                            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                            {
+                                string filePath = saveFileDialog.FileName;
+
+                                System.IO.File.WriteAllText(filePath, problematicParametersLog);
+                            }
+                        }
+                    }
                 }
             }
         }
 
-
-
-
-
-#if Revit2020 || Debug2020
-        public ParameterType GetParameterTypeFromString(string dataType)
-        {
-            switch (dataType)
-            {
-                case "Текст": return ParameterType.Text;
-                case "Целое": return ParameterType.Integer;
-                case "Число": return ParameterType.Number;
-                case "Длина": return ParameterType.Length;
-                case "Площадь": return ParameterType.Area;
-                case "Объем (Общие)": return ParameterType.Volume;
-                case "Угол": return ParameterType.Angle;
-                case "Уклон (Общие)": return ParameterType.Slope;
-                case "Денежная единица": return ParameterType.Currency;
-                case "Массовая плотность": return ParameterType.MassDensity;
-                case "Время": return ParameterType.TimeInterval;
-                case "Скорость (Общие)": return ParameterType.Speed;
-                case "URL": return ParameterType.URL;
-                case "Материал": return ParameterType.Material;
-                case "Изображение": return ParameterType.Image;
-                case "Да/Нет": return ParameterType.YesNo;
-                case "Многострочный текст": return ParameterType.MultilineText;
-                case "Усилие": return ParameterType.Force;
-                case "Распределенная нагрузка по линии": return ParameterType.LinearForce;
-                case "Распределенная нагрузка": return ParameterType.AreaForce;
-                case "Момент": return ParameterType.Moment;
-                case "Линейный момент": return ParameterType.LinearMoment;
-                case "Напряжение": return ParameterType.Stress;
-                case "Удельный вес": return ParameterType.UnitWeight;
-                case "Вес": return ParameterType.Weight;
-                case "Масса (Несущие конструкции)": return ParameterType.Mass;
-                case "Масса на единицу площади": return ParameterType.MassPerUnitArea;
-                case "Коэффициент теплового расширения": return ParameterType.ThermalExpansion;
-                case "Сосредоточенный коэффициент упругости": return ParameterType.ForcePerLength;
-                case "Линейный коэффициент упругости": return ParameterType.LinearForcePerLength;
-                case "Коэффициент упругости среды": return ParameterType.AreaForcePerLength;
-                case "Сосредоточенный угловой коэффициент упругости": return ParameterType.ForceLengthPerAngle;
-                case "Линейный угловой коэффициент упругости": return ParameterType.LinearForceLengthPerAngle;
-                case "Смещение/прогиб": return ParameterType.DisplacementDeflection;
-                case "Вращение": return ParameterType.Rotation;
-                case "Период": return ParameterType.Period;
-                case "Частота (Несущие конструкции)": return ParameterType.StructuralFrequency;
-                case "Пульсация": return ParameterType.Pulsation;
-                case "Скорость (Несущие конструкции)": return ParameterType.StructuralVelocity;
-                case "Ускорение": return ParameterType.Acceleration;
-                case "Энергия (Несущие конструкции)": return ParameterType.Energy;
-                case "Объем арматуры": return ParameterType.ReinforcementVolume;
-                case "Длина армирования": return ParameterType.ReinforcementLength;
-                case "Армирование по площади": return ParameterType.ReinforcementArea;
-                case "Армирование по площади на единицу длины": return ParameterType.ReinforcementAreaPerUnitLength;
-                case "Интервал арматирования": return ParameterType.ReinforcementSpacing;
-                case "Защитный слой арматирования": return ParameterType.ReinforcementCover;
-                case "Диаметр стержня": return ParameterType.BarDiameter;
-                case "Ширина трещины": return ParameterType.CrackWidth;
-                case "Размеры сечения": return ParameterType.SectionDimension;
-                case "Свойство сечения": return ParameterType.SectionProperty;
-                case "Площадь сечения": return ParameterType.SectionArea;
-                case "Момент сопротивления сечения": return ParameterType.SectionModulus;
-                case "Момент инерции": return ParameterType.MomentOfInertia;
-                case "Постоянная перекоса": return ParameterType.WarpingConstant;
-                case "Масса на единицу длины (Несущие конструкции)": return ParameterType.MassPerUnitLength;
-                case "Вес на единицу длины": return ParameterType.WeightPerUnitLength;
-                case "Площадь поверхности на единицу длины": return ParameterType.SurfaceArea;
-                case "Плотность (ОВК)": return ParameterType.HVACDensity;
-                case "Трение (ОВК)": return ParameterType.HVACFriction;
-                case "Мощность": return ParameterType.HVACPower;
-                case "Удельная мощность (ОВК)": return ParameterType.HVACPowerDensity;
-                case "Давление (ОВК)": return ParameterType.HVACPressure;
-                case "Температура (ОВК)": return ParameterType.HVACTemperature;
-                case "Разность температур (ОВК)": return ParameterType.HVACTemperatureDifference;
-                case "Скорость (ОВК)": return ParameterType.HVACVelocity;
-                case "Воздушный поток": return ParameterType.HVACAirflow;
-                case "Размер воздуховода": return ParameterType.HVACDuctSize;
-                case "Поперечный разрез": return ParameterType.HVACCrossSection;
-                case "Теплоприток": return ParameterType.HVACHeatGain;
-                case "Шероховатость (ОВК)": return ParameterType.HVACRoughness;
-                case "Динамическая вязкость (ОВК)": return ParameterType.HVACViscosity;
-                case "Плотность воздушного потока": return ParameterType.HVACAirflowDensity;
-                case "Холодильная нагрузка": return ParameterType.HVACCoolingLoad;
-                case "Отопительная нагрузка": return ParameterType.HVACHeatingLoad;
-                case "Холодильная нагрузка на единицу площади": return ParameterType.HVACCoolingLoadDividedByArea;
-                case "Отопительная нагрузка на единицу площади": return ParameterType.HVACHeatingLoadDividedByArea;
-                case "Холодильная нагрузка на единицу объема": return ParameterType.HVACCoolingLoadDividedByVolume;
-                case "Отопительная нагрузка на единицу объема": return ParameterType.HVACHeatingLoadDividedByVolume;
-                case "Воздушный поток на единицу объема": return ParameterType.HVACAirflowDividedByVolume;
-                case "Воздушный поток, отнесенный к холодильной нагрузке": return ParameterType.HVACAirflowDividedByCoolingLoad;
-                case "Площадь, отнесенная к холодильной нагрузке": return ParameterType.HVACAreaDividedByCoolingLoad;
-                case "Площадь на единицу отопительной нагрузки": return ParameterType.HVACAreaDividedByHeatingLoad;
-                case "Уклон (ОВК)": return ParameterType.HVACSlope;
-                case "Коэффициент": return ParameterType.HVACFactor;
-                case "Толщина изоляции воздуховода": return ParameterType.HVACDuctInsulationThickness;
-                case "Толщина внутренней изоляции воздуховода": return ParameterType.HVACDuctLiningThickness;
-                case "Ток": return ParameterType.ElectricalCurrent;
-                case "Электрический потенциал": return ParameterType.ElectricalPotential;
-                case "Частота (Электросети)": return ParameterType.ElectricalFrequency;
-                case "Освещенность": return ParameterType.ElectricalIlluminance;
-                case "Яркость": return ParameterType.ElectricalLuminance;
-                case "Световой поток": return ParameterType.ElectricalLuminousFlux;
-                case "Сила света": return ParameterType.ElectricalLuminousIntensity;
-                case "Эффективность": return ParameterType.ElectricalEfficacy;
-                case "Мощность (ElectricalWattage)": return ParameterType.ElectricalWattage;
-                case "Мощность (ElectricalPower)": return ParameterType.ElectricalPower;
-                case "Цветовая температура": return ParameterType.ColorTemperature;
-                case "Полная установленная мощность": return ParameterType.ElectricalApparentPower;
-                case "Удельная мощность (Электросети)": return ParameterType.ElectricalPowerDensity;
-                case "Электрическое удельное сопротивление": return ParameterType.ElectricalResistivity;
-                case "Диаметр провода": return ParameterType.WireSize;
-                case "Температура (Электросети)": return ParameterType.ElectricalTemperature;
-                case "Разность температур (Электросети)": return ParameterType.ElectricalTemperatureDifference;
-                case "Размер кабельного лотка": return ParameterType.ElectricalCableTraySize;
-                case "Размер короба": return ParameterType.ElectricalConduitSize; 
-                case "Коэффициент спроса нагрузки": return ParameterType.ElectricalDemandFactor;
-                case "Количество полюсов": return ParameterType.NumberOfPoles;
-                case "Классификация нагрузок": return ParameterType.LoadClassification;
-                case "Плотность (Трубопроводы)": return ParameterType.PipingDensity;
-                case "Расход": return ParameterType.PipingFlow;
-                case "Трение (Трубопроводы)": return ParameterType.PipingFriction;
-                case "Давление (Трубопроводы)": return ParameterType.PipingPressure;
-                case "Температура (Трубопроводы)": return ParameterType.PipingTemperature;
-                case "Разность температур (Трубопроводы)": return ParameterType.PipingTemperatureDifference;
-                case "Скорость (Трубопроводы)": return ParameterType.PipingVelocity;
-                case "Динамическая вязкость (Трубопроводы)": return ParameterType.PipingViscosity;
-                case "Размер трубы (PipeSize)": return ParameterType.PipeSize;
-                case "Размер трубы (PipeDimension)": return ParameterType.PipeDimension;
-                case "Шероховатость (Трубопроводы)": return ParameterType.PipingRoughness;
-                case "Объем (Трубопроводы)": return ParameterType.PipingVolume;
-                case "Уклон (Трубопроводы)": return ParameterType.PipingSlope;
-                case "Толщина изоляции трубы": return ParameterType.PipeInsulationThickness;
-                case "Масса (Трубопроводы)": return ParameterType.PipeMass;
-                case "Масса на единицу длины (Трубопроводы)": return ParameterType.PipeMassPerUnitLength;
-                case "Расход приборов": return ParameterType.FixtureUnit;
-                case "Энергия (Энергия)": return ParameterType.HVACEnergy;
-                case "Коэффициент теплопередачи": return ParameterType.HVACCoefficientOfHeatTransfer;
-                case "Термостойкость": return ParameterType.HVACThermalResistance;
-                case "Тепловая нагрузка": return ParameterType.HVACThermalMass;
-                case "Теплопроводность": return ParameterType.HVACThermalConductivity;
-                case "Удельная теплоемкость": return ParameterType.HVACSpecificHeat;
-                case "Удельная теплоемкость парообразования": return ParameterType.HVACSpecificHeatOfVaporization;
-                case "Проницаемость": return ParameterType.HVACPermeability;
-                default: return ParameterType.Text;
-            }
-        }
-#endif
-#if Revit2023 || Debug2023
-        public Category GetParameterTypeFromString(string dataType)
-        {
-            switch (dataType)
-            { 
-                default: return null;
-            }
-        }
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-                //// XAML. Сохранение параметров в JSON-файл при нажатии на кнопку 
+        //// XAML. Сохранение параметров в JSON-файл при нажатии на кнопку 
         private void SaveParamFileSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             var paramSettingsDict = CreateInterfaceParamDict();
@@ -894,12 +836,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     string filePath = saveFileDialog.FileName;
 
                     var parameterList = new List<Dictionary<string, string>>();
-
+                   
                     foreach (var entry in paramSettingsDict)
                     {
                         var parameterEntry = new Dictionary<string, string>
                         {
-                            { "NE", entry.Key },
+                            { $"NE", entry.Key },
                             { "quantity", entry.Value[0] },
                             { "parameterName", entry.Value[1] },
                             { "instance", entry.Value[2] },
@@ -925,7 +867,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        // Формирование словаря с параметрами из JSON-файла преднастроек
+        // JSON. Формирование словаря с параметрами из файла преднастроек
         public Dictionary<string, List<string>> ParsingDataFromJsonToInterfaceDictionary(string jsonFileSettingPath)
         {
             string jsonData;
@@ -960,10 +902,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return newParamList;
         }
 
-        //// Добавление новой панели параметров uniqueParameterField из JSON
+        //// JSON. Добавление новой панели параметров uniqueParameterField из файла преднастроек
         private void AddPanelParamFieldsJson(Dictionary<string, List<string>> allParamInInterfaceFromJsonDict)
         {
             StackPanel stackPanel = this.FindName("SP_panelParamFields") as StackPanel;
+            bool notSupportedVersion = false;
 
             if (stackPanel != null)
             {
@@ -1042,41 +985,23 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 System.Windows.Controls.ComboBox cbDataType = new System.Windows.Controls.ComboBox
                 {
-                    Width = 210,
+                    Width = 240,
                     Height = 25,
                     Padding = new Thickness(8, 4, 0, 0),
                     VerticalAlignment = VerticalAlignment.Top
                 };
 
-                foreach (var dataType in CategoryParameterDataTypes[allParamInInterfaceFromJsonList[3]])
+                if (CategoryParameterDataTypes.ContainsKey(allParamInInterfaceFromJsonList[3]))
                 {
-                    cbDataType.Items.Add(dataType);
-                }
-
-                cbCategoryDataType.SelectionChanged += (s, ev) =>
-                {
-                    cbDataType.Items.Clear();
-
-                    string selectcategoryDataType = cbCategoryDataType.SelectedItem.ToString();
-
-                    foreach (var dataType in CategoryParameterDataTypes[selectcategoryDataType])
+                    foreach (var dataType in CategoryParameterDataTypes[allParamInInterfaceFromJsonList[3]])
                     {
                         cbDataType.Items.Add(dataType);
                     }
-
-                    if (cbCategoryDataType.SelectedItem.ToString() == "Общие")
-                    {
-                        cbDataType.SelectedIndex = 3;
-                    }
-                    else
-                    {
-                        cbDataType.SelectedIndex = 0;
-                    }
-                };
+                }
 
                 System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
                 {
-                    Width = 340,
+                    Width = 310,
                     Height = 25,
                     Padding = new Thickness(8, 4, 0, 0),
                     VerticalAlignment = VerticalAlignment.Top
@@ -1108,6 +1033,27 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     VerticalAlignment = VerticalAlignment.Bottom,
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)),
                     TextWrapping = TextWrapping.Wrap
+                };
+
+                cbCategoryDataType.SelectionChanged += (s, ev) =>
+                {
+                    cbDataType.Items.Clear();
+
+                    string selectcategoryDataType = cbCategoryDataType.SelectedItem.ToString();
+
+                    foreach (var dataType in CategoryParameterDataTypes[selectcategoryDataType])
+                    {
+                        cbDataType.Items.Add(dataType);
+                    }
+
+                    if (cbCategoryDataType.SelectedItem.ToString() == "Общие")
+                    {
+                        cbDataType.SelectedItem = "Длина";
+                    }
+                    else
+                    {
+                        cbDataType.SelectedIndex = 0;                      
+                    }
                 };
 
                 tbParamValue.GotFocus += TB_paramValue_GotFocus;
@@ -1156,7 +1102,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 cbDataType.SelectedItem = allParamInInterfaceFromJsonList[4];
                 cbGrouping.SelectedItem = allParamInInterfaceFromJsonList[5];
 
-                if (allParamInInterfaceFromJsonList[6] == "None")
+                if (cbDataType.SelectedItem == null)
+                {
+                    tbParamValue.Text = "Данный тип данных не поддерживается текущей версией Revit";
+                }
+                else if (allParamInInterfaceFromJsonList[6] == "None")
                 {
                     tbParamValue.Text = $"При необходимости, вы можете указать значение параметра [{cbDataType.SelectedItem.ToString()}]";
                 }
@@ -1187,6 +1137,35 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 newPanel.Children.Add(tbComment);
 
                 SP_allPanelParamsFields.Children.Add(newPanel);
+
+                if (cbCategoryDataType.SelectedItem == null || cbDataType.SelectedItem == null || cbGrouping.SelectedItem == null)
+                {
+                    notSupportedVersion = true;
+
+                    tbQuantity.IsEnabled = false;
+                    tbQuantity.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    tbParamsName.IsEnabled = false;
+                    tbParamsName.Tag = "invalid";
+                    tbParamsName.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    cbTypeInstance.IsEnabled = false;
+                    cbCategoryDataType.IsEnabled = false;
+                    cbDataType.IsEnabled = false;
+                    cbGrouping.IsEnabled = false;
+                    tbParamValue.IsEnabled = false;
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    tbComment.IsEnabled = false;
+                    tbComment.Text = "ОШИБКА: Преднастройка для данного параметра использовала атрибуты недоступные в данной версии Revit.\n" +
+                        "Чтобы продолжить - вы должны удалить данный параметр.";
+                    tbComment.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                }
+            }
+
+            if (notSupportedVersion) 
+            {
+                System.Windows.Forms.MessageBox.Show("Данная версия Revit не поддерживает некоторые параметры из выбранного файла конфигураций.\n" +
+                    "Поля с параметрами, неподдерживаемыми данной версией Revit, остались незаполненые.\n" +
+                    "Крайне не рекомендуется продолжать работу плагина с этим файлом конфигураций.", 
+                    "Ошибка версии Revit", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
             }
         }
     }
