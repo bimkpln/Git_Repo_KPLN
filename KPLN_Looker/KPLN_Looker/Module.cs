@@ -269,21 +269,6 @@ namespace KPLN_Looker
                 && (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
                 return false;
 
-
-            //// Глобальный отлов по пути семейства (если оно задано).
-            //if (!string.IsNullOrEmpty(familyPath)
-            //&& (familyPath.StartsWith("X:\\BIM") || familyPath.Contains("KPLN_Loader")))
-            //{
-            //    bool docCheck = false;
-            //    // Уточнение для ЛОКАЛЬНЫХ проектов
-            //    if (doc.Title.Contains("СЕТ_1") &&
-            //        !(familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-            //        docCheck = true;
-
-            //    if (!docCheck)
-            //        return false;
-            //}
-
             #region Игнорирую семейства, которые могут редактировать проектировщики
             // Отлов семейств марок (могут разрабатывать все)
             if (bic.Equals(BuiltInCategory.OST_ProfileFamilies)
@@ -302,20 +287,20 @@ namespace KPLN_Looker
                 && !familyName.ToLower().Contains("жук"))
                 return false;
 
-            // Отлов семейств лестничных маршей и площадок, которые по форме зависят от проектов (могут разрабатывать все)
-            if (bic.Equals(BuiltInCategory.OST_GenericModel)
-                && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
+            // Отлов семейств по категории
+            if (
+                // Лестничные марши и площадки, которые по форме зависят от проектов (могут разрабатывать все)
+                (bic.Equals(BuiltInCategory.OST_GenericModel) && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
+                // Семейства ограждений (со всеми вложенными эл-тами), которые по форме зависят от проектов (могут разрабатывать все)
+                || (bic.Equals(BuiltInCategory.OST_StairsRailing) || bic.Equals(BuiltInCategory.OST_StairsRailingBaluster))
+                // Семейства соед. Деталей каб. Лотков производителей: Ostec, Dkc
+                || (bic.Equals(BuiltInCategory.OST_CableTrayFitting) && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc"))))
                 return false;
 
             // Отлов семейств ферм, которые по форме зависят от проектов (могут разрабатывать КР)
             if ((DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM")
                  || DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР"))
                 && bic.Equals(BuiltInCategory.OST_Truss))
-                return false;
-
-            // Отлов семейств соед. Деталей каб. Лотков производителей: Ostec, Dkc
-            if (bic.Equals(BuiltInCategory.OST_CableTrayFitting)
-                && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc")))
                 return false;
             #endregion
 
