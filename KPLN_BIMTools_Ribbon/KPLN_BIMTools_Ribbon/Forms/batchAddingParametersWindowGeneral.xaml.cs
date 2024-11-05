@@ -27,13 +27,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         public string SPFPath;
         public Dictionary<String, List<ExternalDefinition>> groupAndParametersFromSPFDict = new Dictionary<String, List<ExternalDefinition>>();
-        List<string> allParamNameList = new List<string>();
+        List<string> allParamNameListForSearchField = new List<string>();
+
+        // Определение функций-словарей
+        public List<string> CreateTypeInstanceList()
+        {
+            return batchAddingParametersWindowСhoice.CreateTypeInstanceList();
+        }
 
         public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
-
 
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
@@ -45,6 +50,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
             return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramTypeName);
         }
+
 #if Revit2023 || Debug2023
         public string GetParamTypeName(ExternalDefinition def, ForgeTypeId value)
         {
@@ -52,6 +58,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return choiceWindow.GetParamTypeName(def, value);
         }
 #endif
+
 
         public batchAddingParametersWindowGeneral(UIApplication uiapp, string activeFamilyName, string jsonFileSettingPath)
         {
@@ -62,119 +69,58 @@ namespace KPLN_BIMTools_Ribbon.Forms
             _doc = uiapp.ActiveUIDocument?.Document;
 
             this.activeFamilyName = activeFamilyName;
-            this.jsonFileSettingPath = jsonFileSettingPath;
-
             TB_familyName.Text = activeFamilyName;
 
-            FillingComboBoxTypeInstance();
-            FillingComboBoxGroupingName();
-
- 
+            this.jsonFileSettingPath = jsonFileSettingPath;
+           
             if (!string.IsNullOrEmpty(jsonFileSettingPath))
             {
-                StackPanel parentContainer = (StackPanel)SP_panelParamFields.Parent;
-                parentContainer.Children.Remove(SP_panelParamFields);
-
-                Dictionary<string, List<string>> allParamInInterfaceFromJsonDict = ParsingDataFromJsonToSPF(jsonFileSettingPath);
-
+                Dictionary<string, List<string>> allParamInInterfaceFromJsonDict = ParsingDataFromJsonToInterfaceDictionary(jsonFileSettingPath);
                 AddPanelParamFieldsJson(allParamInInterfaceFromJsonDict);
+                jsonFileSettingPath = "";
             }
             else
             {
+                FillingComboBoxTypeInstance();
+                FillingComboBoxGroupingName();
+
                 SPFPath = revitApp.SharedParametersFilename;
-
                 HandlerGeneralParametersFile(SPFPath);
-
                 TB_filePath.Text = SPFPath;
-                SP_panelParamFields.ToolTip = $"ФОП: {SPFPath}";
-                CB_paramsGroup.Tag = SPFPath;
+
+                SP_panelParamFields.ToolTip = $"ФОП: {SPFPath}";               
                 CB_paramsGroup.ToolTip = $"ФОП: {SPFPath}";
+                CB_paramsGroup.Tag = SPFPath;               
             }         
         }
 
-        // Создание List всех параметров из ФОП
-        static public List<string> CreateallParamNameList(Dictionary<String, List<ExternalDefinition>> groupAndParametersFromSPFDict)
-        {
-            List<string> allParamNameList = new List<string>();
-
-            foreach (var kvp in groupAndParametersFromSPFDict)
-            {
-                foreach (var param in kvp.Value)
-                {
-                    allParamNameList.Add(param.Name);
-                }
-            }
-
-            allParamNameList.Sort();
-
-            return allParamNameList;
-        }
-
-        // Создание List для "Тип/Экземпляр"
-        static public List<string> CreateTypeInstanceList()
-        {
-            List<string> typeInstanceList = new List<string>();
-            typeInstanceList.Add("Тип");
-            typeInstanceList.Add("Экземпляр");
-
-            return typeInstanceList;
-        }
-
-        // Заполнение оригинального ComboBox "Тип/Экземпляр"
-        public void FillingComboBoxTypeInstance()
-        {
-            foreach (string key in CreateTypeInstanceList())
-            {
-                CB_typeInstance.Items.Add(key);
-            }
-        }
-      
-        // Заполнение оригинального ComboBox "Группирование"
-        public void FillingComboBoxGroupingName()
-        {
-            foreach (string groupName in CreateGroupingDictionary().Keys)
-            {
-                CB_grouping.Items.Add(groupName);
-            }
-        }
-
-        // Формирование словаря с параметрами из JSON-файла преднастроек
-        public Dictionary<string, List<string>> ParsingDataFromJsonToSPF(string jsonFileSettingPath)
-        {
-            string jsonData;
-
-            using (StreamReader reader = new StreamReader(jsonFileSettingPath))
-            {
-                jsonData = reader.ReadToEnd();
-            }
-
-            var paramListFromJson = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(jsonData);
-            var newParamList = new Dictionary<string, List<string>>();
-
-            foreach (var entry in paramListFromJson)
-            {
-                string nameParameter = entry["NE"];
-
-                if (!newParamList.ContainsKey(nameParameter))
-                {
-                    newParamList[nameParameter] = new List<string>();
-                }
-
-                newParamList[nameParameter].Add(entry["pathFile"]);
-                newParamList[nameParameter].Add(entry["groupParameter"]);
-                newParamList[nameParameter].Add(entry["nameParameter"]);
-                newParamList[nameParameter].Add(entry["instance"]);
-                newParamList[nameParameter].Add(entry["grouping"]);
-                newParamList[nameParameter].Add(entry["parameterValue"]);
-                newParamList[nameParameter].Add(entry["parameterValueDataType"]);
-            }
-
-            return newParamList;
-        }
-
-        // Обработчик ФОПа; 
+        // Открытие ФОП и формирование Dictionary<String, List<ExternalDefinition>> -> List<string> параметров; 
         public void HandlerGeneralParametersFile(string filePath)
         {
+            // Блокировка значений "Группа" и "Параметр" при смене ФОП
+            foreach (var stackPanel in SP_allPanelParamsFields.Children.OfType<StackPanel>())
+            {
+                if (stackPanel.Tag?.ToString() == "uniqueParameterField")
+                {
+                    int count = 0;
+
+                    foreach (var comboBox in stackPanel.Children.OfType<System.Windows.Controls.ComboBox>())
+                    {
+                        if (count < 2 && comboBox.SelectedItem != null)
+                        {
+                            comboBox.Foreground = Brushes.Gray;
+                            comboBox.IsEnabled = false;
+                            count++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Основной обработчик ФОП
             groupAndParametersFromSPFDict.Clear();
             revitApp.SharedParametersFilename = SPFPath;
 
@@ -204,42 +150,177 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     groupAndParametersFromSPFDict[group.Name] = parametersList;
                 }
+
+                allParamNameListForSearchField = CreateAllParamNameListForSearchField(groupAndParametersFromSPFDict);
+
+                foreach (var key in groupAndParametersFromSPFDict.Keys)
+                {
+                    CB_paramsGroup.Items.Add(key);
+                }
+
+                foreach (var param in allParamNameListForSearchField)
+                {
+                    CB_paramsName.Items.Add(param);
+                }
             }
             catch (Exception)
             {
+                TB_filePath.Text = "";
+
                 System.Windows.Forms.MessageBox.Show($"{SPFPath}\n" +
                         "Пожалуйста, выберете другой ФОП.", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
 
-                SPFPath = "";
-                TB_filePath.Text = SPFPath;
-
                 return;
             }
+        }
 
-            allParamNameList = CreateallParamNameList(groupAndParametersFromSPFDict);
+        // Создание List<string> всех параметров из ФОП для ComboBox с поиском
+        static public List<string> CreateAllParamNameListForSearchField(Dictionary<String, List<ExternalDefinition>> groupAndParametersFromSPFDict)
+        {
+            List<string> allParamNameList = new List<string>();
 
-            foreach (var key in groupAndParametersFromSPFDict.Keys)
+            foreach (var kvp in groupAndParametersFromSPFDict)
             {
-                CB_paramsGroup.Items.Add(key);
+                foreach (var param in kvp.Value)
+                {
+                    allParamNameList.Add(param.Name);
+                }
             }
 
-            foreach (var param in allParamNameList)
+            allParamNameList.Sort();
+
+            return allParamNameList;
+        }
+
+        // Заполнение оригинального ComboBox "Тип/Экземпляр"
+        public void FillingComboBoxTypeInstance()
+        {
+            foreach (string key in CreateTypeInstanceList())
             {
-                CB_paramsName.Items.Add(param);
+                CB_typeInstance.Items.Add(key);
             }
+
+            CB_typeInstance.SelectedItem = "Тип";
+        }
+      
+        // Заполнение оригинального ComboBox "Группирование"
+        public void FillingComboBoxGroupingName()
+        {
+            foreach (string groupName in CreateGroupingDictionary().Keys)
+            {
+                CB_grouping.Items.Add(groupName);
+            }
+
+            CB_grouping.SelectedItem = "Прочее";
         }
 
         // Создание словаря со всеми параметрами указанными в интерфейсе
         public Dictionary<string, List<string>> CreateInterfaceParamDict()
         {
+            ClearingIncorrectlyFilledFieldsParams();
 
-            Dictionary<string, List<string>> interfaceParamDict = new Dictionary<string, List<string>>();
+            Dictionary<string, List<string>> parametersDictionary = new Dictionary<string, List<string>>();
 
-            foreach (var stackPanel in FindVisualChildren<StackPanel>(this))
+            //// Проверка наличие хоть одного поля ComboBox внутри #uniqueParameterField
+            if (!SP_allPanelParamsFields.Children.OfType<FrameworkElement>().Any(child => child.Tag?.ToString() == "uniqueParameterField"))
+            {
+                System.Windows.Forms.MessageBox.Show($"Нет параметров для добавления.\n"
+                    + $"Исправьте это и повторите попытку.", "Параметров нет",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+
+                return parametersDictionary;
+            }
+
+            //// Проверка на дубликаты параметров в интерфейсе
+            List<string> TextBoxValues = new List<string>();
+            List<string> rTextBoxValues = new List<string>();
+
+            bool endCreateDict = false;
+
+            var allPanels = SP_allPanelParamsFields.Children.OfType<StackPanel>().Where(panel => panel.Tag?.ToString() == "uniqueParameterField");
+
+            foreach (var panel in allPanels)
+            {
+                if (panel.Children.Count > 1 && panel.Children[1] is System.Windows.Controls.ComboBox comboBox && comboBox.SelectedItem != null)
+                {
+                    string value = comboBox.SelectedItem.ToString();
+
+                    if (TextBoxValues.Contains(value) && !rTextBoxValues.Contains(value))
+                    {
+                        rTextBoxValues.Add(value);
+                    }
+                    else
+                    {
+                        TextBoxValues.Add(value);
+                    }
+                }
+            }
+
+            if (rTextBoxValues.Count > 0)
+            {
+                string duplicatesValues = "";
+
+                foreach (string value in rTextBoxValues)
+                {
+                    duplicatesValues += $"{value}\n";
+                }
+
+                System.Windows.Forms.MessageBox.Show($"Вы пытаетесь добавить одинаковые параметры:\n" +
+                        $"{duplicatesValues}" +
+                        $"Исправьте это и повторите попытку.", "Одинаковые параметры",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                endCreateDict = true;
+            }
+
+            //// Проверка заполнености всех полей ComboBox
+            if (!CheckingFillingAllComboBoxes())
+            {
+                System.Windows.Forms.MessageBox.Show($"Не все значения параметров заполнены.\n"
+                    + $"Исправьте это и повторите попытку.", "Не все параметры заполнены",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                endCreateDict = true;
+            }
+
+            //// Проверка наличие правильно заполненого поля TextBox "Значение параметра"
+            var uniquePanels = SP_allPanelParamsFields.Children.OfType<StackPanel>()
+                .Where(sp => sp.Tag != null && sp.Tag.ToString() == "uniqueParameterField");
+
+            string gParamName = "";
+
+            foreach (var panel in uniquePanels)
+            {
+                var textBox = panel.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+
+                if (textBox != null && textBox.Tag != null && textBox.Tag.ToString() == "invalid")
+                {
+                    var comboBoxes = panel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
+                    gParamName += $"{comboBoxes[0].SelectedItem?.ToString()} - {comboBoxes[1].SelectedItem?.ToString()}\n";                   
+                }
+            }
+
+            if (gParamName.Contains("-"))
+            {
+                System.Windows.Forms.MessageBox.Show($"Неправильно заполнено значение параметра:\n" +
+                        $"{gParamName}" +
+                        $"Исправьте это и повторите попытку.", "Неправильно заполнено значение параметра",
+                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                endCreateDict = true;
+            }
+
+            if (endCreateDict)
+            {
+                return parametersDictionary;
+            }
+
+            //// Сбор данных с интерфейса для словаря
+            foreach (var stackPanel in SP_allPanelParamsFields.Children.OfType<StackPanel>())
             {
                 if (stackPanel.Tag != null && stackPanel.Tag.ToString() == "uniqueParameterField")
                 {
-                    int stackPanelIndex = interfaceParamDict.Count + 1;
+                    int stackPanelIndex = parametersDictionary.Count + 1;
                     string stackPanelKey = $"ParamFromSPFAdd-{stackPanelIndex}";
 
                     var comboBoxes = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
@@ -261,334 +342,26 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             string textBoxValue = textBox.Text;
 
-                            if (textBoxValue == "" || textBoxValue.Contains("При необходимости, вы можете указать значение параметра") || textBoxValue.Contains("Необходимо указать:") || textBoxValue.Contains("Нельзя добавить значение в данный параметр"))
+                            if (textBoxValue == "" || textBoxValue.Contains("При необходимости, вы можете указать значение параметра") 
+                                || textBoxValue.Contains("Необходимо указать:") 
+                                || textBoxValue.Contains("Нельзя добавить значение в данный параметр"))
                             {
                                 contentsOfDataFields.Add("None");
                                 contentsOfDataFields.Add(comboBoxes[1].Tag?.ToString() ?? "NoneType");
                             }
                             else
                             {
-                                contentsOfDataFields.Add(textBoxValue);          
+                                contentsOfDataFields.Add(textBoxValue);
                                 contentsOfDataFields.Add(comboBoxes[1].Tag?.ToString() ?? "NoneType");
                             }
                         }
 
-                        interfaceParamDict.Add(stackPanelKey, contentsOfDataFields);
+                        parametersDictionary.Add(stackPanelKey, contentsOfDataFields);
                     }
                 }
             }
 
-            // Проверка на дубликаты параметров в интерфейсе
-            List<string> duplicateValues = null;
-
-            foreach (var firstEntry in interfaceParamDict)
-            {
-                foreach (var secondEntry in interfaceParamDict)
-                {
-                    if (firstEntry.Key != secondEntry.Key)
-                    {
-                        if (firstEntry.Value.Count >= 3 && secondEntry.Value.Count >= 3 &&
-                            firstEntry.Value[1] == secondEntry.Value[1] &&
-                            firstEntry.Value[2] == secondEntry.Value[2])
-                        {
-                            duplicateValues = new List<string> { firstEntry.Value[1], firstEntry.Value[2] };
-                            break;
-                        }
-                    }
-                }
-                if (duplicateValues != null)
-                {
-                    break;
-                }
-            }
-
-            if (duplicateValues != null)
-            {
-                System.Windows.Forms.MessageBox.Show("Вы пытаетесь добавить одинаковые параметры:\n" +
-                    $"``{duplicateValues[0]} - {duplicateValues[1]}``\n" +
-                    $"Исправьте ошибку и повторите попытку.", "Ошибка добавления параметров.",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-
-                interfaceParamDict.Clear();
-            }
-
-            return interfaceParamDict;
-        }
-
-        // Вспомогательный метод для поиска элементов визуального дерева
-        public static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-        {
-            if (depObj != null)
-            {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-                {
-                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                    if (child != null && child is T)
-                    {
-                        yield return (T)child;
-                    }
-
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                    {
-                        yield return childOfChild;
-                    }
-                }
-            }
-        }
-      
-        // Добавление параметров в семейство
-        public void AddParametersToFamily(Document _doc, string activeFamilyName, Dictionary<string, List<string>> allParametersForAddDict)
-        {
-            string logFile = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n";
-            bool starusAddParametersToFamily = false;
-
-            Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();           
-
-            using (Transaction trans = new Transaction(_doc, "KPLN. Пакетное добавление параметров в семейство"))
-            {
-                trans.Start();
-
-                foreach (var kvp in allParametersForAddDict)
-                {
-                    List<string> paramDetails = kvp.Value;
-
-                    string generalParametersFileLink = paramDetails[0];
-                    string parameterGroup = paramDetails[1];
-                    string parameterName = paramDetails[2];
-                    string typeOrInstance = paramDetails[3];
-                    string parameterValue = paramDetails[5];
-                    string parameterValueDataType = paramDetails[6];
-
-                    BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
-
-                    if (groupParameterDictionary.TryGetValue(paramDetails[4], out BuiltInParameterGroup builtInParameterGroup))
-                    {
-                        grouping = builtInParameterGroup;
-                    }
-
-                    revitApp.SharedParametersFilename = generalParametersFileLink;
-                    DefinitionFile sharedParameterFile = revitApp.OpenSharedParameterFile();
-                    DefinitionGroup parameterGroupDef = sharedParameterFile.Groups.get_Item(parameterGroup);
-                    Definition parameterDefinition = parameterGroupDef.Definitions.get_Item(parameterName);
-
-                    bool isInstance = typeOrInstance.Equals("Экземпляр", StringComparison.OrdinalIgnoreCase);
-
-                    FamilyManager familyManager = _doc.FamilyManager;
-                    ExternalDefinition externalDef = parameterDefinition as ExternalDefinition;
-
-                    FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
-
-#if Revit2020 || Debug2020
-                    if (existingParam == null)
-                    {
-                        try
-                        {
-                            FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
-                            starusAddParametersToFamily = true;
-
-                            if (familyParam != null && parameterValue.StartsWith("="))
-                            {
-                                try
-                                {
-                                    string parameterFormula = parameterValue.Substring(1);
-                                    familyManager.SetFormula(familyParam, parameterFormula);
-                                    starusAddParametersToFamily = true;
-                                }
-                                catch (Exception ex)
-                                {
-                                    logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
-                                    paramDetails[5] = "!ОШИБКА";
-                                }
-                            }
-                            else if (familyParam != null && parameterValue != "None")
-                            {
-                                try
-                                {
-                                    RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
-                                    starusAddParametersToFamily = true;
-                                }
-                                catch (Exception ex)
-                                {
-                                    logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
-                                    paramDetails[5] = "!ОШИБКА";
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            paramDetails[5] = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
-                            starusAddParametersToFamily = true;
-                        }
-                    }
-                    else if (existingParam != null)
-                    {
-                        if (parameterValue.StartsWith("="))
-                        {
-                            try
-                            {
-                                string parameterFormula = parameterValue.Substring(1);
-                                familyManager.SetFormula(existingParam, parameterFormula);
-                                starusAddParametersToFamily = true;
-                            }
-                            catch (Exception)
-                            {
-                                logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
-                                paramDetails[5] = "!ОШИБКА";
-                            }
-                        }
-                        else if (parameterValue != "None") 
-                        {
-                            try
-                            {
-                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
-                                starusAddParametersToFamily = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                logFile += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ОБНОВЛЕНИЯ ЗНАЧЕНИЯ: {parameterValue}\n";
-                                paramDetails[5] = "!ОШИБКА";
-                            }
-                        }
-                        else
-                        {
-                            starusAddParametersToFamily = true;
-                        }
-                    }
-#endif
-                }
-
-                trans.Commit();
-
-                // Отчёт о результате выполнения в виде диалоговых окон + обновлкение полей с неисправными параметрами
-                if (allParametersForAddDict.Values.Any(list => list.Contains("Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой")))
-                {
-                    int index = 0;
-
-                    foreach (StackPanel uniqueParameterField in SP_allPanelParamsFields.Children)
-                    {
-                        if (uniqueParameterField.Tag?.ToString() == "uniqueParameterField")
-                        {
-                            if (index < allParametersForAddDict.Count)
-                            {
-                                List<string> parameterValues = allParametersForAddDict.ElementAt(index).Value;
-
-                                if (parameterValues.Count > 5)
-                                {
-                                    foreach (var element in uniqueParameterField.Children)
-                                    {
-                                        if (element is System.Windows.Controls.TextBox textBox)
-                                        {
-                                            textBox.Text = parameterValues[5];
-
-                                            if (parameterValues[5] == "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой")
-                                            {
-                                                textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
-                                                textBox.Tag = "invalid";
-                                                textBox.IsEnabled = false;
-                                            }
-                                            else if (parameterValues[5] == "None")
-                                            {
-                                                textBox.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {parameterValues[6]})";
-                                            }
-
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                index++;
-                            }
-                        }
-                    }
-                    if (!logFile.Contains("Error"))
-                    {
-                        System.Windows.Forms.MessageBox.Show("В семейство не добавлены параметры типа FamilyType.\n" +
-                        "Удалите параметры типа FamilyType для повторной попытки.", "Не все параметры были добавлены в семейство",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-                    }
-                    else
-                    {
-                        System.Windows.Forms.MessageBox.Show("В семейство не добавлены параметры типа FamilyType,\n" +
-                            "а также часть параметров была добавлена с ошибками.\n" +
-                        "Удалите параметры типа FamilyType для повторной попытки.", "Не все параметры были добавлены в семейство",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                    }
-                }
-                else if (logFile.Contains("Error"))
-                {
-                    int index = 0;
-
-                    foreach (StackPanel uniqueParameterField in SP_allPanelParamsFields.Children)
-                    {
-                        if (uniqueParameterField.Tag?.ToString() == "uniqueParameterField")
-                        {
-                            if (index < allParametersForAddDict.Count)
-                            {
-                                List<string> parameterValues = allParametersForAddDict.ElementAt(index).Value;
-
-                                if (parameterValues.Count > 5)
-                                {
-                                    foreach (var element in uniqueParameterField.Children)
-                                    {
-                                        if (element is System.Windows.Controls.TextBox textBox)
-                                        {
-                                            textBox.Text = parameterValues[5];
-
-                                            if (parameterValues[5] == "!ОШИБКА")
-                                            {
-                                                textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
-                                            }
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                index++;
-                            }
-                        }
-                    }
-
-                    System.Windows.Forms.MessageBox.Show("Параметры были добавлены добавлены в семейство с ошибками.\n" +
-                        "Вы можете сохранить отчёт об ошибках в следующем диалоговом окне.", "Ошибка добавления параметров в семейство",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-
-                    using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
-                    {
-                        saveFileDialog.FileName = $"addParamLogFile_{DateTime.Now:yyyyMMddHHmmss}.txt";
-                        saveFileDialog.InitialDirectory = @"X:\BIM";
-
-                        saveFileDialog.Filter = "Отчёт об ошибках (*.txt)|*.txt";
-
-                        if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                        {
-                            string filePath = saveFileDialog.FileName;
-
-                            System.IO.File.WriteAllText(filePath, logFile);
-                        }
-                    }
-                }
-                else if (starusAddParametersToFamily)
-                {
-                    System.Windows.Forms.MessageBox.Show("Все параметры были добавлены в семейство", "Все параметры были добавлены в семейство",
-                        System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                }
-            }
-        }
-
-        // Проверка наличие полей ComboBox внутри #uniqueParameterField
-        public bool ExistenceCheckComboBoxes()
-        {
-            bool FieldsAreFilled = true;
-
-            var uniquePanels = SP_allPanelParamsFields.Children.OfType<StackPanel>()
-                        .Where(sp => sp.Tag != null && sp.Tag.ToString() == "uniqueParameterField");
-
-            if (!uniquePanels.Any())
-            {
-                FieldsAreFilled = false;
-            }
-
-            return FieldsAreFilled;
+            return parametersDictionary;
         }
 
         // Проверка заполнености всех полей ComboBox внутри #uniqueParameterField
@@ -603,7 +376,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 var comboBoxes = panel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
 
-                if (comboBoxes[0].SelectedItem == null || comboBoxes[1].SelectedItem == null || comboBoxes[2].SelectedItem == null || comboBoxes[3].SelectedItem == null)
+                if (comboBoxes[0].SelectedItem == null || comboBoxes[1].SelectedItem == null
+                    || comboBoxes[2].SelectedItem == null || comboBoxes[3].SelectedItem == null)
                 {
                     FieldsAreFilled = false;
                 }
@@ -612,53 +386,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return FieldsAreFilled;
         }
 
-        // Проверка заполнености поля со значение мпараметра внутри #uniqueParameterField
-        public bool CheckingFillingValidDataInParamValue()
-        {
-            bool validDataValue = true;
-
-            var uniquePanels = SP_allPanelParamsFields.Children.OfType<StackPanel>()
-                .Where(sp => sp.Tag != null && sp.Tag.ToString() == "uniqueParameterField");
-
-            foreach (var panel in uniquePanels)
-            {
-                var textBox = panel.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
-
-                if (textBox != null && textBox.Tag != null && textBox.Tag.ToString() == "invalid")
-                {
-                    validDataValue = false;
-                }
-            }
-
-                return validDataValue;
-        }
-
-        // Изменение стиля для ComboBox "Группа" и "Параметры"
-        public void makeDisabledParamGroupField()
-        {
-            foreach (var stackPanel in SP_allPanelParamsFields.Children.OfType<StackPanel>())
-            {
-                if (stackPanel.Tag?.ToString() == "uniqueParameterField")
-                {
-                    int count = 0;
-                    foreach (var comboBox in stackPanel.Children.OfType<System.Windows.Controls.ComboBox>())
-                    {
-                        if (count < 2)
-                        {
-                            comboBox.Foreground = Brushes.Gray;
-                            comboBox.IsEnabled = false;
-                            count++;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Очистка неправильно заполненных ComboBox "Параметры"
+        // Очистка неправильно заполненных ComboTextBox "Параметры"
         public void ClearingIncorrectlyFilledFieldsParams()
         {
             foreach (var child in SP_allPanelParamsFields.Children)
@@ -666,9 +394,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 if (child is StackPanel stackPanel && stackPanel.Tag?.ToString() == "uniqueParameterField")
                 {
                     var comboBoxes = stackPanel.Children.OfType<System.Windows.Controls.ComboBox>().ToList();
+
                     if (comboBoxes.Count >= 2)
                     {
                         var secondComboBox = comboBoxes[1];
+
                         if (secondComboBox.SelectedItem == null)
                         {
                             secondComboBox.Text = "";
@@ -678,15 +408,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Открытие файла ФОПа при помощи кнопки
+        //// XAML. Открытие файла ФОПа при помощи кнопки "Заменить"
         private void OpenFileButton_Click(object sender, RoutedEventArgs e)
         {
+            ClearingIncorrectlyFilledFieldsParams();
+
             if (!CheckingFillingAllComboBoxes())
             {
-                ClearingIncorrectlyFilledFieldsParams();
-
-                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                System.Windows.Forms.MessageBox.Show("Не все поля заполнены. Чтобы выбрать новый ФОП, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", 
+                    "Не все поля заполнены", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
             }
             else
             {
@@ -700,15 +430,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_filePath.Text = SPFPath;
 
                     HandlerGeneralParametersFile(SPFPath);
-                    makeDisabledParamGroupField();
                 }
             }
         }
 
-        //// XAML. Обработчик ComboBox "Группы": обновление оригинального ComboBox "Параметры"
-        private void ParamsGroupSelectionChanged(object sender, SelectionChangedEventArgs e)
+        //// XAML. Поведение (!) оригинального comboBox "Группы" - Основной обработчик
+        private void CB_paramsGroup_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (CB_paramsGroup.SelectedItem != null && CB_paramsGroup.SelectedIndex != -1)
+            ClearingIncorrectlyFilledFieldsParams();
+
+            if (CB_paramsGroup.SelectedItem != null)
             {
                 string selectParamGroup = CB_paramsGroup.SelectedItem.ToString();
                 var selectedParamName = CB_paramsName.SelectedItem;
@@ -727,14 +458,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     {
                         CB_paramsName.SelectedItem = selectedParamName;
                     }
-                }
-
-                ClearingIncorrectlyFilledFieldsParams();
+                }              
             }
         }
 
-        //// XAML. Оригинальный ComboBox "Параметры": срабатывание фильтра
-        private void ParamsNameTextChanged(object sender, TextChangedEventArgs e)
+        //// XAML. Поведение сomboTextBox "Параметр" - Загрузка
+        private void CB_paramsName_Loaded(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
+
+            if (comboBox != null)
+            {
+                System.Windows.Controls.TextBox textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as System.Windows.Controls.TextBox;
+
+                if (textBox != null)
+                {
+                    textBox.GotFocus += (s, args) => comboBox.IsDropDownOpen = true;
+                }
+            }
+        }
+
+        //// XAML. Поведение сomboTextBox "Параметр" - Обработчик текста
+        private void CB_paramsName_TextChanged(object sender, TextChangedEventArgs e)
         {
             System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
 
@@ -763,23 +508,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Оригинальный ComboBox "Параметры": уставновка фокуса и расскрытие List
-        private void ParamsName_Loaded(object sender, RoutedEventArgs e)
-        {
-            System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
-            if (comboBox != null)
-            {
-                System.Windows.Controls.TextBox textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as System.Windows.Controls.TextBox;
-
-                if (textBox != null)
-                {
-                    textBox.GotFocus += (s, args) => comboBox.IsDropDownOpen = true;
-                }
-            }
-        }
-
-        //// XAML.Оригинальный ComboBox "Параметры": обработчик открытия List
-        private void ParamsNameDropDownOpened(object sender, EventArgs e)
+        //// XAML. Поведение сomboTextBox "Параметр" - Выпадающий список
+        private void CB_paramsName_DropDownOpened(object sender, EventArgs e)
         {
             System.Windows.Controls.ComboBox comboBox = sender as System.Windows.Controls.ComboBox;
 
@@ -799,18 +529,29 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML.Оригинальный ComboBox "Параметры": основной обработчик событий
-        private void ParamsNameSelectionChanged(object sender, SelectionChangedEventArgs e)
+        //// XAML. Поведение (!) оригинального сomboTextBox "Параметр" - Потеря фокуса
+        private void CB_paramsName_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (CB_paramsName.SelectedItem == null)
+            {
+                CB_paramsName.Text = "";
+                TB_paramValue.IsEnabled = false;               
+                TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+            }
+        }
+
+        //// XAML. Поведение (!) оригинального сomboTextBox "Параметры" - Основной обработчик 
+        private void CB_paramsName_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CB_paramsName.SelectedItem != null)
             {
-                string selectedParam = CB_paramsName.SelectedItem as String;
+                string selectedParam = CB_paramsName.SelectedItem.ToString();
 
                 foreach (var kvp in groupAndParametersFromSPFDict)
                 {
                     if (kvp.Value.Any(extDef => extDef.Name == selectedParam))
                     {
-
                         if (CB_paramsGroup.SelectedItem == null)
                         {
                             CB_paramsGroup.SelectedItem = kvp.Key;                           
@@ -820,7 +561,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                 }
 
-                if (TB_filePath.Text != null && CB_paramsGroup.SelectedItem != null && CB_paramsName.SelectedItem != null)
+                if (CheckingFillingAllComboBoxes())
                 {
                     try
                     {
@@ -847,17 +588,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             TB_paramValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                         }
+                        else if (paramType.ToString() == "LoadClassification")
+                        {
+                            TB_paramValue.IsEnabled = false;
+                            TB_paramValue.Text = "Нельзя добавить значение в данный параметр";                            
+                        }
                         else if (paramType.ToString() == "FamilyType")
                         {
                             TB_paramValue.IsEnabled = false;
-                            TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                             TB_paramValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
                             TB_paramValue.Tag = "invalid";
-                        }
-                        else if (paramType.ToString() == "LoadClassification")
-                        {
-                            TB_paramValue.Text = "Нельзя добавить значение в данный параметр";
-                            TB_paramValue.IsEnabled = false;
+                            TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));                         
                         }
                         else 
                         {
@@ -867,43 +608,30 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     catch (Exception)
                     {
+                        TB_paramValue.IsEnabled = false;
                         TB_paramValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
-                        CB_paramsName.Tag = "ОШИБКА";
+                        TB_paramValue.Tag = "invalid";
                         TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     }
                 }
             }          
         }
 
-        //// XAML.Оригинальный ComboBox "Параметры": потеря фокуса
-        private void ParamsName_LostFocus(object sender, RoutedEventArgs e)
+        //// XAML.Поведение сomboTextBox TextBox "Значение параметра" - Получение фокуса
+        private void TB_paramValue_GotFocus(object sender, RoutedEventArgs e)
         {
-            if (CB_paramsName.SelectedItem == null)
+            System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
+
+            if (textBox.Text.ToString().Contains("При необходимости, вы можете указать значение параметра") 
+                || textBox.Text.ToString().Contains("Необходимо указать:"))               
             {
-                CB_paramsName.Text = "";
-                TB_paramValue.IsEnabled = false;
-                TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));                
-                TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                textBox.Clear();
             }
         }
 
-
-        //// XAML.Оригинальный TextBox "Значение параметра": получение фокуса
-        private void DataVerification_GotFocus(object sender, RoutedEventArgs e)
+        //// XAML.Поведение (!) оригинального сomboTextBox TextBox "Значение параметра" - Потеря фокуса
+        private void TB_paramValue_LostFocus(object sender, RoutedEventArgs e)
         {
-            String textInField = TB_paramValue.Text;
-
-            if (textInField.Contains("При необходимости, вы можете указать значение параметра") 
-                || textInField.Contains("Необходимо указать:"))               
-            {
-                TB_paramValue.Clear();
-            }
-        }
-
-        //// XAML.Оригинальный TextBox "Значение параметра": потеря фокуса
-        private void DataVerification_LostFocus(object sender, RoutedEventArgs e)
-        {
-
             if (string.IsNullOrEmpty(TB_paramValue.Text))
             {
                 TB_paramValue.Tag = "nonestatus";
@@ -912,17 +640,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     TB_paramValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                 }
+                else if (CB_paramsName.Tag.ToString() == "LoadClassification")
+                {
+                    TB_paramValue.IsEnabled = false;
+                    TB_paramValue.Text = "Нельзя добавить значение в данный параметр";                   
+                }
                 else if (CB_paramsName.Tag.ToString() == "FamilyType")
                 {
                     TB_paramValue.IsEnabled = false;
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                     TB_paramValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
                     TB_paramValue.Tag = "invalid";
-                }
-                else if (CB_paramsName.Tag.ToString() == "LoadClassification")
-                {
-                    TB_paramValue.Text = "Нельзя добавить значение в данный параметр";
-                    TB_paramValue.IsEnabled = false;
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                 }
                 else
                 {
@@ -952,10 +680,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "yellow")
                 {
                     CB_paramsName.Text = "";
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый                   
-                    TB_paramValue.IsEnabled = false;
-                    TB_paramValue.Tag = "nonestatus";
+                    TB_paramValue.IsEnabled = false;                                  
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                    TB_paramValue.Tag = "nonestatus";
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый    
                 }
             }
         }
@@ -1000,6 +728,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Padding = new Thickness(8, 4, 0, 0)
             };
 
+            foreach (var key in groupAndParametersFromSPFDict.Keys)
+            {
+                cbParamsGroup.Items.Add(key);
+            }
+
             System.Windows.Controls.ComboBox cbParamsName = new System.Windows.Controls.ComboBox
             {
                 IsEditable = true,
@@ -1011,100 +744,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Padding = new Thickness(8, 3, 0, 0),
             };
 
-            foreach (var key in groupAndParametersFromSPFDict.Keys)
-            {
-                cbParamsGroup.Items.Add(key);
-            }
+            allParamNameListForSearchField = CreateAllParamNameListForSearchField(groupAndParametersFromSPFDict);
 
-            allParamNameList = CreateallParamNameList(groupAndParametersFromSPFDict);
-
-            foreach (var param in allParamNameList)
+            foreach (var param in allParamNameListForSearchField)
             {
                 cbParamsName.Items.Add(param);
             }
-                  
-            System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
-            {
-                Width = 105,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Padding = new Thickness(8, 4, 0, 0),
-                SelectedIndex = 0
-            };
-
-            foreach (string key in CreateTypeInstanceList())
-            {
-                cbTypeInstance.Items.Add(key);
-            }
-
-            System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
-            {
-                Width = 340,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Padding = new Thickness(8, 4, 0, 0),
-                SelectedIndex = 21
-            };
-
-            foreach (string key in CreateGroupingDictionary().Keys)
-            {
-                cbGrouping.Items.Add(key);
-            }
-
-            Button removeButton = new Button
-            {
-                Width = 30,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Top,
-                Content = "X",
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
-                Foreground = new SolidColorBrush(Colors.White)
-            };
-
-            removeButton.Click += (s, ev) =>
-            {
-                SP_allPanelParamsFields.Children.Remove(newPanel);
-            };
-
-            System.Windows.Controls.TextBox tbParamValue = new System.Windows.Controls.TextBox
-            {
-                Text = "Выберите значение в поле ``Группа`` или ``Параметр``",
-                IsEnabled = false,
-                Width = 1245,
-                Height = 25,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(-1250, 0, 0, 0),
-                Padding = new Thickness(15, 3, 0, 0),
-                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
-            };
-
-
-            cbParamsGroup.SelectionChanged += (s, ev) =>
-            {
-                if (cbParamsGroup.SelectedItem != null && cbParamsGroup.SelectedIndex != -1)
-                {
-                    string selectParamGroup = cbParamsGroup.SelectedItem.ToString();
-                    var selectedParamName = cbParamsName.SelectedItem;
-
-                    if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
-                    {
-                        cbParamsName.Items.Clear();
-                        tbParamValue.Text = "Выберите значение в поле ``Параметр``";
-
-                        foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
-                        {
-                            cbParamsName.Items.Add(param.Name);
-                        }
-
-                        if (selectedParamName != null && cbParamsName.Items.Contains(selectedParamName))
-                        {
-                            cbParamsName.SelectedItem = selectedParamName;
-                        }
-                    }
-
-                    ClearingIncorrectlyFilledFieldsParams();
-                }
-            };
 
             cbParamsName.Loaded += (s, ev) =>
             {
@@ -1146,24 +791,101 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             };
 
-            cbParamsName.DropDownOpened += (s, ev) =>
+            cbParamsName.DropDownOpened += CB_paramsName_DropDownOpened;
+
+            System.Windows.Controls.ComboBox cbTypeInstance = new System.Windows.Controls.ComboBox
             {
-                if (cbParamsName.SelectedItem != null)
+                Width = 105,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(8, 4, 0, 0),
+            };
+
+            foreach (string key in CreateTypeInstanceList())
+            {
+                cbTypeInstance.Items.Add(key);
+            }
+
+            cbTypeInstance.SelectedItem = "Тип";
+
+
+            System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
+            {
+                Width = 340,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(8, 4, 0, 0),
+            };
+
+            foreach (string key in CreateGroupingDictionary().Keys)
+            {
+                cbGrouping.Items.Add(key);
+            }
+
+            cbGrouping.SelectedItem = "Прочее";
+
+            Button removeButton = new Button
+            {
+                Width = 30,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Top,
+                Content = "X",
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 3, 3)),
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+
+            removeButton.Click += RemovePanel;
+
+            System.Windows.Controls.TextBox tbParamValue = new System.Windows.Controls.TextBox
+            {
+                Text = "Выберите значение в поле ``Группа`` или ``Параметр``",
+                IsEnabled = false,
+                Width = 1245,
+                Height = 25,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(-1250, 0, 0, 0),
+                Padding = new Thickness(15, 3, 0, 0),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
+            };
+
+            cbParamsGroup.SelectionChanged += (s, ev) =>
+            {
+                ClearingIncorrectlyFilledFieldsParams();
+
+                if (cbParamsGroup.SelectedItem != null)
                 {
-                    string comboBoxValue = cbParamsName.SelectedItem.ToString();
-                    cbParamsName.SelectedItem = null;
-                    cbParamsName.Text = comboBoxValue;
+                    string selectParamGroup = cbParamsGroup.SelectedItem.ToString();
+                    var selectedParamName = cbParamsName.SelectedItem;
 
-                    var collectionViewOriginal = CollectionViewSource.GetDefaultView(cbParamsName.Items);
-
-                    if (collectionViewOriginal != null)
+                    if (groupAndParametersFromSPFDict.ContainsKey(selectParamGroup))
                     {
-                        collectionViewOriginal.Filter = null;
-                        collectionViewOriginal.Refresh();
+                        cbParamsName.Items.Clear();
+                        tbParamValue.Text = "Выберите значение в поле ``Параметр``";
+
+                        foreach (var param in groupAndParametersFromSPFDict[selectParamGroup])
+                        {
+                            cbParamsName.Items.Add(param.Name);
+                        }
+
+                        if (selectedParamName != null && cbParamsName.Items.Contains(selectedParamName))
+                        {
+                            cbParamsName.SelectedItem = selectedParamName;
+                        }
                     }
                 }
             };
 
+            cbParamsName.LostFocus += (s, ev) =>
+            {
+                if (cbParamsName.SelectedItem == null)
+                {
+                    cbParamsName.Text = "";
+                    tbParamValue.IsEnabled = false;
+                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
+                    tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                }
+            };
+       
             cbParamsName.SelectionChanged += (s, ev) =>
             {
                 if (cbParamsName.SelectedItem != null)
@@ -1183,7 +905,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                     }
 
-                    if (TB_filePath.Text != null && cbParamsGroup.SelectedItem != null && cbParamsName.SelectedItem != null)
+                    if (CheckingFillingAllComboBoxes())
                     {
                         try
                         {
@@ -1209,17 +931,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             {
                                 tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                             }
-                            else if (cbParamsName.Tag.ToString() == "FamilyType")
-                            {
-                                tbParamValue.IsEnabled = false;
-                                tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
-                                tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
-                                tbParamValue.Tag = "invalid";
-                            }
                             else if (cbParamsName.Tag.ToString() == "LoadClassification")
                             {
-                                tbParamValue.Text = "Нельзя добавить значение в данный параметр";
                                 tbParamValue.IsEnabled = false;
+                                tbParamValue.Text = "Нельзя добавить значение в данный параметр";                                
+                            }
+                            else if (cbParamsName.Tag.ToString() == "FamilyType")
+                            {
+                                tbParamValue.IsEnabled = false;                               
+                                tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
+                                tbParamValue.Tag = "invalid";
+                                tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                             }
                             else
                             {
@@ -1229,35 +951,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
                         catch (Exception)
                         {
+                            tbParamValue.IsEnabled = false; 
                             tbParamValue.Text = "Не удалось прочитать параметр. Тип данных: ОШИБКА";
-                            cbParamsName.Tag = "ОШИБКА";
+                            cbParamsName.Tag = "invalid";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                     }
                 }
             };
 
-            cbParamsName.LostFocus += (s, ev) =>
-            {
-                if (cbParamsName.SelectedItem == null)
-                {
-                    cbParamsName.Text = "";
-                    tbParamValue.IsEnabled = false;
-                    tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
-                    tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
-                }
-            };
-
-            tbParamValue.GotFocus += (s, ev) =>
-            {
-                String textInField = tbParamValue.Text;
-
-                if (textInField.Contains("При необходимости, вы можете указать значение параметра")
-                    || textInField.Contains("Необходимо указать:"))
-                {
-                    tbParamValue.Clear();
-                }
-            };
+            tbParamValue.GotFocus += TB_paramValue_GotFocus;
 
             tbParamValue.LostFocus += (s, ev) =>
             {
@@ -1269,18 +972,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     {
                         tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                     }
-                    else if (cbParamsName.Tag.ToString() == "FamilyType")
-                    {
-                        tbParamValue.IsEnabled = false;
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
-                        tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
-                        tbParamValue.Tag = "invalid";
-                    }
                     else if (cbParamsName.Tag.ToString() == "LoadClassification")
                     {
-                        tbParamValue.Text = "Нельзя добавить значение в данный параметр";
                         tbParamValue.IsEnabled = false;
+                        tbParamValue.Text = "Нельзя добавить значение в данный параметр";                       
                     }
+                    else if (cbParamsName.Tag.ToString() == "FamilyType")
+                    {
+                        tbParamValue.IsEnabled = false;                       
+                        tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
+                        tbParamValue.Tag = "invalid";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                    }
+
                     else
                     {
                         tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {cbParamsName.Tag})";
@@ -1290,7 +994,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 else
                 {
                     string paramTypeName = cbParamsName.Tag.ToString(); ;
-
 
                     if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
                     {
@@ -1310,14 +1013,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                     {
                         cbParamsName.Text = "";
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
-                        tbParamValue.Tag = "nonestatus";
                         tbParamValue.IsEnabled = false;
                         tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                        tbParamValue.Tag = "nonestatus";
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый                                                                  
                     }
                 }
         };
-
 
             newPanel.Children.Add(cbParamsGroup);
             newPanel.Children.Add(cbParamsName);
@@ -1329,10 +1031,256 @@ namespace KPLN_BIMTools_Ribbon.Forms
             SP_allPanelParamsFields.Children.Add(newPanel);
         }
 
-        //// XAML. Добавление новой панели параметров uniqueParameterField из JSON
+        //// XAML. Добавление параметров в семейство при нажатии на кнопку
+        private void AddParamInFamilyButton_Click(object sender, RoutedEventArgs e)
+        {
+            Dictionary<string, List<string>> allParametersForAddDict = CreateInterfaceParamDict();
+
+            if (allParametersForAddDict.Count == 0)
+            {
+                return;
+            }
+            else
+            {
+                using (Transaction trans = new Transaction(_doc, "KPLN. Пакетное добавление параметров в семейство"))
+                {
+                    trans.Start();
+
+                    FamilyManager familyManager = _doc.FamilyManager;
+                    Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();
+
+                    bool successfulResult = false;
+                    string problematicParametersLog = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n";
+
+                    foreach (var kvp in allParametersForAddDict)
+                    {
+                        List<string> paramDetails = kvp.Value;
+
+                        string generalParametersFileLink = paramDetails[0];
+                        string parameterGroup = paramDetails[1];
+                        string parameterName = paramDetails[2];
+
+                        string typeOrInstance = paramDetails[3];
+                        bool isInstance = typeOrInstance.Equals("Экземпляр", StringComparison.OrdinalIgnoreCase);
+
+                        string parameterValue = paramDetails[5];
+                        string parameterValueDataType = paramDetails[6];
+
+                        BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
+
+                        if (groupParameterDictionary.TryGetValue(paramDetails[4], out BuiltInParameterGroup builtInParameterGroup))
+                        {
+                            grouping = builtInParameterGroup;
+                        }
+
+                        revitApp.SharedParametersFilename = generalParametersFileLink;
+                        DefinitionFile sharedParameterFile = revitApp.OpenSharedParameterFile();
+                        DefinitionGroup parameterGroupDef = sharedParameterFile.Groups.get_Item(parameterGroup);
+                        Definition parameterDefinition = parameterGroupDef.Definitions.get_Item(parameterName);
+                        ExternalDefinition externalDef = parameterDefinition as ExternalDefinition;
+                        FamilyParameter existingParam = familyManager.get_Parameter(externalDef);
+
+                        try
+                        {
+                            if (existingParam != null)
+                            {
+                                familyManager.RemoveParameter(existingParam);
+                            }
+
+                            FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
+
+                            if (parameterValue.StartsWith("="))
+                            {
+                                string parameterFormula = parameterValue.Substring(1);
+                                familyManager.SetFormula(familyParam, parameterFormula);
+                            }
+                            else if (parameterValue != "None")
+                            {
+                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                            }
+
+                            successfulResult = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            problematicParametersLog += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ФОРМУЛЫ: {parameterValue}\n";
+                            paramDetails[5] = "!ОШИБКА";
+                            successfulResult = false;
+                        }
+                    }
+
+                    trans.Commit();
+
+                    //// Замена элементов интерфейса если возникли ошибки (неверное значение или FamilyType)
+                    if (allParametersForAddDict.Values.Any(list => list.Contains("!ОШИБКА")))
+                    {
+                        int index = 0;
+
+                        foreach (StackPanel uniqueParameterField in SP_allPanelParamsFields.Children)
+                        {
+                            if (uniqueParameterField.Tag?.ToString() == "uniqueParameterField")
+                            {
+                                if (index < allParametersForAddDict.Count)
+                                {
+                                    List<string> parameterValues = allParametersForAddDict.ElementAt(index).Value;
+
+                                    if (parameterValues.Count > 5)
+                                    {
+                                        foreach (var element in uniqueParameterField.Children)
+                                        {
+                                            if (element is System.Windows.Controls.TextBox textBox)
+                                            {
+                                                textBox.Text = parameterValues[5];
+
+                                                if (parameterValues[5] == "!ОШИБКА")
+                                                {
+                                                    textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                                                    textBox.Tag = "invalid";
+                                                    textBox.IsEnabled = false;
+                                                }
+                                                else if (parameterValues[5] == "None")
+                                                {
+                                                    textBox.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {parameterValues[6]})";
+                                                }
+
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    index++;
+                                }
+                            }
+                        }
+                    }
+
+                    //// Сохранение log-файла с ошибками
+                    if (!successfulResult)
+                    {
+                        System.Windows.Forms.MessageBox.Show("Параметры были добавлены добавлены в семейство с ошибками. Вы можете сохранить отчёт об ошибках в следующем диалоговом окне.", 
+                            "Ошибка добавления параметров в семейство", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                        using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
+                        {
+                            saveFileDialog.FileName = $"addParamLogFile_{DateTime.Now:yyyyMMddHHmmss}.txt";
+                            saveFileDialog.InitialDirectory = @"X:\BIM";
+
+                            saveFileDialog.Filter = "Отчёт об ошибках (*.txt)|*.txt";
+
+                            if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                            {
+                                string filePath = saveFileDialog.FileName;
+
+                                System.IO.File.WriteAllText(filePath, problematicParametersLog);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("Все параметры были добавлены в семейство", "Все параметры были добавлены в семейство",
+                            System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                    }
+                }
+            }
+        }
+
+        //// XAML. Сохранение параметров в JSON-файл при нажатии на кнопку 
+        private void SaveParamFileSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var paramSettingsDict = CreateInterfaceParamDict();
+
+            if (paramSettingsDict.Count == 0)
+            {
+                return;
+            }
+
+            string initialDirectory = @"X:\BIM";
+            string defaultFileName = $"presettingGeneralParameters_{DateTime.Now:yyyyMMddHHmmss}.json";
+
+            using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
+            {
+                saveFileDialog.InitialDirectory = initialDirectory;
+                saveFileDialog.FileName = defaultFileName;
+                saveFileDialog.Filter = "Файл преднастроек добавления общих параметров (*.json)|*.json";
+                saveFileDialog.Title = "Сохранить файл преднастроек добавления общих параметров";
+
+                if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    string filePath = saveFileDialog.FileName;
+
+                    var parameterList = new List<Dictionary<string, string>>();
+
+                    foreach (var entry in paramSettingsDict)
+                    {
+                        var parameterEntry = new Dictionary<string, string>
+                            {
+                                { "NE", entry.Key },
+                                { "pathFile", entry.Value[0] },
+                                { "groupParameter", entry.Value[1] },
+                                { "nameParameter", entry.Value[2] },
+                                { "instance", entry.Value[3] },
+                                { "grouping", entry.Value[4] },
+                                { "parameterValue", entry.Value[5] },
+                                { "parameterValueDataType", entry.Value[6] },
+                            };
+
+                        parameterList.Add(parameterEntry);
+                    }
+
+                    string jsonData = JsonConvert.SerializeObject(parameterList, Formatting.Indented);
+
+                    using (StreamWriter writer = new StreamWriter(filePath))
+                    {
+                        writer.Write(jsonData);
+                    }
+
+                    System.Windows.Forms.MessageBox.Show("Файл успешно сохранён по ссылке:\n" +
+                        $"{filePath}", "Успех", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        // JSON. Формирование словаря с параметрами из файла преднастроек
+        public Dictionary<string, List<string>> ParsingDataFromJsonToInterfaceDictionary(string jsonFileSettingPath)
+        {
+            string jsonData;
+
+            using (StreamReader reader = new StreamReader(jsonFileSettingPath))
+            {
+                jsonData = reader.ReadToEnd();
+            }
+
+            var paramListFromJson = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(jsonData);
+            var newParamList = new Dictionary<string, List<string>>();
+
+            foreach (var entry in paramListFromJson)
+            {
+                string nameParameter = entry["NE"];
+
+                if (!newParamList.ContainsKey(nameParameter))
+                {
+                    newParamList[nameParameter] = new List<string>();
+                }
+
+                newParamList[nameParameter].Add(entry["pathFile"]);
+                newParamList[nameParameter].Add(entry["groupParameter"]);
+                newParamList[nameParameter].Add(entry["nameParameter"]);
+                newParamList[nameParameter].Add(entry["instance"]);
+                newParamList[nameParameter].Add(entry["grouping"]);
+                newParamList[nameParameter].Add(entry["parameterValue"]);
+                newParamList[nameParameter].Add(entry["parameterValueDataType"]);
+            }
+
+            return newParamList;           
+        }
+
+        //// JSON. Добавление новой панели параметров uniqueParameterField из файла преднастроек
         private void AddPanelParamFieldsJson(Dictionary<string, List<string>> allParamInInterfaceFromJsonDict)
         {
-            // Уникальный ФОП для каждого uniqueParameterField параметра
+            StackPanel parentContainer = (StackPanel)SP_panelParamFields.Parent;
+            parentContainer.Children.Remove(SP_panelParamFields);
+
+            //// Уникальный ФОП для каждого uniqueParameterField параметра
             foreach (var keyDict in allParamInInterfaceFromJsonDict)
             {
                 groupAndParametersFromSPFDict.Clear();
@@ -1346,14 +1294,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 try
                 {
                     DefinitionFile defFile = revitApp.OpenSharedParameterFile();
-
-                    if (defFile == null)
-                    {
-                        System.Windows.Forms.MessageBox.Show($"ФОП ``{SPFPath}``\n" +
-                        "не найден или неисправен. Работа плагина остановлена", "Ошибка чтения ФОП.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-
-                        break;
-                    }
 
                     foreach (DefinitionGroup group in defFile.Groups)
                     {
@@ -1375,7 +1315,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     break;
                 }
 
-                // Создание новой StackPanel #uniqueParameterField 
+                //// Создание новой StackPanel #uniqueParameterField 
                 StackPanel newPanel = new StackPanel
                 {
                     Tag = "uniqueParameterField",
@@ -1387,9 +1327,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 System.Windows.Controls.ComboBox cbParamsGroup = new System.Windows.Controls.ComboBox
                 {
-                    Tag = SPFPath,
-                    ToolTip = $"ФОП: {SPFPath}",
                     IsEnabled = false,
+                    Tag = SPFPath,
+                    ToolTip = $"ФОП: {SPFPath}",                    
                     Width = 270,
                     Height = 25,
                     VerticalAlignment = VerticalAlignment.Top,
@@ -1397,7 +1337,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Foreground = Brushes.Gray
                 };
 
-                cbParamsGroup.SelectedItem = allParamInInterfaceFromJsonValues[1];
+                foreach (var key in groupAndParametersFromSPFDict.Keys)
+                {
+                    cbParamsGroup.Items.Add(key);
+                }
 
                 System.Windows.Controls.ComboBox cbParamsName = new System.Windows.Controls.ComboBox
                 {
@@ -1408,9 +1351,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Padding = new Thickness(8, 4, 0, 0),
                     Foreground = Brushes.Gray
                 };
-               
-                cbParamsName.SelectedItem = allParamInInterfaceFromJsonValues[2];
-                cbParamsName.Tag = allParamInInterfaceFromJsonValues[6];
 
                 foreach (var param in groupAndParametersFromSPFDict[allParamInInterfaceFromJsonValues[1]])
                 {
@@ -1423,17 +1363,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Height = 25,
                     VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
-                    SelectedIndex = 0
                 };
 
                 foreach (string key in CreateTypeInstanceList())
                 {
                     cbTypeInstance.Items.Add(key);
-                }
-
-                foreach (var key in groupAndParametersFromSPFDict.Keys)
-                {
-                    cbParamsGroup.Items.Add(key);
                 }
 
                 System.Windows.Controls.ComboBox cbGrouping = new System.Windows.Controls.ComboBox
@@ -1442,7 +1376,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Height = 25,
                     VerticalAlignment = VerticalAlignment.Top,
                     Padding = new Thickness(8, 4, 0, 0),
-                    SelectedIndex = 21
                 };
 
                 foreach (string key in CreateGroupingDictionary().Keys)
@@ -1460,10 +1393,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Foreground = new SolidColorBrush(Colors.White)
                 };
 
-                removeButton.Click += (s, ev) =>
-                {
-                    SP_allPanelParamsFields.Children.Remove(newPanel);
-                };
+                removeButton.Click += RemovePanel;
 
                 System.Windows.Controls.TextBox tbParamValue = new System.Windows.Controls.TextBox
                 {
@@ -1475,62 +1405,33 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213))
                 };
 
-                tbParamValue.Text = allParamInInterfaceFromJsonValues[5];
-
-                if (!groupAndParametersFromSPFDict.ContainsKey(allParamInInterfaceFromJsonValues[1]))
-                {
-                    System.Windows.Forms.MessageBox.Show($"Параметр ``{allParamInInterfaceFromJsonValues[1]}`` не найден в ФОП\n" +
-                        $"(``{SPFPath})\n" +
-                        "Работа плагина остановлена.\n", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                    break;
-                }
-                              
-                if (CreateTypeInstanceList().Contains(allParamInInterfaceFromJsonValues[3]))
-                {
-                    cbTypeInstance.SelectedItem = allParamInInterfaceFromJsonValues[3];
-                } else 
-                {
-                    cbTypeInstance.SelectedIndex = -1;
-                }             
-
-                if (CreateGroupingDictionary().ContainsKey(allParamInInterfaceFromJsonValues[4]))
-                {
-                    cbGrouping.SelectedItem = allParamInInterfaceFromJsonValues[4];
-                }
-                else
-                {
-                    cbGrouping.SelectedIndex = -1;
-                }
-
-
                 tbParamValue.Loaded += (s, ev) =>
                 {
                     if (tbParamValue.Text == "None")
                     {
                         tbParamValue.Tag = "nonestatus";
 
-                        
                         if (allParamInInterfaceFromJsonValues[6] == "Image")
                         {
                             tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                         }
                         else if (allParamInInterfaceFromJsonValues[6] == "FamilyType")
-                        {                           
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
+                        {
+                            tbParamValue.IsEnabled = false;                         
                             tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
                             tbParamValue.Tag = "invalid";
-                            tbParamValue.IsEnabled = false;
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                         else if (allParamInInterfaceFromJsonValues[6] == "LoadClassification")
                         {
-                            tbParamValue.Text = "Нельзя добавить значение в данный параметр";
                             tbParamValue.IsEnabled = false;
+                            tbParamValue.Text = "Нельзя добавить значение в данный параметр";                           
                         }
                         else
                         {
                             tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {allParamInInterfaceFromJsonValues[6]})";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
-                        }                       
+                        }
                     }
                     else
                     {
@@ -1538,67 +1439,59 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                         if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
                             tbParamValue.Tag = "valid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
                             tbParamValue.Tag = "valid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                             tbParamValue.Tag = "invalid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                         {
                             cbParamsName.Text = "";
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
-                            tbParamValue.Tag = "nonestatus";
                             tbParamValue.IsEnabled = false;
                             tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                            tbParamValue.Tag = "nonestatus";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                         }
                     }
                 };
 
-                tbParamValue.GotFocus += (s, ev) =>
-                {
-                    String textInField = tbParamValue.Text;
-
-                    if (textInField.Contains("При необходимости, вы можете указать значение параметра") || textInField.Contains("Необходимо указать:"))
-                    {
-                        tbParamValue.Clear();
-                    }
-                };
+                tbParamValue.GotFocus += TB_paramValue_GotFocus;
 
                 tbParamValue.LostFocus += (s, ev) =>
                 {
                     if (string.IsNullOrEmpty(tbParamValue.Text))
                     {
                         tbParamValue.Tag = "nonestatus";
-                        
+
                         if (allParamInInterfaceFromJsonValues[6] == "Image")
                         {
                             tbParamValue.Text = "При необходимости, вы можете указать значение параметра в формате - [Буква диска]:\\Имя_папки\\изображение.расширение";
                         }
-                        else if (allParamInInterfaceFromJsonValues[6] == "FamilyType")
-                        {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
-                            tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
-                            tbParamValue.Tag = "invalid";
-                            tbParamValue.IsEnabled = false;
-                        }
                         else if (allParamInInterfaceFromJsonValues[6] == "LoadClassification")
                         {
-                            tbParamValue.Text = "Нельзя добавить значение в данный параметр";
                             tbParamValue.IsEnabled = false;
+                            tbParamValue.Text = "Нельзя добавить значение в данный параметр";                         
+                        }
+                        else if (allParamInInterfaceFromJsonValues[6] == "FamilyType")
+                        {
+                            tbParamValue.IsEnabled = false;                           
+                            tbParamValue.Text = "Данный параметр добавить нельзя. Удалите данный параметр и добавьте другой";
+                            tbParamValue.Tag = "invalid";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         }
                         else
                         {
                             tbParamValue.Text = $"При необходимости, вы можете указать значение параметра (тип данных: {allParamInInterfaceFromJsonValues[6]})";
                             tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
-                        }                        
+                        }
                     }
                     else
                     {
@@ -1606,29 +1499,36 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                         if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
                             tbParamValue.Tag = "valid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); 
                             tbParamValue.Tag = "valid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                         {
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); 
                             tbParamValue.Tag = "invalid";
                         }
                         else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
                         {
                             cbParamsName.Text = "";
-                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый
-                            tbParamValue.Tag = "nonestatus";
                             tbParamValue.IsEnabled = false;
-                            tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
+                            tbParamValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";                         
+                            tbParamValue.Tag = "nonestatus";
+                            tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));
                         }
                     }
                 };
+
+                cbParamsGroup.SelectedItem = allParamInInterfaceFromJsonValues[1];
+                cbParamsName.SelectedItem = allParamInInterfaceFromJsonValues[2];
+                cbParamsName.Tag = allParamInInterfaceFromJsonValues[6];
+                cbTypeInstance.SelectedItem = allParamInInterfaceFromJsonValues[3];
+                cbGrouping.SelectedItem = allParamInInterfaceFromJsonValues[4];
+                tbParamValue.Text = allParamInInterfaceFromJsonValues[5];
 
                 newPanel.Children.Add(cbParamsGroup);
                 newPanel.Children.Add(cbParamsName);
@@ -1637,116 +1537,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 newPanel.Children.Add(removeButton);
                 newPanel.Children.Add(tbParamValue);
 
-                SP_allPanelParamsFields.Children.Add(newPanel);               
-            }          
-        }
-
-        //// XAML. Добавление параметров в семейство при нажатии на кнопку
-        private void AddParamInFamilyButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (!ExistenceCheckComboBoxes())
-            {
-                System.Windows.Forms.MessageBox.Show("Нет заполненных параметров.\n" +
-                    "Чтобы добавить параметры в семейство, заполните хотя бы один параметр и повторите попытку.", "Нет параметров для добавления",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+                SP_allPanelParamsFields.Children.Add(newPanel);
             }
-            else if (!CheckingFillingAllComboBoxes())
-            {
-                ClearingIncorrectlyFilledFieldsParams();
 
-                System.Windows.Forms.MessageBox.Show("Не все поля заполнены\n" +
-                    "Чтобы добавить параметры в семейство, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-            } else if (!CheckingFillingValidDataInParamValue())
-            {
-                System.Windows.Forms.MessageBox.Show("Не все значения параметров заполнены\n" +
-                    "Чтобы добавить параметры в семейство, заполните неверно заполененые значения параметров и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-            }
-            else
-            {
-                Dictionary<string, List<string>> allParametersForAddDict = CreateInterfaceParamDict();
-
-               AddParametersToFamily(_doc, activeFamilyName, allParametersForAddDict);
-            }
-        }
-
-        //// XAML. Сохранение параметров в JSON-файл при нажатии на кнопку 
-        private void SaveParamFileSettingsButton_Click(object sender, RoutedEventArgs e)
-        {
             if (!CheckingFillingAllComboBoxes())
             {
-                ClearingIncorrectlyFilledFieldsParams();
-
-                System.Windows.Forms.MessageBox.Show("Не все поля заполнены.\n" +
-                    "Чтобы сохранить файл параметров, заполните отсутствующие данные или удалите пустые уже существующие параметры и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                System.Windows.Forms.MessageBox.Show("Неисправность параметров в файле преднастроек.\n" +
+                    "Проверьте файл преднастроек и повторите попытку.",
+                    "Ошибка чтения ФОП", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             }
-            else if (!ExistenceCheckComboBoxes())
-            {
-                System.Windows.Forms.MessageBox.Show("Нет заполненных параметров.\n" +
-                    "Чтобы сохранить файл параметров, заполните хотя бы один параметр и повторите попытку.", "Нет параметров для добавления",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-            }
-            else if (!CheckingFillingValidDataInParamValue())
-            {
-                System.Windows.Forms.MessageBox.Show("Не все значения параметров заполнены\n" +
-                    "Чтобы сохранить файл параметров, заполните неверно заполененые значения параметров и повторите попытку.", "Не все поля заполнены",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-            }
-            else
-            {
-                var paramSettingsDict = CreateInterfaceParamDict();
 
-                if (paramSettingsDict.Count == 0)
-                {
-                    return;
-                }
-
-                string initialDirectory = @"X:\BIM";
-                string defaultFileName = $"presettingGeneralParameters_{DateTime.Now:yyyyMMddHHmmss}.json";
-
-                using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
-                {
-                    saveFileDialog.InitialDirectory = initialDirectory;
-                    saveFileDialog.FileName = defaultFileName;
-                    saveFileDialog.Filter = "Файл преднастроек добавления общих параметров (*.json)|*.json";
-                    saveFileDialog.Title = "Сохранить файл преднастроек добавления общих параметров";
-
-                    if (saveFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    {
-                        string filePath = saveFileDialog.FileName;
-
-                        var parameterList = new List<Dictionary<string, string>>();
-
-                        foreach (var entry in paramSettingsDict)
-                        {
-                            var parameterEntry = new Dictionary<string, string>
-                        {
-                            { "NE", entry.Key },
-                            { "pathFile", entry.Value[0] },
-                            { "groupParameter", entry.Value[1] },
-                            { "nameParameter", entry.Value[2] },
-                            { "instance", entry.Value[3] },
-                            { "grouping", entry.Value[4] },
-                            { "parameterValue", entry.Value[5] },
-                            { "parameterValueDataType", entry.Value[6] },
-                        };
-                            parameterList.Add(parameterEntry);
-                        }
-
-                        string jsonData = JsonConvert.SerializeObject(parameterList, Formatting.Indented);
-
-                        using (StreamWriter writer = new StreamWriter(filePath))
-                        {
-                            writer.Write(jsonData);
-                        }
-
-                        System.Windows.Forms.MessageBox.Show("Файл успешно сохранён по ссылке:\n" +
-                            $"{filePath}", "Успех", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                    }
-                }
-            }
         }
     }
 }

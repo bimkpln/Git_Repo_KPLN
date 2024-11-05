@@ -76,12 +76,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             _doc = uiapp.ActiveUIDocument?.Document;
 
             this.activeFamilyName = activeFamilyName;
+            TB_familyName.Text = activeFamilyName;
+
             this.jsonFileSettingPath = jsonFileSettingPath;
 
             if (!string.IsNullOrEmpty(jsonFileSettingPath))
             {
                 Dictionary<string, List<string>> allInterfaceElementDictionary = ParsingDataFromJsonToInterfaceDictionary(jsonFileSettingPath);
                 AddPanelParamFieldsJson(allInterfaceElementDictionary);
+                jsonFileSettingPath = "";
             }
             else
             {
@@ -195,12 +198,64 @@ namespace KPLN_BIMTools_Ribbon.Forms
         // Создание словаря со всеми параметрами указанными в интерфейсе
         public Dictionary<string, List<string>> CreateInterfaceParamDict()
         {
-            var parametersDictionary = new Dictionary<string, List<string>>();
+            Dictionary<string, List<string>> parametersDictionary = new Dictionary<string, List<string>>();
 
-            //// Проверка на неверные значения параметров в интерфейсе
             bool uniqueParameterFieldFound = false;
             string errorValueString = "";
 
+            //// Проверка на дубликаты параметров в интерфейсе
+            Dictionary<string, List<System.Windows.Controls.TextBox>> rTextBoxValues = new Dictionary<string, List<System.Windows.Controls.TextBox>>();
+
+            foreach (var child in SP_allPanelParamsFields.Children)
+            {
+                if (child is StackPanel panel && panel.Tag?.ToString() == "uniqueParameterField")
+                {
+                    if (panel.Children[1] is System.Windows.Controls.TextBox textBox)
+                    {
+                        string value = textBox.Text;
+
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            if (!rTextBoxValues.ContainsKey(value))
+                            {
+                                rTextBoxValues[value] = new List<System.Windows.Controls.TextBox>();
+                            }
+                            rTextBoxValues[value].Add(textBox);
+                        }
+                    }
+                }
+            }
+
+            List<string> duplicateValues = new List<string>();
+            foreach (var entry in rTextBoxValues)
+            {
+                if (entry.Value.Count > 1)
+                {
+                    duplicateValues.Add(entry.Key);
+                    foreach (var textBox in entry.Value)
+                    {
+                        textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
+                    }
+                }
+            }
+
+            if (duplicateValues.Any())
+            {
+                string dublicateValueString = "";
+
+                foreach (var textBox in duplicateValues)
+                {
+                    dublicateValueString += $"{textBox};\n";
+                }
+
+                System.Windows.Forms.MessageBox.Show($"Параметры c одинаковыми именами:\n{dublicateValueString}"
+                    + $"Исправьте ошибку и повторите попытку.", "Ошибка добавления параметров.",
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+
+                return parametersDictionary;
+            }
+
+            //// Проверка на неверные значения параметров в интерфейсе
             foreach (var child in SP_allPanelParamsFields.Children)
             {
                 if (child is StackPanel panel && panel.Tag?.ToString() == "uniqueParameterField")
@@ -242,59 +297,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 return parametersDictionary;
             }
-
-            //// Проверка на дубликаты параметров в интерфейсе
-            Dictionary<string, List<System.Windows.Controls.TextBox>> textBoxValues = new Dictionary<string, List<System.Windows.Controls.TextBox>>();
-
-            foreach (var child in SP_allPanelParamsFields.Children)
-            {
-                if (child is StackPanel panel && panel.Tag?.ToString() == "uniqueParameterField")
-                {
-                    if (panel.Children[1] is System.Windows.Controls.TextBox textBox)
-                    {
-                        string value = textBox.Text;
-
-                        if (!string.IsNullOrEmpty(value))
-                        {
-                            if (!textBoxValues.ContainsKey(value))
-                            {
-                                textBoxValues[value] = new List<System.Windows.Controls.TextBox>();
-                            }
-                            textBoxValues[value].Add(textBox);
-                        }
-                    }
-                }
-            }
-
-            List<string> duplicateValues = new List<string>();
-            foreach (var entry in textBoxValues)
-            {
-                if (entry.Value.Count > 1)
-                {
-                    duplicateValues.Add(entry.Key);
-                    foreach (var textBox in entry.Value)
-                    {
-                        textBox.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
-                    }
-                }
-            }
-
-            if (duplicateValues.Any())
-            {
-                string dublicateValueString = "";
-
-                foreach (var textBox in duplicateValues)
-                {
-                    dublicateValueString += $"{textBox};\n";
-                }
-
-                System.Windows.Forms.MessageBox.Show($"Параметры c одинаковыми именами:\n{dublicateValueString}"
-                    + $"Исправьте ошибку и повторите попытку.", "Ошибка добавления параметров.",
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-
-                return parametersDictionary;
-            }
-
+          
             //// Сбор данных с интерфейса для словаря
             int count = 1;
 
@@ -403,7 +406,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение (!) оригинальный comboBox "Категория" - Основной обработчик
+        //// XAML. Поведение (!) оригинального comboBox "Категория" - Основной обработчик
         private void CB_categoryDataType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             CB_dataType.Items.Clear();
@@ -425,7 +428,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение (!) оригинальный comboBox "Тип данных" - Основной обработчик
+        //// XAML. Поведение (!) оригинального comboBox "Тип данных" - Основной обработчик
         private void CB_dataType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CB_dataType.SelectedItem != null) 
@@ -465,13 +468,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        //// XAML. Поведение (!) оригинальный textBox "Значение параметра" - Загрузка
+        //// XAML. Поведение (!) оригинального textBox "Значение параметра" - Загрузка
         private void TB_paramValue_Loaded(object sender, RoutedEventArgs e)
         {
             TB_paramValue.Text = $"При необходимости, вы можете указать значение параметра [{CB_dataType.SelectedItem.ToString()}]";
         }
 
-        //// XAML. Поведение (!) оригинальный textBox "Значение параметра" - Потеря фокуса
+        //// XAML. Поведение (!) оригинального textBox "Значение параметра" - Потеря фокуса
         private void TB_paramValue_LostFocus(object sender, RoutedEventArgs e)
         {
             if (CB_dataType.SelectedItem.ToString() == "Изображение" && TB_paramValue.Text == "")
@@ -792,7 +795,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Добавление параметров в семейство при нажатии на кнопку 
         private void AddParamsInFamilyButton_Click(object sender, RoutedEventArgs e)
         {
-            var allParamSettingsDict = CreateInterfaceParamDict();
+            Dictionary<string, List<string>> allParamSettingsDict = CreateInterfaceParamDict();
 
             if (allParamSettingsDict.Count == 0)
             {
@@ -867,7 +870,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                     RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParameter, parameterValue, dataType);
                                 }
 
-                                if (familyParameter != null)
+                                if (familyParameter != null && comment != "None")
                                 {
                                     familyManager.SetDescription(familyParameter, comment);
                                 }
@@ -955,6 +958,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             { "parameterValue", entry.Value[6] },
                             { "comment", entry.Value[7] },
                         };
+
                         parameterList.Add(parameterEntry);
                     }
 
@@ -1009,17 +1013,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// JSON. Добавление новой панели параметров uniqueParameterField из файла преднастроек
         private void AddPanelParamFieldsJson(Dictionary<string, List<string>> allParamInInterfaceFromJsonDict)
         {
-            StackPanel stackPanel = this.FindName("SP_panelParamFields") as StackPanel;
-            bool notSupportedVersion = false;
+            StackPanel parentContainer = (StackPanel)SP_panelParamFields.Parent;
+            parentContainer.Children.Remove(SP_panelParamFields);
 
-            if (stackPanel != null)
-            {
-                var parent = stackPanel.Parent as System.Windows.Controls.Panel;
-                if (parent != null)
-                {
-                    parent.Children.Remove(stackPanel);
-                }
-            }
+            bool notSupportedVersion = false;
 
             foreach (var keyDict in allParamInInterfaceFromJsonDict)
             {
