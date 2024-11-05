@@ -19,19 +19,29 @@ namespace KPLN_BIMTools_Ribbon.Forms
     /// </summary>
     public partial class batchAddingParametersWindowСhoice : Window
     {
+        UIApplication uiapp;
+        public string activeFamilyName;
+        public bool isFamilyDocument;
+
+        public string paramAction;
+        public string jsonFileSettingPath;
+
         public batchAddingParametersWindowСhoice(UIApplication uiapp, string activeFamilyName)
         {        
             InitializeComponent();
             this.uiapp = uiapp;
             this.activeFamilyName = activeFamilyName;
+
+            if (activeFamilyName == "Семейство не выбрано")
+            {
+                familyName.Text = activeFamilyName;
+                btnAddParamsFromSPF.IsEnabled = false;
+                btnAddCustomParams.IsEnabled = false;
+                btnJSONForOneParameter.IsEnabled = false;
+            }
+
             familyName.Text = activeFamilyName;
         }
-
-        UIApplication uiapp;
-        public string activeFamilyName;
-        public string paramAction;
-        public string paramType;
-        public string jsonFileSettingPath;
 
         /// <summary>
         /// Функция, которая возвращает список "Тип"/"Экземпляр"
@@ -708,6 +718,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         //// XAML. Пакетное добавление кастомных параметров семейства
         private void Button_NewFamilyParam(object sender, RoutedEventArgs e)
         {
+            jsonFileSettingPath = "";
+
             var window = new batchAddingParametersWindowFamily(uiapp, activeFamilyName, jsonFileSettingPath);
             var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
             new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
@@ -751,6 +763,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         "Пожалуйста, выберите другой файл.", "Ошибка чтения JSON-файла.", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                 }
             }
+        }
+
+        //// XAML. Загрузка XAML-настройки для нескольких параметров
+        private void Button_MultipleLoadParam(object sender, RoutedEventArgs e)
+        {
+            var window = new batchAddingParametersWindowMultipleLoadParameters(uiapp);
+            var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+            window.ShowDialog();         
         }
     }
 }

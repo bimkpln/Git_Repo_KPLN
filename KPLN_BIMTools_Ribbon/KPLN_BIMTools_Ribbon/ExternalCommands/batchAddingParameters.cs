@@ -12,24 +12,24 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
+            string activeFamilyName;
 
             //Проверка на тип документа
             if (doc.IsFamilyDocument)
             {
                 FamilyManager familyManager = doc.FamilyManager;
-                string activeFamilyName = doc.Title;
-
-                var window = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
-                var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
-                new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
-                window.ShowDialog();
+                activeFamilyName = doc.Title;
             }
             else
             {
-                System.Windows.Forms.MessageBox.Show("Текущий документ не является семейством.", "Предупреждение", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                return Result.Failed;
+                activeFamilyName = "Семейство не выбрано";
             }
-
+         
+            var window = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);        
+            var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;  
+            new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+            window.ShowDialog();
+            
             return Result.Succeeded;
         }
         
