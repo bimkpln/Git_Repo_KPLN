@@ -75,7 +75,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="35"/>
             <RowDefinition/>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
 
         <DockPanel Background="Orange" LastChildFill="True">
@@ -87,7 +87,8 @@
             <TextBox 
                 x:Name="SearchText"
                 Style="{StaticResource TXTBX}" 
-                Grid.Row="0" TextChanged="SearchText_Changed"
+                Grid.Row="0" 
+                TextChanged="SearchText_Changed"
                 TextAlignment="Left" 
                 VerticalAlignment="Center" 
                 DockPanel.Dock="Right" 
