@@ -261,17 +261,15 @@
                     </Button.ToolTip>
                 </Button>
                 <Button 
-                     x:Name="AddNewLinkByUserInput" 
+                     x:Name="AddNewRevitServerLink" 
                      Content="🗃" 
-                     Click="AddNewLinkByUserInput_Click"
+                     Click="AddNewRevitServerLink_Click"
                      BorderBrush="Green"
                      Style="{StaticResource MainButtons}">
                     <Button.ToolTip>
                         <StackPanel>
                             <TextBlock
-                                Text="1. Добавить новую связь с Revit-Server (отдельный файл, или все файлы из указанной папки);"/>
-                            <TextBlock
-                                Text="2. Добавить ВСЕ связи из указанной папки с сервера KPLN."/>
+                                Text="Добавить новую связь с Revit-Server"/>
                         </StackPanel>
                     </Button.ToolTip>
                 </Button>

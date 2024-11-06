@@ -90,7 +90,7 @@ namespace KPLN_Tools
                 typeof(CommandSearchRevitUser).FullName,
                 "KPLN_Tools.Imagens.searchUserSmall.png",
                 "KPLN_Tools.Imagens.searchUserSmall.png",
-                "http://moodle",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1301",
                 true);
 
             PushButtonData sendMsgToBitrix = CreateBtnData(
@@ -190,7 +190,7 @@ namespace KPLN_Tools
                 typeof(CommandRLinkManager).FullName,
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
-                "http://moodle");
+                "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
 #if Revit2020 || Debug2020
             PushButtonData set_ChangeRSLinks = CreateBtnData("СЕТ: Обновить связи",
