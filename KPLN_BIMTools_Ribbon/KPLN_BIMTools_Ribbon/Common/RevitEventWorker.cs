@@ -2,7 +2,6 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
 using System;
@@ -74,7 +73,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 if (currentDBDialog == null)
                     _logger.Error($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека");
 
-                
+
                 if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
                 {
                     if (args.OverrideResult((int)taskDialogResult))

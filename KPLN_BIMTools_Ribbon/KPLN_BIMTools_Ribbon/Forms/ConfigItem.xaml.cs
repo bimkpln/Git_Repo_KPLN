@@ -1,11 +1,15 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using Microsoft.Win32;
 using NLog;
+using RevitServerAPILib;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -27,11 +31,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// </summary>
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
 
-        private readonly Logger _logger;
+        private readonly NLog.Logger _logger;
         private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly SQLiteService _sqliteService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
+        private readonly int _revitVersion;
 
         private string _settingName;
         private string _sharedPathTo;
@@ -48,11 +53,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <param name="revitDocExchangeEnum">Тип обмена</param>
         /// <param name="currentDBRevitDocExchanges">Ссылка на существующий конфиг</param>
         public ConfigItem(
-            Logger logger,
+            NLog.Logger logger,
             RevitDocExchangestDbService revitDocExchangestDbService,
             SQLiteService sqliteService,
             DBProject project,
             RevitDocExchangeEnum revitDocExchangeEnum,
+            int revitVersion,
             DBRevitDocExchanges currentDBRevitDocExchanges = null)
         {
             _logger = logger;
@@ -60,6 +66,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             _sqliteService = sqliteService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
+            _revitVersion = revitVersion;
             CurrentDBRevitDocExchanges = currentDBRevitDocExchanges;
 
             string mainProjectPath = _project.MainPath;
@@ -259,6 +266,50 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private void OnMainPathAddFolder(object sender, RoutedEventArgs e)
+        {
+            using (System.Windows.Forms.FolderBrowserDialog openFolderDialog = new System.Windows.Forms.FolderBrowserDialog())
+            {
+                openFolderDialog.SelectedPath = _initialDirectoryForOpenFileDialog;
+                
+                if (openFolderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK 
+                    && !string.IsNullOrWhiteSpace(openFolderDialog.SelectedPath))
+                {
+                    _initialDirectoryForOpenFileDialog = openFolderDialog.SelectedPath;
+                    SharedPathTo = _initialDirectoryForOpenFileDialog;
+                }
+            }
+        }
+
+        private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
+        {
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir();
+            bool? dialogResult = selectedRevitServerMainDirForm.ShowDialog();
+            if (dialogResult == null || selectedRevitServerMainDirForm.Status != UIStatus.RunStatus.Run)
+                return;
+
+            string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
+            string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
+            string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
+
+            RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
+            List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>() { new ElementEntity(selectedRSMainDir) };
+
+            IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir).Folders;
+            
+            activeEntitiesForForm.AddRange(rsFolders
+                .Where(f => f.LockState != LockState.Locked)
+                .Select(f => new ElementEntity(f.Path))
+                .ToArray());
+
+            ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
+            bool? pickFormResult = pickForm.ShowDialog();
+            if (pickFormResult == null || pickForm.Status != UIStatus.RunStatus.Run)
+                return;
+            
+            SharedPathTo = $"\\\\{selectedRSHostName}{pickForm.SelectedElement.Name}";
+        }
+
         #region Добавление/удаление файлов
         private void OnWindowsAddFile(object sender, RoutedEventArgs e)
         {
@@ -280,41 +331,37 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        private void OnBtnHandleAddFile(object sender, RoutedEventArgs e)
+        private void OnAddNewRevitServerLink(object sender, RoutedEventArgs e)
         {
-            UserStringInput userStringInput = new UserStringInput();
-            userStringInput.ShowDialog();
-            if (userStringInput.IsRun)
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            if (rsFilesPickForm == null)
+                return;
+
+            bool? dialogResult = rsFilesPickForm.ShowDialog();
+            if (dialogResult == null || rsFilesPickForm.Status != UIStatus.RunStatus.Run)
+                return;
+
+            foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
             {
-                FileEntitiesList.Add(new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath));
+                FileEntitiesList.Add(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
             }
         }
 
-        private void LBMenuItem_Update_Click(object sender, RoutedEventArgs e)
+        private void LBMenuItem_Info_Click(object sender, RoutedEventArgs e)
         {
             // Получаем выбранные элементы
             var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
             if (selectedItems.Count != 1)
             {
-                UserDialog cd = new UserDialog("Предупреждение", $"Изменять можно только ОТДЕЛЬНЫЕ элементы. Сейчас выбрано несколько");
+                UserDialog cd = new UserDialog("Предупреждение", $"Информацию можно смотерть только по отдельным файлам");
                 cd.ShowDialog();
             }
             else
             {
                 if (selectedItems.FirstOrDefault() is FileEntity fileEntity)
                 {
-                    UserStringInput userStringInput = new UserStringInput(fileEntity.Name, fileEntity.Path);
+                    UserStringInfo userStringInput = new UserStringInfo(fileEntity.Name, fileEntity.Path);
                     userStringInput.ShowDialog();
-                    if (userStringInput.IsRun)
-                    {
-                        // Обновляю основную коллекцию новыми данными
-                        int index = FileEntitiesList.IndexOf(fileEntity);
-                        if (index >= 0)
-                        {
-                            // Уведомить об изменении элемента
-                            FileEntitiesList[index] = new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath);
-                        }
-                    }
                 }
             }
         }
@@ -372,7 +419,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
 
             // Создаю БД для записи Items, а также вношу запись в основную БД диспетчера. Если база ранее была создана - то данный этап игнорирую
-            if (!File.Exists(_sqliteService.CurrentDBFullPath))
+            if (!System.IO.File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
                 int idFromDB = _revitDocExchangestDbService.CreateDBRevitDocExchanges(CurrentDBRevitDocExchanges);
