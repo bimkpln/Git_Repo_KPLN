@@ -68,8 +68,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public void UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchanges currentDocExc) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                 $"SET {nameof(DBRevitDocExchanges.SettingName)}='{currentDocExc.SettingName}', " +
-                $"{nameof(DBRevitDocExchanges.SettingResultPath)}='{currentDocExc.SettingResultPath}'" +
-                $"{nameof(DBRevitDocExchanges.SettingCountItem)}='{currentDocExc.SettingCountItem}'" +
+                $"{nameof(DBRevitDocExchanges.SettingResultPath)}='{currentDocExc.SettingResultPath}', " +
+                $"{nameof(DBRevitDocExchanges.SettingCountItem)}='{currentDocExc.SettingCountItem}' " +
                 $"WHERE {nameof(DBRevitDocExchanges.Id)}='{currentDocExc.Id}';");
         #endregion
 
