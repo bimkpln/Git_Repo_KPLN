@@ -22,8 +22,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public int CreateDBRevitDocExchanges(DBRevitDocExchanges docExchanges) =>
             ExecuteQuery<int>(
                 $"INSERT INTO {_dbTableName} " +
-                    $"({nameof(DBRevitDocExchanges.ProjectId)}, {nameof(DBRevitDocExchanges.RevitDocExchangeType)}, {nameof(DBRevitDocExchanges.SettingName)}, {nameof(DBRevitDocExchanges.SettingDBFilePath)}, {nameof(DBRevitDocExchanges.DescriptionForShow)}) " +
-                    $"VALUES (@{nameof(DBRevitDocExchanges.ProjectId)}, @{nameof(DBRevitDocExchanges.RevitDocExchangeType)}, @{nameof(DBRevitDocExchanges.SettingName)}, @{nameof(DBRevitDocExchanges.SettingDBFilePath)}, @{nameof(DBRevitDocExchanges.DescriptionForShow)})" +
+                    $"({nameof(DBRevitDocExchanges.ProjectId)}, {nameof(DBRevitDocExchanges.RevitDocExchangeType)}, {nameof(DBRevitDocExchanges.SettingName)}, {nameof(DBRevitDocExchanges.SettingResultPath)}, {nameof(DBRevitDocExchanges.SettingCountItem)}, {nameof(DBRevitDocExchanges.SettingDBFilePath)}) " +
+                    $"VALUES (@{nameof(DBRevitDocExchanges.ProjectId)}, @{nameof(DBRevitDocExchanges.RevitDocExchangeType)}, @{nameof(DBRevitDocExchanges.SettingName)}, @{nameof(DBRevitDocExchanges.SettingResultPath)}, @{nameof(DBRevitDocExchanges.SettingCountItem)}, @{nameof(DBRevitDocExchanges.SettingDBFilePath)})" +
                     $"RETURNING Id;",
                 docExchanges)
             .FirstOrDefault();
@@ -68,7 +68,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public void UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchanges currentDocExc) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                 $"SET {nameof(DBRevitDocExchanges.SettingName)}='{currentDocExc.SettingName}', " +
-                $"{nameof(DBRevitDocExchanges.DescriptionForShow)}='{currentDocExc.DescriptionForShow}'" +
+                $"{nameof(DBRevitDocExchanges.SettingResultPath)}='{currentDocExc.SettingResultPath}', " +
+                $"{nameof(DBRevitDocExchanges.SettingCountItem)}='{currentDocExc.SettingCountItem}' " +
                 $"WHERE {nameof(DBRevitDocExchanges.Id)}='{currentDocExc.Id}';");
         #endregion
 

@@ -134,7 +134,8 @@ namespace KPLN_Tools.ExternalCommands
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"RSN:\\\\{_rsIOSPath}\\Самолет_Сетунь\\ВК\\{newModelPathString}");
                         }
                         else if (oldModelPathString.Contains(_rsOLDPath)
-                            && oldModelPathString.Contains("_ВК"))
+                            && oldModelPathString.Contains("_ВК") 
+                            && !oldModelPathString.Contains("_КР"))
                         {
                             newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsIOSPath}");
                             newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");

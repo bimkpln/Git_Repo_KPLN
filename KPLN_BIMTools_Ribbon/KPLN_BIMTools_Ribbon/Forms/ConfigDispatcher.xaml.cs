@@ -21,16 +21,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
+        private readonly int _revitVersion;
 
         private readonly List<DBRevitDocExchanges> _selectedDocExchanges = new List<DBRevitDocExchanges>();
         private readonly ObservableCollection<DBRevitDocExchanges> _nativeDBRevitDocExchanges;
 
-        public ConfigDispatcher(Logger logger, RevitDocExchangestDbService revitDocExchangestDbService, DBProject project, RevitDocExchangeEnum revitDocExchangeEnum)
+        public ConfigDispatcher(
+            Logger logger, 
+            RevitDocExchangestDbService 
+            revitDocExchangestDbService,
+            DBProject project, 
+            RevitDocExchangeEnum revitDocExchangeEnum,
+            int revitVersion)
         {
             _logger = logger;
             _revitDocExchangestDbService = revitDocExchangestDbService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
+            _revitVersion = revitVersion;
 
             InitializeComponent();
 
@@ -99,7 +107,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
             SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
 
-            ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum);
+            ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, _revitVersion);
             configItem.ShowDialog();
             if (configItem.IsRun)
             {
@@ -146,7 +154,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
                 {
                     SQLiteService sqliteService = new SQLiteService(_logger, docExchanges.SettingDBFilePath, _revitDocExchangeEnum);
-                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, docExchanges);
+                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, 
+                        _revitDocExchangeEnum, _revitVersion, docExchanges);
                     
                     configItem.ShowDialog();
 
@@ -171,7 +180,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
                     SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
 
-                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, docExchanges);
+                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, 
+                        _project, _revitDocExchangeEnum, _revitVersion, docExchanges);
                     configItem.SettingName = $"{configItem.SettingName}_new_{DateTime.Now:d}";
 
                     configItem.ShowDialog();

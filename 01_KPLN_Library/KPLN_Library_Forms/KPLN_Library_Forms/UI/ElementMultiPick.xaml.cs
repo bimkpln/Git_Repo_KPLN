@@ -16,12 +16,12 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         private bool _isRun = false;
 
-        private readonly IEnumerable<ElementEntity> _collection;
+        private readonly ObservableCollection<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
         public ElementMultiPick(IEnumerable<ElementEntity> collection)
         {
-            _collection = collection;
+            _collection = new ObservableCollection<ElementEntity>(collection);
             _showCollection = new ObservableCollection<ElementEntity>(_collection);
             InitializeComponent();
 
@@ -38,7 +38,7 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Выбранная коллекция элементов
         /// </summary>
-        public List<ElementEntity> SelectedElements 
+        public List<ElementEntity> SelectedElements
         {
             get => _collection.Where(ee => ee.IsSelected).ToList();
         }
@@ -78,11 +78,10 @@ namespace KPLN_Library_Forms.UI
             TextBox textBox = (TextBox)sender;
             string _searchName = textBox.Text.ToLower();
 
+            _showCollection.Clear();
             foreach (ElementEntity elemnt in _collection)
             {
-                if (!elemnt.Name.ToLower().Contains(_searchName))
-                    _showCollection.Remove(elemnt);
-                else if (!_showCollection.Contains(elemnt))
+                if (elemnt.Name.ToLower().Contains(_searchName))
                     _showCollection.Add(elemnt);
             }
         }
@@ -105,7 +104,7 @@ namespace KPLN_Library_Forms.UI
 
         private void ToggleBtn_Click(object sender, RoutedEventArgs e)
         {
-            foreach(object obj in Elements.Items)
+            foreach (object obj in Elements.Items)
             {
                 ElementEntity entity = (ElementEntity)obj;
                 entity.IsSelected = !entity.IsSelected;

@@ -116,11 +116,41 @@
                     Grid.Column="0"
                     Grid.Row="2"
                     Text="Путь для размещения итога:"/>
-                <TextBox 
-                    x:Name="PathTo"
+                <Grid
                     Grid.Column="1"
-                    Grid.Row="2"
-                    Text="{Binding SharedPathTo}"/>
+                    Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="50"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox 
+                        x:Name="PathTo"
+                        IsEnabled="False"
+                        Text="{Binding SharedPathTo}"
+                        TextWrapping="Wrap"
+                        HorizontalAlignment="Stretch"/>
+                    <Button 
+                        x:Name="btnMainPathAddFolder"
+                        Grid.Column="1"
+                        Content="🔍"
+                        Padding="-5"
+                        IsEnabled="True"
+                        Style="{StaticResource UserActionBtns}"
+                        Foreground="Orange"
+                        ToolTip="Добавить папку на сервере"
+                        Click="OnMainPathAddFolder"/>
+                    <Button 
+                        x:Name="btnMainPathAddRevitServerFolder"
+                        Grid.Column="2"
+                        Content="🗃"
+                        Padding="-5"
+                        IsEnabled="True"
+                        Style="{StaticResource UserActionBtns}"
+                        Foreground="Orange"
+                        ToolTip="Добавить папку на RevitServer"
+                        Click="OnMainPathAddRevitServerFolder"/>
+                </Grid>
             </Grid>
             <!--Блок основных глобальных настроек -->
             
@@ -213,7 +243,7 @@
                                         <TextBlock 
                                             Text="{Binding Name}"
                                             TextWrapping="Wrap"
-                                            ToolTip="Нажми ПКМ, чтобы изменить или удалить файл/группу файлов (удалять можно несколько, а менять только по одному)"
+                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо или удалить файл/группу файлов (удалять можно несколько)"
                                             HorizontalAlignment="Stretch"
                                             Foreground="White"/>
                                     </Border>
@@ -223,8 +253,8 @@
                             <ListBox.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem 
-                                        Header="Изменить" 
-                                        Click="LBMenuItem_Update_Click"/>
+                                        Header="Инфо" 
+                                        Click="LBMenuItem_Info_Click"/>
                                     <MenuItem 
                                         Header="Удалить" 
                                         Click="LBMenuItem_Delete_Click"/>
@@ -248,7 +278,6 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="50"/>
-                <ColumnDefinition Width="50"/>
             </Grid.ColumnDefinitions>
             <Button 
                 x:Name="btnWindowsAddFile"
@@ -261,15 +290,15 @@
                 ToolTip="Добавить файл/-ы, выбрав их через проводник"
                 Click="OnWindowsAddFile"/>
             <Button 
-                x:Name="btnHandleAddFile"
+                x:Name="btnAddNewRevitServerLink"
                 Grid.Column="1"
-                Content="✍🏻"
+                Content="🗃"
                 Padding="-5"
                 IsEnabled="True"
                 Style="{StaticResource UserActionBtns}"
                 Foreground="Green"
-                ToolTip="Добавить файл/-ы указав путь вручную. Актуально для RevitServer, и если нужно обрабоать ВСЕ файлы из конкрентной папки"
-                Click="OnBtnHandleAddFile"/>
+                ToolTip="Добавить файл/-ы с RevitServer"
+                Click="OnAddNewRevitServerLink"/>
         </Grid>
         <!--Изменение список файлов-->
 

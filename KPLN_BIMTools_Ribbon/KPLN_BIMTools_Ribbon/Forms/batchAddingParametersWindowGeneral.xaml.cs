@@ -1191,6 +1191,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         System.Windows.Forms.MessageBox.Show("Все параметры были добавлены в семейство", "Все параметры были добавлены в семейство",
                             System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
                     }
+
                 }
             }
         }

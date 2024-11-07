@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -73,6 +74,7 @@ namespace KPLN_Library_Forms.UI
 
             _isRun = true;
             Status = RunStatus.Run;
+            
             Close();
         }
 
@@ -84,11 +86,10 @@ namespace KPLN_Library_Forms.UI
             TextBox textBox = (TextBox)sender;
             string _searchName = textBox.Text.ToLower();
 
+            _showCollection.Clear();
             foreach (ElementEntity elemnt in _collection)
             {
-                if (!elemnt.Name.ToLower().Contains(_searchName))
-                    _showCollection.Remove(elemnt);
-                else if (!_showCollection.Contains(elemnt))
+                if (elemnt.Name.ToLower().Contains(_searchName))
                     _showCollection.Add(elemnt);
             }
         }

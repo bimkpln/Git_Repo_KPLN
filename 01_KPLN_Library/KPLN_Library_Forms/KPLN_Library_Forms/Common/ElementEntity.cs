@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -32,6 +33,10 @@ namespace KPLN_Library_Forms.Common
             // Анбоксинг на Parameter Revit
             else if (elem is Parameter param)
                 Name = param.Definition.Name;
+
+            // Анбоксинг на string (Element == Name, например - путь к файлу)
+            else if (elem is string name)
+                Name = name;
         }
 
         public ElementEntity(object elem, string tooltip) : this(elem)
@@ -88,6 +93,17 @@ namespace KPLN_Library_Forms.Common
                 OnPropertyChanged();
             }
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is ElementEntity otherEntity)
+            {
+                return string.Equals(this.Name, otherEntity.Name, StringComparison.Ordinal);
+            }
+            return false;
+        }
+
+        public override int GetHashCode() => this.Name?.GetHashCode() ?? 0;
 
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {

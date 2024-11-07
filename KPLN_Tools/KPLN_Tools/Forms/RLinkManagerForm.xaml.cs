@@ -1,12 +1,12 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
-using KPLN_Tools.Common;
+using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.ExecutableCommand;
 using Microsoft.Win32;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -23,18 +23,16 @@ namespace KPLN_Tools.Forms
         /// Кэширование пути для выбора файлов с сервера
         /// </summary>
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
-        /// <summary>
-        /// Кэширование пути для выбора файлов с ревит-сервера или к папке
-        /// </summary>
-        private static string _initialDirectoryOrRS;
         private readonly UIApplication _uiapp;
         private readonly Document _doc;
         private readonly string _configPath;
+        private int _revitVersion;
 
         public RLinkManagerForm(UIApplication uiapp)
         {
             _uiapp = uiapp;
             _doc = _uiapp.ActiveUIDocument.Document;
+            _revitVersion = int.Parse(uiapp.Application.VersionNumber);
 
             string docPath;
             if (_doc.IsWorkshared)
@@ -173,59 +171,19 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        private void AddNewLinkByUserInput_Click(object sender, RoutedEventArgs e)
+        private void AddNewRevitServerLink_Click(object sender, RoutedEventArgs e)
         {
-            UserPathInputForm userPathInputForm;
-            if (string.IsNullOrEmpty(_initialDirectoryOrRS))
-                userPathInputForm = new UserPathInputForm();
-            else
-                userPathInputForm = new UserPathInputForm(_initialDirectoryOrRS);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            if (rsFilesPickForm == null)
+                return;
 
-            userPathInputForm.ShowDialog();
-            if (userPathInputForm.IsRun)
+            bool? dialogResult = rsFilesPickForm.ShowDialog();
+            if (dialogResult == null || rsFilesPickForm.Status != UIStatus.RunStatus.Run)
+                return;
+
+            foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
             {
-                _initialDirectoryOrRS = userPathInputForm.UserInputPath;
-                List<string> fileFromPathes = EnvironmentService.GetFilePathesFromPath(_initialDirectoryOrRS, _uiapp.Application.VersionNumber);
-
-                string docName = string.Empty;
-                string[] docTitleParts = _doc.Title.Split(new string[] { $"_{Module.CurrentDBUser.RevitUserName}" }, StringSplitOptions.None);
-                if (docTitleParts.Length > 0)
-                    docName = docTitleParts[0];
-                else
-                    docName = _doc.Title;
-                
-                string errorFromPath = fileFromPathes.Where(ffp => ffp.Contains(docName)).FirstOrDefault();
-                if (!string.IsNullOrEmpty(errorFromPath))
-                {
-                    CustomMessageBox cmb = new CustomMessageBox(
-                        "Предупреждение",
-                        $"Была попытка загрузить в файл {errorFromPath} в файл {errorFromPath} (то есть в себя же). Данный файл удален из списка на загрузку");
-                    cmb.ShowDialog();
-                    
-                    fileFromPathes.Remove(errorFromPath);
-                }
-                else if (fileFromPathes == null || fileFromPathes.Count == 0)
-                {
-                    CustomMessageBox cmb = new CustomMessageBox(
-                        "Предупреждение",
-                        $"Не удалось найти Revit-файлы из папки: {_initialDirectoryOrRS}");
-                    cmb.ShowDialog();
-                    return;
-                }
-
-                foreach (LinkManagerEntity entity in EnvironmentService.PrepareLCEntityByPathes(fileFromPathes))
-                {
-                    if (LinkChangeEntityColl.Any(lcec => lcec.LinkPath == entity.LinkPath))
-                    {
-                        CustomMessageBox cmb = new CustomMessageBox(
-                            "Предупреждение",
-                            $"Файл уже есть в списке на загрузку. Путь: {entity.LinkPath}");
-                        cmb.ShowDialog();
-                    }
-                    else
-                        LinkChangeEntityColl.Add(entity);
-                    
-                }
+                LinkChangeEntityColl.Add(new LinkManagerEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
             }
         }
 

@@ -92,32 +92,6 @@ namespace KPLN_Tools.Common
             return fileFromPathes;
         }
 
-        /// <summary>
-        /// Подготовить коллекцию LinkChangeEntity из предоставленных путей
-        /// </summary>
-        public static List<LinkManagerEntity> PrepareLCEntityByPathes(List<string> fileFromPathes)
-        {
-            List<LinkManagerEntity> result = new List<LinkManagerEntity>();
-            
-            foreach (string path in fileFromPathes)
-            {
-                string[] pathParts = path.Split('\\');
-                if (pathParts.Length < 2)
-                    pathParts = path.Split('/');
-
-                if (pathParts.Length < 2)
-                    throw new Exception($"Проблемы в конвертации указанного пути - нет возможности получить имя файла. Путь: {path}");
-
-                string modelName = pathParts.Where(x => x.EndsWith("rvt")).FirstOrDefault();
-                if (modelName == null)
-                    throw new Exception($"Не удалось получить имя файла по пути: {path}");
-                else
-                    result.Add(new LinkManagerEntity(modelName, path));
-            }
-
-            return result;
-        }
-
         private static string RemoveSubstringIfExists(string originalString, string substring)
         {
             int index = originalString.IndexOf(substring);

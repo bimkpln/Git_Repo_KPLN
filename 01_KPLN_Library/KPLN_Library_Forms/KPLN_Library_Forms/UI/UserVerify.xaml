@@ -4,33 +4,39 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Library_Forms.UI"
-        mc:Ignorable="d" 
-        Width="300" Height="200" MaxHeight="250" MaxWidth="350"
-        Title="KPLN: Авторизация специалиста BIM-отдела" FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
-            ResizeMode="CanResizeWithGrip" WindowStyle="ToolWindow"  Topmost="False" WindowStartupLocation="CenterScreen" 
-            SizeToContent="Height" Closing="Window_Closing" Loaded="OnLoaded">
+        mc:Ignorable="d"
+        Title="KPLN: Авторизация специалиста BIM-отдела" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight" 
+        WindowStyle="ToolWindow"  
+        Topmost="False" 
+        WindowStartupLocation="CenterScreen" 
+        Closing="Window_Closing"
+        Loaded="OnLoaded">
+    
     <Window.Resources>
-        <Style x:Key="BTN" TargetType="Button">
+        <Style x:Key="RunBTN" TargetType="Button">
+            <Setter Property="Background" Value="Orange"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#7F3D3F42"/>
-            <Setter Property="Margin" Value="1,1,1,1"/>
+            <Setter Property="Margin" Value="1"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border CornerRadius="5" Background="{TemplateBinding Background}">
                             <Grid>
-                                <Rectangle RadiusX="5" RadiusY="5" Fill="{TemplateBinding Background}"/>
-                                <Path x:Name="PathIcon" Width="15" Height="25" Stretch="Fill" Fill="#4C87B3" HorizontalAlignment="Left" Margin="17,0,0,0"/>
-                                <ContentPresenter x:Name="MyContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E59400" />
+                                <Setter Property="Background" Value="Red" />
                                 <Setter Property="Foreground" Value="White" />
-                                <Setter TargetName="PathIcon" Property="Fill" Value="Black" />
                             </Trigger>
-
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="#FF00C867" />
                                 <Setter Property="Foreground" Value="White" />
@@ -40,40 +46,75 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
         <Style x:Key="TXT" TargetType="TextBlock">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
         </Style>
+        
         <Style x:Key="PSWBX" TargetType="PasswordBox">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="Margin" Value="5,5,5,5"/>
-            <Setter Property="MaxWidth" Value="400"/>
         </Style>
     </Window.Resources>
 
     <Grid>
         
         <Grid.RowDefinitions>
-            <RowDefinition Height="0.15*"></RowDefinition>
-            <RowDefinition Height="0.10*"></RowDefinition>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="25"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition Width="350"/>
         </Grid.ColumnDefinitions>
 
-        <DockPanel Background="Orange" LastChildFill="True">
-            <TextBlock Text="Почему это появилось?" VerticalAlignment="Center" FontWeight="Bold" Margin="2" DockPanel.Dock="Top"/>
-            <TextBlock x:Name="FormDescription" Text="Описание, которое устанавливается через конструктор" TextWrapping="Wrap" VerticalAlignment="Center" Margin="1" DockPanel.Dock="Top"/>
-            <TextBlock Text="Пароль:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
-            <PasswordBox x:Name="SearchPassword" Style="{StaticResource PSWBX}" Grid.Row="0" VerticalAlignment="Center" DockPanel.Dock="Right" 
-                         FontStretch="ExtraExpanded" PasswordChanged="PasswordText_Changed"/>
+        <DockPanel 
+            Background="Orange" 
+            LastChildFill="True">
+            <TextBlock 
+                Text="Почему это появилось?" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5" 
+                DockPanel.Dock="Top"/>
+            <TextBlock 
+                x:Name="FormDescription" 
+                Text="Описание, которое устанавливается через конструктор" 
+                TextWrapping="Wrap" 
+                VerticalAlignment="Center" 
+                Margin="5"
+                DockPanel.Dock="Top"/>
+            <TextBlock 
+                Text="Пароль:" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5"/>
+            <PasswordBox 
+                x:Name="SearchPassword" 
+                Grid.Row="0" 
+                Style="{StaticResource PSWBX}" 
+                Margin="0,10,10,10"
+                VerticalAlignment="Center" 
+                DockPanel.Dock="Right" 
+                FontStretch="ExtraExpanded"
+                PasswordChanged="PasswordText_Changed"/>
         </DockPanel>
 
-        <GridSplitter Grid.Row="0" Height="5" Grid.ColumnSpan ="1" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"/>
+        <GridSplitter 
+            Grid.Row="0" 
+            Height="5"
+            Grid.ColumnSpan ="1"
+            VerticalAlignment="Bottom" 
+            HorizontalAlignment="Stretch"/>
 
-        <Button x:Name="Run" Style="{StaticResource BTN}" Background="Orange" Grid.Row="2" Content="Выполнить команду" Click="OnRunClick"/>
+        <Button 
+            x:Name="Run" 
+            Grid.Row="1" 
+            Style="{StaticResource RunBTN}" 
+            Background="Orange" 
+            Content="Выполнить команду" 
+            Click="OnRunClick"/>
     
     </Grid>
 </Window>

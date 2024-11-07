@@ -1,20 +1,43 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.Forms.Entities;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace KPLN_ExtraFilter.Entities
 {
     public class SelectionByClickEntity : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private bool _sameCategory;
         private bool _sameFamily;
         private bool _sameType;
         private bool _sameWorkset;
+        private bool _sameParamData;
         private bool _model;
         private bool _currentView;
         private bool _belongGroup;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        private ParamEntity _selectedParam;
+
+        public SelectionByClickEntity(Document doc, Element userSelElem)
+        {
+            Parameter[] elemsParams = ParamWorker.GetParamsFromElems(doc, new Element[] { userSelElem }).ToArray();
+            
+            List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
+            foreach (Parameter param in elemsParams)
+            {
+                string toolTip = $"Значение: {param.AsValueString()}";
+                allParamsEntities.Add(new ParamEntity(param, toolTip));
+            }
+
+            SelectedElemParams = allParamsEntities.OrderBy(pe => pe.CurrentParamName).ToArray();
+            if (SelectedElemParams.Any())
+                What_SelectedParam = SelectedElemParams.FirstOrDefault();
+        }
 
         /// <summary>
         /// Одинаковой категории
@@ -81,6 +104,38 @@ namespace KPLN_ExtraFilter.Entities
         }
 
         /// <summary>
+        /// Одного значения параметра
+        /// </summary>
+        public bool What_ParameterData
+        {
+            get => _sameParamData;
+            set
+            {
+                if (_sameParamData != value)
+                {
+                    _sameParamData = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Одного значения параметра
+        /// </summary>
+        public ParamEntity What_SelectedParam
+        {
+            get => _selectedParam;
+            set
+            {
+                if (_selectedParam != value)
+                {
+                    _selectedParam = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
         /// В модели
         /// </summary>
         public bool Where_Model
@@ -127,6 +182,11 @@ namespace KPLN_ExtraFilter.Entities
                 }
             }
         }
+
+        /// <summary>
+        /// Коллекция параметров типа/экземпляра у выбранного эл-та
+        /// </summary>
+        public ParamEntity[] SelectedElemParams { get; private set; }
 
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {

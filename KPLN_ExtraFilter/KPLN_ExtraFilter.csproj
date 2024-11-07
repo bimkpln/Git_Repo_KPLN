@@ -89,6 +89,7 @@
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
     <Compile Include="Common\IJsonSerializable.cs" />
+    <Compile Include="Common\ParamWorker.cs" />
     <Compile Include="Forms\Entities\SelectionByClickEntity.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
     <Compile Include="ExecutableCommand\SetParamsByFrameExcCommandStart.cs" />

@@ -34,15 +34,21 @@
         
         <Style TargetType="TextBlock" x:Key="TXT">
             <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="MaxWidth" Value="400"/>
-            <Setter Property="Margin" Value="5,5,0,5"/>
+            <Setter Property="Margin" Value="5,5,0,0"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
         
         <Style TargetType="CheckBox" x:Key="CHB">
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="5,3,0,3"/>
+            <Setter Property="Margin" Value="5,0,0,5"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style TargetType="ComboBox" x:Key="CBX">
+            <Setter Property="Margin" Value="5,5,5,5"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
@@ -56,7 +62,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -74,7 +80,8 @@
             <TextBlock 
                 Style="{StaticResource TXT}"
                 FontSize="14"
-                Text="Что выбираем?"/>
+                Text="Что выбираем?"
+                Margin="5,5,5,5"/>
             <CheckBox 
                 Style="{StaticResource CHB}"
                 IsChecked="{Binding What_SameCategory, UpdateSourceTrigger=PropertyChanged}"
@@ -101,6 +108,41 @@
                 Checked="CheckBox_Checked"
                 Unchecked="CheckBox_Checked"
                 Content="Одного рабочего набора"/>
+            <CheckBox 
+                x:Name="CHB_SameParameterData"
+                Style="{StaticResource CHB}"
+                IsChecked="{Binding What_ParameterData, UpdateSourceTrigger=PropertyChanged}"
+                Checked="CheckBox_Checked"
+                Unchecked="CheckBox_Checked">
+                <TextBlock
+                    Text="Одинакового значения пар-ра"
+                    TextWrapping="Wrap"/>
+            </CheckBox>
+            <ComboBox 
+                Name="CBX_SelectParameter"
+                Style="{StaticResource CBX}"
+                ItemsSource="{Binding SelectedElemParams, UpdateSourceTrigger=PropertyChanged}"
+                SelectedItem="{Binding What_SelectedParam, UpdateSourceTrigger=PropertyChanged}"
+                HorizontalAlignment="Stretch"
+                IsEnabled="{Binding What_ParameterData}"
+                ToolTip="Выбери параметр для поиска">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock 
+                            Text="{Binding CurrentParamName}"
+                            Style="{StaticResource TXT}"
+                            Foreground ="Black"
+                            FontSize ="12"
+                            Margin="5,0,0,5"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+                <!--Чтобы при наведении на элемент всплывала падсказка (без этого - только при наведении на текст)-->
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="ToolTip" Value="{Binding CurrentToolTip, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+            </ComboBox>
         </StackPanel>
 
         <Rectangle 

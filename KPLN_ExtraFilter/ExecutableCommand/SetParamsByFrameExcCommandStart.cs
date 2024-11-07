@@ -41,15 +41,6 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                     _currentParamEntities.Select(ent => ent.ToJson()),
                     Formatting.Indented);
 
-            using (Transaction trans = new Transaction(doc, "KPLN: Экстравыбор"))
-            {
-                trans.Start();
-
-                app.ActiveUIDocument.Selection.SetElementIds(_elemsToSet.Select(e => e.Id).ToList());
-
-                trans.Commit();
-            }
-
             using (Transaction trans = new Transaction(doc, "KPLN: Параметризация"))
             {
                 trans.Start();
@@ -102,7 +93,10 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 trans.Commit();
             }
 
-            if(_warningsElementColl.Count > 0)
+            // Оставляю экстровыбор пользователю
+            app.ActiveUIDocument.Selection.SetElementIds(_elemsToSet.Select(e => e.Id).ToList());
+
+            if (_warningsElementColl.Count > 0)
             {
                 foreach(KeyValuePair<string, List<Element>> kvp in _warningsElementColl)
                 {
