@@ -313,6 +313,12 @@ namespace KPLN_Looker
         /// </summary>
         private static void CheckFamilyLoadedFromOtherFile(DocumentChangedEventArgs args)
         {
+            string transName = args.GetTransactionNames().FirstOrDefault();
+            if (transName != null 
+                && !transName.Equals("Начальная вставка") 
+                && !transName.Equals("Вставить"))
+                return;
+
             Document doc = args.GetDocument();
 
             string docPath = MonitoredDocFilePath(doc);
@@ -323,12 +329,6 @@ namespace KPLN_Looker
                 || docPath.ToLower().Contains("sh1-"))
                 return;
             
-            string transName = args.GetTransactionNames().FirstOrDefault();
-            if (transName != null 
-                && !transName.Equals("Начальная вставка") 
-                && !transName.Equals("Вставить"))
-                return;
-
             // Коллекция добавленых анализируемых FamilyInstance
             SetResultFamInstFilterForAddedElems();
             FamilyInstance[] monitoredFamInsts = args
@@ -339,6 +339,10 @@ namespace KPLN_Looker
                 .ToArray();
 
             if (!monitoredFamInsts.Any())
+                return;
+
+            // Есть возможность копировать листы через буфер обмена. Ревит автоматом добавляет инкременту номеру, имя остаётся тем же
+            if (monitoredFamInsts.All(fi => fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks))
                 return;
 
             UserVerify userVerify = new UserVerify("[ИНФО]: Выявлена попытка копирования эл-в через буфер обмена. Данный функционал запрещен!\n" +
