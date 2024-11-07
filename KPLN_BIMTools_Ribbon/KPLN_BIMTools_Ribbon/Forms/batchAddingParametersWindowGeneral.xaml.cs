@@ -45,6 +45,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
             choiceWindow.RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
         }
+
         public string CheckingValueOfAParameter(System.Windows.Controls.ComboBox comboBox, System.Windows.Controls.TextBox textBox, string paramTypeName)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
@@ -664,17 +665,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "blue" || TB_paramValue.Text.ToString().StartsWith("="))
                 {
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
                     TB_paramValue.Tag = "valid";
                 }
                 else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "green")
                 {
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); 
                     TB_paramValue.Tag = "valid";
                 }
                 else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "red")
                 {
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); 
                     TB_paramValue.Tag = "invalid";
                 }
                 else if (CheckingValueOfAParameter(CB_paramsName, TB_paramValue, paramTypeName) == "yellow")
@@ -683,7 +684,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     TB_paramValue.IsEnabled = false;                                  
                     TB_paramValue.Text = $"Выберите значение в поле ``Группа`` или ``Параметр``";
                     TB_paramValue.Tag = "nonestatus";
-                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213)); // Жёлтый    
+                    TB_paramValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 255, 213));    
                 }
             }
         }
@@ -997,17 +998,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "blue" || tbParamValue.Text.ToString().StartsWith("="))
                     {
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180)); // Синий
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 130, 180));
                         tbParamValue.Tag = "valid";
                     }
                     else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "green")
                     {
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117)); // Зелёный
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(120, 195, 117));
                         tbParamValue.Tag = "valid";
                     }
                     else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "red")
                     {
-                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101)); // Красный
+                        tbParamValue.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 101, 101));
                         tbParamValue.Tag = "invalid";
                     }
                     else if (CheckingValueOfAParameter(cbParamsName, tbParamValue, paramTypeName) == "yellow")
@@ -1084,19 +1085,29 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         {
                             if (existingParam != null)
                             {
-                                familyManager.RemoveParameter(existingParam);
+                                if (parameterValue.StartsWith("="))
+                                {
+                                    string parameterFormula = parameterValue.Substring(1);
+                                    familyManager.SetFormula(existingParam, parameterFormula);
+                                }
+                                else if (parameterValue != "None")
+                                {
+                                    RelationshipOfValuesWithTypesToAddToParameter(familyManager, existingParam, parameterValue, parameterValueDataType);
+                                }
                             }
-
-                            FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
-
-                            if (parameterValue.StartsWith("="))
+                            else
                             {
-                                string parameterFormula = parameterValue.Substring(1);
-                                familyManager.SetFormula(familyParam, parameterFormula);
-                            }
-                            else if (parameterValue != "None")
-                            {
-                                RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                                FamilyParameter familyParam = familyManager.AddParameter(externalDef, grouping, isInstance);
+
+                                if (parameterValue.StartsWith("="))
+                                {
+                                    string parameterFormula = parameterValue.Substring(1);
+                                    familyManager.SetFormula(familyParam, parameterFormula);
+                                }
+                                else if (parameterValue != "None")
+                                {
+                                    RelationshipOfValuesWithTypesToAddToParameter(familyManager, familyParam, parameterValue, parameterValueDataType);
+                                }                               
                             }
 
                             successfulResult = true;

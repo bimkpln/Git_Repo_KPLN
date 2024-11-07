@@ -834,15 +834,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             string fParamName = paramName + (quantity > 1 ? (i + 1).ToString() : "");
                            
                             FamilyParameter existingParam = familyManager.get_Parameter(fParamName);
-
-                            if (existingParam != null)
-                            {
-                                familyManager.RemoveParameter(existingParam);
-                            }
+                            FamilyParameter familyParameter;
 
                             try
                             {
-
 #if Revit2020 || Debug2020
                                 BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
 
@@ -852,13 +847,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 }
 
                                 ParameterType paramType = GetParameterTypeFromString(dataType);
-                                FamilyParameter familyParameter = familyManager.AddParameter(fParamName, grouping, paramType, isInstance);
+
+                                if (existingParam != null)
+                                {
+                                    familyParameter = existingParam;                                   
+                                }
+                                else
+                                {
+                                    familyParameter = familyManager.AddParameter(fParamName, grouping, paramType, isInstance);
+                                }
 #endif
 #if Revit2023 || Debug2023
                                 ForgeTypeId groupType = GetParameterGroupFromString(paramDetails[5]);
                                 ForgeTypeId paramType = GetParameterTypeFromString(dataType);
 
-                                FamilyParameter familyParameter = familyManager.AddParameter(fParamName, groupType, paramType, isInstance);
+                                if (existingParam != null)
+                                {
+                                    familyParameter = existingParam;                                    
+                                }
+                                else
+                                {
+                                    familyParameter = familyManager.AddParameter(fParamName, groupType, paramType, isInstance);
+                                }
 #endif
 
                                 if (parameterValue.StartsWith("="))
@@ -872,12 +882,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                                 if (familyParameter != null && comment != "None")
                                 {
-                                    familyManager.SetDescription(familyParameter, comment);
-                                }
-
+                                familyManager.SetDescription(familyParameter, comment);
+                                }                                    
+                                
                                 successfulResult = true;
                             }
-                            catch 
+                            catch
                             {
                                 problematicParametersLog += $"Error: КОЛ-ВО: {quantity}. ИМЯ_ПАРАМЕТРА: {paramName}. ЭКЗЕМПЛЯР: {isInstance}. ТИП ДАННЫХ: {dataType}. ГРУППИРОВАНИЕ: {paramDetails[5]}.\n" +
                                     $"ОПИСАНИЕ ПОДСКАЗКИ: {comment}\n\n";

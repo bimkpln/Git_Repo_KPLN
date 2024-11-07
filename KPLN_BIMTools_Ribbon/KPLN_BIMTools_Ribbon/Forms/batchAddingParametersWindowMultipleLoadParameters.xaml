@@ -21,10 +21,10 @@
             <Button Content="Открыть" Width="75" Height="24px" Click="OpenJSON_Click"/>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Height="250px" Margin="15,35,15,10">
-            <StackPanel x:Name="SP_allPanelFamilyFields" Orientation="Vertical" VerticalAlignment="Top" Height="250px" Background="#FF737372" IsEnabled="False">
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Height="255px" Margin="15,35,15,10">
+            <StackPanel x:Name="SP_allPanelFamilyFields" Orientation="Vertical" Background="#FF737372" IsEnabled="False">
                 <StackPanel Tag="uniqueFamilyField" Orientation="Horizontal" VerticalAlignment="Top" Height="24px" Margin="10,10,0,0">
-                    <TextBox x:Name="TB_familyPath" IsReadOnly="True" Text="Выберите семейство" Width="815" Padding="4,3,0,0" Background="#FFF4FBB5" />
+                    <TextBox x:Name="TB_familyPath" IsReadOnly="True" Text="Выберите семейство" Width="815" Padding="4,3,0,0" Background="#FFF4FBB5" GotFocus="TB_familyPath_GotFocus"/>
                     <Button Content="Открыть" Width="75" Height="24px" Click="OpenFamily_Click"/>
                     <Button Content="X" Width="25" Height="24px" Click="DeleteFamilyField_Click" Background="#FF9E0303" Foreground="White"/>
                 </StackPanel>
