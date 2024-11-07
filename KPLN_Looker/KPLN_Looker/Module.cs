@@ -315,8 +315,8 @@ namespace KPLN_Looker
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
             if (transName != null 
-                && !transName.Equals("Начальная вставка") 
-                && !transName.Equals("Вставить"))
+                && (!transName.Equals("Начальная вставка") && !transName.Equals("Initial paste"))
+                && (!transName.Equals("Вставить") && !transName.Equals("Paste")))
                 return;
 
             Document doc = args.GetDocument();
