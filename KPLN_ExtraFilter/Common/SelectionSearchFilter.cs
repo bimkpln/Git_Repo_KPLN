@@ -25,7 +25,7 @@ namespace KPLN_ExtraFilter.Common
             return resultFilter;
         }
 
-        internal static ElementParameterFilter SearchByElemParam(Element userSelElem, BuiltInParameter bip)
+        internal static ElementParameterFilter SearchByElemBuiltInParam(Element userSelElem, BuiltInParameter bip)
         {
             ElementParameterFilter resultFilter;
 
@@ -39,6 +39,24 @@ namespace KPLN_ExtraFilter.Common
             }
             else
                 throw new Exception($"Отправь разработчику: Не реализован поиск по параметру {bip} для эл-та: {userSelElem.Id}");
+
+            return resultFilter;
+        }
+
+        internal static ElementParameterFilter SearchByParamName(Element userSelElem, string paramName)
+        {
+            ElementParameterFilter resultFilter;
+
+            Parameter userSelTypeParam = userSelElem.LookupParameter(paramName);
+            if (userSelTypeParam != null)
+            {
+                string userSelTypeName = userSelTypeParam.AsValueString();
+                FilterRule rule = ParameterFilterRuleFactory
+                    .CreateEqualsRule(userSelTypeParam.Id, userSelTypeName);
+                resultFilter = new ElementParameterFilter(rule);
+            }
+            else
+                throw new Exception($"Отправь разработчику: Не реализован поиск по параметру {paramName} для эл-та: {userSelElem.Id}");
 
             return resultFilter;
         }

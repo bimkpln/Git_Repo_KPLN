@@ -76,16 +76,22 @@
                                 Style="{StaticResource TXT}"
                                 Margin="5,0,5,0"
                                 Text="Параметр:"/>
-                            <ComboBox
+                            <ComboBox 
                                 Name="IcParamsCBox"
-                                 ItemsSource="{Binding AllParamEntities, 
-                                    RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
-                                SelectedItem="{Binding UserSelectedParamEntity, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                                DisplayMemberPath="CurrentParamName"
-                                SelectedValuePath="CurrentParam"
+                                ItemsSource="{Binding AllParamEntities, 
+                                    RelativeSource={RelativeSource AncestorType=Window}}"
+                                SelectedItem="{Binding UserSelectedParamEntity, UpdateSourceTrigger=PropertyChanged}"
                                 HorizontalAlignment="Stretch"
                                 Margin="5,5,5,5"
-                                ToolTip="Выбери параметр для заполнения"/>
+                                ToolTip="Выбери параметр для заполнения">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock 
+                                            Text="{Binding CurrentParamName}" 
+                                            ToolTip="{Binding CurrentToolTip, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <TextBlock
                                 Style="{StaticResource TXT}"
                                 Margin="5,0,5,0"
@@ -144,8 +150,8 @@
                 x:Name="RunBtn"
                 Style="{StaticResource BTN}"
                 BorderBrush="Green"
-                Content="{Binding RunButtonName}"
-                ToolTip="{Binding RunButtonTooltip}"
+                Content="{Binding RunButtonName, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip="{Binding RunButtonTooltip, UpdateSourceTrigger=PropertyChanged}"
                 Click="RunBtn_Click"/>
         </StackPanel>
     </Grid>

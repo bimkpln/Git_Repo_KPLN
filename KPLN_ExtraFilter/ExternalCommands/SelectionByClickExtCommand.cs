@@ -36,7 +36,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
             Element userSelElem = doc.GetElement(selectedIds.FirstOrDefault());
 
             // Окно пользовательского ввода
-            SelectionByClickForm mainForm = new SelectionByClickForm(doc);
+            SelectionByClickForm mainForm = new SelectionByClickForm(doc, userSelElem);
             mainForm.ShowDialog();
 
             // Поиск элементов комбинированием фильтров
@@ -71,7 +71,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
             if (userSelExpEntity.What_SameFamily)
             {
                 ElementParameterFilter sameFamFilter = SelectionSearchFilter
-                    .SearchByElemParam(userSelElem, BuiltInParameter.ELEM_FAMILY_PARAM);
+                    .SearchByElemBuiltInParam(userSelElem, BuiltInParameter.ELEM_FAMILY_PARAM);
                 
                 filters.Add(sameFamFilter);
             }
@@ -80,7 +80,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
             if (userSelExpEntity.What_SameType)
             {
                 ElementParameterFilter sameTypeFilter = SelectionSearchFilter
-                    .SearchByElemParam(userSelElem, BuiltInParameter.ELEM_TYPE_PARAM);
+                    .SearchByElemBuiltInParam(userSelElem, BuiltInParameter.ELEM_TYPE_PARAM);
                 
                 filters.Add(sameTypeFilter);
             }
@@ -89,6 +89,13 @@ namespace KPLN_ExtraFilter.ExternalCommands
             if (userSelExpEntity.What_Workset)
             {
                 ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByWorkset(userSelElem);
+                filters.Add(sameTypeFilter);
+            }
+
+            // Поиск по значению параметра
+            if (userSelExpEntity.What_ParameterData && userSelExpEntity.What_SelectedParam != null)
+            {
+                ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByParamName(userSelElem, userSelExpEntity.What_SelectedParam.CurrentParamName);
                 filters.Add(sameTypeFilter);
             }
 

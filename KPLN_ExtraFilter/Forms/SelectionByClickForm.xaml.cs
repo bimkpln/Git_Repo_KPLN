@@ -6,11 +6,11 @@ namespace KPLN_ExtraFilter.Forms
 {
     public partial class SelectionByClickForm : Window
     {
-        public SelectionByClickForm(Document doc)
+        public SelectionByClickForm(Document doc, Element userSelElem)
         {
             InitializeComponent();
 
-            CurrentSelectionEntity = new SelectionByClickEntity() { Where_Model = true };
+            CurrentSelectionEntity = new SelectionByClickEntity(doc, userSelElem) { Where_Model = true };
 
             this.CHB_SameWorkset.IsEnabled = doc.IsWorkshared;
             this.DataContext = CurrentSelectionEntity;
@@ -37,7 +37,8 @@ namespace KPLN_ExtraFilter.Forms
             if (CurrentSelectionEntity.What_SameCategory
                 || CurrentSelectionEntity.What_SameFamily
                 || CurrentSelectionEntity.What_SameType
-                || CurrentSelectionEntity.What_Workset)
+                || CurrentSelectionEntity.What_Workset
+                || CurrentSelectionEntity.What_ParameterData)
             {
                 RunBtn.IsEnabled = true;
             }

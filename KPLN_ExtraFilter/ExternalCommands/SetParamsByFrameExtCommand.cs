@@ -1,9 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Mechanical;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
@@ -11,21 +10,10 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 
 namespace KPLN_ExtraFilter.ExternalCommands
 {
-    /// <summary>
-    /// Класс для сравнения парамтеров
-    /// </summary>
-    internal class ParameterComparer : IEqualityComparer<Parameter>
-    {
-        public bool Equals(Parameter x, Parameter y) => x.Definition.Name == y.Definition.Name;
-
-        public int GetHashCode(Parameter obj) => obj.Definition.Name.GetHashCode();
-    }
-
     /// <summary>
     /// Класс фильтрации Selection 
     /// </summary>
@@ -55,14 +43,14 @@ namespace KPLN_ExtraFilter.ExternalCommands
         /// Кэширование конфига предыдущего запуска
         /// </summary>
         public static string MemoryConfigData;
-        
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Получение объектов приложения и документа
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
-            
+
             try
             {
                 IList<Reference> selectionRefers = uidoc.Selection.PickObjects(
@@ -75,7 +63,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 Element[] selectedElemsToFind = selectionRefers
                     .Select(r => doc.GetElement(r.ElementId))
                     .ToArray();
-                
+
                 // Расширенная выборка к выделенным
                 Element[] expandedElemsToFind = ExtraSelection(doc, selectedElemsToFind).ToArray();
 
@@ -86,7 +74,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                     .Select(gr => gr.FirstOrDefault())
                     .ToArray();
 
-                Parameter[] elemsParams = GetParamsFromElems(doc, clearedElemsToFind).ToArray();
+                Parameter[] elemsParams = ParamWorker.GetParamsFromElems(doc, clearedElemsToFind).ToArray();
 
                 List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
                 foreach (Parameter param in elemsParams)
@@ -120,13 +108,13 @@ namespace KPLN_ExtraFilter.ExternalCommands
                             entity.UserSelectedParamEntity.CurrentParamName = allParamsEntities
                             .First(ent => ent.CurrentParamIntId == entity.UserSelectedParamEntity.CurrentParamIntId)
                             .CurrentParamName;
-                            
+
                             return entity;
                         });
 
                     form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities, userSelectedViewModels);
                 }
-                
+
                 form.ShowDialog();
 
                 return Result.Succeeded;
@@ -139,64 +127,6 @@ namespace KPLN_ExtraFilter.ExternalCommands
             {
                 HtmlOutput.PrintError(ex);
                 return Result.Failed;
-            }
-        }
-
-        /// <summary>
-        /// Получить парамеры из указанных элементов
-        /// </summary>
-        /// <param name="doc">Ревит-файл</param>
-        /// <param name="elemsToFind">Коллекция элементов для анализа</param>
-        /// <returns></returns>
-        private static IEnumerable<Parameter> GetParamsFromElems(Document doc, Element[] elemsToFind)
-        {
-            // Основной блок
-            HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
-            HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-            Element firstElement = elemsToFind.FirstOrDefault();
-
-            AddParam(firstElement, commonInstParameters);
-
-            Element typeElem = doc.GetElement(firstElement.GetTypeId());
-            AddParam(typeElem, commonTypeParameters);
-
-            foreach (Element currentElement in elemsToFind)
-            {
-                // Игнорирую уже добавленный эл-т
-                if (firstElement.Id == currentElement.Id)
-                    continue;
-
-                HashSet<Parameter> currentInstParameters = new HashSet<Parameter>(new ParameterComparer());
-                AddParam(currentElement, currentInstParameters);
-                commonInstParameters.IntersectWith(currentInstParameters);
-
-                HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-                Element currentTypeElem = doc.GetElement(currentElement.GetTypeId());
-                AddParam(currentTypeElem, currentTypeParameters);
-                commonTypeParameters.IntersectWith(currentTypeParameters);
-            }
-
-            if (commonInstParameters.Count == 0 && commonTypeParameters.Count == 0)
-                throw new Exception("Ошибка в поиске парамеров для элементов Revit");
-
-            return new HashSet<Parameter>(commonInstParameters.Union(commonTypeParameters), 
-                new ParameterComparer());
-        }
-
-        /// <summary>
-        /// Добавить пар-р в коллекцию с пред. подготовкой
-        /// </summary>
-        /// <param name="elem">Елемент для аналища</param>
-        /// <param name="setToAdd">Коллекция для добавления</param>
-        private static void AddParam(Element elem, HashSet<Parameter> setToAdd)
-        {
-            foreach (Parameter param in elem.Parameters)
-            {
-                // Отбрасываю системные пар-ры, которые нельзя редачить (Категория, Имя типа и т.п.) 
-                if (param.Id.IntegerValue < 0 && param.IsReadOnly)
-                    continue;
-                
-                setToAdd.Add(param);
             }
         }
 
@@ -222,7 +152,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
             foreach (Element elem in selectedElems)
             {
                 IList<ElementId> depElems = elem.GetDependentElements(resultFilter);
-                foreach(ElementId id in depElems)
+                foreach (ElementId id in depElems)
                 {
                     Element currentElem = doc.GetElement(id);
                     if (currentElem.Id.IntegerValue == elem.Id.IntegerValue)
@@ -235,7 +165,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                     else
                         result.Add(currentElem);
                 }
-                
+
             }
 
             return result;
