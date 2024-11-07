@@ -17,10 +17,10 @@
     <Grid>
         <TextBox x:Name="familyName" IsReadOnly="True" Text="Имя выбраного семейства" VerticalAlignment="Top" Margin="0,15,0,0" Width="750" Height="20px" Padding="0,0.5,0,0" Background="#FFCDD869"/>
         <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0,30,0,0">
-            <Button Content="Пакетное добавление общих параметров" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_NewGeneralParam"/>
-            <Button Content="Пакетное добавление параметров семейства" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_NewFamilyParam" IsEnabled="False"/>
-            <Button Content="Использовать готовый файл-конфигурации" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_LoadParam" Background="#FFBAFDAD"/>
-            <Button Content="Использовать готовый файл-конфигурации для нескольких семейств" Height="25px" Width="600px" Background="#FF6DBF5D" IsEnabled="False"/>
+            <Button x:Name="btnAddParamsFromSPF" Content="Пакетное добавление общих параметров" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_NewGeneralParam"/>
+            <Button x:Name="btnAddCustomParams" Content="Пакетное добавление параметров семейства" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_NewFamilyParam"/>
+            <Button x:Name="btnJSONForOneParameter" Content="Использовать готовый файл-конфигурации" Height="25px" Width="600px" Margin="0,0,0,5" Click="Button_LoadParam" Background="#FFBAFDAD"/>
+            <Button x:Name="btnJSONForMultipleParameter" Content="Использовать готовый файл-конфигурации для нескольких семейств" Height="25px" Width="600px" Background="#FF6DBF5D" Click="Button_MultipleLoadParam"/>
         </StackPanel>
     </Grid>
 </Window>

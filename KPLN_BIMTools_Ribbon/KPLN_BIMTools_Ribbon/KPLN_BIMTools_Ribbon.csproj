@@ -230,6 +230,9 @@
     <Compile Include="Forms\batchAddingParametersWindowGeneral.xaml.cs">
       <DependentUpon>batchAddingParametersWindowGeneral.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\batchAddingParametersWindowMultipleLoadParameters.xaml.cs">
+      <DependentUpon>batchAddingParametersWindowMultipleLoadParameters.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\batchAddingParametersWindowСhoice.xaml.cs">
       <DependentUpon>batchAddingParametersWindowСhoice.xaml</DependentUpon>
     </Compile>
@@ -275,6 +278,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\batchAddingParametersWindowGeneral.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\batchAddingParametersWindowMultipleLoadParameters.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
