@@ -283,7 +283,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir();
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(_revitVersion);
             bool? dialogResult = selectedRevitServerMainDirForm.ShowDialog();
             if (dialogResult == null || selectedRevitServerMainDirForm.Status != UIStatus.RunStatus.Run)
                 return;

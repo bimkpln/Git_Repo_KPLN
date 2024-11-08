@@ -626,7 +626,7 @@ namespace KPLN_Looker
             {
                 // Хардкод для старой версии - бэкапим только проект Сетунь
                 if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_АР_"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\project\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
                 else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_КР_"))
                     RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
                 else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ЭОМ"))
