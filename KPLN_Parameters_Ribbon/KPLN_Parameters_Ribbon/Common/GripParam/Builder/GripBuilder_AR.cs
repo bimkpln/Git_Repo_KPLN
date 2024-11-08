@@ -1,9 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using System.Linq;
 using System.Threading.Tasks;
-using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -18,7 +17,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName, 
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName,
                     FloorScreedHeight, DownAndTopExtra);
             });
 
@@ -91,7 +90,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Where(x => !x.Symbol.FamilyName.StartsWith("199_") && !x.Symbol.FamilyName.Equals("ASML_АР_Шахта"))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Обощенные модели"
@@ -100,6 +99,24 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
                 .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+            // Семейства "Сантехнические приборы"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_PlumbingFixtures)
+                .Cast<FamilyInstance>()
+                // Только сантехника с геометрией
+                .Where(x => x.get_BoundingBox(null).Max.Z > 0 && x.get_BoundingBox(null).Min.Z > 0)
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+            // Семейства "Мебель"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_Furniture)
+                .Cast<FamilyInstance>()
+                // Только мебель с геометрией
+                .Where(x => x.get_BoundingBox(null).Max.Z > 0 && x.get_BoundingBox(null).Min.Z > 0)
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Каркас несущий (перемычки)"

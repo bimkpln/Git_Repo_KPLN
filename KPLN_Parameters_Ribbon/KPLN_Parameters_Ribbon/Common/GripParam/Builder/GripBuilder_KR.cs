@@ -1,10 +1,9 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -19,7 +18,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName, 
+                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName,
                     FloorScreedHeight, DownAndTopExtra);
             });
 
@@ -35,7 +34,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     BuiltInCategory.OST_Walls,
                     BuiltInCategory.OST_Floors,
                 };
-                
+
                 foreach (BuiltInCategory cat in userCat)
                 {
                     ElemsByHost.AddRange(new FilteredElementCollector(Doc)
@@ -54,8 +53,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(Wall))
                     .Cast<Wall>()
-                    .Where(x => 
-                        x.Name.StartsWith("00_") 
+                    .Where(x =>
+                        x.Name.StartsWith("00_")
                         && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
                     .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
@@ -63,8 +62,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(Floor))
                     .Cast<Floor>()
-                    .Where(x => 
-                        x.Name.StartsWith("00_") 
+                    .Where(x =>
+                        x.Name.StartsWith("00_")
                         && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
                     .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
@@ -95,8 +94,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => 
-                    !x.Name.StartsWith("00_") 
+                .Where(x =>
+                    !x.Name.StartsWith("00_")
                     || (x.Name.StartsWith("00_") && (!x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк"))))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
