@@ -22,7 +22,7 @@ namespace KPLN_Library_Forms.UIFactory
         public static ElementMultiPick CreateForm(int revitVersion)
         {
             #region Выбор РС
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir();
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(revitVersion);
             bool? dialogResult = selectedRevitServerMainDirForm.ShowDialog();
             if (dialogResult == null || selectedRevitServerMainDirForm.Status != UIStatus.RunStatus.Run)
                 return null;
