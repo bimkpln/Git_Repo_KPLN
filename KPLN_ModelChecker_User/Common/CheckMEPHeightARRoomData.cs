@@ -170,7 +170,7 @@ namespace KPLN_ModelChecker_User.Common
             List<CheckMEPHeightARRoomData> result = new List<CheckMEPHeightARRoomData>();
 
             // Коллекция для обработки
-            List<CheckMEPHeightARElemData> projectionElemsColl = new List<CheckMEPHeightARElemData>();
+            HashSet<CheckMEPHeightARElemData> projectionElemsColl = new HashSet<CheckMEPHeightARElemData>();
 
             // Анализ связей на помещения и геометрию
             foreach (CheckMEPHeightViewModel vm in vModels)
@@ -190,16 +190,20 @@ namespace KPLN_ModelChecker_User.Common
                         && r.get_Parameter(BuiltInParameter.ROOM_DEPARTMENT).AsString() == vm.VMCurrentRoomDepartmentName)
                     .Select(r => new CheckMEPHeightARRoomData(r, rli, vm.VMCurrentRoomMinElemElevationForCheck, vm.VMCurrentRoomMinDistance)));
 
-                    // Коллекция элементов для проекции
+                    // Коллекция элементов для проекции (лестницы)
                     Element[] stairs = new FilteredElementCollector(linkDoc).OfCategory(BuiltInCategory.OST_Stairs).WhereElementIsNotElementType().ToArray();
+                    foreach(Element stair in stairs)
+                    {
+                        projectionElemsColl.Add(new CheckMEPHeightARElemData(stair, rli));
+                    }
+
+                    // Коллекция элементов для проекции (перекрытия)
                     Element[] floors = new FilteredElementCollector(linkDoc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToArray();
-                    projectionElemsColl
-                        .AddRange(stairs
-                            .Select(s => new CheckMEPHeightARElemData(s, rli)));
-                    projectionElemsColl
-                        .AddRange(floors
-                            .Where(f => f.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED).AsDouble() > 0)
-                            .Select(f => new CheckMEPHeightARElemData(f, rli)));
+                    foreach (Element floor in floors)
+                    {
+                        if (floor.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED).AsDouble() > 0)
+                            projectionElemsColl.Add(new CheckMEPHeightARElemData(floor, rli));
+                    }
                 }
             }
 
@@ -210,9 +214,9 @@ namespace KPLN_ModelChecker_User.Common
                 CheckMEPHeightARElemData[] quickFilteredArr = projectionElemsColl.Where(e => arRoomData.IsElemInCurrentRoom_QuickFilter(e.ARElemBBoxes)).ToArray();
                 foreach (CheckMEPHeightARElemData arElem in quickFilteredArr)
                 {
-
-                    if (!arRoomData.SetRoomDownARElemsDataColl_ByIncludedToRoom(arElem))
-                        arRoomData.SetRoomDownARElemsDataColl_ByProjectedWithRoom(arElem);
+                    // Собираю все граничные и поглащенные элементы
+                    arRoomData.SetRoomDownARElemsDataColl_ByIncludedToRoom(arElem);
+                    arRoomData.SetRoomDownARElemsDataColl_ByProjectedWithRoom(arElem);
                 }
 
                 if (arRoomData.RoomDownARElemDataColl.Count == 0)
@@ -251,17 +255,25 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
-        /// Поиск элементов, которые полностью погружены в текущее помещение, или полностью под ним
+        /// Внесение элементов в коллекцию RoomDownARElemDataColl, которые полностью погружены в текущее помещение, или полностью под ним
         /// </summary>
         /// <param name="arElem">Элемент АР для проверки</param>
-        private bool SetRoomDownARElemsDataColl_ByIncludedToRoom(CheckMEPHeightARElemData arElem)
+        private void SetRoomDownARElemsDataColl_ByIncludedToRoom(CheckMEPHeightARElemData arElem)
         {
             foreach (Solid arElemSolid in arElem.ARElemSolids)
             {
                 BoundingBoxXYZ arElemSolidBbox = arElemSolid.GetBoundingBox();
                 Transform arElemSolidTransform = arElemSolidBbox.Transform;
-                XYZ arElemNativeCntrPnt = arElemSolidTransform.OfPoint(arElemSolidBbox.Max);
-                XYZ arElemCntrPnt = arElem.ARElemLinkTrans.OfPoint(arElemNativeCntrPnt);
+                XYZ arElemNativeCntrPnt = arElemSolidTransform.OfPoint((arElemSolidBbox.Max + arElemSolidBbox.Min)/2);
+
+                // Анализ рабочих точек
+                XYZ arElemCntrPnt = null;
+                // Проверка Transform между помещением и геометрией (могут быть из разных линков, тогда Transform нужен, иначе - нет)
+                if (arElem.ARElemLinkTrans.AlmostEqual(RoomLinkTrans))
+                    arElemCntrPnt = arElemNativeCntrPnt;
+                else
+                    arElemCntrPnt = arElem.ARElemLinkTrans.OfPoint(arElemNativeCntrPnt);
+                
                 XYZ arElemCntrPntUpper_z1 = new XYZ(arElemCntrPnt.X, arElemCntrPnt.Y, arElemCntrPnt.Z + _bboxExpanded / 5);
                 XYZ arElemCntrPntUpper_z2 = new XYZ(arElemCntrPnt.X, arElemCntrPnt.Y, arElemCntrPnt.Z + _bboxExpanded / 2);
                 if (CurrentRoom.IsPointInRoom(arElemCntrPnt)
@@ -269,21 +281,19 @@ namespace KPLN_ModelChecker_User.Common
                     || CurrentRoom.IsPointInRoom(arElemCntrPntUpper_z2))
                 {
                     RoomDownARElemDataColl.Add(arElem);
-                    return true;
+                    return;
                 }
             }
-
-            return false;
         }
 
         /// <summary>
-        /// Поиск элементов, которые выходят за грани текущего помещения, но проецируются в помещение
+        /// Внесение элементов в коллекцию RoomDownARElemDataColl, которые выходят за грани текущего помещения, но проецируются в помещение
         /// </summary>
         /// <param name="arElem">Элемент АР для проверки</param>
         private void SetRoomDownARElemsDataColl_ByProjectedWithRoom(CheckMEPHeightARElemData arElem)
         {
             XYZ cntrPnt = RoomSolid.ComputeCentroid();
-            FaceArray roomFaceArray = RoomSolid.Faces;
+            FaceArray roomFaceArray = CheckMEPHeightARElemData.GetHorizontalDownFacesFromArray(RoomSolid.Faces, false);
             foreach (Face elemFace in arElem.ARElemDownFacesArray)
             {
                 Mesh elemMesh = elemFace.Triangulate(1);
@@ -292,16 +302,31 @@ namespace KPLN_ModelChecker_User.Common
                     foreach (Face roomFace in roomFaceArray)
                     {
                         Mesh roomMesh = roomFace.Triangulate(1);
-                        IList<XYZ> roomVert = roomMesh.Vertices;
-                        foreach (XYZ vert in roomVert)
+                        IList<XYZ> roomVerts = roomMesh.Vertices;
+                        var nativeBbox_Max = RoomLinkTrans.Inverse.OfPoint(RoomBBox.Max);
+                        var nativeBbox_Min = RoomLinkTrans.Inverse.OfPoint(RoomBBox.Min);
+
+                        foreach (XYZ roomVert in roomVerts)
                         {
-                            XYZ zipVert = new XYZ(
-                                vert.X >= 0 ? vert.X - 0.25 : vert.X + 0.25,
-                                vert.Y >= 0 ? vert.Y - 0.25 : vert.Y + 0.25,
-                                vert.Z);
-                            IntersectionResult intRes = elemFace.Project(zipVert);
+                            // Для пограничных в помещениямх элементов - необходимо слегка смещать координату проверки
+                            XYZ zipRoomVert = null;
+                            if (roomVert.IsAlmostEqualTo(nativeBbox_Max, 0.1))
+                                zipRoomVert = new XYZ(
+                                    roomVert.X >= 0 ? roomVert.X - 0.25 : roomVert.X + 0.25,
+                                    roomVert.Y >= 0 ? roomVert.Y - 0.25 : roomVert.Y + 0.25,
+                                    roomVert.Z);
+                            else if (roomVert.IsAlmostEqualTo(nativeBbox_Min, 0.1))
+                                zipRoomVert = new XYZ(
+                                    roomVert.X >= 0 ? roomVert.X + 0.25 : roomVert.X - 0.25,
+                                    roomVert.Y >= 0 ? roomVert.Y + 0.25 : roomVert.Y - 0.25,
+                                    roomVert.Z);
+                            else
+                                zipRoomVert = roomVert;
+
+                            IntersectionResult intRes = elemFace.Project(zipRoomVert);
                             if (intRes != null && intRes.Distance <= CurrentRoom.get_Parameter(BuiltInParameter.ROOM_HEIGHT).AsDouble())
                             {
+                                // Анализ рабочих точек
                                 XYZ pntToCheck = new XYZ(intRes.XYZPoint.X, intRes.XYZPoint.Y, cntrPnt.Z);
                                 if (CurrentRoom.IsPointInRoom(pntToCheck))
                                 {
@@ -326,9 +351,7 @@ namespace KPLN_ModelChecker_User.Common
                 if ((RoomBBox.Max.X >= bbox.Min.X && RoomBBox.Min.X <= bbox.Max.X)
                     && (RoomBBox.Max.Y >= bbox.Min.Y && RoomBBox.Min.Y <= bbox.Max.Y)
                     && (RoomBBox.Max.Z >= bbox.Min.Z && RoomBBox.Min.Z <= bbox.Max.Z + _bboxExpanded))
-                {
                     return true;
-                }
             }
 
             return false;

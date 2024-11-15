@@ -174,36 +174,19 @@ namespace KPLN_ModelChecker_User.Common
                 {
                     lock (_locker)
                     {
+                        // Перевод координат элемента на координаты помещения
+                        XYZ bboxMinTransByAR = arData.RoomLinkTrans.Inverse.OfPoint(bbox.Min);
+                        XYZ bboxMaxTransByAR = arData.RoomLinkTrans.Inverse.OfPoint(bbox.Max);
+
                         // Более точная и длительная проверка на вхождение элемента в помещение (или над помещением, для органиченных помещений)
-                        if (arData.CurrentRoom.IsPointInRoom(bbox.Min) 
-                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 5))
-                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - _bboxExpanded / 2))
+                        if (arData.CurrentRoom.IsPointInRoom(bbox.Min)
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bboxMinTransByAR.X, bboxMinTransByAR.Y, bboxMinTransByAR.Z - _bboxExpanded / 5))
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bboxMinTransByAR.X, bboxMinTransByAR.Y, bboxMinTransByAR.Z - _bboxExpanded / 2))
                             || arData.CurrentRoom.IsPointInRoom(bbox.Max)
-                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 5))
-                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z + _bboxExpanded / 2)))
-                        {
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bboxMaxTransByAR.X, bboxMaxTransByAR.Y, bboxMaxTransByAR.Z + _bboxExpanded / 5))
+                            || arData.CurrentRoom.IsPointInRoom(new XYZ(bboxMaxTransByAR.X, bboxMaxTransByAR.Y, bboxMaxTransByAR.Z + _bboxExpanded / 2)))
                             return true;
-                        }
                     }
-                    
-                    //// Более точная и длительная проверка на вхождение элемента в помещение
-                    //foreach(Solid mepSolid in MEPElemSolids)
-                    //{
-                    //    EdgeArray edgeArray = mepSolid.Edges;
-                    //    foreach(Edge edge in edgeArray)
-                    //    {
-                    //        Curve curve = edge.AsCurve();
-                    //        if (curve != null)
-                    //        {
-                    //            SolidCurveIntersection intRes = arData
-                    //                .RoomSolid
-                    //                .IntersectWithCurve(curve, new SolidCurveIntersectionOptions(){ ResultType = SolidCurveIntersectionMode.CurveSegmentsInside });
-                    //            int segmCount = intRes.SegmentCount;
-                    //            if (intRes != null && segmCount > 0)
-                    //                return true;
-                    //        }
-                    //    }
-                    //}
                 }
             }
 
@@ -241,23 +224,6 @@ namespace KPLN_ModelChecker_User.Common
                 }
             }
         }
-
-        private List<BoundingBoxXYZ> GetBoundingBoxXYZColl(GeometryElement geomElem)
-        {
-            List<BoundingBoxXYZ> result = new List<BoundingBoxXYZ>();
-            foreach (GeometryObject obj in geomElem)
-            {
-                Solid solid = obj as Solid;
-                BoundingBoxXYZ bbox = GetBoundingBoxXYZ(solid);
-                if (bbox != null)
-                {
-                    result.Add(bbox);
-                }
-            }
-
-            return result;
-        }
-
 
         private BoundingBoxXYZ GetBoundingBoxXYZ(Solid solid)
         {
@@ -316,7 +282,7 @@ namespace KPLN_ModelChecker_User.Common
                 {
                     foreach(CheckMEPHeightARElemData arElemData in arData.RoomDownARElemDataColl)
                     {
-                        foreach (Face face in arElemData.ARElemDownFacesArray)
+                        foreach (Face face in arElemData.ARElemUpFacesArray)
                         {
                             // Делаю инверсию точки элемента ИОС на координаты АР. Плоскость не подвергается трансформации координат, или созданию (нет конструктора)
                             XYZ inversedPoint = arElemData.ARElemLinkTrans.Inverse.OfPoint(point);

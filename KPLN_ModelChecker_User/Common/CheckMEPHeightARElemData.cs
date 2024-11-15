@@ -102,7 +102,33 @@ namespace KPLN_ModelChecker_User.Common
         }
 
         /// <summary>
-        /// Коллекция поверхностей для проекции
+        /// Коллекция ВЕРХНИХ поверхностей для проекции
+        /// </summary>
+        public FaceArray ARElemUpFacesArray
+        {
+            get
+            {
+                lock (_locker)
+                {
+                    if (_arElementDownFacesArray.IsEmpty)
+                    {
+                        foreach (Solid solid in ARElemSolids)
+                        {
+                            FaceArray solidFaceArray = GetHorizontalDownFacesFromArray(solid.Faces, false);
+                            foreach (Face face in solidFaceArray)
+                            {
+                                _arElementDownFacesArray.Append(face);
+                            }
+                        }
+                    }
+
+                    return _arElementDownFacesArray;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Коллекция НИЖНИХ поверхностей для проекции 
         /// </summary>
         public FaceArray ARElemDownFacesArray 
         {
@@ -114,17 +140,9 @@ namespace KPLN_ModelChecker_User.Common
                     {
                         foreach(Solid solid in ARElemSolids)
                         {
-                            FaceArray faceArray = solid.Faces;
-                            foreach (Face face in faceArray)
+                            FaceArray solidFaceArray = GetHorizontalDownFacesFromArray(solid.Faces, true);
+                            foreach (Face face in solidFaceArray)
                             {
-                                // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
-                                if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z < 0))
-                                    continue;
-
-                                // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
-                                if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z < 0))
-                                    continue;
-
                                 _arElementDownFacesArray.Append(face);
                             }
                         }
@@ -134,6 +152,53 @@ namespace KPLN_ModelChecker_User.Common
                 }
             }
         }
+
+        /// <summary>
+        /// Получить FaceArray ТОЛЬКО горизонтальных нижних/верхних плоскостей
+        /// </summary>
+        /// <param name="faceArray"></param>
+        /// <returns></returns>
+        public static FaceArray GetHorizontalDownFacesFromArray(FaceArray faceArray, bool isDownFace)
+        {
+            FaceArray result = new FaceArray();
+            foreach (Face face in faceArray)
+            {
+                if (isDownFace)
+                {
+                    // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
+                    if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z < 0))
+                        continue;
+
+                    // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
+                    if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z < 0))
+                        continue;
+                }
+                else
+                {
+                    // Фильтрация PlanarFace, которые являются боковыми или нижними гранями
+                    if (face is PlanarFace planarFace && (Math.Abs(planarFace.FaceNormal.X) > 0.1 || Math.Abs(planarFace.FaceNormal.Y) > 0.1 || planarFace.FaceNormal.Z > 0))
+                        continue;
+
+                    // Фильтрация CylindricalFace, которые являются боковыми или нижними гранями
+                    if (face is CylindricalFace cylindricalFace && (Math.Abs(cylindricalFace.Axis.X) > 0.1 || Math.Abs(cylindricalFace.Axis.Y) > 0.1 || cylindricalFace.Axis.Z > 0))
+                        continue;
+                }
+
+                result.Append(face);
+            }
+
+            return result;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is CheckMEPHeightARElemData item)
+                return this.ARElement.Id.IntegerValue == item.ARElement.Id.IntegerValue;
+            
+            return false;
+        }
+
+        public override int GetHashCode() => this.ARElement.Id.GetHashCode();
 
         /// <summary>
         /// Получить солид из элементов АР
