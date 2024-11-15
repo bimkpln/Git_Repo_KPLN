@@ -122,12 +122,12 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
                         || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
                         || secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
                         || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
-                        ) 
+                        )
                         continue;
 
-                    if (secData1.Equals(secData2)) 
+                    if (secData1.Equals(secData2))
                         continue;
-                    
+
                     Solid intersectionSolid = BooleanOperationsUtils
                         .ExecuteBooleanOperation(secData1.CurrentSolid,
                             secData2.CurrentSolid, BooleanOperationsType.Intersect);

@@ -48,7 +48,7 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                     _minAndMaxLvlPnts = new double[2];
 
                     double minPointOfLevels;
-                    if (CurrentDownLevel == null)
+                    if (CurrentDownLevel == null && (CurrentSectionNumber.Equals(ParLvlName) || CurrentSectionNumber.Equals(StilLvlName)))
                         minPointOfLevels = CurrentLevel.Elevation - DownAndTopExtra - FloorScreedHeight;
                     else
                         minPointOfLevels = CurrentLevel.Elevation - FloorScreedHeight;
@@ -125,7 +125,6 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
             
             List<LevelData> prepareLevels = new List<LevelData>();
 
-
             Level[] levelColl;
             if (doc.Title.StartsWith("СЕТ_1"))
             {
@@ -157,8 +156,9 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                         sectSeparParamName);
                     Level downLevel = GetDownLevel(levelColl, level, levelSection, levelIndexParamName,
                         sectSeparParamName);
+
                     LevelData myLevel = new LevelData(level, lvlNumber, levelSection, aboveLevel, downLevel,
-                        floorScreedHeight, downAndTopExtra);
+                            floorScreedHeight, downAndTopExtra);
                     
                     prepareLevels.Add(myLevel);
                 }
@@ -325,7 +325,6 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common
                 foreach (Level level in levelColl)
                 {
                     string lvlNumber = GetLevelNumber(level, levelIndexParamName);
-                    var a = GetLevelSections(level, sectSeparParamName);
                     if (chkLvlNumber.Equals(lvlNumber)
                         || !GetLevelSections(level, sectSeparParamName).Contains(levelSection))
                         continue;
