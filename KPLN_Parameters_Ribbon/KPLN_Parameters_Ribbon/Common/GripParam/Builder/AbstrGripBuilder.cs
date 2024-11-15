@@ -481,7 +481,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 30
                     && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 30)
                     continue;
-
+                
                 double tempIntersectValue = 0;
                 try
                 {
@@ -502,7 +502,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         tempIntersectValue += Math.Round(checkIntersectSectSolid.Volume, 10);
                     }
 
-                    if (tempIntersectValue > 0 && maxIntersectValue <= tempIntersectValue)
+                    if (tempIntersectValue > 0 && maxIntersectValue < tempIntersectValue)
                     {
                         maxIntersectValue = tempIntersectValue;
                         result = levelAndGridSolid;

@@ -86,7 +86,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_GenericModel)
                     .Cast<FamilyInstance>()
-                    .Where(x => x.SuperComponent == null)
+                    .Where(x => x.SuperComponent == null
+                            && !x.Symbol.FamilyName.StartsWith("ClashPoint"))
                     .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
             });
 

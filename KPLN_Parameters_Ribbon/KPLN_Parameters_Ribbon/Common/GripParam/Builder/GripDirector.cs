@@ -58,14 +58,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             }
 
             _builder.CheckNotExecutedElems();
-
-            TaskDialog taskDialog = new TaskDialog("KPLN: Параметры захваток")
-            {
-                MainInstruction = $"Параметры захваток заполнены для {_builder.PbCounter} из {_builder.AllElementsCount}!",
-                CommonButtons = TaskDialogCommonButtons.Ok
-            };
-
-            taskDialog.Show();
         }
     }
 }

@@ -55,8 +55,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             // Категория "Кровля"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
-                .OfClass(typeof(RoofBase))
-                .Cast<RoofBase>()
+                .OfCategory(BuiltInCategory.OST_Roofs)
+                .WhereElementIsNotElementType()
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Потолки"
@@ -98,7 +98,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
+                .Where(x => 
+                    !x.Symbol.FamilyName.StartsWith("ClashPoint")
+                    && !x.Symbol.FamilyName.StartsWith("500_"))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Сантехнические приборы"

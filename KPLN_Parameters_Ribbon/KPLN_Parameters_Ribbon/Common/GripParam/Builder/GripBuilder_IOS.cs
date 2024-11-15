@@ -116,7 +116,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .OfCategory(bic)
                     .Cast<FamilyInstance>()
                     .Where(x =>
-                        !x.Symbol.FamilyName.StartsWith("500_")
+                        !x.Symbol.FamilyName.StartsWith("ClashPoint")
+                        && !x.Symbol.FamilyName.StartsWith("500_")
                         && !x.Symbol.FamilyName.StartsWith("501_")
                         && !x.Symbol.FamilyName.StartsWith("502_")
                         && !x.Symbol.FamilyName.StartsWith("503_"));
