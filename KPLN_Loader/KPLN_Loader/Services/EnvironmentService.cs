@@ -6,13 +6,11 @@ using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Data.Entity;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace KPLN_Loader.Services
 {
@@ -62,7 +60,7 @@ namespace KPLN_Loader.Services
         ///<summary>
         ///Путь, по которому будет создана папка со скопироваными модулями
         ///</summary>
-        internal DirectoryInfo ModulesLocation 
+        internal DirectoryInfo ModulesLocation
         {
             get { return _modulesLocation; }
         }
@@ -98,7 +96,7 @@ namespace KPLN_Loader.Services
 
             if (id == -1)
                 throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
-            
+
             return id;
         }
 
@@ -109,10 +107,8 @@ namespace KPLN_Loader.Services
         internal void PreparingAndCliningDirectories()
         {
             DirectoryInfo appDirInfo = Directory.CreateDirectory(_applicationLocation.FullName);
-            int delDirCount = 0;
-            foreach (DirectoryInfo subLoc in appDirInfo.GetDirectories())
-                delDirCount = ClearDirectory(subLoc.FullName);
-            
+            int delDirCount = ClearDirectory(appDirInfo.FullName);
+
             _logger.Info($"Директории успешно очищены от неиспользуемых папок! Удалено {delDirCount} корневых папок");
             Directory.CreateDirectory(_modulesLocation.FullName);
         }
@@ -172,7 +168,7 @@ namespace KPLN_Loader.Services
         {
             DirectoryInfo trueDirInfo = null;
             string targetDir = Path.Combine(_modulesLocation.FullName, userModule.Name);
-            
+
             DirectoryInfo moduleDirInfo = new DirectoryInfo(userModule.Path);
             if (moduleDirInfo.Exists)
             {
@@ -193,30 +189,15 @@ namespace KPLN_Loader.Services
                 }
             }
 
-            if(trueDirInfo == null || !trueDirInfo.Exists)
+            if (trueDirInfo == null || !trueDirInfo.Exists)
             {
                 _logger.Error($"Ошибка при проверке наличия модуля {userModule.Name} - путь в БД указан не верно: {userModule.Path}");
                 return null;
             }
 
             CopyDirectory(trueDirInfo.FullName, targetDir);
+
             return new DirectoryInfo(targetDir);
-
-
-            //DirectoryInfo moduleRevitVersionDirInfo = new DirectoryInfo(Path.Combine(userModule.Path, _revitVersion));
-            //DirectoryInfo moduleDirInfo = new DirectoryInfo(userModule.Path);
-            //if (moduleRevitVersionDirInfo.Exists)
-            //{
-            //    CopyDirectory(moduleRevitVersionDirInfo.FullName, targetDir);
-            //}
-            //else if (moduleDirInfo.Exists)
-            //{
-            //    CopyDirectory(moduleDirInfo.FullName, targetDir);
-            //}
-            //else
-            //    _logger.Error($"Ошибка при проверке наличия модуля {userModule.Name} - путь в БД указан не верно: {userModule.Path}");
-
-            //return new DirectoryInfo(targetDir);
         }
 
         /// <summary>
@@ -228,14 +209,16 @@ namespace KPLN_Loader.Services
             int count = 0;
             try
             {
-                if (Directory.Exists(directoryPath))
+                foreach(var dirPath in Directory.GetDirectories(directoryPath))
                 {
-                    Directory.Delete(directoryPath, true);
-                    count++;
+                    if (!IsDirLocked(dirPath))
+                    {
+                        // Если удалять БЕЗ проверки на занятый файл, то данный метод удалит ВСЁ, что сможет
+                        Directory.Delete(dirPath, true);
+                        count++;
+                    }
                 }
             }
-            // Отлов занятых папок - их не удаялем
-            catch (UnauthorizedAccessException) { }
             // Что-то пошло не так - логируем
             catch (Exception ex)
             {
@@ -246,26 +229,56 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
+        /// Проверка папки на наличие хотя бы 1го занятого.
+        /// </summary>
+        /// <param name="directoryPath">Папка для анализа</param>
+        /// <returns></returns>
+        private bool IsDirLocked(string directoryPath)
+        {
+            string[] filePathes = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+
+            foreach (string filePath in filePathes)
+            {
+                try
+                {
+                    using (var stream = new FileInfo(filePath).Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                    {
+                        stream.Close();
+                    }
+                }
+                // Файл занят
+                catch (IOException)
+                {
+                    return true;
+                }
+                
+            }
+
+            // Все файлы свободны
+            return false;
+        }
+
+        /// <summary>
         /// Копирование файлов в указанную директорию
         /// </summary>
         /// <param name="sourceDir">Путь откуда</param>
-        /// <param name="targetDir">Путь куда</param>
-        private void CopyDirectory(string sourceDir, string targetDir)
+        /// <param name="destDir">Путь куда</param>
+        private void CopyDirectory(string sourceDir, string destDir)
         {
-            if (!Directory.Exists(targetDir))
-                Directory.CreateDirectory(targetDir);
+            if (!Directory.Exists(destDir))
+                Directory.CreateDirectory(destDir);
 
             foreach (string sourcePath in Directory.GetFiles(sourceDir))
             {
                 string fileName = Path.GetFileName(sourcePath);
-                string targetPath = Path.Combine(targetDir, fileName);
+                string targetPath = Path.Combine(destDir, fileName);
                 File.Copy(sourcePath, targetPath, false);
             }
 
             foreach (string sourceSubDir in Directory.GetDirectories(sourceDir))
             {
                 string dirName = Path.GetFileName(sourceSubDir);
-                string targetSubDir = Path.Combine(targetDir, dirName);
+                string targetSubDir = Path.Combine(destDir, dirName);
                 CopyDirectory(sourceSubDir, targetSubDir);
             }
         }
