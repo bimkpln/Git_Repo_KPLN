@@ -415,10 +415,10 @@ namespace KPLN_Classificator
             switch (p.StorageType)
             {
                 case StorageType.Double:
-#if Revit2020
+#if Revit2020 || Debug2020
                     return UnitUtils.ConvertFromInternalUnits(p.AsDouble(), p.DisplayUnitType).ToString();
 #endif
-#if Revit2023
+#if Revit2023 || Debug2023
                     return UnitUtils.ConvertFromInternalUnits(p.AsDouble(), p.GetUnitTypeId()).ToString();
 #endif
                 case StorageType.Integer:
