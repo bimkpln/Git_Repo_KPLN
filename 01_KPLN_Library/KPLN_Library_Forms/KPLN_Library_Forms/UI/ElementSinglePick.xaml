@@ -10,7 +10,7 @@
         MaxHeight="750"
         MaxWidth="750"
         ResizeMode="CanResizeWithGrip" 
-        SizeToContent="Height" 
+        SizeToContent="WidthAndHeight" 
         Title="KPLN: Окно выбора" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
         WindowStyle="ToolWindow" 

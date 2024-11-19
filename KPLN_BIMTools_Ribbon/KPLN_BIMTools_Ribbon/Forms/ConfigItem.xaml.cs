@@ -293,14 +293,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
             string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
 
             RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
-            List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>() { new ElementEntity(selectedRSMainDir) };
 
-            IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir).Folders;
-            
-            activeEntitiesForForm.AddRange(rsFolders
-                .Where(f => f.LockState != LockState.Locked)
-                .Select(f => new ElementEntity(f.Path))
-                .ToArray());
+            IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
+            List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
+                rsFolders
+                    .Where(f => f.LockState != LockState.Locked)
+                    .Select(f => new ElementEntity(f.Path))
+                    .ToArray());
 
             ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
             bool? pickFormResult = pickForm.ShowDialog();
