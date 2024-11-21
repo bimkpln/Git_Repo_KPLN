@@ -731,6 +731,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {          
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
             openFileDialog.Filter = "Преднастройка (*.json)|*.json";
+            openFileDialog.InitialDirectory = @"Z:\Отдел BIM\12_Конфигурации для добавления параметров";
             bool? result = openFileDialog.ShowDialog();
 
             if (result == true)

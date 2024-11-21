@@ -1174,7 +1174,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
                         {
                             saveFileDialog.FileName = $"addParamLogFile_{DateTime.Now:yyyyMMddHHmmss}.txt";
-                            saveFileDialog.InitialDirectory = @"X:\BIM";
+                            saveFileDialog.InitialDirectory = @"Z:\Отдел BIM\12_Конфигурации для добавления параметров";
 
                             saveFileDialog.Filter = "Отчёт об ошибках (*.txt)|*.txt";
 
@@ -1206,7 +1206,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return;
             }
 
-            string initialDirectory = @"X:\BIM";
+            string initialDirectory = @"Z:\Отдел BIM\12_Конфигурации для добавления параметров";
             string defaultFileName = $"presettingGeneralParameters_{DateTime.Now:yyyyMMddHHmmss}.json";
 
             using (var saveFileDialog = new System.Windows.Forms.SaveFileDialog())
