@@ -206,6 +206,20 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
         public void ExecuteGripParams_ByGeom(Progress_Single pb)
         {
+            // Маркер для кастомной настройка записи данных для пректа СЕТУНЬ
+            bool isSET = Doc.Title.Contains("СЕТ_1");
+            
+            // Спец сортировка для СЕТ, в которой СТЛ анализируется первым, и перезаписывается данными с корпусов
+            if (isSET)
+            {
+                SectDataSolids.Sort((x, y) =>
+                {
+                    if (x.CurrentLevelData.CurrentSectionNumber == "СТЛ" && y.CurrentLevelData.CurrentSectionNumber != "СТЛ") return -1;
+                    if (x.CurrentLevelData.CurrentSectionNumber != "СТЛ" && y.CurrentLevelData.CurrentSectionNumber == "СТЛ") return 1;
+                    return 0;
+                });
+            }
+            
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
                 InstanceGeomData instGeomData = (InstanceGeomData)instElemData 
@@ -227,7 +241,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
 
                 // Кастомная настройка записи данных для пректа СЕТУНЬ
-                if (Doc.Title.Contains("СЕТ_1"))
+                if (isSET)
                 {
                     string tempLvlData = maxIntersectInstance.CurrentLevelData.CurrentLevel.LookupParameter(LevelParamName).AsString().ToLower();
                     if (tempLvlData.Contains("кровля"))
@@ -236,7 +250,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         instElemData.CurrentElem.LookupParameter(LevelParamName).Set($"{maxIntersectInstance.CurrentLevelData.CurrentLevelNumber}_этаж");
 
                     string tempSectData = maxIntersectInstance.CurrentLevelData.CurrentSectionNumber;
-                    if (tempSectData.Contains("С1"))
+                    if(tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
+                    {
+                        if (tempSectData.Contains("К1"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 1");
+                        else if (tempSectData.Contains("К2"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 2");
+                        else if (tempSectData.Contains("К3"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 3");
+                    }
+                    else if (tempSectData.Contains("С1"))
                         instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 1");
                     else if (tempSectData.Contains("С2"))
                         instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 2");
@@ -286,7 +309,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 instElemData.CurrentElem.LookupParameter(SectionParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
 
                 // Кастомная настройка записи данных для пректа СЕТУНЬ
-                if (Doc.Title.Contains("СЕТ_1"))
+                if (isSET)
                 {
                     string tempLvlData = downLevelAndGridSolid.CurrentLevelData.CurrentLevel.LookupParameter(LevelParamName).AsString().ToLower();
                     if (tempLvlData.Contains("кровля"))
@@ -295,7 +318,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         instElemData.CurrentElem.LookupParameter(LevelParamName).Set($"{downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber}_этаж");
 
                     string tempSectData = downLevelAndGridSolid.CurrentLevelData.CurrentSectionNumber;
-                    if (tempSectData.Contains("С1"))
+                    if (tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
+                    {
+                        if (tempSectData.Contains("К1"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 1");
+                        else if (tempSectData.Contains("К2"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 2");
+                        else if (tempSectData.Contains("К3"))
+                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 3");
+                    }
+                    else if (tempSectData.Contains("С1"))
                         instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 1");
                     else if (tempSectData.Contains("С2"))
                         instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 2");
@@ -475,6 +507,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             LevelAndGridSolid result = null;
             double maxIntersectValue = 0;
+            
             foreach (LevelAndGridSolid levelAndGridSolid in SectDataSolids)
             {
                 // Игнорирую заведомо отличающиеся по отметкам секции (9-10 м)
@@ -502,7 +535,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         tempIntersectValue += Math.Round(checkIntersectSectSolid.Volume, 10);
                     }
 
-                    if (tempIntersectValue > 0 && maxIntersectValue < tempIntersectValue)
+                    if (tempIntersectValue > 0 && Math.Round(Math.Abs(tempIntersectValue) - (Math.Abs(maxIntersectValue)), 2) >= 0)
                     {
                         maxIntersectValue = tempIntersectValue;
                         result = levelAndGridSolid;
@@ -581,8 +614,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                             }
                         }
                     }
-
-                    if ((tempIntersectValue > 0 && maxIntersectValue <= tempIntersectValue) && (tempPrjDistanceValue < 15 && minPrjDistanceValue >= tempPrjDistanceValue))
+                    
+                    if ((tempIntersectValue > 0 && Math.Round(Math.Abs(tempIntersectValue) - (Math.Abs(maxIntersectValue)), 2) >= 0) 
+                        && (tempPrjDistanceValue < 15 && Math.Round(Math.Abs(tempPrjDistanceValue) - (Math.Abs(minPrjDistanceValue)), 2) >= 0))
                     {
                         maxIntersectValue = tempIntersectValue;
                         minPrjDistanceValue = tempPrjDistanceValue;

@@ -114,15 +114,16 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
             // Проверка на коллизии между Solid
             foreach (LevelAndGridSolid secData1 in result)
             {
+                // Для паркинга допустимы пересечения солидов уровней
+                if (secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
+                    || secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName))
+                    continue;
+                
                 foreach (LevelAndGridSolid secData2 in result)
                 {
                     // Для паркинга допустимы пересечения солидов уровней
-                    if (
-                        secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
-                        || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
-                        || secData1.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
-                        || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName)
-                        )
+                    if (secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.ParLvlName)
+                        || secData2.CurrentLevelData.CurrentSectionNumber.Equals(LevelData.StilLvlName))
                         continue;
 
                     if (secData1.Equals(secData2))
