@@ -594,9 +594,12 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 #endif
                 }
 
-                returnedHeader.Length--; // Удалить последний символ ';'
+                returnedHeader.Length--; 
                 returnedHeader.AppendLine();
+                
+                // Ручная замена неприемлемых форматов
                 returnedHeader.Replace("##Undefined##UNDEFINED", "##OTHER##")
+                              .Replace("DECIMAL_DEGREES", "DECIMAL DEGREES")
                               .Replace("DECIMAL_FEET", "GENERAL")
                               .Replace("Airflow", "AIR_FLOW");
 
