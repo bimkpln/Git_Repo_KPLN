@@ -22,6 +22,9 @@ namespace KPLN_ExtraFilter.ExternalCommands
         public bool AllowElement(Element elem)
         {
             if (elem.Category != null
+                && ((elem.Category.CategoryType == CategoryType.Model)
+                    || (elem.Category.CategoryType == CategoryType.Internal))
+                && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Viewers)
                 && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_IOSModelGroups)
                 && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Assemblies))
                 return true;
@@ -63,6 +66,9 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 Element[] selectedElemsToFind = selectionRefers
                     .Select(r => doc.GetElement(r.ElementId))
                     .ToArray();
+
+                if (!selectedElemsToFind.Any())
+                    return Result.Cancelled;
 
                 // Расширенная выборка к выделенным
                 Element[] expandedElemsToFind = ExtraSelection(doc, selectedElemsToFind).ToArray();
@@ -156,6 +162,10 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 {
                     Element currentElem = doc.GetElement(id);
                     if (currentElem.Id.IntegerValue == elem.Id.IntegerValue)
+                        continue;
+
+                    // Игнорирую балясины (отдельно в спеки не идут)
+                    if (currentElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster)
                         continue;
 
                     // Предварительно фильтрую общие вложенные семейства

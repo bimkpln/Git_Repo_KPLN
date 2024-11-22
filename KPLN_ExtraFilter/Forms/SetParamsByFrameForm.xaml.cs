@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
@@ -27,14 +28,31 @@ namespace KPLN_ExtraFilter.Forms
         {
             _elemsToSet = elemsToSet.ToArray();
             AllParamEntities = paramsEntities.OrderBy(ent => ent.CurrentParamName).ToArray();
-            
-            InitializeComponent();
 
+            InitializeComponent();
             RunButtonContext();
+
             DataContext = this;
+            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
-        public string RunButtonName 
+        /// <summary>
+        /// Конструктор с открытием окна с преднастройкой
+        /// </summary>
+        public SetParamsByFrameForm(
+            IEnumerable<Element> elemsToSet,
+            IEnumerable<ParamEntity> paramsEntities,
+            IEnumerable<MainItem> userMainItem) : this(elemsToSet, paramsEntities)
+        {
+            foreach (MainItem mi in userMainItem)
+            {
+                MainItems.Add(mi);
+            }
+
+            RunButtonContext();
+        }
+
+        public string RunButtonName
         {
             get => _runButtonName;
             private set
@@ -46,7 +64,7 @@ namespace KPLN_ExtraFilter.Forms
                 }
             }
         }
-        
+
         public string RunButtonTooltip
         {
             get => _runButtonTooltip;
@@ -61,32 +79,26 @@ namespace KPLN_ExtraFilter.Forms
         }
 
         /// <summary>
-        /// Конструктор с открытием окна с преднастройкой
-        /// </summary>
-        public SetParamsByFrameForm(
-            IEnumerable<Element> elemsToSet, 
-            IEnumerable<ParamEntity> paramsEntities, 
-            IEnumerable<MainItem> userMainItem) : this(elemsToSet, paramsEntities)
-        {
-            foreach(MainItem mi in userMainItem)
-            {
-                MainItems.Add(mi);
-            }
-        }
-
-        /// <summary>
         /// Коллекция ВСЕХ сущностей параметров, которые есть у эл-в
         /// </summary>
         public ParamEntity[] AllParamEntities { get; private set; }
 
         public ObservableCollection<MainItem> MainItems { get; private set; } = new ObservableCollection<MainItem>();
 
+        private void HandlePressBtn(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+                Close();
+            else if (e.Key == Key.Enter)
+                RunBtn_Click(sender, e);
+        }
+
         /// <summary>
         /// Установить данные по кнопке
         /// </summary>
         private void RunButtonContext()
         {
-            if (MainItems.Count > 0) 
+            if (MainItems.Count > 0)
             {
                 RunButtonName = "Заполнить!";
                 RunButtonTooltip = "Заполнить указанные параметры указанными значениями для выделенных элементов";

@@ -5,12 +5,9 @@ using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Windows.Controls;
 
 namespace KPLN_ExtraFilter.ExecutableCommand
 {
@@ -45,14 +42,14 @@ namespace KPLN_ExtraFilter.ExecutableCommand
             {
                 trans.Start();
 
-                foreach(Element elem in _elemsToSet)
+                foreach (Element elem in _elemsToSet)
                 {
                     foreach (MainItem mainItem in _currentParamEntities)
                     {
                         string paramName = mainItem.UserSelectedParamEntity.CurrentParamName;
                         string newValue = mainItem.UserInputParamValue;
-                        
-                        Parameter currentParam = elem.LookupParameter(paramName) 
+
+                        Parameter currentParam = elem.LookupParameter(paramName)
                             ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
                         if (currentParam == null)
                         {
@@ -67,7 +64,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                         switch (currentParam.StorageType)
                         {
                             case StorageType.Double:
-                                if(double.TryParse(newValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dValue))
+                                if (double.TryParse(newValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dValue))
                                 {
                                     currentParam.Set(dValue);
                                     break;
@@ -98,7 +95,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
             if (_warningsElementColl.Count > 0)
             {
-                foreach(KeyValuePair<string, List<Element>> kvp in _warningsElementColl)
+                foreach (KeyValuePair<string, List<Element>> kvp in _warningsElementColl)
                 {
                     HtmlOutput.Print($"{kvp.Key}. Id эл-в с ошибкой: {string.Join(", ", kvp.Value.Select(elem => elem.Id.IntegerValue))}", MessageType.Warning);
                 }

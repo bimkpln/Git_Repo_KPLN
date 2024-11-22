@@ -31,26 +31,31 @@ namespace KPLN_ExtraFilter.Common
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
             Element firstElement = elemsToFind.FirstOrDefault();
-
             AddParam(firstElement, commonInstParameters);
 
-            Element typeElem = doc.GetElement(firstElement.GetTypeId());
-            AddParam(typeElem, commonTypeParameters);
+            // Не у всех элементов есть возможность выбрать тип. Например - помещения
+            if (doc.GetElement(firstElement.GetTypeId()) is Element typeElem)
+                AddParam(typeElem, commonTypeParameters);
 
+            int countElemsToFind = elemsToFind.Count();
             foreach (Element currentElement in elemsToFind)
             {
                 // Игнорирую уже добавленный эл-т
-                if (firstElement.Id == currentElement.Id)
+                if (countElemsToFind > 1 
+                    && firstElement.Id == currentElement.Id)
                     continue;
 
                 HashSet<Parameter> currentInstParameters = new HashSet<Parameter>(new ParameterComparer());
                 AddParam(currentElement, currentInstParameters);
                 commonInstParameters.IntersectWith(currentInstParameters);
 
-                HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-                Element currentTypeElem = doc.GetElement(currentElement.GetTypeId());
-                AddParam(currentTypeElem, currentTypeParameters);
-                commonTypeParameters.IntersectWith(currentTypeParameters);
+                // Не у всех элементов есть возможность выбрать тип. Например - помещения
+                if (doc.GetElement(firstElement.GetTypeId()) is Element currentTypeElem)
+                {
+                    HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
+                    AddParam(currentTypeElem, currentTypeParameters);
+                    commonTypeParameters.IntersectWith(currentTypeParameters);
+                }
             }
 
             if (commonInstParameters.Count == 0 && commonTypeParameters.Count == 0)
