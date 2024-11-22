@@ -24,6 +24,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
             #region Настраиваю параметры в зависимости от проекта
             string docPath = doc.Title.ToUpper();
             int userDepartment = Module.CurrentDBUser.SubDepartmentId;
+
+            bool isSET = docPath.StartsWith("СЕТ_1");
             // Посадить на конфиг под каждый файл
             if (userDepartment == 2 || userDepartment == 8 && docPath.Contains("АР"))
             {
@@ -32,7 +34,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     _levelParamName = "КП_О_Этаж";
                     _sectParamName = "КП_О_Секция";
                 }
-                if (docPath.StartsWith("СЕТ_1"))
+                if (isSET)
                 {
                     _levelParamName = "СМ_Этаж";
                     _sectParamName = "СМ_Секция";
@@ -45,7 +47,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     _levelParamName = "О_Этаж";
                     _sectParamName = "КП_О_Секция";
                 }
-                if (docPath.StartsWith("СЕТ_1"))
+                if (isSET)
                 {
                     _levelParamName = "СМ_Этаж";
                     _sectParamName = "СМ_Секция";
@@ -74,7 +76,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     _levelParamName = "КП_О_Этаж";
                     _sectParamName = "КП_О_Секция";
                 }
-                if (docPath.StartsWith("СЕТ_1"))
+                if (isSET)
                 {
                     _levelParamName = "СМ_Этаж";
                     _sectParamName = "СМ_Секция";
@@ -119,7 +121,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     .Select(e => new LinkGridLevelData() { Element = e, RevLinkInstance = rvtLinkInst }));
 
                 // Кастомизация под проект
-                if (docPath.StartsWith("СЕТ_1"))
+                if (isSET)
                     linkGridLevelDataElemColl.AddRange(
                         new FilteredElementCollector(linkDoc)
                         .OfCategory(BuiltInCategory.OST_Levels)
@@ -181,7 +183,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     if (equalLinkGridLevelData.Equals(default))
                     {
                         // Кастомизация под проект
-                        if (doc.Title.Contains("СЕТ_1") && prjGridLevel is Level prjLvl)
+                        if (isSET && prjGridLevel is Level prjLvl)
                         {
                             equalLinkGridLevelData = linkGridLevelDataElemColl
                                 .FirstOrDefault(lge => lge.Element is Level lgeLvl && (Math.Round(Math.Abs(lgeLvl.Elevation) - (Math.Abs(prjLvl.Elevation)), 1) == 0));
@@ -216,25 +218,27 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                             if (levelUpLevelEqualLink == null)
                             {
                                 // Кастомизация под проект
-                                if (doc.Title.Contains("СЕТ_1"))
+                                if (isSET)
                                 {
                                     levelUpLevelEqualLink = prjGridsElemColl
                                         .FirstOrDefault(pge => pge is Level pgeLvl && (Math.Round(Math.Abs(pgeLvl.Elevation) - (Math.Abs(equalLinkUpLevel.Elevation)), 1) == 0));
                                 }
-                                if (levelUpLevelEqualLink == null)
-                                {
-                                        Print(
-                                            $"При поиске уровня сверху, уровень из связи {equalLinkUpLevel.Name} id: {equalLinkUpLevel.Id} - не нашел аналогичного в твоей модели",
-                                            MessageType.Error);
-                                        return Result.Cancelled;
-                                    }
-                                }
+                            }
 
-                            levelUpLevelId = levelUpLevelEqualLink.Id;
+                            if (levelUpLevelEqualLink == null)
+                            {
+                                Print(
+                                    $"При поиске уровня сверху, уровень из связи {equalLinkUpLevel.Name} id: {equalLinkUpLevel.Id} - не нашел аналогичного в твоей модели. " +
+                                    $"Это не останавливает анализ, и если у тебя выше этого уровня нет геометрии - можно проигнорировать данное предупреждение",
+                                    MessageType.Warning);
+                            }
+                            else
+                            {
+                                levelUpLevelId = levelUpLevelEqualLink.Id;
+                                Parameter levelUpParam = prjLevel.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL);
+                                levelUpParam.Set(levelUpLevelId);
+                            }
                         }
-                        
-                        Parameter levelUpParam = prjLevel.get_Parameter(BuiltInParameter.LEVEL_UP_TO_LEVEL);
-                        levelUpParam.Set(levelUpLevelId);
                     }
                     #endregion
 
