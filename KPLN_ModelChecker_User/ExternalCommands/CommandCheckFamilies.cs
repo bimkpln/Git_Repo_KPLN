@@ -295,128 +295,128 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private WPFEntity CheckSysytemFamilyTypeName(ElementType elemType)
         {
             string typeName = elemType.Name;
-            if (!typeName.Equals("99_Не использовать"))
+            if (typeName.Equals("99_Не использовать"))
+                return null;
+
+            string[] typeSplitedName = typeName.Split('_');
+            if (typeSplitedName.Length < 3)
             {
-                string[] typeSplitedName = typeName.Split('_');
-                if (typeSplitedName.Length < 3)
-                {
-                    return new WPFEntity(
-                        elemType,
-                        CheckStatus.Error,
-                        "Ошибка типоразмера системного",
-                        $"Данный типоразмер назван не по ВЕР - не хватает основных блоков",
-                        false,
-                        true,
-                        "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'");
-                }
+                return new WPFEntity(
+                    elemType,
+                    CheckStatus.Error,
+                    "Ошибка типоразмера системного",
+                    $"Данный типоразмер назван не по ВЕР - не хватает основных блоков",
+                    false,
+                    true,
+                    "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'");
+            }
 
-                if (!(typeSplitedName[0].StartsWith("00")
-                    || typeSplitedName[0].StartsWith("01")
-                    || typeSplitedName[0].StartsWith("02")
-                    || typeSplitedName[0].StartsWith("03")
-                    || typeSplitedName[0].StartsWith("04")
-                    || typeSplitedName[0].StartsWith("05")))
-                {
-                    return new WPFEntity(
-                        elemType,
-                        CheckStatus.Error,
-                        "Ошибка типоразмера системного",
-                        $"Данный типоразмер назван не по ВЕР - ошибка кода",
-                        false,
-                        true,
-                        "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.");
-                }
+            if (!(typeSplitedName[0].StartsWith("00")
+                || typeSplitedName[0].StartsWith("01")
+                || typeSplitedName[0].StartsWith("02")
+                || typeSplitedName[0].StartsWith("03")
+                || typeSplitedName[0].StartsWith("04")
+                || typeSplitedName[0].StartsWith("05")))
+            {
+                return new WPFEntity(
+                    elemType,
+                    CheckStatus.Error,
+                    "Ошибка типоразмера системного",
+                    $"Данный типоразмер назван не по ВЕР - ошибка кода",
+                    false,
+                    true,
+                    "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.");
+            }
 
-                #region Проверка ЖБ на привязку к коду 00
-                string sliceCode = typeSplitedName[1];
-                if (sliceCode.ToUpper().Equals("ВН") || sliceCode.ToUpper().Equals("НА"))
-                    sliceCode = typeSplitedName[2];
+            #region Проверка ЖБ на привязку к коду 00
+            string sliceCode = typeSplitedName[1];
+            if (sliceCode.ToUpper().Equals("ВН") || sliceCode.ToUpper().Equals("НА"))
+                sliceCode = typeSplitedName[2];
 
-                if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ") && !sliceCode.ToUpper().StartsWith("К"))
-                {
-                    return new WPFEntity(
-                        elemType,
-                        CheckStatus.Error,
-                        "Ошибка типоразмера системного",
-                        $"Код '00_' может содержать только несущие конструкции",
-                        false,
-                        true,
-                        $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"");
-                }
-                if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
-                {
-                    return new WPFEntity(
-                        elemType,
-                        CheckStatus.Warning,
-                        "Предупреждение типоразмера системного",
-                        $"ЖБ вне несущего слоя",
-                        false,
-                        true,
-                        $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")");
-                }
-                #endregion
+            if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ") && !sliceCode.ToUpper().StartsWith("К"))
+            {
+                return new WPFEntity(
+                    elemType,
+                    CheckStatus.Error,
+                    "Ошибка типоразмера системного",
+                    $"Код '00_' может содержать только несущие конструкции",
+                    false,
+                    true,
+                    $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"");
+            }
+            if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
+            {
+                return new WPFEntity(
+                    elemType,
+                    CheckStatus.Warning,
+                    "Предупреждение типоразмера системного",
+                    $"ЖБ вне несущего слоя",
+                    false,
+                    true,
+                    $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")");
+            }
+            #endregion
 
-                #region Нахожу суммарную толщину
-                string totalThicknessStr = typeSplitedName[typeSplitedName.Length - 1];
-                if (!double.TryParse(totalThicknessStr, out double totalThickness))
+            #region Нахожу суммарную толщину
+            string totalThicknessStr = typeSplitedName[typeSplitedName.Length - 1];
+            if (!double.TryParse(totalThicknessStr, out double totalThickness))
+            {
+                totalThicknessStr = typeSplitedName[typeSplitedName.Length - 2];
+                if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 2], out totalThickness))
                 {
-                    totalThicknessStr = typeSplitedName[typeSplitedName.Length - 2];
-                    if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 2], out totalThickness))
+                    totalThicknessStr = typeSplitedName[typeSplitedName.Length - 3];
+                    if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 3], out totalThickness))
                     {
-                        totalThicknessStr = typeSplitedName[typeSplitedName.Length - 3];
-                        if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 3], out totalThickness))
-                        {
-                            return new WPFEntity(
-                            elemType,
-                            CheckStatus.Error,
-                            "Ошибка типоразмера системного",
-                            $"Ошибка индекса положения суммарной толщины",
-                            false,
-                            true,
-                            $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
-                            $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.");
-                        }
+                        return new WPFEntity(
+                        elemType,
+                        CheckStatus.Error,
+                        "Ошибка типоразмера системного",
+                        $"Ошибка индекса положения суммарной толщины",
+                        false,
+                        true,
+                        $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
+                        $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.");
                     }
                 }
+            }
 
-                double typeThickness = 0;
-                if (elemType is FloorType floorType)
+            double typeThickness = 0;
+            if (elemType is FloorType floorType)
 #if Revit2020 || Debug2020
-                    typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
-                        DisplayUnitType.DUT_MILLIMETERS);
+                typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
+                    DisplayUnitType.DUT_MILLIMETERS);
 #endif
 #if Revit2023 || Debug2023
                 typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
                         new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif
-                else if (elemType is WallType wallType)
-                {
-                    Parameter widthParam = wallType.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM);
-                    if (widthParam == null)
-                        return null;
+            else if (elemType is WallType wallType)
+            {
+                Parameter widthParam = wallType.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM);
+                if (widthParam == null)
+                    return null;
 #if Revit2020 || Debug2020
-                    typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
-                        DisplayUnitType.DUT_MILLIMETERS);
+                typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
+                    DisplayUnitType.DUT_MILLIMETERS);
 #endif
 #if Revit2023 || Debug2023
                     typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
                         new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif
-                }
-
-                if (Math.Abs(totalThickness - typeThickness) > 0.1)
-                {
-                    return new WPFEntity(
-                        elemType,
-                        CheckStatus.Error,
-                        "Ошибка типоразмера системного",
-                        $"Сумма слоёв не совпадает с описанием",
-                        false,
-                        true,
-                        $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"");
-                }
-                #endregion
             }
+
+            if (Math.Abs(totalThickness - typeThickness) > 0.1)
+            {
+                return new WPFEntity(
+                    elemType,
+                    CheckStatus.Error,
+                    "Ошибка типоразмера системного",
+                    $"Сумма слоёв не совпадает с описанием",
+                    false,
+                    true,
+                    $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"");
+            }
+            #endregion
 
             return null;
         }
@@ -430,7 +430,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private WPFEntity CheckFamilyPath(Document doc, Family currentFam)
         {
             // Отсеиваю по имени семейств плагинов
-            if (currentFam.Name.Contains("ClashPoint"))
+            if (currentFam.Name.Contains("ClashPoint")
+                || currentFam.Name.Contains("Определения для Weandrevit ALL"))
                 return null;
 
             // Блок игнорирования семейств ostec/dkc (они плагином устанавливаются локально на диск С)
