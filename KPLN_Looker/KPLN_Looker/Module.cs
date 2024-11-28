@@ -490,7 +490,8 @@ namespace KPLN_Looker
             if (dBProject != null)
             {
                 // Ищу документ
-                DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
+                int prjDBSubDepartmentId = DBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+                DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
                 if (dBDocument == null)
                 {
                     // Создаю, если не нашел
@@ -499,7 +500,7 @@ namespace KPLN_Looker
                     dBDocument = DBWorkerService.Create_DBDocument(
                         centralPath,
                         dBProject.Id,
-                        dBSubDepartment.Id,
+                        prjDBSubDepartmentId,
                         dbUser.Id,
                         DBWorkerService.CurrentTimeForDB(),
                         false);
@@ -522,6 +523,7 @@ namespace KPLN_Looker
                 {
                     DBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
                     DBProjectMatrix[] currentPrjMatrixColl = DBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
+                    
                     // Вывожу окно, если документ ЗАКРЫТ к редактированию
                     if (dBProject.IsClosed)
                     {
@@ -566,14 +568,6 @@ namespace KPLN_Looker
                                 "https://kpln.bitrix24.ru/rest/1310/pzyudfrm0pp3gq19/im.message.add.json",
                                 jsonRequestToUser);
                         }
-                        else
-                        {
-                            BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                                DBWorkerService.CurrentDBUser,
-                                $"Стадия проекта {doc.Title} закрыта. Вы попытались открыть [b]закрытый проект[/b]. " +
-                                $"Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]");
-                        }
-
                         #endregion
 
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
@@ -621,27 +615,6 @@ namespace KPLN_Looker
         {
             Document doc = args.Document;
 
-            #region Бэкап версий с РС на наш сервак по проекту Сетунь
-            if (args.Status == RevitAPIEventStatus.Succeeded)
-            {
-                // Хардкод для старой версии - бэкапим только проект Сетунь
-                if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_АР_"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_КР_"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ЭОМ"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ВК"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ПТ"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && doc.PathName.Contains("_ОВ"))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
-                else if (doc.PathName.Contains("СЕТ_1") && (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_")))
-                    RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
-            }
-            #endregion
-
             if (MonitoredDocFilePath(doc) == null)
                 return;
 
@@ -670,11 +643,13 @@ namespace KPLN_Looker
             if (dBProject == null)
                 return;
 
-            DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject);
+            int prjDBSubDepartmentId = DBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+            DBDocument dBDocument = DBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
             if (dBDocument == null)
                 return;
 
             DBWorkerService.Update_DBDocumentLastChangedData(dBDocument);
+
             // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
             if (dBDocument.IsClosed)
             {
@@ -708,6 +683,53 @@ namespace KPLN_Looker
                     MessageBoxIcon.Error);
 
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBWorkerService.CurrentDBUser, doc));
+            }
+            #endregion
+
+            #region Бэкап версий с RS на наш сервак по проектам
+            if (args.Status == RevitAPIEventStatus.Succeeded && dBProject.RevitServerPath != null)
+            {
+                
+                
+                bool isSET = doc.PathName.Contains("СЕТ_1");
+                // Проект Сетунь
+                if (isSET) 
+                {
+                    if (doc.PathName.Contains("_АР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_КР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ЭОМ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ВК"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ПТ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ОВ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
+                }
+
+                // Проект Матросская тишина
+                bool isMTRS = doc.PathName.Contains("МТРС_");
+                if (isMTRS)
+                {
+                    if (doc.PathName.Contains("_АР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_КР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ЭОМ_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ВК_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ПТ_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ОВ_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_СС_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
+                }
             }
             #endregion
         }

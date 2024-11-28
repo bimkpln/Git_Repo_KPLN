@@ -1,4 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using Autodesk.Revit.DB;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Linq;
@@ -86,14 +87,6 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Создать новый документ в БД
         /// </summary>
-        /// <param name="title"></param>
-        /// <param name="fileName"></param>
-        /// <param name="dBProjectId"></param>
-        /// <param name="dBSubDepartmentId"></param>
-        /// <param name="dbUserId"></param>
-        /// <param name="lastChangedData"></param>
-        /// <param name="isClosed"></param>
-        /// <returns></returns>
         internal DBDocument Create_DBDocument(string centralPath, int dBProjectId, int dBSubDepartmentId, int dbUserId, string lastChangedData, bool isClosed)
         {
             DBDocument dBDocument = new DBDocument()
@@ -127,10 +120,23 @@ namespace KPLN_Looker.Services
         /// <param name="centralPath">Путь открытого файла Ревит</param>
         /// <param name="dBProject">Проект из БД</param>
         /// <returns></returns>
-        internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject) =>
+        internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject, int dBSubDepartmentId) =>
             _documentDbService
-                .GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, CurrentDBUserSubDepartment.Id)
+                .GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId)
                 .FirstOrDefault(d => d.CentralPath.Equals(centralPath));
+
+        /// <summary>
+        /// Получить ID отдела, которому принадлежит файл
+        /// </summary>
+        /// <returns></returns>
+        internal int Get_DBDocumentSubDepartmentId(Document doc)
+        {
+            DBSubDepartment subDep = _subDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            if (subDep != null)
+                return subDep.Id;
+
+            return -1;
+        }
 
         /// <summary>
         /// Обновление статуса документа IsClosed по статусу проекта
