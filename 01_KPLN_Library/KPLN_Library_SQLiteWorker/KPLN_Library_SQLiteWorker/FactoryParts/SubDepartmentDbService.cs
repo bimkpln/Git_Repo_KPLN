@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_SQLiteWorker.Core;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
@@ -60,23 +61,29 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public DBSubDepartment GetDBSubDepartment_ByRevitDoc(Document revitDoc)
         {
             string docName = revitDoc.PathName;
-            IEnumerable <DBSubDepartmentCodeMatrix> sdMatrix = _subDepartmentCodeMatrixDbService.GetSubDepartmentCodeMatrix();
-            DBSubDepartmentCodeMatrix resultSD = null;
-            foreach (DBSubDepartmentCodeMatrix dbSubDepartmentCodeMatrix in sdMatrix)
-            {
-                if (docName.Contains($"_{dbSubDepartmentCodeMatrix.Code}")
-                    || docName.Contains($"{dbSubDepartmentCodeMatrix.Code}_")
-                    || docName.Contains($"-{dbSubDepartmentCodeMatrix.Code}")
-                    || docName.Contains($"{dbSubDepartmentCodeMatrix.Code}-"))
-                {
-                    resultSD = dbSubDepartmentCodeMatrix;
-                }
-            }
 
-            if (resultSD == null)
-                throw new Worker_Error("Не удалось определить раздел по имени файла.");
+            if (docName.Contains("_КФ."))
+                return GetDBSubDepartment_ByName("BIM");
+            else
+            {
+                IEnumerable <DBSubDepartmentCodeMatrix> sdMatrix = _subDepartmentCodeMatrixDbService.GetSubDepartmentCodeMatrix();
+                DBSubDepartmentCodeMatrix resultSD = null;
+                foreach (DBSubDepartmentCodeMatrix dbSubDepartmentCodeMatrix in sdMatrix)
+                {
+                    if (docName.Contains($"_{dbSubDepartmentCodeMatrix.Code}")
+                        || docName.Contains($"{dbSubDepartmentCodeMatrix.Code}_")
+                        || docName.Contains($"-{dbSubDepartmentCodeMatrix.Code}")
+                        || docName.Contains($"{dbSubDepartmentCodeMatrix.Code}-"))
+                    {
+                        resultSD = dbSubDepartmentCodeMatrix;
+                    }
+                }
+
+                if (resultSD == null)
+                    throw new Worker_Error("Не удалось определить раздел по имени файла.");
             
-            return GetDBSubDepartment_SubDepartmentMatrixCode(resultSD);
+                return GetDBSubDepartment_SubDepartmentMatrixCode(resultSD);
+            }
         }
     }
 }
