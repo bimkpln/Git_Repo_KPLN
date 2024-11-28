@@ -599,6 +599,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 
                 // Ручная замена неприемлемых форматов
                 returnedHeader.Replace("##Undefined##UNDEFINED", "##OTHER##")
+                              .Replace("##Angle##DEGREES_AND_MINUTES", "##Angle##DEGREES")
                               .Replace("DECIMAL_DEGREES", "DECIMAL DEGREES")
                               .Replace("DECIMAL_FEET", "GENERAL")
                               .Replace("Airflow", "AIR_FLOW");
