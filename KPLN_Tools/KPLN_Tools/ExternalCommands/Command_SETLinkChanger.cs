@@ -67,10 +67,6 @@ namespace KPLN_Tools.ExternalCommands
 
                     if (linkElem is RevitLinkType linkType)
                     {
-                        //// Ручное регулирование обрабатываемых связей (перенос будет по частям - поэтому хардкодим)
-                        //if (!linkElem.Name.Contains("РФ") && !linkElem.Name.Contains("АР") && !linkElem.Name.Contains("КР"))
-                        //    continue;
-
                         ModelPath newModelPath = null;
                         newModelPathString = string.Empty;
                         try
@@ -79,6 +75,8 @@ namespace KPLN_Tools.ExternalCommands
                             ExternalFileReference extFileRef = linkType.GetExternalFileReference();
                             ModelPath oldModelPath = extFileRef.GetAbsolutePath();
                             string oldModelPathString = ModelPathUtils.ConvertModelPathToUserVisiblePath(oldModelPath);
+                            if (oldModelPathString.Contains("[*"))
+                                oldModelPathString = RemoveSubstringIfExists(oldModelPathString, "[*");
 
                             if (!oldModelPathString.Contains(_rsOLDPath) && !oldModelPathString.Contains(_rsOLDRKPath) && !oldModelPathString.Contains(_serverOLDPath))
                                 continue;
@@ -99,9 +97,12 @@ namespace KPLN_Tools.ExternalCommands
                             #endregion
 
                             #region Обрабатываю пути КР
-                            else if (oldModelPathString.Contains(_rsOLDRKPath))
+                            else if (oldModelPathString.Contains(_rsOLDPath) || oldModelPathString.Contains(_rsOLDRKPath) && oldModelPathString.Contains("_КР_"))
                             {
                                 newModelPathString = oldModelPathString.Replace(_rsOLDRKPath, $@"{_rsKRPath}");
+                                if (newModelPathString == oldModelPathString)
+                                    newModelPathString = oldModelPathString.Replace(_rsOLDPath, $@"{_rsKRPath}");
+
                                 newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath($"{newModelPathString}");
                             }
                             #endregion

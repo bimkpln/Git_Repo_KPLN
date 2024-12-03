@@ -132,9 +132,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     //Анализ моделируемых элементов
                     if (element.Category.CategoryType == CategoryType.Model
                         // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
-                        && element.Category.Id.IntegerValue != -2000576
+                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_PreviewLegendComponents
                         // Игнор зон ОВК
                         && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_HVAC_Zones
+                        // Игнор набора характеристик материалов
+                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_PropertySet
                         // Игнор эскизов
                         && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_SketchLines)
                     {

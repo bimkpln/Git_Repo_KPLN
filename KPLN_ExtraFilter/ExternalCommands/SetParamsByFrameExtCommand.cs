@@ -21,13 +21,21 @@ namespace KPLN_ExtraFilter.ExternalCommands
     {
         public bool AllowElement(Element elem)
         {
-            if (elem.Category != null
-                && ((elem.Category.CategoryType == CategoryType.Model)
-                    || (elem.Category.CategoryType == CategoryType.Internal))
-                && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Viewers)
-                && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_IOSModelGroups)
-                && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Assemblies))
-                return true;
+            // Фильтрация по классу (проемы)
+            if (elem is Opening _)
+                return false;
+
+            // Фильтрация по категории (модельные эл-ты, кроме видов, сборок)
+            if (elem.Category is Category elCat)
+            {
+                int elCatId = elCat.Id.IntegerValue;
+                if (((elem.Category.CategoryType == CategoryType.Model)
+                        || (elem.Category.CategoryType == CategoryType.Internal))
+                    && (elCatId != (int)BuiltInCategory.OST_Viewers)
+                    && (elCatId != (int)BuiltInCategory.OST_IOSModelGroups)
+                    && (elCatId != (int)BuiltInCategory.OST_Assemblies))
+                    return true;
+            }
 
             return false;
         }
