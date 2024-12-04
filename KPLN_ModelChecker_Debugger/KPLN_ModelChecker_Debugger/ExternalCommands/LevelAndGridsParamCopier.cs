@@ -34,10 +34,15 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     _levelParamName = "КП_О_Этаж";
                     _sectParamName = "КП_О_Секция";
                 }
-                if (isSET)
+                else if (isSET)
                 {
                     _levelParamName = "СМ_Этаж";
                     _sectParamName = "СМ_Секция";
+                }
+                else
+                {
+                    _levelParamName = "КП_О_Этаж";
+                    _sectParamName = "КП_О_Секция";
                 }
             }
             else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("КР"))
@@ -47,10 +52,15 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     _levelParamName = "О_Этаж";
                     _sectParamName = "КП_О_Секция";
                 }
-                if (isSET)
+                else if (isSET)
                 {
                     _levelParamName = "СМ_Этаж";
                     _sectParamName = "СМ_Секция";
+                }
+                else
+                {
+                    _levelParamName = "КП_О_Этаж";
+                    _sectParamName = "КП_О_Секция";
                 }
             }
             else if (userDepartment == 4
@@ -66,22 +76,12 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                          || docPath.Contains("АК")
                          || docPath.Contains("АВ")))
             {
-                if (docPath.StartsWith("ОБДН"))
-                {
-                    _levelParamName = "КП_О_Этаж";
-                    _sectParamName = "КП_О_Секция";
-                }
-                if (docPath.StartsWith("ИЗМЛ"))
-                {
-                    _levelParamName = "КП_О_Этаж";
-                    _sectParamName = "КП_О_Секция";
-                }
                 if (isSET)
                 {
-                    _levelParamName = "СМ_Этаж";
-                    _sectParamName = "СМ_Секция";
+                    _levelParamName = "КП_О_Этаж";
+                    _sectParamName = "КП_О_Секция";
                 }
-                if (docPath.StartsWith("ПШМ1"))
+                else 
                 {
                     _levelParamName = "КП_О_Этаж";
                     _sectParamName = "КП_О_Секция";
