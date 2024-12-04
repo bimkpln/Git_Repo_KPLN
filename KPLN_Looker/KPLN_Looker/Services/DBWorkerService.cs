@@ -2,6 +2,7 @@
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -111,8 +112,20 @@ namespace KPLN_Looker.Services
         /// </summary>
         /// <param name="fileName">Имя открытого файла Ревит</param>
         /// <returns></returns>
-        internal DBProject Get_DBProjectByRevitDocFile(string fileName) =>
-            _projectDbService.GetDBProjects().FirstOrDefault(p => fileName.Contains(p.MainPath) || fileName.Contains(p.RevitServerPath));
+        internal DBProject Get_DBProjectByRevitDocFile(string fileName)
+        {
+            DBProject result = _projectDbService.GetDBProjects().FirstOrDefault(p => fileName.Contains(p.MainPath) || fileName.Contains(p.RevitServerPath));
+            
+            // У Сетуни 2 ревит сервера, что является жестким исключением, поэтому её захардкодил сюда
+            if (fileName.Contains("Самолет_Сетунь") && result == null)
+            {
+                string[] splitName = fileName.Split(new[] { "RSN://rs01/" }, StringSplitOptions.None);
+                fileName = Path.Combine("RSN://192.168.0.5/", splitName[1]);
+                result = _projectDbService.GetDBProjects().FirstOrDefault(p => fileName.Contains(p.MainPath) || fileName.Contains(p.RevitServerPath));
+            }
+
+            return result;
+        }
 
         /// <summary>
         /// Получить активный документ из БД по открытому проекту Ревит и по проекту из БД

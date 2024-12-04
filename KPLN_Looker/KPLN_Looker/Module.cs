@@ -152,14 +152,35 @@ namespace KPLN_Looker
         /// </summary>
         private static void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            #region Анализ загрузки семейств путем копирования
 #if Debug2020 || Debug2023
-            CheckFamilyLoadedFromOtherFile(args);
+            // Фильтрация по имени проекта
+            string docPath = MonitoredDocFilePath(args.GetDocument());
+            if (docPath != null)
+            {
+                if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
+                    docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    // Отлов проекта Школа 825. Его дорабатываем за другой организацией
+                    || docPath.ToLower().Contains("sh1-"))
+                    return;
+
+                CheckFamilyCopiedFromOtherFile(args);
+            }
 #else
-            if (MonitoredDocFilePath(args.GetDocument()) != null)
-                        CheckFamilyLoadedFromOtherFile(args);
-#endif
+            // Фильтрация по имени проекта
+            string docPath = MonitoredDocFilePath(args.GetDocument());
+            #region Анализ загрузки семейств путем копирования
+            if (docPath != null)
+            {
+                if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
+                    docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    // Отлов проекта Школа 825. Его дорабатываем за другой организацией
+                    || docPath.ToLower().Contains("sh1-"))
+                    return;
+
+                CheckFamilyCopiedFromOtherFile(args);
+            }
             #endregion
+#endif
         }
 
         /// <summary>
@@ -180,7 +201,7 @@ namespace KPLN_Looker
             string docPath = MonitoredDocFilePath(prjDoc);
             if (docPath == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\") 
+                || docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
                 || docPath.ToLower().Contains("sh1-"))
                 return;
@@ -252,8 +273,8 @@ namespace KPLN_Looker
         /// <param name="familyPath">Путь к семейству</param>
         /// <returns></returns>
         private static bool IsFamilyMonitoredError(
-            Document doc, 
-            BuiltInCategory bic, 
+            Document doc,
+            BuiltInCategory bic,
             string familyName,
             string familyPath = null)
         {
@@ -308,27 +329,19 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Анализ семейств (FamilyInstance), загруженных из другого проекта (ctrl+c/ctrl+v).
+        /// Анализ семейств (FamilyInstance), скопированных из другого проекта (ctrl+c/ctrl+v).
         /// Остальные элементы, не интересуют, т.к. НЕ являются семействами
         /// </summary>
-        private static void CheckFamilyLoadedFromOtherFile(DocumentChangedEventArgs args)
+        private static void CheckFamilyCopiedFromOtherFile(DocumentChangedEventArgs args)
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
-            if (transName != null 
+            if (transName != null
                 && (!transName.Equals("Начальная вставка") && !transName.Equals("Initial paste"))
                 && (!transName.Equals("Вставить") && !transName.Equals("Paste")))
                 return;
 
             Document doc = args.GetDocument();
 
-            string docPath = MonitoredDocFilePath(doc);
-            if (docPath == null
-                // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
-                // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                || docPath.ToLower().Contains("sh1-"))
-                return;
-            
             // Коллекция добавленых анализируемых FamilyInstance
             SetResultFamInstFilterForAddedElems();
             FamilyInstance[] monitoredFamInsts = args
@@ -345,20 +358,52 @@ namespace KPLN_Looker
             if (monitoredFamInsts.All(fi => fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks))
                 return;
 
-            UserVerify userVerify = new UserVerify("[ИНФО]: Выявлена попытка копирования эл-в через буфер обмена. Данный функционал запрещен!\n" +
-                "[ЧТО ДЕЛАТЬ]: Грузите семейства с диска X, внутри проекта пользуйтесь командами со вкладки \"Изменить\" (кроме \"Вставить\"->\"Вставить из буфера\")");
-            userVerify.ShowDialog();
+            string docCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            DBProject docDBProject = DBWorkerService.Get_DBProjectByRevitDocFile(docCentralPath);
+            if (docDBProject == null)
+                return;
 
-            switch (userVerify.Status)
+            string docTitle = doc.Title;
+            int countDifferenceProjects = 0;
+            DocumentSet docSet = doc.Application.Documents;
+            foreach (Document openDoc in docSet)
             {
-                case UIStatus.RunStatus.CloseBecauseError:
-                    TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке отказано!");
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
-                    break;
-                case UIStatus.RunStatus.Close:
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
-                    break;
+                // Если это линк - ок, пусть копируют
+                if (openDoc.IsLinked || openDoc.Title.Equals(docTitle))
+                    continue;
+
+                if (openDoc.IsWorkshared)
+                {
+                    string openDocCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(openDoc.GetWorksharingCentralModelPath());
+                    DBProject openDocDBProject = DBWorkerService.Get_DBProjectByRevitDocFile(openDocCentralPath);
+                    // Если проекты из БД отличаются - блокирую
+                    if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
+                        continue;
+                }
+
+                countDifferenceProjects++;
             }
+
+            if (countDifferenceProjects > 0)
+            {
+                UserVerify userVerify = new UserVerify(
+                    "[ОШИБКА]: Выявлена попытка копирования эл-в через буфер обмена. При несколько открытых моделях РАЗНЫХ, или НЕОПРЕДЕЛЕННЫХ проектов в одном Revit - данный функционал запрещен.\n" +
+                    "[ЧТО ДЕЛАТЬ]: Если нужно скопировать фрагмент из другой модели - обратитесь в BIM-отдел. Иначе - оставьте открытым только ОДИН проект.\n" +
+                    "[ИНФО]: Вместо буфера обмена - пользуйтесь командами со вкладки \"Изменить\"->\"Изменить\"->\"Копировать\").");
+                userVerify.ShowDialog();
+
+                switch (userVerify.Status)
+                {
+                    case UIStatus.RunStatus.CloseBecauseError:
+                        TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке отказано!");
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
+                        break;
+                    case UIStatus.RunStatus.Close:
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
+                        break;
+                }
+            }
+
         }
 
         /// <summary>
@@ -479,14 +524,6 @@ namespace KPLN_Looker
 
             #region Обработка проектов КПЛН
             DBProject dBProject = DBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
-            // У Сетуни 2 ревит сервера, что является жестким исключением, поэтому её захардкодил сюда
-            if (centralPath.Contains("Самолет_Сетунь") && dBProject == null)
-            {
-                string[] splitName = centralPath.Split(new[] { "RSN://rs01/" }, StringSplitOptions.None);
-                centralPath = Path.Combine("RSN://192.168.0.5/", splitName[1]);
-                dBProject = DBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
-            }
-
             if (dBProject != null)
             {
                 // Ищу документ
@@ -523,7 +560,7 @@ namespace KPLN_Looker
                 {
                     DBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
                     DBProjectMatrix[] currentPrjMatrixColl = DBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
-                    
+
                     // Вывожу окно, если документ ЗАКРЫТ к редактированию
                     if (dBProject.IsClosed)
                     {
@@ -689,11 +726,11 @@ namespace KPLN_Looker
             #region Бэкап версий с RS на наш сервак по проектам
             if (args.Status == RevitAPIEventStatus.Succeeded && dBProject.RevitServerPath != null)
             {
-                
-                
+
+
                 bool isSET = doc.PathName.Contains("СЕТ_1");
                 // Проект Сетунь
-                if (isSET) 
+                if (isSET)
                 {
                     if (doc.PathName.Contains("_АР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
