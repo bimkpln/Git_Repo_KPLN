@@ -203,7 +203,10 @@ namespace KPLN_ModelChecker_User
             AddPushButtonData(
                 "CheckWorksets",
                 "Проверка\nрабочих наборов",
-                "Проверка элементов на корректность рабочих наборов.",
+                "Проверка элементов на корректность следующих рабочих наборов:"+
+                    "\n1. РН для связей;" +
+                    "\n2. РН для осей и уровней;" +
+                    "\n3. РН для скопированных и замониторенных элементов из других моделей.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckElementWorksets).FullName,
                 pullDown,

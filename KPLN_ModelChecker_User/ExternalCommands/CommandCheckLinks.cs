@@ -87,7 +87,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<WPFEntity> result = new List<WPFEntity>();
 
             result.AddRange(CheckLocation(doc, elemColl));
-            if (CheckPin(elemColl) is WPFEntity checkPin) result.Add(checkPin);
+            if (CheckPin(elemColl) is WPFEntity checkPin) 
+                result.Add(checkPin);
 
             return result;
         }
@@ -113,24 +114,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (RevitLinkInstance link in rvtLinks.Cast<RevitLinkInstance>())
             {
-                
+                if (IsLinkWithSharedCoordByName(link))
+                    continue;
+
                 // Анализ наличия нескольких экземпляров связей
                 if (rvtLinkDocTitles.Count(title => title == link.GetLinkDocument().Title) > 1)
                 {
-                    if (IsLinkWithSharedCoordByName(link))
-                    {
-                        result.Add(new WPFEntity(
-                            link,
-                            CheckStatus.Error,
-                            "Ошибка размещения",
-                            "Экземпляры данной связи размещены несколько раз",
-                            false,
-                            false,
-                            "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." +
-                            "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая"));
-                    }
-
-                    continue;
+                    result.Add(new WPFEntity(
+                        link,
+                        CheckStatus.Error,
+                        "Ошибка размещения",
+                        "Экземпляры данной связи размещены несколько раз",
+                        false,
+                        false,
+                        "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." +
+                        "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая"));
                 }
 
                 // Анализ ОП в линках
@@ -153,24 +151,31 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
                     {
-                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model."))
+                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model"))
                         {
-                            if (IsLinkWithSharedCoordByName(link))
-                            {
-                                result.Add(new WPFEntity(
-                                    link,
-                                    CheckStatus.Error,
-                                    "Ошибка размещения",
-                                    "У связи не выбрана общая площадка",
-                                    false,
-                                    false,
-                                    "Запрещено размещать связи без общих площадок"));
-                            }
-                            else
-                                continue;
+                            result.Add(new WPFEntity(
+                                link,
+                                CheckStatus.Error,
+                                "Ошибка размещения",
+                                "У связи не выбрана общая площадка",
+                                false,
+                                false,
+                                "Запрещено размещать связи без общих площадок"));
+                            
+                        }
+                        else if (ioe.Message.Contains("Failed to acquire coordinates from the link instance"))
+                        {
+                            result.Add(new WPFEntity(
+                                link,
+                                CheckStatus.Error,
+                                "Ошибка размещения",
+                                "У связи не удалось получить координаты",
+                                false,
+                                false,
+                                "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\""));
                         }
                         else 
-                            throw new Exception($"Ошибка проверки связей: {ioe.Message}");
+                            throw new Exception($"Ошибка проверки связей: {ioe.Message} для файла {link.Name}");
                     }
                     finally
                     {
@@ -188,7 +193,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <returns></returns>
         [Obsolete]
         private bool IsLinkWithSharedCoordByName(RevitLinkInstance rli) =>
-            rli.Name.ToLower().Contains("<not shared>") || rli.Name.ToLower().Contains("не общедоступное");
+           !(rli.Name.ToLower().Contains("<not shared>") || rli.Name.ToLower().Contains("не общедоступное"));
 
         /// <summary>
         /// Проверка закрепление (PIN)
