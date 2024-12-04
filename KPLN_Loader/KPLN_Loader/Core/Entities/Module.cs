@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace KPLN_Loader.Core.SQLiteData
+namespace KPLN_Loader.Core.Entities
 {
     internal sealed class Module
     {

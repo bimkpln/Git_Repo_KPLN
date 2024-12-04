@@ -1,5 +1,6 @@
-﻿using Dapper;
-using KPLN_Loader.Core.SQLiteData;
+﻿using Autodesk.Revit.UI;
+using Dapper;
+using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms;
 using NLog;
 using System;
@@ -8,6 +9,7 @@ using System.Data;
 using System.Data.SQLite;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace KPLN_Loader.Services
 {
@@ -16,9 +18,9 @@ namespace KPLN_Loader.Services
     /// </summary>
     internal sealed class SQLiteService
     {
-        private IEnumerable<SubDepartment> _subDepartments;
         private readonly Logger _logger;
         private readonly string _dbPath;
+        private IEnumerable<SubDepartment> _subDepartments;
 
         internal SQLiteService(Logger logger, string dbPath)
         {
@@ -50,21 +52,23 @@ namespace KPLN_Loader.Services
         {
             string currentDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
             string sysUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
+            
             User currentUser = ExecuteQuery<User>($"SELECT * FROM {MainDB_Tables.Users} WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
-
             if (currentUser == null)
             {
-                LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled));
+                LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled), false);
                 if ((bool)loginForm.ShowDialog())
                 {
-                    int bitrixId = Task.Run(() => EnvironmentService.GetUserBitrixId_ByNameAndSurname(loginForm.UserName, loginForm.Surname)).Result;
+                    int bitrixId = Task.Run(() => EnvironmentService.GetUserBitrixId_ByNameAndSurname(loginForm.CreatedWPFUser.Name, loginForm.CreatedWPFUser.Surname)).Result;
                     currentUser = new User()
                     {
                         SystemName = sysUserName,
-                        Name = loginForm.UserName,
-                        Surname = loginForm.Surname,
-                        SubDepartmentId = loginForm.CurrentSubDepartment.Id,
+                        Name = loginForm.CreatedWPFUser.Name,
+                        Surname = loginForm.CreatedWPFUser.Surname,
+                        Company = loginForm.CreatedWPFUser.Company,
+                        SubDepartmentId = loginForm.CreatedWPFUser.SubDepartment.Id,
                         RegistrationDate = currentDate,
+                        IsUserRestricted = true,
                         BitrixUserID = bitrixId,
                     };
 
@@ -76,6 +80,15 @@ namespace KPLN_Loader.Services
                     _logger.Info($"Пользователь {currentUser.SystemName}: " +
                         $"{currentUser.Surname} {currentUser.Name} из отдела {GetSubDepartmentForCurrentUser(currentUser).Code} " +
                         $"успешно создан и записан в БД!");
+                }
+                else
+                {
+                    TaskDialog.Show(
+                        "Ошибка", 
+                        "Пользователь отменил ввод данных. Загрузка завершена с ошибкой. Перезапустите Revit и заполните все строки в окне регистрации",
+                        TaskDialogCommonButtons.Cancel);
+
+                    return null;
                 }
             }
             else
@@ -128,7 +141,7 @@ namespace KPLN_Loader.Services
         /// Получить SubDepartment пользоватлея
         /// </summary>
         /// <param name="currentUser">Пользователь для из БД</param>
-        internal SubDepartment GetSubDepartmentForCurrentUser(User currentUser) => SubDepartments.Where(s => s.Id == currentUser.SubDepartmentId).FirstOrDefault();
+        internal SubDepartment GetSubDepartmentForCurrentUser(User currentUser) => SubDepartments.FirstOrDefault(s => s.Id == currentUser.SubDepartmentId);
 
         /// <summary>
         /// Получить описание окна загрузки из БД
@@ -178,8 +191,13 @@ namespace KPLN_Loader.Services
         internal void SetRevitUserName(string userName, User currentUser)
         {
             if (currentUser.RevitUserName == null || !currentUser.RevitUserName.Equals(userName))
+            {
+                // Меняю объект
+                currentUser.RevitUserName = userName;
+                // Записываю в таблицу
                 ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
                     $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+            }
         }
         #endregion
 

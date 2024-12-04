@@ -9,13 +9,17 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug2020|x64 = Debug2020|x64
 		Debug2023|x64 = Debug2023|x64
+		Revit2020_ExtraNet|x64 = Revit2020_ExtraNet|x64
 		Revit2020|x64 = Revit2020|x64
+		Revit2023_ExtraNet|x64 = Revit2023_ExtraNet|x64
 		Revit2023|x64 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Debug2020|x64.ActiveCfg = Debug2020|x64
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2020_ExtraNet|x64.ActiveCfg = Revit2020_ExtraNet|x64
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2023_ExtraNet|x64.ActiveCfg = Revit2023_ExtraNet|x64
 		{0D980054-7EA6-49AA-B184-1306E56695EA}.Revit2023|x64.ActiveCfg = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution

@@ -1,4 +1,4 @@
-﻿using KPLN_Loader.Core.SQLiteData;
+﻿using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms.Common;
 using System;
 using System.Collections.Generic;

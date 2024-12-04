@@ -1,4 +1,5 @@
-﻿using KPLN_Loader.Core.SQLiteData;
+﻿using KPLN_Loader.Core.Entities;
+using KPLN_Loader.Forms.Common;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -13,32 +14,32 @@ namespace KPLN_Loader.Forms
     /// </summary>
     public partial class LoginForm : Window
     {
-        public LoginForm(IEnumerable<SubDepartment> subDepartments)
+        public LoginForm(IEnumerable<SubDepartment> subDepartments, bool isExrtraNet)
         {
             InitializeComponent();
 
             this.Version.Text = Assembly.GetExecutingAssembly().GetName().Version.ToString();
             this.cbxDepartment.ItemsSource = subDepartments;
+            CreatedWPFUser = new WPFUser();
 
+            if (isExrtraNet)
+                tbxCompany.IsEnabled = true;
+            else
+                CreatedWPFUser.Company = "KPLN";
+
+            DataContext = CreatedWPFUser;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
+
         }
 
-        public string UserName { get; private set; }
-        
-        public string Surname { get; private set; }
-        
-        public SubDepartment CurrentSubDepartment { get; private set; }
+        public WPFUser CreatedWPFUser { get; private set; }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
-            {
                 Close();
-            }
             else if (e.Key == Key.Enter)
-            {
                 OnRunClick(sender, e);
-            }
         }
 
         private void OnRunClick(object sender, RoutedEventArgs e)
@@ -52,18 +53,8 @@ namespace KPLN_Loader.Forms
 
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            TextBox textBox = sender as TextBox;
-
-            if (!string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text.Length > 2)
-            {
-                UserName = tbxName.Text;
-                Surname = tbxSurname.Text;
-                UpdateRunBtnEnabled();
-            }
-            else
-                runBtn.IsEnabled = false;
+            UpdateRunBtnEnabled();
         }
-
 
         private void TextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -76,6 +67,11 @@ namespace KPLN_Loader.Forms
                     break;
                 }
             }
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateRunBtnEnabled();
         }
 
         /// <summary>
@@ -92,21 +88,15 @@ namespace KPLN_Loader.Forms
                 || c == '-';
         }
 
-        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            CurrentSubDepartment = cbxDepartment.SelectedItem as SubDepartment;
-            UpdateRunBtnEnabled();
-        }
-
         /// <summary>
         /// Проверка на ввод данных
         /// </summary>
         private void UpdateRunBtnEnabled()
         {
             // Проверяем, что все TextBox и ComboBox заполнены
-            bool allControlsFilled = !string.IsNullOrWhiteSpace(tbxSurname.Text) 
-                && tbxSurname.Text.Length > 2 
-                && !string.IsNullOrWhiteSpace(tbxName.Text) 
+            bool allControlsFilled = !string.IsNullOrWhiteSpace(tbxSurname.Text)
+                && tbxSurname.Text.Length > 2
+                && !string.IsNullOrWhiteSpace(tbxName.Text)
                 && tbxName.Text.Length > 2
                 && cbxDepartment.SelectedItem != null;
 

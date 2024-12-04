@@ -53,14 +53,60 @@
 
         <TextBlock x:Name="Version" FontSize="10" FontFamily="Monaco, Consolas"  Text="Версия через конструктор" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,-10,0,0" Foreground="#FF288390"/>
 
-        <StackPanel Orientation="Vertical">
-            <TextBlock Text="Вход в приложения KPLN" FontFamily="Consolas" FontSize="15" HorizontalAlignment="Center" Margin="0,15,0,15"/>
-            <Label FontFamily="Consolas" Foreground="Red">*Фамилия (только на кириллице)</Label>
-            <TextBox x:Name="tbxSurname" VerticalAlignment="Center"  FontFamily="Consolas" PreviewTextInput="TextBox_PreviewTextInput" TextChanged="TextBox_TextChanged" Height="20"/>
-            <Label FontFamily="Consolas" Foreground="Red">*Имя (только на кириллице)</Label>
-            <TextBox x:Name="tbxName" VerticalAlignment="Center" FontFamily="Consolas" PreviewTextInput="TextBox_PreviewTextInput" TextChanged="TextBox_TextChanged" Height="20"/>
-            <Label FontFamily="Consolas" Foreground="Red">*Отдел (выбери из списка)</Label>
-            <ComboBox x:Name="cbxDepartment" Background="White" BorderBrush="#FFB2B2B2" Foreground="Black" SelectionChanged="ComboBox_SelectionChanged" Height="20">
+        <StackPanel 
+            Orientation="Vertical">
+            <TextBlock 
+                Text="Вход в приложения KPLN"
+                FontFamily="Consolas"
+                FontSize="15"
+                HorizontalAlignment="Center" 
+                Margin="0,15,0,0"/>
+            <TextBlock 
+                Text="(все поля обязательны)"
+                FontFamily="Consolas"
+                FontSize="8"
+                HorizontalAlignment="Center" 
+                Margin="0,0,0,15"/>
+
+            <Label FontFamily="Consolas" Foreground="Red">Фамилия (только на кириллице)</Label>
+            <TextBox 
+                x:Name="tbxSurname" 
+                Text="{Binding Surname}"
+                Height="20"
+                VerticalAlignment="Center"  
+                FontFamily="Consolas" 
+                PreviewTextInput="TextBox_PreviewTextInput" 
+                TextChanged="TextBox_TextChanged"/>
+
+            <Label FontFamily="Consolas" Foreground="Red">Имя (только на кириллице)</Label>
+            <TextBox 
+                x:Name="tbxName" 
+                Text="{Binding Name}"
+                Height="20"
+                VerticalAlignment="Center" 
+                FontFamily="Consolas" 
+                PreviewTextInput="TextBox_PreviewTextInput" 
+                TextChanged="TextBox_TextChanged"/>
+
+            <Label FontFamily="Consolas" Foreground="Red">Организация</Label>
+            <TextBox 
+                x:Name="tbxCompany" 
+                Text="{Binding Company}"
+                Height="20"
+                IsEnabled="False"
+                VerticalAlignment="Center" 
+                FontFamily="Consolas" 
+                TextChanged="TextBox_TextChanged"/>
+
+            <Label FontFamily="Consolas" Foreground="Red">Отдел (выбери из списка)</Label>
+            <ComboBox 
+                x:Name="cbxDepartment" 
+                Height="20"
+                Background="White" 
+                BorderBrush="#FFB2B2B2" 
+                Foreground="Black" 
+                SelectedItem="{Binding SubDepartment, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                SelectionChanged="ComboBox_SelectionChanged">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">

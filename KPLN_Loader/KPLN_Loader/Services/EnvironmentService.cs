@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Core;
-using KPLN_Loader.Core.SQLiteData;
+using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms;
 using Newtonsoft.Json;
 using NLog;
@@ -32,10 +32,6 @@ namespace KPLN_Loader.Services
         ///</summary>
         private readonly DirectoryInfo _sessionLocation;
         ///<summary>
-        ///Путь, по которому будет создана папка со скопироваными модулями
-        ///</summary>
-        private readonly DirectoryInfo _modulesLocation;
-        ///<summary>
         ///Версия Revit
         ///</summary>
         private readonly string _revitVersion;
@@ -49,7 +45,7 @@ namespace KPLN_Loader.Services
             _revitVersion = revitVersion;
             _applicationLocation = new DirectoryInfo(Path.Combine(_userLocation.FullName, "KPLN_Loader"));
             _sessionLocation = new DirectoryInfo(Path.Combine(_applicationLocation.FullName, $"{_revitVersion}_{diteTime}"));
-            _modulesLocation = new DirectoryInfo(Path.Combine(_sessionLocation.FullName, "Modules"));
+            ModulesLocation = new DirectoryInfo(Path.Combine(_sessionLocation.FullName, "Modules"));
         }
 
         /// <summary>
@@ -60,10 +56,7 @@ namespace KPLN_Loader.Services
         ///<summary>
         ///Путь, по которому будет создана папка со скопироваными модулями
         ///</summary>
-        internal DirectoryInfo ModulesLocation
-        {
-            get { return _modulesLocation; }
-        }
+        internal DirectoryInfo ModulesLocation { get; }
 
         /// <summary>
         /// Получить значение Id пользователя из Битрикс24 КПЛН.
@@ -110,7 +103,7 @@ namespace KPLN_Loader.Services
             int delDirCount = ClearDirectory(appDirInfo.FullName);
 
             _logger.Info($"Директории успешно очищены от неиспользуемых папок! Удалено {delDirCount} корневых папок");
-            Directory.CreateDirectory(_modulesLocation.FullName);
+            Directory.CreateDirectory(ModulesLocation.FullName);
         }
 
         /// <summary>
@@ -167,7 +160,7 @@ namespace KPLN_Loader.Services
         internal DirectoryInfo CopyModule(Module userModule, bool isDebugModule)
         {
             DirectoryInfo trueDirInfo = null;
-            string targetDir = Path.Combine(_modulesLocation.FullName, userModule.Name);
+            string targetDir = Path.Combine(ModulesLocation.FullName, userModule.Name);
 
             DirectoryInfo moduleDirInfo = new DirectoryInfo(userModule.Path);
             if (moduleDirInfo.Exists)

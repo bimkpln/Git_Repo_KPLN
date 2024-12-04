@@ -1,12 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace KPLN_Loader.Core.SQLiteData
+namespace KPLN_Loader.Core.Entities
 {
     public sealed class User
     {
         /// <summary>
-        /// Id пользователя
+        /// Id пользователя (ключ для БД)
         /// </summary>
         [Key]
         public int Id { get; set; }
@@ -17,6 +17,11 @@ namespace KPLN_Loader.Core.SQLiteData
         public string SystemName { get; set; }
 
         /// <summary>
+        /// GUID-пользователя, чтобы исключить возможность наличия одинаковых имен (ключ для Google Tabs)
+        /// </summary>
+        public string SystemGuid { get; set; }
+
+        /// <summary>
         /// Имя пользователя
         /// </summary>
         public string Name { get; set; }
@@ -25,6 +30,11 @@ namespace KPLN_Loader.Core.SQLiteData
         /// Фамилия пользователя
         /// </summary>
         public string Surname { get; set; }
+
+        /// <summary>
+        /// Организация пользователя
+        /// </summary>
+        public string Company { get; set; }
 
         /// <summary>
         /// Отдел пользователя
@@ -48,13 +58,23 @@ namespace KPLN_Loader.Core.SQLiteData
         public string RevitUserName { get; set; }
 
         /// <summary>
-        /// Режим отладки вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
+        /// Ограничить работу пользователя вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
+        /// </summary>
+        public bool IsUserRestricted { get; set; }
+
+        /// <summary>
+        /// KPLN: Режим отладки вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsDebugMode { get; set; }
 
         /// <summary>
-        /// ID пользователя Bitrix
+        /// KPLN: ID пользователя Bitrix
         /// </summary>
         public int BitrixUserID { get; set; }
+
+        /// <summary>
+        /// Прямое указание на то, что пользователь НЕ сотрудник KPLN
+        /// </summary>
+        public bool IsExtraNet { get; set; }
     }
 }

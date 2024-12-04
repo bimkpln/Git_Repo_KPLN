@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace KPLN_Loader.Core.SQLiteData
+namespace KPLN_Loader.Core.Entities
 {
     public sealed class SubDepartment
     {
