@@ -6,6 +6,7 @@ using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Parameters_Ribbon.ExternalCommands
@@ -93,14 +94,24 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     HashSet<string> uniqErrors = new HashSet<string>(gripBuilder.ErrorElements.Select(e => e.ErrorMessage));
                     foreach (string error in uniqErrors)
                     {
-                        string errorIdColl = string.Join(
-                            ",",
-                            gripBuilder
-                                .ErrorElements
-                                .Where(e => e.ErrorMessage.Equals(error))
-                                .Select(e => e.ErrorElement.Id.ToString()));
+                        List<string> errorElements = gripBuilder
+                            .ErrorElements
+                            .Where(e => e.ErrorMessage.Equals(error))
+                            .Select(e => e.ErrorElement.Id.ToString())
+                            .ToList();
 
-                        Print($"{error} - для след. элементов:\n {errorIdColl}",
+                        StringBuilder errorIdCollBuilder = new StringBuilder();
+                        for (int i = 0; i < errorElements.Count; i++)
+                        {
+                            if (i > 0)
+                                errorIdCollBuilder.Append(","); 
+                            if (i > 0 && i % 12 == 0) 
+                                errorIdCollBuilder.AppendLine();
+                            
+                            errorIdCollBuilder.Append(errorElements[i]);
+                        }
+
+                        Print($"{error} - для след. элементов:\n {errorIdCollBuilder}",
                             MessageType.Warning);
                     }
                 }

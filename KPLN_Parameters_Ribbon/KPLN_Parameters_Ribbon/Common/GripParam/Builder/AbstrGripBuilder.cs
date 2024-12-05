@@ -222,9 +222,18 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
+                // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
+                if (instElemData.CurrentElem is FamilyInstance famInst && famInst.SuperComponent != null)
+                {
+                    ErrorElements.Add(new GripParamError(
+                            instElemData.CurrentElem,
+                            "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
+                    continue;
+                }
+                
                 InstanceGeomData instGeomData = (InstanceGeomData)instElemData 
                     ?? throw new GripParamExection(
-                        $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без гометриии. Обратись к разработчику\n");
+                        $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без геометрии. Обратись к разработчику\n");
 
                 LevelAndGridSolid maxIntersectInstance = GetMaxIntersectedLevelAndGridSolid(instGeomData);
                 if (maxIntersectInstance == null)
@@ -239,6 +248,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         continue;
                     }
                 }
+
+                if (instElemData.CurrentElem.LookupParameter(LevelParamName).IsReadOnly || instElemData.CurrentElem.LookupParameter(SectionParamName).IsReadOnly)
+                    throw new GripParamExection($"У элемента id: {instElemData.CurrentElem.Id} заблокирован один из параметров для записи захваток: {LevelParamName}, или {SectionParamName}");
 
                 // Кастомная настройка записи данных для пректа СЕТУНЬ
                 if (isSET)
@@ -356,6 +368,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
         public void ExecuteGripParams_ByHost(Progress_Single pb)
         {
+            if (!ElemsByHost.Any())
+            {
+                pb.Update(++PbCounter, "Анализ элементов на основе");
+                return;
+            }
+            
             foreach (InstanceElemData instElemData in ElemsByHost)
             {
                 Element elem = instElemData.CurrentElem;
@@ -393,7 +411,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public void CheckNotExecutedElems()
         {
-            ErrorElements.AddRange(AllElements.Where(e => e.IsEmptyData).Select(e => new GripParamError(e.CurrentElem, "Элементы не подверглись анализу")));
+            ErrorElements.AddRange(
+                AllElements
+                .Where(e => e.IsEmptyData)
+                .Select(e => new GripParamError(e.CurrentElem, "Элементы не подверглись анализу (это ПОЛНЫЙ список, ниже будут списки с отдельными классификациями)")));
         }
 
         /// <summary>
@@ -412,11 +433,18 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 if (sectParam == null || levParam == null)
                 {
                     throw new GripParamExection(
-                        $"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа). " +
-                        $"Пример: \nКатегория: {elem.Category.Name} / id: {elem.Id}");
+                        $"Прервано по причине отсутствия необходимых параметров захваток (секции или этажа).\n" +
+                        $"Пример: Категория: {elem.Category.Name} / id: {elem.Id}");
+                }
+                else if (elem is FamilyInstance fam && fam.SuperComponent == null && (sectParam.IsReadOnly || levParam.IsReadOnly))
+                {
+                    throw new GripParamExection(
+                        $"Прервано из-за того, что параметр захваток (секции или этажа) заблокирован.\n" +
+                        $"Элемен: id: {elem.Id}");
                 }
 
                 Parameter canReValueParam = elem.get_Parameter(_revalueParamGuid);
+                
                 return canReValueParam != null && canReValueParam.HasValue && canReValueParam.AsInteger() != 1;
             });
         }
@@ -565,13 +593,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             // Переменные для поиска ближайшей секции в плоскости XY
             LevelAndGridSolid resultHorizontal = null;
-            double maxIntersectValue = double.MinValue;
+            double maxIntersectValue = 0;
             // 4,5 м - условно возможное отклонение элемента от солида
             double minPrjDistanceValue = 15;
 
             // Переменные для поиска ближайшей секции по вектору Z
             LevelAndGridSolid resultVertical = null;
-            double minVerticalDistance = double.MinValue;
             // 4,5 м - условно возможное отклонение элемента от солида
             double minVerticalPrjDistanceValue = 15;
 
@@ -599,29 +626,35 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                             tempIntersectValue += Math.Round(resSolid.Volume, 3);
                     }
 
+                    if (tempIntersectValue == 0)
+                        continue;
+
                     // Проверяю расстояние до секции с целью выявления ближайшей
-                    if (tempIntersectValue > 0)
+                    foreach (Face levelAndGridFace in levelAndGridFaceArray)
                     {
-                        foreach (Face levelAndGridFace in levelAndGridFaceArray)
+                        foreach (XYZ checkPoint in instGeomData.CurrentGeomCenterColl)
                         {
-                            foreach (XYZ checkPoint in instGeomData.CurrentGeomCenterColl)
+                            IntersectionResult prjPointResult = levelAndGridFace.Project(checkPoint);
+                            if (prjPointResult != null && prjPointResult.Distance < tempPrjDistanceValue)
                             {
-                                IntersectionResult prjPointResult = levelAndGridFace.Project(checkPoint);
-                                if (prjPointResult != null && prjPointResult.Distance < tempPrjDistanceValue)
-                                {
-                                    tempPrjDistanceValue = Math.Round(prjPointResult.Distance, 3);
-                                }
+                                tempPrjDistanceValue = Math.Round(prjPointResult.Distance, 3);
                             }
                         }
                     }
-                    
-                    if ((tempIntersectValue > 0 && Math.Round(Math.Abs(tempIntersectValue) - (Math.Abs(maxIntersectValue)), 2) >= 0) 
-                        && (tempPrjDistanceValue < 15 && Math.Round(Math.Abs(tempPrjDistanceValue) - (Math.Abs(minPrjDistanceValue)), 2) >= 0))
+
+                    bool checkValue = (tempIntersectValue > 0 && Math.Round((tempIntersectValue - maxIntersectValue), 2) >= 0);
+                    bool checkDistanceXY = (Math.Abs(tempPrjDistanceValue) > 0 && Math.Round(Math.Abs(minPrjDistanceValue) - (Math.Abs(tempPrjDistanceValue)), 2) >= 0);
+
+                    if (checkValue && checkDistanceXY)
                     {
                         maxIntersectValue = tempIntersectValue;
                         minPrjDistanceValue = tempPrjDistanceValue;
                         resultHorizontal = levelAndGridSolid;
                     }
+
+                    // Если нашел горизонтальную - вертикальную искать нет смысла
+                    if (resultVertical != null)
+                        continue;
                     #endregion
 
                     #region Првоеряю положение в секции по вектору Z
@@ -638,7 +671,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                                 foreach (XYZ checkPoint in instGeomData.CurrentGeomCenterColl)
                                 {
                                     IntersectionResult prjPointResult = levelAndGridFace.Project(checkPoint);
-                                    if (prjPointResult != null && levelAndGridFace.IsInside(prjPointResult.UVPoint) && prjPointResult.Distance < minVerticalPrjDistanceValue)
+                                    if (prjPointResult == null)
+                                        continue;
+
+                                    bool checkPntInside = levelAndGridFace.IsInside(prjPointResult.UVPoint);
+                                    bool checkDistanceZ = prjPointResult.Distance < minVerticalPrjDistanceValue;
+                                    if (checkPntInside && checkDistanceZ)
                                     {
                                         minVerticalPrjDistanceValue = Math.Round(prjPointResult.Distance, 3);
                                         resultVertical = levelAndGridSolid;
