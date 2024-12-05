@@ -1,9 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_ExtraFilter.Common
 {
@@ -33,8 +30,14 @@ namespace KPLN_ExtraFilter.Common
             if (userSelTypeParam != null)
             {
                 string userSelTypeName = userSelTypeParam.AsValueString();
+#if Debug2020 || Revit2020
+                FilterRule rule = ParameterFilterRuleFactory
+                    .CreateEqualsRule(userSelTypeParam.Id, userSelTypeName, false);
+
+#elif Debug2023 || Revit2023
                 FilterRule rule = ParameterFilterRuleFactory
                     .CreateEqualsRule(userSelTypeParam.Id, userSelTypeName);
+#endif
                 resultFilter = new ElementParameterFilter(rule);
             }
             else
@@ -47,12 +50,31 @@ namespace KPLN_ExtraFilter.Common
         {
             ElementParameterFilter resultFilter;
 
-            Parameter userSelTypeParam = userSelElem.LookupParameter(paramName);
-            if (userSelTypeParam != null)
+            Parameter userSelParam = userSelElem.LookupParameter(paramName);
+            if (userSelParam != null)
             {
-                string userSelTypeName = userSelTypeParam.AsValueString();
-                FilterRule rule = ParameterFilterRuleFactory
-                    .CreateEqualsRule(userSelTypeParam.Id, userSelTypeName);
+                FilterRule rule = null;
+                switch (userSelParam.StorageType)
+                {
+                    case StorageType.String:
+#if Debug2020 || Revit2020
+                        rule = ParameterFilterRuleFactory
+                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsString(), false);
+#elif Debug2023 || Revit2023
+                        rule = ParameterFilterRuleFactory
+                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsString());
+#endif
+                        break;
+                    case StorageType.Double:
+                        rule = ParameterFilterRuleFactory
+                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsDouble(), 0.01);
+                        break;
+                    case StorageType.Integer:
+                        rule = ParameterFilterRuleFactory
+                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsInteger());
+                        break;
+                }
+
                 resultFilter = new ElementParameterFilter(rule);
             }
             else
@@ -64,7 +86,7 @@ namespace KPLN_ExtraFilter.Common
         internal static ElementWorksetFilter SearchByWorkset(Element userSelElem)
         {
             ElementWorksetFilter resultFilter;
-            
+
             Parameter elemWSParam = userSelElem.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM);
             if (elemWSParam != null)
             {

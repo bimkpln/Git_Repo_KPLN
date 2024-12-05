@@ -30,7 +30,13 @@ namespace KPLN_ExtraFilter.Entities
             List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
             foreach (Parameter param in elemsParams)
             {
-                string toolTip = $"Значение: {param.AsValueString()}";
+                string paramValue;
+                if (param.StorageType == StorageType.String)
+                    paramValue = param.AsString();
+                else
+                    paramValue = param.AsValueString();
+                
+                string toolTip = $"Значение: {paramValue}";
                 allParamsEntities.Add(new ParamEntity(param, toolTip));
             }
 

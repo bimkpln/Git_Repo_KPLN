@@ -74,8 +74,14 @@ namespace KPLN_ExtraFilter.Common
         {
             foreach (Parameter param in elem.Parameters)
             {
-                // Отбрасываю системные пар-ры, которые нельзя редачить (Категория, Имя типа и т.п.) 
-                if (param.Id.IntegerValue < 0 && param.IsReadOnly)
+                StorageType paramST = param.StorageType;
+                string paramNameLC = param.Definition.Name.ToLower();
+
+                // Отбрасываю лишние пара-ры
+                if (paramST == StorageType.ElementId 
+                    || paramST == StorageType.None
+                    || paramNameLC.Contains("ifc")
+                    || paramNameLC.Contains("url"))
                     continue;
 
                 setToAdd.Add(param);
