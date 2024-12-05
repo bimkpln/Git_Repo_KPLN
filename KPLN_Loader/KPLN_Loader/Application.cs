@@ -97,7 +97,7 @@ namespace KPLN_Loader
             _logger = LogManager.GetLogger("KPLN_Loader");
 
             string windrive = Path.GetPathRoot(Environment.SystemDirectory);
-            MainCashFolder = $"{windrive}\\KPLN_Temp";
+            MainCashFolder = $"{windrive}KPLN_Temp";
 
             string logDirPath = $"{MainCashFolder}\\KPLN_Logs\\{RevitVersion}";
             string logFileName = "KPLN_Loader";
