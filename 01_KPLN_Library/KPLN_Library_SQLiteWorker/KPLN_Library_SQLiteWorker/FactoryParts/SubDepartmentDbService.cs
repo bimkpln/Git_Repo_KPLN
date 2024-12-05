@@ -80,7 +80,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 }
 
                 if (resultSD == null)
-                    throw new Worker_Error("Не удалось определить раздел по имени файла.");
+                    throw new Worker_Error($"Не удалось определить раздел по имени файла: {revitDoc.Title}");
             
                 return GetDBSubDepartment_SubDepartmentMatrixCode(resultSD);
             }

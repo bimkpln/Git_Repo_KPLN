@@ -71,8 +71,10 @@ namespace KPLN_BIMTools_Ribbon.Common
                     currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
 
                 if (currentDBDialog == null)
+                {
                     _logger.Error($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека");
-
+                    return;
+                }
 
                 if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
                 {
