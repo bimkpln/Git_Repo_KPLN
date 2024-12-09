@@ -22,6 +22,7 @@ namespace KPLN_Looker.Services
         private DBUser _dBUser;
         private DBProjectMatrix[] _dbProjectMatrixColl;
         private DBSubDepartment _dBSubDepartment;
+        private DBRevitDialog[] _dBRevitDialogs;
 
         internal DBWorkerService()
         {
@@ -81,7 +82,13 @@ namespace KPLN_Looker.Services
         /// </summary>
         internal DBRevitDialog[] DBRevitDialogs
         {
-            get => _dialogDbService.GetDBRevitDialogs().ToArray();
+            get
+            {
+                if(_dBRevitDialogs == null)
+                    _dBRevitDialogs = _dialogDbService.GetDBRevitDialogs().ToArray();
+
+                return _dBRevitDialogs;
+            }
         }
 
 
@@ -176,5 +183,14 @@ namespace KPLN_Looker.Services
         /// </summary>
         /// <returns></returns>
         internal string CurrentTimeForDB() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
+
+        /// <summary>
+        /// Метод аннулирования хранимого кэша для перезаписи при обращении
+        /// </summary>
+        internal void DropMainCash()
+        {
+            _dbProjectMatrixColl = null;
+            _dBRevitDialogs = null;
+        }
     }
 }

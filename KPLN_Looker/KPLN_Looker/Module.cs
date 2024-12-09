@@ -21,8 +21,17 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
+        /// <summary>
+        /// Общий фильтр (для анализа на копирование эл-в)
+        /// </summary>
         private static LogicalOrFilter _resultFamInstFilter;
-
+        /// <summary>
+        /// Метка пользователя ИОС (для анализа на коллизии)
+        /// </summary>
+        private static bool _isIOSUser = false;
+        /// <summary>
+        /// Метка закрытого для пользователя проекта
+        /// </summary>
         private bool _isProjectCloseToUser;
 
         public Module()
@@ -66,6 +75,11 @@ namespace KPLN_Looker
                 if (!DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
 #endif
+                if(DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("ОВиК")
+                    || DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("ВК")
+                    || DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("ЭОМ")
+                    || DBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("СС"))
+                    _isIOSUser = true;
 
                 return Result.Succeeded;
             }
@@ -125,8 +139,7 @@ namespace KPLN_Looker
                 td = new TaskDialog("ВНИМАНИЕ")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = "Данный вид предназначен только для bim-отдела. " +
-                                      "Его запрещено открывать или редактировать, поэтому он зароется",
+                    MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать, поэтому он зароется",
                     CommonButtons = TaskDialogCommonButtons.Ok,
                 };
 
@@ -137,8 +150,7 @@ namespace KPLN_Looker
                 td = new TaskDialog("ВНИМАНИЕ: Закройте вид!")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = "Данный вид предназначен только для bim-отдела. " +
-                                      "Его запрещено открывать или редактировать. Вид нужно закрыть",
+                    MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать. Вид нужно закрыть",
                     CommonButtons = TaskDialogCommonButtons.Ok,
                 };
             }
@@ -153,33 +165,24 @@ namespace KPLN_Looker
         private static void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
 #if Debug2020 || Debug2023
-            // Фильтрация по имени проекта
-            string docPath = MonitoredDocFilePath(args.GetDocument());
-            if (docPath != null)
-            {
-                if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
-                    // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    || docPath.ToLower().Contains("sh1-"))
-                    return;
-
-                CheckFamilyCopiedFromOtherFile(args);
-            }
+            CheckError_IOSModelIsIntersected(args);
+            CheckError_FamilyCopiedFromOtherFile(args);
 #else
             // Фильтрация по имени проекта
             string docPath = MonitoredDocFilePath(args.GetDocument());
-            #region Анализ загрузки семейств путем копирования
             if (docPath != null)
             {
+                // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    !docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                     // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    || docPath.ToLower().Contains("sh1-"))
-                    return;
+                    && !docPath.ToLower().Contains("sh1-"))
+                CheckError_FamilyCopiedFromOtherFile(args);
 
-                CheckFamilyCopiedFromOtherFile(args);
+                // Анализ моделей ИОС на генерацию коллизий
+                //if (_isIOSUser)
+                //    CheckError_IOSModelIsIntersected(args);
             }
-            #endregion
 #endif
         }
 
@@ -329,15 +332,133 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Анализ семейств (FamilyInstance), скопированных из другого проекта (ctrl+c/ctrl+v).
-        /// Остальные элементы, не интересуют, т.к. НЕ являются семействами
+        /// Поиск коллизий ИОС на ИОС при попытке добавлять линейные элементы в моделях ВИС
         /// </summary>
-        private static void CheckFamilyCopiedFromOtherFile(DocumentChangedEventArgs args)
+        private static void CheckError_IOSModelIsIntersected(DocumentChangedEventArgs args)
+        {
+            Document doc = args.GetDocument();
+
+            List<Element> modifyedLinearElems = args
+                .GetModifiedElementIds()
+                .Select(id => doc.GetElement(id))
+                .Where(el => el.Category != null && IntersectedElemFinderService.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
+                .ToList();
+
+            List<Element> addedLinearElems = args
+                .GetAddedElementIds()
+                .Select(id => doc.GetElement(id))
+                .Where(el => el.Category != null && IntersectedElemFinderService.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
+                .ToList();
+
+            if (!modifyedLinearElems.Any() && !addedLinearElems.Any())
+                return;
+
+            modifyedLinearElems.AddRange(addedLinearElems);
+
+            List<XYZ> intersectedPoints = new List<XYZ>();
+            int docPrjDBSubDepartmentId = DBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+            // Тут и далее хардкод по разделам КПЛН для экономии ресурсов
+            switch (docPrjDBSubDepartmentId)
+            {
+                case -1:
+                    goto case 8;
+                case 1:
+                    goto case 8;
+                case 2:
+                    goto case 8;
+                case 3:
+                    goto case 8;
+                case 4:
+                    goto case 7;
+                case 5:
+                    goto case 7;
+                case 6:
+                    goto case 7;
+                case 7:
+                    intersectedPoints = IntersectedElemFinderService.GetIntersectPoints(modifyedLinearElems, doc);
+                    break;
+                case 8:
+                    return;
+            }
+
+            bool isOVLoad = docPrjDBSubDepartmentId == 4;
+            bool isVKLoad = docPrjDBSubDepartmentId == 5;
+            bool isEOMLoad = docPrjDBSubDepartmentId == 6;
+            bool isSSLoad = docPrjDBSubDepartmentId == 7;
+            DocumentSet docSet = doc.Application.Documents;
+            foreach (Document openDoc in docSet)
+            {
+                if (!openDoc.IsLinked || openDoc.Title == doc.Title)
+                    continue;
+                try
+                {
+                    // Анализирую модели ИОС разделов на пересечение с создаваемыми
+                    int openDocPrjDBSubDepartmentId = DBWorkerService.Get_DBDocumentSubDepartmentId(openDoc);
+                    switch (openDocPrjDBSubDepartmentId)
+                    {
+                        case 4:
+                            isOVLoad = true;
+                            intersectedPoints.AddRange(IntersectedElemFinderService.GetIntersectPoints(modifyedLinearElems, openDoc));
+                            break;
+                        case 5:
+                            isVKLoad = true;
+                            intersectedPoints.AddRange(IntersectedElemFinderService.GetIntersectPoints(modifyedLinearElems, openDoc));
+                            break;
+                        case 6:
+                            isEOMLoad = true;
+                            intersectedPoints.AddRange(IntersectedElemFinderService.GetIntersectPoints(modifyedLinearElems, openDoc));
+                            break;
+                        case 7:
+                            isSSLoad = true;
+                            intersectedPoints.AddRange(IntersectedElemFinderService.GetIntersectPoints(modifyedLinearElems, openDoc));
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Print($"Ошибка: {ex.Message}", MessageType.Error);
+                }
+            }
+
+            // ВСЕ ИОС связи должны быть загружены
+            if (!(isOVLoad && isVKLoad && isEOMLoad && isSSLoad))
+            {
+                TaskDialog td = new TaskDialog("ВНИМАНИЕ: Вы не открыли связи!")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainInstruction = "При моделировании линейных эл-в ВИС - необходимо подгружать ВСЕ связи ВИС, и учитывать их. Анализ на коллизии проведен НЕ в полном объеме",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+
+                //td?.Show();
+            }
+
+            if (intersectedPoints.Any())
+            {
+                TaskDialog td = new TaskDialog("ВНИМАНИЕ: Вы сгенерировали коллизии!")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainInstruction = "При моделировании линейной сети вы создали коллизии с другими сетями. ЗАВЕРШИТЕ создание, чтобы получить точки пересечений",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+
+                //td?.Show();
+
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointMaker(intersectedPoints));
+            }
+        }
+
+        /// <summary>
+        /// Поиск ошибки при попытке скопировать семейство (FamilyInstance) из другого проекта через буфер обмена
+        /// </summary>
+        private static void CheckError_FamilyCopiedFromOtherFile(DocumentChangedEventArgs args)
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
-            if (transName != null
-                && (!transName.Equals("Начальная вставка") && !transName.Equals("Initial paste"))
-                && (!transName.Equals("Вставить") && !transName.Equals("Paste")))
+            if (transName == null)
+                return;
+
+            string lowerTransName = transName.ToLower();
+            if (!lowerTransName.Contains("встав") && !lowerTransName.Contains("paste"))
                 return;
 
             Document doc = args.GetDocument();
@@ -395,7 +516,7 @@ namespace KPLN_Looker
                 switch (userVerify.Status)
                 {
                     case UIStatus.RunStatus.CloseBecauseError:
-                        TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке отказано!");
+                        TaskDialog.Show("Запрещено", "Не верный пароль, отказано!");
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
                         break;
                     case UIStatus.RunStatus.Close:
@@ -403,7 +524,6 @@ namespace KPLN_Looker
                         break;
                 }
             }
-
         }
 
         /// <summary>
@@ -654,6 +774,8 @@ namespace KPLN_Looker
 
             if (MonitoredDocFilePath(doc) == null)
                 return;
+
+            DBWorkerService.DropMainCash();
 
             string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
