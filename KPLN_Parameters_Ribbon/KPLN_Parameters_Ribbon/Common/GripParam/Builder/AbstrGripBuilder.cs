@@ -610,7 +610,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     continue;
 
                 double tempIntersectValue = 0;
-                double tempPrjDistanceValue = 15;
+                double tempPrjDistanceValue = minPrjDistanceValue * 1.1;
                 try
                 {
                     FaceArray levelAndGridFaceArray = levelAndGridSolid.CurrentSolid.Faces;

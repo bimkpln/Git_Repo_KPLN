@@ -27,6 +27,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
                     _currentDBUser = userDbService.GetCurrentDBUser();
                 }
+
                 return _currentDBUser;
             }
         }
@@ -153,6 +154,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
 #endif
 
+                logger.Write($"Пользователь {CurrentDBUser.Id}-{CurrentDBUser.Name}-{CurrentDBUser.Surname}");
+                
                 YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings();
                 FormPrint form = new FormPrint(mainDoc, allSheets, printSettings, CurrentDBUser);
                 form.ShowDialog();
