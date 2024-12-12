@@ -38,6 +38,21 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public string RevitServerPath { get; set; }
 
         /// <summary>
+        /// Путь Revit-Server №2
+        /// </summary>
+        public string RevitServerPath2 { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server №3
+        /// </summary>
+        public string RevitServerPath3 { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server №4
+        /// </summary>
+        public string RevitServerPath4 { get; set; }
+
+        /// <summary>
         /// Режим блокировки проекта под набор разрешенных пользователей вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsClosed { get; set; }

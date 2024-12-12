@@ -1,6 +1,8 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
@@ -13,6 +15,10 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         internal ProjectDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
+
+        #region Create
+        // Создается вручную напрямую в БД
+        #endregion
 
         #region Read
         /// <summary>
@@ -38,6 +44,19 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBProject.Id)}='{id}';")
             .FirstOrDefault();
+
+        /// <summary>
+        /// Получить активный проект из БД по открытому проекту Ревит
+        /// </summary>
+        /// <param name="fileName">Имя открытого файла Ревит</param>
+        public DBProject GetDBProject_ByRevitDocFileName(string fileName) => 
+            GetDBProjects()
+            .FirstOrDefault(p => 
+                fileName.Contains(p.MainPath) 
+                || fileName.Contains(p.RevitServerPath)
+                || fileName.Contains(p.RevitServerPath2)
+                || fileName.Contains(p.RevitServerPath3)
+                || fileName.Contains(p.RevitServerPath4));
         #endregion
     }
 }
