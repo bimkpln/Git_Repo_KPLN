@@ -1,9 +1,11 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
+using KPLN_Library_ConfigWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Tools.Common;
 using KPLN_Tools.Common.OVVK_System;
-using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,23 +16,31 @@ namespace KPLN_Tools.Forms
     public partial class OVVK_PipeThicknessForm : Window
     {
         private readonly Document _doc;
-        private readonly string _modelPath;
-        private readonly string _configPath;
+        private readonly DBProject _dBProject;
+
+        private readonly bool _isLocalConfig = true;
+        private readonly string _cofigName = "OVVK_PipeThocknessConfig";
 
         public OVVK_PipeThicknessForm(
             Document document,
             Dictionary<ElementId, List<double>> pipeDict)
         {
             _doc = document;
-            ModelPath modelPath = _doc.GetWorksharingCentralModelPath() ?? throw new System.Exception("Работает только с моделями из хранилища");
-            _modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath).Trim($"{_doc.Title}.rvt".ToArray());
-            _configPath = _modelPath + $"KPLN_Config\\OVVK_PipeThocknessConfig.json";
+
+            ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
+            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+            _dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+
+            if (_dBProject != null)
+                _isLocalConfig = false;
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
-            // Файл конфига присутсвует. Читаю и чищу от неиспользуемых
-            if (new FileInfo(_configPath).Exists)
+            // Файл конфига присутсвует
+            object obj = ConfigService.ReadConfigFile<List<PipeThicknessEntity>>(_doc, _cofigName, _isLocalConfig);
+            if (obj is IEnumerable<PipeThicknessEntity> configItems && configItems.Any())
             {
-                PipeThicknessEntities = ReadConfigFile();
+                PipeThicknessEntities = configItems.ToList();
+
                 // Есть список имен типов труб, нужно назначить PipeType
                 foreach (var entity in PipeThicknessEntities)
                 {
@@ -43,7 +53,7 @@ namespace KPLN_Tools.Forms
                                 entity.CurrentPipeType = pipeType;
                                 // Если нет такого диаметр в коллекции из проекта - PipeTypeDiamAndThickness нужно удалить
                                 entity.CurrentPipeTypeDiamAndThickness.RemoveAll(thckn => !kvp.Value.Contains(thckn.CurrentDiameter));
-                                
+
                                 break;
                             }
                         }
@@ -53,15 +63,15 @@ namespace KPLN_Tools.Forms
                 // Если тип не назначен, или нет такого диаметр в коллекции из проекта - Entity нужно удалить
                 PipeThicknessEntities.RemoveAll(ent => ent.CurrentPipeType == null);
             }
-            
+
             // Уточняю конфиг по элементам, которые добавились в проект
             foreach (var kvp in pipeDict)
             {
-                if(_doc.GetElement(kvp.Key) is PipeType pipeType)
+                if (_doc.GetElement(kvp.Key) is PipeType pipeType)
                 {
                     List<double> docDiams = kvp.Value;
                     PipeThicknessEntity exsitingFromConfigEntity = PipeThicknessEntities.FirstOrDefault(ent => ent.CurrentPipeTypeName == pipeType.Name);
-                    
+
                     // Уточняю данные типов из конфига по типам из проекта
                     if (exsitingFromConfigEntity != null)
                     {
@@ -87,7 +97,7 @@ namespace KPLN_Tools.Forms
                     }
                 }
             }
-            
+
             foreach (PipeThicknessEntity entity in PipeThicknessEntities)
             {
                 entity.CurrentPipeTypeDiamAndThickness.Sort(CompareByDiameter);
@@ -121,23 +131,15 @@ namespace KPLN_Tools.Forms
 
         private void SaveConfigBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (!new FileInfo(_configPath).Exists)
+            if (PipeThicknessEntities.Count == 0)
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
-                FileStream fileStream = File.Create(_configPath);
-                fileStream.Dispose();
-            }
-            
-            if (PipeThicknessEntities.Count > 0)
-            {
-                using (StreamWriter streamWriter = new StreamWriter(_configPath))
-                {
-                    string jsonEntity = JsonConvert.SerializeObject(PipeThicknessEntities.Select(ent => ent.ToJson()), Formatting.Indented);
-                    streamWriter.Write(jsonEntity);
-                }
+                MessageBox.Show("Нельзя сохранять пустую конфигурацию. Сначала - заполни её строками, а уже потом - сохраняй");
+                return;
             }
 
-            MessageBox.Show("Сохаренено успешно!");
+            ConfigService.SaveConfig<PipeThicknessEntity>(_doc, _cofigName, PipeThicknessEntities, _isLocalConfig);
+
+            MessageBox.Show("Конфигурации для проектов из этой папки сохранены успешно!");
         }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -146,21 +148,6 @@ namespace KPLN_Tools.Forms
             ScrollViewer.ScrollToVerticalOffset(ScrollViewer.VerticalOffset - e.Delta);
             // Пометьте событие как обработанное, чтобы оно не передалось другим элементам
             e.Handled = true;
-        }
-
-        /// <summary>
-        /// Десереилизация конфига
-        /// </summary>
-        private List<PipeThicknessEntity> ReadConfigFile()
-        {
-            List<PipeThicknessEntity> entities = new List<PipeThicknessEntity>();
-            using (StreamReader streamReader = new StreamReader(_configPath))
-            {
-                string json = streamReader.ReadToEnd();
-                entities = JsonConvert.DeserializeObject<List<PipeThicknessEntity>>(json);
-            }
-
-            return entities;
         }
 
         /// <summary>

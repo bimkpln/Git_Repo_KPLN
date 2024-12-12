@@ -5,6 +5,7 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
@@ -137,23 +138,15 @@ namespace KPLN_Tools.ExternalCommands
             
             #endregion
 
-            #region Обработка данных по пользователям
-            CreatorUserDbService creatorUserDbService = new CreatorUserDbService();
-            UserDbService userDbService = (UserDbService)creatorUserDbService.CreateService();
-            DBUser currentDBUser = userDbService.GetCurrentDBUser();
-            IEnumerable<DBUser> dbUsers = userDbService.GetDBUsers();
-            #endregion
+            // Обработка данных по пользователям
+            IEnumerable<DBUser> dbUsers = DBWorkerService.CurrentUserDbService.GetDBUsers();
 
-            #region Обработка данных по отделам
-            CreatorSubDepartmentDbService creatorSubDepartmentDbService = new CreatorSubDepartmentDbService();
-            SubDepartmentDbService subDepartmentDbService = (SubDepartmentDbService)creatorSubDepartmentDbService.CreateService();
-            DBSubDepartment currentUserDBSubDep = subDepartmentDbService.GetDBSubDepartment_ByDBUser(currentDBUser);
-            IEnumerable<DBSubDepartment> dbSubDeps = subDepartmentDbService.GetDBSubDepartments();
-            #endregion
+            // Обработка данных по отделам
+            IEnumerable<DBSubDepartment> dbSubDeps = DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartments();
 
             #region Подготовка и формирование окна
             ObservableCollection<SendMsgToBitrix_UserEntity> modelsForForm = new ObservableCollection<SendMsgToBitrix_UserEntity>(dbUsers
-                .Select(user => new SendMsgToBitrix_UserEntity(user, subDepartmentDbService.GetDBSubDepartment_ByDBUser(user))));
+                .Select(user => new SendMsgToBitrix_UserEntity(user, DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartment_ByDBUser(user))));
 
             SendMsgToBitrix form = new SendMsgToBitrix(modelsForForm);
             form.ShowDialog();
@@ -171,7 +164,7 @@ namespace KPLN_Tools.ExternalCommands
                 IEnumerable<SendMsgToBitrix_UserEntity> selectedUsers = form.CurrentViewModel.SelectedElements;
                 foreach (SendMsgToBitrix_UserEntity entity in selectedUsers)
                 {
-                    string msg = $"Данные от [b]{currentDBUser.Surname} {currentDBUser.Name}[/b] из отдела {currentUserDBSubDep.Code}\n\n" +
+                    string msg = $"Данные от [b]{DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name}[/b] из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n\n" +
                         $"[b]Данные по элементу:[/b]\n{form.CurrentViewModel.MessageToSend_MainData}\n\n" +
                         $"[b]Комментарий:[/b]\n {form.CurrentViewModel.MessageToSend_UserComment}";
 

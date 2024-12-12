@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using KPLN_Library_ConfigWorker.Core;
+using Newtonsoft.Json;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;

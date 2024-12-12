@@ -1,12 +1,15 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.ExecutableCommand;
 using Microsoft.Win32;
-using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -19,14 +22,18 @@ namespace KPLN_Tools.Forms
 {
     public partial class RLinkManagerForm : Window
     {
+        private readonly UIApplication _uiapp;
+        private readonly Document _doc;
+        private readonly DBProject _dBProject;
+
         /// <summary>
         /// Кэширование пути для выбора файлов с сервера
         /// </summary>
-        private static string _initialDirectoryForOpenFileDialog = @"Y:\";
-        private readonly UIApplication _uiapp;
-        private readonly Document _doc;
-        private readonly string _configPath;
-        private int _revitVersion;
+        private string _initialDirectoryForOpenFileDialog = Path.GetPathRoot(Environment.SystemDirectory);
+
+        private readonly int _revitVersion;
+        private readonly bool _isLocalConfig = true;
+        private readonly string _cofigName = "RLinkManager";
 
         public RLinkManagerForm(UIApplication uiapp)
         {
@@ -34,17 +41,16 @@ namespace KPLN_Tools.Forms
             _doc = _uiapp.ActiveUIDocument.Document;
             _revitVersion = int.Parse(uiapp.Application.VersionNumber);
 
-            string docPath;
-            if (_doc.IsWorkshared)
-                docPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(_doc.GetWorksharingCentralModelPath());
-            else
-                docPath = _doc.PathName;
+            ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
+            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+            _dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
 
-            string folderPath = docPath.Trim($"{_doc.Title}.rvt".ToArray());
-            if (!Directory.Exists(folderPath))
-                folderPath = @"C:\temp\";
-            _initialDirectoryForOpenFileDialog = folderPath;
-            _configPath = folderPath + $"KPLN_Config\\RLinkManager.json";
+            if (_dBProject != null)
+            {
+                _initialDirectoryForOpenFileDialog = _dBProject.MainPath;
+                _isLocalConfig = false;
+            }
+
             LinkChangeEntityColl = new ObservableCollection<LinkManagerEntity>();
 
             InitializeComponent();
@@ -77,62 +83,23 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            if (!new FileInfo(_configPath).Exists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
-                FileStream fileStream = File.Create(_configPath);
-                fileStream.Dispose();
-            }
-
-            if (LinkChangeEntityColl.Count > 0)
-            {
-                using (StreamWriter streamWriter = new StreamWriter(_configPath))
-                {
-                    string jsonEntity = JsonConvert.SerializeObject(LinkChangeEntityColl.Select(ent => ent.ToJson()), Formatting.Indented);
-
-                    streamWriter.Write(jsonEntity);
-                }
-            }
+            ConfigService.SaveConfig<LinkManagerEntity>(_doc, _cofigName, LinkChangeEntityColl, _isLocalConfig);
 
             MessageBox.Show("Конфигурации для проектов из этой папки сохранены успешно!");
         }
 
         private void LoadConfigBtn_Click(object sender, RoutedEventArgs e)
         {
-            // Файл конфига присутсвует. Читаю и чищу от неиспользуемых
-            if (new FileInfo(_configPath).Exists)
+            object obj = ConfigService.ReadConfigFile<ObservableCollection<LinkManagerEntity>>(_doc, _cofigName, _isLocalConfig);
+            if (obj is IEnumerable<LinkManagerEntity> configItems && configItems.Any())
             {
-                List<LinkManagerEntity> newEntities = ReadConfigFile();
-                if (newEntities == null || newEntities.Count() == 0)
+                foreach (LinkManagerEntity item in configItems)
                 {
-                    MessageBox.Show("Файл-конфигурации пуст. Пересохрани его с заполненными строками, и повтори попытку");
-                    return;
-                }
-
-                foreach (LinkManagerEntity entity in newEntities)
-                {
-                    if (!LinkChangeEntityColl.Any(ent => ent.LinkName.Equals(entity.LinkName)))
-                        LinkChangeEntityColl.Add(entity);
+                    LinkChangeEntityColl.Add(item);
                 }
             }
             else
                 MessageBox.Show("Конифгурация для проектов из этой папки еще не сохранялась");
-        }
-
-        /// <summary>
-        /// Десереилизация конфига
-        /// </summary>
-        private List<LinkManagerEntity> ReadConfigFile()
-        {
-            List<LinkManagerEntity> entities = new List<LinkManagerEntity>();
-            using (StreamReader streamReader = new StreamReader(_configPath))
-            {
-                string json = streamReader.ReadToEnd();
-
-                entities = JsonConvert.DeserializeObject<List<LinkManagerEntity>>(json);
-            }
-
-            return entities;
         }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)

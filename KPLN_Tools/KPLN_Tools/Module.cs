@@ -1,6 +1,4 @@
 using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.ExternalCommands;
@@ -13,21 +11,7 @@ namespace KPLN_Tools
 {
     public class Module : IExternalModule
     {
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private static DBUser _currentDBUser;
-
-        internal static DBUser CurrentDBUser
-        {
-            get
-            {
-                if (_currentDBUser == null)
-                {
-                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-                    _currentDBUser = userDbService.GetCurrentDBUser();
-                }
-                return _currentDBUser;
-            }
-        }
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
         {
@@ -208,7 +192,7 @@ namespace KPLN_Tools
                 "http://moodle");
             sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
 #endif
-            
+
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(sendMsgToBitrix);
@@ -216,10 +200,10 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
-#endregion
+            #endregion
 
             #region Инструменты СС
-            if (CurrentDBUser.SubDepartmentId == 7 || CurrentDBUser.SubDepartmentId == 8)
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины СС",
                 "Плагины СС",
@@ -272,7 +256,7 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты КР
-            if (CurrentDBUser.SubDepartmentId == 3 || CurrentDBUser.SubDepartmentId == 8)
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 3 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
                     "Плагины КР",
@@ -310,7 +294,9 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты ОВВК
-            if (CurrentDBUser.SubDepartmentId == 4 || CurrentDBUser.SubDepartmentId == 5 || CurrentDBUser.SubDepartmentId == 8)
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 4
+                || DBWorkerService.CurrentDBUserSubDepartment.Id == 5
+                || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины ОВВК",
                     "Плагины ОВВК",
@@ -429,11 +415,11 @@ namespace KPLN_Tools
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
             }
-#endregion
+            #endregion
 
             #region Отверстия
             // Наполняю плагинами в зависимости от отдела
-            if (CurrentDBUser.Id != 2 && CurrentDBUser.Id != 3)
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id != 2 && DBWorkerService.CurrentDBUserSubDepartment.Id != 3)
             {
                 PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
                     "Отверстия",
@@ -492,7 +478,7 @@ namespace KPLN_Tools
             string contextualHelp,
             bool avclass = false)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className)
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className)
             {
                 Text = text,
                 ToolTip = shortDescription,

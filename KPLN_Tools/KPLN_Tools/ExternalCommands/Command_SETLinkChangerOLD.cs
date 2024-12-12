@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Tools.Common;
 using RevitServerAPILib;
 using System.Collections.Generic;
 using System.IO;
@@ -61,7 +62,7 @@ namespace KPLN_Tools.ExternalCommands
             try
             {
                 #region Вывожу окно с запросом на обновление файла-конфига (только для BIM-отдела)
-                if (Module.CurrentDBUser.SubDepartmentId == 8)
+                if (DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
                 {
                     Autodesk.Revit.UI.TaskDialog td = new Autodesk.Revit.UI.TaskDialog("ОШИБКА")
                     {

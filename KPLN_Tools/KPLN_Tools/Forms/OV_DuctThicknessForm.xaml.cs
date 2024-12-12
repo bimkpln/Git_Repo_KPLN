@@ -1,11 +1,10 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Tools.Common;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExecutableCommand;
-using Newtonsoft.Json;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -16,21 +15,17 @@ namespace KPLN_Tools.Forms
     {
         private readonly Document _doc;
         private readonly Element[] _elementsToSet;
-        private readonly string _configPath;
+        private readonly string _cofigName = "OV_DuctThickness";
 
         public OV_DuctThicknessForm(Document doc, Element[] elementsToSet)
         {
             _doc = doc;
             _elementsToSet = elementsToSet;
-            
-            ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new System.Exception("Работает только с моделями из хранилища");
-            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath).Trim($"{doc.Title}.rvt".ToArray());
-            _configPath = strDocModelPath + $"KPLN_Config\\OV_DuctThickness.json";
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
             // Файл конфига присутсвует
-            if (new FileInfo(_configPath).Exists)
-                ReadConfigFile();
+            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(doc, _cofigName, false) is DuctThicknessEntity ductThicknessEntity)
+                CurrentDuctThicknessEntity = ductThicknessEntity;
             else
             {
                 CurrentDuctThicknessEntity = new DuctThicknessEntity()
@@ -79,33 +74,6 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Сериализация и сохранение файла-конфигурации
         /// </summary>
-        private void SaveConfig()
-        {
-            if (!new FileInfo(_configPath).Exists)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
-                FileStream fileStream = File.Create(_configPath);
-                fileStream.Dispose();
-            }
-
-            using (StreamWriter streamWriter = new StreamWriter(_configPath))
-            {
-                object entObj = CurrentDuctThicknessEntity.ToJson();
-                string jsonEntity = JsonConvert.SerializeObject(entObj, Formatting.Indented);
-                streamWriter.Write(jsonEntity);
-            }
-        }
-
-        /// <summary>
-        /// Десереилизация конфига
-        /// </summary>
-        private void ReadConfigFile()
-        {
-            using (StreamReader streamReader = new StreamReader(_configPath))
-            {
-                string json = streamReader.ReadToEnd();
-                CurrentDuctThicknessEntity = JsonConvert.DeserializeObject<DuctThicknessEntity>(json);
-            }
-        }
+        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(_doc, _cofigName, CurrentDuctThicknessEntity, false);
     }
 }
