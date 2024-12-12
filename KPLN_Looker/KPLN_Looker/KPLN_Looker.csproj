@@ -143,6 +143,8 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Core\ElementComparerById.cs" />
+    <Compile Include="Core\IntersectElemDocEntity.cs" />
     <Compile Include="ExecutableCommand\DocCloser.cs" />
     <Compile Include="ExecutableCommand\IntersectPointMaker.cs" />
     <Compile Include="ExecutableCommand\UndoEvantHandler.cs" />

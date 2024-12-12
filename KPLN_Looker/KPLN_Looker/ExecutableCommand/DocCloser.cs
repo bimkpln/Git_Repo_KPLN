@@ -114,7 +114,7 @@ namespace KPLN_Looker.ExecutableCommand
                 }
                 else
                 {
-                    DBRevitDialog[] dbRevitDialogs = Module.DBWorkerService.DBRevitDialogs;
+                    DBRevitDialog[] dbRevitDialogs = Module.ModuleDBWorkerService.DBRevitDialogs;
                     DBRevitDialog currentDBDialog = dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
                     if (currentDBDialog != null)
                     {
