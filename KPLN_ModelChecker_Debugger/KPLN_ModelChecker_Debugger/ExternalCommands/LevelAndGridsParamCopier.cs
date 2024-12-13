@@ -113,6 +113,11 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
             foreach (RevitLinkInstance rvtLinkInst in rvtLinkInstsColl)
             {
                 Document linkDoc = rvtLinkInst.GetLinkDocument();
+                if (linkDoc == null)
+                {
+                    TaskDialog.Show("Ошибка", $"Работа остановлена - модель {rvtLinkInst.Name} не загружена.");
+                    return Result.Failed;
+                }
                 
                 linkGridLevelDataElemColl.AddRange(
                     new FilteredElementCollector(linkDoc)
