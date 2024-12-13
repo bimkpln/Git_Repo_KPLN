@@ -282,8 +282,8 @@ namespace KPLN_Library_Forms.ExecutableCommand
 
                 return new BoundingBoxXYZ()
                 {
-                    Max = resultTransform.OfPoint(bbox.Max),
-                    Min = resultTransform.OfPoint(bbox.Min),
+                    Max = resultTransform.OfPoint(bbox.Max) + new XYZ(-1, -1, -5),
+                    Min = resultTransform.OfPoint(bbox.Min) + new XYZ(1, 1, 5),
                 };
             }
             #endregion
