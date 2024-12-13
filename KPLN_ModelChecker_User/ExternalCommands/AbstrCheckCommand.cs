@@ -74,7 +74,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 throw new ArgumentNullException("Ты забыл инициировать основные поля. Это вынесено в класс Module, чтобы обработать плагином по выводу информации по запускам скриптов");
             
             if (!elemColl.Any())
+            {
+                Print($"Проверка {ESEntity.CheckName} не пройдена, т.к. в модели отсутсвуют необходимые элементы", MessageType.Warning);
                 return null;
+            }
             
             try
             {
@@ -287,7 +290,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             {
                                 TaskDialog taskDialog = new TaskDialog("[ОШИБКА]")
                                 {
-                                    MainInstruction = $"АР_П: Фиксация площадей: {esMsgMarker.Description}"
+                                    MainInstruction = $"{ESEntity.CheckName}: {esMsgMarker.Description}"
                                 };
                                 taskDialog.Show();
                                 return null;

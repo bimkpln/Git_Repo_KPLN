@@ -14,6 +14,8 @@ namespace KPLN_Library_Forms.ExecutableCommand
     {
         private readonly Element _element;
         private readonly IEnumerable<Element> _elementCollection;
+        private readonly XYZ _expandMinPnt = new XYZ(-1, -1, -2);
+        private readonly XYZ _expandMaxPnt = new XYZ(1, 1, 2);
 
         private BoundingBoxXYZ _box;
         private XYZ _centroid;
@@ -66,7 +68,14 @@ namespace KPLN_Library_Forms.ExecutableCommand
                 return _box;
             }
 
-            private set { _box = value; }
+            private set 
+            { 
+                _box = new BoundingBoxXYZ()
+                {
+                    Min = value.Min + _expandMinPnt,
+                    Max = value.Max + _expandMaxPnt,
+                }; ; 
+            }
         }
 
         internal XYZ ZoomCentroid
@@ -226,8 +235,8 @@ namespace KPLN_Library_Forms.ExecutableCommand
 
                 return new BoundingBoxXYZ
                 {
-                    Min = minPoint + new XYZ(-1, -1, -5),
-                    Max = maxPoint + new XYZ(1, 1, 5)
+                    Min = minPoint + _expandMinPnt,
+                    Max = maxPoint + _expandMaxPnt
                 };
             }
 
@@ -282,8 +291,8 @@ namespace KPLN_Library_Forms.ExecutableCommand
 
                 return new BoundingBoxXYZ()
                 {
-                    Max = resultTransform.OfPoint(bbox.Max) + new XYZ(-1, -1, -5),
-                    Min = resultTransform.OfPoint(bbox.Min) + new XYZ(1, 1, 5),
+                    Min = resultTransform.OfPoint(bbox.Min) + _expandMinPnt,
+                    Max = resultTransform.OfPoint(bbox.Max) + _expandMaxPnt,
                 };
             }
             #endregion
