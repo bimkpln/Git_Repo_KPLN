@@ -43,14 +43,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x => !x.Name.StartsWith("00_"))
+                .Where(x => !x.Name.StartsWith("00_") || !x.Name.Contains("КЖ_Монолит"))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Перекрытия"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x => !x.Name.StartsWith("00_"))
+                .Where(x => !x.Name.StartsWith("00_") || !x.Name.Contains("КЖ_Монолит"))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Кровля"

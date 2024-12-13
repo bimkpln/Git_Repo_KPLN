@@ -222,8 +222,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
+                Parameter instElemDataSectParam = instElemData.CurrentElem.LookupParameter(SectionParamName);
+                Parameter instElemDataLvlParam = instElemData.CurrentElem.LookupParameter(LevelParamName);
+
                 // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
-                if (instElemData.CurrentElem is FamilyInstance famInst && famInst.SuperComponent != null)
+                if (instElemData.CurrentElem is FamilyInstance famInst 
+                    && famInst.SuperComponent != null 
+                    && (instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
                 {
                     ErrorElements.Add(new GripParamError(
                             instElemData.CurrentElem,
@@ -249,7 +254,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     }
                 }
 
-                if (instElemData.CurrentElem.LookupParameter(LevelParamName).IsReadOnly || instElemData.CurrentElem.LookupParameter(SectionParamName).IsReadOnly)
+                if (instElemDataLvlParam.IsReadOnly || instElemDataSectParam.IsReadOnly)
                     throw new GripParamExection($"У элемента id: {instElemData.CurrentElem.Id} заблокирован один из параметров для записи захваток: {LevelParamName}, или {SectionParamName}");
 
                 // Кастомная настройка записи данных для пректа СЕТУНЬ
@@ -257,35 +262,45 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 {
                     string tempLvlData = maxIntersectInstance.CurrentLevelData.CurrentLevel.LookupParameter(LevelParamName).AsString().ToLower();
                     if (tempLvlData.Contains("кровля"))
-                        instElemData.CurrentElem.LookupParameter(LevelParamName).Set("Кровля");
+                        instElemDataLvlParam.Set("Кровля");
                     else
-                        instElemData.CurrentElem.LookupParameter(LevelParamName).Set($"{maxIntersectInstance.CurrentLevelData.CurrentLevelNumber}_этаж");
+                        instElemDataLvlParam.Set($"{maxIntersectInstance.CurrentLevelData.CurrentLevelNumber}_этаж");
 
                     string tempSectData = maxIntersectInstance.CurrentLevelData.CurrentSectionNumber;
                     if(tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
                     {
                         if (tempSectData.Contains("К1"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 1");
+                            instElemDataSectParam.Set("Корпус 1");
                         else if (tempSectData.Contains("К2"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 2");
+                            instElemDataSectParam.Set("Корпус 2");
                         else if (tempSectData.Contains("К3"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 3");
+                            instElemDataSectParam.Set("Корпус 3");
                     }
                     else if (tempSectData.Contains("С1"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 1");
+                        instElemDataSectParam.Set("Секция 1");
                     else if (tempSectData.Contains("С2"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 2");
+                    {
+                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
+                            instElemDataSectParam.Set("Секция 2-3");
+                        else
+                            instElemDataSectParam.Set("Секция 2");
+                    }
                     else if (tempSectData.Contains("С3"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 3");
+                    {
+                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
+                            instElemDataSectParam.Set("Секция 2-3");
+                        else
+                            instElemDataSectParam.Set("Секция 3");
+                    }
                     else if (tempSectData.Contains("С4"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 4");
+                        instElemDataSectParam.Set("Секция 4");
                     else if (tempSectData.Contains("СТЛ"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Паркинг");
+                        instElemDataSectParam.Set("Паркинг");
                 }
                 else
                 {
-                    instElemData.CurrentElem.LookupParameter(LevelParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentLevelNumber);
-                    instElemData.CurrentElem.LookupParameter(SectionParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
+                    instElemDataLvlParam.Set(maxIntersectInstance.CurrentLevelData.CurrentLevelNumber);
+                    instElemDataSectParam.Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
                 }
                 
                 instElemData.IsEmptyData = false;
@@ -295,6 +310,20 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             foreach (InstanceElemData instElemData in ElemsUnderLevel)
             {
+                Parameter instElemDataSectParam = instElemData.CurrentElem.LookupParameter(SectionParamName);
+                Parameter instElemDataLvlParam = instElemData.CurrentElem.LookupParameter(LevelParamName);
+
+                // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
+                if (instElemData.CurrentElem is FamilyInstance famInst
+                    && famInst.SuperComponent != null
+                    && (instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
+                {
+                    ErrorElements.Add(new GripParamError(
+                            instElemData.CurrentElem,
+                            "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
+                    continue;
+                }
+
                 InstanceGeomData instGeomData = (InstanceGeomData)instElemData ??
                     throw new GripParamExection(
                         $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без гометриии. Обратись к разработчику");
@@ -318,41 +347,51 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         && s.CurrentLevelData.CurrentLevel.Equals(maxIntersectInstance.CurrentLevelData.CurrentLevel))
                     .FirstOrDefault();
 
-                instElemData.CurrentElem.LookupParameter(SectionParamName).Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
+                instElemDataSectParam.Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
 
                 // Кастомная настройка записи данных для пректа СЕТУНЬ
                 if (isSET)
                 {
                     string tempLvlData = downLevelAndGridSolid.CurrentLevelData.CurrentLevel.LookupParameter(LevelParamName).AsString().ToLower();
                     if (tempLvlData.Contains("кровля"))
-                        instElemData.CurrentElem.LookupParameter(LevelParamName).Set("Кровля");
+                        instElemDataLvlParam.Set("Кровля");
                     else
-                        instElemData.CurrentElem.LookupParameter(LevelParamName).Set($"{downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber}_этаж");
+                        instElemDataLvlParam.Set($"{downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber}_этаж");
 
                     string tempSectData = downLevelAndGridSolid.CurrentLevelData.CurrentSectionNumber;
                     if (tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
                     {
                         if (tempSectData.Contains("К1"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 1");
+                            instElemDataSectParam.Set("Корпус 1");
                         else if (tempSectData.Contains("К2"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 2");
+                            instElemDataSectParam.Set("Корпус 2");
                         else if (tempSectData.Contains("К3"))
-                            instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Корпус 3");
+                            instElemDataSectParam.Set("Корпус 3");
                     }
                     else if (tempSectData.Contains("С1"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 1");
+                        instElemDataSectParam.Set("Секция 1");
                     else if (tempSectData.Contains("С2"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 2");
+                    {
+                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
+                            instElemDataSectParam.Set("Секция 2-3");
+                        else
+                            instElemDataSectParam.Set("Секция 2");
+                    }
                     else if (tempSectData.Contains("С3"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 3");
+                    {
+                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
+                            instElemDataSectParam.Set("Секция 2-3");
+                        else
+                            instElemDataSectParam.Set("Секция 3");
+                    }
                     else if (tempSectData.Contains("С4"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Секция 4");
+                        instElemDataSectParam.Set("Секция 4");
                     else if (tempSectData.Contains("СТЛ"))
-                        instElemData.CurrentElem.LookupParameter(SectionParamName).Set("Паркинг");
+                        instElemDataSectParam.Set("Паркинг");
                 }
                 else
                 {
-                    instElemData.CurrentElem.LookupParameter(LevelParamName).Set(downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber);
+                    instElemDataLvlParam.Set(downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber);
                     instElemData.IsEmptyData = false;
                 }
                 
