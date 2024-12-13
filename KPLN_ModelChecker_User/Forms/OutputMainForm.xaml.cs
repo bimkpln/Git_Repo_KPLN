@@ -1,3 +1,4 @@
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.Common;
@@ -62,8 +63,8 @@ namespace KPLN_ModelChecker_User.Forms
 
             #region Скрываю видимость блока ключевого лога (он нужен только при использовании спец. конструктора)
             MarkerRow.Height = new GridLength(0);
-            MarkerDataHeader.Visibility = Visibility.Collapsed;
-            MarkerData.Visibility = Visibility.Collapsed;
+            MarkerDataHeader.Visibility = System.Windows.Visibility.Collapsed;
+            MarkerData.Visibility = System.Windows.Visibility.Collapsed;
             #endregion
 
             InitializeCollectionViewSource();
@@ -71,7 +72,7 @@ namespace KPLN_ModelChecker_User.Forms
 
             // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
             if (_externalCommand == nameof(CommandCheckLinks) || _externalCommand == nameof(CommandCheckFamilies)) 
-                this.RestartBtn.Visibility = Visibility.Collapsed;
+                this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 
         public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
@@ -85,8 +86,8 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 MarkerRow.Height = GridLength.Auto;
                 MarkerData.Text = creator.LogMarker;
-                MarkerDataHeader.Visibility = Visibility.Visible;
-                MarkerData.Visibility = Visibility.Visible;
+                MarkerDataHeader.Visibility = System.Windows.Visibility.Visible;
+                MarkerData.Visibility = System.Windows.Visibility.Visible;
             }
             #endregion
         }
@@ -135,9 +136,18 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) =>
             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+
+        private void OnSelectClicked(object sender, RoutedEventArgs e)
+        {
+            if((sender as Button).DataContext is WPFEntity wpfEntity)
+            {
+                if (wpfEntity.Element != null)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(new List<Element>(1) { wpfEntity.Element }));
+                else
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(wpfEntity.ElementCollection));
+            }
         }
 
         private void OnZoomClicked(object sender, RoutedEventArgs e)
@@ -155,7 +165,7 @@ namespace KPLN_ModelChecker_User.Forms
                 }
                 else
                     if (wpfEntity.Element != null)
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.Element));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
                     else
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
             }

@@ -119,16 +119,12 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             foreach (WPFEntity w in WPFEntityCollection)
             {
-                if (w.ElementId != null) w.FiltrationDescription = w.ElementId.ToString();
-                else
-                {
-                    string idColl;
-                    IEnumerable<ElementId> ids = w.ElementIdCollection.ToList();
-                    if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection);
-                    else idColl = ids.FirstOrDefault().ToString();
+                string idColl;
+                IEnumerable<ElementId> ids = w.ElementIdCollection.ToList();
+                if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection);
+                else idColl = ids.FirstOrDefault().ToString();
 
-                    w.FiltrationDescription = idColl;
-                }
+                w.FiltrationDescription = idColl;
 
                 FiltrationCollection.Add(w.FiltrationDescription);
             }

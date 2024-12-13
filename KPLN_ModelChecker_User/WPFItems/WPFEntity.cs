@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media;
+using System.Xml.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.WPFItems
@@ -30,7 +31,8 @@ namespace KPLN_ModelChecker_User.WPFItems
         public WPFEntity(Element element, CheckStatus status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
         {
             Element = element;
-            ElementId = element.Id;
+            ElementIdCollection = new ElementId[] { Element.Id };
+
             if (Element is Room room) 
                 ElementName = room.Name;
             else 
@@ -96,11 +98,6 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Коллекция Revit-элементов, объединенных одной ошибкой
         /// </summary>
         public IEnumerable<Element> ElementCollection { get; }
-
-        /// <summary>
-        /// Id Revit-элемента
-        /// </summary>
-        public ElementId ElementId { get; }
 
         /// <summary>
         /// Коллекция Id Revit-элементов, объединенных одной ошибкой

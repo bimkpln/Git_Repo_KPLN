@@ -3,6 +3,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
 using Excel = Microsoft.Office.Interop.Excel;
@@ -49,7 +50,6 @@ namespace KPLN_ModelChecker_User.Common
             List<string> selectedFields = new List<string>(6)
             {
                 nameof(WPFEntity.ElementName),
-                nameof(WPFEntity.ElementId),
                 nameof(WPFEntity.ElementIdCollection),
                 nameof(WPFEntity.ErrorHeader),
                 nameof(WPFEntity.Description),
@@ -74,8 +74,6 @@ namespace KPLN_ModelChecker_User.Common
                 foreach (string field in selectedFields)
                 {
                     object value = entity.GetType().GetProperty(field).GetValue(entity);
-                    // Запись ElementId
-                    if (field == nameof(WPFEntity.ElementId) && value == null) continue;
 
                     // Запись коллекции ElementIdCollection
                     if (field == nameof(WPFEntity.ElementIdCollection) && value is IEnumerable<ElementId> list)
@@ -90,7 +88,7 @@ namespace KPLN_ModelChecker_User.Common
             }
 
             // Сохранить файл
-            string currentPath = $"{path}\\{checkName}_Отчет по ошибкам.xlsx";
+            string currentPath = $"{path}\\{ReplaceSpecialCharacters(checkName)}_Отчет по ошибкам.xlsx";
             
             CustomMessageBox customMessageBox = null;
             try
@@ -120,6 +118,19 @@ namespace KPLN_ModelChecker_User.Common
                 workbook.Close();
                 excelApp.Quit();
             }
+        }
+
+        /// <summary>
+        /// Проверка текста на наличие запрещенных символов и замена их на "_"
+        /// </summary>
+        private static string ReplaceSpecialCharacters(string input)
+        {
+            char[] specialCharacters = { '<', '>', '?', '[', ']', ':', '|' };
+            foreach (char c in specialCharacters)
+            {
+                input = input.Replace(c, '_');
+            }
+            return input;
         }
     }
 }

@@ -180,12 +180,25 @@
                                         TextWrapping="Wrap" Text="{Binding ElementName}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Row="2" Grid.Column="0" 
                                         Text="Id: " HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="Bold" />
-                                    <!--В одном месте - два варианта заполнения данными. Видимость управляется наличием-->
-                                    <TextBlock Grid.Row="2" Grid.Column="1" 
-                                        TextWrapping="Wrap" Text="{Binding ElementId}" VerticalAlignment="Center" />
-                                    <!--В одном месте - два варианта заполнения данными. Видимость управляется наличием-->
-                                    <TextBlock Grid.Row="2" Grid.Column="1" 
-                                        TextWrapping="Wrap" Text="{Binding ElementIdCollection, Converter={StaticResource ElementIdListToStringConverter}}" VerticalAlignment="Center" Visibility="{Binding Converter={StaticResource StringToVisibilityConverter}}" />
+                                    <Button
+                                        Grid.Row="2" 
+                                        Grid.Column="1"
+                                        Background="#00000000"
+                                        BorderBrush="#00000000"
+                                        HorizontalAlignment="Left"
+                                        Click="OnSelectClicked">
+                                        <Button.Content>
+                                            <TextBlock
+                                                Text="{Binding ElementIdCollection, Converter={StaticResource ElementIdListToStringConverter}}" 
+                                                TextWrapping="Wrap" 
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left"/>
+                                        </Button.Content>
+                                        <Button.ToolTip>
+                                            <TextBlock
+                                                Text="Нажми, чтобы просто выделить элемент в модели"/>
+                                        </Button.ToolTip>
+                                    </Button>
                                 </Grid>
 
                                 <Separator Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2" 

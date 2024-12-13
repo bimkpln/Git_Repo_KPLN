@@ -73,13 +73,15 @@ namespace KPLN_ModelChecker_User.Common
 
                 if (resultSolid != null)
                     CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
-                // Фильтрация семейств без геометрии от Ostec, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
+                // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
                 else if (CurrentElement is FamilyInstance famInst)
                 {
                     FamilySymbol famSymb = famInst.Symbol;
                     string famName = famSymb.FamilyName;
-                    if (!famName.ToLower().Contains("ostec") 
-                        && !famName.ToLower().Contains("757_опора_неподвижная_(армтр)") 
+                    string famNameLower = famName.ToLower();
+                    if (!famNameLower.Contains("ostec") 
+                        && !famNameLower.Contains("470_dkc_s5_accessories")
+                        && !famNameLower.Contains("757_опора_неподвижная_(армтр)") 
                         && famInst.SuperComponent == null)
                         HtmlOutput.Print($"У элемента семейства {famName} " +
                             $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);

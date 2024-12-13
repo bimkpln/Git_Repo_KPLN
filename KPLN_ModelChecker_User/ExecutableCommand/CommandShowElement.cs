@@ -17,11 +17,6 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
             _elementCollection = elemColl;
         }
 
-        public CommandShowElement(Element element)
-        {
-            _elementCollection = new List<Element>(1) { element };
-        }
-
         public Result Execute(UIApplication app)
         {
             app.DialogBoxShowing += DialogBoxShowingEvant;

@@ -10,6 +10,7 @@
     <Optimize>false</Optimize>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
+    <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
     <OutputPath>bin\Debug\2023\</OutputPath>
@@ -19,6 +20,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
+    <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2020\</OutputPath>
@@ -181,6 +183,7 @@
     <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
     <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
+    <Compile Include="ExecutableCommand\CommandSelectElements.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />

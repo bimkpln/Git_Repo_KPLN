@@ -158,7 +158,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Dictionary<string, List<Room>> otherRoomsDict = roomDictTuple.Item2;
             entities.AddRange(CheckOtherRoomsDataParams(otherRoomsDict));
 
-            return entities.OrderBy(e => e.ElementId.IntegerValue).ToList();
+            return entities.OrderBy(e => e.ElementName).ToList();
         }
 
         private void CheckParam(Room room, string paramName)
