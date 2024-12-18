@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
+using static System.Windows.Forms.AxHost;
 
 namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
 {
@@ -59,6 +60,11 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
             foreach (LevelData currentLevel in levelDatas)
             {
+                if (currentLevel.CurrentLevelNumber == "20" && currentLevel.CurrentSectionNumber == "2")
+                {
+                    var a = 1;
+                }
+
                 foreach (GridData gData in gridDatas)
                 {
                     if (currentLevel.CurrentSectionNumber.Equals(gData.CurrentSection))
@@ -254,7 +260,6 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
 
             // Проверяем на параллельность (если векторное произведение = 0, то линии параллельны)
             XYZ crossProduct = direction1.CrossProduct(direction2);
-            
             // Линии параллельны и не пересекаются
             if (crossProduct.IsZeroLength())
                 return null;
@@ -265,15 +270,15 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
                 double t1 = ((startPoint2 - startPoint1).CrossProduct(direction2)).DotProduct(crossProduct) 
                             / crossProduct.DotProduct(crossProduct);
 
-                // Рассчитываем параметр t2 для пересечения второй линии с продолжением первой линии
-                double t2 = ((startPoint2 - startPoint1).CrossProduct(direction1)).DotProduct(crossProduct) 
-                            / crossProduct.DotProduct(crossProduct);
-
-                // Анализ точки пересечения на избыточную удаленность (например, удалено больше чем на 30 м)
+                // Анализ точки пересечения на избыточную удаленность ОБА КОНЦА (например, удалено больше чем на 30 м)
                 XYZ tempIntersectionPnt = startPoint1 + t1 * direction1;
                 double distance = Math.Abs(startPoint1.DistanceTo(tempIntersectionPnt)) - Math.Abs(startPoint1.DistanceTo(endPoint1));
-                if (Math.Abs(distance) > 100 )
-                    return null;
+                if (Math.Abs(distance) > 100)
+                {
+                    distance = Math.Abs(endPoint1.DistanceTo(tempIntersectionPnt)) - Math.Abs(startPoint1.DistanceTo(endPoint1));
+                    if (Math.Abs(distance) > 100)
+                        return null;
+                }
 
                 // 𝑡2 даёт точку пересечения на второй линии, но в нашем случае достаточно использовать только t1, чтобы получить ту же самую точку пересечения в мировых координатах.
                 // То есть одной точки пересечения достаточно, и мы можем выбрать любую из двух линий для её вычисления.
