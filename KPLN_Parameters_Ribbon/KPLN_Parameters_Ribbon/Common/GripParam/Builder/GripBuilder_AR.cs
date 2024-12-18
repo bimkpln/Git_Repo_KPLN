@@ -79,6 +79,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Cast<FamilyInstance>()
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
+            // Семейства "Парковка"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_Parking)
+                .Cast<FamilyInstance>()
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
             // Семейства "Лестничные марши"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Railing))

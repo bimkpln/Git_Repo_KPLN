@@ -96,8 +96,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x =>
-                    !x.Name.StartsWith("00_")
-                    || (x.Name.StartsWith("00_") && (!x.Name.ToLower().Contains("перепад") || !x.Name.ToLower().Contains("балк"))))
+                    ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != x.Id.IntegerValue))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Перекрытия" над уровнем
@@ -105,25 +104,30 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x =>
-                    !x.Name.StartsWith("00_")
-                    || !(x.Name.StartsWith("00_") && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус"))))
+                    ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != x.Id.IntegerValue))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(i => !i.Symbol.FamilyName.StartsWith("22") && i.Symbol.FamilyName.StartsWith("2") && i.SuperComponent == null)
+                .Where(i => ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != i.Id.IntegerValue))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Окна" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_Windows)
                 .Cast<FamilyInstance>()
                 .Where(i => i.Symbol.FamilyName.StartsWith("23") && i.SuperComponent == null)
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Категория "Лестницы" над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+               .OfClass(typeof(Stairs))
+               .Cast<Stairs>()
+               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsRun))
                .Cast<StairsRun>()

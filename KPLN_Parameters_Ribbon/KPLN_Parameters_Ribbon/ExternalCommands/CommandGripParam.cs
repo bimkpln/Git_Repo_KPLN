@@ -36,6 +36,10 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     if (docPath.StartsWith("СЕТ_1"))
                         gripBuilder = new GripBuilder_AR(doc, "СЕТ_1", "СМ_Этаж", 
                             1, "СМ_Секция", 0.328, 10);
+
+                    if (docPath.StartsWith("ОМК3"))
+                        gripBuilder = new GripBuilder_AR(doc, "ОМК3", "КП_О_Этаж",
+                            1, "КП_О_Секция", 0.328, 10);
                 }
                 else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("КР"))
                 {
@@ -46,6 +50,10 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     if (docPath.StartsWith("СЕТ_1"))
                         gripBuilder = new GripBuilder_KR(doc, "СЕТ_1", "СМ_Этаж", 
                             1, "СМ_Секция", 0.328, 10);
+                    
+                    if (docPath.StartsWith("ОМК3"))
+                        gripBuilder = new GripBuilder_KR(doc, "ОМК3", "О_Этаж",
+                            1, "КП_О_Секция", 0.328, 10);
                 }
                 else if (userDepartment == 4 
                          || userDepartment == 5 
@@ -75,6 +83,10 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     if (docPath.StartsWith("СЕТ_1"))
                         gripBuilder = new GripBuilder_IOS(doc, "СЕТ_1", "СМ_Этаж", 
                             1, "СМ_Секция", 0.328, 10);
+
+                    if (docPath.StartsWith("ОМК3"))
+                        gripBuilder = new GripBuilder_IOS(doc, "ОМК3", "КП_О_Этаж",
+                            1, "КП_О_Секция", 0.328, 10);
                 }
                 else
                 {

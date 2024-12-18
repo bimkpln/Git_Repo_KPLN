@@ -208,9 +208,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             // Маркер для кастомной настройка записи данных для пректа СЕТУНЬ
             bool isSET = Doc.Title.Contains("СЕТ_1");
+            bool isOMK3 = Doc.Title.Contains("ОМК3");
             
-            // Спец сортировка для СЕТ, в которой СТЛ анализируется первым, и перезаписывается данными с корпусов
-            if (isSET)
+            // Спец сортировка для проектов, в которой СТЛ анализируется первым, и перезаписывается данными с корпусов
+            if (isSET )
             {
                 SectDataSolids.Sort((x, y) =>
                 {
@@ -219,7 +220,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     return 0;
                 });
             }
-            
+            if (isOMK3)
+            {
+                SectDataSolids.Sort((x, y) =>
+                {
+                    if (x.CurrentLevelData.CurrentSectionNumber == "ПАР" && y.CurrentLevelData.CurrentSectionNumber != "ПАР") return -1;
+                    if (x.CurrentLevelData.CurrentSectionNumber != "ПАР" && y.CurrentLevelData.CurrentSectionNumber == "ПАР") return 1;
+                    return 0;
+                });
+            }
+
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
                 Parameter instElemDataSectParam = instElemData.CurrentElem.LookupParameter(SectionParamName);
