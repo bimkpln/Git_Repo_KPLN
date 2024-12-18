@@ -358,7 +358,7 @@ namespace KPLN_Tools
                     typeof(Command_OV_DuctThickness).FullName,
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
                     "KPLN_Tools.Imagens.ductThicknessSmall.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
                 PushButtonData ov_ozkDuctAccessory = CreateBtnData(
                     "ОВ: Клапаны ОЗК",

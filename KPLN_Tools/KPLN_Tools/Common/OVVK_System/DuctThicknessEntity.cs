@@ -25,11 +25,8 @@ namespace KPLN_Tools.Common.OVVK_System
             get => _parameterName;
             set
             {
-                if (_parameterName != value)
-                {
-                    _parameterName = value;
-                    NotifyPropertyChanged();
-                }
+                _parameterName = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -38,26 +35,34 @@ namespace KPLN_Tools.Common.OVVK_System
             get => _partOfInsulationName;
             set
             {
-                if (_partOfInsulationName != value)
-                {
-                    _partOfInsulationName = value;
-                    NotifyPropertyChanged();
-                }
+                _partOfInsulationName = value;
+                NotifyPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// Общее поле для ввода
+        /// </summary>
         public string PartOfSystemName
         {
             get => _partOfSystemName;
             set
             {
-                if (_partOfSystemName != value)
-                {
-                    _partOfSystemName = value;
-                    NotifyPropertyChanged();
-                }
+                _partOfSystemName = value;
+                NotifyPropertyChanged();
+                
+                string[] splitedSysName = _partOfSystemName.Split('~');
+                if (splitedSysName.Length > 1)
+                    PartsOfSystemName = splitedSysName;
+                else
+                    PartsOfSystemName = new string[1] { _partOfSystemName };
             }
         }
+
+        /// <summary>
+        /// Расчлененное на части имена систем
+        /// </summary>
+        public string[] PartsOfSystemName { get; private set; }
 
         public object ToJson()
         {

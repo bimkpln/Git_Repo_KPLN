@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         mc:Ignorable="d" 
         SizeToContent="Height"
-        Width="425"
+        Width="450"
         Height="215"
         ResizeMode="NoResize"
         Topmost="True"
@@ -76,7 +76,7 @@
         <Grid
             Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="235"/>
                 <ColumnDefinition Width="200"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -139,7 +139,7 @@
 
             <TextBlock
                 Grid.Row="2"
-                Text="Индивидуальная часть параметра 'Имя системы':"
+                Text="Индивидуальная часть параметра 'Имя системы' (если несколько, то через '~'):"
                 Style="{StaticResource TBlock}"/>
             <TextBox
                 Grid.Row="2"

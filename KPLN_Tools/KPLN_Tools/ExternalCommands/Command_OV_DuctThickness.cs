@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -13,6 +14,11 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_OV_DuctThickness : IExternalCommand
     {
+        /// <summary>
+        ///  GUID параметра для исключения перезаписи ("ТС_Перезаписать")
+        /// </summary>
+        internal static readonly Guid RevalueParamGuid = new Guid("466e6ecb-f390-43da-9cb5-76858d500a2c");
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Get application and documnet objects

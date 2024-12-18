@@ -36,7 +36,7 @@ namespace KPLN_Tools.ExternalCommands
 
             if (famSybols.Length == 0)
             {
-                System.Windows.Forms.MessageBox.Show(
+                MessageBox.Show(
                     $"В проекте отсутсвуют спец. семейства универсальных клапанов ОЗК (ищу по параметру \"Ключевая пометка\")",
                     "Предупреждение",
                     MessageBoxButtons.OK,

@@ -73,6 +73,10 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+        /// <summary>
+        /// Проверка на наличие необходимых параметров
+        /// </summary>
+        /// <returns></returns>
         private bool CheckParams()
         {
             IEnumerable<OZKDuctAccessoryEntity> errorColl = _ozkDuctAccessoryEntities
