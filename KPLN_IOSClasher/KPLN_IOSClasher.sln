@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_IOSClasher", "KPLN_IOSClasher.csproj", "{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Debug2020|x64.Build.0 = Debug2020|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Debug2023|x64.Build.0 = Debug2023|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{2B4B2B1E-FAFB-48CB-B2A2-D38A5DD228C0}.Revit2023|x64.Build.0 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {778A363E-D6F8-4F3B-B791-91D9BB3E82AD}
+	EndGlobalSection
+EndGlobal
