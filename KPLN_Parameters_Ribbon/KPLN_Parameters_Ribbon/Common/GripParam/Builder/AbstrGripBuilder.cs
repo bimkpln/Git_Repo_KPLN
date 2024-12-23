@@ -419,7 +419,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             if (!ElemsByHost.Any())
             {
-                pb.Update(++PbCounter, "Анализ элементов на основе");
+                pb.Update(PbCounter, "Анализ элементов на основе");
                 return;
             }
             

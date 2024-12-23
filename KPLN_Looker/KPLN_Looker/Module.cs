@@ -99,7 +99,9 @@ namespace KPLN_Looker
                 && !fileName.EndsWith("rte")
                 && !fileName.ToLower().Contains("\\lib\\")
                 && !fileName.ToLower().Contains("конц")
-                && !fileName.ToLower().Contains("kon"))
+                && !fileName.ToLower().Contains("kon")
+                // Офис КПЛН
+                && !fileName.ToLower().Contains("16с13"))
                 return fileName;
 
             return null;
@@ -277,12 +279,12 @@ namespace KPLN_Looker
             // Уточнение для ЛОКАЛЬНЫХ проектов
             if (!string.IsNullOrEmpty(familyPath)
                 && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
-                && (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+                || (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
                 return false;
             // Игнор локальных проектов. Для СЕТ плохой пример, на будущее - лучше библиотеку под проект выносить в другой корень, иначе это усложняет анализ
             else if (!string.IsNullOrEmpty(familyPath)
                 && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
-                && (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+                || (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
                 return false;
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
