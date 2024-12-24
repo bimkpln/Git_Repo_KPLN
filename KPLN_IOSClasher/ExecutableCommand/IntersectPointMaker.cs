@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using KPLN_IOSClasher.Core;
 using KPLN_Loader.Common;
@@ -17,6 +16,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// </summary>
     internal class IntersectPointMaker : IntersectPointFamInst, IExecutableCommand
     {
+        /// <summary>
+        /// Имя транзакции для анализа на наличие
+        /// </summary>
+        public static readonly string TransName = "KPLN: Создание меток коллизий";
+
         private static string _revitVersion;
         private readonly IntersectPointEntity[] _intersectPointEntities;
         private readonly Element[] _checkedElems;
@@ -39,7 +43,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
             if (uidoc == null)
                 return Result.Cancelled;
 
-            using (Transaction trans = new Transaction(doc, "KPLN: Создание меток коллизий"))
+            using (Transaction trans = new Transaction(doc, TransName))
             {
                 trans.Start();
 
@@ -48,7 +52,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 // Удаляю не актуальные
                 if (oldPointElems.Length != 0)
                 {
-                    List<Element> oldElemsToDel = GetOldToDelete(oldPointElems, _checkedElems);
+                    List<Element> oldElemsToDel = GetOldToDelete(doc, oldPointElems, _checkedElems);
                     doc.Delete(oldElemsToDel.Select(el => el.Id).ToArray());
 
                     clearedPointEntities = ClearedNewEntities(oldPointElems, _intersectPointEntities);
@@ -100,7 +104,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
 
             if (onlyValidElems.Length == 0)
                 return intersectPointEntities.ToArray();
-            
+
             IntersectPointEntity[] clearedElem = intersectPointEntities
                 .Where(ipe => onlyValidElems.All(ve => !ipe.IntersectPoint.IsAlmostEqualTo(ParseStringToXYZ(ve.get_Parameter(PointCoord_Param).AsString()), 0.05)))
                 .ToArray();
@@ -111,7 +115,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
         /// <summary>
         /// Подготовка списка на удаление для элементов, которые были удалены (по Id)
         /// </summary>
-        public static List<Element> GetOldToDelete(IEnumerable<Element> oldPointElems, IEnumerable<Element> checkedElems)
+        public static List<Element> GetOldToDelete(Document doc, IEnumerable<Element> oldPointElems, IEnumerable<Element> checkedElems)
         {
             List<Element> resultToDel = new List<Element>();
 
@@ -130,6 +134,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 }
 
                 if (checkedElems.Any(e => e.Id.IntegerValue == oldAddedElemId || e.Id.IntegerValue == oldOldElemId))
+                    resultToDel.Add(oldElem);
+
+                // Очистка от ложных элементов, которые могли остаться после оперирования командами Redo/Undo, и как следствие - клэшпоинт остался, а элемента может не быть. 
+                // Блок с очисткой клэшпоинта по существующему элементу но с другим координатами - смотри в ClearedNewEntities блок с проверкой координат
+                if (doc.GetElement(new ElementId(oldAddedElemId)) == null)
                     resultToDel.Add(oldElem);
             }
 

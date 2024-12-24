@@ -139,7 +139,10 @@ namespace KPLN_IOSClasher.Services
                                 .FirstOrDefault(rl => openDoc.Title.Contains(rl.Name.Split(new string[] { ".rvt" }, StringSplitOptions.None)
                                 .FirstOrDefault()));
 
-                            IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterBBox, filterOutline, rLink));
+                            // Если открыто сразу несколько, то линки могут прилететь с другого файла
+                            if (rLink != null)
+                                IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterBBox, filterOutline, rLink));
+                            
                             break;
 
                     }
@@ -417,7 +420,7 @@ namespace KPLN_IOSClasher.Services
                 double levelZCoord = viewLevel.Elevation;
                 return new BoundingBoxXYZ()
                 {
-                    Min = new XYZ(-2000, -2000, levelZCoord - 30),
+                    Min = new XYZ(-2000, -2000, levelZCoord - 10),
                     Max = new XYZ(2000, 2000, levelZCoord + 30),
                 };
             }

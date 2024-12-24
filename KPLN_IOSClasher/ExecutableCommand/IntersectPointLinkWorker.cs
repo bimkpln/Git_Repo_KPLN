@@ -16,6 +16,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// </summary>
     internal class IntersectPointLinkWorker : IntersectPointFamInst, IExecutableCommand
     {
+        /// <summary>
+        /// Имя транзакции для анализа на наличие
+        /// </summary>
+        public static readonly string TransName = "KPLN: Обновление меток коллизий (связи)";
+
         public IntersectPointLinkWorker()
         {
             CultureInfo.CurrentCulture = new CultureInfo("ru-RU");
@@ -29,7 +34,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
             if (uidoc == null)
                 return Result.Cancelled;
 
-            using (Transaction trans = new Transaction(doc, "KPLN: Обновление меток коллизий (связи)"))
+            using (Transaction trans = new Transaction(doc, TransName))
             {
                 trans.Start();
 

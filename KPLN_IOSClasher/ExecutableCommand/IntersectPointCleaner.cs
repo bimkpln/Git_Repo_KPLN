@@ -13,6 +13,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// </summary>
     internal class IntersectPointCleaner : IntersectPointFamInst, IExecutableCommand
     {
+        /// <summary>
+        /// Имя транзакции для анализа на наличие
+        /// </summary>
+        public static readonly string TransName = "KPLN: Очистка меток коллизий";
+        
         private readonly ElementId[] _deletedElems;
 
         public IntersectPointCleaner(IEnumerable<ElementId> deletedElemIDs)
@@ -28,7 +33,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
             if (uidoc == null)
                 return Result.Cancelled;
 
-            using (Transaction trans = new Transaction(doc, "KPLN: Очистка меток коллизий"))
+            using (Transaction trans = new Transaction(doc, TransName))
             {
                 trans.Start();
 

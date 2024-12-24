@@ -67,6 +67,7 @@ namespace KPLN_IOSClasher.Core
                 .Position;
             
             CheckLinkInst = linkInst;
+
             Document linkDoc = CheckLinkInst.GetLinkDocument();
 
             LinkBasePntPosition = new FilteredElementCollector(linkDoc)
@@ -131,18 +132,21 @@ namespace KPLN_IOSClasher.Core
         {
             List<Element> potentialIntersectedElems = new List<Element>();
 
-            Document checkDoc = CheckLinkInst.GetLinkDocument();
-            Outline checkOutline = new Outline(LinkTransfrom.OfPoint(addedElemOutline.MinimumPoint), LinkTransfrom.OfPoint(addedElemOutline.MaximumPoint));
+            if (CheckLinkInst.IsValidObject)
+            {
+                Document checkDoc = CheckLinkInst.GetLinkDocument();
+                Outline checkOutline = new Outline(LinkTransfrom.OfPoint(addedElemOutline.MinimumPoint), LinkTransfrom.OfPoint(addedElemOutline.MaximumPoint));
 
-            BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
-            BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
+                BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
+                BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
 
-            // Подготовка коллекции эл-в пересекаемых и внутри расширенного BoundingBoxXYZ
-            potentialIntersectedElems.AddRange(CurrentDocElemsToCheck
-                .Where(e => bboxIntersectFilter.PassesFilter(checkDoc, e.Id)));
+                // Подготовка коллекции эл-в пересекаемых и внутри расширенного BoundingBoxXYZ
+                potentialIntersectedElems.AddRange(CurrentDocElemsToCheck
+                    .Where(e => bboxIntersectFilter.PassesFilter(checkDoc, e.Id)));
 
-            potentialIntersectedElems.AddRange(CurrentDocElemsToCheck
-                .Where(e => bboxInsideFilter.PassesFilter(checkDoc, e.Id)));
+                potentialIntersectedElems.AddRange(CurrentDocElemsToCheck
+                    .Where(e => bboxInsideFilter.PassesFilter(checkDoc, e.Id)));
+            }
 
             return potentialIntersectedElems.Distinct().ToArray();
         }
