@@ -87,14 +87,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            foreach (Dimension dim in elemColl)
+            foreach (Element elem in elemColl)
             {
-                // Игнорирую чертежные виды
-                if (dim.View == null)
-                    continue;
+                if (!(elem is Dimension dim)) continue;
 
-                if (dim.View.GetType().Equals(typeof(ViewDrafting)))
-                    continue;
+                // Игнорирую чертежные виды
+                if (dim.View == null) continue;
+
+                if (dim.View.GetType().Equals(typeof(ViewDrafting))) continue;
 
                 WPFEntity error = null;
                 double? currentValue = dim.Value;

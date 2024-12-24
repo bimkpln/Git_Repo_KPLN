@@ -169,6 +169,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\CheckCommandError.cs" />
+    <Compile Include="Common\CheckDimension_OpenView.cs" />
     <Compile Include="Common\CheckHolesEntity.cs" />
     <Compile Include="Common\CheckHolesMEPData.cs" />
     <Compile Include="Common\CheckHolesHoleData.cs" />

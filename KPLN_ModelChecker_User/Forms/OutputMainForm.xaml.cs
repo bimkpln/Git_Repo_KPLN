@@ -164,10 +164,16 @@ namespace KPLN_ModelChecker_User.Forms
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ZoomElementCommand(wpfEntity.ElementCollection));
                 }
                 else
+                {
                     if (wpfEntity.Element != null)
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
+                    {
+                        // Для поиска вида размеров - нельзя использовать обработчики событий, поэтому - через отдельный метод
+                        if (wpfEntity.Element is Dimension || wpfEntity.Element is DimensionType) CheckDimension_OpenView.OpenViewForDimensions(_application, wpfEntity.Element);
+                        else KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
+                    }
                     else
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
+                }
             }
         }
 
