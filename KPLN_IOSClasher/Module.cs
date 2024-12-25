@@ -35,6 +35,11 @@ namespace KPLN_IOSClasher
                 || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 return Result.Succeeded;
 #endif
+            // Персональная фильтрация по сотрудникам (далее повесить на БД, пока хардкод)
+            if (ModuleDBWorkerService.CurrentDBUser.Id == 172
+                || ModuleDBWorkerService.CurrentDBUser.Id == 126)
+                return Result.Succeeded;
+
 
             //Подписка на события
             application.ViewActivated += OnViewActivated;
@@ -90,8 +95,18 @@ namespace KPLN_IOSClasher
             View activeView = args.CurrentActiveView;
 
             #region Обновление кэша по сервисам
-            DocController.CurrentDocumentUpdateData(doc);
-            DocController.UpdateIntCheckEntities_Link(doc, activeView);
+            ViewType actViewType = activeView.ViewType;
+            // Если вид НЕ модельный - игнор
+            if (actViewType == ViewType.FloorPlan 
+                || actViewType == ViewType.ThreeD
+                || actViewType == ViewType.CeilingPlan
+                || actViewType == ViewType.Section
+                || actViewType == ViewType.EngineeringPlan
+                || actViewType == ViewType.Elevation)
+            {
+                DocController.CurrentDocumentUpdateData(doc);
+                DocController.UpdateIntCheckEntities_Link(doc, activeView);
+            }
             #endregion
         }
 
@@ -122,8 +137,8 @@ namespace KPLN_IOSClasher
                 || transName.Equals("Повторная загрузка")
                 // Закрыть РН
                 || transName.Equals("Выгрузить связь")
-                // Перетаскивание границы подрезки
-                || transName.Equals("Перенести")
+                // Перетаскивание границы подрезки (главное, чтобы не листах, т.к. там такая же транзакция на перенос границ столбцов спецификаций, текста и пр.)
+                || (transName.Equals("Перенести") && doc.ActiveView != null && doc.ActiveView.ViewType != ViewType.DrawingSheet)
                 // Редактирование границы подрезки
                 || transName.Equals("Принять эскиз"))
             {

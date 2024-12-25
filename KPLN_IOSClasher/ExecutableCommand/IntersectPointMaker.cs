@@ -52,8 +52,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 // Удаляю не актуальные
                 if (oldPointElems.Length != 0)
                 {
+                    // Удаляю не актуальные (если можно их удалить). Проблема с занятами клэшпоинтами приводит к ложным клэшам. В пределах погрешности ок, ведь когда 
+                    // юзер зайдет в модель - он свои клэши почистит (для него эти эл-ты уже не заняты)
                     List<Element> oldElemsToDel = GetOldToDelete(doc, oldPointElems, _checkedElems);
-                    doc.Delete(oldElemsToDel.Select(el => el.Id).ToArray());
+                    ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, oldElemsToDel.Select(el => el.Id).ToArray());
+                    doc.Delete(availableWSElemsId);
 
                     clearedPointEntities = ClearedNewEntities(oldPointElems, _intersectPointEntities);
                 }

@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Shapes;
 
 namespace KPLN_IOSClasher.Core
 {
@@ -70,25 +71,30 @@ namespace KPLN_IOSClasher.Core
 
             Document linkDoc = CheckLinkInst.GetLinkDocument();
 
-            LinkBasePntPosition = new FilteredElementCollector(linkDoc)
+            // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор и аннулирование CheckLinkInst
+            if (linkDoc != null)
+            {
+                LinkBasePntPosition = new FilteredElementCollector(linkDoc)
                 .OfClass(typeof(BasePoint))
                 .Cast<BasePoint>()
                 .FirstOrDefault()
                 .Position;
 
-            // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
-            if (!CheckDocBasePntPosition.IsAlmostEqualTo(LinkBasePntPosition, 0.1) && !LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
-            {
-                XYZ resultVect = CheckDocBasePntPosition - LinkBasePntPosition;
-                Transform difTransform = Transform.CreateTranslation(resultVect);
-                LinkTransfrom = difTransform;
-            }
-            else if (LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
-                LinkTransfrom = linkDoc.ActiveProjectLocation.GetTransform();
-            else
-                LinkTransfrom = CheckDocTransform.Inverse * linkDoc.ActiveProjectLocation.GetTransform();
+                // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
+                if (!CheckDocBasePntPosition.IsAlmostEqualTo(LinkBasePntPosition, 0.1) && !LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
+                {
+                    XYZ resultVect = CheckDocBasePntPosition - LinkBasePntPosition;
+                    Transform difTransform = Transform.CreateTranslation(resultVect);
+                    LinkTransfrom = difTransform;
+                }
+                else if (LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
+                    LinkTransfrom = linkDoc.ActiveProjectLocation.GetTransform();
+                else
+                    LinkTransfrom = CheckDocTransform.Inverse * linkDoc.ActiveProjectLocation.GetTransform();
 
-            SetCurrentDocElemsToCheck(linkDoc);
+                SetCurrentDocElemsToCheck(linkDoc);
+            }
+            else CheckLinkInst = null;
         }
 
         /// <summary>
@@ -132,7 +138,8 @@ namespace KPLN_IOSClasher.Core
         {
             List<Element> potentialIntersectedElems = new List<Element>();
 
-            if (CheckLinkInst.IsValidObject)
+            // CheckLinkInst null - когда в одном ревит несколько моделей одного проекта открыты
+            if (CheckLinkInst != null && CheckLinkInst.IsValidObject)
             {
                 Document checkDoc = CheckLinkInst.GetLinkDocument();
                 Outline checkOutline = new Outline(LinkTransfrom.OfPoint(addedElemOutline.MinimumPoint), LinkTransfrom.OfPoint(addedElemOutline.MaximumPoint));

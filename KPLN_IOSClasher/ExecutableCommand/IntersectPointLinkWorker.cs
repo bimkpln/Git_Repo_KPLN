@@ -31,8 +31,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
 
-            if (uidoc == null)
-                return Result.Cancelled;
+            if (uidoc == null) return Result.Cancelled;
 
             using (Transaction trans = new Transaction(doc, TransName))
             {
@@ -44,9 +43,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 // Обновляю данные по точкам
                 Dictionary<ElementId, IntersectPointEntity> oldLinkPointEntities = CreateIntPntEntities_ByOldPoints(doc, oldPointElems);
 
-                // Удаляю не актуальные
+                // Удаляю не актуальные (если можно их удалить). Проблема с занятами клэшпоинтами приводит к ложным клэшам. В пределах погрешности ок, ведь когда 
+                // юзер зайдет в модель - он свои клэши почистит (для него эти эл-ты уже не заняты)
                 ICollection<ElementId> oldElemsToDel = GetOldToDelete_ByOldPoints(doc, oldLinkPointEntities, oldPointElems);
-                doc.Delete(oldElemsToDel);
+                ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, oldElemsToDel);
+                doc.Delete(availableWSElemsId);
 
                 foreach (ElementId delElId in oldElemsToDel)
                 {
@@ -120,6 +121,10 @@ namespace KPLN_IOSClasher.ExecutableCommand
 
                 RevitLinkInstance linkInst = doc.GetElement(new ElementId(oldPntEntity.LinkInstance_Id)) as RevitLinkInstance;
                 Document linkDoc = linkInst.GetLinkDocument();
+
+                // Если док не подгружен - linkDoc не взять. Просто игнор, до момента подгрузки
+                if (linkDoc == null) continue;
+                
                 // Проверка линка на наличие элемента в модели (если нет - удаляем)
                 if (linkDoc.GetElement(new ElementId(oldPntEntity.OldElement_Id)) == null)
                 {

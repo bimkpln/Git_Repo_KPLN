@@ -139,7 +139,7 @@ namespace KPLN_IOSClasher.Services
                                 .FirstOrDefault(rl => openDoc.Title.Contains(rl.Name.Split(new string[] { ".rvt" }, StringSplitOptions.None)
                                 .FirstOrDefault()));
 
-                            // Если открыто сразу несколько, то линки могут прилететь с другого файла
+                            // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор
                             if (rLink != null)
                                 IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterBBox, filterOutline, rLink));
                             
