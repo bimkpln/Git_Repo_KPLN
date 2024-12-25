@@ -283,17 +283,9 @@ namespace KPLN_Classificator.Forms
                 Button bt = (Button)sender;
                 if (bt.DataContext is ParamValueItem paramValueItem)
                 {
-                    if (paramValueItem.paramValue.Contains("[]"))
-                    {
-                        ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
-                        parameterSelectorForm.ShowDialog();
-                        if (parameterSelectorForm.SelectedMyParameter != null)
-                        {
-                            var regex = new Regex(Regex.Escape("[]"));
-                            paramValueItem.paramValue = regex.Replace(paramValueItem.paramValue, string.Format("[{0}]", parameterSelectorForm.SelectedMyParameter.Name), 1);
-                        }
-
-                    }
+                    ParameterSelectorForm parameterSelectorForm = new ParameterSelectorForm(classificatorForm.mparams);
+                    parameterSelectorForm.ShowDialog();
+                    if (parameterSelectorForm.SelectedMyParameter != null) paramValueItem.paramValue += $"[{parameterSelectorForm.SelectedMyParameter}]";
                 }
             }
         }

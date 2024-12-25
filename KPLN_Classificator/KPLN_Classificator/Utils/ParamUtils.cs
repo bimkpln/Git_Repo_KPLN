@@ -263,7 +263,13 @@ namespace KPLN_Classificator
         public static string GetValueStringOfParam_ByTargetParam(Element elem, string sourceParamName, Parameter targetParam)
         {
             string paramValue = null;
-            Parameter sourceParam = elem.LookupParameter(sourceParamName) ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(sourceParamName);
+
+            Parameter sourceParam;
+            if (elem is ElementType elemType)
+                sourceParam = elem.LookupParameter(sourceParamName) ?? elemType.LookupParameter(sourceParamName);
+            else
+                sourceParam = elem.LookupParameter(sourceParamName) ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(sourceParamName);
+            
             if (sourceParam == null)
             {
                 output.PrintDebug(string.Format("В элементе: \"{0}\" c id: {1} не найден параметр: \"{2}\"", elem.Name, elem.Id, sourceParamName), Output.OutputMessageType.Warning, debug);

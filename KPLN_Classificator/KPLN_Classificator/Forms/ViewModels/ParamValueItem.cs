@@ -33,39 +33,13 @@ namespace KPLN_Classificator.Forms.ViewModels
             {
                 _paramValue = value;
                 NotifyPropertyChanged();
-                if (parent != null)
-                {
-                    parent.checkChanges();
-                    visibleOfFindButton = "Hidden";
-                }
-                if (_paramValue != null && !isParamValueCorrect(_paramValue))
-                {
-                    colourOfValueBack = ColourUtils.WRONG_VALUE;
-                    visibleOfFindButton = "Hidden";
-                }
-                else
-                {
-                    colourOfValueBack = ColourUtils.CORRECT_VALUE;
-                    if (_paramValue.Contains("[]"))
-                    {
-                        visibleOfFindButton = "Visible";
-                    }
-                }
+                parent?.checkChanges();
+                
+                if (_paramValue != null && !isParamValueCorrect(_paramValue)) colourOfValueBack = ColourUtils.WRONG_VALUE;
+                else colourOfValueBack = ColourUtils.CORRECT_VALUE;
             }
         }
         private string _visibleOfFindButton { get; set; } = "Hidden";
-        public string visibleOfFindButton
-        {
-            get
-            {
-                return _visibleOfFindButton;
-            }
-            set
-            {
-                _visibleOfFindButton = value;
-                NotifyPropertyChanged();
-            }
-        }
         public RuleItem parent { get; set; }
         private int _valueNumber { get; set; }
         public int valueNumber
