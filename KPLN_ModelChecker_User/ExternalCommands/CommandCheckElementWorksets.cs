@@ -122,7 +122,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 CheckStatus.Error,
                                 "Ошибка сеток",
                                 $"Ось или уровень с ID: {element.Id} находится не в специальном рабочем наборе",
-                                true,
+                                false,
                                 false,
                                 "Имя рабочего набора для осей и уровней - <..._Оси и уровни>"
                                 ));
@@ -149,7 +149,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             if (!elemWSName.StartsWith("02"))
                             {
-                                result.Add(new WPFEntity(
+                                WPFEntity entity = new WPFEntity(
                                     element,
                                     CheckStatus.Error,
                                     "Ошибка мониторинговых элементов",
@@ -157,7 +157,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                     true,
                                     false,
                                     "Элементы с мониторингом (т.е. скопированные из других файлов) должны находится в рабочих наборах с приставкой '02'"
-                                    ));
+                                    );
+                                entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                                result.Add(entity);
                                 continue;
                             }
                         }
@@ -167,14 +169,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             | elemWSName.StartsWith("#")
                             && !elemWSName.ToLower().Contains("dwg"))
                         {
-                            result.Add(new WPFEntity(
+                            WPFEntity entity = new WPFEntity(
                                 element,
                                 CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для связей",
                                 true,
                                 false
-                                ));
+                                );
+                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                            result.Add(entity);
                             continue;
                         }
 
@@ -182,28 +186,32 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         else if (elemWSName.ToLower().Contains("оси и уровни")
                             | elemWSName.ToLower().Contains("общие уровни и сетки"))
                         {
-                            result.Add(new WPFEntity(
+                            WPFEntity entity = new WPFEntity(
                                 element,
                                 CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для осей и уровней",
                                 true,
                                 false
-                                ));
+                                );
+                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                            result.Add(entity);
                             continue;
                         }
 
                         // Проверка остальных моделируемых элементов на рабочий набор для связей
                         else if (elemWSName.StartsWith("02"))
                         {
-                            result.Add(new WPFEntity(
+                            WPFEntity entity = new WPFEntity(
                                 element,
                                 CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для элементов с монитирнгом",
                                 true,
                                 false
-                                ));
+                                );
+                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                            result.Add(entity);
                             continue;
                         }
                     }

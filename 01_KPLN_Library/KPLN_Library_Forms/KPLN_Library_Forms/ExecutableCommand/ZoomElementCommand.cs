@@ -166,8 +166,8 @@ namespace KPLN_Library_Forms.ExecutableCommand
                 }
             }
 
-            // Вызов команды SelectionBox для спек и других таблиц
-            else if (uidoc.ActiveView is TableView)
+            // Вызов команды SelectionBox для остальных видов
+            else 
             {
                 RevitCommandId selBoxommId = RevitCommandId.LookupPostableCommandId(PostableCommand.SelectionBox);
                 if (app.CanPostCommand(selBoxommId))
