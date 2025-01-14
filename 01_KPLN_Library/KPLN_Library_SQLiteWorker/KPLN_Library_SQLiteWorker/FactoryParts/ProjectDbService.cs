@@ -1,8 +1,6 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
@@ -39,7 +37,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Получить проект по Id
         /// </summary>
-        public DBProject GetDBProject_ByProjectId(int id) => 
+        public DBProject GetDBProject_ByProjectId(int id) =>
             ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBProject.Id)}='{id}';")
@@ -49,10 +47,10 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// Получить активный проект из БД по открытому проекту Ревит
         /// </summary>
         /// <param name="fileName">Имя открытого файла Ревит</param>
-        public DBProject GetDBProject_ByRevitDocFileName(string fileName) => 
+        public IEnumerable<DBProject> GetDBProject_ByRevitDocFileName(string fileName) =>
             GetDBProjects()
-            .FirstOrDefault(p => 
-                fileName.Contains(p.MainPath) 
+            .Where(p =>
+                fileName.Contains(p.MainPath)
                 || fileName.Contains(p.RevitServerPath)
                 || fileName.Contains(p.RevitServerPath2)
                 || fileName.Contains(p.RevitServerPath3)
