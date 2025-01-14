@@ -118,7 +118,18 @@ namespace KPLN_Looker.Services
         /// </summary>
         /// <param name="fileName">Имя открытого файла Ревит</param>
         /// <returns></returns>
-        internal DBProject Get_DBProjectByRevitDocFile(string fileName) => _projectDbService.GetDBProject_ByRevitDocFileName(fileName);
+        internal DBProject Get_DBProjectByRevitDocFile(string fileName)
+        {
+            DBProject[] filteredPrjs = _projectDbService
+                .GetDBProject_ByRevitDocFileName(fileName)
+                .ToArray();
+
+            DBProject result = filteredPrjs
+                .OrderByDescending(prj => GetMatchingSegmentsCount(fileName, prj.MainPath))
+                .FirstOrDefault();
+
+            return result;
+        }
 
         /// <summary>
         /// Получить активный документ из БД по открытому проекту Ревит и по проекту из БД
@@ -177,6 +188,28 @@ namespace KPLN_Looker.Services
         {
             _dbProjectMatrixColl = null;
             _dBRevitDialogs = null;
+        }
+
+        private static int GetMatchingSegmentsCount(string path1, string path2)
+        {
+            var segments1 = path1.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var segments2 = path2.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
+            int matchingCount = 0;
+
+            for (int i = 0; i < Math.Min(segments1.Length, segments2.Length); i++)
+            {
+                if (segments1[i] == segments2[i])
+                {
+                    matchingCount++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return matchingCount;
         }
     }
 }

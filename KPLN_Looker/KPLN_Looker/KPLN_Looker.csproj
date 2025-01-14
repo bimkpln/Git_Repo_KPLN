@@ -65,10 +65,6 @@
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="KPLN_Loader, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
@@ -103,6 +99,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -113,6 +113,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -127,6 +131,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -137,6 +145,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
