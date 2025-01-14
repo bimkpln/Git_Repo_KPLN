@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Plumbing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Shapes;
@@ -81,13 +83,14 @@ namespace KPLN_IOSClasher.Core
                 .Position;
 
                 // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
-                if (!CheckDocBasePntPosition.IsAlmostEqualTo(LinkBasePntPosition, 0.1) && !LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
+                if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1 
+                    && Math.Abs(CheckDocBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) > 0.1)
                 {
                     XYZ resultVect = CheckDocBasePntPosition - LinkBasePntPosition;
                     Transform difTransform = Transform.CreateTranslation(resultVect);
                     LinkTransfrom = difTransform;
                 }
-                else if (LinkBasePntPosition.IsAlmostEqualTo(new XYZ(0, 0, 0), 0.1))
+                else if (Math.Abs(LinkBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) < 0.1)
                     LinkTransfrom = linkDoc.ActiveProjectLocation.GetTransform();
                 else
                     LinkTransfrom = CheckDocTransform.Inverse * linkDoc.ActiveProjectLocation.GetTransform();

@@ -109,7 +109,8 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 return intersectPointEntities.ToArray();
 
             IntersectPointEntity[] clearedElem = intersectPointEntities
-                .Where(ipe => onlyValidElems.All(ve => !ipe.IntersectPoint.IsAlmostEqualTo(ParseStringToXYZ(ve.get_Parameter(PointCoord_Param).AsString()), 0.05)))
+                .Where(ipe =>
+                    onlyValidElems.All(ve => Math.Abs(ipe.IntersectPoint.DistanceTo(ParseStringToXYZ(ve.get_Parameter(PointCoord_Param).AsString()))) > 0.05))
                 .ToArray();
 
             return clearedElem;

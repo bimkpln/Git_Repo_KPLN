@@ -14,9 +14,22 @@ namespace KPLN_IOSClasher
 {
     public class Module : IExternalModule
     {
+        /// <summary>
+        /// Общий фильтр для просеивания элементов модели (новых и отредактированных)
+        /// </summary>
+        private static Func<Element, bool> _elemFilterFunc;
+
         public Module()
         {
             ModuleDBWorkerService = new DBWorkerService();
+
+            _elemFilterFunc = (el) => 
+                el.Category != null
+                && !(el is ElementType)
+                && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId)
+                // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами
+                && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
+                    || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"));
         }
 
         public static DBWorkerService ModuleDBWorkerService { get; private set; }
@@ -37,6 +50,8 @@ namespace KPLN_IOSClasher
 #endif
             // Персональная фильтрация по сотрудникам (далее повесить на БД, пока хардкод)
             if (ModuleDBWorkerService.CurrentDBUser.Id == 172
+                || ModuleDBWorkerService.CurrentDBUser.Id == 71
+                || ModuleDBWorkerService.CurrentDBUser.Id == 111
                 || ModuleDBWorkerService.CurrentDBUser.Id == 126)
                 return Result.Succeeded;
 
@@ -97,7 +112,7 @@ namespace KPLN_IOSClasher
             #region Обновление кэша по сервисам
             ViewType actViewType = activeView.ViewType;
             // Если вид НЕ модельный - игнор
-            if (actViewType == ViewType.FloorPlan 
+            if (actViewType == ViewType.FloorPlan
                 || actViewType == ViewType.ThreeD
                 || actViewType == ViewType.CeilingPlan
                 || actViewType == ViewType.Section
@@ -105,6 +120,12 @@ namespace KPLN_IOSClasher
                 || actViewType == ViewType.Elevation)
             {
                 DocController.CurrentDocumentUpdateData(doc);
+#if Revit2020 || Revit2023
+                // Если не анализируется, то и линки не трогаю
+                if (!DocController.IsDocumentAnalyzing)
+                    return;
+#endif
+
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
             #endregion
@@ -128,7 +149,9 @@ namespace KPLN_IOSClasher
             string transName = args.GetTransactionNames().FirstOrDefault();
             // Обновляю по линкам, если были транзакции
             if (// Рунчая загрузка связи
-                transName.Equals("Загрузить связь")
+                transName.Equals("Связать с проектом Revit")
+                // Рунчая загрузка связи
+                || transName.Equals("Загрузить связь")
                 // Выгрузить линк для всех
                 || transName.Equals("Выгрузить связь")
                 // Выгрузить линк для меня
@@ -155,13 +178,13 @@ namespace KPLN_IOSClasher
             Element[] addedLinearElems = args
                 .GetAddedElementIds()
                 .Select(id => doc.GetElement(id))
-                .Where(el => el.Category != null && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
+                .Where(_elemFilterFunc)
                 .ToArray();
 
             Element[] modifyedLinearElems = args
                 .GetModifiedElementIds()
                 .Select(id => doc.GetElement(id))
-                .Where(el => el.Category != null && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
+                .Where(_elemFilterFunc)
                 .ToArray();
 
             ElementId[] deletedLinearElems = args

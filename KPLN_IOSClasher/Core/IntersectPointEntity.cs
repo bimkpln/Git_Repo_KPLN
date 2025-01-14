@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using System;
 using System.Collections.Generic;
 
 namespace KPLN_IOSClasher.Core
@@ -65,7 +66,7 @@ namespace KPLN_IOSClasher.Core
             if (x.IntersectPoint == null || y.IntersectPoint == null)
                 return false;
 
-            return x.IntersectPoint.IsAlmostEqualTo(y.IntersectPoint, _tolerance);
+            return Math.Abs(x.IntersectPoint.DistanceTo(y.IntersectPoint)) > _tolerance;
         }
 
         public int GetHashCode(IntersectPointEntity obj)

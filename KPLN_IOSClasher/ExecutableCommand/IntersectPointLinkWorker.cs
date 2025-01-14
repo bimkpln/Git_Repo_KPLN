@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.Services;
@@ -167,7 +168,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
                     if (docEntToCheck != null && oldPntEntity.AddedElement_Id == docEntToCheck.AddedElement_Id && oldPntEntity.OldElement_Id == docEntToCheck.OldElement_Id)
                     {
                         // Анализ на совпадение по координатам, если его нет ДЛЯ ВСЕХ из коллекции - удаляем
-                        if (!docIntPntEntities.Any(ent => docEntToCheck.IntersectPoint.IsAlmostEqualTo(oldPoint, 0.001)))
+                        if (!docIntPntEntities.Any(ent => Math.Abs(docEntToCheck.IntersectPoint.DistanceTo(oldPoint)) < 0.05))
                             resultToDel.Add(kvp.Key);
                     }
                 }
