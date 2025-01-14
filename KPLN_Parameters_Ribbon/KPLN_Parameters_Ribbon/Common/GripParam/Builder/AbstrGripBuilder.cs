@@ -119,10 +119,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public List<InstanceElemData> AllElements
         {
-            get 
-            { 
+            get
+            {
                 _allElements = ElemsOnLevel.Concat(ElemsByHost).Concat(ElemsUnderLevel).Concat(StairsElems).ToList();
-                return _allElements; 
+                return _allElements;
             }
         }
 
@@ -131,13 +131,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public int AllElementsCount
         {
-            get 
+            get
             {
                 _allElementsCount = AllElements.Count;
                 if (_allElementsCount == 0)
                     throw new Exception("KPLN: Ошибка при взятии элементов из проекта. Таких категорий нет, или имя проекта не соответсвует ВЕР!\n");
-                
-                return _allElementsCount; 
+
+                return _allElementsCount;
             }
         }
 
@@ -146,12 +146,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public int HostElementsCount
         {
-            get 
+            get
             {
                 if (_hostElementsCount == 0)
                     _hostElementsCount = ElemsByHost.Count;
-                
-                return _hostElementsCount; 
+
+                return _hostElementsCount;
             }
         }
 
@@ -168,8 +168,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Коллекция элементов, которые при анализе выдали ошибку
         /// </summary>
-        public List<GripParamError> ErrorElements 
-        { 
+        public List<GripParamError> ErrorElements
+        {
             get => _errorElements;
             private set
             {
@@ -196,7 +196,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             int errorCount = AllElementsCount - availableWSElemsId.Count;
             if (errorCount > 0)
                 throw new GripParamExection($"Возможность изменения ограничена для {errorCount} элементов. Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы\n");
-                
+
             Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
         }
 
@@ -209,9 +209,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Маркер для кастомной настройка записи данных для пректа СЕТУНЬ
             bool isSET = Doc.Title.Contains("СЕТ_1");
             bool isOMK3 = Doc.Title.Contains("ОМК3");
-            
+            bool isIZML = Doc.Title.Contains("ИЗМЛ");
+
             // Спец сортировка для проектов, в которой СТЛ анализируется первым, и перезаписывается данными с корпусов
-            if (isSET )
+            if (isSET)
             {
                 SectDataSolids.Sort((x, y) =>
                 {
@@ -236,8 +237,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 Parameter instElemDataLvlParam = instElemData.CurrentElem.LookupParameter(LevelParamName);
 
                 // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
-                if (instElemData.CurrentElem is FamilyInstance famInst 
-                    && famInst.SuperComponent != null 
+                if (instElemData.CurrentElem is FamilyInstance famInst
+                    && famInst.SuperComponent != null
                     && (instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
                 {
                     ErrorElements.Add(new GripParamError(
@@ -245,8 +246,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                             "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
                     continue;
                 }
-                
-                InstanceGeomData instGeomData = (InstanceGeomData)instElemData 
+
+                InstanceGeomData instGeomData = (InstanceGeomData)instElemData
                     ?? throw new GripParamExection(
                         $"Элемент {instElemData.CurrentElem.Id} был не правильно назначен (как элемент без геометрии. Обратись к разработчику\n");
 
@@ -277,7 +278,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         instElemDataLvlParam.Set($"{maxIntersectInstance.CurrentLevelData.CurrentLevelNumber}_этаж");
 
                     string tempSectData = maxIntersectInstance.CurrentLevelData.CurrentSectionNumber;
-                    if(tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
+                    if (tempLvlData.Contains("-") && !tempSectData.Contains("СТЛ"))
                     {
                         if (tempSectData.Contains("К1"))
                             instElemDataSectParam.Set("Корпус 1");
@@ -307,12 +308,24 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     else if (tempSectData.Contains("СТЛ"))
                         instElemDataSectParam.Set("Паркинг");
                 }
+                // Кастомная настройка записи данных для пректа ФСК_Измайловский
+                else if (isIZML)
+                {
+                    instElemDataLvlParam.Set(maxIntersectInstance.CurrentLevelData.CurrentLevelNumber);
+
+                    string sectNumb = maxIntersectInstance.CurrentLevelData.CurrentSectionNumber;
+                    char? firstDigit = sectNumb.FirstOrDefault(char.IsDigit);
+                    if (firstDigit.HasValue)
+                        instElemDataSectParam.Set($"{firstDigit}");
+                    else
+                        instElemDataSectParam.Set(sectNumb);
+                }
                 else
                 {
                     instElemDataLvlParam.Set(maxIntersectInstance.CurrentLevelData.CurrentLevelNumber);
                     instElemDataSectParam.Set(maxIntersectInstance.CurrentLevelData.CurrentSectionNumber);
                 }
-                
+
                 instElemData.IsEmptyData = false;
 
                 pb.Update(++PbCounter, "Поиск по геометрии");
@@ -404,7 +417,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     instElemDataLvlParam.Set(downLevelAndGridSolid.CurrentLevelData.CurrentLevelNumber);
                     instElemData.IsEmptyData = false;
                 }
-                
+
 
                 pb.Update(++PbCounter, "Поиск по геометрии");
             }
@@ -422,7 +435,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 pb.Update(PbCounter, "Анализ элементов на основе");
                 return;
             }
-            
+
             foreach (InstanceElemData instElemData in ElemsByHost)
             {
                 Element elem = instElemData.CurrentElem;
@@ -493,7 +506,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
 
                 Parameter canReValueParam = elem.get_Parameter(_revalueParamGuid);
-                
+
                 return canReValueParam != null && canReValueParam.HasValue && canReValueParam.AsInteger() != 1;
             });
         }
@@ -584,14 +597,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             LevelAndGridSolid result = null;
             double maxIntersectValue = 0;
-            
+
             foreach (LevelAndGridSolid levelAndGridSolid in SectDataSolids)
             {
                 // Игнорирую заведомо отличающиеся по отметкам секции (9-10 м)
                 if (Math.Abs(instGeomData.MinAndMaxElevation[0] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[0]) > 30
                     && Math.Abs(instGeomData.MinAndMaxElevation[1] - levelAndGridSolid.CurrentLevelData.MinAndMaxLvlPnts[1]) > 30)
                     continue;
-                
+
                 double tempIntersectValue = 0;
                 try
                 {
@@ -602,13 +615,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                         // Проверяю положение в секции
                         Solid checkIntersectSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
-                            instSolid, 
-                            levelAndGridSolid.CurrentSolid, 
+                            instSolid,
+                            levelAndGridSolid.CurrentSolid,
                             BooleanOperationsType.Intersect);
 
-                        if (checkIntersectSectSolid == null || !(checkIntersectSectSolid.Volume > 0)) 
+                        if (checkIntersectSectSolid == null || !(checkIntersectSectSolid.Volume > 0))
                             continue;
-                        
+
                         tempIntersectValue += Math.Round(checkIntersectSectSolid.Volume, 10);
                     }
 

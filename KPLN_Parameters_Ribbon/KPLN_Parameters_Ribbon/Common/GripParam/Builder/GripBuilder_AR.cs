@@ -97,7 +97,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
                 .Cast<FamilyInstance>()
-                .Where(x => !x.Symbol.FamilyName.StartsWith("199_") && !x.Symbol.FamilyName.Equals("ASML_АР_Шахта"))
+                //.Where(x => !x.Symbol.FamilyName.StartsWith("199_") && !x.Symbol.FamilyName.Equals("ASML_АР_Шахта"))
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Обощенные модели"
@@ -108,6 +108,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => 
                     !x.Symbol.FamilyName.StartsWith("ClashPoint")
                     && !x.Symbol.FamilyName.StartsWith("500_"))
+                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+
+            // Семейства "Ограждения"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_StairsRailing)
+                .Cast<FamilyInstance>()
                 .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
 
             // Семейства "Сантехнические приборы"
