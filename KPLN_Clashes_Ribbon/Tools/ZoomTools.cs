@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,11 @@ namespace KPLN_Clashes_Ribbon.Tools
             XYZ offsetMax = new XYZ(5, 5, 1);
             
             if (!(uidoc.ActiveView is View3D activeView))
-                throw new Exception("Расставлять метки можно тоько на 3D-виде. Открой и подготовь 3D-вид");
+            {
+                UserDialog ud = new UserDialog("Внимание", "Расставлять метки можно тоько на 3D-виде. Открой 3D-вид");
+                ud.ShowDialog();
+                return;
+            }
 
             ViewFamily activeViewFamily = ViewFamily.Invalid;
             try

@@ -27,7 +27,7 @@ namespace KPLN_Clashes_Ribbon
             AddPushButtonDataInPanel(
                 "NWC проверки",
                 "Менеджер\nпроверок",
-                "Утилита для работы с отчетами NavisWorks.",
+                "Утилита для работы с отчетами Navisworks.",
                 string.Format(
                     "Осуществляет поиск коллизий по координатам из Navisworks.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,

@@ -28,7 +28,7 @@ namespace KPLN_Clashes_Ribbon.Forms
     public partial class ReportManager : Window
     {
         private readonly DBProject _project;
-        private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
+        private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
         public ReportManager(DBProject project)
         {
@@ -146,7 +146,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                                     FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
 
                                     //Создаю БД под item и публикую в него данные
-                                    SQLiteService_ReportItemsDB sqliteService_ReportItemsDB = new SQLiteService_ReportItemsDB(db_FI.FullName);
+                                    Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportItemsDB = new Services.SQLite.SQLiteService_ReportItemsDB(db_FI.FullName);
                                     Task fiWorkTask = Task.Run(() =>
                                     {
                                         sqliteService_ReportItemsDB.CreateDbFile_ByReports();

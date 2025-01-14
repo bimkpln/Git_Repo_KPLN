@@ -38,7 +38,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                         app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId> { element.Id });
                     }
                     else
-                        TaskDialog.Show("Внимание!", "Данный элемент не найден! Возможно, элемент был удален, или замоделирован заново, что привело к замене id.");
+                        TaskDialog.Show("Внимание!", "Данный элемент не найден! Либо это элемент из связи, либо элемент был удален/замоделирован заново, что привело к удалению/замене id.");
                     t.Commit();
 
                     return Result.Succeeded;
@@ -56,6 +56,9 @@ namespace KPLN_Clashes_Ribbon.Commands
         /// <returns>Да - элемент из связи; Нет - элемент из открытого проекта</returns>
         private bool ElementCheckErrorFromInfoParse(Document doc, Element element)
         {
+            if (element == null)
+                return false;
+
             List<string> infosList = _elInfo.Split('➜').ToList();
 
             // Тонкий отлов линков в отчете, при условии, что отчет идет в формате: xxx.nwc➜xxy.rvt (nwc всегда основной файл, rvt - это уже линк)

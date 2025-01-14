@@ -178,10 +178,7 @@ namespace KPLN_BIMTools_Ribbon
             button.LargeImage = PngImageSource(imageName);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
 
-            if (avclass)
-            {
-                button.AvailabilityClassName = typeof(StaticAvailable).FullName;
-            }
+            if (avclass) button.AvailabilityClassName = typeof(StaticAvailable).FullName;
         }
 
         /// <summary>

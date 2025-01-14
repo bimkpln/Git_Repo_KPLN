@@ -33,7 +33,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private string _userLast;
         private Source.Source _source;
         private SolidColorBrush _fill = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
-        private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
+        private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
         #region Данные из БД
         [Key]
@@ -289,7 +289,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             int max = 0;
             int done = 0;
             int delegated = 0;
-            SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new SQLiteService_ReportItemsDB(PathToReportInstance);
+            Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(PathToReportInstance);
             foreach (ReportItem ri in sqliteService_ReportInstanceDB.GetAllReporItems())
             {
                 max++;

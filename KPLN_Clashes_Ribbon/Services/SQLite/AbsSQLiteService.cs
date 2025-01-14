@@ -5,7 +5,7 @@ using System.Data;
 using System.Data.SQLite;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
-namespace KPLN_Clashes_Ribbon.Services
+namespace KPLN_Clashes_Ribbon.Services.SQLite
 {
     public abstract class AbsSQLiteService
     {

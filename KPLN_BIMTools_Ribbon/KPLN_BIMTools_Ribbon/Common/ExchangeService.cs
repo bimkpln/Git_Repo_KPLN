@@ -221,6 +221,8 @@ namespace KPLN_BIMTools_Ribbon.Common
                                         Logger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
                                 }
                             }
+                            // Все равно добавляю 1, чтобы попало в отчет
+                            else CountSourceDocs++;
                         }
                     }
 

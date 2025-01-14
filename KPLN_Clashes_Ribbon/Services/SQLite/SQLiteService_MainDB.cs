@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
-namespace KPLN_Clashes_Ribbon.Services
+namespace KPLN_Clashes_Ribbon.Services.SQLite
 {
     /// <summary>
     /// Личный сервис по работе с общей БД (которая хранит ссылки на отчеты и основную информацию)

@@ -2,7 +2,6 @@
 using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
-using KPLN_Clashes_Ribbon.Services;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -27,9 +26,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
         private readonly Report _currentReport;
-        private readonly SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
+        private readonly Services.SQLite.SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
         private readonly ReportManager _reportManager;
-        private readonly SQLiteService_MainDB _sqliteService_MainDB = new SQLiteService_MainDB();
+        private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
         private string _conflictDataTBx = string.Empty;
         private string _idDataTBx = string.Empty;
@@ -39,8 +38,8 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             _currentReport = report;
             _reportManager = reportManager;
-            
-            _sqliteService_ReportInstanceDB = new SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
+
+            _sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             if (isEnabled)
@@ -190,7 +189,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 if (report.Status == status)
                     AddToFilteredInstancesColl_ByUserFilterData(report);
-                else 
+                else
                     FilteredInstancesColl.Remove(report);
             }
         }
@@ -224,15 +223,15 @@ namespace KPLN_Clashes_Ribbon.Forms
             else
             {
                 bool checkConflData = !isEmptyConflData && report.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0;
-                bool checkConflictMetaData = !isEmptyConflictMetaData 
-                    && (report.Element_1_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0 
+                bool checkConflictMetaData = !isEmptyConflictMetaData
+                    && (report.Element_1_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                         || report.Element_2_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
-                bool checkIDData = !isEmptyIDData 
+                bool checkIDData = !isEmptyIDData
                     && (report.Element_1_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                         || report.Element_2_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0)
                     || (report.SubElements.Select(se => se.Element_1_Id.ToString()).Contains(_idDataTBx)
                         || report.SubElements.Select(se => se.Element_2_Id.ToString()).Contains(_idDataTBx));
-                    
+
                 if (checkConflData || checkConflictMetaData || checkIDData)
                 {
                     if (!FilteredInstancesColl.Contains(report))

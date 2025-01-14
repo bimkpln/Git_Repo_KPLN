@@ -4,7 +4,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{A263AB27-7745-4848-BEBB-C31B05CCB996}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -17,25 +17,29 @@
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
     <OutputPath>bin\Debug\2020\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;Debug2020</DefineConstants>
     <Optimize>false</Optimize>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
+    <ErrorReport>prompt</ErrorReport>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
     <OutputPath>bin\Debug\2023\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;Debug2023</DefineConstants>
     <Optimize>false</Optimize>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
+    <ErrorReport>prompt</ErrorReport>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
@@ -43,8 +47,25 @@
     <Optimize>true</Optimize>
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\2023\</OutputPath>
+    <DefineConstants>Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020_ExtraNet|x64'">
+    <OutputPath>..\..\SetupFiles\Revit\1.Common\KPLN\2020_ExtraNet\KPLN_Loader\Modules\Clashes\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023_ExtraNet|x64'">
+    <OutputPath>..\..\SetupFiles\Revit\1.Common\KPLN\2023_ExtraNet\KPLN_Loader\Modules\Clashes\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
     <Optimize>true</Optimize>
     <PlatformTarget>x64</PlatformTarget>
@@ -64,6 +85,22 @@
       <HintPath>packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Google.Apis, Version=1.68.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.1.68.0\lib\net462\Google.Apis.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Google.Apis.Auth, Version=1.68.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.Auth.1.68.0\lib\net462\Google.Apis.Auth.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Google.Apis.Core, Version=1.68.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.Core.1.68.0\lib\net462\Google.Apis.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Google.Apis.Sheets.v4, Version=1.68.0.3568, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.Sheets.v4.1.68.0.3568\lib\net462\Google.Apis.Sheets.v4.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="HtmlAgilityPack, Version=1.11.66.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
       <HintPath>packages\HtmlAgilityPack.1.11.66\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>False</Private>
@@ -80,12 +117,19 @@
       <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Buffers.4.4.0\lib\netstandard2.0\System.Buffers.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+    <Reference Include="System.CodeDom, Version=7.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.CodeDom.7.0.0\lib\net462\System.CodeDom.dll</HintPath>
     </Reference>
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -102,6 +146,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Memory.4.5.3\lib\netstandard2.0\System.Memory.dll</HintPath>
       <Private>False</Private>
@@ -163,7 +208,31 @@
         </Reference>
       </ItemGroup>
     </When>
+    <When Condition=" '$(Configuration)'=='Revit2020_ExtraNet' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2023_ExtraNet' ">
       <ItemGroup>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
@@ -205,10 +274,11 @@
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\GoogleTabs\GoogleUtils.cs" />
     <Compile Include="Services\MainDB_Enumerator.cs" />
-    <Compile Include="Services\AbsSQLiteService.cs" />
-    <Compile Include="Services\SQLiteService_ReportItemsDB.cs" />
-    <Compile Include="Services\SQLiteService_MainDB.cs" />
+    <Compile Include="Services\SQLite\AbsSQLiteService.cs" />
+    <Compile Include="Services\SQLite\SQLiteService_ReportItemsDB.cs" />
+    <Compile Include="Services\SQLite\SQLiteService_MainDB.cs" />
     <Compile Include="Source\Source.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
     <Compile Include="Tools\SystemTools.cs" />
@@ -257,6 +327,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="credentials.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
     <None Include="Source\RevitData\2020\ClashPoint.rfa" />
     <None Include="Source\RevitData\2023\ClashPoint.rfa" />
@@ -274,13 +347,22 @@
   <Import Project="packages\EntityFramework.6.4.4\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.4.4\build\EntityFramework.targets')" />
   <Import Project="packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <PropertyGroup>
-    <PreBuildEvent>IF "$(ConfigurationName)" == "Debug" (
+    <PreBuildEvent>IF "$(ConfigurationName)" == "Debug2020" (
     xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+)
+IF "$(ConfigurationName)" == "Debug2023" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
 )
 IF "$(ConfigurationName)" == "Revit2020" (
     xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2020\"
 )
+IF "$(ConfigurationName)" == "Revit2020_ExtraNet" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2020\"
+)
 IF "$(ConfigurationName)" == "Revit2023" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+)
+IF "$(ConfigurationName)" == "Revit2023_ExtraNet" (
     xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
 )</PreBuildEvent>
   </PropertyGroup>

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace KPLN_Clashes_Ribbon.Services
+namespace KPLN_Clashes_Ribbon.Services.SQLite
 {
     /// <summary>
     /// Личный сервис по работе с БД инстанса отчета

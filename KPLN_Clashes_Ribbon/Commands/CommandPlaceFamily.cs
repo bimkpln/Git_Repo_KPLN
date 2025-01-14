@@ -16,21 +16,27 @@ namespace KPLN_Clashes_Ribbon.Commands
 {
     public class CommandPlaceFamily : IExecutableCommand
     {
-        private ReportWindow ReportWindow { get; }
+        private static readonly string _familyName = "ClashPoint";
+        private static FamilySymbol _intersectFamSymb;
+
+        private readonly ReportWindow _reportWindow;
+
+        private readonly XYZ _point;
+        private readonly int _id1;
+        private readonly string _elementInfo1;
+        private readonly int _id2;
+        private readonly string _elementInfo2;
+
         public CommandPlaceFamily(XYZ point, int id1, string info1, int id2, string info2, ReportWindow window)
         {
-            ReportWindow = window;
-            Id1 = id1;
-            ElementInfo1 = info1;
-            Id2 = id2;
-            ElementInfo2 = info2;
-            Point = new XYZ(point.X * 3.28084, point.Y * 3.28084, point.Z * 3.28084);
+            _reportWindow = window;
+            _id1 = id1;
+            _elementInfo1 = info1;
+            _id2 = id2;
+            _elementInfo2 = info2;
+            _point = new XYZ(point.X * 3.28084, point.Y * 3.28084, point.Z * 3.28084);
         }
-        private XYZ Point { get; set; }
-        private int Id1 { get; set; }
-        private string ElementInfo1 { get; set; }
-        private int Id2 { get; set; }
-        private string ElementInfo2 { get; set; }
+        
         public Result Execute(UIApplication app)
         {
             Document doc = app.ActiveUIDocument.Document;
@@ -40,8 +46,8 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (app.ActiveUIDocument != null)
                 {
                     // Проверка на наличие элемента в файле
-                    Element element1 = doc.GetElement(new ElementId(Id1));
-                    Element element2 = doc.GetElement(new ElementId(Id2));
+                    Element element1 = doc.GetElement(new ElementId(_id1));
+                    Element element2 = doc.GetElement(new ElementId(_id2));
                     if (element1 == null && element2 == null)
                     {
                         TaskDialog.Show("Внимание!", "Все элементы в связи. Метку необходимо расставлять в документах, где элемент присутсвует (см. информацию об элементах отчета)");
@@ -53,14 +59,14 @@ namespace KPLN_Clashes_Ribbon.Commands
                     bool el2 = true;
                     if (element1 != null)
                     {
-                        if (!ElementInfo1.Contains(element1.Name) && !ElementInfo2.Contains(element1.Name))
+                        if (!_elementInfo1.Contains(element1.Name) && !_elementInfo2.Contains(element1.Name))
                         {
                             el1 = false;
                         }
                     }
                     if (element2 != null)
                     {
-                        if (!ElementInfo1.Contains(element2.Name) && !ElementInfo2.Contains(element2.Name))
+                        if (!_elementInfo1.Contains(element2.Name) && !_elementInfo2.Contains(element2.Name))
                         {
                             el2 = false;
                         }
@@ -72,30 +78,41 @@ namespace KPLN_Clashes_Ribbon.Commands
                         return Result.Cancelled;
                     }
                     
-                    Transaction t = new Transaction(doc, "Указатель");
-                    XYZ transformed_location = doc.ActiveProjectLocation.GetTotalTransform().OfPoint(Point);
-                    t.Start();
-
-                    foreach (FamilyInstance instance in new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance)).WhereElementIsNotElementType().ToElements())
+                    using (Transaction t = new Transaction(doc, "Указатель"))
                     {
-                        try
-                        {
-                            if (instance.Symbol.FamilyName == "ClashPoint")
-                            {
-                                doc.Delete(instance.Id);
-                            }
-                        }
-                        catch (Exception) { }
-                    }
-                    FamilyInstance createdinstance = CreateFamilyInstance(doc, transformed_location);
-                    uidoc.Selection.SetElementIds(new List<ElementId>() { createdinstance.Id });
+                        t.Start();
 
-                    if (createdinstance != null) 
-                        ReportWindow.OnClosingActions.Add(new CommandRemoveInstance(doc, createdinstance));
+                        // Чистка от старых экз.
+                        FamilyInstance[] oldFamInsOfGM = new FilteredElementCollector(doc)
+                            .OfCategory(BuiltInCategory.OST_GenericModel)
+                            .Where(el => el is FamilyInstance famInst && famInst.Symbol.FamilyName == _familyName)
+                            .Cast<FamilyInstance>()
+                            .ToArray();
+                        ICollection<ElementId> availableWSOldElemsId = WorksharingUtils.CheckoutElements(doc, oldFamInsOfGM.Select(el => el.Id).ToArray());
+                        doc.Delete(availableWSOldElemsId);
+
+                        // Создание новых
+                        XYZ transformed_location = doc.ActiveProjectLocation.GetTotalTransform().OfPoint(_point);
+                        FamilyInstance createdinstance = CreateFamilyInstance(doc, transformed_location);
                     
-                    ZoomTools.ZoomElement(createdinstance.get_BoundingBox(null), app.ActiveUIDocument);
+                        // Выделяю элементы пересечения в модели
+                        if (element1 != null && element2 != null)
+                            uidoc.Selection.SetElementIds(new List<ElementId>() { element1.Id, element2.Id });
+                        else if (element1 != null)
+                            uidoc.Selection.SetElementIds(new List<ElementId>() { element1.Id });
+                        else if (element2 != null)
+                            uidoc.Selection.SetElementIds(new List<ElementId>() { element2.Id });
+                        // Не должно происходить, но для стабильности добавил
+                        else
+                            uidoc.Selection.SetElementIds(new List<ElementId>() { createdinstance.Id });
+
+                        if (createdinstance != null) 
+                            _reportWindow.OnClosingActions.Add(new CommandRemoveInstance(doc, createdinstance));
                     
-                    t.Commit();
+                        ZoomTools.ZoomElement(createdinstance.get_BoundingBox(null), app.ActiveUIDocument);
+                    
+                        t.Commit();
+                    }
                 }
                 return Result.Succeeded;
             }
@@ -105,79 +122,101 @@ namespace KPLN_Clashes_Ribbon.Commands
                 return Result.Failed;
             }
         }
-        public static List<Level> GetLevels(Document doc)
+        /// <summary>
+        /// Получить коллекцию ВСЕХ уровней проекта
+        /// </summary>
+        public static Level[] GetLevels(Document doc)
         {
-            List<Level> instances = new List<Level>();
-            foreach (Element e in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements())
-            {
-                try
-                {
-                    instances.Add(e as Level);
-                }
-                catch (Exception) { }
-            }
+            Level[] instances = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Levels)
+                .WhereElementIsNotElementType()
+                .Cast<Level>()
+                .ToArray();
+
             return instances;
         }
+
+        /// <summary>
+        ///  Поиск ближайшего подходящего уровня
+        /// </summary>
         private static Level GetNearestLevel(Document doc, double elevation)
         {
-            Level l = null;
-            double difference = 999999;
-            foreach (Element lvl in GetLevels(doc))
+            Level result = null;
+
+            double resultDistance = 999999;
+            foreach (Level lvl in GetLevels(doc))
             {
-                if (l == null)
+                double tempDistance = Math.Abs(lvl.Elevation - elevation);
+                if (Math.Abs(lvl.Elevation - elevation) < resultDistance)
                 {
-                    l = lvl as Level;
-                    difference = Math.Abs(l.Elevation - elevation);
-                    continue;
-                }
-                if (Math.Abs((lvl as Level).Elevation - elevation) < difference)
-                {
-                    l = lvl as Level;
-                    difference = Math.Abs(l.Elevation - elevation);
+                    result = lvl;
+                    resultDistance = tempDistance;
                 }
             }
-            return l;
+            return result;
         }
-        
-        private static FamilyInstance CreateFamilyInstance(Document doc, XYZ position)
+
+        private static FamilyInstance CreateFamilyInstance(Document doc, XYZ point)
         {
-            GetFamilySymbol(doc);
-            Level level = GetNearestLevel(doc, position.Z);
-            if (level == null)
-            {
-                throw new Exception("В проекте отсутсвуют уровни!");
-            }
-            FamilyInstance instance = doc.Create.NewFamilyInstance(position, GetFamilySymbol(doc), level, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            Level level = GetNearestLevel(doc, point.Z) ?? throw new Exception("В проекте отсутсвуют уровни!");
+
+            FamilySymbol intersectFamSymb = GetFamilySymbol(doc);
+
+            // Чистка от старых экз.
+            FamilyInstance[] oldFamInsOfGM = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .Where(el => el is FamilyInstance famInst && famInst.Symbol.FamilyName == _familyName)
+                .Cast<FamilyInstance>()
+                .ToArray();
+
+            FamilyInstance oldEqualFI = oldFamInsOfGM
+                .FirstOrDefault(old => 
+                    old.Location is LocationPoint oldLocPnt 
+                    && Math.Abs(oldLocPnt.Point.DistanceTo(point)) < 0.05);
+            if (oldEqualFI != null)
+                return oldEqualFI;
+
+            FamilyInstance instance = doc
+                .Create
+                .NewFamilyInstance(point, intersectFamSymb, level, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            
             doc.Regenerate();
-            instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(position.Z - level.Elevation);
+            instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(point.Z - level.Elevation);
             doc.Regenerate();
+            
             return instance;
         }
         
         private static FamilySymbol GetFamilySymbol(Document doc)
         {
-            string familyName = "ClashPoint";
-            FilteredElementCollector genModelsColl = new FilteredElementCollector(doc).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_GenericModel);
-            foreach (Element element in genModelsColl)
-            {
-                FamilySymbol searchSymbol = element as FamilySymbol;
-                if (searchSymbol.FamilyName == familyName)
-                {
-                    searchSymbol.Activate();
-                    return searchSymbol;
-                }
-            }
-            try
-            {
-                if (!doc.LoadFamily(($@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{ModuleData.RevitVersion}\{familyName}.rfa")))
-                {
-                    throw new Exception("Семейство для метки не найдено!");
-                }
-                doc.Regenerate();
-            }
-            catch (Exception e) { PrintError(e); }
-            return null;
-        }
+            FamilySymbol[] oldFamSymbOfGM = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .Where(el => el is FamilySymbol famSymb && famSymb.FamilyName == _familyName)
+                .Cast<FamilySymbol>()
+                .ToArray();
 
+            // Если в проекте нет - то грузим
+            if (!oldFamSymbOfGM.Any())
+            {
+                string path = $@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{ModuleData.RevitVersion}\{_familyName}.rfa";
+                bool result = doc.LoadFamily(path);
+                if (!result)
+                    throw new Exception("Семейство для метки не найдено! Обратись к разработчику.");
+
+                doc.Regenerate();
+
+                // Повторяем после загрузки семейства
+                oldFamSymbOfGM = new FilteredElementCollector(doc)
+                    .OfCategory(BuiltInCategory.OST_GenericModel)
+                    .Where(el => el is FamilySymbol famSymb && famSymb.FamilyName == _familyName)
+                    .Cast<FamilySymbol>()
+                    .ToArray();
+            }
+
+            FamilySymbol searchSymbol = oldFamSymbOfGM.FirstOrDefault();
+            searchSymbol.Activate();
+
+            return searchSymbol;
+        }
     }
 }
