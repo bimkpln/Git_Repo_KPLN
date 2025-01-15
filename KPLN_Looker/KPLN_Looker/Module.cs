@@ -556,7 +556,6 @@ namespace KPLN_Looker
                 else
                 {
                     ModuleDBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
-                    DBProjectMatrix[] currentPrjMatrixColl = ModuleDBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
 
                     // Вывожу окно, если документ ЗАКРЫТ к редактированию
                     if (dBProject.IsClosed)
@@ -605,16 +604,21 @@ namespace KPLN_Looker
                         #endregion
 
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+
+                        return;
                     }
+                    
+
                     // Отлов пользователей с ограничением допуска к работе в текущем проекте
-                    else if (currentPrjMatrixColl.Length > 0
+                    DBProjectsAccessMatrix[] currentPrjMatrixColl = ModuleDBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
+                    if (currentPrjMatrixColl.Length > 0
                              && currentPrjMatrixColl.All(prj => prj.UserId != ModuleDBWorkerService.CurrentDBUser.Id))
                     {
                         _isProjectCloseToUser = true;
                         MessageBox.Show(
                             $"Вы открыли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика," +
                             $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
-                            $"\nИНФО: Если файл засинхронизировать - он закроется",
+                            "\nИНФО: Сейчас файл закроется",
                             "KPLN: Ограниченный проект",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
@@ -624,6 +628,10 @@ namespace KPLN_Looker
                             $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                             $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
                             $"Действие: Открыл проект {doc.Title}.");
+
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+
+                        return;
                     }
                 }
             }
@@ -639,7 +647,6 @@ namespace KPLN_Looker
                 td.Show();
             }
             #endregion
-
         }
 
         /// <summary>

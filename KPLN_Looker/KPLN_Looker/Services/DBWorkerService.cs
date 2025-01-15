@@ -15,11 +15,11 @@ namespace KPLN_Looker.Services
         private readonly UserDbService _userDbService;
         private readonly DocumentDbService _documentDbService;
         private readonly ProjectDbService _projectDbService;
-        private readonly ProjectMatrixDbService _projectMatrixDbService;
+        private readonly ProjectsAccessMatrixDbService _projectAccessMatrixDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;
         private readonly RevitDialogDbService _dialogDbService;
         private DBUser _dBUser;
-        private DBProjectMatrix[] _dbProjectMatrixColl;
+        private DBProjectsAccessMatrix[] _dbProjectAccessMatrixColl;
         private DBSubDepartment _dBSubDepartment;
         private DBRevitDialog[] _dBRevitDialogs;
 
@@ -29,7 +29,7 @@ namespace KPLN_Looker.Services
             _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
             _documentDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
             _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
-            _projectMatrixDbService = (ProjectMatrixDbService)new CreatorProjectMatrixDbService().CreateService();
+            _projectAccessMatrixDbService = (ProjectsAccessMatrixDbService)new CreatorProjectMatrixDbService().CreateService();
             _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
             _dialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
         }
@@ -65,14 +65,14 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Ссылка на коллекцию DBProjectMatrix - матрицу допуска к проектам KPLN
         /// </summary>
-        internal DBProjectMatrix[] CurrentDBProjectMatrixColl
+        internal DBProjectsAccessMatrix[] CurrentDBProjectMatrixColl
         {
             get
             {
-                if (_dbProjectMatrixColl == null)
-                    _dbProjectMatrixColl = _projectMatrixDbService.GetDBProjectMatrix().ToArray();
+                if (_dbProjectAccessMatrixColl == null)
+                    _dbProjectAccessMatrixColl = _projectAccessMatrixDbService.GetDBProjectMatrix().ToArray();
 
-                return _dbProjectMatrixColl;
+                return _dbProjectAccessMatrixColl;
             }
         }
 
@@ -186,7 +186,7 @@ namespace KPLN_Looker.Services
         /// </summary>
         internal void DropMainCash()
         {
-            _dbProjectMatrixColl = null;
+            _dbProjectAccessMatrixColl = null;
             _dBRevitDialogs = null;
         }
 
