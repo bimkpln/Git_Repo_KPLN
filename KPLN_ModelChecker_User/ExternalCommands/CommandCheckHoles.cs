@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
+using static System.Windows.Forms.LinkLabel;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -292,15 +293,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (holeData.IntesectElementsColl.Count() == 0)
                 {
                     WPFEntity zeroIOSElem = new WPFEntity(
+                        ESEntity,
                         hole,
-                        SetApproveStatusByUserComment(hole, CheckStatus.Error),
                         "Отверстие не содержит элементов ИОС",
                         $"Отверстие должно быть заполнено элементами ИОС, иначе оно лишнее",
-                        true,
-                        true,
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
-                        GetUserComment(hole));
-                    zeroIOSElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                        true,
+                        true);
+                    
+                    zeroIOSElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;
                 }
@@ -309,45 +310,48 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (intersectPersent < 0.200 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
                 {
                     WPFEntity errorNoPipeAreaElem = new WPFEntity(
+                        ESEntity,
                         hole,
-                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
-                        true,
-                        true,
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
-                        GetUserComment(hole));
-                    errorNoPipeAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                        true,
+                        CheckStatus.Warning,
+                        true);
+
+                    errorNoPipeAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorNoPipeAreaElem);
                     continue;
                 }
                 else if (intersectPersent < 0.250 && holeData.IntesectElementsColl.Count() == 1)
                 {
                     WPFEntity errorOneElemAreaElem = new WPFEntity(
+                        ESEntity,
                         hole,
-                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено 1 элементом ИОС на {Math.Round(intersectPersent, 3) * 100}%.",
-                        true,
-                        true,
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
-                        GetUserComment(hole));
-                    errorOneElemAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                        true,
+                        CheckStatus.Warning,
+                        true);
+
+                    errorOneElemAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(errorOneElemAreaElem);
                     continue;
                 }
                 else if (intersectPersent < 0.150)
                 {
                     WPFEntity warnAreaElem = new WPFEntity(
+                        ESEntity,
                         hole,
-                        SetApproveStatusByUserComment(hole, CheckStatus.Warning),
                         "Отверстие избыточное по размерам",
                         $"Возможно стоит пересмотреть размеры, т.к. отверстие заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
-                        true,
-                        true,
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
-                        GetUserComment(hole));
-                    warnAreaElem.PrepareZoomGeometryExtension(holeData.CurrentBBox);
+                        true,
+                        CheckStatus.Warning,
+                        true);
+
+                    warnAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(warnAreaElem);
                     continue;
                 }

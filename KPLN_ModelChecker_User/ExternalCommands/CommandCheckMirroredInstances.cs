@@ -6,6 +6,7 @@ using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
@@ -111,19 +112,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         Wall panelHostWall = instance.Host as Wall;
                         if (panelHostWall.Flipped)
                         {
-                            BoundingBoxXYZ bbox = instance.get_BoundingBox(null);
-                            // У панелей витража при моделировании возникают фантомы. Они не идут в спеку, их можно не анализировать
-                            if (bbox == null) continue;
-
                             WPFEntity hostEntity = new WPFEntity(
+                                ESEntity,
                                 element,
-                                SetApproveStatusByUserComment(element, CheckStatus.Error),
                                 "Недопустимый зеркальный элемент",
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
+                                string.Empty,
                                 true,
+                                SetApproveStatusByUserComment(element, CheckStatus.Error),
                                 true);
 
-                            hostEntity.PrepareZoomGeometryExtension(bbox);
                             result.Add(hostEntity);
                         }
                     }
@@ -133,13 +131,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (instance.Mirrored && instance.SuperComponent == null)
                     {
                         WPFEntity elemEntity = new WPFEntity(
+                            ESEntity,
                             element,
-                            SetApproveStatusByUserComment(element, CheckStatus.Error),
                             "Недопустимый зеркальный элемент",
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
+                            string.Empty,
                             true,
+                            SetApproveStatusByUserComment(element, CheckStatus.Error),
                             true);
-                        elemEntity.PrepareZoomGeometryExtension(instance.get_BoundingBox(null));
+
                         result.Add(elemEntity);
                     }
                 }

@@ -188,7 +188,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 foreach (FailureMessageAccessor fma in failureMessageAccessors)
                 {
                     Document fDoc = fAcc.GetDocument();
-                    //elemsToDelete.AddRange(fma.GetFailingElementIds());
 
                     List<ElementId> fmFailElemsId = fma.GetFailingElementIds().ToList();
                     foreach (ElementId elId in fmFailElemsId)
@@ -237,26 +236,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (Regex.Match(currentFamName, @"\b[.0]\d*$").Value.Length > 2)
             {
                 result.Add(new WPFEntity(
+                    ESEntity,
                     currentFam,
-                    CheckStatus.Error,
                     "Ошибка семейства",
-                    $"Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
-                    false,
-                    false,
-                    "Необходимо корректно обновить семейство. Резервные копии - могут содержать не корректную информацию."));
+                    "Данное семейство - это резервная копия. Запрещено использовать резервные копии!",
+                    "Необходимо корректно обновить семейство. Резервные копии - могут содержать не корректную информацию.",
+                    false));
             }
 
             string similarFamilyName = SearchSimilarName(currentFamName, docFamilies);
             if (!similarFamilyName.Equals(String.Empty))
             {
                 result.Add(new WPFEntity(
+                    ESEntity,
                     currentFam,
-                    CheckStatus.Warning,
                     "Предупреждение семейства",
                     $"Возможно семейство является копией семейства \"{similarFamilyName}\"",
+                    "Копий семейств в проекте быть не должно.",
                     false,
-                    false,
-                    "Копий семейств в проекте быть не должно."));
+                    CheckStatus.Warning));
             }
 
             ISet<ElementId> famSymolsIds = currentFam.GetFamilySymbolIds();
@@ -275,13 +273,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (!similarSymbolName.Equals(String.Empty))
                 {
                     result.Add(new WPFEntity(
-                    currentFam,
-                    CheckStatus.Warning,
-                    "Предупреждение типоразмера",
-                    $"Возможно тип является копией типоразмера \"{similarSymbolName}\"",
-                    false,
-                    false,
-                    "Копии необходимо наименовывать корректно, либо избегать появления копий в проекте!"));
+                        ESEntity,
+                        currentFam,
+                        "Предупреждение типоразмера",
+                        $"Возможно тип является копией типоразмера \"{similarSymbolName}\"",
+                        "Копии необходимо наименовывать корректно, либо избегать появления копий в проекте!",
+                        false,
+                        CheckStatus.Warning));
                 }
             }
 
@@ -302,13 +300,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (typeSplitedName.Length < 3)
             {
                 return new WPFEntity(
+                    ESEntity,
                     elemType,
-                    CheckStatus.Error,
                     "Ошибка типоразмера системного",
                     $"Данный типоразмер назван не по ВЕР - не хватает основных блоков",
+                    "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'",
                     false,
-                    true,
-                    "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'");
+                    true);
             }
 
             if (!(typeSplitedName[0].StartsWith("00")
@@ -319,13 +317,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 || typeSplitedName[0].StartsWith("05")))
             {
                 return new WPFEntity(
+                    ESEntity,
                     elemType,
-                    CheckStatus.Error,
                     "Ошибка типоразмера системного",
                     $"Данный типоразмер назван не по ВЕР - ошибка кода",
+                    "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.",
                     false,
-                    true,
-                    "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.");
+                    true);
             }
 
             #region Проверка ЖБ на привязку к коду 00
@@ -336,24 +334,25 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (typeSplitedName[0].Equals("00") && !sliceCode.ToUpper().Contains("ЖБ") && !sliceCode.ToUpper().StartsWith("К"))
             {
                 return new WPFEntity(
+                    ESEntity,
                     elemType,
-                    CheckStatus.Error,
                     "Ошибка типоразмера системного",
                     $"Код '00_' может содержать только несущие конструкции",
+                    $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"",
                     false,
-                    true,
-                    $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"");
+                    true);
             }
             if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
             {
                 return new WPFEntity(
+                    ESEntity,
                     elemType,
-                    CheckStatus.Warning,
                     "Предупреждение типоразмера системного",
                     $"ЖБ вне несущего слоя",
+                    $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")",
                     false,
-                    true,
-                    $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")");
+                    CheckStatus.Warning,
+                    true);
             }
             #endregion
 
@@ -368,14 +367,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (!double.TryParse(typeSplitedName[typeSplitedName.Length - 3], out totalThickness))
                     {
                         return new WPFEntity(
-                        elemType,
-                        CheckStatus.Error,
-                        "Ошибка типоразмера системного",
-                        $"Ошибка индекса положения суммарной толщины",
-                        false,
-                        true,
-                        $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
-                        $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.");
+                            ESEntity,
+                            elemType,
+                            "Ошибка типоразмера системного",
+                            "Ошибка индекса положения суммарной толщины",
+                            $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
+                                $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.",
+                            false,
+                            true);
                     }
                 }
             }
@@ -408,13 +407,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (Math.Abs(totalThickness - typeThickness) > 0.1)
             {
                 return new WPFEntity(
+                    ESEntity,
                     elemType,
-                    CheckStatus.Error,
                     "Ошибка типоразмера системного",
-                    $"Сумма слоёв не совпадает с описанием",
+                    "Сумма слоёв не совпадает с описанием",
+                    $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"",
                     false,
-                    true,
-                    $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"");
+                    true);
             }
             #endregion
 
@@ -484,13 +483,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     & !famPath.Contains("KPLN_Loader"))
                 {
                     return new WPFEntity(
+                        ESEntity,
                         currentFam,
-                        CheckStatus.Error,
                         "Ошибка источника семейства",
-                        $"Данное семейство - не с диска Х. Запрещено использовать сторонние источники!",
-                        false,
-                        false,
-                        "Использовать в проекте данное семейство можно только по согласованию в BIM-отделе.");
+                        "Данное семейство - не с диска Х. Запрещено использовать сторонние источники!",
+                        "Использовать в проекте данное семейство можно только по согласованию в BIM-отделе.",
+                        false);
                 }
 
                 famDoc.Close(false);

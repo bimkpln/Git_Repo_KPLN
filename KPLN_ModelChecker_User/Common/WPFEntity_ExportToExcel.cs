@@ -51,7 +51,7 @@ namespace KPLN_ModelChecker_User.Common
             {
                 nameof(WPFEntity.ElementName),
                 nameof(WPFEntity.ElementIdCollection),
-                nameof(WPFEntity.ErrorHeader),
+                nameof(WPFEntity.Header),
                 nameof(WPFEntity.Description),
                 nameof(WPFEntity.Info),
             };

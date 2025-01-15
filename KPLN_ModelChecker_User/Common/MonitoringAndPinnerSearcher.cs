@@ -2,7 +2,6 @@
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.WPFItems;
 using System.Collections.Generic;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -11,7 +10,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Проверка осей и уровней
         /// </summary>
-        public static IEnumerable<WPFEntity> CheckMainLines(UIApplication uiapp, Document doc, Element[] elemColl)
+        public static IEnumerable<WPFEntity> CheckMainLines(ExtensibleStorageEntity esEntity, UIApplication uiapp, Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
@@ -26,49 +25,46 @@ namespace KPLN_ModelChecker_User.Common
                         if (link == null)
                         {
                             result.Add(new WPFEntity(
+                                esEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Связь не найдена: «{element.Name}»",
-                                false,
-                                false,
-                                $"Элементу с ID {element.Id} необходимо исправить мониторинг"));
+                                $"Элементу с ID {element.Id} необходимо исправить мониторинг",
+                                false));
                         }
-                        else if (!link.Name.ToLower().Contains("разб") 
+                        else if (!link.Name.ToLower().Contains("разб")
                             && !link.Name.Contains("СЕТ_1_1-3_00_РФ"))
                         {
                             result.Add(new WPFEntity(
+                                esEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка мониторинга",
                                 $"Мониторинг не из разбивочного файла: «{element.Name}»",
-                                false,
-                                false,
-                                $"Элементу с ID {element.Id} необходимо исправить мониторинг, сейчас он присвоен связи {link.Name}"));
+                                $"Элементу с ID {element.Id} необходимо исправить мониторинг, сейчас он присвоен связи {link.Name}",
+                                false));
                         }
                     }
                 }
                 else
                 {
                     result.Add(new WPFEntity(
+                        esEntity,
                         element,
-                        CheckStatus.Error,
                         "Отсутсвие мониторинга",
                         $"Элементу с ID {element.Id} необходимо задать мониторинг",
-                        false,
+                        string.Empty,
                         false));
                 }
 
                 if (!element.Pinned)
                 {
                     result.Add(new WPFEntity(
+                        esEntity,
                         element,
-                        CheckStatus.Error,
                         "Отсутсвие прикрепления (PIN)",
                         $"Элемент не прикреплен: «{element.Name}»",
-                        false,
-                        false,
-                        $"Элемент с ID {element.Id} необходимо прикрепить (PIN)"));
+                        $"Элемент с ID {element.Id} необходимо прикрепить (PIN)",
+                        false));
                 }
             }
 

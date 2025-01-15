@@ -280,25 +280,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     Parameter sParam = room.LookupParameter(_flatAreaSumParamData.SecondParam);
                     if (fParam.AsDouble() != sParam.AsDouble())
                     {
-                        CheckStatus currentStatus;
-                        string approveComment = string.Empty;
-                        if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room)) 
-                        {
-                            currentStatus = CheckStatus.Approve;
-                            approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
-                        }
-                        else
-                            currentStatus = CheckStatus.Error;
-                        
                         result.Add(new WPFEntity(
+                            ESEntity,
                             room,
-                            currentStatus,
                             "Нарушение суммарной площади (физической) квартиры",
                             $"Параметр \"{_flatAreaSumParamData.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
-                            false,
-                            true,
                             $"Данные для сравнения со стадией П получены из параметра: \"{_flatAreaSumParamData.FirstParam}\".\nДопустимая разница внутри квартиры - 1 м²",
-                            approveComment));
+                            false,
+                            true));
                     }
                 }
             }
@@ -325,29 +314,18 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            CheckStatus currentStatus;
-                            string approveComment = string.Empty;
-                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
-                            {
-                                currentStatus = CheckStatus.Approve;
-                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
-                            }
-                            else
-                                currentStatus = CheckStatus.Error;
-
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 room,
-                                currentStatus,
                                 "Нарушение площади (в марках) квартиры",
                                 $"Параметр \"{fpc.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
-                                false,
-                                true,
                                 $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
                                     $"\nДопустимая разница внутри помещения - 1 м².\nВыделено только ОДНО помещение квартиры",
-                                approveComment));
+                                false,
+                                true));
+                            
                             continue;
                         }
-
                     }
                 }
 
@@ -382,14 +360,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         if (fParamToString == null || sParamToString == null)
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 room,
-                                SetApproveStatusByUserComment(room, CheckStatus.Error),
                                 "Нарушение анализа данных",
-                                $"Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
+                                "Помещение было создано после фиксации площадей на стадии П. Необходимо согласовать добавление с ГАПом и выполнить процесс фиксации (ТОЛЬКО через BIM-отдел)",
+                                string.Empty,
                                 false,
-                                true,
-                                null,
-                                GetUserComment(room)));
+                                true));
+
                             break;
                         }
                     }
@@ -397,14 +375,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     else if (!fParamToString.Equals(sParamToString))
                     {
                         result.Add(new WPFEntity(
+                            ESEntity,
                             room,
-                            SetApproveStatusByUserComment(room, CheckStatus.Error),
                             "Нарушение имени/номера помещения",
                             $"Параметр \"{fpc.SecondParam}\" на стадии П был \"{fParamToString}\", сейчас - \"{sParamToString}\"",
-                            false,
-                            true,
                             $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\".",
-                            GetUserComment(room)));
+                            false,
+                            true));
                     }
                 }
             }
@@ -431,26 +408,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            CheckStatus currentStatus;
-                            string approveComment = string.Empty;
-                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
-                            {
-                                currentStatus = CheckStatus.Approve;
-                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
-                            }
-                            else
-                                currentStatus = CheckStatus.Error;
-
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 room,
-                                currentStatus,
                                 "Нарушение площади отдельного помещения",
                                 $"Параметр \"{fpc.SecondParam}\" на стадии П был {fParam.AsValueString()}, сейчас - {sParam.AsValueString()}",
-                                false,
-                                true,
                                 $"Данные для сравнения со стадией П получены из параметра: \"{fpc.FirstParam}\"." +
                                     $"\nДопустимая разница внутри помещения - 1 м²",
-                                approveComment));
+                                false,
+                                true));
                         }
 
                     }
@@ -480,25 +446,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         if (fParam.AsDouble() != sParam.AsDouble())
                         {
-                            CheckStatus currentStatus;
-                            string approveComment = string.Empty;
-                            if (ESEntity.ESBuilderUserText.IsDataExists_Text((Element)room))
-                            {
-                                currentStatus = CheckStatus.Approve;
-                                approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element((Element)room).Description;
-                            }
-                            else
-                                currentStatus = CheckStatus.Error;
-
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 room,
-                                currentStatus,
                                 "Квартирография не запускалась",
                                 $"Рельаная площадь помещения (\"{fpc.SecondParam}\") {sParam.AsValueString()}, а в марке (\"{fpc.FirstParam}\") - {fParam.AsValueString()}",
-                                false,
-                                true,
                                 $"По согласованию с ГАПом - необходимо запустить квартирографию",
-                                approveComment));
+                                false,
+                                true));
                         }
 
                     }

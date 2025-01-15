@@ -1,11 +1,10 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using System;
+using KPLN_ModelChecker_User.Common;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media;
-using System.Xml.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.WPFItems
@@ -27,15 +26,16 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Заголовок элемента
         /// </summary>
         private string _header;
+        private CheckStatus _currentStatus = CheckStatus.Error;
 
-        public WPFEntity(Element element, CheckStatus status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
+        public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement)
         {
             Element = element;
             ElementIdCollection = new ElementId[] { Element.Id };
 
-            if (Element is Room room) 
+            if (Element is Room room)
                 ElementName = room.Name;
-            else 
+            else
                 ElementName = !(element is FamilyInstance familyInstance) ? element.Name : $"{familyInstance.Symbol.FamilyName}: {element.Name}";
             if (Element is Family family)
                 CategoryName = family.FamilyCategory.Name;
@@ -43,25 +43,47 @@ namespace KPLN_ModelChecker_User.WPFItems
                 CategoryName = elType.FamilyName;
             else
                 CategoryName = element.Category.Name;
-            
-            CurrentStatus = status;
-            ErrorHeader = header;
-            _header = header;
-            Description = description;
-            _approveComment = approveComment;
-            Info = info;
-            
-            IsZoomElement = isZoomElement;
-            IsApproveElement = isApproveElement;
 
-            UpdateMainFieldByStatus(status);
+            Header = header;
+            Description = description;
+            Info = info;
+            IsZoomElement = isZoomElement;
+
+            Box = Element.get_BoundingBox(null);
+            // У некоторых эл-в нет BBox.
+            if (Box != null)
+                Centroid = new XYZ((Box.Min.X + Box.Max.X) / 2, (Box.Min.Y + Box.Max.Y) / 2, (Box.Min.Z + Box.Max.Z) / 2);
+
+            if (esEntity.ESBuilderUserText.IsDataExists_Text(element))
+            {
+                CurrentStatus = CheckStatus.Approve;
+                ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(element).Description;
+            }
+            else
+                CurrentStatus = CheckStatus.Error;
         }
 
-        public WPFEntity(IEnumerable<Element> elements, CheckStatus status, string header, string description, bool isZoomElement, bool isApproveElement, string info = null, string approveComment = null)
+        public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement, CheckStatus status) : this(esEntity, element, header, description, info, isZoomElement)
+        {
+            if (CurrentStatus != CheckStatus.Approve)
+                CurrentStatus = status;
+        }
+
+        public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement, CheckStatus status, bool isApproveElement) : this(esEntity, element, header, description, info, isZoomElement, status)
+        {
+            IsApproveElement = isApproveElement;
+        }
+
+        public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement, bool isApproveElement) : this(esEntity, element, header, description, info, isZoomElement)
+        {
+            IsApproveElement = isApproveElement;
+        }
+
+        public WPFEntity(ExtensibleStorageEntity esEntity, IEnumerable<Element> elements, string header, string description, string info, bool isZoomElement)
         {
             ElementCollection = elements;
             ElementIdCollection = elements.Select(e => e.Id);
-            
+
             if (ElementCollection.Count() > 1)
             {
                 ElementName = "<Набор элементов>";
@@ -76,17 +98,21 @@ namespace KPLN_ModelChecker_User.WPFItems
                 CategoryName = currentElem.Category.Name;
             }
 
-            CurrentStatus = status;
-            ErrorHeader = header;
-            _header = header;
+            Header = header;
             Description = description;
-            _approveComment = approveComment;
             Info = info;
-
             IsZoomElement = isZoomElement;
-            IsApproveElement = isApproveElement;
 
-            UpdateMainFieldByStatus(status);
+            if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
+                && ElementCollection.All(e =>
+                    esEntity.ESBuilderUserText.GetResMessage_Element(e).Description
+                        .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
+            {
+                CurrentStatus = CheckStatus.Approve;
+                ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
+            }
+            else
+                CurrentStatus = CheckStatus.Error;
         }
 
         /// <summary>
@@ -113,11 +139,6 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Изображение для смены статуса в WPF
         /// </summary>
         public string ApproveIcon { get; } = "✔️";
-
-        /// <summary>
-        /// Пользовательский заголовок ошибки (для генерации Header - элемента)
-        /// </summary>
-        public string ErrorHeader { get; }
 
         /// <summary>
         /// Заголовок элемента
@@ -176,7 +197,17 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Текущий статус ошибки
         /// </summary>
-        public CheckStatus CurrentStatus { get; private set; }
+        public CheckStatus CurrentStatus
+        {
+            get => _currentStatus;
+            private set
+            {
+                _currentStatus = value;
+                OnPropertyChanged(nameof(CurrentStatus));
+
+                UpdateMainFieldByStatus();
+            }
+        }
 
         /// <summary>
         /// Использовать кастомный зум?
@@ -186,7 +217,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Есть возможность подтверждать ошибку?
         /// </summary>
-        public bool IsApproveElement { get; }
+        public bool IsApproveElement { get; } = false;
 
         /// <summary>
         /// Фон элемента
@@ -196,11 +227,8 @@ namespace KPLN_ModelChecker_User.WPFItems
             get => _background;
             private set
             {
-                if (value != _background)
-                {
-                    _background = value;
-                    OnPropertyChanged(nameof(Background));
-                }
+                _background = value;
+                OnPropertyChanged(nameof(Background));
             }
         }
 
@@ -209,6 +237,33 @@ namespace KPLN_ModelChecker_User.WPFItems
         public XYZ Centroid { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// Обновление основных визуальных разделителей единицы отчета
+        /// </summary>
+        /// <param name="status"></param>
+        public void UpdateMainFieldByStatus()
+        {
+            switch (_currentStatus)
+            {
+                case CheckStatus.LittleWarning:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 240, 90));
+                    Header = "Обрати внимание: " + Header;
+                    break;
+                case CheckStatus.Warning:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 180, 90));
+                    Header = "Предупреждение: " + Header;
+                    break;
+                case CheckStatus.Error:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 125, 125));
+                    Header = "Ошибка: " + Header;
+                    break;
+                case CheckStatus.Approve:
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 125, 105, 240));
+                    Header = "Допустимое: " + Header;
+                    break;
+            }
+        }
 
         /// <summary>
         /// Обновление основных визуальных разделителей единицы отчета
@@ -239,9 +294,9 @@ namespace KPLN_ModelChecker_User.WPFItems
         }
 
         /// <summary>
-        /// Создаёт рамку для зумирования
+        /// Пересоздаёт рамку для зумирования (дефолтная - из конструктора)
         /// </summary>
-        public void PrepareZoomGeometryExtension(BoundingBoxXYZ box)
+        public void ResetZoomGeometryExtension(BoundingBoxXYZ box)
         {
             if (box != null)
             {

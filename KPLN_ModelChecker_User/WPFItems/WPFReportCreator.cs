@@ -13,15 +13,12 @@ namespace KPLN_ModelChecker_User.WPFItems
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun)
         {
             WPFEntityCollection = wpfEntityColl.OrderBy(w => w.CurrentStatus);
-            int counter = 0;
-            foreach (WPFEntity w in WPFEntityCollection)
-                w.Header = $"#{++counter} {w.Header}";
-
             CheckName = checkName;
             LogLastRun = logLastRun;
-
+            
             FiltrationCollection = new HashSet<string>() { "Необработанные предупреждения" };
-            if (WPFEntityCollection.FirstOrDefault(w => w.CurrentStatus == CheckStatus.Approve) != null) FiltrationCollection.Add("Допустимое");
+            if (WPFEntityCollection.FirstOrDefault(w => w.CurrentStatus == CheckStatus.Approve) != null) 
+                FiltrationCollection.Add("Допустимое");
         }
 
         public WPFReportCreator(IEnumerable<WPFEntity> wpfEntityColl, string checkName, string logLastRun, string logMarker) : this(wpfEntityColl, checkName, logLastRun)
@@ -107,8 +104,11 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             foreach (WPFEntity w in WPFEntityCollection)
             {
-                w.FiltrationDescription = w.ErrorHeader;
-                FiltrationCollection.Add(w.FiltrationDescription);
+                if (w.CurrentStatus != CheckStatus.Approve)
+                {
+                    w.FiltrationDescription = w.Header;
+                    FiltrationCollection.Add(w.FiltrationDescription);
+                }
             }
         }
 

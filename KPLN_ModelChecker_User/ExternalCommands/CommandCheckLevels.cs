@@ -53,7 +53,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
-            result.AddRange(MonitoringAndPinnerSearcher.CheckMainLines(_uiApp, doc, elemColl));
+            result.AddRange(MonitoringAndPinnerSearcher.CheckMainLines(ESEntity, _uiApp, doc, elemColl));
             return result;
         }
 

@@ -80,13 +80,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 link,
-                                CheckStatus.Error,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
-                                false,
-                                false,
-                                "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'"));
+                                "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'",
+                                false));
                         }
                         continue; 
                     }
@@ -99,13 +98,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
                             {
                                 result.Add(new WPFEntity(
+                                    ESEntity,
                                     impInstance,
-                                    CheckStatus.Error,
                                     "Ошибка рабочего набора",
                                     "Связь находится в некорректном рабочем наборе",
-                                    false,
-                                    false,
-                                    "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'"));
+                                    "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'",
+                                    false));
                             }
                         }
                         continue;
@@ -118,14 +116,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         if (!wsName.ToLower().Contains("оси и уровни") & !wsName.ToLower().Contains("общие уровни и сетки"))
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка сеток",
                                 $"Ось или уровень с ID: {element.Id} находится не в специальном рабочем наборе",
-                                false,
-                                false,
-                                "Имя рабочего набора для осей и уровней - <..._Оси и уровни>"
-                                ));
+                                "Имя рабочего набора для осей и уровней - <..._Оси и уровни>",
+                                false));
                         }
                     }
 
@@ -150,15 +146,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             if (!elemWSName.StartsWith("02"))
                             {
                                 WPFEntity entity = new WPFEntity(
+                                    ESEntity,
                                     element,
-                                    CheckStatus.Error,
                                     "Ошибка мониторинговых элементов",
                                     $"Элементс с ID: {element.Id} находится не в специальном рабочем наборе",
-                                    true,
-                                    false,
-                                    "Элементы с мониторингом (т.е. скопированные из других файлов) должны находится в рабочих наборах с приставкой '02'"
-                                    );
-                                entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                                    "Элементы с мониторингом (т.е. скопированные из других файлов) должны находится в рабочих наборах с приставкой '02'",
+                                    true);
+
                                 result.Add(entity);
                                 continue;
                             }
@@ -170,14 +164,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             && !elemWSName.ToLower().Contains("dwg"))
                         {
                             WPFEntity entity = new WPFEntity(
+                                ESEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для связей",
-                                true,
-                                false
-                                );
-                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                                string.Empty,
+                                true);
+
                             result.Add(entity);
                             continue;
                         }
@@ -187,14 +180,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             | elemWSName.ToLower().Contains("общие уровни и сетки"))
                         {
                             WPFEntity entity = new WPFEntity(
+                                ESEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для осей и уровней",
-                                true,
-                                false
-                                );
-                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                                string.Empty,
+                                true);
+
                             result.Add(entity);
                             continue;
                         }
@@ -203,14 +195,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         else if (elemWSName.StartsWith("02"))
                         {
                             WPFEntity entity = new WPFEntity(
+                                ESEntity,
                                 element,
-                                CheckStatus.Error,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для элементов с монитирнгом",
-                                true,
-                                false
-                                );
-                            entity.PrepareZoomGeometryExtension(element.get_BoundingBox(null));
+                                string.Empty,
+                                true);
+
                             result.Add(entity);
                             continue;
                         }

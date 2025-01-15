@@ -174,13 +174,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
 
                 result.Add(new WPFEntity(
+                    ESEntity,
                     elemColl,
-                    CheckStatus.Error,
                     "Недопустимые аннотации",
                     "Данные элементы запрещено использовать на моделируемых видах",
-                    false,
-                    false,
-                    wpfInfoRow));
+                    wpfInfoRow,
+                    false));
 
                 return result;
             }

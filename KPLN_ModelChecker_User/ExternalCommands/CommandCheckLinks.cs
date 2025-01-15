@@ -1,5 +1,6 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
@@ -121,14 +122,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (rvtLinkDocTitles.Count(title => title == link.GetLinkDocument().Title) > 1)
                 {
                     result.Add(new WPFEntity(
+                        ESEntity,
                         link,
-                        CheckStatus.Error,
                         "Ошибка размещения",
                         "Экземпляры данной связи размещены несколько раз",
-                        false,
-                        false,
-                        "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." +
-                        "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая"));
+                        "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." 
+                            + "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая",
+                        false));
                 }
 
                 // Анализ ОП в линках
@@ -141,38 +141,34 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         // иначе - InvalidOperationException 
                         doc.AcquireCoordinates(link.Id);
                         result.Add(new WPFEntity(
+                            ESEntity,
                             link,
-                            CheckStatus.Error,
                             "Ошибка размещения",
                             "У связи и проекта - разные системы координат",
-                            false,
-                            false,
-                            "Запрещено размещать связи без общих площадок"));
+                            "Запрещено размещать связи без общих площадок",
+                            false));
                     }
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
                     {
                         if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model"))
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 link,
-                                CheckStatus.Error,
                                 "Ошибка размещения",
                                 "У связи не выбрана общая площадка",
-                                false,
-                                false,
-                                "Запрещено размещать связи без общих площадок"));
-                            
+                                "Запрещено размещать связи без общих площадок",
+                                false));
                         }
                         else if (ioe.Message.Contains("Failed to acquire coordinates from the link instance"))
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 link,
-                                CheckStatus.Error,
                                 "Ошибка размещения",
                                 "У связи не удалось получить координаты",
-                                false,
-                                false,
-                                "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\""));
+                                "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\"",
+                                false));
                         }
                         else 
                             throw new Exception($"Ошибка проверки связей: {ioe.Message} для файла {link.Name}");
@@ -211,11 +207,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (errorElems.Any())
             {
                 return new WPFEntity(
+                    ESEntity,
                     errorElems,
-                    CheckStatus.Error,
                     "Ошибка прикрепления",
                     "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin')) ВНИМАНИЕ: не путать с настройкой типа связи 'Прикрепление' ('Attachment')",
-                    false,
+                    "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\"",
                     false);
             }
 

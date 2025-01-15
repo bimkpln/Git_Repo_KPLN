@@ -1,9 +1,11 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.ExtensibleStorage;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -158,25 +160,24 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     if (value >= overrideMaxDouble | value < overrideMinDouble)
                     {
                         return new WPFEntity(
+                            ESEntity,
                             dim,
-                            CheckStatus.Error,
                             "Нарушение диапозона",
                             "Размер вне диапозона",
-                            false,
-                            false,
-                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
+                            false);
                     }
                 }
                 else
                 {
                     return new WPFEntity(
+                        ESEntity,
                         dim,
-                        CheckStatus.Warning,
                         "Нарушение диапозона",
                         "Не удалось определить данные. Нужен ручной анализ",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
                         false,
-                        false,
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
+                        CheckStatus.Warning);
                 }
             }
 
@@ -188,35 +189,34 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (overrideDouble == 0.0)
                 {
                     return new WPFEntity(
+                        ESEntity,
                         dim,
-                        CheckStatus.Warning,
                         "Нарушение переопределения размера",
                         "Не удалось определить данные. Нужен ручной анализ",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
                         false,
-                        false,
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную");
+                        CheckStatus.Warning);
                 }
                 else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
                 {
                     return new WPFEntity(
+                        ESEntity,
                         dim,
-                        CheckStatus.Error,
                         "Нарушение переопределения размера",
                         "Размер значительно отличается от реального",
-                        false,
-                        false,
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.");
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.",
+                        false);
                 }
                 else
                 {
                     return new WPFEntity(
+                        ESEntity,
                         dim,
-                        CheckStatus.Warning,
                         "Нарушение переопределения размера",
                         "Размер незначительно отличается от реального",
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
                         false,
-                        false,
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.");
+                        CheckStatus.Warning);
                 }
             }
 
@@ -246,13 +246,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         if (currentAccuracy > 1.0)
                         {
                             result.Add(new WPFEntity(
+                                ESEntity,
                                 doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
-                                CheckStatus.Error,
                                 "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
-                                false,
-                                false,
-                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));
+                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер.",
+                                false));
                         }
                     }
                     catch (Exception)

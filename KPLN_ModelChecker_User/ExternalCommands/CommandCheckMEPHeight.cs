@@ -246,11 +246,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (verticalCurveElemsFiltered_ErrorElemsColl.Any())
                 {
                     result.Add(new WPFEntity(
+                        ESEntity,
                         verticalCurveElemsFiltered_ErrorElemsColl,
-                        CheckStatus.Error,
                         $"Недопустимая дистанция для помещения {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()}: {arRoomData.CurrentRoom.get_Parameter(BuiltInParameter.ROOM_NUMBER).AsString()}",
                         $"Минимально допустимая высота монтажа элементов для данного помещения: {Math.Round((arRoomData.CurrentRoomMinDistance), 0)}",
-                        true,
+                        string.Empty,
                         false));
                 }
             }

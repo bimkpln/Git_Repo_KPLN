@@ -9,6 +9,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
@@ -237,30 +238,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             if (emptyLevelElems.Count > 0)
             {
-                CheckStatus currentStatus;
-                string approveComment = string.Empty;
-                if (emptyLevelElems.All(e => ESEntity.ESBuilderUserText.IsDataExists_Text(e))
-                    && emptyLevelElems.All(e =>
-                        ESEntity.ESBuilderUserText.GetResMessage_Element(e).Description
-                            .Equals(ESEntity.ESBuilderUserText.GetResMessage_Element(emptyLevelElems.FirstOrDefault()).Description)))
-                {
-                    currentStatus = CheckStatus.Approve;
-                    approveComment = ESEntity.ESBuilderUserText.GetResMessage_Element(emptyLevelElems.FirstOrDefault()).Description;
-
-                }
-                else
-                    currentStatus = CheckStatus.Error;
-
                 result.Add(new WPFEntity(
+                    ESEntity,
                     emptyLevelElems,
-                    currentStatus,
                     "Уровень не заполнен",
                     $"У элементов не заполнен параметр уровня",
-                    true,
-                    true,
-                    null,
-                    approveComment
-                    ));
+                    string.Empty,
+                    false));
             }
 
             return result;
@@ -322,14 +306,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         // Выставляю флаг, что элемент не прошел текущую проверку, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
                         instData.IsEmptyChecked = false;
+
                         WPFEntity lvlDiffError = new WPFEntity(
+                            ESEntity,
                             instData.CurrentElem,
-                            CheckStatus.Error,
                             "Нарушено деление по уровням",
                             $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name} снизу и к {instData.CurrentElemProjectUpLevel.Name} сверху. Запрещено моделировать элементы без деления на уровни",
+                            string.Empty,
                             true,
                             true);
-                        lvlDiffError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+
                         return lvlDiffError;
                     }
                 }
@@ -357,15 +343,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 // Выставляю флаг, что элемент не прошел текущую проверку, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
                 instData.IsEmptyChecked = false;
-                
+
                 WPFEntity offsetError = new WPFEntity(
+                    ESEntity,
                     instData.CurrentElem,
-                    CheckStatus.Error,
                     "Слишком большой оффсет элемента",
                     msg,
+                    string.Empty,
                     true,
                     true);
-                offsetError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+
                 return offsetError;
             }
 
@@ -496,14 +483,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 )
             {
                 WPFEntity hardError = new WPFEntity(
+                    ESEntity,
                     instData.CurrentElem,
-                    CheckStatus.Error,
                     "Нарушена привязка к уровню",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                    "Элемент попадает в список для постоянной привязки к текущему уровню",
                     true,
-                    true,
-                    "Элемент попадает в список для постоянной привязки к текущему уровню");
-                hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                    true);
+
                 return hardError;
             }
 
@@ -516,14 +503,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 )
             {
                 WPFEntity hardFloorError = new WPFEntity(
+                    ESEntity,
                     instData.CurrentElem,
-                    CheckStatus.Error,
                     "Нарушена привязка к уровню, или уровню ниже",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя по факту расположен на уровне {sectData.CurrentLevelData.CurrentLevel.Name}",
+                    "Перекрытия допускается привязывать либо к текущему уровню, либо к уровню ниже",
                     true,
-                    true,
-                    "Перекрытия допускается привязывать либо к текущему уровню, либо к уровню ниже");
-                hardFloorError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                    true);
+
                 return hardFloorError;
             }
 
@@ -540,13 +527,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     )
                 {
                     WPFEntity hardError = new WPFEntity(
+                        ESEntity,
                         instData.CurrentElem,
-                        CheckStatus.Error,
                         "Нарушены привязки к уровню ниже, или уровню выше",
                         $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                        string.Empty,
                         true,
                         true);
-                    hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+
                     return hardError;
                 }
 
@@ -559,13 +547,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     )
                 {
                     WPFEntity hardError = new WPFEntity(
+                        ESEntity,
                         instData.CurrentElem,
-                        CheckStatus.Error,
                         "Нарушена привязка к уровню",
                         $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                        string.Empty,
                         true,
                         true);
-                    hardError.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+
                     return hardError;
                 }
 
@@ -581,14 +570,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 )
             {
                 WPFEntity warning = new WPFEntity(
+                    ESEntity,
                     instData.CurrentElem,
-                    CheckStatus.Warning,
                     "Необходим контроль",
                     $"Элемент привязан к {instData.CurrentElemProjectDownLevel.Name}, хотя на {Math.Round(intersectSolidsValue / instSolidValue, 2) * 100}% подходит уровню {sectData.CurrentLevelData.CurrentLevel.Name}",
+                    "Устранять ошибки не обязательно, но проверить положение элементов стоит",
                     true,
-                    false,
-                    "Устранять ошибки не обязательно, но проверить положение элементов стоит");
-                warning.PrepareZoomGeometryExtension(instData.CurrentElem.get_BoundingBox(null));
+                    false);
+
                 return warning;
             }
 
@@ -692,11 +681,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="instDataColl">Коллекция на проверку</param>
         private WPFEntity CheckNotAnalyzedElements(CheckLevelOfInstanceData[] instDataColl) => new WPFEntity(
+                ESEntity,
                 instDataColl.Where(idc => idc.IsEmptyChecked).Select(idc => idc.CurrentElem),
-                CheckStatus.Error,
                 "Элементы не удалось проверить из-за особенностей проекта",
                 $"Необходимо показать разработчику",
-                true,
+                string.Empty,
                 false);
 
         /// <summary>
@@ -704,12 +693,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <returns></returns>
         private WPFEntity ErrorGeomCheckedElementsResult() => new WPFEntity(
+            ESEntity,
             _errorGeomCheckedElements,
-            CheckStatus.Warning,
             "Элементы не удалось проверить из-за невозможности анализа геометрии",
             "Нужно проверить вручную",
-            true,
-            false
-            );
+            string.Empty,
+            false);
     }
 }
