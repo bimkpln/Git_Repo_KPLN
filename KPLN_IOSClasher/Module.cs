@@ -48,14 +48,6 @@ namespace KPLN_IOSClasher
                 || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 return Result.Succeeded;
 #endif
-            // Персональная фильтрация по сотрудникам (далее повесить на БД, пока хардкод)
-            if (ModuleDBWorkerService.CurrentDBUser.Id == 172
-                || ModuleDBWorkerService.CurrentDBUser.Id == 71
-                || ModuleDBWorkerService.CurrentDBUser.Id == 111
-                || ModuleDBWorkerService.CurrentDBUser.Id == 126)
-                return Result.Succeeded;
-
-
             //Подписка на события
             application.ViewActivated += OnViewActivated;
             application.ControlledApplication.DocumentChanged += OnDocumentChanged;
@@ -120,11 +112,9 @@ namespace KPLN_IOSClasher
                 || actViewType == ViewType.Elevation)
             {
                 DocController.CurrentDocumentUpdateData(doc);
-#if Revit2020 || Revit2023
                 // Если не анализируется, то и линки не трогаю
                 if (!DocController.IsDocumentAnalyzing)
                     return;
-#endif
 
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
@@ -141,10 +131,8 @@ namespace KPLN_IOSClasher
                 return;
 
             // Игнор НЕ мониторинговых моделей
-#if Revit2020 || Revit2023
             if (!DocController.IsDocumentAnalyzing)
                 return;
-#endif
 
             string transName = args.GetTransactionNames().FirstOrDefault();
             // Обновляю по линкам, если были транзакции

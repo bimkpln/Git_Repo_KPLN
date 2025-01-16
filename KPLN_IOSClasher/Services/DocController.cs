@@ -1,9 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_IOSClasher.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -17,7 +17,7 @@ namespace KPLN_IOSClasher.Services
         /// <summary>
         /// Метка необходимости анализа проекта на коллизии
         /// </summary>
-        public static bool IsDocumentAnalyzing { get; private set; } = false;
+        public static bool IsDocumentAnalyzing { get; private set; }
 
         /// <summary>
         /// IntersectCheckEntity для элементов внутри модели ИОС, которые обрабатываются
@@ -46,28 +46,37 @@ namespace KPLN_IOSClasher.Services
         /// </summary>
         public static void CurrentDocumentUpdateData(Document doc)
         {
-#if Debug2020 || Debug2023
             IsDocumentAnalyzing = true;
-            CheckDocDBSubDepartmentId = 4;
-#else
             if (doc != null)
             {
                 CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
 
-                // ВОТ ЭТО ВСЁ ЗАМЕНИТЬ НА ЧТЕНИЕ ИЗ БД, ПОКА ДЕЛАЮ ЗАГЛУШКУ ЧЕРЕЗ ТХТ ДЛЯ ОПЕРАТИВНОГО ОТКЛЮЧЕНИЯ СЛЕЖЕНИЯ
-                FileInfo fi = new FileInfo(@"X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_IOSClasher\listOfListenenProjects.txt");
-                if (fi.Exists)
+                // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
+                DBProject currentDBPrj = Module.ModuleDBWorkerService.Get_DBProject(doc);
+                if (currentDBPrj.Stage.Equals("АФК") 
+                    || currentDBPrj.Stage.Equals("ПД") 
+                    || currentDBPrj.Stage.Equals("ПД_Корр") 
+                    || currentDBPrj.Stage.Equals("АН"))
                 {
-                    using (StreamReader sr = fi.OpenText())
-                    {
-                        string content = sr.ReadToEnd();
-                        if (doc.Title.Split('_').Any(spl => content.Split('~').Contains(spl)))
-                            IsDocumentAnalyzing = true;
-                        else
-                            IsDocumentAnalyzing = false;
-                    }
+                    IsDocumentAnalyzing = false;
+                    return;
                 }
+                
+                DBProjectsIOSClashMatrix[] prjMatrix = Module.ModuleDBWorkerService.Get_DBProjectsIOSClashMatrix(currentDBPrj).ToArray();
+                // Это - затычка. Когда перейдём на схему контроля по всем проектам, эту часть нужно заменить, т.к. все объекты, кроме
+                // тех, на которые есть исключения - игнорируются, а этого быть не должно
+                if (prjMatrix.Count() == 0)
+                    IsDocumentAnalyzing = false;
+                // Игнор по всему отделу
+                else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == Module.ModuleDBWorkerService.CurrentDBUser.SubDepartmentId))
+                    IsDocumentAnalyzing = false;
+                // Игнор по отдельным пользователям
+                else
+                    IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
             }
+
+#if Debug2020 || Debug2023
+            //IsDocumentAnalyzing = true;
 #endif
         }
 
@@ -142,7 +151,7 @@ namespace KPLN_IOSClasher.Services
                             // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор
                             if (rLink != null)
                                 IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterBBox, filterOutline, rLink));
-                            
+
                             break;
 
                     }
@@ -199,7 +208,7 @@ namespace KPLN_IOSClasher.Services
                 foreach (IntersectCheckEntity checkEnt in IntersectCheckEntity_Link)
                 {
                     Element[] potentialIntersectElems = checkEnt.GetPotentioalIntersectedElems_ForLink(addedElemOutline);
-                    
+
                     foreach (Element elemToCheck in potentialIntersectElems)
                     {
                         IntersectPointEntity newEntity = GetPntEntityFromElems(addedElem, addedElemSolid, elemToCheck, checkEnt);

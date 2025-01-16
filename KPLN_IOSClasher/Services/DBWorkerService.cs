@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
+using System.Collections.Generic;
 
 namespace KPLN_IOSClasher.Services
 {
@@ -8,6 +9,8 @@ namespace KPLN_IOSClasher.Services
     {
         private readonly UserDbService _userDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;
+        private readonly ProjectsIOSClashMatrixDbService _projectsIOSClashMatrixDbService;
+        private readonly ProjectDbService _projectDbService;
         private DBUser _dBUser;
         private DBSubDepartment _dBSubDepartment;
 
@@ -16,6 +19,8 @@ namespace KPLN_IOSClasher.Services
             // Создаю сервисы работы с БД
             _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
             _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
+            _projectsIOSClashMatrixDbService  = (ProjectsIOSClashMatrixDbService)new CreatorProjectIOSClashMatrixDbService().CreateService();
+            _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
         }
 
         /// <summary>
@@ -58,5 +63,21 @@ namespace KPLN_IOSClasher.Services
 
             return -1;
         }
+
+        internal DBProject Get_DBProject(Document doc)
+        {
+            string fileName = doc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
+                : doc.PathName;
+
+            return _projectDbService.GetDBProject_ByRevitDocFileName(fileName);
+        }
+
+        /// <summary>
+        /// Получить коллекцию DBProjectsIOSClashMatrix, которые приняты на проекте
+        /// </summary>
+        /// <returns></returns>
+        internal IEnumerable<DBProjectsIOSClashMatrix> Get_DBProjectsIOSClashMatrix(DBProject currentDBPrj) =>
+            _projectsIOSClashMatrixDbService.GetDBProjectMatrix_ByProject(currentDBPrj);
     }
 }
