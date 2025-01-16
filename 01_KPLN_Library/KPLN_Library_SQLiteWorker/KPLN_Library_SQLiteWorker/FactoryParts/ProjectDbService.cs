@@ -1,5 +1,6 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -47,14 +48,43 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// Получить активный проект из БД по открытому проекту Ревит
         /// </summary>
         /// <param name="fileName">Имя открытого файла Ревит</param>
-        public IEnumerable<DBProject> GetDBProject_ByRevitDocFileName(string fileName) =>
-            GetDBProjects()
-            .Where(p =>
-                fileName.Contains(p.MainPath)
-                || fileName.Contains(p.RevitServerPath)
-                || fileName.Contains(p.RevitServerPath2)
-                || fileName.Contains(p.RevitServerPath3)
-                || fileName.Contains(p.RevitServerPath4));
+        public DBProject GetDBProject_ByRevitDocFileName(string fileName)
+        {
+            IEnumerable<DBProject> filteredPrjs = GetDBProjects()
+                .Where(p =>
+                    fileName.Contains(p.MainPath)
+                    || fileName.Contains(p.RevitServerPath)
+                    || fileName.Contains(p.RevitServerPath2)
+                    || fileName.Contains(p.RevitServerPath3)
+                    || fileName.Contains(p.RevitServerPath4));
+            
+            // Осуществяляю поиск по наиболее подходящему варианту
+            return filteredPrjs
+                .OrderByDescending(prj => GetMatchingSegmentsCount(fileName, prj.MainPath))
+                .FirstOrDefault();
+        }
         #endregion
+
+        private static int GetMatchingSegmentsCount(string path1, string path2)
+        {
+            var segments1 = path1.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var segments2 = path2.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
+            int matchingCount = 0;
+
+            for (int i = 0; i < Math.Min(segments1.Length, segments2.Length); i++)
+            {
+                if (segments1[i] == segments2[i])
+                {
+                    matchingCount++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return matchingCount;
+        }
     }
 }

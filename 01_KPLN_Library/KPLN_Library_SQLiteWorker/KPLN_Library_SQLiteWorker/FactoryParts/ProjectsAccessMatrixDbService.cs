@@ -1,16 +1,15 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
     /// <summary>
     /// Класс для работы с листом Users в БД
     /// </summary>
-    public class ProjectMatrixDbService : DbService
+    public class ProjectsAccessMatrixDbService : DbService
     {
-        internal ProjectMatrixDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
+        internal ProjectsAccessMatrixDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 
@@ -21,17 +20,17 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Получить коллекцию ВСЕХ единиц матрицы
         /// </summary>
-        public IEnumerable<DBProjectMatrix> GetDBProjectMatrix() =>
-            ExecuteQuery<DBProjectMatrix>(
+        public IEnumerable<DBProjectsAccessMatrix> GetDBProjectMatrix() =>
+            ExecuteQuery<DBProjectsAccessMatrix>(
                 $"SELECT * FROM {_dbTableName};");
 
         /// <summary>
         /// Получить коллекцию ВСЕХ единиц матрицы по выбранному проекту
         /// </summary>
-        public IEnumerable<DBProjectMatrix> GetDBProjectMatrix_ByProject(DBProject dBProject) =>
-            ExecuteQuery<DBProjectMatrix>(
+        public IEnumerable<DBProjectsAccessMatrix> GetDBProjectMatrix_ByProject(DBProject dBProject) =>
+            ExecuteQuery<DBProjectsAccessMatrix>(
                 $"SELECT * FROM {_dbTableName} " +
-                $"WHERE {nameof(DBProjectMatrix.ProjectId)}='{dBProject.Id}';");
+                $"WHERE {nameof(DBProjectsAccessMatrix.ProjectId)}='{dBProject.Id}';");
         #endregion
 
         #region Update

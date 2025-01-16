@@ -7,7 +7,7 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     /// <summary>
     /// Строка матрицы допуска к проектам KPLN
     /// </summary>
-    public class DBProjectMatrix : IDBEntity
+    public class DBProjectsAccessMatrix : IDBEntity
     {
         #region Столбцы из БД
         [Key]
@@ -29,6 +29,6 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// <summary>
         /// Привязка к БД из DB_Enumerator
         /// </summary>
-        public static DB_Enumerator CurrentDB { get; } = DB_Enumerator.ProjectsMatrix;
+        public static DB_Enumerator CurrentDB { get; } = DB_Enumerator.ProjectsAccessMatrix;
     }
 }
