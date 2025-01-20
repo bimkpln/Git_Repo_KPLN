@@ -315,7 +315,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                     string sectNumb = maxIntersectInstance.CurrentLevelData.CurrentSectionNumber;
                     char? firstDigit = sectNumb.FirstOrDefault(char.IsDigit);
-                    if (firstDigit.HasValue)
+                    if (firstDigit.HasValue && firstDigit != '\0')
                         instElemDataSectParam.Set($"{firstDigit}");
                     else
                         instElemDataSectParam.Set(sectNumb);
