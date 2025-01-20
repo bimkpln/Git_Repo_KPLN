@@ -77,10 +77,10 @@ namespace KPLN_IOSClasher.Core
             if (linkDoc != null)
             {
                 LinkBasePntPosition = new FilteredElementCollector(linkDoc)
-                .OfClass(typeof(BasePoint))
-                .Cast<BasePoint>()
-                .FirstOrDefault()
-                .Position;
+                    .OfClass(typeof(BasePoint))
+                    .Cast<BasePoint>()
+                    .FirstOrDefault()
+                    .Position;
 
                 // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
                 if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1 
@@ -174,13 +174,21 @@ namespace KPLN_IOSClasher.Core
             {
                 CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
                     .OfCategory(category)
+                    .WhereElementIsNotElementType()
                     .WherePasses(intersectsFilter)
-                .ToElements());
+                    .Where(el =>
+                        // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в Module есть, он на редакт. добавл. эл-ты)
+                        !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"))));
 
                 CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
                     .OfCategory(category)
+                    .WhereElementIsNotElementType()
                     .WherePasses(insideFilter)
-                    .ToElements());
+                    .Where(el =>
+                        // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в Module есть, он на редакт. добавл. эл-ты)
+                        !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"))));
             }
         }
     }

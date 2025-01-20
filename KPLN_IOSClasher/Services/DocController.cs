@@ -53,7 +53,8 @@ namespace KPLN_IOSClasher.Services
 
                 // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
                 DBProject currentDBPrj = Module.ModuleDBWorkerService.Get_DBProject(doc);
-                if (currentDBPrj.Stage.Equals("АФК") 
+                if (currentDBPrj == null
+                    || currentDBPrj.Stage.Equals("АФК") 
                     || currentDBPrj.Stage.Equals("ПД") 
                     || currentDBPrj.Stage.Equals("ПД_Корр") 
                     || currentDBPrj.Stage.Equals("АН"))
@@ -438,7 +439,6 @@ namespace KPLN_IOSClasher.Services
             Document activeDoc = activeView.Document;
             Element[] elColl = new FilteredElementCollector(activeDoc)
                 .WhereElementIsNotElementType()
-                .Where(el => el.Category != null)
                 .Where(el => el.Category != null && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
                 .ToArray();
             foreach (Element element in elColl)

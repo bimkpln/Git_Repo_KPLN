@@ -27,7 +27,7 @@ namespace KPLN_IOSClasher
                 el.Category != null
                 && !(el is ElementType)
                 && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId)
-                // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами
+                // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в IntersectCheckEntity есть, он на существ. эл-ты)
                 && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
                     || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"));
         }
@@ -112,13 +112,15 @@ namespace KPLN_IOSClasher
                 || actViewType == ViewType.Elevation)
             {
                 DocController.CurrentDocumentUpdateData(doc);
+#if Revit2020 || Revit2023
                 // Если не анализируется, то и линки не трогаю
                 if (!DocController.IsDocumentAnalyzing)
                     return;
+#endif
 
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
-            #endregion
+#endregion
         }
 
         /// <summary>
@@ -131,8 +133,10 @@ namespace KPLN_IOSClasher
                 return;
 
             // Игнор НЕ мониторинговых моделей
+#if Revit2020 || Revit2023
             if (!DocController.IsDocumentAnalyzing)
                 return;
+#endif
 
             string transName = args.GetTransactionNames().FirstOrDefault();
             // Обновляю по линкам, если были транзакции
