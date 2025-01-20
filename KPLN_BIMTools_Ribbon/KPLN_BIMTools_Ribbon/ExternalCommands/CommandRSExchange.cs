@@ -58,10 +58,21 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 SetOpenOptions(WorksetConfigurationOption.CloseAllWorksets);
                 SetSaveAsOptions();
 
+                Document doc = null;
                 // Открываем документ по указанному пути
-                Document doc = app.OpenDocumentFile(
-                    modelPathFrom,
-                    _openOptions);
+                try
+                {
+                    doc = app.OpenDocumentFile(
+                        modelPathFrom,
+                        _openOptions);
+                }
+                catch (Autodesk.Revit.Exceptions.FileNotFoundException)
+                {
+                    string modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom);
+                    string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
+                    Print(msg, MessageType.Warning);
+                    Logger.Error(msg);
+                }
 
                 if (doc != null)
                 {

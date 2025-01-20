@@ -1,5 +1,4 @@
-﻿using KPLN_Library_Forms.UI;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Media;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -14,17 +13,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private string _userInputName;
         private string _userInputPath;
 
-        public UserStringInfo()
+        public UserStringInfo(bool fieldsEnabled)
         {
             InitializeComponent();
             DataContext = this;
+
+            InputName.IsReadOnly = fieldsEnabled;
+            InputPath.IsReadOnly = fieldsEnabled;
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
             PreviewKeyDown += new KeyEventHandler(HandleEnter);
             SystemSounds.Beep.Play();
         }
 
-        public UserStringInfo(string lastName, string lastPath) : this()
+        public UserStringInfo(bool fieldsEnabled, string lastName, string lastPath) : this(fieldsEnabled)
         {
             UserInputName = lastName;
             UserInputPath = lastPath;
@@ -67,6 +69,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Close();
         }
 
-        private void OnOk(object sender, RoutedEventArgs e) => Close();
+        private void OnOk(object sender, RoutedEventArgs e)
+        {
+            DialogResult = true;
+            Close();
+        }
     }
 }

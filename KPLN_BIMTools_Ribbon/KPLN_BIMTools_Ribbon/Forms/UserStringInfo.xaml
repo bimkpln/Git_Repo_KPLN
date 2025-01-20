@@ -41,6 +41,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
         <Grid Grid.Row="0" Grid.Column="1">
@@ -50,13 +51,15 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+            
             <TextBlock 
                 x:Name="tbHeader" 
                 TextWrapping="Wrap" 
                 Margin="5,0,0,0" 
                 Grid.Row="0" 
-                Text="Введи путь и имя вручную" 
+                Text="Тнформация о файле" 
                 FontWeight="Bold" 
                 FontSize="16" 
                 Foreground="White"/>
@@ -65,15 +68,15 @@
                 Grid.Column="0"
                 Grid.Row="1"
                 FontSize="16"
-                Text="Имя файла (для RS с указанием корневых папок):"
+                Text="Имя файла:"
                 Foreground="White"/>
             <TextBox 
                 x:Name="InputName"
                 Grid.Row="2"
                 FontSize="16" 
-                IsEnabled="False"
                 Text="{Binding UserInputName}">
             </TextBox>
+            
             <TextBlock 
                 Grid.Column="0"
                 Grid.Row="3"
@@ -84,13 +87,42 @@
                 x:Name="InputPath"
                 Grid.Row="4"
                 FontSize="16" 
-                IsEnabled="False"
                 Text="{Binding UserInputPath}">
             </TextBox>
+            
+            <StackPanel
+                Grid.Row="5" 
+                Grid.Column="0" 
+                Grid.ColumnSpan="2">
+                <TextBlock 
+                    Style="{StaticResource TXT}" 
+                    Text="Примечание: Путь к файлу на Revit-Server должен быть в формате \\АдресRS\ПолныйПуть\ИмяМодели.rvt" 
+                    TextWrapping="Wrap"
+                    Opacity="0.5"/>
+                <TextBlock 
+                    Style="{StaticResource TXT}" 
+                    Text="Например: \\192.168.0.5\СТАК\Стадия_Р\ВК\СТАК_РД_СТЛ_ВК.rvt" 
+                    TextWrapping="Wrap"
+                    Opacity="0.5"/>
+            </StackPanel>
+        
         </Grid>
         
-        <Rectangle Fill="White" RadiusX="3" RadiusY="3" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Opacity="0.1"/>
-        <StackPanel Margin="0,5,0,5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+        <Rectangle 
+            Grid.Column="0" 
+            Grid.Row="1" 
+            Grid.ColumnSpan="2" 
+            Fill="White" 
+            RadiusX="3" 
+            RadiusY="3" 
+            Opacity="0.1"/>
+
+        <StackPanel 
+            Grid.Column="0" 
+            Grid.Row="1" 
+            Grid.ColumnSpan="2" 
+            Margin="0,5,0,5" 
+            Orientation="Horizontal">
             <Button 
                 x:Name="btnOk" 
                 Style="{StaticResource BTN}" 

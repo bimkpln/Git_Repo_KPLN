@@ -325,7 +325,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 foreach (string filePath in openFileDialog.FileNames)
                 {
                     string fileName = Path.GetFileName(filePath);
-                    FileEntitiesList.Add(new FileEntity(fileName, filePath));
+                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath));
                 }
             }
         }
@@ -342,8 +342,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
             {
-                FileEntitiesList.Add(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
+                AddToFileEntitiesWithCheck(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
             }
+        }
+
+        private void OnBtnHandleAddFile(object sender, RoutedEventArgs e)
+        {
+            UserStringInfo userStringInput = new UserStringInfo(false);
+            bool? dialogResult = userStringInput.ShowDialog();
+            if (dialogResult == null || dialogResult == false)
+                return;
+
+            AddToFileEntitiesWithCheck(new FileEntity(userStringInput.UserInputName, userStringInput.UserInputPath));
         }
 
         private void LBMenuItem_Info_Click(object sender, RoutedEventArgs e)
@@ -359,7 +369,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 if (selectedItems.FirstOrDefault() is FileEntity fileEntity)
                 {
-                    UserStringInfo userStringInput = new UserStringInfo(fileEntity.Name, fileEntity.Path);
+                    UserStringInfo userStringInput = new UserStringInfo(true, fileEntity.Name, fileEntity.Path);
                     userStringInput.ShowDialog();
                 }
             }
@@ -379,7 +389,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
         #endregion
 
-        #region Управление сохранением конфига
+        /// <summary>
+        /// Добавить эл-т в коллекцию FileEntitiesList с предпроверкой
+        /// </summary>
+        private void AddToFileEntitiesWithCheck(FileEntity entity)
+        {
+            if (!FileEntitiesList.Any(listEnt => listEnt.Path.Equals(entity.Path) || listEnt.Name.Equals(entity.Name)))
+                FileEntitiesList.Add(entity);
+            else
+            {
+                UserDialog cd = new UserDialog("Предупреждение", $"Файл по указнному пути или с тем же именем уже есть в списке. В добавлении отказано");
+                cd.ShowDialog();
+            }
+        }
+
         private void OnBtnCancelClick(object sender, RoutedEventArgs e)
         {
             IsRun = false;
@@ -461,6 +484,5 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             this.Close();
         }
-        #endregion
     }
 }

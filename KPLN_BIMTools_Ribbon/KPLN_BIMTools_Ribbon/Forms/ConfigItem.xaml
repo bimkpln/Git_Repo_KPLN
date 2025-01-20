@@ -278,6 +278,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="50"/>
             </Grid.ColumnDefinitions>
             <Button 
                 x:Name="btnWindowsAddFile"
@@ -299,6 +300,16 @@
                 Foreground="Green"
                 ToolTip="Добавить файл/-ы с RevitServer"
                 Click="OnAddNewRevitServerLink"/>
+            <Button 
+                x:Name="btnHandleAddFile"
+                Grid.Column="2"
+                Content="✍"
+                Padding="-5"
+                IsEnabled="True"
+                Style="{StaticResource UserActionBtns}"
+                Foreground="Green"
+                ToolTip="Добавить файл/-ы указав путь вручную. Актуально для сторонних RevitServer, у которых нет доступа к администрированию"
+                Click="OnBtnHandleAddFile"/>
         </Grid>
         <!--Изменение список файлов-->
 

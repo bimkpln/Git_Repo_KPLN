@@ -366,15 +366,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     // Проверяю ссылку на конечный файл. Добавляю файл
                     if (pathFrom.ToLower().Contains("rvt"))
                     {
-                        FolderContents folderContents = server.GetFolderContents(string.Join("\\", pathParts, 3, pathPartsLenght - 4));
-                        foreach (var model in folderContents.Models)
-                        {
-                            if (model.Name == pathParts[pathPartsLenght - 1])
-                            {
-                                fileFromPathes.Add($"RSN:{pathFrom}");
-                                break;
-                            }
-                        }
+                        fileFromPathes.Add($"RSN:{pathFrom}");
                     }
                     // Значит ссылка на папку. Добавляю файлы
                     else
