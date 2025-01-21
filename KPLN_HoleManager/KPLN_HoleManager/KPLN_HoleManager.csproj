@@ -58,7 +58,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
@@ -74,6 +74,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -85,13 +86,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\DockablePreferences.cs" />
-    <Compile Include="ExternalCommands\CommandShowPreferences.cs" />
-    <Compile Include="ExternalCommands\CommandShowDockablePane.cs" />
-    <Compile Include="Forms\StringResource.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">
       <DependentUpon>DockableManagerForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ViewModels\ButtonViewModel.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -110,29 +107,11 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\OpenManager.png" />
-    <EmbeddedResource Include="Imagens\SetupManager.png" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Imagens\DockableManager\Approve.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\ApproveHost.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\ApproveInstance.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\ApproveWall.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\FindSubelements.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Group.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Offset.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Reject.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Reset.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\SetWall.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\SwapType.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Ungroup.png" />
-    <EmbeddedResource Include="Imagens\DockableManager\Update.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Imagens\DockableManager\AddSubElements.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

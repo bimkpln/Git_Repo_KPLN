@@ -8,496 +8,127 @@
         xmlns:local="clr-namespace:KPLN_HoleManager.Forms"
         Title="Dockable Dialogs"  Height="700" Width="400"
         x:Name="DockableDialogs"  
-        Background="White" 
+        Background="#FFB7B7B7"
         MinWidth="200" 
-        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontFamily="Century Gothic" 
         IsManipulationEnabled="True">
-    <Page.Resources>
-        <!-- Стиль для кнопки с ToolTip -->
-        <Style x:Key="ImageMainScriptsButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="35"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Background" Value="#7F3D3F42"/>
-            <Setter Property="Margin" Value="2.5"/>
-            <Setter Property="ContentTemplate">
-                <Setter.Value>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{Binding ImageSource}" Width="20" Height="20" />
-                        </StackPanel>
-                    </DataTemplate>
-                </Setter.Value>
-            </Setter>
-            <!-- Привязываем ToolTip к свойству ToolTipText модели представления -->
-            <Setter Property="ToolTip" Value="{Binding ToolTipText}" />
-        </Style>
-    </Page.Resources>
-    
     <Grid>
-        <TabControl x:Name="tabMain" Margin="-1,-3,-1,0" >
-            <TabItem x:Name="tabMonitor" Header="Мониторинг" Visibility="Collapsed">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition/>
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Orientation="Vertical">
-                        <Button x:Name="btnPlaceMEP2" Content="Расставить/обновить по заданиям" Margin="0,0,0,5" Background="White" Click="OnBtnPlaceOnMEP">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Расставить/обновить"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расстановка отверстия по новым заданиям и обновление позиций отверстий по смещенным заданиям"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button VerticalAlignment="Top" Height="20" x:Name="btnPlaceOnSelected2" Background="White" Content="Создать по стене" Margin="0,0,0,5" Click="OnBtnPlaceOnSelected">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Создать по стене"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расставить элементы на основе выбранной стены"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button VerticalAlignment="Top" Height="20" x:Name="btnPlaceOnSelectedTask2" Content="Создать по заданию" Margin="0,0,0,5" Background="White" Click="OnBtnPlaceOnSelectedTask">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Создать по заданию"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расставить отверстия на основе выбранного задания"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button VerticalAlignment="Top" Height="20" x:Name="btnLoop2" Content="Расставить по пересечениям" Margin="0,0,0,5" Background="White" Click="OnBtnLoop">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Найти пересечения и расставить элементы"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Поиск пересечений на основе выбранной rvt-связи"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Grid VerticalAlignment="Top" x:Name="gridLoopButtons2" Margin="0,-5,0,-7" Height="42">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="26"/>
-                                <ColumnDefinition Width="26"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
-                            <Button VerticalAlignment="Top" Height="20" x:Name="btnLoopDeny2" Grid.Column="0" Content="✖" Margin="0,5,5,0" Background="White" Foreground="#FFDE0909" Click="OnBtnLoopDeny">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Отклонить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, пометив их как «Неутвержденные» и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит для более позднего утверждения элементов. Элементы будут помечены в диспетчере отверстий с предупреждением" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button VerticalAlignment="Top" Height="20" x:Name="btnLoopApply2" Grid.Column="1" Content="✔" Margin="0,5,5,0" Background="White" Foreground="#FF0DB02B" Click="OnBtnLoopApply">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Утвердить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, пометив их как «Утвержденные» и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит, если созданные отверстии полностью удовлетворяют всем требованиям и они готовы к тому, чтобы их взяли в работу смежные разделы" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button VerticalAlignment="Top" Height="20" x:Name="btnLoopNext2"  Grid.Column="2" Content="Далее" Margin="0,5,0,0" Background="White" Click="OnBtnLoopNext">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Оставить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, не помечая, и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит для более позднего утверждения элементов. Элементы будут помечены в диспетчере отверстий с предупреждением" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button VerticalAlignment="Top" Height="20" x:Name="btnLoopSkip2" Grid.Column="3" Content="Пропустить" Margin="5,5,0,0" Background="White" Click="OnBtnLoopSkip">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Пропустить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Удалить созданные элементы и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: данные пересечения вновь отобразяться при следующем запуске цикла" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                        </Grid>
+        <Grid.RowDefinitions>
+            
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            
+        </Grid.RowDefinitions>
 
-                    </StackPanel>
-                    <TreeView Grid.Row="1" x:Name="monitorView" Margin="-5" IsManipulationEnabled="True" IsTextSearchCaseSensitive="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <TreeView.ItemTemplate>
-                            <HierarchicalDataTemplate ItemsSource="{Binding Collection}">
-                                <StackPanel Orientation="Horizontal">
-                                    <Image Source="{Binding Source.Value}"/>
-                                    <TextBlock Text=" - " xml:space="preserve"/>
-                                    <TextBlock Text="{Binding Header}"/>
-                                    <TextBlock Text=" (" xml:space="preserve"/>
-                                    <TextBlock Text="{Binding Count}"/>
-                                    <TextBlock Text=")"/>
-                                </StackPanel>
-                                <HierarchicalDataTemplate.ItemTemplate>
-                                    <DataTemplate>
-                                        <TreeViewItem PreviewMouseDoubleClick="OnItemDoubleClick" IsTextSearchEnabled="True" ClipToBounds="False" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
-                                            <TreeViewItem.Header>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Image Source="{Binding Source.Value}" ToolTip="{Binding ToolTip}"/>
-                                                    <TextBlock Text=" - " xml:space="preserve" ToolTip="{Binding ToolTip}"/>
-                                                    <TextBlock Text="{Binding Name}" ToolTip="{Binding ToolTip}"/>
-                                                </StackPanel>
-                                            </TreeViewItem.Header>
-                                            <StackPanel Orientation="Horizontal">
-                                                <ItemsControl ItemsSource="{Binding Collection}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <Image Source="{Binding Source.Value}" ToolTip="{Binding ToolTip}"/>
-                                                                <TextBlock xml:space="preserve" Text=" " ToolTip="{Binding ToolTip}"/>
-                                                                <TextBlock Text="{Binding Name}" ToolTip="{Binding ToolTip}">
-                                                                </TextBlock>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </TreeViewItem>
-                                    </DataTemplate>
-                                </HierarchicalDataTemplate.ItemTemplate>
-                                <HierarchicalDataTemplate.ItemContainerStyle>
-                                    <Style TargetType="{x:Type TreeViewItem}">
-                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                                    </Style>
-                                </HierarchicalDataTemplate.ItemContainerStyle>
-                            </HierarchicalDataTemplate>
-                        </TreeView.ItemTemplate>
-                        <TreeView.ItemContainerStyle>
-                            <Style TargetType="{x:Type TreeViewItem}">
-                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                            </Style>
-                        </TreeView.ItemContainerStyle>
-                    </TreeView>
+        <!-- Верхняя панель -->
+        <StackPanel Orientation="Vertical" Grid.Row="0" HorizontalAlignment="Stretch">
+            
+            <Button Content="🔄  Расставить/обновить отверстия по заданиям" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="➡️  Расставить отверстия по выбранной стене" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="🔀  Расставить отверстия по пересечениям" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="🔂  Создать отверстия по заданию" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,0,0,2" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            
+        </StackPanel>
 
-                </Grid>
+        <!-- Средняя панель с тремя кнопками -->
+        <Grid Grid.Row="1" HorizontalAlignment="Stretch" Background="#FFE2E2E2">
+            
+            <Grid.ColumnDefinitions>
+                
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                
+            </Grid.ColumnDefinitions>
 
-            </TabItem>
-            <TabItem x:Name="tabSelection" Header="Элемент" Visibility="Collapsed">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" MaxHeight="160"/>
-                        <RowDefinition MinHeight="80" Height="Auto" MaxHeight="140"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition/>
-                    </Grid.RowDefinitions>
-                    <WrapPanel Orientation="Horizontal" Margin="-2.5" Grid.Row="0" MaxHeight="160" HorizontalAlignment="Left">
-                        <Button x:Name="btnApprove" Style="{StaticResource ImageMainScriptsButtonStyle}" Content="{Binding ButtonContent}" />
-                        
-                        <!--<Button x:Name="btnApprove" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnApprove">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Одобрить элемент(ы)"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Пометить выбранные элементы как «Утвержденные»"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: смежные разделы смогут использовать данный элемент в качестве основы" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>-->
-                        <Button x:Name="btnReject" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnReject">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Отклонить элемент(ы)"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Пометить выбранные элементы как «Неутвержденные»"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: смежные разделы не смогут использовать данный элемент в качестве основы, пока элемент не будет утвержден" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnSetOffset" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnSetOffset">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Задать смещение границ"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Определение размера защитных отступов по бокам"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: Параметр можно изменить вручную в окне «свойства», параметр - «Расширение границ»" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnGroup" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnGroup">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Сгруппировать"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Группировка отверстий в одно большое отверстие"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: после группировки отверстия на основе данных элементов потеряют основу" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnUngroup" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnUngroup">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Разгруппировать"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Разгруппировка отверстия на составные части (на субэлементы)"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: после разгруппировки элементы на его основе потеряют связь" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnReset" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnReset">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Откат изменений"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Перенос элемента в ранее утвержденное состояние"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: если элемент был изменен целенаправлено, необходимо воспользоваться функцией «Утвердить изменения»" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnUpdate" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnUpdate">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Пересчитать элемент"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Перенос элемента в актуальную позицию по связанным элементам"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: с актуализацией размеров и границами видимости" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnApplySubElements" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnApplySubElements">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Принять субэлементы"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Утвердить изменения в субэлементах"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: возможно есть неутвержденные изменения в связанных элементах" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnApplyWall" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnApplyWall">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Утвердить стену"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Утвердить неутвержденные изменения стены-основы"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: возможно стена-основа была изменена" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnAddSubElement" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnAddSubElement">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Добавить субэлемент"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Связать с выбранным элементом"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="MEP: элементы труб, воздуховодов, лотоков и т.п." FontStyle="Italic"/>
-                                    <TextBlock TextWrapping="Wrap" Text="AR/KR: отверстия и задания на отверстия" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnSetWall" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnSetWall">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Задать стену"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Привязать элемент к выбранной стене"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: необходимо для отслеживания изменений проекта" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnSwap" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnSwap">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Поменять тип"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Замена типа отверстия: круглое/прямоугольное"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: необходимо утверждение элемента после изменения" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnFindSubelements" Width="35" Height="35" Background="{x:Null}" Margin="2.5" Click="OnBtnFindSubelements">
-                            <Image Source="{Binding Value}"/>
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Автопривязка"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Поиск подходящих привязок для элементов без мониторинга"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: элементы с мониторингом будут проигнорированы" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                    </WrapPanel>
-                    <Label Grid.Row="1" Content="Основа:" Margin="-5,0,0,0"/>
-                    <Grid Grid.Row="1" MinHeight="80" Height="Auto" MaxHeight="140">
-                        <ScrollViewer  x:Name="svSubElements" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" Margin="0,25,0,0" VerticalScrollBarVisibility="Auto" Background="White">
-                            <ItemsControl x:Name="SubItemsControll">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="2,2,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="15"/>
-                                                <ColumnDefinition/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Image Grid.Column="0" Source="{Binding Source.Value}" Height="15" Width="15" HorizontalAlignment="Left" ToolTip="{Binding ToolTip}" VerticalAlignment="Top"/>
-                                            <TextBlock Grid.Column="1" Margin="2,0,2,0" Text="{Binding Name}" ToolTip="{Binding ToolTip}" TextWrapping="Wrap"/>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                <Button IsEnabled="{Binding IsEnabled, Mode=TwoWay}" Content="{Binding Action.ButtonText}" FontSize="8" Width="15" Height="15" Background="White" BorderBrush="{Binding Action.Color}" HorizontalAlignment="Right" Foreground="{Binding Action.Color}" VerticalAlignment="Top" Click="OnSubItemRemoveBtnClick">
-                                                    <Button.ToolTip>
-                                                        <StackPanel MaxWidth="300">
-                                                            <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Action.ToolTip}"/>
-                                                            <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                            <TextBlock TextWrapping="Wrap" Text="Подсказка: изменения в субэлементах должны быть утверждены" FontStyle="Italic"/>
-                                                        </StackPanel>
-                                                    </Button.ToolTip>
-                                                </Button>
-                                                <Button Visibility="{Binding Visibility}" Content="!" FontSize="8" Width="15" Height="15" Background="White" BorderBrush="Red" HorizontalAlignment="Right" Foreground="Red" VerticalAlignment="Top" Click="OnSubItemAddRemarkBtnClick">
-                                                    <Button.ToolTip>
-                                                        <StackPanel MaxWidth="300">
-                                                            <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Добавить замечание"/>
-                                                            <TextBlock TextWrapping="Wrap" Text="Добавить замечание для смежного отдела по выбранному элементу"/>
-                                                            <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                            <TextBlock TextWrapping="Wrap" Text="Подсказка: замечание будет отображаться в смежных отделах с предупреждением, до получения ответа" FontStyle="Italic"/>
-                                                        </StackPanel>
-                                                    </Button.ToolTip>
-                                                </Button>
-                                            </StackPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
-                    <StackPanel Orientation="Vertical" Grid.Row="2">
-                        <Label x:Name="lblDepartmentHeader" Content="Выберите свой раздел:" Margin="-5,0,0,0"/>
-                        <ComboBox x:Name="cbxDepartment" Margin="0,-3,0,0" Background="White" SelectedIndex="0" SelectionChanged="OnSubDepartmentChanged">
-                            <TextBlock Text="ОВ"/>
-                            <TextBlock Text="ВК"/>
-                            <TextBlock Text="СС"/>
-                            <TextBlock Text="ЭОМ"/>
-                        </ComboBox>
-                        <Separator Name="sepDep" Margin="0,10,0,5"/>
-                        <Button x:Name="btnPlaceMEP" Content="Расставить/обновить по заданиям" Margin="0,5,0,0" Background="White" Click="OnBtnPlaceOnMEP">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Расставить/обновить"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расстановка отверстия по новым заданиям и обновление позиций отверстий по смещенным заданиям"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Separator x:Name="sep" Margin="0,10,0,5"/>
-                        <Button x:Name="btnLoop" Content="Расставить по пересечениям" Margin="0,5,0,0" Background="White" Click="OnBtnLoop">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Найти пересечения и расставить элементы"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Поиск пересечений на основе выбранной rvt-связи"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Grid x:Name="gridLoopButtons">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="26"/>
-                                <ColumnDefinition Width="26"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
-                            <Button x:Name="btnLoopDeny" Grid.Column="0" Content="✖" Margin="0,5,5,0" Background="White" Foreground="#FFDE0909" Click="OnBtnLoopDeny">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Отклонить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, пометив их как «Неутвержденные» и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит для более позднего утверждения элементов. Элементы будут помечены в диспетчере отверстий с предупреждением" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button x:Name="btnLoopApply" Grid.Column="1" Content="✔" Margin="0,5,5,0" Background="White" Foreground="#FF0DB02B" Click="OnBtnLoopApply">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Утвердить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, пометив их как «Утвержденные» и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит, если созданные отверстии полностью удовлетворяют всем требованиям и они готовы к тому, чтобы их взяли в работу смежные разделы" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button x:Name="btnLoopNext"  Grid.Column="2" Content="Далее" Margin="0,5,0,0" Background="White" Click="OnBtnLoopNext">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Оставить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Сохранить элементы, не помечая, и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: способ подходит для более позднего утверждения элементов. Элементы будут помечены в диспетчере отверстий с предупреждением" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                            <Button x:Name="btnLoopSkip" Grid.Column="3" Content="Пропустить" Margin="5,5,0,0" Background="White" Click="OnBtnLoopSkip">
-                                <Button.ToolTip>
-                                    <StackPanel MaxWidth="300">
-                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Пропустить ➜"/>
-                                        <TextBlock TextWrapping="Wrap" Text="Удалить созданные элементы и перейти к следующему шагу"/>
-                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: данные пересечения вновь отобразяться при следующем запуске цикла" FontStyle="Italic"/>
-                                    </StackPanel>
-                                </Button.ToolTip>
-                            </Button>
-                        </Grid>
-                        <Separator Margin="0,10,0,5"/>
-                        <Button x:Name="btnPlaceOnSelected" Content="Создать по стене" Margin="0,5,0,0" Background="White" Click="OnBtnPlaceOnSelected">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Создать по стене"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расставить элементы на основе выбранной стены"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                        <Button x:Name="btnPlaceOnSelectedTask" Content="Создать по заданию" Margin="0,5,0,0" Background="White" Click="OnBtnPlaceOnSelectedTask">
-                            <Button.ToolTip>
-                                <StackPanel MaxWidth="300">
-                                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Создать по заданию"/>
-                                    <TextBlock TextWrapping="Wrap" Text="Расставить отверстия на основе выбранного задания"/>
-                                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                    <TextBlock TextWrapping="Wrap" Text="Подсказка: перед запуском рекомендуется проверить настройки плагина" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Button.ToolTip>
-                        </Button>
-                    </StackPanel>
-                    <TextBlock Text="⌨ История" FontWeight="Medium" Margin="0,3,0,0" Grid.Row="3" MinWidth="2"/>
-                    <Rectangle x:Name="RR"  Grid.Row="3" Margin="0,20,0,80" RadiusX="2" RadiusY="2" Fill="White" Stroke="#FF707070"/>
-                    <ScrollViewer x:Name="svComments"  Grid.Row="3" Margin="1,21,1,81" VerticalScrollBarVisibility= "Auto">
-                        <StackPanel x:Name="chatPanel" CanVerticallyScroll="True" Margin="5"/>
-                    </ScrollViewer>
-                    <TextBox SpellCheck.IsEnabled="False" TextWrapping="Wrap" x:Name="tbMessage" Grid.Row="3" Height="45" VerticalAlignment="Bottom" Margin="0,0,0,28" Background="White" HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" BorderBrush="#FF707070"/>
-                    <Button Grid.Row="3" Content="Добавить комментарий >>" x:Name="btnChatMessage" Height="22" VerticalAlignment="Bottom" Margin="0,0,0,0" Background="White" Click="OnBtnAddComment" IsDefault="True">
-                        <Button.ToolTip>
-                            <StackPanel MaxWidth="300">
-                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Добавить комментарий"/>
-                                <TextBlock TextWrapping="Wrap" Text="Добавленные коментарии будут видны не только вашему, но и всем смежным разделам (по связанным элементам)"/>
-                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                <TextBlock TextWrapping="Wrap" Text="Подсказка: комментирование является полезным инструментом для того, чтобы информация не терялась и передавалась между разными отделами" FontStyle="Italic"/>
-                            </StackPanel>
-                        </Button.ToolTip>
-                    </Button>
-                </Grid>
-            </TabItem>
-        </TabControl>
+            <Button Content="{Binding ApprovedButtonText}" Height="25" Grid.Column="0" 
+            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+            Padding="5,0,0,0" Background="#FF8FE660" BorderThickness="0" FontSize="9">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                        <Border Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        </Border>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <Button Content="{Binding WarningButtonText}" Height="25" Grid.Column="1" 
+            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+            Padding="5,0,0,0" Background="#FFECDC37" BorderThickness="0" FontSize="9">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                        <Border Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        </Border>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <Button Content="{Binding ErrorButtonText}" Height="25" Grid.Column="2" 
+            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+            Padding="5,0,0,0" Background="#FFF98A70" BorderThickness="0" FontSize="9">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                        <Border Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        </Border>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    </Style>
+                </Button.Style>
+            </Button>
+
+        </Grid>
+
+        <!-- Пустая панель -->
+        <StackPanel Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,2,0,0" Background="White">
+            <!-- Пустое пространство -->
+        </StackPanel>
+
+        <!-- Нижняя панель -->
+        <StackPanel Orientation="Vertical" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
+            
+            <Button Content="⚙️  Пользовательские настройки плагина" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0,0,0" Background="#FFE0FDFF"/>
+            
+        </StackPanel>
+        
     </Grid>
+    
 </Page>
