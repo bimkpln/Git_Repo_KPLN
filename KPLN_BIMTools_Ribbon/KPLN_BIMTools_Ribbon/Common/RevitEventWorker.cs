@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -7,6 +8,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Documents;
 
 namespace KPLN_BIMTools_Ribbon.Common
 {
@@ -30,11 +32,15 @@ namespace KPLN_BIMTools_Ribbon.Common
         }
 
         /// <summary>
-        /// Событие на открытие документа
+        /// Событие на попытку открытия документа
         /// </summary>
-        internal void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
+        internal void OnDocumentOpening(object sender, DocumentOpeningEventArgs args)
         {
-            _logger.Info($"Начало работы с файлом: {args.Document.PathName}");
+            // Происходит, когда открытие проекта отменено
+            if (args.PathName == null)
+                return;
+
+            _logger.Info($"Начало работы с файлом: {args.PathName}");
         }
 
         /// <summary>
@@ -96,12 +102,33 @@ namespace KPLN_BIMTools_Ribbon.Common
         internal void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
         {
             FailuresAccessor fa = args.GetFailuresAccessor();
-            IList<FailureMessageAccessor> failures = fa.GetFailureMessages();
-            if (failures.Count > 0)
+            IList<FailureMessageAccessor> fmas = fa.GetFailureMessages();
+            if (fmas.Count > 0)
             {
-                foreach (FailureMessageAccessor failure in failures)
+                List<FailureMessageAccessor> resolveFailures = new List<FailureMessageAccessor>();
+                foreach (FailureMessageAccessor fma in fmas)
                 {
-                    fa.DeleteWarning(failure);
+                    try
+                    {
+                        fa.DeleteWarning(fma);
+                    }
+                    catch
+                    {
+                        //// Пытаюсь удалить элементы из ошибки, если не удалось просто удалить ошибку
+                        fma.SetCurrentResolutionType(
+                            fma.HasResolutionOfType(FailureResolutionType.DetachElements)
+                            ? FailureResolutionType.DetachElements
+                            : FailureResolutionType.DeleteElements);
+
+                        resolveFailures.Add(fma);
+                    }
+                }
+
+                if (resolveFailures.Count > 0)
+                {
+                    fa.ResolveFailures(resolveFailures);
+                    // Убиваю окно в конце указывая коммит для обработчика
+                    args.SetProcessingResult(FailureProcessingResult.ProceedWithCommit);
                 }
             }
         }

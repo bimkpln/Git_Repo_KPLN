@@ -166,7 +166,7 @@ namespace KPLN_BIMTools_Ribbon.Common
 
             // Подписка на события
             RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
-            RevitUIControlledApp.ControlledApplication.DocumentOpened += revitEventWorker.OnDocumentOpened;
+            RevitUIControlledApp.ControlledApplication.DocumentOpening += revitEventWorker.OnDocumentOpening;
             RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
             RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
 
@@ -242,7 +242,7 @@ namespace KPLN_BIMTools_Ribbon.Common
 
                 //Отписка от событий
                 RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
-                RevitUIControlledApp.ControlledApplication.DocumentOpened -= revitEventWorker.OnDocumentOpened;
+                RevitUIControlledApp.ControlledApplication.DocumentOpening -= revitEventWorker.OnDocumentOpening;
                 RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
                 RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
             }
@@ -320,7 +320,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: {_sourceProjectName}\n" +
                     $"Ошибки: См. файл логов у пользователя {CurrentDBUser.Surname} {CurrentDBUser.Name}.\n" +
-                    $"Путь к логам у пользователя: C:\\TEMP\\KPLN_Logs\\{RevitVersion}");
+                    $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{RevitVersion}");
             }
             else
             {

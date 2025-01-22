@@ -80,50 +80,56 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 #endregion
 
                 // Открываем документ по указанному пути
-                Document doc = app.OpenDocumentFile(modelPathFrom, _openOptions);
-
-                if (doc != null)
+                Document doc = null;
+                try
                 {
-                    #region Поиск и проверка вида для экспорта
-                    IEnumerable<View3D> currentDoc3DViews = new FilteredElementCollector(doc)
-                        .OfClass(typeof(View3D))
-                        .WhereElementIsNotElementType()
-                        .Where(e => e.Name.Equals(nwConfigData.ViewName))
-                        .Select(e => e as View3D);
-                    if (currentDoc3DViews.Count() == 0)
-                    {
-                        Logger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
-                        return null;
-                    }
-
-                    ElementId viewId = currentDoc3DViews.First().Id;
-
-                    var viewElemsColl = new FilteredElementCollector(doc, viewId)
-                        .WhereElementIsNotElementType()
-                        .Where(e => e.Category != null && e.Category.IsVisibleInUI)
-                        .ToArray();
-                    
-                    if (viewElemsColl.Length == 0)
-                    {
-                        Logger.Error($"На вид с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
-                        return null;
-                    }
-
-                    exportOptions.ViewId = viewId;
-                    #endregion
-
-                    #region Экспорт в Navisworks
-                    string folderTo = $"{rsn}{nwConfigData.PathTo}";
-                    CurrentDocName = $"{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}{nwConfigData.NavisDocPostfix}.nwc";
-
-                    doc.Export(folderTo, CurrentDocName, exportOptions);
-                    doc.Close(false);
-
-                    return $"{folderTo}\\{CurrentDocName}";
-                    #endregion
+                    doc = app.OpenDocumentFile(modelPathFrom, _openOptions);
                 }
-                else
-                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку");
+                catch (Exception ex)
+                {
+                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
+                        $"ошибка при открытии: {ex.Message}");
+                    
+                    return null;
+                }
+
+                #region Поиск и проверка вида для экспорта
+                IEnumerable<View3D> currentDoc3DViews = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View3D))
+                    .WhereElementIsNotElementType()
+                    .Where(e => e.Name.Equals(nwConfigData.ViewName))
+                    .Select(e => e as View3D);
+                if (currentDoc3DViews.Count() == 0)
+                {
+                    Logger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
+                    return null;
+                }
+
+                ElementId viewId = currentDoc3DViews.First().Id;
+
+                var viewElemsColl = new FilteredElementCollector(doc, viewId)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e.Category != null && e.Category.IsVisibleInUI)
+                    .ToArray();
+                    
+                if (viewElemsColl.Length == 0)
+                {
+                    Logger.Error($"На вид с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
+                    return null;
+                }
+
+                exportOptions.ViewId = viewId;
+                #endregion
+
+                #region Экспорт в Navisworks
+                string folderTo = $"{rsn}{nwConfigData.PathTo}";
+                CurrentDocName = $"{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}{nwConfigData.NavisDocPostfix}.nwc";
+
+                doc.Export(folderTo, CurrentDocName, exportOptions);
+                doc.Close(false);
+
+                return $"{folderTo}\\{CurrentDocName}";
+                #endregion
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBNWConfigData)}");

@@ -102,6 +102,7 @@
                     FontWeight="Bold" 
                     FontSize="14"
                     Foreground="White"/>
+                
                 <TextBlock 
                     Grid.Column="0"
                     Grid.Row="1"
@@ -110,7 +111,22 @@
                     x:Name="ItemName"
                     Grid.Column="1"
                     Grid.Row="1"
-                    Text="{Binding SettingName}"/>
+                    Text="{Binding SettingName}">
+                    <TextBox.ToolTip>
+                        <TextBlock>
+                            <Run 
+                                Text="Не менее " 
+                                Foreground="Black" />
+                            <Run 
+                                Text="5" 
+                                Foreground="Red" 
+                                FontWeight="Bold"/>
+                            <Run 
+                                Text=" символов" 
+                                Foreground="Black"/>
+                        </TextBlock>
+                    </TextBox.ToolTip>
+                </TextBox>
 
                 <TextBlock 
                     Grid.Column="0"
@@ -126,7 +142,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBox 
                         x:Name="PathTo"
-                        IsEnabled="False"
+                        IsReadOnly="True"
                         Text="{Binding SharedPathTo}"
                         TextWrapping="Wrap"
                         HorizontalAlignment="Stretch"/>

@@ -94,9 +94,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 // Добавляю общие настройки конфига (которые дублируются по каждтому DBConfigEntity)
                 IEnumerable<DBConfigEntity> dBConfigEntities = tempSqliteService.GetConfigItems();
                 if (dBConfigEntities.Any())
-                {
                     SetExtraSettings_DBConfigEntity(dBConfigEntities.FirstOrDefault());
-                }
+                else
+                    SetExtraSettings();
+
                 SharedPathTo = CurrentDBRevitDocExchanges.SettingResultPath;
 
                 // Добавляю список файлов
@@ -173,7 +174,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <summary>
         /// Доп. настройки - UserControl
         /// </summary>
-        public UserControl SelectedConfig { get; private set; }
+        public UserControl SelectedConfig 
+        { 
+            get; 
+            private set; 
+        }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -270,7 +275,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             using (System.Windows.Forms.FolderBrowserDialog openFolderDialog = new System.Windows.Forms.FolderBrowserDialog())
             {
-                openFolderDialog.SelectedPath = _initialDirectoryForOpenFileDialog;
+                string oldSelectedPath = this.PathTo.Text;
+                if (string.IsNullOrEmpty(oldSelectedPath))
+                    openFolderDialog.SelectedPath = _initialDirectoryForOpenFileDialog;
+                else
+                    openFolderDialog.SelectedPath = oldSelectedPath;
                 
                 if (openFolderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK 
                     && !string.IsNullOrWhiteSpace(openFolderDialog.SelectedPath))

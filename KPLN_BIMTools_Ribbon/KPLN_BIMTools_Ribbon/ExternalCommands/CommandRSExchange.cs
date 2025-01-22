@@ -72,22 +72,26 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
                     Print(msg, MessageType.Warning);
                     Logger.Error(msg);
+                    
+                    return null;
                 }
-
-                if (doc != null)
+                catch (Exception ex)
                 {
-                    string newPath = $"{rsn}{rsConfigData.PathTo}\\{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}.rvt";
-                    ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(newPath);
-
-                    doc.SaveAs(newModelPath, _saveAsOptions);
-                    CurrentDocName = doc.Title;
-                    WorksharingUtils.RelinquishOwnership(doc, new RelinquishOptions(true), new TransactWithCentralOptions());
-                    doc.Close(false);
-
-                    return newPath;
+                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
+                        $"ошибка при открытии: {ex.Message}");
+                    
+                    return null;
                 }
-                else
-                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку");
+
+                string newPath = $"{rsn}{rsConfigData.PathTo}\\{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}.rvt";
+                ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(newPath);
+
+                doc.SaveAs(newModelPath, _saveAsOptions);
+                CurrentDocName = doc.Title;
+                WorksharingUtils.RelinquishOwnership(doc, new RelinquishOptions(true), new TransactWithCentralOptions());
+                doc.Close(false);
+
+                return newPath;
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRSConfigData)}");

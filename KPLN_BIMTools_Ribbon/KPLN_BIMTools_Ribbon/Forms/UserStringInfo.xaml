@@ -11,7 +11,7 @@
         SizeToContent="Height" 
         Background="#FF292D36" 
         WindowStartupLocation="CenterScreen" 
-        ResizeMode="CanResize" 
+        ResizeMode="NoResize" 
         WindowStyle="ToolWindow" 
         Topmost="True">
     <Window.Resources>
