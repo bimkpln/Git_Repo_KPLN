@@ -1,38 +1,27 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_ConfigWorker.Core;
-using Newtonsoft.Json;
-using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 
 namespace KPLN_Tools.Common.LinkManager
 {
-    [Serializable]
-    public class LinkManagerEntity : INotifyPropertyChanged, IJsonSerializable
+    public class LinkManagerEntity : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private readonly CoordinateType[] _linkCoordinateTypeColl = new CoordinateType[]
-        {
-            new CoordinateType("Авто - По общим координатам", ImportPlacement.Shared),
-            new CoordinateType("Авто - Совмещение внутренних начал", ImportPlacement.Origin),
-        };
         private string _linkName;
         private string _linkPath;
-        private CoordinateType _linkCoordinateType;
-        private string _worksetToCloseNamesStartWith;
-        private bool _createWorksetForLinkInst = true;
 
-        [JsonConstructor]
-        public LinkManagerEntity()
-        {
-        }
+        private EntityStatus _currentEntStatus;
+        private SolidColorBrush _fillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
+
+        public LinkManagerEntity() { }
 
         public LinkManagerEntity(string name, string path)
         {
             LinkName = name;
             LinkPath = path;
-            LinkCoordinateType = LinkCoordinateTypeColl[0];
+
+            CurrentEntStatus = EntityStatus.Ok;
         }
 
         /// <summary>
@@ -62,67 +51,51 @@ namespace KPLN_Tools.Common.LinkManager
         }
 
         /// <summary>
-        /// Типы плошадок
+        /// Цвет рамки для окна WPF
         /// </summary>
-        public CoordinateType[] LinkCoordinateTypeColl
+        public SolidColorBrush FillColor
         {
-            get => _linkCoordinateTypeColl;
-        }
-
-        /// <summary>
-        /// Выбранный тип плошадки
-        /// </summary>
-        public CoordinateType LinkCoordinateType
-        {
-            get => _linkCoordinateType;
+            get => _fillColor;
             set
             {
-                _linkCoordinateType = value;
+                _fillColor = value;
                 NotifyPropertyChanged();
             }
         }
 
         /// <summary>
-        /// Создать отдельный рабочий набор для связи?
+        /// Статус сущности для окна WPF
         /// </summary>
-        public bool CreateWorksetForLinkInst
+        public EntityStatus CurrentEntStatus
         {
-            get => _createWorksetForLinkInst;
+            get => _currentEntStatus;
             set
             {
-                _createWorksetForLinkInst = value;
+                _currentEntStatus = value;
+                ResetFillColor();
                 NotifyPropertyChanged();
             }
         }
 
-        /// <summary>
-        /// Имя рабочих наборов, которые нужно закрыть (имя начинается с)
-        /// </summary>
-        public string WorksetToCloseNamesStartWith
-        {
-            get => _worksetToCloseNamesStartWith;
-            set
-            {
-                _worksetToCloseNamesStartWith = value;
-                NotifyPropertyChanged();
-            }
-        }
-
-        public object ToJson()
-        {
-            return new
-            {
-                this.LinkName,
-                this.LinkPath,
-                this.LinkCoordinateType,
-                this.CreateWorksetForLinkInst,
-                this.WorksetToCloseNamesStartWith,
-            };
-        }
-
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
+        protected void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void ResetFillColor()
+        {
+            switch (CurrentEntStatus)
+            {
+                case EntityStatus.Ok:
+                    FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
+                    break;
+                case EntityStatus.Error:
+                    FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 165, 0));
+                    break;
+                case EntityStatus.MarkedAsFinal:
+                    FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 128, 0));
+                    break;
+            }
         }
     }
 }

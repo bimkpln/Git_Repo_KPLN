@@ -1,6 +1,8 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
+using KPLN_Tools.Common.LinkManager;
+using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.ExternalCommands;
 using System.IO;
 using System.Reflection;
@@ -21,6 +23,8 @@ namespace KPLN_Tools
         public Result Execute(UIControlledApplication application, string tabName)
         {
             Command_SETLinkChanger.SetStaticEnvironment(application);
+            LoadRLI_Service.SetStaticEnvironment(application);
+            CommandLinkChanger_Start.SetStaticEnvironment(application);
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");

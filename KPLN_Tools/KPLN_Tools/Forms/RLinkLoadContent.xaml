@@ -1,0 +1,182 @@
+﻿<UserControl x:Class="KPLN_Tools.Forms.RLinkLoadContent"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        Background="#FF292D36">
+
+    <UserControl.Resources>
+        <Style x:Key="MainButtons" TargetType="{x:Type Button}">
+            <Setter Property="Padding" Value="5,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style x:Key="MainTBlock" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="TBlock" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style x:Key="TBox" TargetType="{x:Type TextBox}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style x:Key="CombBox" TargetType="ComboBox">
+            <Setter Property="Width" Value="Auto"/>
+            <Setter Property="MinWidth" Value="150"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="Rect" TargetType="{x:Type Rectangle}">
+            <Setter Property="Margin" Value="-5"/>
+            <Setter Property="RadiusX" Value="3"/>
+            <Setter Property="RadiusY" Value="3"/>
+            <Setter Property="Fill" Value="White"/>
+            <Setter Property="Stroke" Value="AliceBlue"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+        </Style>
+
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Vertical">
+        <Button
+            x:Name="CopyFromFirst"
+            Content="Присвоить значения по первому" 
+            Click="CopyFromFirst_Click"
+            BorderBrush="Green"
+            Style="{StaticResource MainButtons}">
+            <Button.ToolTip>
+                <StackPanel>
+                    <TextBlock
+                        Width="250"
+                        Text="Общая площадка, создание рабочего набора, список закрываемых рабочих наборов - будут присвоены ВСЕМ элементам из значений 1го элемента в списке"
+                        TextWrapping="Wrap"/>
+                </StackPanel>
+            </Button.ToolTip>
+        </Button>
+
+        <ItemsControl 
+            x:Name="LinkChangeColl"
+            ItemsSource="{Binding LinkChangeEntityColl}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="350"/>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="150"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="0.15*"/>
+                                <RowDefinition Height="0.85*"/>
+                            </Grid.RowDefinitions>
+
+                            <Rectangle
+                                Grid.ColumnSpan="5"
+                                Grid.RowSpan="2"
+                                Style="{StaticResource Rect}"/>
+
+                            <Button
+                                x:Name="DeleteLink" 
+                                Grid.Row="1"
+                                Content="✖️" 
+                                Click="RemoveItem"
+                                VerticalAlignment ="Stretch"
+                                HorizontalAlignment ="Stretch"
+                                Background="Transparent"
+                                Foreground ="Red"
+                                BorderBrush="Transparent"
+                                ToolTip="Нажми, чтобы удалить данную конфигурацию"
+                                Style="{StaticResource MainButtons}"/>
+
+                            <TextBlock
+                                Grid.Column="1"
+                                Text="Имя файла:"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource MainTBlock}"/>
+                            <StackPanel
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Orientation="Vertical">
+                                <TextBlock 
+                                    TextWrapping="Wrap"
+                                    Style="{StaticResource TBlock}"
+                                    Text="{Binding LinkName}"/>
+                                <TextBlock 
+                                    TextWrapping="Wrap"
+                                    Style="{StaticResource TBlock}"
+                                    FontSize="10"
+                                    Text="{Binding LinkPath}"/>
+                            </StackPanel>
+
+                            <TextBlock
+                                Grid.Column="2"
+                                Text="Размещение:"
+                                Style="{StaticResource MainTBlock}"/>
+                            <ComboBox
+                                Grid.Row="1"
+                                Grid.Column="2"
+                                ItemsSource="{Binding LinkCoordinateTypeColl}"
+                                SelectedItem="{Binding LinkCoordinateType, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                DisplayMemberPath="Name"
+                                Style="{StaticResource CombBox}">
+                            </ComboBox>
+
+                            <TextBlock
+                                Grid.Column="3"
+                                Text="Создать рабочий набор (запуск плагина 'Рабочие наборы')?"
+                                Style="{StaticResource MainTBlock}"/>
+                            <CheckBox
+                                Grid.Row="1"
+                                Grid.Column="3"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                IsChecked="{Binding CreateWorksetForLinkInst}"/>
+
+                            <TextBlock
+                                Grid.Column="4"
+                                Text="Закрыть рабочие наборы (через ~):"
+                                Style="{StaticResource MainTBlock}"/>
+                            <TextBox
+                                Grid.Row="1"
+                                Grid.Column="4"
+                                Style="{StaticResource TBox}"
+                                MinWidth="50"
+                                ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
+                                Text="{Binding WorksetToCloseNamesStartWith, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        </Grid>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+
+</UserControl>

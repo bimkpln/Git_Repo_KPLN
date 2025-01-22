@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         mc:Ignorable="d" 
         SizeToContent="WidthAndHeight"
-        Height="400"
-        MaxHeight="750"
+        MinHeight="200"
+        MaxHeight="900"
         ResizeMode="NoResize"
         Topmost="True"
         WindowStartupLocation="CenterOwner"
@@ -89,107 +89,12 @@
                 Style="{StaticResource MainTBlock}"/>
 
             <ScrollViewer 
-                x:Name="ScrollViewer" 
+                x:Name="MainScrollViewer"
                 Grid.Row="1"
-                PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
-                <StackPanel Orientation="Vertical">
-                    <ItemsControl 
-                        x:Name="LinkChangeColl"
-                        ItemsSource="{Binding LinkChangeEntityColl}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-
-                                    <Grid Margin="10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="350"/>
-                                            <ColumnDefinition Width="250"/>
-                                            <ColumnDefinition Width="250"/>
-                                            <ColumnDefinition Width="150"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="0.15*"/>
-                                            <RowDefinition Height="0.85*"/>
-                                        </Grid.RowDefinitions>
-
-                                        <Rectangle
-                                            Grid.ColumnSpan="4"
-                                            Grid.RowSpan="2"
-                                            Style="{StaticResource Rect}"/>
-
-                                        <TextBlock
-                                            Text="Имя файла:"
-                                            HorizontalAlignment="Left"
-                                            Style="{StaticResource MainTBlock}"/>
-                                        <StackPanel
-                                            Grid.Row="1"
-                                            Orientation="Vertical">
-                                            <TextBlock 
-                                                TextWrapping="Wrap"
-                                                Style="{StaticResource TBlock}"
-                                                Text="{Binding LinkName}"/>
-                                            <TextBlock 
-                                                TextWrapping="Wrap"
-                                                Style="{StaticResource TBlock}"
-                                                FontSize="10"
-                                                Text="{Binding LinkPath}"/>
-                                            <StackPanel.ToolTip>
-                                                <TextBlock 
-                                                    TextWrapping="Wrap" 
-                                                    FontSize="10"
-                                                    Text="Нажми ПКМ, чтобы удалить данную конфигурацию"/>
-                                            </StackPanel.ToolTip>
-                                            <StackPanel.ContextMenu>
-                                                <ContextMenu>
-                                                    <MenuItem 
-                                                        Header="Удалить" 
-                                                        Click="MenuItem_Delete_Click"/>
-                                                </ContextMenu>
-                                            </StackPanel.ContextMenu>
-                                        </StackPanel>
-
-                                        <TextBlock
-                                            Grid.Column="1"
-                                            Text="Размещение:"
-                                            Style="{StaticResource MainTBlock}"/>
-                                        <ComboBox
-                                            Grid.Row="1"
-                                            Grid.Column="1"
-                                            ItemsSource="{Binding LinkCoordinateTypeColl}"
-                                            SelectedItem="{Binding LinkCoordinateType, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                                            DisplayMemberPath="Name"
-                                            Style="{StaticResource CombBox}">
-                                        </ComboBox>
-
-                                        <TextBlock
-                                            Grid.Column="2"
-                                            Text="Создать рабочий набор (запуск плагина 'Рабочие наборы')?"
-                                            Style="{StaticResource MainTBlock}"/>
-                                        <CheckBox
-                                            Grid.Row="1"
-                                            Grid.Column="2"
-                                            VerticalAlignment="Center"
-                                            HorizontalAlignment="Center"
-                                            IsChecked="{Binding CreateWorksetForLinkInst}"/>
-
-                                        <TextBlock
-                                            Grid.Column="3"
-                                            Text="Закрыть рабочие наборы (через ~):"
-                                            Style="{StaticResource MainTBlock}"/>
-                                        <TextBox
-                                            Grid.Row="1"
-                                            Grid.Column="3"
-                                            Style="{StaticResource TBox}"
-                                            MinWidth="50"
-                                            ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
-                                            Text="{Binding WorksetToCloseNamesStartWith, UpdateSourceTrigger=PropertyChanged}"/>
-
-                                    </Grid>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                HorizontalScrollBarVisibility="Auto" 
+                VerticalScrollBarVisibility="Auto"
+                DataContext="{Binding SelectedConfig}">
+                <ContentControl Content="{Binding}" />
             </ScrollViewer>
         </Grid>
 
@@ -206,34 +111,6 @@
                 Orientation="Horizontal"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center">
-
-                <Button 
-                     x:Name="SaveConfigBtn" 
-                     Content="Записать конфигурацию" 
-                     Click="SaveConfigBtn_Click"
-                     BorderBrush="Orange"
-                     Style="{StaticResource MainButtons}">
-                    <Button.ToolTip>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Width="200"
-                            Text="Сохраняет конфигурацию в родительскую папку для текущего файла Revit. Может повторно применяться для всех файлов из папки текущего проекта"/>
-                    </Button.ToolTip>
-                </Button>
-
-                <Button 
-                     x:Name="LoadConfigBtn" 
-                     Content="Загрузить конфигурацию" 
-                     Click="LoadConfigBtn_Click"
-                     BorderBrush="Orange"
-                     Style="{StaticResource MainButtons}">
-                    <Button.ToolTip>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Width="200"
-                            Text="Загружает конфигурацию из родительской папки для текущего файла Revit"/>
-                    </Button.ToolTip>
-                </Button>
 
                 <Button 
                     x:Name="StartBtn" 
@@ -253,7 +130,7 @@
                      x:Name="AddNewServLink" 
                      Content="📁" 
                      Click="AddNewServLink_Click"
-                     BorderBrush="Green"
+                     BorderBrush="Orange"
                      Style="{StaticResource MainButtons}">
                     <Button.ToolTip>
                         <TextBlock
@@ -264,7 +141,7 @@
                      x:Name="AddNewRevitServerLink" 
                      Content="🗃" 
                      Click="AddNewRevitServerLink_Click"
-                     BorderBrush="Green"
+                     BorderBrush="Orange"
                      Style="{StaticResource MainButtons}">
                     <Button.ToolTip>
                         <StackPanel>
@@ -277,9 +154,8 @@
                     x:Name="ChangeLink" 
                     Content="🔁" 
                     Click="ChangeLink_Click"
-                    BorderBrush="Green"
-                    Style="{StaticResource MainButtons}"
-                    IsEnabled="False">
+                    BorderBrush="Red"
+                    Style="{StaticResource MainButtons}">
                     <Button.ToolTip>
                         <TextBlock
                             Text="Заменить существующую связь"/>

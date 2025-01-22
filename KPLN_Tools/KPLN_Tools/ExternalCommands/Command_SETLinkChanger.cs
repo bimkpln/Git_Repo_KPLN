@@ -36,7 +36,6 @@ namespace KPLN_Tools.ExternalCommands
             RevitUIControlledApp = application;
         }
 
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             if (_dbRevitDialogs == null)

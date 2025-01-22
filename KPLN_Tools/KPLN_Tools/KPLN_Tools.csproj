@@ -198,6 +198,9 @@
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\DBWorkerService.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
+    <Compile Include="Common\LinkManager\EntityStatus.cs" />
+    <Compile Include="Common\LinkManager\LinkManagerUpdateEntity.cs" />
+    <Compile Include="Common\LinkManager\LinkManagerLoadEntity.cs" />
     <Compile Include="Common\LinkManager\LinkManagerEntity.cs" />
     <Compile Include="Common\MonitorLinkEntity.cs" />
     <Compile Include="Common\MonitorTool.cs" />
@@ -221,6 +224,7 @@
     <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
     <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
+    <Compile Include="Common\LinkManager\LoadRLI_Service.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
@@ -253,6 +257,7 @@
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
     <Compile Include="Forms\Models\OVVK_SystemManager_ViewModel.cs" />
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
@@ -262,6 +267,12 @@
     </Compile>
     <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
       <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\RLinkUpdateContent.xaml.cs">
+      <DependentUpon>RLinkUpdateContent.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\RLinkLoadContent.xaml.cs">
+      <DependentUpon>RLinkLoadContent.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
@@ -364,6 +375,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\OV_DuctThicknessForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\RLinkUpdateContent.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\RLinkLoadContent.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
