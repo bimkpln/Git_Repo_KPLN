@@ -7,6 +7,7 @@
     {
         Ok,
         Error,
+        CriticalError,
         MarkedAsFinal
     }
 }

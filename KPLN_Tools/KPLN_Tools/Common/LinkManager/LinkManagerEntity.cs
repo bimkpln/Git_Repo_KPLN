@@ -92,6 +92,9 @@ namespace KPLN_Tools.Common.LinkManager
                 case EntityStatus.Error:
                     FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 165, 0));
                     break;
+                case EntityStatus.CriticalError:
+                    FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 0, 0));
+                    break;
                 case EntityStatus.MarkedAsFinal:
                     FillColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 128, 0));
                     break;

@@ -176,8 +176,19 @@ namespace KPLN_Tools.Forms
         {
             // Готовим коллекцию для замены
             Dictionary<int, LinkManagerUpdateEntity> resulDict = new Dictionary<int, LinkManagerUpdateEntity>();
-            foreach (LinkManagerUpdateEntity lmEntity in LinkChangeEntityColl)
+            foreach (LinkManagerUpdateEntity lmEntity in LinkChangeEntityColl.Cast<LinkManagerUpdateEntity>())
             {
+                if (lmEntity.CurrentEntStatus == EntityStatus.CriticalError)
+                {
+                    UserDialog ud = new UserDialog(
+                        "ВНИМАНИЕ",
+                        $"У одной или несколькиз связей есть критическая ошибка. Либо исправь ошибку у связи, либо удали связь из списка.",
+                        "Без этого - запуск сценария не состоиться");
+                    ud.ShowDialog();
+
+                    continue;
+                }
+
                 if (lmEntity.CurrentEntStatus == EntityStatus.MarkedAsFinal)
                     continue;
 

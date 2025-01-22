@@ -1,5 +1,4 @@
-﻿using Autodesk.Private.InfoCenter;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
@@ -56,6 +55,18 @@ namespace KPLN_Tools.Common.LinkManager
                         if (oldModelPathString.Contains("[*"))
                             oldModelPathString = RemoveSubstringIfExists(oldModelPathString, "[*");
 
+                        if (!CheckWSAvailable(doc, linkType))
+                        {
+                            result.Add(new LinkManagerUpdateEntity(
+                                linkType.get_Parameter(BuiltInParameter.RVT_LINK_FILE_NAME_WITHOUT_EXT).AsString(),
+                                oldModelPathString,
+                                "РН занят",
+                                "Рабочий набор занят, нужно предварительно освободить",
+                                EntityStatus.CriticalError));
+
+                            continue;
+                        }
+
                         result.Add(new LinkManagerUpdateEntity(
                             linkType.get_Parameter(BuiltInParameter.RVT_LINK_FILE_NAME_WITHOUT_EXT).AsString(),
                             oldModelPathString,
@@ -71,6 +82,24 @@ namespace KPLN_Tools.Common.LinkManager
             }
 
             return result.OrderBy(ent => ent.LinkName).ToArray();
+        }
+
+        /// <summary>
+        /// Проверка экземпляров типа на возможность замены
+        /// </summary>
+        /// <returns>True - свободны, False - заняты</returns>
+        public static bool CheckWSAvailable(Document doc, RevitLinkType linkType)
+        {
+            ElementId[] linkTypeInstanceIds = linkType
+                .GetDependentElements(
+            new ElementCategoryFilter(BuiltInCategory.OST_RvtLinks))
+                .Where(id => doc.GetElement(id) is RevitLinkInstance)
+                .ToArray();
+
+            ICollection<ElementId> availableWSElemsId = WorksharingUtils
+                .CheckoutElements(doc, linkTypeInstanceIds);
+
+            return linkTypeInstanceIds.Count() == availableWSElemsId.Count();
         }
 
         /// <summary>
@@ -127,7 +156,7 @@ namespace KPLN_Tools.Common.LinkManager
 
                     if (folderContents.Models.Count == 0)
                         return new LinkManagerUpdateEntity(sourceEnt.LinkName, sourceEnt.LinkPath, "Ошибка", "В данной папке нет файлов Revit", EntityStatus.Error);
-                    
+
                     foreach (var model in folderContents.Models)
                     {
                         string fileName = model.Name.TrimEnd(".rvt".ToArray());

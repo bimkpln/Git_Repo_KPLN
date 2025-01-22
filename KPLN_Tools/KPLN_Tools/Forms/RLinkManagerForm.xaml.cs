@@ -75,12 +75,12 @@ namespace KPLN_Tools.Forms
             if (SelectedConfig == null || SelectedConfig.LinkChangeEntityColl.Count() == 0)
                 return;
 
-            if (SelectedConfig.LinkChangeEntityColl.Any(ent => ent.CurrentEntStatus == EntityStatus.Error))
+            if (SelectedConfig.LinkChangeEntityColl.Any(ent => ent.CurrentEntStatus == EntityStatus.CriticalError || ent.CurrentEntStatus == EntityStatus.Error))
             {
                 UserDialog ud = new UserDialog(
-                        "ВНИМАНИЕ",
-                        $"Операция отменена, т.к. в связях на замену есть ошибки (причины указаны в описаниях связей). Проверь, и устрани ошибки",
-                        "Ошибки выделены оранжевым");
+                    "ВНИМАНИЕ",
+                    $"Операция отменена, т.к. в связях на замену есть ошибки (причины указаны в описаниях связей). Проверь, и устрани ошибки",
+                    "Ошибки выделены оранжевым");
                 ud.ShowDialog();
 
                 return;
@@ -88,9 +88,9 @@ namespace KPLN_Tools.Forms
             else if (SelectedConfig is RLinkUpdateContent && SelectedConfig.LinkChangeEntityColl.Any(ent => ent.CurrentEntStatus != EntityStatus.MarkedAsFinal))
             {
                 UserDialog ud = new UserDialog(
-                        "ВНИМАНИЕ",
-                        $"Операция отменена, т.к. не все связи помечены как итоговый результат для замены. Проверь, и пометь связи как итоговый результат",
-                        "Ошибки выделены оранжевым");
+                    "ВНИМАНИЕ",
+                    $"Операция отменена, т.к. не все связи помечены как итоговый результат для замены. Проверь, и пометь связи как итоговый результат",
+                    "Ошибки выделены оранжевым");
                 ud.ShowDialog();
 
                 return;

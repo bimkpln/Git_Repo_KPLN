@@ -1,10 +1,6 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_ConfigWorker.Core;
+﻿using KPLN_Library_ConfigWorker.Core;
 using Newtonsoft.Json;
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Media;
 
 namespace KPLN_Tools.Common.LinkManager
 {
@@ -17,7 +13,7 @@ namespace KPLN_Tools.Common.LinkManager
         [JsonConstructor]
         public LinkManagerUpdateEntity() : base() { }
 
-        public LinkManagerUpdateEntity(string name, string path, string updatedName, string updatedPath, EntityStatus status = EntityStatus.Ok) : base(name, path) 
+        public LinkManagerUpdateEntity(string name, string path, string updatedName, string updatedPath, EntityStatus status = EntityStatus.Ok) : base(name, path)
         {
             UpdatedLinkName = updatedName;
             UpdatedLinkPath = updatedPath;

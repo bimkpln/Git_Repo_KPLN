@@ -130,12 +130,33 @@ namespace KPLN_Tools.ExecutableCommand
         private void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
         {
             FailuresAccessor fa = args.GetFailuresAccessor();
-            IList<FailureMessageAccessor> failures = fa.GetFailureMessages();
-            if (failures.Count > 0)
+            IList<FailureMessageAccessor> fmas = fa.GetFailureMessages();
+            if (fmas.Count > 0)
             {
-                foreach (FailureMessageAccessor failure in failures)
+                List<FailureMessageAccessor> resolveFailures = new List<FailureMessageAccessor>();
+                foreach (FailureMessageAccessor fma in fmas)
                 {
-                    fa.DeleteWarning(failure);
+                    try
+                    {
+                        fa.DeleteWarning(fma);
+                    }
+                    catch
+                    {
+                        //// Пытаюсь удалить элементы из ошибки, если не удалось просто удалить ошибку
+                        fma.SetCurrentResolutionType(
+                            fma.HasResolutionOfType(FailureResolutionType.DetachElements)
+                            ? FailureResolutionType.DetachElements
+                            : FailureResolutionType.DeleteElements);
+
+                        resolveFailures.Add(fma);
+                    }
+                }
+
+                if (resolveFailures.Count > 0)
+                {
+                    fa.ResolveFailures(resolveFailures);
+                    // Убиваю окно в конце указывая коммит для обработчика
+                    args.SetProcessingResult(FailureProcessingResult.ProceedWithCommit);
                 }
             }
         }
@@ -283,6 +304,12 @@ namespace KPLN_Tools.ExecutableCommand
                                 }
                             }
                             #endregion
+
+                            if (!LoadRLI_Service.CheckWSAvailable(doc, linkType)) 
+                            {
+                                _sbErrResult.AppendLine($"Занят рабочий набор, в которой размещена связь: {linkUpdateEntity.UpdatedLinkPath}. Нужно попросить коллег освободить РН");
+                                continue;
+                            }
 
                             linkType.LoadFrom(linkNewModelPath, openConfig);
                             _sbSuccResult.AppendLine($"Связь по пути {oldModelPath} усешно заменена на {linkUpdateEntity.UpdatedLinkPath}");
