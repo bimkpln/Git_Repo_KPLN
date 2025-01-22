@@ -88,6 +88,10 @@ namespace KPLN_Looker
         /// </summary>
         public static string MonitoredDocFilePath(Document doc)
         {
+            // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
+            if (doc == null)
+                return null;
+
             string fileName = doc.IsWorkshared
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
                 : doc.PathName;

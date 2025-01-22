@@ -29,6 +29,10 @@ namespace KPLN_IOSClasher.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
+            // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
+            if (app.ActiveUIDocument == null)
+                return Result.Cancelled;
+
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
 

@@ -62,6 +62,10 @@ namespace KPLN_IOSClasher
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
+            // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
+            if (doc == null)
+                return;
+
             if (doc.IsFamilyDocument)
                 return;
 
@@ -112,11 +116,9 @@ namespace KPLN_IOSClasher
                 || actViewType == ViewType.Elevation)
             {
                 DocController.CurrentDocumentUpdateData(doc);
-#if Revit2020 || Revit2023
                 // Если не анализируется, то и линки не трогаю
                 if (!DocController.IsDocumentAnalyzing)
                     return;
-#endif
 
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
@@ -133,10 +135,8 @@ namespace KPLN_IOSClasher
                 return;
 
             // Игнор НЕ мониторинговых моделей
-#if Revit2020 || Revit2023
             if (!DocController.IsDocumentAnalyzing)
                 return;
-#endif
 
             string transName = args.GetTransactionNames().FirstOrDefault();
             // Обновляю по линкам, если были транзакции
