@@ -23,30 +23,12 @@
         </Grid.RowDefinitions>
 
         <!-- Верхняя панель -->
-        <StackPanel Orientation="Vertical" Grid.Row="0" HorizontalAlignment="Stretch">
-            
-            <Button Content="🔄  Обновить отверстия по заданиям (АР, КР)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="🔂  Создать отверстия по заданию (АР, КР, ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="➡️  Расставить отверстия по выбранной стене (АР, КР, ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="🔀  Расставить отверстия по пересечениям (ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,0,0,2" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            
-            
+        <StackPanel x:Name="ActionButtonDepartment" Orientation="Vertical" Grid.Row="0" HorizontalAlignment="Stretch">
         </StackPanel>
 
-        <!-- Средняя панель с тремя кнопками -->
-        <Grid Grid.Row="1" HorizontalAlignment="Stretch" Background="#FFE2E2E2">
-            
-            <Grid.ColumnDefinitions>
-                
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-                
-            </Grid.ColumnDefinitions>
-
-            <Button Content="{Binding ApprovedButtonText}" Height="25" Grid.Column="0" 
-            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-            Padding="5,0,0,0" Background="#FF8FE660" BorderThickness="0" FontSize="9">
+        <!-- Средняя панель -->
+        <StackPanel Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Stretch" Margin="0,1,0,0">
+            <Button Content="{Binding NoneStatusButtonText}" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="5,0,0,0" Background="#FFBDBDBD" BorderThickness="1" FontSize="10">
                 <Button.Style>
                     <Style TargetType="Button">
                         <Setter Property="Template">
@@ -67,61 +49,90 @@
                     </Style>
                 </Button.Style>
             </Button>
-
-            <Button Content="{Binding WarningButtonText}" Height="25" Grid.Column="1" 
-            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-            Padding="5,0,0,0" Background="#FFECDC37" BorderThickness="0" FontSize="9">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}" 
-                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                    BorderThickness="{TemplateBinding BorderThickness}">
-                                        <Border Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
-                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+            <Grid HorizontalAlignment="Stretch" Background="#FFE2E2E2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="{Binding ApprovedButtonText}" Height="25" Grid.Column="0" 
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FF8FE660" BorderThickness="0" FontSize="9">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" 
+                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                            <Border Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Border>
                                         </Border>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                    </Style>
-                </Button.Style>
-            </Button>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        </Style>
+                    </Button.Style>
+                </Button>
 
-            <Button Content="{Binding ErrorButtonText}" Height="25" Grid.Column="2" 
-            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-            Padding="5,0,0,0" Background="#FFF98A70" BorderThickness="0" FontSize="9">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}" 
-                                    BorderBrush="{TemplateBinding BorderBrush}" 
-                                    BorderThickness="{TemplateBinding BorderThickness}">
-                                        <Border Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
-                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                <Button Content="{Binding WarningButtonText}" Height="25" Grid.Column="1" 
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FFECDC37" BorderThickness="0" FontSize="9">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" 
+                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                            <Border Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Border>
                                         </Border>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                    </Style>
-                </Button.Style>
-            </Button>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        </Style>
+                    </Button.Style>
+                </Button>
 
-        </Grid>
+                <Button Content="{Binding ErrorButtonText}" Height="25" Grid.Column="2" 
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FFF98A70" BorderThickness="0" FontSize="9">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" 
+                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                            <Border Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Border>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </StackPanel>
 
         <!-- Пустая панель -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,2,0,0" Background="White">
             <!-- Пустое пространство -->
-            <TextBlock>Надо добавить вкладку с нераспределёнными заданиями</TextBlock>
+            <TextBlock x:Name="TestField"/>
         </StackPanel>
 
         <!-- Нижняя панель -->

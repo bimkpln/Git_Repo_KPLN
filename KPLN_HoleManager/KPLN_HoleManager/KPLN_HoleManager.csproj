@@ -57,6 +57,10 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_SQLiteWorker, Version=1.4.10.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+    </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
@@ -86,6 +90,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\DockablePreferences.cs" />
+    <Compile Include="Common\UserPreferences.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">
       <DependentUpon>DockableManagerForm.xaml</DependentUpon>
     </Compile>
@@ -98,7 +103,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <Page Include="Forms\DockableManagerForm.xaml">
       <SubType>Designer</SubType>
@@ -106,12 +110,20 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\OpenManager.png" />
+    <EmbeddedResource Include="Resources\OpenManager.png" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Families\199_AR_ORW.rfa" />
+    <None Include="Families\199_AR_OSW.rfa" />
+    <None Include="Families\199_STR_ORW.rfa" />
+    <None Include="Families\199_STR_OSW.rfa" />
+    <None Include="Families\501_MEP_TRW.rfa" />
+    <None Include="Families\501_MEP_TSW.rfa" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
