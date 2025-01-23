@@ -25,10 +25,11 @@
         <!-- Верхняя панель -->
         <StackPanel Orientation="Vertical" Grid.Row="0" HorizontalAlignment="Stretch">
             
-            <Button Content="🔄  Расставить/обновить отверстия по заданиям" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="➡️  Расставить отверстия по выбранной стене" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="🔀  Расставить отверстия по пересечениям" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
-            <Button Content="🔂  Создать отверстия по заданию" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,0,0,2" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="🔄  Обновить отверстия по заданиям (АР, КР)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="🔂  Создать отверстия по заданию (АР, КР, ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="➡️  Расставить отверстия по выбранной стене (АР, КР, ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            <Button Content="🔀  Расставить отверстия по пересечениям (ИОС)" Height="30" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="0,0,0,2" Padding="10,0.5,0,0" Background="#FFE0FDFF" BorderThickness="1"/>
+            
             
         </StackPanel>
 
@@ -120,6 +121,7 @@
         <!-- Пустая панель -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,2,0,0" Background="White">
             <!-- Пустое пространство -->
+            <TextBlock>Надо добавить вкладку с нераспределёнными заданиями</TextBlock>
         </StackPanel>
 
         <!-- Нижняя панель -->
