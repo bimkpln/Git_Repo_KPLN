@@ -14,22 +14,9 @@ namespace KPLN_IOSClasher
 {
     public class Module : IExternalModule
     {
-        /// <summary>
-        /// Общий фильтр для просеивания элементов модели (новых и отредактированных)
-        /// </summary>
-        private static Func<Element, bool> _elemFilterFunc;
-
         public Module()
         {
             ModuleDBWorkerService = new DBWorkerService();
-
-            _elemFilterFunc = (el) => 
-                el.Category != null
-                && !(el is ElementType)
-                && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId)
-                // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в IntersectCheckEntity есть, он на существ. эл-ты)
-                && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
-                    || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"));
         }
 
         public static DBWorkerService ModuleDBWorkerService { get; private set; }
@@ -168,15 +155,15 @@ namespace KPLN_IOSClasher
             }
 
             Element[] addedLinearElems = args
-                .GetAddedElementIds()
+                .GetAddedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
                 .Select(id => doc.GetElement(id))
-                .Where(_elemFilterFunc)
+                .Where(IntersectCheckEntity.ElemExtraFilterFunc)
                 .ToArray();
 
             Element[] modifyedLinearElems = args
-                .GetModifiedElementIds()
+                .GetModifiedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
                 .Select(id => doc.GetElement(id))
-                .Where(_elemFilterFunc)
+                .Where(IntersectCheckEntity.ElemExtraFilterFunc)
                 .ToArray();
 
             ElementId[] deletedLinearElems = args
@@ -185,6 +172,11 @@ namespace KPLN_IOSClasher
 
             if (deletedLinearElems.Any())
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointCleaner(deletedLinearElems));
+
+            // При удалении элементов - по цепочке соседи считаются модифицированными.
+            // Если я только удалил элементы, и ничего не создал (это не запараллелить, но на всякий) - то дальнейший анализ отменяется
+            if (addedLinearElems.Count() == 0 && deletedLinearElems.Count() != 0)
+                return;
 
             Element[] allChangedElems = addedLinearElems.Concat(modifyedLinearElems).ToArray();
 

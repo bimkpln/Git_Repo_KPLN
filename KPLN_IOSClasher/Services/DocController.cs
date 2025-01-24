@@ -384,9 +384,21 @@ namespace KPLN_IOSClasher.Services
         private static BoundingBoxXYZ CreateViewBBox(View activeView)
         {
             BoundingBoxXYZ combinedBoundingBox = null;
-            // Если активна подрезка на плане - берем её
+            // Если активна подрезка на плане - берем её (учитываем уровень с расширением)
             if (activeView is ViewPlan && activeView.CropBoxActive)
-                return activeView.CropBox;
+            {
+                Level viewLevel = activeView.GenLevel;
+                double levelZCoord = viewLevel.Elevation;
+                BoundingBoxXYZ vCropBB = activeView.CropBox;
+                XYZ vCropBBMin = vCropBB.Min;
+                XYZ vCropBBMax = vCropBB.Max;
+
+                return new BoundingBoxXYZ()
+                {
+                    Min = new XYZ(vCropBBMin.X, vCropBBMin.Y, levelZCoord - 10),
+                    Max = new XYZ(vCropBBMax.X, vCropBBMax.Y, levelZCoord + 30),
+                };
+            }
             // Если активна подрезка на плане - берем её
             else if (activeView is View3D view3D && view3D.IsSectionBoxActive)
             {
@@ -438,8 +450,7 @@ namespace KPLN_IOSClasher.Services
             // Иначе - генерю BoundingBoxXYZ исходя из элементов ТЕКУЩЕГО документа
             Document activeDoc = activeView.Document;
             Element[] elColl = new FilteredElementCollector(activeDoc)
-                .WhereElementIsNotElementType()
-                .Where(el => el.Category != null && IntersectCheckEntity.BuiltInCatIDs.Any(bicId => el.Category.Id.IntegerValue == bicId))
+                .WherePasses(IntersectCheckEntity.ElemCatLogicalOrFilter)
                 .ToArray();
             foreach (Element element in elColl)
             {

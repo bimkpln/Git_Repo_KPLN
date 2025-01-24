@@ -1,9 +1,7 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Shapes;
 
 namespace KPLN_IOSClasher.Core
 {
@@ -12,8 +10,6 @@ namespace KPLN_IOSClasher.Core
     /// </summary>
     internal class IntersectCheckEntity
     {
-        private static int[] _builtInCatIDs;
-
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
@@ -26,17 +22,44 @@ namespace KPLN_IOSClasher.Core
             BuiltInCategory.OST_CableTray,
         };
 
+        private static LogicalOrFilter _elemCatLogicalOrFilter;
+        private static Func<Element, bool> _elemFilterFunc;
+
         /// <summary>
-        /// Список id BuiltInCategory для файлов ИОС, которые обрабатываются
+        /// Фильтр для ключевой фильтрации по категориям
         /// </summary>
-        public static int[] BuiltInCatIDs
+        public static LogicalOrFilter ElemCatLogicalOrFilter 
+        { 
+            get
+            {
+                if (_elemCatLogicalOrFilter == null)
+                {
+                    List<ElementFilter> catFilters = new List<ElementFilter>();
+                    catFilters.AddRange(_builtInCategories.Select(bic => new ElementCategoryFilter(bic)));
+
+                    _elemCatLogicalOrFilter = new LogicalOrFilter(catFilters);
+                }
+
+                return _elemCatLogicalOrFilter;
+            } 
+        }
+        /// <summary>
+        /// Общая функция для фильтра для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
+        /// </summary>
+        public static Func<Element, bool> ElemExtraFilterFunc
         {
             get
             {
-                if (_builtInCatIDs == null)
-                    _builtInCatIDs = _builtInCategories.Select(bic => (int)bic).ToArray();
+                if (_elemFilterFunc == null) 
+                {
+                    _elemFilterFunc = (el) =>
+                        el.Category != null
+                        && !(el is ElementType)
+                        && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"));
+                }
 
-                return _builtInCatIDs;
+                return _elemFilterFunc;
             }
         }
 
@@ -68,7 +91,7 @@ namespace KPLN_IOSClasher.Core
                 .Cast<BasePoint>()
                 .FirstOrDefault()
                 .Position;
-            
+
             CheckLinkInst = linkInst;
 
             Document linkDoc = CheckLinkInst.GetLinkDocument();
@@ -83,7 +106,7 @@ namespace KPLN_IOSClasher.Core
                     .Position;
 
                 // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
-                if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1 
+                if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1
                     && Math.Abs(CheckDocBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) > 0.1)
                 {
                     XYZ resultVect = CheckDocBasePntPosition - LinkBasePntPosition;
@@ -170,26 +193,13 @@ namespace KPLN_IOSClasher.Core
             BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
             BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
 
-            foreach (BuiltInCategory category in _builtInCategories)
-            {
-                CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
-                    .OfCategory(category)
-                    .WhereElementIsNotElementType()
-                    .WherePasses(intersectsFilter)
-                    .Where(el =>
-                        // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в Module есть, он на редакт. добавл. эл-ты)
-                        !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"))));
+            CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
+                .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, intersectsFilter))
+                .Where(ElemExtraFilterFunc));
 
-                CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
-                    .OfCategory(category)
-                    .WhereElementIsNotElementType()
-                    .WherePasses(insideFilter)
-                    .Where(el =>
-                        // Игнор огнезащиты для ЭОМСС, которые моделируются воздуховодами (не забудь похожий игнор в Module есть, он на редакт. добавл. эл-ты)
-                        !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"))));
-            }
+            CurrentDocElemsToCheck.UnionWith(new FilteredElementCollector(currentDoc)
+                .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, insideFilter))
+                .Where(ElemExtraFilterFunc));
         }
     }
 }
