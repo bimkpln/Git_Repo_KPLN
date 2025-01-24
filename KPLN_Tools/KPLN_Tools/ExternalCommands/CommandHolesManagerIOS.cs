@@ -151,26 +151,26 @@ namespace KPLN_Tools.ExternalCommands
             if (collElems.Count() == 0)
                 return;
 
-            //// Проверка на наличие и значение параметра КП_О_Версия семейства
-            //Dictionary<Family, Parameter> fsParamDict = new Dictionary<Family, Parameter>(collElems
-            //    .ToDictionary(fi => fi.Symbol.Family, fi => fi.Symbol.get_Parameter(_familyVersionParam)));
+            // Проверка на наличие и значение параметра КП_О_Версия семейства
+            Dictionary<Family, Parameter> fsParamDict = new Dictionary<Family, Parameter>(collElems
+                .ToDictionary(fi => fi.Symbol.Family, fi => fi.Symbol.get_Parameter(_familyVersionParam)));
 
-            //foreach (KeyValuePair<Family, Parameter> kvp in fsParamDict)
-            //{
-            //    if (kvp.Value is null)
-            //        throw new Exception($"KPLN: Ошибка - семейство {kvp.Key.Name} не актуальное. Обнови его отсюда {@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM"}");
-            //    else
-            //    {
-            //        string strVers = kvp.Value.AsString();
-            //        string majorStrVersion = strVers[0].ToString();
-            //        string minorStrVersion = strVers[strVers.Length - 1].ToString();
-            //        if (int.TryParse(majorStrVersion, out int majorVersion) && int.TryParse(minorStrVersion, out int minorVersion))
-            //        {
-            //            if (majorVersion != fiMajorVers || !(minorVersion > fiMinorVers))
-            //                throw new Exception($"KPLN: Ошибка - семейство {kvp.Key.Name} не актуальное. Обнови его отсюда {@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM"}");
-            //        }
-            //    }
-            //}
+            foreach (KeyValuePair<Family, Parameter> kvp in fsParamDict)
+            {
+                if (kvp.Value is null)
+                    throw new Exception($"KPLN: Ошибка - семейство {kvp.Key.Name} не актуальное. Обнови его отсюда {@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM"}");
+                else
+                {
+                    string strVers = kvp.Value.AsString();
+                    string majorStrVersion = strVers[0].ToString();
+                    string minorStrVersion = strVers[strVers.Length - 1].ToString();
+                    if (int.TryParse(majorStrVersion, out int majorVersion) && int.TryParse(minorStrVersion, out int minorVersion))
+                    {
+                        if (majorVersion != fiMajorVers || !(minorVersion > fiMinorVers))
+                            throw new Exception($"KPLN: Ошибка - семейство {kvp.Key.Name} не актуальное. Обнови его отсюда {@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM"}");
+                    }
+                }
+            }
 
             // Проверка на наличие параметра 00_Отметка_Абсолютная
             HashSet<Family> nullParamsFamilies = new HashSet<Family>(collElems
@@ -263,7 +263,7 @@ namespace KPLN_Tools.ExternalCommands
         private string PrepareStringData(double elev) => elev >= 0 ? string.Format("+{0:F3}", elev) : string.Format("{0:F3}", elev);
 
         private void SetRlvElevation(FamilyInstance fi, string prefix, string elemElev, string hostElev) =>
-            fi.get_Parameter(_relativeElevParam).Set($"[Отн]: {prefix} {elemElev} отн. {hostElev}");
+            fi.get_Parameter(_relativeElevParam).Set($"[Отн]: {prefix} {elemElev} отн. ч.п. на ур. {hostElev}");
 
         private void SetAbsElevation(FamilyInstance fi, string prefix, string elemElev) =>
             fi.get_Parameter(_absoluteElevParam).Set($"[Абс]: {prefix} {elemElev} отн. нуля здания");

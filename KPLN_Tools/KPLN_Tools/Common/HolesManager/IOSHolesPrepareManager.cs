@@ -190,7 +190,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownFloorBinding = downFloor,
                     DownFloorDistance = downMinDist,
                     DownBindingElevation = downBindElev,
-                    BindingPrefixString = "Низ на отм.",
+                    BindingPrefixString = "Низ отм.",
                     RlvElevation = rlvDist,
                     AbsElevation = fiBBox.Min.Z,
                 };
@@ -205,7 +205,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownFloorBinding = downFloor,
                     DownFloorDistance = downMinDist,
                     DownBindingElevation = downBindElev,
-                    BindingPrefixString = "Центр на отм.",
+                    BindingPrefixString = "Центр отм.",
                     RlvElevation = rlvDist + Math.Abs((Math.Abs(fiBBox.Max.Z) - Math.Abs(fiBBox.Min.Z)) / 2),
                     AbsElevation = ((fiBBox.Max.Z + fiBBox.Min.Z)) / 2,
                 };

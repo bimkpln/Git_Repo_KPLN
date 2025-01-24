@@ -280,16 +280,18 @@ namespace KPLN_Looker
             string familyPath = null)
         {
             // Глобальный отлов по пути семейства (если оно задано).
-            // Уточнение для ЛОКАЛЬНЫХ проектов
-            if (!string.IsNullOrEmpty(familyPath)
-                && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
-                || (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-                return false;
-            // Игнор локальных проектов. Для СЕТ плохой пример, на будущее - лучше библиотеку под проект выносить в другой корень, иначе это усложняет анализ
-            else if (!string.IsNullOrEmpty(familyPath)
-                && (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
-                || (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-                return false;
+            if (!string.IsNullOrEmpty(familyPath))
+            {
+                // Уточнение для ЛОКАЛЬНЫХ проектов
+                if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader")
+                    || (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+                    return false;
+                // Игнор локальных проектов. Для СЕТ плохой пример, на будущее - лучше библиотеку под проект выносить в другой корень, иначе это усложняет анализ
+                else if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader")
+                    || (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
+                    return false;
+            }
+            
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
             // Отлов семейств марок (могут разрабатывать все)
