@@ -7,40 +7,43 @@ using KPLN_HoleManager.Forms;
 namespace KPLN_HoleManager.Common
 {
     // Регитсрация DockablePane
-    internal static class DockablePreferences
+    public static class DockablePreferences
     {
-        public static DockableManagerForm Page = new DockableManagerForm();
+        public static DockableManagerForm Page;
         public static Guid PageGuid = new Guid("42246bf5-7ea2-4ce9-94ef-61e87d352a4c");
 
-     
-
-        public static void RegisterDockablePane(UIControlledApplication application)
+        public static void EnsureDockablePaneRegistered(UIControlledApplication application)
         {
-            DockableManagerForm page = new DockableManagerForm();
+            if (Page != null) {return;}
+
+            Page = new DockableManagerForm();
 
             DockablePaneProviderData data = new DockablePaneProviderData
             {
-                FrameworkElement = page,
-                InitialState = new DockablePaneState
+                FrameworkElement = Page,
+                InitialState = new DockablePaneState()
                 {
+                    DockPosition = DockPosition.Floating
                 }
             };
 
-            application.RegisterDockablePane(new DockablePaneId(PageGuid), "Менеджер отверстий", page);
+            application.RegisterDockablePane(new DockablePaneId(PageGuid), "Менеджер отверстий", Page);
+        }
 
-            // Скрываем панель после полной загрузки приложения
-            application.ControlledApplication.ApplicationInitialized += (sender, args) =>
+        // Метод закрытия панелим при открытии нового документа
+        public static void HideDockablePane(UIApplication uiApplication)
+        {
+            DockablePaneId paneId = new DockablePaneId(PageGuid);
+
+            try
             {
-                try
+                DockablePane pane = uiApplication.GetDockablePane(paneId);
+                if (pane != null && pane.IsShown())
                 {
-                    DockablePane pane = application.GetDockablePane(new DockablePaneId(PageGuid));
-                    if (pane.IsShown())
-                    {
-                        pane.Hide();
-                    }
+                    pane.Hide();
                 }
-                catch{} // Тут ничего не происходит
-            };
+            }
+            catch {}
         }
     }
 
@@ -51,26 +54,33 @@ namespace KPLN_HoleManager.Common
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            DockablePaneId paneId = new DockablePaneId(DockablePreferences.PageGuid);
-            DockablePane pane = commandData.Application.GetDockablePane(paneId);
-
-            if (pane != null)
+            try
             {
-                if (pane.IsShown())
+                // Получаем DockablePane
+                DockablePaneId paneId = new DockablePaneId(DockablePreferences.PageGuid);
+                DockablePane pane = commandData.Application.GetDockablePane(paneId);
+
+                if (pane != null)
                 {
-                    pane.Hide();
-                }
-                else
-                {
-                    pane.Show();
+                    if (pane.IsShown())
+                    {
+                        pane.Hide();
+                    }
+                    else
+                    {
+                        pane.Show();
+                        DockablePreferences.Page.SetUIApplication(commandData.Application); // Передаём текущую сессию UI
+                    }
+
+                    return Result.Succeeded;
                 }
 
-                return Result.Succeeded;
+                message = "Панель не найдена.";
             }
-
-            System.Windows.Forms.MessageBox.Show("Не удалось открыть панель", "Ошибка",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Error);
+            catch (Exception ex)
+            {
+                message = $"Ошибка при работе с панелью: {ex.Message}";
+            }
 
             return Result.Failed;
         }

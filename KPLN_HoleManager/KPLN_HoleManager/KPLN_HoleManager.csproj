@@ -91,8 +91,12 @@
   <ItemGroup>
     <Compile Include="Common\DockablePreferences.cs" />
     <Compile Include="Common\UserPreferences.cs" />
+    <Compile Include="ExternalCommand\AddHoleInWall.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">
       <DependentUpon>DockableManagerForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\sChoiseHole.xaml.cs">
+      <DependentUpon>sChoiseHole.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -108,6 +112,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\sChoiseHole.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\OpenManager.png" />
@@ -118,12 +126,24 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Families\199_AR_ORW.rfa" />
-    <None Include="Families\199_AR_OSW.rfa" />
-    <None Include="Families\199_STR_ORW.rfa" />
-    <None Include="Families\199_STR_OSW.rfa" />
-    <None Include="Families\501_MEP_TRW.rfa" />
-    <None Include="Families\501_MEP_TSW.rfa" />
+    <None Include="Families\199_AR_ORW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Families\199_AR_OSW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Families\199_STR_ORW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Families\199_STR_OSW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Families\501_MEP_TRW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Families\501_MEP_TSW.rfa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

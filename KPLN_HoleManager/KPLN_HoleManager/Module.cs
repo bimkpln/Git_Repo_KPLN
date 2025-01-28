@@ -1,9 +1,6 @@
 ﻿using Autodesk.Revit.UI;
-using System.IO;
-using System.Reflection;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using KPLN_Loader.Common;
+using System.Reflection;
 
 namespace KPLN_HoleManager
 {
@@ -18,32 +15,52 @@ namespace KPLN_HoleManager
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            // Регистрация DockablePane
-            Common.DockablePreferences.RegisterDockablePane(application);
+            // Создаём вкладку
+            try
+            {
+                application.CreateRibbonTab(tabName);
+            }
+            catch (Autodesk.Revit.Exceptions.ArgumentException) {}
 
-            // Добавление RibbonPanel
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Менеджер отверстий");
+            // Добавляем панель на вкладку
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Управление отверстиями");
 
-            // Добавляю кнопку в панель
+            // Добавляем кнопку в панель
             AddPushButtonDataInPanel(
-                "Открыть\nменеджер",
-                "Открыть\nменеджер",
+                "Менеджер\n отверстий",
+                "Менеджер\n отверстий",
                 "Открыть панель менеджера отверстий",
-                string.Format(
-                    "Через данную панель происходит обмен заданиями на отверстия между смежными отделами.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(Common.CommandShowDockablePane).FullName,
+                "Через данную панель происходит обмен заданиями на отверстия между смежными отделами.",
+                typeof(KPLN_HoleManager.Common.CommandShowDockablePane).FullName,
                 panel,
-                "KPLN_HoleManager.Imagens.OpenManager.png",
+                "KPLN_HoleManager.Resources.OpenManager.png",
                 "http://moodle.stinproject.local"
             );
+
+            // Регистрируем панель
+            KPLN_HoleManager.Common.DockablePreferences.EnsureDockablePaneRegistered(application);
+
+            // Подписываемся на событие открытия документа
+            application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+
             return Result.Succeeded;
         }
 
-        // Метод для добавления отдельной в панель
+        // Обработчик события открытия документа
+        private void OnDocumentOpened(object sender, Autodesk.Revit.DB.Events.DocumentOpenedEventArgs args)
+        {
+            try
+            {
+                UIApplication uiApp = new UIApplication(sender as Autodesk.Revit.ApplicationServices.Application);
+                KPLN_HoleManager.Common.DockablePreferences.HideDockablePane(uiApp);
+            }
+            catch
+            {
+                TaskDialog.Show("Ошибка", "При обработке плагина 'Менеджер отверстий' произошла ошибка. Перед использыванием плагина закройте его и откройте заново." +
+                    "В случае, если ошибка повториться - обратитесь в BIM-отдел.");
+            }
+        }
+
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
             PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
@@ -56,12 +73,14 @@ namespace KPLN_HoleManager
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
         }
 
-        // Метод для добавления иконки для кнопки
-        private ImageSource PngImageSource(string embeddedPathname)
+        private System.Windows.Media.ImageSource PngImageSource(string embeddedPathname)
         {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
+            var stream = GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            var decoder = new System.Windows.Media.Imaging.PngBitmapDecoder(
+                stream,
+                System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+                System.Windows.Media.Imaging.BitmapCacheOption.Default
+            );
             return decoder.Frames[0];
         }
     }
