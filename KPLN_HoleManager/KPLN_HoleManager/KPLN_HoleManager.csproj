@@ -91,7 +91,7 @@
   <ItemGroup>
     <Compile Include="Common\DockablePreferences.cs" />
     <Compile Include="Common\UserPreferences.cs" />
-    <Compile Include="ExternalCommand\AddHoleInWall.cs" />
+    <Compile Include="ExternalCommand\AddHoleInWallHandler.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">
       <DependentUpon>DockableManagerForm.xaml</DependentUpon>
     </Compile>

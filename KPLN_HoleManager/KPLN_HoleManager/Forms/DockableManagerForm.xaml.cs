@@ -77,7 +77,6 @@ namespace KPLN_HoleManager.Forms
             // Добавляем кнопки в зависимости от departmentName
             if (departmentName == "АР" || departmentName == "КР")
             {
-                AddButton("🔄  Обновить отверстия по заданиям", buttonStyle);
                 AddButton("🔂  Создать отверстия по заданию", buttonStyle);
                 AddButton("➡️  Расставить отверстия по выбранной стене", buttonStyle);
             }
@@ -89,7 +88,6 @@ namespace KPLN_HoleManager.Forms
             }
             else if (departmentName == "BIM")
             {
-                AddButton("🔄  Обновить отверстия по заданиям", buttonStyle);
                 AddButton("🔂  Создать отверстия по заданию", buttonStyle);
                 AddButton("➡️  Расставить отверстия по выбранной стене", buttonStyle);
                 AddButton("🔀  Расставить отверстия по пересечениям", buttonStyle);
@@ -108,11 +106,7 @@ namespace KPLN_HoleManager.Forms
             };
 
             // Добавляем обработчики для кнопок в зависимости от их содержимого
-            if (content.Contains("Обновить отверстия по заданиям"))
-            {
-                button.Click += UpdateHolesByTasks;
-            }
-            else if (content.Contains("Создать отверстия по заданию"))
+            if (content.Contains("Создать отверстия по заданию"))
             {
                 button.Click += CreateHolesByTask;
             }
@@ -173,11 +167,6 @@ namespace KPLN_HoleManager.Forms
 
 
 
-        // Обработчик для кнопки "Обновить отверстия по заданиям"
-        private void UpdateHolesByTasks(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Обновление отверстий по заданиям выполнено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
 
         // Обработчик для кнопки "Создать отверстия по заданию"
         private void CreateHolesByTask(object sender, RoutedEventArgs e)

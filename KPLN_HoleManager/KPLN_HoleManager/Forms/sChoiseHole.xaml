@@ -11,12 +11,10 @@
         Topmost="True"
         WindowStartupLocation="CenterScreen"
         Background="#FF616163">
-    <!-- Фон окна синий -->
 
     <Grid Margin="10,5,5,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <!-- Заголовок -->
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -33,24 +31,25 @@
         </DockPanel>
 
         <!-- Раскрывающийся список -->
-        <ComboBox Grid.Row="1" Margin="0,15,0,15" VerticalAlignment="Center" 
-                  HorizontalAlignment="Left" Width="230" FontSize="13">
+        <ComboBox x:Name="DepartmentComboBox" Grid.Row="1" Margin="0,15,0,15" 
+                  VerticalAlignment="Center" HorizontalAlignment="Left" 
+                  Width="230" FontSize="13"
+                  SelectionChanged="DepartmentComboBox_SelectionChanged">
             <ComboBoxItem Content="АР" />
             <ComboBoxItem Content="КР" />
             <ComboBoxItem Content="ИОС" />
-            <ComboBoxItem Content="BIM" />
         </ComboBox>
 
-        <!-- Первая кнопка -->
+        <!-- Прямоугольное отверстие -->
         <Button Grid.Row="2" Content="🔲  Прямоугольное отверстие" FontSize="12" 
                 VerticalAlignment="Center" HorizontalAlignment="Left" 
                 HorizontalContentAlignment="Left" Padding="10,0" 
-                Width="230" Height="30" Margin="0,0,0,5"/>
+                Width="230" Height="30" Margin="0,0,0,5" Click="SquareHoleButton_Click"/>
 
-        <!-- Вторая кнопка -->
+        <!-- Круглое отверстие -->
         <Button Grid.Row="3" Content="🔴  Круглое отверстие" FontSize="12" 
                 VerticalAlignment="Center" HorizontalAlignment="Left" 
                 HorizontalContentAlignment="Left" Padding="10,0"
-                Width="230" Height="30" />
+                Width="230" Height="30" Click="RoundHoleButton_Click" />
     </Grid>
 </Window>
