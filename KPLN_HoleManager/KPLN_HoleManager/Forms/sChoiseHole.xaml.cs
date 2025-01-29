@@ -3,11 +3,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_HoleManager.ExternalCommand;
 
 namespace KPLN_HoleManager.Forms
 {
     public partial class sChoiseHole : Window
     {
+        private readonly UIApplication _uiApp;
         private readonly Element _selectedElement;
 
         private readonly string _userFullName;
@@ -16,17 +19,18 @@ namespace KPLN_HoleManager.Forms
         private string _departmentHoleName;
         private string _holeTypeName;
 
-        public sChoiseHole(string userFullName, string departmentName, Element selectedElement)
+        public sChoiseHole(UIApplication uiApp, Element selectedElement, string userFullName, string departmentName)
         {
             InitializeComponent();
 
             // Данные для дальнейшей передачи
+            _uiApp = uiApp;
             _selectedElement = selectedElement;            
             _userFullName = userFullName;
             _departmentName = departmentName;
 
             // Устанавливаем DataContext для привязки данных в XAML
-            DataContext = new HoleSelectionViewModel(userFullName, departmentName, selectedElement);
+            DataContext = new HoleSelectionViewModel(selectedElement, userFullName, departmentName);
 
             // Настраиваем ComboBox
             SetDepartmentComboBox();
@@ -74,12 +78,7 @@ namespace KPLN_HoleManager.Forms
                 _departmentHoleName = selectedItem.Content.ToString();
                 _holeTypeName = "SquareHole";
 
-                MessageBox.Show($"Выбранный элемент: {_selectedElement}\n" +
-                    $"Пользователь: {_userFullName}\n" +
-                    $"Отдел: {_departmentName}\n" +
-                    $"Отдел дырки: {_departmentHoleName}\n" +
-                    $"Тип дырки: {_holeTypeName}\n", 
-                    "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                RunPlaceHoleCommand();
             }
         }
 
@@ -91,14 +90,28 @@ namespace KPLN_HoleManager.Forms
                 _departmentHoleName = selectedItem.Content.ToString();
                 _holeTypeName = "RoundHole";
 
-                MessageBox.Show($"Выбранный элемент: {_selectedElement}\n" +
-                    $"Пользователь: {_userFullName}\n" +
-                    $"Отдел: {_departmentName}\n" +
-                    $"Отдел дырки: {_departmentHoleName}\n" +
-                    $"Тип дырки: {_holeTypeName}\n",
-                    "Информация", MessageBoxButton.OK, MessageBoxImage.Information);
+                RunPlaceHoleCommand();
             }
         }
+
+        // Вызов команды
+        private void RunPlaceHoleCommand()
+        {
+            this.Close();
+
+            if (_uiApp == null)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось получить доступ к Revit.");
+                return;
+            }
+          
+            // Вызываем команду с параметрами
+            _ExternalEventHandler.Instance.Raise((app) =>
+            {
+                PlaceHoleOnWallCommand.Execute(app, _selectedElement, _departmentHoleName, _holeTypeName);
+            });
+        }
+
 
         // Закрытие окна
         private void CloseWindow(object sender, RoutedEventArgs e)

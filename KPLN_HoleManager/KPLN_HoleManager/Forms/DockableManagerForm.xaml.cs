@@ -16,15 +16,13 @@ namespace KPLN_HoleManager.Forms
     {
         public string UserFullName { get; }
         public string DepartmentName { get; }
-        public string ElementInfo { get; }
 
-        public HoleSelectionViewModel(string userFullName, string departmentName, Element element) {}
+        public HoleSelectionViewModel(Element element, string userFullName, string departmentName) {}
     }
 
     public partial class DockableManagerForm : Page, IDockablePaneProvider
     {
         UIApplication _uiApp; // Активная Revit-сессия
-        Document _doc; // Активный Revit-документ
 
         private readonly DBWorkerService _dbWorkerService; // БД
         string userFullName; // Имя пользователя
@@ -55,11 +53,10 @@ namespace KPLN_HoleManager.Forms
             };
         }
 
-        // Получение Reviot-потока и активного документа
+        // Получение Revit-потока
         public void SetUIApplication(UIApplication uiApp)
         {
             _uiApp = uiApp;
-            _doc = uiApp?.ActiveUIDocument?.Document;
         }
 
         // Растановка кнопок в зависимости от отдела
@@ -159,7 +156,7 @@ namespace KPLN_HoleManager.Forms
                 return;
             }
 
-            var holeWindow = new sChoiseHole(userFullName, departmentName, element);
+            var holeWindow = new sChoiseHole(_uiApp, element, userFullName, departmentName);
             holeWindow.ShowDialog();
         }
 

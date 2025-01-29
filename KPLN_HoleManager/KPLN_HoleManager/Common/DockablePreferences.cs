@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.Attributes;
 using System;
 using KPLN_HoleManager.Forms;
+using KPLN_HoleManager.ExternalCommand;
 
 namespace KPLN_HoleManager.Common
 {
@@ -56,6 +57,8 @@ namespace KPLN_HoleManager.Common
         {
             try
             {
+                _ExternalEventHandler.Initialize();
+
                 // Получаем DockablePane
                 DockablePaneId paneId = new DockablePaneId(DockablePreferences.PageGuid);
                 DockablePane pane = commandData.Application.GetDockablePane(paneId);

@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_HoleManager.ExternalCommand;
 using KPLN_Loader.Common;
 using System.Reflection;
 
@@ -42,7 +43,7 @@ namespace KPLN_HoleManager
 
             // Подписываемся на событие открытия документа
             application.ControlledApplication.DocumentOpened += OnDocumentOpened;
-
+          
             return Result.Succeeded;
         }
 
