@@ -9,6 +9,7 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandRLinkManager : IExternalCommand
     {
+        internal const string PluginName = "Менеджер rvt-связей";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

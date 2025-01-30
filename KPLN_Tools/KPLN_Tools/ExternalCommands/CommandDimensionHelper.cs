@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandDimensionHelper : IExternalCommand
     {
+        internal const string PluginName = "Восстановить размеры";
+
         private static List<DimensionDTO> _docDimensionsList = new List<DimensionDTO>();
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -19,6 +22,8 @@ namespace KPLN_Tools.ExternalCommands
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
+
+            //DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndDirName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             //TaskDialog taskDialog = new TaskDialog("Выбери действие");
             //taskDialog.MainIcon = TaskDialogIcon.TaskDialogIconInformation;

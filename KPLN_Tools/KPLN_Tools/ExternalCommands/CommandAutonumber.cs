@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -11,6 +12,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class CommandAutonumber : IExternalCommand
     {
+        internal const string PluginName = "Нумерация";
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -24,6 +27,8 @@ namespace KPLN_Tools.ExternalCommands
             try
             {
                 Process.Start(fullPath);
+
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             }
             catch
             {

@@ -4,7 +4,6 @@ using KPLN_Library_Forms.ExecutableCommand;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExecutableCommand;
 using System;
-using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,14 +14,12 @@ namespace KPLN_Tools.Forms
     public partial class OV_OZKDuctAccessoryForm : Window
     {
         private readonly UIApplication _uiapp;
-        private readonly Document _doc;
 
         public OV_OZKDuctAccessoryForm(
             UIApplication uiapp,
             OZKDuctAccessoryEntity[] ozkDuctAccessoryEntities)
         {
             _uiapp = uiapp;
-            _doc = _uiapp.ActiveUIDocument.Document;
             OZKDuctAccessoryEntities = ozkDuctAccessoryEntities;
 
             InitializeComponent();

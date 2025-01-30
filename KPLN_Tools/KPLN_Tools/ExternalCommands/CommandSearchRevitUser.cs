@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Tools.Forms;
 using System.Linq;
@@ -11,11 +12,15 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandSearchRevitUser : IExternalCommand
     {
+        internal const string PluginName = "Найти пользователя";
+
         private static UserDbService _userDbService;
         private static SubDepartmentDbService _subDepartmentDbService;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            
             UserSearch searchForm = new UserSearch(UserDbService
                 .GetDBUsers()
                 .Select(dbu => new Forms.Models.VM_UserEntity(dbu, SubDepartmentDbService.GetDBSubDepartment_ByDBUser(dbu))));

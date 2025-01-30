@@ -1,6 +1,7 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
@@ -15,6 +16,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandExtraMonitoring : IExternalCommand
     {
+        internal const string PluginName = "Экстрамониторинг";
+
         private readonly Dictionary<ElementId, List<MonitorEntity>> _monitorEntitiesDict = new Dictionary<ElementId, List<MonitorEntity>>();
         private readonly Dictionary<ElementId, List<MonitorLinkEntity>> _monitorLinkEntiteDict = new Dictionary<ElementId, List<MonitorLinkEntity>>();
         private RevitLinkInstance _currentLink;
@@ -57,6 +60,8 @@ namespace KPLN_Tools.ExternalCommands
             
             try
             {
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+                
                 SetMonitoredElemsFromUserSelect(doc, selectedIds);
 
                 if (_monitorEntitiesDict.Count > 0)

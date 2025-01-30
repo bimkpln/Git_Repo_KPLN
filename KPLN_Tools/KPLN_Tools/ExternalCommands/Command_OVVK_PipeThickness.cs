@@ -2,12 +2,14 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
+using System.Reflection;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -15,6 +17,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_OVVK_PipeThickness : IExternalCommand
     {
+        internal const string PluginName = "Толщина труб";
+
         /// <summary>
         /// Параметр толщины стенки труб
         /// </summary>
@@ -62,6 +66,8 @@ namespace KPLN_Tools.ExternalCommands
 
             if (mainForm.IsRun)
             {
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
                 using (Transaction trans = new Transaction(doc, "KPLN: Толщина стенки труб"))
                 {
                     trans.Start();

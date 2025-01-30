@@ -45,8 +45,8 @@ namespace KPLN_Tools
                 false);
 
             PushButtonData autonumber = CreateBtnData(
-                "Нумерация",
-                "Нумерация",
+                CommandAutonumber.PluginName,
+                CommandAutonumber.PluginName,
                 "Нумерация позици в спецификации на +1 от начального значения",
                 string.Format(
                     "Алгоритм запуска:\n" +
@@ -64,8 +64,8 @@ namespace KPLN_Tools
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
             PushButtonData searchUser = CreateBtnData(
-                "Найти пользователя",
-                "Найти пользователя",
+                CommandSearchRevitUser.PluginName,
+                CommandSearchRevitUser.PluginName,
                 "Выдает данные KPLN-пользователя Revit",
                 string.Format(
                     "Для поиска введи имя Revit-пользователя.\n" +
@@ -82,8 +82,8 @@ namespace KPLN_Tools
                 true);
 
             PushButtonData sendMsgToBitrix = CreateBtnData(
-                "Отправить в Bitrix",
-                "Отправить в Bitrix",
+                CommandSendMsgToBitrix.PluginName,
+                CommandSendMsgToBitrix.PluginName,
                 "Отправляет данные по выделенному элементу пользователю в Bitrix",
                 string.Format(
                     "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному/-ым пользователям Bitrix.\n" +
@@ -100,8 +100,8 @@ namespace KPLN_Tools
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
             PushButtonData tagWiper = CreateBtnData(
-                "Очистить марки помещений",
-                "Очистить марки помещений",
+                CommandTagWiper.PluginName,
+                CommandTagWiper.PluginName,
                 "УДАЛЯЕТ все марки помещений, которые потеряли основу, а также пытается ОБНОВИТЬ связи маркам помещений",
                 string.Format(
                     "Варианты запуска:\n" +
@@ -119,18 +119,18 @@ namespace KPLN_Tools
                 "http://moodle");
 
             PushButtonData monitoringHelper = CreateBtnData(
-               "Экстрамониторинг",
-               "Экстрамониторинг",
-               "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
-               string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                   ModuleData.Date,
-                   ModuleData.Version,
-                   ModuleData.ModuleName
-               ),
-               typeof(CommandExtraMonitoring).FullName,
-               "KPLN_Tools.Imagens.monitorMainSmall.png",
-               "KPLN_Tools.Imagens.monitorMainSmall.png",
-               "http://moodle");
+                CommandExtraMonitoring.PluginName,
+                CommandExtraMonitoring.PluginName,
+                "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
+                string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandExtraMonitoring).FullName,
+                "KPLN_Tools.Imagens.monitorMainSmall.png",
+                "KPLN_Tools.Imagens.monitorMainSmall.png",
+                "http://moodle");
 
             PushButtonData changeLevel = CreateBtnData(
                 "Изменение уровня",
@@ -148,8 +148,9 @@ namespace KPLN_Tools
                 "http://moodle/");
 
             // Плагин не реализован до конца. 
-            PushButtonData dimensionHelper = CreateBtnData("Восстановить размеры",
-                "Восстановить размеры",
+            PushButtonData dimensionHelper = CreateBtnData(
+                CommandDimensionHelper.PluginName,
+                CommandDimensionHelper.PluginName,
                 "Восстановливает размеры, которые были удалены из-за пересоздания основы",
                 string.Format(
                     "Варианты запуска:\n" +
@@ -166,8 +167,9 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.dimHeplerSmall.png",
                 "http://moodle");
 
-            PushButtonData changeRLinks = CreateBtnData("Менеджер rvt-связей",
-                "Менеджер rvt-связей",
+            PushButtonData changeRLinks = CreateBtnData(
+                CommandRLinkManager.PluginName,
+                CommandRLinkManager.PluginName,
                 "Загрузить/обновлят связи внутри проекта",
                 string.Format(
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -181,7 +183,8 @@ namespace KPLN_Tools
                 "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
 #if Revit2020 || Debug2020
-            PushButtonData set_ChangeRSLinks = CreateBtnData("СЕТ: Обновить связи",
+            PushButtonData set_ChangeRSLinks = CreateBtnData(
+                "СЕТ: Обновить связи",
                 "СЕТ: Обновить связи",
                 "Обновляет связи между ревит-серверами",
                 string.Format(
@@ -209,18 +212,19 @@ namespace KPLN_Tools
             #region Инструменты СС
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
-                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины СС",
-                "Плагины СС",
-                "СС: Коллекция плагинов для автоматизации задач",
-                string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
-                panel,
-                false);
+                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины СС",
+                    "Плагины СС",
+                    "СС: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
+                    panel,
+                    false);
 
                 PushButtonData ssSystems = CreateBtnData(
                     "Слаботочные системы",
@@ -262,7 +266,8 @@ namespace KPLN_Tools
             #region Инструменты КР
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 3 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
-                PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины КР",
+                PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины КР",
                     "Плагины КР",
                     "КР: Коллекция плагинов для автоматизации задач",
                     string.Format(
@@ -302,7 +307,8 @@ namespace KPLN_Tools
                 || DBWorkerService.CurrentDBUserSubDepartment.Id == 5
                 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
-                PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon("Плагины ОВВК",
+                PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины ОВВК",
                     "Плагины ОВВК",
                     "ОВВК: Коллекция плагинов для автоматизации задач",
                     string.Format(
@@ -316,8 +322,8 @@ namespace KPLN_Tools
                 false);
 
                 PushButtonData ovvk_pipeThickness = CreateBtnData(
-                    "Толщина труб",
-                    "Толщина труб",
+                    Command_OVVK_PipeThickness.PluginName,
+                    Command_OVVK_PipeThickness.PluginName,
                     "Заполняет толщину труб по выбранной конфигурации",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -331,8 +337,8 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 PushButtonData ovvk_systemManager = CreateBtnData(
-                    "Менеджер систем",
-                    "Менеджер систем",
+                    Command_OVVK_SystemManager.PluginName,
+                    Command_OVVK_SystemManager.PluginName,
                     "Управление системами в проекте",
                     string.Format(
                         "Функционал:" +
@@ -350,8 +356,8 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 PushButtonData ov_ductThickness = CreateBtnData(
-                    "ОВ: Толщина воздуховодов",
-                    "ОВ: Толщина воздуховодов",
+                    Command_OV_DuctThickness.PluginName,
+                    Command_OV_DuctThickness.PluginName,
                     "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты согласно СП.60 и СП.7",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -365,8 +371,8 @@ namespace KPLN_Tools
                     "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
                 PushButtonData ov_ozkDuctAccessory = CreateBtnData(
-                    "ОВ: Клапаны ОЗК",
-                    "ОВ: Клапаны ОЗК",
+                    Command_OV_OZKDuctAccessory.PluginName,
+                    Command_OV_OZKDuctAccessory.PluginName,
                     "Заполняет данные по ОЗК клапанам",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -394,24 +400,8 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.smlt_Small.png",
                     "KPLN_Tools.Imagens.smlt_Small.png",
                     "http://moodle");
-                PushButtonData set_ElementsNotModeled = CreateBtnData(
-                    "ОВВК: СЕТ_Немоделируемые",
-                    "ОВВК: СЕТ_Немоделируемые",
-                    "(ИСПРАВЛЕННАЯ ВЕРСИЯ СМЛТ): Расчет краски, металла и добавление семейств в проект",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(ExternalCommands.Specification.Command_SET_ElementsNotModeled).FullName,
-                    "KPLN_Tools.Imagens.smlt_Small.png",
-                    "KPLN_Tools.Imagens.smlt_Small.png",
-                    "http://moodle");
-
-
+                
                 ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
-                //ovvkToolsPullDownBtn.AddPushButton(set_ElementsNotModeled);
 #endif
 
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
@@ -425,7 +415,8 @@ namespace KPLN_Tools
             // Наполняю плагинами в зависимости от отдела
             if (DBWorkerService.CurrentDBUserSubDepartment.Id != 2 && DBWorkerService.CurrentDBUserSubDepartment.Id != 3)
             {
-                PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon("Отверстия",
+                PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Отверстия",
                     "Отверстия",
                     "Плагины для работы с отверстиями",
                     string.Format(
@@ -438,8 +429,9 @@ namespace KPLN_Tools
                     panel,
                     false);
 
-                PushButtonData holesManagerIOS = CreateBtnData("ИОС: Подготовить задание",
-                    "ИОС: Подготовить задание",
+                PushButtonData holesManagerIOS = CreateBtnData(
+                    CommandHolesManagerIOS.PluginName,
+                    CommandHolesManagerIOS.PluginName,
                     "Подготовка заданий на отверстия от инженеров для АР.",
                     string.Format(
                         "Плагин выполняет следующие функции:\n" +

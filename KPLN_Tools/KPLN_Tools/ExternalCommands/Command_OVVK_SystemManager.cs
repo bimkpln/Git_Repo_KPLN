@@ -13,6 +13,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_OVVK_SystemManager : IExternalCommand
     {
+        internal const string PluginName = "Менеджер систем";
+
         /// <summary>
         /// Коллекция BuiltInCategory используемых в моделях ОВВК типа FamilyInstance
         /// </summary>

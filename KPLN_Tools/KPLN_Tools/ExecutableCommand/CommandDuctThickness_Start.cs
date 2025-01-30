@@ -3,12 +3,16 @@ using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExternalCommands;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace KPLN_Tools.ExecutableCommand
@@ -43,6 +47,8 @@ namespace KPLN_Tools.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(Command_OV_DuctThickness.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"KPLN: Толщина воздуховодов"))
             {
                 t.Start();
@@ -53,33 +59,32 @@ namespace KPLN_Tools.ExecutableCommand
                 _extensibleStorageBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, DateTime.Now);
                 #endregion
 
-                if (!SetDuctThicknessData())
+                if (SetDuctThicknessData())
                 {
-                    t.RollBack();
-                    return Result.Cancelled;
+                    t.Commit();
+
+                    if (_errorDict.Keys.Count != 0 || _warningDict.Keys.Count != 0)
+                    {
+                        PrintMsgFromDict("ОШИБКА", MessageType.Critical, _errorDict);
+                        PrintMsgFromDict("ВНИМАНИЕ", MessageType.Warning, _warningDict);
+                
+                        MessageBox.Show(
+                            $"Скрипт отработал, но есть замечания к некоторым элементам. Список выведен отдельным окном",
+                            "Внимание",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            $"Скрипт отработал без ошибок",
+                            "Успешно",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
                 }
                 else
-                    t.Commit();
-            }
-
-            if (_errorDict.Keys.Count != 0 || _warningDict.Keys.Count != 0)
-            {
-                PrintMsgFromDict("ОШИБКА", MessageType.Critical, _errorDict);
-                PrintMsgFromDict("ВНИМАНИЕ", MessageType.Warning, _warningDict);
-                
-                MessageBox.Show(
-                    $"Скрипт отработал, но есть замечания к некоторым элементам. Список выведен отдельным окном",
-                    "Внимание",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-            else
-            {
-                MessageBox.Show(
-                    $"Скрипт отработал без ошибок",
-                    "Успешно",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    t.RollBack();
             }
 
             return Result.Succeeded;

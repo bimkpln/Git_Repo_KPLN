@@ -5,7 +5,9 @@ using Autodesk.Revit.UI;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 
 namespace KPLN_Tools.ExternalCommands
@@ -18,6 +20,8 @@ namespace KPLN_Tools.ExternalCommands
         ///  GUID параметра для исключения перезаписи ("ТС_Перезаписать")
         /// </summary>
         internal static readonly Guid RevalueParamGuid = new Guid("466e6ecb-f390-43da-9cb5-76858d500a2c");
+        
+        internal const string PluginName = "ОВ: Толщина воздуховодов";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -25,7 +29,6 @@ namespace KPLN_Tools.ExternalCommands
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
-
 
             // Коллекция для анализа
             IEnumerable<Element> ducts = new FilteredElementCollector(doc).OfClass(typeof(Duct)).WhereElementIsNotElementType();
@@ -43,5 +46,7 @@ namespace KPLN_Tools.ExternalCommands
 
             return Result.Succeeded;
         }
+
+
     }
 }

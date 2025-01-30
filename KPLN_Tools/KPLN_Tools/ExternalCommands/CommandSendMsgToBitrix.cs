@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Tools.Common;
@@ -19,6 +20,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandSendMsgToBitrix : IExternalCommand
     {
+        internal const string PluginName = "Отправить в Bitrix";
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             Document selectedDoc = null;
@@ -155,6 +158,8 @@ namespace KPLN_Tools.ExternalCommands
             #region Обработка результата
             if (form.Status == KPLN_Library_Forms.Common.UIStatus.RunStatus.Run)
             {
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+                
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +
                     $"[u]Путь к проету:[/u] {selectedDocPath}\n" +
                     $"[u]ID элемента/-ов:[/u] {string.Join(", ", selectedIds)}";

@@ -1,8 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common.OVVK_System;
+using KPLN_Tools.ExternalCommands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +33,8 @@ namespace KPLN_Tools.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(Command_OV_OZKDuctAccessory.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"KPLN: Клапаны ОЗК"))
             {
                 t.Start();

@@ -1,10 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Common.HolesManager;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -14,7 +14,8 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandHolesManagerIOS : IExternalCommand
     {
-        private Stopwatch _stopWatchUnBook = new Stopwatch();
+        internal const string PluginName = "ИОС: Подготовить задание";
+
         private readonly string _offsetUpParmaName = "SYS_OFFSET_UP";
         private readonly string _offsetDownParmaName = "SYS_OFFSET_DOWN";
         private readonly Guid _relativeElevParam = new Guid("76ce59d6-ad59-4684-a037-267930dd937d");
@@ -24,6 +25,8 @@ namespace KPLN_Tools.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -33,7 +36,7 @@ namespace KPLN_Tools.ExternalCommands
 
             IOSShaftPrepareManager iOSShaftPrepareManager = null;
             List<IOSShaftDTO> shaftDTOColl = null;
-            
+
             try
             {
                 // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
