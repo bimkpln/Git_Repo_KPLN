@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_PluginActivityWorker", "KPLN_Library_PluginActivityWorker.csproj", "{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Debug2020|x64.Build.0 = Debug2020|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Debug2023|x64.Build.0 = Debug2023|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2020|x64.Build.0 = Revit2020|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2023|x64.Build.0 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9C0BC45-FDA0-4728-87F4-77AA3AD16170}
+	EndGlobalSection
+EndGlobal
