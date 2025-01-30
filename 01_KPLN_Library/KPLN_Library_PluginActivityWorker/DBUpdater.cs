@@ -38,7 +38,7 @@ namespace KPLN_Library_PluginActivityWorker
                 _dBUser = _userDbService.GetCurrentDBUser();
 
             // Для режима дебага и пользователей из вне - игнор
-            //if (_dBUser.IsDebugMode || _dBUser.IsExtraNet) return;
+            if (_dBUser.IsDebugMode || _dBUser.IsExtraNet) return;
 
             string currentDate = DateTime.Now.ToString("yyyy-mm-dd HH:mm");
             // Обработка плагина по отделу и имени
