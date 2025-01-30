@@ -26,7 +26,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "до",
             "-",
             "max",
-            "min"
+            "макс",
+            "min",
+            "мин"
         };
 
         public CommandCheckDimensions() : base()
