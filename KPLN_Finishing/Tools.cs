@@ -104,6 +104,7 @@ namespace KPLN_Finishing
                 new ScriptParameter("О_Id помещения", typeof(InstanceBinding), doc),
                 new ScriptParameter("О_Имя помещения", typeof(InstanceBinding), doc),
                 new ScriptParameter("О_Номер помещения", typeof(InstanceBinding), doc),
+                new ScriptParameter("О_Назначение помещения", typeof(InstanceBinding), doc),
                 new ScriptParameter("О_Группа", typeof(InstanceBinding), doc),
                 new ScriptParameter("О_Описание", typeof(TypeBinding), doc),
                 new ScriptParameter("О_Плинтус", typeof(TypeBinding), doc),
@@ -405,14 +406,10 @@ namespace KPLN_Finishing
         }
         public static void Reset(Element element)
         {
-            try
-            {
-                element.LookupParameter(Names.parameter_Room_Id).Set("");
-                element.LookupParameter(Names.parameter_Room_Name).Set("");
-                element.LookupParameter(Names.parameter_Room_Number).Set("");
-                element.LookupParameter(Names.parameter_Room_Department).Set("");
-            }
-            catch (Exception) { }
+            element.LookupParameter(Names.parameter_Room_Id).Set("");
+            element.LookupParameter(Names.parameter_Room_Name).Set("");
+            element.LookupParameter(Names.parameter_Room_Number).Set("");
+            element.LookupParameter(Names.parameter_Room_Department).Set("");
         }
         public static void Print(Exception exception)
         {

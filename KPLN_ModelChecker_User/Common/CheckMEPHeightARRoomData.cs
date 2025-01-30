@@ -148,7 +148,6 @@ namespace KPLN_ModelChecker_User.Common
                     .OfCategory(BuiltInCategory.OST_Rooms)
                     .WhereElementIsNotElementType()
                     .Cast<Room>()
-                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0)
                     .Select(r => new CheckMEPHeightViewModel(r)));
             }
 
@@ -185,8 +184,7 @@ namespace KPLN_ModelChecker_User.Common
                     .WhereElementIsNotElementType()
                     .Cast<Room>()
                     .Where(r =>
-                        r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0
-                        && r.get_Parameter(BuiltInParameter.ROOM_NAME).AsString() == vm.VMCurrentRoomName
+                        r.get_Parameter(BuiltInParameter.ROOM_NAME).AsString() == vm.VMCurrentRoomName
                         && r.get_Parameter(BuiltInParameter.ROOM_DEPARTMENT).AsString() == vm.VMCurrentRoomDepartmentName)
                     .Select(r => new CheckMEPHeightARRoomData(r, rli, vm.VMCurrentRoomMinElemElevationForCheck, vm.VMCurrentRoomMinDistance)));
 

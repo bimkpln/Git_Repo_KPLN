@@ -95,7 +95,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     .OfCategory(BuiltInCategory.OST_Rooms)
                     .WhereElementIsNotElementType()
                     .Cast<Room>()
-                    .Where(r => r.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble() > 0)
                     .ToArray();
 
             #region Проверяю и обрабатываю элементы

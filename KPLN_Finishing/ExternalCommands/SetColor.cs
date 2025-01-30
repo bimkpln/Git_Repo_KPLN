@@ -55,7 +55,7 @@ namespace KPLN_Finishing.ExternalCommands
                         settingsError.SetHalftone(false);
                         settingsError.SetSurfaceForegroundPatternId(fillPatternElement.Id);
                         settingsError.SetSurfaceTransparency(0);
-#if Revit2018
+#if Debug2018 ||Revit2018
                         settingsDefault.SetProjectionFillColor(white);
                         settingsDefault.SetProjectionLineWeight(1);
                         settingsDefault.SetHalftone(true);

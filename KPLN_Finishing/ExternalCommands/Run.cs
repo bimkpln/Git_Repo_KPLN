@@ -115,59 +115,60 @@ namespace KPLN_Finishing.ExternalCommands
                             foreach (Element element in new FilteredElementCollector(doc).OfCategory(category).WhereElementIsNotElementType().WherePasses(levelFilter).ToElements())
                             {
                                 pf.Increment();
-                                try
+                                
+                                string elemGroupModelParamData = GetTypeElement(element).get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString();
+                                if (string.IsNullOrEmpty(elemGroupModelParamData)) continue;
+                                
+                                if (elemGroupModelParamData.ToLower() == Names.value_All_Model_Model && element.LevelId.IntegerValue == PickedLevel.IntegerValue)
                                 {
-                                    if (GetTypeElement(element).get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString().ToLower() == Names.value_All_Model_Model && element.LevelId.IntegerValue == PickedLevel.IntegerValue)
+                                    Options options = new Options();
+                                    options.IncludeNonVisibleObjects = false;
+                                    GeometryElement geomEl = element.get_Geometry(options);
+                                    Solid solid = null;
+                                    foreach (GeometryObject geomObj in geomEl)
                                     {
-                                        Options options = new Options();
-                                        options.IncludeNonVisibleObjects = false;
-                                        GeometryElement geomEl = element.get_Geometry(options);
-                                        Solid solid = null;
-                                        foreach (GeometryObject geomObj in geomEl)
+                                        try
                                         {
-                                            try
+                                            if (geomObj.GetType() == typeof(Solid))
                                             {
-                                                if (geomObj.GetType() == typeof(Solid))
+                                                Solid enumerateSolid = geomObj as Solid;
+                                                if (solid == null)
                                                 {
-                                                    Solid enumerateSolid = geomObj as Solid;
-                                                    if (solid == null)
+                                                    solid = enumerateSolid;
+                                                }
+                                                else
+                                                {
+                                                    if (enumerateSolid.Volume > solid.Volume || solid == null)
                                                     {
                                                         solid = enumerateSolid;
                                                     }
-                                                    else
-                                                    {
-                                                        if (enumerateSolid.Volume > solid.Volume || solid == null)
-                                                        {
-                                                            solid = enumerateSolid;
-                                                        }
-                                                    }
                                                 }
                                             }
-                                            catch (Exception) { }
                                         }
-                                        if (solid != null)
-                                        {
-                                            Reset(element);
-                                            XYZ centroid = solid.ComputeCentroid();
-                                            BoundingBoxXYZ boundingBox = solid.GetBoundingBox();
-                                            BoundingBoxXYZ normalizedBoundingBox = new BoundingBoxXYZ();
-                                            normalizedBoundingBox.Min = new XYZ(boundingBox.Min.X + centroid.X, boundingBox.Min.Y + centroid.Y, boundingBox.Min.Z + centroid.Z);
-                                            normalizedBoundingBox.Max = new XYZ(boundingBox.Max.X + centroid.X, boundingBox.Max.Y + centroid.Y, boundingBox.Max.Z + centroid.Z);
-                                            MatrixElement newMatrixElement = new MatrixElement(element, solid, centroid, normalizedBoundingBox);
-                                            matrixElements.Add(newMatrixElement);
-                                            pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Matrix_Adding_Element));
-                                        }
-                                        else
-                                        {
-                                            pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Element_Geometry_Filter));
-                                        }
+                                        catch (Exception) { }
+                                    }
+                                    if (solid != null)
+                                    {
+                                        Reset(element);
+                                        XYZ centroid = solid.ComputeCentroid();
+                                        BoundingBoxXYZ boundingBox = solid.GetBoundingBox();
+                                        BoundingBoxXYZ normalizedBoundingBox = new BoundingBoxXYZ();
+                                        normalizedBoundingBox.Min = new XYZ(boundingBox.Min.X + centroid.X, boundingBox.Min.Y + centroid.Y, boundingBox.Min.Z + centroid.Z);
+                                        normalizedBoundingBox.Max = new XYZ(boundingBox.Max.X + centroid.X, boundingBox.Max.Y + centroid.Y, boundingBox.Max.Z + centroid.Z);
+                                        MatrixElement newMatrixElement = new MatrixElement(element, solid, centroid, normalizedBoundingBox);
+                                        matrixElements.Add(newMatrixElement);
+                                        pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Matrix_Adding_Element));
                                     }
                                     else
                                     {
-                                        pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Element_Filter));
+                                        pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Element_Geometry_Filter));
                                     }
                                 }
-                                catch (Exception) { }
+                                else
+                                {
+                                    pf.SetInfoStrip(string.Format("{0} - {1}", element.Id.ToString(), Names.message_Element_Filter));
+                                }
+                                
                             }
                         }
                         t.Commit();

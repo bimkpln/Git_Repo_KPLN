@@ -16,7 +16,7 @@ namespace KPLN_Finishing.CommandTools
         public OverrideGraphicSettings Settings = new OverrideGraphicSettings();
         public ColorPresset(int id, FillPatternElement fill)
         {
-#if Revit2020
+#if Debug2020 || Debug2023 || Revit2020 || Revit2023
             RoomId = id;
             Settings.SetSurfaceForegroundPatternColor(new Autodesk.Revit.DB.Color((byte)RandomR.GetRandom(), (byte)RandomG.GetRandom(), (byte)RandomB.GetRandom()));
             Settings.SetProjectionLineWeight(1);
@@ -24,7 +24,7 @@ namespace KPLN_Finishing.CommandTools
             Settings.SetSurfaceForegroundPatternId(fill.Id);
             Settings.SetSurfaceTransparency(50);
 #endif
-#if Revit2018
+#if Debug2018 || Revit2018
             RoomId = id;
             Settings.SetProjectionFillColor(new Autodesk.Revit.DB.Color((byte)RandomR.GetRandom(), (byte)RandomG.GetRandom(), (byte)RandomB.GetRandom()));
             Settings.SetProjectionLineWeight(1);
