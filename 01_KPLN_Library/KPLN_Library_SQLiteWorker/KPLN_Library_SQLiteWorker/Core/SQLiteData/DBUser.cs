@@ -63,6 +63,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// ID пользователя Bitrix
         /// </summary>
         public int BitrixUserID { get; set; }
+
+        /// <summary>
+        /// Прямое указание на то, что пользователь НЕ сотрудник KPLN
+        /// </summary>
+        public bool IsExtraNet { get; set; }
         #endregion
 
         /// <summary>

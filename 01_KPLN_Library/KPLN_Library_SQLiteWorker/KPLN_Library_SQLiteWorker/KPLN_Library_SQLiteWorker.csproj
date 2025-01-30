@@ -118,6 +118,8 @@
       <HintPath>..\packages\System.Data.SQLite.Linq.1.0.118.0\lib\net46\System.Data.SQLite.Linq.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -128,6 +130,7 @@
   <ItemGroup>
     <Compile Include="Core\DatabasePaths.cs" />
     <Compile Include="Core\SQLiteData\Abstractions\IDBEntity.cs" />
+    <Compile Include="Core\SQLiteData\DBPluginActivity.cs" />
     <Compile Include="Core\SQLiteData\DBProjectsIOSClashMatrix.cs" />
     <Compile Include="Core\SQLiteData\DBRevitDocExchanges.cs" />
     <Compile Include="Core\SQLiteData\DBRevitDialog.cs" />
@@ -141,6 +144,8 @@
     <Compile Include="Core\SQLiteData\DBUser.cs" />
     <Compile Include="FactoryParts\Common\DbService.cs" />
     <Compile Include="FactoryParts\Common\AbsCreatorDbService.cs" />
+    <Compile Include="FactoryParts\CreatorPluginActivityDbService.cs" />
+    <Compile Include="FactoryParts\CreatorModuleDbService.cs" />
     <Compile Include="FactoryParts\CreatorProjectIOSClashMatrixDbService.cs" />
     <Compile Include="FactoryParts\CreatorProjectAccessMatrixDbService.cs" />
     <Compile Include="FactoryParts\CreatorRevitDocExchangesDbService.cs" />
@@ -150,6 +155,7 @@
     <Compile Include="FactoryParts\CreatorDocumentDbService.cs" />
     <Compile Include="FactoryParts\CreatorSubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\CreatorUserDbService.cs" />
+    <Compile Include="FactoryParts\PluginActivityDbService.cs" />
     <Compile Include="FactoryParts\ProjectsIOSClashMatrixDbService.cs" />
     <Compile Include="FactoryParts\RevitDocExchangestDbService.cs" />
     <Compile Include="FactoryParts\RevitDialogDbService.cs" />
@@ -158,6 +164,7 @@
     <Compile Include="FactoryParts\SubDepartmentCodeMatrixDbService.cs" />
     <Compile Include="FactoryParts\SubDepartmentDbService.cs" />
     <Compile Include="FactoryParts\ProjectsAccessMatrixDbService.cs" />
+    <Compile Include="FactoryParts\ModuleDbService.cs" />
     <Compile Include="FactoryParts\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

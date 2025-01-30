@@ -9,6 +9,7 @@
         LoaderDescriptions,
         LoaderDescriptions_Single,
         Modules,
+        PluginsActivity,
         Projects,
         ProjectsAccessMatrix,
         ProjectsIOSClashMatrix,
