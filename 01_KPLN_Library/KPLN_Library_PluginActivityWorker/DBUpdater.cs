@@ -14,13 +14,13 @@ namespace KPLN_Library_PluginActivityWorker
 
         private static DBUser _dBUser;
 
-        public static async Task UpdatePluginActivityAsync_ByPluginNameAndDirName(string pluginName, string dllDirName)
+        public static async Task UpdatePluginActivityAsync_ByPluginNameAndModuleName(string pluginName, string moduleName)
         {
             try
             {
                 await Task.Run(() =>
                 {
-                    UpdatePluginActivity_ByPluginNameAndDirName(pluginName, dllDirName);
+                    UpdatePluginActivity_ByPluginNameAndDirName(pluginName, moduleName);
                 });
             }
             catch (Exception ex)
@@ -31,7 +31,7 @@ namespace KPLN_Library_PluginActivityWorker
             }
         }
 
-        private static void UpdatePluginActivity_ByPluginNameAndDirName(string pluginName, string dllDirName)
+        private static void UpdatePluginActivity_ByPluginNameAndDirName(string pluginName, string moduleName)
         {
             // Активирую данные по пользователю (позже переведи на KPLN_Loader, пока рано)
             if (_dBUser == null)
@@ -45,8 +45,8 @@ namespace KPLN_Library_PluginActivityWorker
             DBPluginActivity currentPluginActivity = _pluginActivityDbService.GetDBPluginActivity_ByModuleNameAndSubDep(pluginName, _dBUser.SubDepartmentId);
             if (currentPluginActivity == null)
             {
-                DBModule currentModule = _moduleDbService.GetDBModule_ByFiDirName(dllDirName)
-                    ?? throw new Exception($"Не удалось найти модуль по имени '{dllDirName}'. Проверь БД.");
+                DBModule currentModule = _moduleDbService.GetDBModule_ByFiDirName(moduleName)
+                    ?? throw new Exception($"Не удалось найти модуль по имени '{moduleName}'. Проверь БД, или ошибка при создании плагина.");
 
                 currentPluginActivity = new DBPluginActivity()
                 {
