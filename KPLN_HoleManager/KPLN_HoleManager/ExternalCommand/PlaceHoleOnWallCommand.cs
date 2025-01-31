@@ -37,23 +37,13 @@ namespace KPLN_HoleManager.ExternalCommand
         {
             UIDocument uiDoc = uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
+            XYZ holeLocation;
 
             try
             {
-                // Проверка параметров
-                if (_selectedElement == null)
-                {
-                    TaskDialog.Show("Ошибка", "Не выбрана стена.");
-                    return;
-                }
-                if (string.IsNullOrEmpty(_departmentHoleName) || string.IsNullOrEmpty(_holeTypeName))
-                {
-                    TaskDialog.Show("Ошибка", "Не выбраны параметры отверстия.");
-                    return;
-                }
-
                 // Определение файла семейства
                 string familyFileName = GetFamilyFileName(_departmentHoleName, _holeTypeName);
+
                 if (string.IsNullOrEmpty(familyFileName))
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить файл семейства.");
@@ -69,30 +59,51 @@ namespace KPLN_HoleManager.ExternalCommand
                     return;
                 }
 
-                // Загрузка семейства
-                FamilySymbol holeSymbol = LoadFamilySymbol(doc, familyPath);
-                if (holeSymbol == null)
-                {
-                    TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
-                    return;
-                }
-
-                // Выбор точки
-                XYZ holeLocation;
-                try
-                {
-                    holeLocation = uiDoc.Selection.PickPoint("Выберите точку для размещения отверстия");
-                }
-                catch (Exception)
-                {
-                    TaskDialog.Show("Ошибка", "Отмена выбора точки. Отверстие не создано.");
-                    return;
-                }
-
-                // Размещение отверстия
-                using (Transaction tx = new Transaction(doc, "Разместить отверстие"))
+                // Транзакция размещение отверстия
+                using (Transaction tx = new Transaction(doc, $"KPLN. Разместить отверстие {GetFamilyFileName(_departmentHoleName, _holeTypeName)}"))
                 {
                     tx.Start();
+
+                    // Загрузка семейства
+                    Family family = null; // Для избежания повтоной загрузки
+
+                    FilteredElementCollector collector = new FilteredElementCollector(doc).OfClass(typeof(Family));
+
+                    foreach (Family existingFamily in collector)
+                    {
+                        if (existingFamily.Name == Path.GetFileNameWithoutExtension(familyPath))
+                        {
+                            family = existingFamily;
+                            break;
+                        }
+                    }
+
+                    // Если семейство не найдено, загружаем его
+                    if (family == null)
+                    {
+                        if (!doc.LoadFamily(familyPath, out family))
+                        {
+                            tx.RollBack();
+                            TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
+                            return;
+                        }
+                    }
+
+                    // Ищем первый доступный типоразмер семейства
+                    FamilySymbol holeSymbol = null; // Для чтения типоразмеров
+
+                    foreach (ElementId id in family.GetFamilySymbolIds())
+                    {
+                        holeSymbol = doc.GetElement(id) as FamilySymbol;
+                        break;
+                    }
+
+                    if (holeSymbol == null)
+                    {
+                        tx.RollBack();
+                        TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
+                        return;
+                    }
 
                     // Проверяем, активен ли типоразмер, если нет — активируем
                     if (!holeSymbol.IsActive)
@@ -101,14 +112,24 @@ namespace KPLN_HoleManager.ExternalCommand
                         doc.Regenerate();
                     }
 
-                    holeLocation = uiDoc.Selection.PickPoint("Выберите точку для размещения отверстия");
+                    try
+                    {
+                        holeLocation = uiDoc.Selection.PickPoint("Выберите точку для размещения отверстия");
+                    }
+                    catch (Exception)
+                    {
+                        tx.RollBack();
+                        TaskDialog.Show("Ошибка", "Отмена выбора точки. Отверстие не создано.");
+                        return;
+                    }
+
                     FamilyInstance holeInstance = doc.Create.NewFamilyInstance(holeLocation, holeSymbol, _selectedElement, StructuralType.NonStructural);
 
                     tx.Commit();
                 }
 
                 // Успешное завершение
-                TaskDialog.Show("Готово", "Отверстие успешно добавлено. Вы можете передвинуть его вручную.");
+                TaskDialog.Show("Готово", "Операция успешно завершена.");
             }
             catch (Exception ex)
             {
@@ -116,7 +137,10 @@ namespace KPLN_HoleManager.ExternalCommand
             }
         }
 
-        // Выбор файла семейства
+        /// <summary>
+        /// Выбор файла семейства в зависимости от отдела и типа отверстия
+        /// </summary>
+        /// <returns></returns>
         private string GetFamilyFileName(string department, string holeType)
         {
             var familyMap = new Dictionary<string, string>
@@ -131,31 +155,6 @@ namespace KPLN_HoleManager.ExternalCommand
 
             string key = $"{department}_{holeType}";
             return familyMap.ContainsKey(key) ? familyMap[key] : null;
-        }
-
-        // Загрузка семейства
-        private FamilySymbol LoadFamilySymbol(Document doc, string familyPath)
-        {
-            Family family;
-            using (Transaction tx = new Transaction(doc, "Загрузка семейства"))
-            {
-                tx.Start();
-                if (!doc.LoadFamily(familyPath, out family))
-                {
-                    tx.RollBack();
-                    return null;
-                }
-                tx.Commit();
-            }
-
-            if (family != null)
-            {
-                foreach (ElementId id in family.GetFamilySymbolIds())
-                {
-                    return doc.GetElement(id) as FamilySymbol;
-                }
-            }
-            return null;
-        }
+        }       
     }
 }
