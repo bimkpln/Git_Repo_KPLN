@@ -175,7 +175,6 @@
     <Compile Include="Common\GripParam\GripParamExection.cs" />
     <Compile Include="Common\GripParam\InstanceElemData.cs" />
     <Compile Include="Common\GripParam\InstanceGeomData.cs" />
-    <Compile Include="ExternalCommands\CommandCheckParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
     <Compile Include="ExternalCommands\CommandGripParam.cs" />
@@ -218,7 +217,6 @@
     <EmbeddedResource Include="Imagens\auditParams.png" />
     <EmbeddedResource Include="Imagens\copyProjectParams.png" />
     <EmbeddedResource Include="Imagens\gripParams.png" />
-    <EmbeddedResource Include="Imagens\paramPullDown.png" />
     <EmbeddedResource Include="Imagens\paramSetter.png" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

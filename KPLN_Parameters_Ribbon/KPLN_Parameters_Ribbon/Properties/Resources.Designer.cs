@@ -93,16 +93,6 @@ namespace KPLN_Parameters_Ribbon.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap paramPullDown {
-            get {
-                object obj = ResourceManager.GetObject("paramPullDown", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap paramSetter {
             get {
                 object obj = ResourceManager.GetObject("paramSetter", resourceCulture);
