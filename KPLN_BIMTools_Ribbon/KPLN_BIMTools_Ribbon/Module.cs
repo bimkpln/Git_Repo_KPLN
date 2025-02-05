@@ -62,9 +62,12 @@ namespace KPLN_BIMTools_Ribbon
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
-                "RS: Обмен",
-                "RS: Обмен",
-                "Обмен (экспорт/импорт) моделей с Revit-Server KPLN",
+                "RVT: Обмен",
+                "RVT: Обмен",
+                "Обмен Revit-моделями:\n" +
+                "1. Экспорт/импорт моделей с Revit-Server KPLN на другой Revit-Server KPLN;\n" +
+                "2. Экспорт/импорт моделей с Revit-Server KPLN на сервер KPLN и наоборот;\n" +
+                "3. Копирование моделей внутри сервера KPLN.",
                 string.Format(
                     "Пакетная выгрзка моделей.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,

@@ -384,6 +384,35 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private void LBMenuItem_Edit_Click(object sender, RoutedEventArgs e)
+        {
+            // Получаем выбранные элементы
+            var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
+            if (selectedItems.Count != 1)
+            {
+                UserDialog cd = new UserDialog("Предупреждение", $"Редактировать можно только по отдельным файлам");
+                cd.ShowDialog();
+            }
+            else
+            {
+                FileEntity selectedItem = selectedItems.FirstOrDefault();
+                if (selectedItem is FileEntity fileEntity)
+                {
+                    UserStringInfo userStringInput = new UserStringInfo(false, fileEntity.Name, fileEntity.Path);
+                    userStringInput.ShowDialog();
+                    if ((bool)userStringInput.DialogResult)
+                    {
+                        int updateIndex = FileEntitiesList.IndexOf(fileEntity);
+                        FileEntitiesList.Remove(fileEntity);
+
+                        fileEntity.Name = userStringInput.UserInputName;
+                        fileEntity.Path = userStringInput.UserInputPath;
+                        FileEntitiesList.Insert(updateIndex, fileEntity);
+                    }
+                }
+            }
+        }
+
         private void LBMenuItem_Delete_Click(object sender, RoutedEventArgs e)
         {
             // Получаем выбранные элементы

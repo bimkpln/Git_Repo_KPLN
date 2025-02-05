@@ -259,7 +259,7 @@
                                         <TextBlock 
                                             Text="{Binding Name}"
                                             TextWrapping="Wrap"
-                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо или удалить файл/группу файлов (удалять можно несколько)"
+                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо/редактировать файал или удалить файл/группу файлов (удалять можно несколько)"
                                             HorizontalAlignment="Stretch"
                                             Foreground="White"/>
                                     </Border>
@@ -271,6 +271,9 @@
                                     <MenuItem 
                                         Header="Инфо" 
                                         Click="LBMenuItem_Info_Click"/>
+                                    <MenuItem 
+                                        Header="Редактировать" 
+                                        Click="LBMenuItem_Edit_Click"/>
                                     <MenuItem 
                                         Header="Удалить" 
                                         Click="LBMenuItem_Delete_Click"/>
