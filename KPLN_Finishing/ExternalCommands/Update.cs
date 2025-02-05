@@ -72,20 +72,40 @@ namespace KPLN_Finishing.ExternalCommands
                     }
                 }
             }
-            List<WPFParameter> wpfParameters = new List<WPFParameter>();
-            wpfParameters.Add(new WPFParameter());
-            foreach (BuiltInParameter builtInParameter in new BuiltInParameter[] { BuiltInParameter.ROOM_NAME,
-                                                                                    BuiltInParameter.EDITED_BY,
-                                                                                    BuiltInParameter.ROOM_PHASE,
-                                                                                    BuiltInParameter.LEVEL_NAME,
-                                                                                    BuiltInParameter.ELEM_PARTITION_PARAM,
-                                                                                    BuiltInParameter.ROOM_NUMBER,
-                                                                                    BuiltInParameter.ROOM_DEPARTMENT,
-                                                                                    BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS })
+            List<WPFParameter> wpfParameters = new List<WPFParameter>
             {
-                Parameter parameter = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements().First().get_Parameter(builtInParameter);
+                new WPFParameter()
+            };
+
+            BuiltInParameter[] roomBIPs = new BuiltInParameter[] 
+            {
+                BuiltInParameter.ROOM_NAME,
+                BuiltInParameter.EDITED_BY,
+                BuiltInParameter.ROOM_PHASE,
+                BuiltInParameter.LEVEL_NAME,
+                BuiltInParameter.ROOM_NUMBER,
+                BuiltInParameter.ROOM_DEPARTMENT,
+                BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS 
+            };
+
+            Element[] docRooms = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Rooms)
+                .WhereElementIsNotElementType()
+                .ToArray();
+
+            foreach (BuiltInParameter builtInParameter in roomBIPs)
+            {
+                Parameter parameter = docRooms.FirstOrDefault().get_Parameter(builtInParameter);
                 wpfParameters.Add(new WPFBuiltInParameter(builtInParameter, parameter.Definition.Name, parameter.StorageType));
             }
+
+            if (doc.IsWorkshared)
+            {
+                BuiltInParameter wsBIP = BuiltInParameter.ELEM_PARTITION_PARAM;
+                Parameter parameter = docRooms.FirstOrDefault().get_Parameter(wsBIP);
+                wpfParameters.Add(new WPFBuiltInParameter(wsBIP, parameter.Definition.Name, parameter.StorageType));
+            }
+
             foreach (WPFParameter parameter in GetLocalParameters(doc))
             {
                 wpfParameters.Add(parameter);

@@ -484,21 +484,17 @@ namespace KPLN_Finishing.ExternalCommands
                 {
                     foreach (Edge edgeB in room.Solid.Edges)
                     {
-                        try
+                        Curve curveA = edgeA.AsCurve();
+                        Curve curveB = edgeB.AsCurve();
+                        foreach (int a in new int[] { 0, 1 })
                         {
-                            Curve curveA = edgeA.AsCurve();
-                            Curve curveB = edgeB.AsCurve();
-                            foreach (int a in new int[] { 0, 1 })
+                            foreach (int b in new int[] { 0, 1 })
                             {
-                                foreach (int b in new int[] { 0, 1 })
-                                {
-                                    double v = Tools.GetDistance(curveA.GetEndPoint(a), curveB.GetEndPoint(b));
-                                    if (minimum > v || minimum == 999999)
-                                    { minimum = v; }
-                                }
+                                double v = Tools.GetDistance(curveA.GetEndPoint(a), curveB.GetEndPoint(b));
+                                if (minimum > v || minimum == 999999)
+                                { minimum = v; }
                             }
                         }
-                        catch (Exception) { }
                     }
                 }
                 foreach (Edge edgeA in element.Solid.Edges)
@@ -507,21 +503,20 @@ namespace KPLN_Finishing.ExternalCommands
                     {
                         foreach (int b in new int[] { 0, 1 })
                         {
-                            try
+                            IntersectionResult intRes = faceB.Project(edgeA.AsCurve().GetEndPoint(b));
+                            if (intRes == null) continue;
+
+                            XYZ pp = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).XYZPoint;
+                            UV up = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).UVPoint;
+                            if (faceB.IsInside(up))
                             {
-                                XYZ pp = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).XYZPoint;
-                                UV up = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).UVPoint;
-                                if (faceB.IsInside(up))
+                                foreach (int a in new int[] { 0, 1 })
                                 {
-                                    foreach (int a in new int[] { 0, 1 })
-                                    {
-                                        double v = Tools.GetDistance(edgeA.AsCurve().GetEndPoint(a), pp);
-                                        if (minimum > v || minimum == 999999)
-                                        { minimum = v; }
-                                    }
+                                    double v = Tools.GetDistance(edgeA.AsCurve().GetEndPoint(a), pp);
+                                    if (minimum > v || minimum == 999999)
+                                    { minimum = v; }
                                 }
                             }
-                            catch (Exception) { }
                         }
                     }
                 }
@@ -531,27 +526,25 @@ namespace KPLN_Finishing.ExternalCommands
                     {
                         foreach (int b in new int[] { 0, 1 })
                         {
-                            try
+                            IntersectionResult intRes = faceB.Project(edgeA.AsCurve().GetEndPoint(b));
+                            if (intRes == null) continue;
+
+                            XYZ pp = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).XYZPoint;
+                            UV up = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).UVPoint;
+                            if (faceB.IsInside(up))
                             {
-                                XYZ pp = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).XYZPoint;
-                                UV up = faceB.Project(edgeA.AsCurve().GetEndPoint(b)).UVPoint;
-                                if (faceB.IsInside(up))
+                                foreach (int a in new int[] { 0, 1 })
                                 {
-                                    foreach (int a in new int[] { 0, 1 })
-                                    {
-                                        double v = Tools.GetDistance(edgeA.AsCurve().GetEndPoint(a), pp);
-                                        if (minimum > v || minimum == 999999)
-                                        { minimum = v; }
-                                    }
+                                    double v = Tools.GetDistance(edgeA.AsCurve().GetEndPoint(a), pp);
+                                    if (minimum > v || minimum == 999999)
+                                    { minimum = v; }
                                 }
                             }
-                            catch (Exception) { }
                         }
                     }
                 }
             }
-            catch (Exception e)
-            { Print(e); }
+            catch (Exception e) { Print(e); }
             return minimum;
         }
     }

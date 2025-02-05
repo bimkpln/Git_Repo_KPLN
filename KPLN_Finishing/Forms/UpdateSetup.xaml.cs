@@ -45,30 +45,16 @@ namespace KPLN_Finishing.Forms
         }
         private void OnClick(object sender, RoutedEventArgs args)
         {
-            try
-            {
-                UpdatePeview();
-            }
-            catch (Exception e)
-            {
-                PrintError(e);
-            }
+            UpdatePeview();
         }
-        private bool IsChecked(System.Windows.Controls.CheckBox box)
+        private bool IsChecked(CheckBox box)
         {
             if ((bool)(box.IsChecked) == true) { return true; }
             return false;
         }
         private void OnSelectionChanged(object sender, SelectionChangedEventArgs args)
         {
-            try
-            {
-                UpdatePeview();
-            }
-            catch (Exception e)
-            {
-                PrintError(e);
-            }
+            UpdatePeview();
         }
         private void UpdatePeview()
         {
@@ -82,7 +68,7 @@ namespace KPLN_Finishing.Forms
                     MetaRoom copy = room.GetCopy();
                     try
                     {
-                        if ((this.cbxParameters_06.SelectedItem as WPFParameter).StorageType != StorageType.None)
+                        if (this.cbxParameters_06.SelectedItem != null && (this.cbxParameters_06.SelectedItem as WPFParameter).StorageType != StorageType.None)
                         {
                             copy.RecalculateNumber(this.cbxParameters_06.SelectedItem as WPFParameter);
                         }
@@ -818,6 +804,10 @@ namespace KPLN_Finishing.Forms
                     units = "м²";
                     div = 0.092903;
                 }
+
+                if (stack.Description == null)
+                    continue;
+                
                 int n = stack.Description.Count(x => x == '\n');
                 description += string.Format("Тип: «{0}»\n{1}\n\n", stack.Mark, stack.Description);
                 area += string.Format("Тип: «{0}»\n{1} {2}\n\n", stack.Mark, Math.Round(Math.Round(stack.Value * div, 2) * q, 2).ToString(), units);
@@ -886,43 +876,39 @@ namespace KPLN_Finishing.Forms
         }
         public override void Execute(UIApplication uiapp)
         {
-            try
+            foreach (ElementId roomId in Rooms)
             {
-                foreach (ElementId roomId in Rooms)
+                Room room = uiapp.ActiveUIDocument.Document.GetElement(roomId) as Room;
+                try
                 {
-                    Room room = uiapp.ActiveUIDocument.Document.GetElement(roomId) as Room;
-                    try
+                    room.LookupParameter("О_ПОМ_Ведомость").Set(RowId);
+                    if (Group != null)
                     {
-                        room.LookupParameter("О_ПОМ_Ведомость").Set(RowId);
-                        if (Group != null)
-                        {
-                            room.LookupParameter("О_ПОМ_Группа").Set(Group);
-                        }
-                        if (WallsDescription != null && WallsArea != null)
-                        {
-                            room.LookupParameter("О_ПОМ_ГОСТ_Описание стен").Set(WallsDescription);
-                            room.LookupParameter("О_ПОМ_ГОСТ_Площадь стен_Текст").Set(WallsArea);
-                        }
-                        if (FloorsDescription != null && FloorsArea != null)
-                        {
-                            room.LookupParameter("О_ПОМ_ГОСТ_Описание полов").Set(FloorsDescription);
-                            room.LookupParameter("О_ПОМ_ГОСТ_Площадь полов_Текст").Set(FloorsArea);
-                        }
-                        if (CeilingsDescription != null && CeilingsArea != null)
-                        {
-                            room.LookupParameter("О_ПОМ_ГОСТ_Описание потолков").Set(CeilingsDescription);
-                            room.LookupParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст").Set(CeilingsArea);
-                        }
-                        if (PlinthsDescription != null && PlinthsArea != null)
-                        {
-                            room.LookupParameter("О_ПОМ_ГОСТ_Описание плинтусов").Set(PlinthsDescription);
-                            room.LookupParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст").Set(PlinthsArea);
-                        }
+                        room.LookupParameter("О_ПОМ_Группа").Set(Group);
                     }
-                    catch (Exception e) { PrintError(e); }
+                    if (WallsDescription != null && WallsArea != null)
+                    {
+                        room.LookupParameter("О_ПОМ_ГОСТ_Описание стен").Set(WallsDescription);
+                        room.LookupParameter("О_ПОМ_ГОСТ_Площадь стен_Текст").Set(WallsArea);
+                    }
+                    if (FloorsDescription != null && FloorsArea != null)
+                    {
+                        room.LookupParameter("О_ПОМ_ГОСТ_Описание полов").Set(FloorsDescription);
+                        room.LookupParameter("О_ПОМ_ГОСТ_Площадь полов_Текст").Set(FloorsArea);
+                    }
+                    if (CeilingsDescription != null && CeilingsArea != null)
+                    {
+                        room.LookupParameter("О_ПОМ_ГОСТ_Описание потолков").Set(CeilingsDescription);
+                        room.LookupParameter("О_ПОМ_ГОСТ_Площадь потолков_Текст").Set(CeilingsArea);
+                    }
+                    if (PlinthsDescription != null && PlinthsArea != null)
+                    {
+                        room.LookupParameter("О_ПОМ_ГОСТ_Описание плинтусов").Set(PlinthsDescription);
+                        room.LookupParameter("О_ПОМ_ГОСТ_Длина плинтусов_Текст").Set(PlinthsArea);
+                    }
                 }
+                catch (Exception e) { PrintError(e); }
             }
-            catch (Exception e) { PrintError(e); }
         }
     }
     public class MetaRoom
@@ -1058,10 +1044,8 @@ namespace KPLN_Finishing.Forms
             try
             {
                 string v = type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_MARK).AsString();
-                if (v != "" && ContainsChat(v))
-                {
+                if (!string.IsNullOrEmpty(v) && ContainsChat(v))
                     Mark = v;
-                }
 
             }
             catch (Exception)
@@ -1072,10 +1056,8 @@ namespace KPLN_Finishing.Forms
             try
             {
                 string v = type.LookupParameter("О_Описание").AsString();
-                if (v != "")
-                {
+                if (!string.IsNullOrEmpty(v))
                     Description = type.LookupParameter("О_Описание").AsString();
-                }
             }
             catch (Exception)
             {

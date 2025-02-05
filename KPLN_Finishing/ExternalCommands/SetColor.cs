@@ -84,7 +84,9 @@ namespace KPLN_Finishing.ExternalCommands
                                     try
                                     {
                                         Element type = GetTypeElement(element);
-                                        if (type.get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString().ToLower() == "отделка")
+                                        string modelGroupParamData = type.get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString();
+
+                                        if (modelGroupParamData != null && type.get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString().ToLower() == "отделка")
                                         {
                                             try
                                             {
