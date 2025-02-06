@@ -8,6 +8,7 @@ using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using RevitServerAPILib;
@@ -155,7 +156,7 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Старт сервиса по обмену моделями
         /// </summary>
-        private protected void StartService(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum)
+        private protected void StartService(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum, string pluginName)
         {
             ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm();
             bool? dialogResult = selectedProjectForm.ShowDialog();
@@ -182,6 +183,8 @@ namespace KPLN_BIMTools_Ribbon.Common
                 
                 if (configDispatcher.IsRun)
                 {
+                    DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(pluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
                     string configNames = string.Join(" ~ ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
                     Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}].\nКонфигурация/-ии: [{configNames}]");
 

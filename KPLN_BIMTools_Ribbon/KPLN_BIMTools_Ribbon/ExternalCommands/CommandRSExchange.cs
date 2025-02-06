@@ -18,6 +18,8 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandRSExchange : ExchangeService, IExternalCommand, IExecuteByUIApp
     {
+        internal const string PluginName = "RVT: Обмен";
+
         public CommandRSExchange()
         {
         }
@@ -34,7 +36,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             try
             {
-                StartService(uiapp, revitDocExchangeEnum);
+                StartService(uiapp, revitDocExchangeEnum, PluginName);
             }
             catch (Exception ex)
             {
@@ -95,9 +97,6 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRSConfigData)}");
-
-
-            return null;
         }
     }
 }

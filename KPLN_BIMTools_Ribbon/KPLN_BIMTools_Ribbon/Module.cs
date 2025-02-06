@@ -62,8 +62,8 @@ namespace KPLN_BIMTools_Ribbon
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
-                "RVT: Обмен",
-                "RVT: Обмен",
+                CommandRSExchange.PluginName,
+                CommandRSExchange.PluginName,
                 "Обмен Revit-моделями:\n" +
                 "1. Экспорт/импорт моделей с Revit-Server KPLN на другой Revit-Server KPLN;\n" +
                 "2. Экспорт/импорт моделей с Revit-Server KPLN на сервер KPLN и наоборот;\n" +
@@ -82,8 +82,8 @@ namespace KPLN_BIMTools_Ribbon
             );
 
             AddPushButtonDataInPullDown(
-                "NW: Экспорт",
-                "NW: Экспорт",
+                CommandNWExport.PluginName,
+                CommandNWExport.PluginName,
                 "Экспорт моделей в Navisworks",
                 string.Format(
                     "Пакетный (по предварительным настройкам) экспорт моделей в Navisworks.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",

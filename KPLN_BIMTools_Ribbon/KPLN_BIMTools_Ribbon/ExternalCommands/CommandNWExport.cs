@@ -19,6 +19,8 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandNWExport : ExchangeService, IExternalCommand, IExecuteByUIApp
     {
+        internal const string PluginName = "NW: Экспорт";
+
         public CommandNWExport()
         {
         }
@@ -35,7 +37,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             try
             {
-                StartService(uiapp, revitDocExchangeEnum);
+                StartService(uiapp, revitDocExchangeEnum, PluginName);
             }
             catch (Exception ex)
             {
@@ -133,8 +135,6 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBNWConfigData)}");
-
-            return null;
         }
     }
 }
