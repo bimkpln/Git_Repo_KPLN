@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_HoleManager.Forms"
         mc:Ignorable="d" 
-        Height="160" Width="250"
+        Height="222" Width="250"
         WindowStyle="None"
         ResizeMode="NoResize"
         Topmost="True"
@@ -18,7 +18,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Верхняя панель с кнопкой закрытия -->
@@ -30,8 +32,11 @@
                     HorizontalAlignment="Right" Margin="0,2,5,0" Click="CloseWindow"/>
         </DockPanel>
 
-        <!-- Раскрывающийся список -->
-        <ComboBox x:Name="DepartmentComboBox" Grid.Row="1" Margin="0,15,0,15" 
+        <!-- Метка "От" -->
+        <TextBlock Grid.Row="1" Text="От отдела" FontSize="8" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,5,0,0"/>
+        <!-- Первый раскрывающийся список -->
+        <ComboBox x:Name="DepartmentComboBox" Grid.Row="2" Margin="0,3,0,5" 
                   VerticalAlignment="Center" HorizontalAlignment="Left" 
                   Width="230" FontSize="13"
                   SelectionChanged="DepartmentComboBox_SelectionChanged">
@@ -40,16 +45,28 @@
             <ComboBoxItem Content="ИОС" />
         </ComboBox>
 
+        <!-- Метка "Для" -->
+        <TextBlock Grid.Row="3" Text="Для отдела" FontSize="9" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+        <!-- Второй раскрывающийся список -->
+        <ComboBox x:Name="SendingDepartmentComboBox" Grid.Row="4" Margin="0,3,0,10" 
+                  VerticalAlignment="Center" HorizontalAlignment="Left" 
+                  Width="230" FontSize="13">
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ИОС" />
+        </ComboBox>
+
         <!-- Прямоугольное отверстие -->
-        <Button Grid.Row="2" Content="🔲  Прямоугольное отверстие" FontSize="12" 
+        <Button Grid.Row="5" Content="🔲  Прямоугольное отверстие" FontSize="12" 
                 VerticalAlignment="Center" HorizontalAlignment="Left" 
                 HorizontalContentAlignment="Left" Padding="10,0" 
-                Width="230" Height="30" Margin="0,0,0,5" Click="SquareHoleButton_Click"/>
+                Width="230" Height="30" Margin="0,10,0,0" Click="SquareHoleButton_Click"/>
 
         <!-- Круглое отверстие -->
-        <Button Grid.Row="3" Content="🔴  Круглое отверстие" FontSize="12" 
+        <Button Grid.Row="6" Content="🔴  Круглое отверстие" FontSize="12" 
                 VerticalAlignment="Center" HorizontalAlignment="Left" 
                 HorizontalContentAlignment="Left" Padding="10,0"
-                Width="230" Height="30" Click="RoundHoleButton_Click" />
+                Width="230" Height="30" Margin="0,10,0,0" Click="RoundHoleButton_Click" />
     </Grid>
 </Window>

@@ -89,10 +89,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\_ExtensibleStorageHelper.cs" />
     <Compile Include="Common\DockablePreferences.cs" />
     <Compile Include="Common\UserPreferences.cs" />
-    <Compile Include="ExternalCommand\PlaceHoleOnWallCommand.cs" />
-    <Compile Include="ExternalCommand\_ExternalEventHandler.cs" />
+    <Compile Include="Commands\PlaceHoleOnWallCommand.cs" />
+    <Compile Include="Commands\_ExternalEventHandler.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">
       <DependentUpon>DockableManagerForm.xaml</DependentUpon>
     </Compile>
