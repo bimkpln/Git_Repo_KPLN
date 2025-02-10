@@ -121,17 +121,14 @@
   <data name="checker_flatsArea" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Source\checker_flatsArea.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="checker_grids_monitor" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Source\checker_grids_monitor.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="checker_levels" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Source\checker_levels.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="checker_levels_monitor" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Source\checker_levels_monitor.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="checker_locations" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Source\checker_locations.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="checker_mainLines" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Source\checker_mainLines.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="checker_mirrored" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Source\checker_mirrored.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

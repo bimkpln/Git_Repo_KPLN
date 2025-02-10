@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
@@ -9,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -17,6 +17,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckMEPHeight : AbstrCheckCommand<CommandCheckMEPHeight>, IExternalCommand
     {
+        internal const string PluginName = "ИОС: Проверка высоты эл-в";
+
         /// <summary>
         /// Список категорий элементов для проверки
         /// </summary>
@@ -91,6 +93,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;

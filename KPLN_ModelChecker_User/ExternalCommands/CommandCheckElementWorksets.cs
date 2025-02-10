@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
@@ -8,7 +9,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -16,6 +16,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckElementWorksets : AbstrCheckCommand<CommandCheckElementWorksets>, IExternalCommand
     {
+        internal const string PluginName = "Проверка рабочих наборов";
+
         public CommandCheckElementWorksets() : base()
         {
         }
@@ -34,6 +36,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -87,7 +91,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_'",
                                 false));
                         }
-                        continue; 
+                        continue;
                     }
                     else if (element is ImportInstance impInstance)
                     {

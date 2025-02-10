@@ -3,14 +3,14 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
-using KPLN_ModelChecker_User.Forms;
+using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
-using KPLN_ModelChecker_Lib;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -19,6 +19,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     internal class CommandCheckFlatsArea : AbstrCheckCommand<CommandCheckFlatsArea>, IExternalCommand
     {
         #region Инициализация полей
+        internal const string PluginName = "АР_Р: Проверка помещений";
+
         /// <summary>
         /// Коллекция параметров имени/номера (текст)
         /// </summary>
@@ -72,7 +74,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         internal CommandCheckFlatsArea(ExtensibleStorageEntity esEntity) : base(esEntity)
         {
         }
-        
+
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
@@ -83,7 +85,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
+
             // Из-за сторонней библиотеки (на python) - нужно жестко (без общей абсатракции) прописать FieldName и StorageName у ExtensibleStorageBuilder
             ESEntity.ESBuildergMarker = new ExtensibleStorageBuilder(ESEntity.MarkerGuid, "Last_Run", "KPLN_ARArea");
 
@@ -103,7 +108,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (form != null) form.Show();
             else return Result.Cancelled;
             #endregion
-            
+
 
             return Result.Failed;
         }
@@ -322,7 +327,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                     $"\nДопустимая разница внутри помещения - 1 м².\nВыделено только ОДНО помещение квартиры",
                                 false,
                                 true));
-                            
+
                             continue;
                         }
                     }

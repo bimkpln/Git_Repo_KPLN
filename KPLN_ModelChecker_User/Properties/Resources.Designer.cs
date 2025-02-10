@@ -73,16 +73,6 @@ namespace KPLN_ModelChecker_User.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap checker_grids_monitor {
-            get {
-                object obj = ResourceManager.GetObject("checker_grids_monitor", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap checker_levels {
             get {
                 object obj = ResourceManager.GetObject("checker_levels", resourceCulture);
@@ -93,9 +83,9 @@ namespace KPLN_ModelChecker_User.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap checker_levels_monitor {
+        internal static System.Drawing.Bitmap checker_locations {
             get {
-                object obj = ResourceManager.GetObject("checker_levels_monitor", resourceCulture);
+                object obj = ResourceManager.GetObject("checker_locations", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -103,9 +93,9 @@ namespace KPLN_ModelChecker_User.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap checker_locations {
+        internal static System.Drawing.Bitmap checker_mainLines {
             get {
-                object obj = ResourceManager.GetObject("checker_locations", resourceCulture);
+                object obj = ResourceManager.GetObject("checker_mainLines", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

@@ -1,6 +1,7 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
@@ -9,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
-using static System.Windows.Forms.LinkLabel;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -17,6 +17,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckHoles : AbstrCheckCommand<CommandCheckHoles>, IExternalCommand
     {
+        internal const string PluginName = "АР: Проверка отверстий";
+
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
@@ -56,6 +58,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -300,7 +304,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
                         true,
                         true);
-                    
+
                     zeroIOSElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
                     result.Add(zeroIOSElem);
                     continue;

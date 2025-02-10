@@ -56,6 +56,10 @@
     <RootNamespace>KPLN_ModelChecker_User</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_PluginActivityWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
       <Private>False</Private>
@@ -207,7 +211,6 @@
     <Compile Include="Common\IJsonSerializable.cs" />
     <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
-    <Compile Include="Common\MonitoringAndPinnerSearcher.cs" />
     <Compile Include="ExecutableCommand\CommandSelectElements.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
@@ -221,8 +224,7 @@
     <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckListAnnotations.cs" />
-    <Compile Include="ExternalCommands\CommandCheckLevels.cs" />
-    <Compile Include="ExternalCommands\CommandCheckGrids.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
@@ -299,6 +301,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checkPatitionalFile.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checker_mainLines.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -39,62 +39,58 @@ namespace KPLN_ModelChecker_User
             #region Инициализация элементов нужно для плагина проверки факта запуска
             // Инициирую статические поля проверок
             CommandCheckDimensions commandCheckDimensions = new CommandCheckDimensions(new ExtensibleStorageEntity(
-                "Проверка размеров",
+                CommandCheckDimensions.PluginName,
                 "KPLN_CheckDimensions",
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
             CommandCheckElementWorksets commandCheckElementWorksets = new CommandCheckElementWorksets(new ExtensibleStorageEntity(
-                "Проверка рабочих наборов",
+                CommandCheckElementWorksets.PluginName,
                 "KPLN_CheckElementWorksets",
                 new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7"),
                 new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8")));
             CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
-                "Проверка семейств",
+                CommandCheckFamilies.PluginName,
                 "KPLN_CommandCheckFamilies",
                 new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
                 new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
-            CommandCheckGrids commandCheckGrids = new CommandCheckGrids(new ExtensibleStorageEntity(
-                "Проверка осей",
-                "KPLN_CommandCheckGrids",
-                new Guid("eac2c203-342d-4ba2-98a0-d83c82a4638e")));
+            CommandCheckMainLines commandCheckGrids = new CommandCheckMainLines(new ExtensibleStorageEntity(
+                CommandCheckMainLines.PluginName,
+                "KPLN_CommandCheckMainLines",
+                new Guid("eac2c205-342d-4ba3-98a1-d82c82a4638e")));
             CommandCheckFlatsArea commandCheckFlatsArea = new CommandCheckFlatsArea(new ExtensibleStorageEntity(
-                "АР_Р: Проверка помещений",
+                CommandCheckFlatsArea.PluginName,
                 "KPLN_CheckFlatsArea",
                 new Guid("720080C5-DA99-40D7-9445-E53F288AA150"),
                 new Guid("720080C5-DA99-40D7-9445-E53F288AA151"),
                 new Guid("720080C5-DA99-40D7-9445-E53F288AA155")));
             CommandCheckHoles commandCheckHoles = new CommandCheckHoles(new ExtensibleStorageEntity(
-                "АР: Проверка отверстий",
+                CommandCheckHoles.PluginName,
                 "KPLN_CheckHoles",
                 new Guid("820080C5-DA99-40D7-9445-E53F288AA160"),
                 new Guid("820080C5-DA99-40D7-9445-E53F288AA161")));
             CommandCheckLevelOfInstances сommandCheckLevelOfInstances = new CommandCheckLevelOfInstances(new ExtensibleStorageEntity(
-                "АР/КР: Проверка привязки к уровням",
+                CommandCheckLevelOfInstances.PluginName,
                 "KPLN_CheckLevelOfInstances",
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf52"),
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf53")));
-            CommandCheckLevels сommandCheckLevels = new CommandCheckLevels(new ExtensibleStorageEntity(
-                "Проверка уровней",
-                "KPLN_CommandCheckLevels",
-                new Guid("c17e043c-6b49-49cd-bc28-7b09bf8bb657")));
             CommandCheckLinks commandCheckLinks = new CommandCheckLinks(new ExtensibleStorageEntity(
-                "Проверка связей",
+                CommandCheckLinks.PluginName,
                 "KPLN_CheckLinks",
                 new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e")));
             CommandCheckListAnnotations commandCheckListAnnotations = new CommandCheckListAnnotations(new ExtensibleStorageEntity(
-                "Проверка листов на аннотации",
+                CommandCheckListAnnotations.PluginName,
                 "KPLN_CheckAnnotation",
-                new Guid("caf1c9b7-14cc-4ba1-8336-aa4b347d2898")));
+                new Guid("caf1c9b7-14cc-4ba1-8336-aa4b357d2898")));
             CommandCheckMEPHeight commandCheckMEPHeight = new CommandCheckMEPHeight(new ExtensibleStorageEntity(
-                "ИОС: Проверка высоты эл-в",
+                CommandCheckMEPHeight.PluginName,
                 "KPLN_CheckMEPHeight",
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68"),
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69")));
             CommandCheckMirroredInstances commandCheckMirroredInstances = new CommandCheckMirroredInstances(new ExtensibleStorageEntity(
-                "Проверка зеркальных элементов",
+                CommandCheckMirroredInstances.PluginName,
                 "KPLN_CheckMirroredInstances",
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320447b"),
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320447c")));
+                new Guid("33b660af-95b8-4d7c-ac42-c9425320557b"),
+                new Guid("33b660af-95b8-4d7c-ac42-c9425320557c")));
 
             // Запись в массив для передачи ExtensibleStorageEntity в CommandCheckLaunchDate (после инициализации статических полей)
             ExtensibleStorageEntity[] extensibleStorageEntities = new ExtensibleStorageEntity[]
@@ -103,11 +99,10 @@ namespace KPLN_ModelChecker_User
                 CommandCheckDimensions.ESEntity,
                 CommandCheckElementWorksets.ESEntity,
                 CommandCheckFamilies.ESEntity,
-                CommandCheckGrids.ESEntity,
+                CommandCheckMainLines.ESEntity,
                 CommandCheckFlatsArea.ESEntity,
                 CommandCheckHoles.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
-                CommandCheckLevels.ESEntity,
                 CommandCheckLinks.ESEntity,
                 //CommandCheckListAnnotations.ESEntity,
                 CommandCheckMEPHeight.ESEntity,
@@ -137,7 +132,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckLaunchDate",
-                "Даты\nзапуска",
+                CommandCheckLaunchDate.PluginName,
                 "Проверить факт и дату запуска плагинов.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckLaunchDate).FullName,
@@ -149,7 +144,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckCoordinates",
-                "Проверка\nсвязей",
+                CommandCheckLinks.PluginName,
                 "Проверка подгруженных rvt-связей:" +
                 "\n1. Корректность настройки общей площадки Revit;" +
                 "\n2. Корректность заданного рабочего набора;" +
@@ -163,31 +158,23 @@ namespace KPLN_ModelChecker_User
                 );
 
             AddPushButtonData(
-                "CheckLevelMonitored",
-                "Проверка\nуровней", "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
+                "CheckMainLines",
+                CommandCheckMainLines.PluginName,
+                "Анализирует оси и уровни на:" +
+                    "\n1. Наличие и корректность мониторинга;" +
+                    "\n2. Наличие прикрепления;" +
+                    "\n3. Точность расстояния параллельных ПРЯМЫХ осей.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckLevels).FullName,
+                typeof(CommandCheckMainLines).FullName,
                 pullDown,
-                "KPLN_ModelChecker_User.Source.checker_levels_monitor.png",
-                _mainContextualHelp,
-                true
-                );
-
-            AddPushButtonData(
-                "CheckGridMonitored",
-                "Проверка\nосей",
-                "Проверка элементов на наличие настроенного мониторинга, а также на наличие прикрепления.",
-                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckGrids).FullName,
-                pullDown,
-                "KPLN_ModelChecker_User.Source.checker_grids_monitor.png",
+                "KPLN_ModelChecker_User.Source.checker_mainLines.png",
                 _mainContextualHelp,
                 true
                 );
 
             AddPushButtonData(
                 "CheckNames",
-                "Проверка\nсемейств",
+                CommandCheckFamilies.PluginName,
                 "Проверка семейств на:" +
                     "\n1. Импорт семейств из разрешенных источников (диск Х);" +
                     "\n2. Наличие дубликатов имен (проверяются и типоразмеры);" +
@@ -202,7 +189,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckWorksets",
-                "Проверка\nрабочих наборов",
+                CommandCheckElementWorksets.PluginName,
                 "Проверка элементов на корректность следующих рабочих наборов:"+
                     "\n1. РН для связей;" +
                     "\n2. РН для осей и уровней;" +
@@ -217,7 +204,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckDimensions",
-                "Проверка размеров",
+                CommandCheckDimensions.PluginName,
                 "Анализирует все размеры, на предмет:" +
                     "\n1. Замены значения;" +
                     "\n2. Округления значений размеров с нарушением требований пункта 5.1 ВЕР.",
@@ -231,7 +218,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckAnnotations",
-                "Проверка листов на аннотации",
+                CommandCheckListAnnotations.PluginName,
                 "Анализирует все элементы на листах и ищет аннотации следующих типов:" +
                     "\n1. Линии детализации;" +
                     "\n2. Элементы узлов;" +
@@ -248,7 +235,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckLevels",
-                "Проверка привязки к уровням",
+                CommandCheckLevelOfInstances.PluginName,
                 "Проверить все элементы в проекте на правильность расположения относительно связанного уровня.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckLevelOfInstances).FullName,
@@ -260,7 +247,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMirrored",
-                "Проверка\nзеркальных",
+                CommandCheckMirroredInstances.PluginName,
                 "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckMirroredInstances).FullName,
@@ -272,7 +259,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckHoles",
-                "АР: Проверить отверстия",
+                CommandCheckHoles.PluginName,
                 "Плагин выполняет следующие функции:\n" +
                         "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
                         "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.",
@@ -286,8 +273,8 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckFlatsArea",
-                "АР: Проверка площадей квартир",
-                "Сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
+                CommandCheckFlatsArea.PluginName,
+                "Стадия РД - сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
                     "\n1. Находит разницу имен и номеров помещений;" +
                     "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +
                     "\n3. Находит разницу в площади помещения вне квартиры, если она превышает 1 м²;" +
@@ -303,7 +290,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMEPHeight",
-                "ИОС: Проверка высоты эл-в",
+                CommandCheckMEPHeight.PluginName,
                 "Найти элементы, которые расположены в границах помещений на высоте, меньше 2.2 м:",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckMEPHeight).FullName,

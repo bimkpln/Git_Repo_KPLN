@@ -1,7 +1,7 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
@@ -9,8 +9,6 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
-using static System.Windows.Forms.LinkLabel;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -18,6 +16,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckLinks : AbstrCheckCommand<CommandCheckLinks>, IExternalCommand
     {
+        internal const string PluginName = "Проверка связей";
+
         public CommandCheckLinks() : base()
         {
         }
@@ -36,6 +36,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -73,7 +75,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     {
                         Document document = revitLink.GetLinkDocument() ?? throw new CheckerException($"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей");
                     }
-                    else 
+                    else
                         throw new Exception("Ошибка определения RevitLinkInstance");
                 }
                 else throw new Exception("Ошибка анализируемой коллекции");
@@ -88,7 +90,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<WPFEntity> result = new List<WPFEntity>();
 
             result.AddRange(CheckLocation(doc, elemColl));
-            if (CheckPin(elemColl) is WPFEntity checkPin) 
+            if (CheckPin(elemColl) is WPFEntity checkPin)
                 result.Add(checkPin);
 
             return result;
@@ -126,7 +128,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         link,
                         "Ошибка размещения",
                         "Экземпляры данной связи размещены несколько раз",
-                        "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей." 
+                        "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей."
                             + "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая",
                         false));
                 }
@@ -170,7 +172,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\"",
                                 false));
                         }
-                        else 
+                        else
                             throw new Exception($"Ошибка проверки связей: {ioe.Message} для файла {link.Name}");
                     }
                     finally

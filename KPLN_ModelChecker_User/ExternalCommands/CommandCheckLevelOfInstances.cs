@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil.Common;
 using KPLN_ModelChecker_User.Common;
@@ -9,16 +10,16 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckLevelOfInstances : AbstrCheckCommand<CommandCheckLevelOfInstances>, IExternalCommand
     {
+        internal const string PluginName = "АР/КР: Проверка привязки к уровням";
+
         private readonly BuiltInCategory[] _catsToCheck = new BuiltInCategory[]
         {
             BuiltInCategory.OST_Windows,
@@ -68,6 +69,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public override Result ExecuteByUIApp(UIApplication uiapp)
         {
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -271,7 +274,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     WPFEntity checkExtraLevelBindElements = CheckExtraLevelBindElements(instData);
                     if (checkExtraLevelBindElements != null)
                         result.Add(checkExtraLevelBindElements);
-                    
+
                     WPFEntity checkExtraOffsetstElements = CheckExtraOffsetstElements(instData);
                     if (checkExtraOffsetstElements != null)
                         result.Add(checkExtraOffsetstElements);
@@ -298,7 +301,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             {
                 string chkLvlDownNumber = LevelData.GetLevelNumber(chkLvlDown, _lvlIndexParamName);
                 string chkLvlUpNumber = LevelData.GetLevelNumber(chkLvlUp, _lvlIndexParamName);
-                
+
                 if (int.TryParse(chkLvlDownNumber, out int chkDownNumber) && int.TryParse(chkLvlUpNumber, out int chkUpNumber))
                 {
                     int lvlDiff = Math.Abs(Math.Abs(chkUpNumber) - Math.Abs(chkDownNumber));
@@ -338,7 +341,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 msg = $"Отсуп снизу составляет {instData.DownOffset}. Запрещено моделировать элементы без корректного назначения уровня";
             else if (Math.Abs(instData.UpOffset) > 20)
                 msg = $"Отсуп сверху составляет {instData.UpOffset}. Запрещено моделировать элементы без корректного назначения уровня";
-            
+
             if (!string.IsNullOrEmpty(msg))
             {
                 // Выставляю флаг, что элемент не прошел текущую проверку, чтобы ниже зацепить эл-ты, которые не подверглись проверкам
@@ -367,16 +370,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private WPFEntity Draft_CheckElemsBySectionData(CheckLevelOfInstanceData instData, List<LevelAndGridSolid> sectDatas)
         {
             // Предварительная проверка на отсутствие привязки выполнить ранее!
-            if (instData.CurrentElemProjectDownLevel == null) 
+            if (instData.CurrentElemProjectDownLevel == null)
                 return null;
-            
+
             foreach (LevelAndGridSolid sectData in sectDatas)
             {
                 //if (instData.CurrentElem.Id.IntegerValue == 29545897)
                 //{
                 //    var a = 1;
                 //}
-                    
+
                 // Игнорирую заведомо отличающиеся по отметкам секции
                 if (Math.Abs(instData.MinAndMaxElevation[0] - sectData.CurrentLevelData.MinAndMaxLvlPnts[0]) > 10
                     && Math.Abs(instData.MinAndMaxElevation[1] - sectData.CurrentLevelData.MinAndMaxLvlPnts[1]) > 10)
@@ -392,9 +395,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                         // Проверяю положение в секции
                         Solid checkSectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(instSolid, sectData.CurrentSolid, BooleanOperationsType.Intersect);
-                        if (checkSectSolid == null || !(checkSectSolid.Volume > 0)) 
+                        if (checkSectSolid == null || !(checkSectSolid.Volume > 0))
                             continue;
-                            
+
                         Solid resSolid = GetIntesectedInstSolid(instSolid, sectData);
                         if (resSolid != null)
                             intersectSolids.Add(resSolid);
@@ -474,8 +477,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 : string.Empty;
 
             // Анализ на смещение относительно уровня на 80% по однозначным элементам (жёсткая проверка) FamilyInstance и категориям (потолки, стены)
-            if (((instData.CurrentElem is FamilyInstance familyInstance 
-                  && _hardCheckFamilyNamesList.Any(hn => familyInstance.Symbol.FamilyName.Contains(hn))) 
+            if (((instData.CurrentElem is FamilyInstance familyInstance
+                  && _hardCheckFamilyNamesList.Any(hn => familyInstance.Symbol.FamilyName.Contains(hn)))
                     || instData.CurrentElem is Ceiling)
                 && sectData.CurrentLevelData.CurrentDownLevel != null
                 && intersectSolidsValue > instSolidValue * 0.80
@@ -596,13 +599,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             foreach (CheckLevelOfInstanceData instData in instDataColl)
             {
                 // Предварительная проверка на отсутствие привязки выполнить ранее!
-                if (instData.CurrentElemProjectDownLevel == null || !instData.IsEmptyChecked) 
+                if (instData.CurrentElemProjectDownLevel == null || !instData.IsEmptyChecked)
                     continue;
-                
+
                 LevelAndGridSolid sectData = GetNearestSecData(instData, sectDatas);
-                if (sectData == null) 
+                if (sectData == null)
                     continue;
-                
+
                 try
                 {
                     List<Solid> intersectSolids = new List<Solid>();
@@ -656,7 +659,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 double instDataDownLvlElev = instData.CurrentElemProjectDownLevel.Elevation;
                 if (sectDataCurrentLvlElev > instDataDownLvlElev + 30)
                     continue;
-                
+
                 FaceArray sectDataFaces = sectData.CurrentSolid.Faces;
                 foreach (XYZ instGeomCenter in instData.CurrentGeomCenterColl)
                 {
