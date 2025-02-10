@@ -2,7 +2,6 @@ using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.Common.HolesManager
 {
@@ -28,13 +27,13 @@ namespace KPLN_Tools.Common.HolesManager
         /// <summary>
         /// Подготовка спец. семейст для анализа
         /// </summary>
-        public List<IOSShaftDTO> PrepareShaftDTO()
+        public List<IOSShaftDTO> PrepareShaftDTO(double bpErrorDist)
         {
             List<IOSShaftDTO> result = new List<IOSShaftDTO>();
             foreach (FamilyInstance fi in _shaftElems)
             {
                 BoundingBoxXYZ fiBBox = PrepareHoleBBox(fi);
-                IOSShaftDTO shaftDTO = PrepareHoleDTOData(fi, fiBBox);
+                IOSShaftDTO shaftDTO = PrepareHoleDTOData(fi, fiBBox, bpErrorDist);
                 if (shaftDTO != null)
                     result.Add(shaftDTO);
             }
@@ -56,14 +55,14 @@ namespace KPLN_Tools.Common.HolesManager
 
             if (fiBBox == null)
                 throw new Exception($"Не удалось получить геометрию у элемента с id: {famInst.Id}");
-            
+
             return fiBBox;
         }
 
         /// <summary>
         /// Подготовка параметров для класса HolesDTO
         /// </summary>
-        private IOSShaftDTO PrepareHoleDTOData(FamilyInstance fi, BoundingBoxXYZ fiBBox)
+        private IOSShaftDTO PrepareHoleDTOData(FamilyInstance fi, BoundingBoxXYZ fiBBox, double bpErrorDist)
         {
             string fiName = fi.Symbol.FamilyName;
 
@@ -127,7 +126,7 @@ namespace KPLN_Tools.Common.HolesManager
                 DownBindingElevation = downBindElev,
                 BindingPrefixString = "Низ на отм.",
                 RlvElevation = rlvDist,
-                AbsElevation = fiBBox.Min.Z,
+                AbsElevation = fiBBox.Min.Z - bpErrorDist,
             };
 
             return shaftDTO;
@@ -153,7 +152,7 @@ namespace KPLN_Tools.Common.HolesManager
             Outline outline = new Outline(
                 transform.Inverse.OfPoint(new XYZ(sminX + 0.5, sminY + 0.5, bbox.Min.Z - 1)),
                 transform.Inverse.OfPoint(new XYZ(smaxX + 0.5, smaxY + 0.5, bbox.Max.Z + 1)));
-            
+
             if (outline.IsEmpty)
                 return null;
 

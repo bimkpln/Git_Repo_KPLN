@@ -88,12 +88,21 @@ namespace KPLN_Tools.ExternalCommands
                 CheckMainParamsError(shaftElems, 1, 1);
                 #endregion
 
+                #region Расчет ошибки смещения БТП относительно внутреннего начала
+                BasePoint docBP = new FilteredElementCollector(doc)
+                    .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                    .Cast<BasePoint>()
+                    .FirstOrDefault();
+                
+                double bpErrorDist = docBP.Position.Z;
+                #endregion
+
                 #region Подготовка и обработка спец. классов для последующей записи в проект
                 iOSHolesPrepareManager = new IOSHolesPrepareManager(holesElems, linkedModels);
-                holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO();
+                holesDTOColl = iOSHolesPrepareManager.PrepareHolesDTO(bpErrorDist);
 
                 iOSShaftPrepareManager = new IOSShaftPrepareManager(shaftElems, linkedModels);
-                shaftDTOColl = iOSShaftPrepareManager.PrepareShaftDTO();
+                shaftDTOColl = iOSShaftPrepareManager.PrepareShaftDTO(bpErrorDist);
                 #endregion
 
                 #region Вывод ошибок пользователю

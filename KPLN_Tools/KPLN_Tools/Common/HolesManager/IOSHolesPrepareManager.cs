@@ -28,13 +28,13 @@ namespace KPLN_Tools.Common.HolesManager
         /// Подготовка спец. семейст для анализа
         /// </summary>
         /// <param name="holesElems"></param>
-        public List<IOSHoleDTO> PrepareHolesDTO()
+        public List<IOSHoleDTO> PrepareHolesDTO(double bpErrorDist)
         {
             List<IOSHoleDTO> result = new List<IOSHoleDTO>();
             foreach (FamilyInstance fi in _holesElems)
             {
                 BoundingBoxXYZ fiBBox = PrepareHoleBBox(fi);
-                IOSHoleDTO holeDTO = PrepareHoleDTOData(fi, fiBBox);
+                IOSHoleDTO holeDTO = PrepareHoleDTOData(fi, fiBBox, bpErrorDist);
                 if (holeDTO != null)
                     result.Add(holeDTO);
             }
@@ -48,12 +48,12 @@ namespace KPLN_Tools.Common.HolesManager
         private BoundingBoxXYZ PrepareHoleBBox(FamilyInstance famInst)
         {
             GeometryElement geomElem = famInst
-                    .get_Geometry(new Options()
-                    {
-                        DetailLevel = ViewDetailLevel.Fine,
-                    });
+                .get_Geometry(new Options()
+                {
+                    DetailLevel = ViewDetailLevel.Fine,
+                });
 
-            foreach (GeometryInstance inst in geomElem)
+            foreach (GeometryInstance inst in geomElem.Cast<GeometryInstance>())
             {
                 //Transform transform = inst.Transform;
                 GeometryElement instGeomElem = inst.GetInstanceGeometry();
@@ -81,7 +81,7 @@ namespace KPLN_Tools.Common.HolesManager
         /// <summary>
         /// Подготовка параметров для класса HolesDTO
         /// </summary>
-        private IOSHoleDTO PrepareHoleDTOData(FamilyInstance fi, BoundingBoxXYZ fiBBox)
+        private IOSHoleDTO PrepareHoleDTOData(FamilyInstance fi, BoundingBoxXYZ fiBBox, double bpErrorDist)
         {
             string fiName = fi.Symbol.FamilyName;
 
@@ -192,7 +192,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownBindingElevation = downBindElev,
                     BindingPrefixString = "Низ отм.",
                     RlvElevation = rlvDist,
-                    AbsElevation = fiBBox.Min.Z,
+                    AbsElevation = fiBBox.Min.Z - bpErrorDist,
                 };
             }
             else if (fiName.ToLower().Contains("кругл") || fiName.ToLower().Contains("trw"))
@@ -207,7 +207,7 @@ namespace KPLN_Tools.Common.HolesManager
                     DownBindingElevation = downBindElev,
                     BindingPrefixString = "Центр отм.",
                     RlvElevation = rlvDist + Math.Abs((Math.Abs(fiBBox.Max.Z) - Math.Abs(fiBBox.Min.Z)) / 2),
-                    AbsElevation = ((fiBBox.Max.Z + fiBBox.Min.Z)) / 2,
+                    AbsElevation = ((fiBBox.Max.Z + fiBBox.Min.Z)) / 2 - bpErrorDist,
                 };
             }
             else

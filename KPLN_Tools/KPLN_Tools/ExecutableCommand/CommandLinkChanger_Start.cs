@@ -318,7 +318,7 @@ namespace KPLN_Tools.ExecutableCommand
                             }
 
                             linkType.LoadFrom(linkNewModelPath, openConfig);
-                            _sbSuccResult.AppendLine($"Связь по пути {oldModelPath} усешно заменена на {linkUpdateEntity.UpdatedLinkPath}");
+                            _sbSuccResult.AppendLine($"Связь по пути {oldModelPath} успешно заменена на {linkUpdateEntity.UpdatedLinkPath}");
                         }
                         catch (FileArgumentNotFoundException)
                         {
