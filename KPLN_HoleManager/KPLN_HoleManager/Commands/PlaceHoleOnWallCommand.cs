@@ -2,11 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Controls;
-using System.Xml.Linq;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Mechanical;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
@@ -59,7 +55,7 @@ namespace KPLN_HoleManager.ExternalCommand
                 Wall wall = _selectedWall as Wall;
                 LocationCurve locationCurve = wall.Location as LocationCurve;
 
-                
+                // Определяем тип стены
                 if (locationCurve != null)
                 {
                     Curve curve = locationCurve.Curve;
@@ -85,15 +81,47 @@ namespace KPLN_HoleManager.ExternalCommand
                     }
                 }
 
-                // Запрашиваем выбор элемента, который пересекает стену
-                TaskDialog.Show("Выбор элемента", "Для продолжения работы выберите элемент, который пересекается с выбранной стеной.");
-                Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, "Выберите элемент, который пересекается со стеной.");
-                Element intersectingElement = doc.GetElement(selectedRef);
-
-                if (intersectingElement == null)
+                // Список допустимых категорий элементов
+                BuiltInCategory[] allowedCategories = new BuiltInCategory[]
                 {
-                    TaskDialog.Show("Ошибка", "Не удалось выбрать элемент для пересечения.");
-                    return;
+                    BuiltInCategory.OST_DuctCurves,
+                    BuiltInCategory.OST_FlexDuctCurves,
+                    BuiltInCategory.OST_PipeCurves,
+                    BuiltInCategory.OST_FlexPipeCurves,
+                    BuiltInCategory.OST_CableTray,
+                    BuiltInCategory.OST_Conduit
+                };
+
+                Element intersectingElement = null;
+
+                // Выбор элемента, который пересекает стену
+                while (true)
+                {
+                    try
+                    {
+                        TaskDialog.Show("Выбор элемента", "Для продолжения работы выберите элемент, который пересекается с выбранной стеной.");
+                        Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, "Выберите элемент, который пересекается со стеной.");
+                        intersectingElement = doc.GetElement(selectedRef);
+
+                        if (intersectingElement == null)
+                        {
+                            TaskDialog.Show("Ошибка", "Не удалось выбрать элемент для пересечения. Попробуйте снова.");
+                            continue;
+                        }
+
+                        if (!allowedCategories.Contains((BuiltInCategory)intersectingElement.Category.Id.IntegerValue))
+                        {
+                            TaskDialog.Show("Ошибка", "Выбранный элемент не является допустимым объектом (воздуховоды, трубы, кабельные лотки или короба). Попробуйте снова.");
+                            continue;
+                        }
+          
+                        break;                       
+                    }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                    {
+                        TaskDialog.Show("Отмена", "Выбор элемента был отменён.");
+                        return; 
+                    }
                 }
 
                 // Определение размеров элемента, который пересекает стену
@@ -104,7 +132,7 @@ namespace KPLN_HoleManager.ExternalCommand
 
                 if (holeLocation == null)
                 {
-                    TaskDialog.Show("Ошибка", "Не удалось определить точку пересечения.");
+                    TaskDialog.Show("Ошибка", "Не удалось определить точку пересечения.\nВыберите стену заново и повторите попытку.");
                     return;
                 }
 
@@ -309,17 +337,30 @@ namespace KPLN_HoleManager.ExternalCommand
                 if (segmentPoints == null || segmentPoints.Count < 2)
                     return null;
 
-                // Получаем 3D-вид
                 View3D view3D = new FilteredElementCollector(doc)
-                    .OfClass(typeof(View3D))
-                    .Cast<View3D>()
-                    .FirstOrDefault(v => !v.IsTemplate);
+                    .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
+
+                bool createdView = false;
+                if (view3D == null)
+                {
+                    ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
+                        .OfClass(typeof(ViewFamilyType))
+                        .Cast<ViewFamilyType>()
+                        .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
+
+                    if (viewFamilyType != null)
+                    {
+                        view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
+                        createdView = true;
+                    }
+                }
 
                 if (view3D == null)
                 {
-                    TaskDialog.Show("Ошибка", "Не найден 3D-вид для ReferenceIntersector.");
+                    TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
                     return null;
                 }
+
 
                 // Создаём фильтр для нашей стены
                 ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
@@ -327,7 +368,7 @@ namespace KPLN_HoleManager.ExternalCommand
                 XYZ closestIntersection = null;
                 double minDistance = double.MaxValue;
 
-                // Проходим по каждой паре точек (отрезки трубы)
+                // Проходим по каждой паре точек
                 for (int i = 0; i < segmentPoints.Count - 1; i++)
                 {
                     XYZ start = segmentPoints[i];
@@ -364,11 +405,12 @@ namespace KPLN_HoleManager.ExternalCommand
                     closestIntersection = new XYZ(closestIntersection.X, closestIntersection.Y, closestIntersection.Z + adjustment);
                 }
 
+                if (createdView)
+                {
+                    doc.Delete(view3D.Id);
+                }
+
                 return closestIntersection;
-            }
-            if (wallType == "ArcWall")
-            {
-                return null;
             }
             else
             {
