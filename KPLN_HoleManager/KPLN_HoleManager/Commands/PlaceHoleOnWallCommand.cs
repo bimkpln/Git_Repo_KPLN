@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Windows.Controls;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
@@ -16,7 +17,9 @@ namespace KPLN_HoleManager.ExternalCommand
         private readonly string _userFullName;
         private readonly string _departmentName;
 
-        private readonly Element _selectedElement;
+        private readonly Element _selectedWall;
+        private string wallType;
+
         private readonly string _departmentHoleName;
         private readonly string _sendingDepartmentHoleName;
         private readonly string _holeTypeName;
@@ -25,7 +28,7 @@ namespace KPLN_HoleManager.ExternalCommand
         {
             _userFullName = userFullName;
             _departmentName = departmentName;
-            _selectedElement = selectedElement;
+            _selectedWall = selectedElement;
             _departmentHoleName = departmentHoleName;
             _sendingDepartmentHoleName = sendingDepartmentHoleName;
             _holeTypeName = holeTypeName;
@@ -51,8 +54,38 @@ namespace KPLN_HoleManager.ExternalCommand
 
             try
             {
+                // Определение типа стены
+                Wall wall = _selectedWall as Wall;
+                LocationCurve locationCurve = wall.Location as LocationCurve;
+
+                
+                if (locationCurve != null)
+                {
+                    Curve curve = locationCurve.Curve;
+                    if (curve is Line)
+                    {
+                        wallType = "default";
+                    }
+                    else if (curve is Arc)
+                    {
+                        wallType = "ArcWall";
+                    }
+                    else if (wall.CurtainGrid != null)
+                    {
+                        wallType = "CurtainGridWall"; 
+                    }
+                    else if (wall.WallType.Kind == WallKind.Stacked)
+                    {
+                        wallType = "StackedCurtainGrid"; 
+                    }
+                    else if (_selectedWall is RevitLinkInstance linkInstance)
+                    {
+                        wallType = "LinkWall";
+                    }
+                }
+
                 // Запрашиваем выбор элемента, который пересекает стену
-                TaskDialog.Show("Выбор элемента", "Для продолжения работы выберите элемент, который пересекается со стеной.");
+                TaskDialog.Show("Выбор элемента", "Для продолжения работы выберите элемент, который пересекается с выбранной стеной.");
                 Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, "Выберите элемент, который пересекается со стеной.");
                 Element intersectingElement = doc.GetElement(selectedRef);
 
@@ -62,8 +95,11 @@ namespace KPLN_HoleManager.ExternalCommand
                     return;
                 }
 
+                // Определение размеров элемента, который пересекает стену
+                (double width, double height, double length) = GetElementSize(intersectingElement);
+
                 // Определяем точку пересечения
-                var (holeLocation, holeWidth, holeHeight) = GetIntersectionData(_selectedElement, intersectingElement);
+                XYZ holeLocation = GetIntersectionPoint(_selectedWall, intersectingElement);
 
                 if (holeLocation == null)
                 {
@@ -119,7 +155,7 @@ namespace KPLN_HoleManager.ExternalCommand
                     }
 
                     // Создаём отверстие
-                    FamilyInstance holeInstance = doc.Create.NewFamilyInstance(holeLocation, holeSymbol, _selectedElement, StructuralType.NonStructural);
+                    FamilyInstance holeInstance = doc.Create.NewFamilyInstance(holeLocation, holeSymbol, _selectedWall, StructuralType.NonStructural);
 
                     if (holeInstance == null)
                     {
@@ -128,8 +164,40 @@ namespace KPLN_HoleManager.ExternalCommand
                         return;
                     }
 
+                    Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
+
                     // Устанавливаем размеры отверстия
-                    SetHoleSize(holeInstance, holeWidth, holeHeight);
+                    if (sChoiseHoleIndentation.ShowDialog() == true)
+                    {
+                        double offset = sChoiseHoleIndentation.SelectedOffset;
+
+                        Parameter widthParam = holeInstance.LookupParameter("Ширина");
+                        Parameter heightParam = holeInstance.LookupParameter("Высота");
+
+                        // Отверстие типа - прямоугольник
+                        if (heightParam != null && !heightParam.IsReadOnly)
+                        {
+                            heightParam.Set(UnitUtils.ConvertToInternalUnits(height + offset, UnitTypeId.Millimeters));
+                        }
+
+                        if (widthParam != null && !widthParam.IsReadOnly)
+                        {
+                            widthParam.Set(UnitUtils.ConvertToInternalUnits(width + offset, UnitTypeId.Millimeters));
+                        }
+
+                        // Отверстие типа - круг
+                        if (heightParam != null && !heightParam.IsReadOnly && widthParam != null && widthParam.IsReadOnly)
+                        {
+                            heightParam.Set(UnitUtils.ConvertToInternalUnits(Math.Max(height, width) + offset, UnitTypeId.Millimeters));
+                        }
+                    }
+                    else
+                    {
+                        tx.RollBack();
+                        TaskDialog.Show("Внимание", "Операция отменена пользователем.");
+                        return;
+                    }
+
 
                     tx.Commit();
                 }
@@ -139,6 +207,147 @@ namespace KPLN_HoleManager.ExternalCommand
                 TaskDialog.Show("Ошибка", $"Произошла непредвиденная ошибка:\n{ex.Message}");
             }
         }
+
+
+
+
+
+
+
+
+        // Метод для получения размеров элемента системы
+        private (double width, double height, double length) GetElementSize(Element element)
+        {
+            double width = 0, height = 0, length = 0;
+
+            Category category = element.Category;
+            if (category == null) return (0, 0, 0);
+
+            // Воздуховоды и гибкие воздуховоды
+            if (category.Id.IntegerValue == (int)BuiltInCategory.OST_DuctCurves 
+                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves) 
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_CURVE_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter; 
+                }
+                else
+                {
+                    height = GetParameterValue(element, BuiltInParameter.RBS_CURVE_HEIGHT_PARAM);
+                    width = GetParameterValue(element, BuiltInParameter.RBS_CURVE_WIDTH_PARAM);
+                }
+            }
+            // Трубы и гибкие трубы
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves
+                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves)
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_PIPE_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter;
+                }
+            }
+            // Кабельные лотки
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_CableTray)
+            {               
+                height = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM);
+                width = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM);
+            }
+            // Короба
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_Conduit)
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter;
+                }
+            }
+
+            // Определяем длину элемента (универсально для всех категорий)
+            length = GetParameterValue(element, BuiltInParameter.CURVE_ELEM_LENGTH);
+
+            return (width, height, length);
+        }
+
+        // Метод для получения значения параметра с переводом футов в метры
+        private double GetParameterValue(Element element, BuiltInParameter paramId)
+        {
+            Parameter param = element.get_Parameter(paramId);
+            if (param != null && param.HasValue)
+            {
+                // Используем Revit API для корректного преобразования в мм
+                return UnitUtils.ConvertFromInternalUnits(param.AsDouble(), UnitTypeId.Millimeters);
+            }
+            return 0;
+        }
+
+
+
+
+
+
+
+
+
+        // Находим точку пересечения стены и входящего элемента
+        private XYZ GetIntersectionPoint(Element wall, Element intersectingElement)
+        {
+            if (wallType == "default")
+            {
+                BoundingBoxXYZ wallBox = wall.get_BoundingBox(null);
+                BoundingBoxXYZ intersectBox = intersectingElement.get_BoundingBox(null);
+
+                if (wallBox == null || intersectBox == null)
+                    return null;
+
+                // Определяем трансформацию (если элемент находится в линке)
+                Transform wallTransform = Transform.Identity;
+                Transform intersectTransform = Transform.Identity;
+
+                if (wall is RevitLinkInstance wallLink)
+                {
+                    wallTransform = wallLink.GetTotalTransform();
+                }
+
+                if (intersectingElement is RevitLinkInstance intersectLink)
+                {
+                    intersectTransform = intersectLink.GetTotalTransform();
+                }
+
+                // Применяем трансформацию
+                XYZ wallMin = wallTransform.OfPoint(wallBox.Min);
+                XYZ wallMax = wallTransform.OfPoint(wallBox.Max);
+                XYZ intersectMin = intersectTransform.OfPoint(intersectBox.Min);
+                XYZ intersectMax = intersectTransform.OfPoint(intersectBox.Max);
+
+                // Определяем точку пересечения (центр общей области BoundingBox)
+                double x = (Math.Max(wallMin.X, intersectMin.X) + Math.Min(wallMax.X, intersectMax.X)) / 2;
+                double y = (Math.Max(wallMin.Y, intersectMin.Y) + Math.Min(wallMax.Y, intersectMax.Y)) / 2;
+                double z = (Math.Max(wallMin.Z, intersectMin.Z) + Math.Min(wallMax.Z, intersectMax.Z)) / 2;
+
+                // Проверяем, находится ли точка внутри стены
+                if (x < wallMin.X || x > wallMax.X || y < wallMin.Y || y > wallMax.Y || z < wallMin.Z || z > wallMax.Z)
+                    return null;
+
+                return new XYZ(x, y, z);
+            }
+            else
+            {
+                TaskDialog.Show("Внимание", $"На данный момент времени работа со стенами типа {wallType} не реализована.");
+                return null;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
 
         // Метод выбора файла семейства
         private string GetFamilyFileName(string department, string holeType)
@@ -155,64 +364,6 @@ namespace KPLN_HoleManager.ExternalCommand
 
             string key = $"{department}_{holeType}";
             return familyMap.ContainsKey(key) ? familyMap[key] : null;
-        }
-
-        // Метод поиска точки установки отверстия
-        private (XYZ, double, double) GetIntersectionData(Element wall, Element intersectingElement)
-        {
-            BoundingBoxXYZ wallBox = wall.get_BoundingBox(null);
-            BoundingBoxXYZ elemBox = intersectingElement.get_BoundingBox(null);
-
-            if (wallBox == null || elemBox == null)
-            {
-                return (null, 0, 0);
-            }
-
-            // Определяем границы пересечения
-            double minX = Math.Max(wallBox.Min.X, elemBox.Min.X);
-            double maxX = Math.Min(wallBox.Max.X, elemBox.Max.X);
-
-            double minY = Math.Max(wallBox.Min.Y, elemBox.Min.Y);
-            double maxY = Math.Min(wallBox.Max.Y, elemBox.Max.Y);
-
-            double minZ = Math.Max(wallBox.Min.Z, elemBox.Min.Z);
-            double maxZ = Math.Min(wallBox.Max.Z, elemBox.Max.Z);
-
-            // Проверяем, есть ли реальное пересечение
-            if (minX > maxX || minY > maxY || minZ > maxZ)
-            {
-                return (null, 0, 0);
-            }
-
-            // Центр пересечения
-            XYZ intersectionCenter = new XYZ(
-                (minX + maxX) / 2,
-                (minY + maxY) / 2,
-                (minZ + maxZ) / 2
-            );
-
-            // Размеры пересечения (ширина и высота)
-            double width = maxX - minX;
-            double height = maxZ - minZ;
-
-            return (intersectionCenter, width, height);
-        }
-
-        // Метод установки размера отверстия
-        private void SetHoleSize(FamilyInstance hole, double width, double height)
-        {
-            Parameter widthParam = hole.LookupParameter("Width");
-            Parameter heightParam = hole.LookupParameter("Height");
-
-            if (widthParam != null && widthParam.IsReadOnly == false)
-            {
-                widthParam.Set(width);
-            }
-
-            if (heightParam != null && heightParam.IsReadOnly == false)
-            {
-                heightParam.Set(height);
-            }
         }
 
         // Метод загрузки семейства

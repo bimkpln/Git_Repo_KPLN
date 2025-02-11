@@ -119,15 +119,6 @@ namespace KPLN_HoleManager.Forms
             ActionButtonDepartment.Children.Add(button);
         }
 
-
-
-
-
-
-
-
-
-
         // Обработчик для кнопки "Расставить отверстия по выбранной стене"
         private void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
@@ -160,11 +151,6 @@ namespace KPLN_HoleManager.Forms
             holeWindow.ShowDialog();
         }
 
-
-
-
-
-
         // Обработчик для кнопки "Создать отверстия по заданию"
         private void CreateHolesByTask(object sender, RoutedEventArgs e)
         {
@@ -177,17 +163,6 @@ namespace KPLN_HoleManager.Forms
             MessageBox.Show("Отверстия успешно расставлены по пересечениям!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
-
-
-
-
-
-
-
-
-
-
-
 
 
     // Передаём данные статусов в названия кнопок

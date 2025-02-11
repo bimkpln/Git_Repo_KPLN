@@ -100,6 +100,9 @@
     <Compile Include="Forms\sChoiseHole.xaml.cs">
       <DependentUpon>sChoiseHole.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\sChoiseHoleIndentation.xaml.cs">
+      <DependentUpon>sChoiseHoleIndentation.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -115,6 +118,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\sChoiseHole.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\sChoiseHoleIndentation.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
