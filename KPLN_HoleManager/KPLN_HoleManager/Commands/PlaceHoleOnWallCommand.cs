@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Controls;
+using System.Xml.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
@@ -99,7 +100,7 @@ namespace KPLN_HoleManager.ExternalCommand
                 (double width, double height, double length) = GetElementSize(intersectingElement);
 
                 // Определяем точку пересечения
-                XYZ holeLocation = GetIntersectionPoint(_selectedWall, intersectingElement);
+                XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement);
 
                 if (holeLocation == null)
                 {
@@ -291,50 +292,87 @@ namespace KPLN_HoleManager.ExternalCommand
 
 
         // Находим точку пересечения стены и входящего элемента
-        private XYZ GetIntersectionPoint(Element wall, Element intersectingElement)
+        private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement)
         {
-            if (wallType == "default")
+            if (wallType == "default" || wallType == "ArcWall")
             {
-                BoundingBoxXYZ wallBox = wall.get_BoundingBox(null);
-                BoundingBoxXYZ intersectBox = intersectingElement.get_BoundingBox(null);
-
-                if (wallBox == null || intersectBox == null)
+                // Получаем геометрию трубы (учитываем изгибы)
+                LocationCurve pipeLocation = cElement.Location as LocationCurve;
+                if (pipeLocation == null)
                     return null;
 
-                // Определяем трансформацию (если элемент находится в линке)
-                Transform wallTransform = Transform.Identity;
-                Transform intersectTransform = Transform.Identity;
+                Curve pipeCurve = pipeLocation.Curve;
 
-                if (wall is RevitLinkInstance wallLink)
-                {
-                    wallTransform = wallLink.GetTotalTransform();
-                }
+                // Разбиваем кривую на точки (Tessellate)
+                List<XYZ> segmentPoints = pipeCurve.Tessellate() as List<XYZ>;
 
-                if (intersectingElement is RevitLinkInstance intersectLink)
-                {
-                    intersectTransform = intersectLink.GetTotalTransform();
-                }
-
-                // Применяем трансформацию
-                XYZ wallMin = wallTransform.OfPoint(wallBox.Min);
-                XYZ wallMax = wallTransform.OfPoint(wallBox.Max);
-                XYZ intersectMin = intersectTransform.OfPoint(intersectBox.Min);
-                XYZ intersectMax = intersectTransform.OfPoint(intersectBox.Max);
-
-                // Определяем точку пересечения (центр общей области BoundingBox)
-                double x = (Math.Max(wallMin.X, intersectMin.X) + Math.Min(wallMax.X, intersectMax.X)) / 2;
-                double y = (Math.Max(wallMin.Y, intersectMin.Y) + Math.Min(wallMax.Y, intersectMax.Y)) / 2;
-                double z = (Math.Max(wallMin.Z, intersectMin.Z) + Math.Min(wallMax.Z, intersectMax.Z)) / 2;
-
-                // Проверяем, находится ли точка внутри стены
-                if (x < wallMin.X || x > wallMax.X || y < wallMin.Y || y > wallMax.Y || z < wallMin.Z || z > wallMax.Z)
+                if (segmentPoints == null || segmentPoints.Count < 2)
                     return null;
 
-                return new XYZ(x, y, z);
+                // Получаем 3D-вид
+                View3D view3D = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View3D))
+                    .Cast<View3D>()
+                    .FirstOrDefault(v => !v.IsTemplate);
+
+                if (view3D == null)
+                {
+                    TaskDialog.Show("Ошибка", "Не найден 3D-вид для ReferenceIntersector.");
+                    return null;
+                }
+
+                // Создаём фильтр для нашей стены
+                ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
+
+                XYZ closestIntersection = null;
+                double minDistance = double.MaxValue;
+
+                // Проходим по каждой паре точек (отрезки трубы)
+                for (int i = 0; i < segmentPoints.Count - 1; i++)
+                {
+                    XYZ start = segmentPoints[i];
+                    XYZ end = segmentPoints[i + 1];
+                    XYZ direction = (end - start).Normalize();
+
+                    ReferenceWithContext referenceWithContext = intersector.FindNearest(start, direction);
+                    if (referenceWithContext != null)
+                    {
+                        XYZ intersectionPoint = referenceWithContext.GetReference().GlobalPoint;
+
+                        // Вычисляем расстояние до точки трубы
+                        double distanceToPipe = start.DistanceTo(intersectionPoint);
+
+                        // Если точка ближе - запоминаем её
+                        if (distanceToPipe < minDistance)
+                        {
+                            minDistance = distanceToPipe;
+                            closestIntersection = intersectionPoint;
+                        }
+                    }
+                }
+
+                // Получаем параметры стены
+                double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
+                double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
+                double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
+                bool isUnconnected = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)?.AsElementId() == ElementId.InvalidElementId;
+
+                // Корректируем точку пересечения с учетом смещений и выступов
+                if (closestIntersection != null)
+                {
+                    double adjustment = (isUnconnected ? unconnectedHeight : 0) - offsetBottom + offsetTop;
+                    closestIntersection = new XYZ(closestIntersection.X, closestIntersection.Y, closestIntersection.Z + adjustment);
+                }
+
+                return closestIntersection;
+            }
+            if (wallType == "ArcWall")
+            {
+                return null;
             }
             else
             {
-                TaskDialog.Show("Внимание", $"На данный момент времени работа со стенами типа {wallType} не реализована.");
+                TaskDialog.Show("Внимание", $"Работа со стенами типа {wallType} не реализована.");
                 return null;
             }
         }
