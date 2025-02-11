@@ -131,10 +131,14 @@ namespace KPLN_Loader
                     string mainDBPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("KPLN_Loader_MainDB")).Path;
                     _dbService = new SQLiteService(_logger, mainDBPath);
                     CurrentRevitUser = _dbService.Authorization();
-                    if (CurrentRevitUser == null) 
+                    if (CurrentRevitUser == null)
+                    {
+                        Progress?.Invoke(MainStatus.DbConnection, "Критическая ошибка пользователя! Подробнее - см. файл логов", System.Windows.Media.Brushes.Red);
                         return Result.Cancelled;
+                    }
 
                     loaderStatusForm.SetDebugStatus(CurrentRevitUser.IsDebugMode);
+                    bool isUserDataUpdated = _dbService.SetUserLastConnectionDate(CurrentRevitUser);
                     CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
                     loaderStatusForm.UpdateLayout();
 
@@ -143,8 +147,12 @@ namespace KPLN_Loader
                     loaderStatusForm.SetInstruction(loaderDescription);
                     loaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
 
+                    if (isUserDataUpdated && CurrentSubDepartment != null)
+                        Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
+                    else
+                        Progress?.Invoke(MainStatus.DbConnection, "Замечания при подключения к БД! Подробнее - см. файл логов", System.Windows.Media.Brushes.Orange);
+                    
                     // Вывод в окно пользователя
-                    Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
                     LoadStatus?.Invoke(
                         new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
                         System.Windows.Media.Brushes.OrangeRed);

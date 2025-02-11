@@ -33,10 +33,10 @@ namespace KPLN_Loader.Forms
         /// <summary>
         /// Окно с демонстрацией прогресса
         /// </summary>
-        internal LoaderStatusForm(Application application)
+        internal LoaderStatusForm(Application kplnApp)
         {
-            application.Progress += Application_Progress;
-            application.LoadStatus += Application_ModuleStatus;
+            kplnApp.Progress += Application_Progress;
+            kplnApp.LoadStatus += Application_ModuleStatus;
 
             _closeTimer = new System.Windows.Forms.Timer();
             _closeTimer.Tick += CloseTimer_Tick;
