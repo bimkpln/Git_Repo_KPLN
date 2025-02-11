@@ -105,7 +105,7 @@ namespace KPLN_IOSClasher.Core
                     .FirstOrDefault()
                     .Position;
 
-                // Ищу результирующий Transform. Уточняю его при смещении БТП с нарушениями
+                // Ищу результирующий Transform.
                 if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1
                     && Math.Abs(CheckDocBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) > 0.1)
                 {
@@ -140,10 +140,16 @@ namespace KPLN_IOSClasher.Core
 
         public Transform CheckDocTransform { get; }
 
+        /// <summary>
+        /// Координаты точки съёмки проверяемого документа
+        /// </summary>
         public XYZ CheckDocBasePntPosition { get; }
 
         public Transform LinkTransfrom { get; }
 
+        /// <summary>
+        /// Координаты точки съёмки связи
+        /// </summary>
         public XYZ LinkBasePntPosition { get; }
 
         /// <summary>

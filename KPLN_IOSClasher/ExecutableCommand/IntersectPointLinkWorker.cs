@@ -137,8 +137,13 @@ namespace KPLN_IOSClasher.ExecutableCommand
                     continue;
                 }
 
-                Element oldAddedElem = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id)) ??
-                    throw new FormatException($"Отправь разработчику: Не удалось найти элемент №1 по id для эл-та с id:{oldPntEntity.AddedElement_Id}");
+                // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).Если эл-та нет - удаляем
+                Element oldAddedElem = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id));
+                if (oldAddedElem == null)
+                {
+                    resultToDel.Add(kvp.Key);
+                    continue;
+                }
 
                 Solid addedElemSolid = DocController.GetElemSolid(oldAddedElem);
                 if (addedElemSolid == null)

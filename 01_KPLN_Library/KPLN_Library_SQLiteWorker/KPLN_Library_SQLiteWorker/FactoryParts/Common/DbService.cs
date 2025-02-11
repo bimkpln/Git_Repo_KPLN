@@ -30,6 +30,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         {
             const int maxRetries = 3;
             int attempt = 0;
+            int timeSleep = 100;
 
             while (attempt < maxRetries)
             {
@@ -47,11 +48,11 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
                     attempt++;
                     if (attempt >= maxRetries)
                     {
-                        ShowDialog("[KPLN]: Ошибка работы с БД", $"База данных занята. Попытки выполнить запрос ({maxRetries}) исчерпаны.");
+                        ShowDialog("[KPLN]: Ошибка работы с БД", $"База данных занята. Попытки выполнить запрос ({maxRetries} раза по {timeSleep / 1000.0} с) исчерпаны.");
                         return;
                     }
 
-                    Thread.Sleep(500);
+                    Thread.Sleep(timeSleep);
                 }
                 catch (Exception ex)
                 {
@@ -65,6 +66,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         {
             const int maxRetries = 3;
             int attempt = 0;
+            int timeSleep = 100;
 
             while (attempt < maxRetries)
             {
@@ -81,11 +83,11 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
                     attempt++;
                     if (attempt >= maxRetries)
                     {
-                        ShowDialog("[KPLN]: Ошибка работы с БД", $"База данных занята. Попытки выполнить запрос ({maxRetries}) исчерпаны.");
+                        ShowDialog("[KPLN]: Ошибка работы с БД", $"База данных занята. Попытки выполнить запрос ({maxRetries} раза по {timeSleep / 1000.0} с) исчерпаны.");
                         return null;
                     }
 
-                    Thread.Sleep(300);
+                    Thread.Sleep(timeSleep);
                 }
                 catch (Exception ex)
                 {

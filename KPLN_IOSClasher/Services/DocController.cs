@@ -76,6 +76,7 @@ namespace KPLN_IOSClasher.Services
                     IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
             }
 
+
 #if Debug2020 || Debug2023
             //IsDocumentAnalyzing = true;
 #endif

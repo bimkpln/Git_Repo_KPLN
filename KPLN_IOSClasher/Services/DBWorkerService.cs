@@ -11,6 +11,7 @@ namespace KPLN_IOSClasher.Services
         private readonly SubDepartmentDbService _subDepartmentDbService;
         private readonly ProjectsIOSClashMatrixDbService _projectsIOSClashMatrixDbService;
         private readonly ProjectDbService _projectDbService;
+        
         private DBUser _dBUser;
         private DBSubDepartment _dBSubDepartment;
 
