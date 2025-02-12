@@ -71,24 +71,8 @@ namespace KPLN_HoleManager.Forms
             buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFE0FDFF"))));
             buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
 
-            // Добавляем кнопки в зависимости от departmentName
-            if (departmentName == "АР" || departmentName == "КР")
-            {
-                AddButton("➡️  Создать задание на отверстие", buttonStyle);
-                AddButton("🔂  Расставить отверстия по заданию", buttonStyle);               
-            }
-            else if (departmentName == "ОВиК" || departmentName == "ВК" || departmentName == "ЭОМ" || departmentName == "СС")
-            {
-                AddButton("➡️  Создать задание на отверстие", buttonStyle);
-                AddButton("🔂  Расставить отверстия по заданию", buttonStyle);                
-                AddButton("🔀  Расставить отверстия по пересечениям", buttonStyle);
-            }
-            else if (departmentName == "BIM")
-            {
-                AddButton("➡️  Создать задание на отверстие", buttonStyle);
-                AddButton("🔂  Расставить отверстия по заданию", buttonStyle);                
-                AddButton("🔀  Расставить отверстия по пересечениям", buttonStyle);
-            }
+            AddButton("➡️  Создать задание на отверстие", buttonStyle);
+            AddButton("🔂  Расставить отверстия по заданию", buttonStyle);           
         }
 
         // Функция пакетного создания кнопок
@@ -162,7 +146,10 @@ namespace KPLN_HoleManager.Forms
         // XAML. Обработчик для кнопки "Расставить отверстия по пересечениям"
         private void PlaceHolesByIntersections(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Отверстия успешно расставлены по пересечениям!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            UIDocument uiDoc = _uiApp.ActiveUIDocument;
+            Document doc = uiDoc.Document;
+
+
         }
     }
 

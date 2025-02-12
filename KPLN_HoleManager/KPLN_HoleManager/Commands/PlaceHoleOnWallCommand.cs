@@ -222,11 +222,11 @@ namespace KPLN_HoleManager.Commands
 
                         string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
 
-                        Commands.ExtensibleStorageHelper.AddChatMessage(holeInstance, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), 
+                        ExtensibleStorageHelper.AddChatMessage(holeInstance, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), 
                             _userFullName, _departmentName, _sendingDepartmentHoleName, intersectingElementIdString, "Без статуса", "Отверстие создано");
 
                         // Тестовое сообщение
-                        Commands.ExtensibleStorageHelper.showTestMessage(holeInstance);
+                        ExtensibleStorageHelper.showTestMessage(holeInstance);
                     }
                     else
                     {
