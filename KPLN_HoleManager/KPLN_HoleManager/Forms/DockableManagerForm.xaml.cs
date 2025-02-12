@@ -60,7 +60,7 @@ namespace KPLN_HoleManager.Forms
         }
 
         // Растановка кнопок в зависимости от отдела
-        private void AddDepartmentButtons()
+        public void AddDepartmentButtons()
         {
             // Общий стиль кнопок
             var buttonStyle = new Style(typeof(Button));
@@ -89,8 +89,6 @@ namespace KPLN_HoleManager.Forms
                 AddButton("🔂  Расставить отверстия по заданию", buttonStyle);                
                 AddButton("🔀  Расставить отверстия по пересечениям", buttonStyle);
             }
-
-            TestField.Text = $"{userFullName} ({departmentName})";
         }
 
         // Функция пакетного создания кнопок
@@ -119,7 +117,7 @@ namespace KPLN_HoleManager.Forms
             ActionButtonDepartment.Children.Add(button);
         }
 
-        // Обработчик для кнопки "Расставить отверстия по выбранной стене"
+        // XAML. Обработчик для кнопки "Расставить отверстия по выбранной стене"
         private void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
@@ -151,13 +149,17 @@ namespace KPLN_HoleManager.Forms
             holeWindow.ShowDialog();
         }
 
-        // Обработчик для кнопки "Создать отверстия по заданию"
+        // XAML. Обработчик для кнопки "Создать отверстия по заданию"
         private void CreateHolesByTask(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Создание отверстий по заданию выполнено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            UIDocument uiDoc = _uiApp.ActiveUIDocument;
+            Document doc = uiDoc.Document;
+
+            List<ElementId> familyInstanceIds = Commands._iDataProcessor.GetFamilyInstanceIds(doc);
+            Commands._iDataProcessor.ShowFamilyInstanceCount(doc, uiDoc, Commands._iDataProcessor.familyInstanceNameList);
         }
 
-        // Обработчик для кнопки "Расставить отверстия по пересечениям"
+        // XAML. Обработчик для кнопки "Расставить отверстия по пересечениям"
         private void PlaceHolesByIntersections(object sender, RoutedEventArgs e)
         {
             MessageBox.Show("Отверстия успешно расставлены по пересечениям!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);

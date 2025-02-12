@@ -132,7 +132,6 @@
         <!-- Пустая панель -->
         <StackPanel Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,2,0,0" Background="White">
             <!-- Пустое пространство -->
-            <TextBlock x:Name="TestField"/>
         </StackPanel>
 
         <!-- Нижняя панель -->

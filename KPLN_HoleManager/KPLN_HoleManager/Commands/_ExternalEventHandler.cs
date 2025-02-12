@@ -1,7 +1,7 @@
 ﻿using System;
 using Autodesk.Revit.UI;
 
-namespace KPLN_HoleManager.ExternalCommand
+namespace KPLN_HoleManager.Commands
 {
     public class _ExternalEventHandler : IExternalEventHandler
     {

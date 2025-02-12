@@ -1,114 +1,96 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
+using Autodesk.Revit.UI;
 
 namespace KPLN_HoleManager.Commands
 {
-    public class ChatStorageManager
+    public class ExtensibleStorageHelper
     {
-        private static readonly Guid SchemaGuid = new Guid("D4E7A1B2-8C3F-4F5A-91D8-2E6B7C8D9E0F");
-        private static readonly string FieldMessages = "CommentMessages";  // Поле для сообщений
+        public static readonly Guid SchemaGuid = new Guid("87654321-4321-4321-4321-210987654321");
+        public const string FieldName = "HoleChatMessagesKPLN";
+        public const string Separator = "||||||";
 
-        public class TaskData
-        {
-            public string Date { get; set; }
-            public string DepartmentFrom { get; set; }
-            public string DepartmentTo { get; set; }
-            public string UserName { get; set; }
-            public string TaskStatus { get; set; }
-            public string Comment { get; set; }
-
-            public TaskData(string date, string deptFrom, string deptTo, string user, string status, string comment)
-            {
-                Date = date;
-                DepartmentFrom = deptFrom;
-                DepartmentTo = deptTo;
-                UserName = user;
-                TaskStatus = status;
-                Comment = comment;
-            }
-
-            public override string ToString()
-            {
-                return $"{Date}|{DepartmentFrom}|{DepartmentTo}|{UserName}|{TaskStatus}|{Comment}";
-            }
-
-            public static TaskData FromString(string data)
-            {
-                string[] parts = data.Split('|');
-                return parts.Length == 6 ? new TaskData(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]) : null;
-            }
-        }
-
-        // Открытие получение схемы
+        // Создание схемы
         private static Schema GetOrCreateSchema()
         {
             Schema schema = Schema.Lookup(SchemaGuid);
-            if (schema != null) return schema;
+
+            if (schema != null)
+                return schema;
 
             SchemaBuilder schemaBuilder = new SchemaBuilder(SchemaGuid);
-            schemaBuilder.SetSchemaName("KPLN_HoleManager");
-
-            schemaBuilder.AddArrayField(FieldMessages, typeof(string));
+            schemaBuilder.SetSchemaName("HoleChatStorageKPLN");
+            schemaBuilder.AddArrayField(FieldName, typeof(string));
 
             return schemaBuilder.Finish();
         }
 
-        public static List<TaskData> ReadChat(FamilyInstance instance)
+        // Метод добавления информации в экземпляр семейства отверстия
+        public static void AddChatMessage(FamilyInstance instance, string date, string userName, string fromDepartment, string toDepartment, string iElementIdString, string status, string message)
         {
-            List<TaskData> chatMessages = new List<TaskData>();
+            // Получаем или создаем схему
             Schema schema = GetOrCreateSchema();
+
+            // Получаем сущность экземпляра семейства
             Entity entity = instance.GetEntity(schema);
 
-            if (!entity.IsValid()) return chatMessages;
-
-            IList<string> messages = entity.Get<IList<string>>(schema.GetField(FieldMessages));
-
-            foreach (string message in messages)
+            // Если сущность недействительна, создаем новую
+            if (!entity.IsValid())
             {
-                TaskData task = TaskData.FromString(message);
-                if (task != null)
-                    chatMessages.Add(task);
+                entity = new Entity(schema); // Создаем новую сущность с правильной схемой
             }
 
-            return chatMessages;
+            // Получаем список сообщений
+            IList<string> messages = entity.Get<IList<string>>(schema.GetField(FieldName)) ?? new List<string>();
+
+            // Формируем новое сообщение
+            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, iElementIdString, status, message);
+            messages.Add(newMessage);
+
+            // Устанавливаем обновленный список сообщений в сущность
+            entity.Set(schema.GetField(FieldName), messages);
+            instance.SetEntity(entity); // Применяем изменения
         }
 
-        public static void WriteChat(Document doc, FamilyInstance instance, List<TaskData> chatMessages, Transaction transaction = null)
+        // Метод получения информации из экземпляра семейства отверстия
+        public static List<string> GetChatMessages(FamilyInstance instance)
         {
-            Schema schema = GetOrCreateSchema();
-            Entity entity = new Entity(schema);
+            Schema schema = Schema.Lookup(SchemaGuid);
+            if (schema == null)
+                return new List<string>();
 
-            IList<string> messages = new List<string>();
+            Entity entity = instance.GetEntity(schema);
+            if (!entity.IsValid())
+                return new List<string>();
 
-            foreach (var message in chatMessages)
+            return entity.Get<IList<string>>(schema.GetField(FieldName))?.ToList() ?? new List<string>();
+        }
+
+        // Тестовая функция
+        public static void showTestMessage(FamilyInstance instance)
+        {
+            // Получаем сообщения через существующую функцию GetChatMessages
+            var chatMessages = ExtensibleStorageHelper.GetChatMessages(instance);
+
+            // Формируем сообщение для TaskDialog
+            string messageContent = $"Количество сообщений: {chatMessages.Count}\n\n";
+
+            if (chatMessages.Count > 0)
             {
-                messages.Add(message.ToString());
-            }
-
-            entity.Set(schema.GetField(FieldMessages), messages);
-
-            if (transaction != null)
-            {
-                instance.SetEntity(entity);
+                // Если есть сообщения, выводим их
+                messageContent += string.Join("\n", chatMessages.Select(msg => msg.Replace("||||||", "\n")));
             }
             else
             {
-                using (Transaction trans = new Transaction(doc, "KPLN. Добавлен комментарий к заданию"))
-                {
-                    trans.Start();
-                    instance.SetEntity(entity);
-                    trans.Commit();
-                }
+                // Если сообщений нет
+                messageContent += "Нет сообщений.";
             }
-        }
 
-        public static void AddMessage(Document doc, FamilyInstance instance, TaskData message, Transaction transaction)
-        {
-            List<TaskData> chat = ReadChat(instance);
-            chat.Add(message);  
-            WriteChat(doc, instance, chat, transaction);
+            // Отображаем в диалоговом окне
+            TaskDialog.Show("История изменений", messageContent);
         }
     }
 }

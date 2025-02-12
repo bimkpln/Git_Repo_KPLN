@@ -7,7 +7,7 @@ using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 
-namespace KPLN_HoleManager.ExternalCommand
+namespace KPLN_HoleManager.Commands
 {
     public class PlaceHoleOnWallCommand
     {
@@ -219,6 +219,14 @@ namespace KPLN_HoleManager.ExternalCommand
                         {
                             heightParam.Set(UnitUtils.ConvertToInternalUnits(Math.Max(height, width) + offset, UnitTypeId.Millimeters));
                         }
+
+                        string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
+
+                        Commands.ExtensibleStorageHelper.AddChatMessage(holeInstance, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), 
+                            _userFullName, _departmentName, _sendingDepartmentHoleName, intersectingElementIdString, "Без статуса", "Отверстие создано");
+
+                        // Тестовое сообщение
+                        Commands.ExtensibleStorageHelper.showTestMessage(holeInstance);
                     }
                     else
                     {
@@ -227,8 +235,7 @@ namespace KPLN_HoleManager.ExternalCommand
                         return;
                     }
 
-
-                    tx.Commit();
+                    tx.Commit();                  
                 }
             }
             catch (Exception ex)
