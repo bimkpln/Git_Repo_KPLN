@@ -10,20 +10,24 @@ namespace KPLN_IOSClasher.Core
     /// </summary>
     internal class IntersectCheckEntity
     {
+        private static LogicalOrFilter _elemCatLogicalOrFilter;
+        private static Func<Element, bool> _elemFilterFunc;
+
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
-        private static readonly List<BuiltInCategory> _builtInCategories = new List<BuiltInCategory>()
-        { 
-            // ОВВК (ЭОМСС - огнезащита)
-            BuiltInCategory.OST_DuctCurves,
-            BuiltInCategory.OST_PipeCurves,
-            // ЭОМСС
-            BuiltInCategory.OST_CableTray,
-        };
-
-        private static LogicalOrFilter _elemCatLogicalOrFilter;
-        private static Func<Element, bool> _elemFilterFunc;
+        public static List<BuiltInCategory> BuiltInCategories
+        {
+            get =>
+                new List<BuiltInCategory>()
+                { 
+                    // ОВВК (ЭОМСС - огнезащита)
+                    BuiltInCategory.OST_DuctCurves,
+                    BuiltInCategory.OST_PipeCurves,
+                    // ЭОМСС
+                    BuiltInCategory.OST_CableTray,
+                };
+        }
 
         /// <summary>
         /// Фильтр для ключевой фильтрации по категориям
@@ -35,7 +39,7 @@ namespace KPLN_IOSClasher.Core
                 if (_elemCatLogicalOrFilter == null)
                 {
                     List<ElementFilter> catFilters = new List<ElementFilter>();
-                    catFilters.AddRange(_builtInCategories.Select(bic => new ElementCategoryFilter(bic)));
+                    catFilters.AddRange(BuiltInCategories.Select(bic => new ElementCategoryFilter(bic)));
 
                     _elemCatLogicalOrFilter = new LogicalOrFilter(catFilters);
                 }

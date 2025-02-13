@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.Services;
@@ -129,7 +128,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
 
                 // Если док не подгружен - linkDoc не взять. Просто игнор, до момента подгрузки
                 if (linkDoc == null) continue;
-                
+
                 // Проверка линка на наличие элемента в модели (если нет - удаляем)
                 if (linkDoc.GetElement(new ElementId(oldPntEntity.OldElement_Id)) == null)
                 {
@@ -137,13 +136,22 @@ namespace KPLN_IOSClasher.ExecutableCommand
                     continue;
                 }
 
-                // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).Если эл-та нет - удаляем
                 Element oldAddedElem = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id));
+                // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).Если эл-та нет - удаляем
                 if (oldAddedElem == null)
                 {
                     resultToDel.Add(kvp.Key);
                     continue;
                 }
+
+                // Проверка на соответствие полученного по id элемента - линейному эл-ту
+                // (лёгкая компенсация промаха по id, если эл-т уалили, а потом новый создали с тем же id)
+                if (IntersectCheckEntity.BuiltInCategories.Count(bic => (int)bic == oldAddedElem.Category.Id.IntegerValue) == 0)
+                {
+                    resultToDel.Add(kvp.Key);
+                    continue;
+                }
+
 
                 Solid addedElemSolid = DocController.GetElemSolid(oldAddedElem);
                 if (addedElemSolid == null)
