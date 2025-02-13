@@ -50,12 +50,28 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_HttpListener">
+      <HintPath>..\..\KPLN_Library_HttpListener\bin\2023\KPLN_Library_HttpListener.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>..\..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>..\..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -75,5 +91,6 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

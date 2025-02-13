@@ -3,7 +3,6 @@ using KPLN_Library_SQLiteWorker.FactoryParts;
 using Newtonsoft.Json;
 using System;
 using System.Net.Http;
-using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
