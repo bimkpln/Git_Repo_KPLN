@@ -70,6 +70,7 @@ namespace KPLN_Loader
         private readonly static string _diteTime = DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss");
         private static string _pahtToLoaderDll;
         private const string _ribbonName = "KPLN";
+        private readonly List<IExternalModule> _moduleInstances = new List<IExternalModule>();
         private SQLiteService _dbService;
         private GTabService _gtabService;
         private EnvironmentService _envService;
@@ -79,6 +80,11 @@ namespace KPLN_Loader
         {
             application.Idling -= new EventHandler<IdlingEventArgs>(OnIdling);
             application.ControlledApplication.DocumentOpened -= new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
+
+            foreach(IExternalModule module in _moduleInstances)
+            {
+                module.Close();
+            }
             
             return Result.Succeeded;
         }
@@ -234,6 +240,8 @@ namespace KPLN_Loader
                                                 Result loadingResult = moduleInstance.Execute(application, _ribbonName);
                                                 if (loadingResult == Result.Succeeded)
                                                 {
+                                                    _moduleInstances.Add(moduleInstance);
+                                                    
                                                     FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
                                                     moduleVersion = fvi.FileVersion;
 
@@ -413,6 +421,8 @@ namespace KPLN_Loader
                                 Result loadingResult = moduleInstance.Execute(application, _ribbonName);
                                 if (loadingResult == Result.Succeeded)
                                 {
+                                    _moduleInstances.Add(moduleInstance);
+
                                     FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(moduleAssembly.Location);
                                     moduleVersion = fvi.FileVersion;
 
