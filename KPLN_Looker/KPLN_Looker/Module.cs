@@ -27,6 +27,16 @@ namespace KPLN_Looker
         private static LogicalOrFilter _resultFamInstFilter;
 
         /// <summary>
+        /// Метка времени последнего оповещения
+        /// </summary>
+        private static DateTime _lastAlarm = new DateTime(2025, 01, 01, 0, 0, 0);
+
+        /// <summary>
+        /// Лимит задержки сообщений
+        /// </summary>
+        private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 1, 0);
+
+        /// <summary>
         /// Метка закрытого для пользователя проекта
         /// </summary>
         private bool _isProjectCloseToUser;
@@ -67,9 +77,14 @@ namespace KPLN_Looker
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
+
 #if Debug2020 || Debug2023
                 application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
+                application.ControlledApplication.DocumentSaved += OnDocumentSaved;
 #else
+                if (ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("АР"))
+                    application.ControlledApplication.DocumentSaved += OnDocumentSaved;
+
                 if (!ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
 #endif
@@ -84,9 +99,30 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Выдача имени файла с проверкой на необходимость в контроле действий
+        /// Выдача имени файла с проверкой на необходимость в контроле действий, включая концепции АР
         /// </summary>
         public static string MonitoredDocFilePath(Document doc)
+        {
+            // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
+            if (doc == null)
+                return null;
+
+            string docPathWithARKon = MonitoredDocFilePath_ExceptARKon(doc);
+
+            if (doc.IsWorkshared
+                && !doc.IsDetached
+                && docPathWithARKon != null
+                && !docPathWithARKon.ToLower().Contains("конц")
+                && !docPathWithARKon.ToLower().Contains("kon"))
+                return docPathWithARKon;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Выдача имени файла с проверкой на необходимость в контроле действий. Исключение - концепции АР
+        /// </summary>
+        public static string MonitoredDocFilePath_ExceptARKon(Document doc)
         {
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
             if (doc == null)
@@ -96,14 +132,10 @@ namespace KPLN_Looker
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
                 : doc.PathName;
 
-            if (doc.IsWorkshared
-                && !doc.IsDetached
-                && !doc.IsFamilyDocument
+            if (!doc.IsFamilyDocument
                 && (fileName.ToLower().Contains("stinproject.local\\project\\") || fileName.ToLower().Contains("rsn"))
                 && !fileName.EndsWith("rte")
                 && !fileName.ToLower().Contains("\\lib\\")
-                && !fileName.ToLower().Contains("конц")
-                && !fileName.ToLower().Contains("kon")
                 // Офис КПЛН
                 && !fileName.ToLower().Contains("16с13"))
                 return fileName;
@@ -190,12 +222,16 @@ namespace KPLN_Looker
             Document document = args.GetDocument();
 
 #if Debug2020 || Debug2023
+            CheckAndSendError_FamilyInstanceUserHided(args);
+
             CheckError_FamilyCopiedFromOtherFile(args);
 #else
             // Фильтрация по имени проекта
             string docPath = MonitoredDocFilePath(document);
             if (docPath != null)
             {
+                CheckAndSendError_FamilyInstanceUserHided(args);
+
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
                     !docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
@@ -291,7 +327,7 @@ namespace KPLN_Looker
                     || (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
                     return false;
             }
-            
+
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
             // Отлов семейств марок (могут разрабатывать все)
@@ -329,6 +365,38 @@ namespace KPLN_Looker
             #endregion
 
             return true;
+        }
+
+        /// <summary>
+        /// Поиск ошибки скрытия элементов запрещенными действиями. При наличии - отправка пользователю в битрикс
+        /// </summary>
+        private static void CheckAndSendError_FamilyInstanceUserHided(DocumentChangedEventArgs args)
+        {
+            string transName = args.GetTransactionNames().FirstOrDefault();
+            if (transName == null)
+                return;
+
+            string lowerTransName = transName.ToLower();
+            if (!lowerTransName.Equals("графика элементов вида")
+                && !lowerTransName.Equals("скрыть/изолировать")
+                && !lowerTransName.Equals("view specific element graphics")
+                && !lowerTransName.Equals("hide/isolate"))
+                return;
+
+            DateTime temp = DateTime.Now;
+            if (_delayAlarm < (temp - _lastAlarm))
+            {
+                _lastAlarm = temp;
+
+                // Отправка уведомления пользователю в Битрикс
+                if (ModuleDBWorkerService.CurrentDBUser != null)
+                {
+                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
+                        ModuleDBWorkerService.CurrentDBUser,
+                        "[b][ЗАМЕЧАНИЕ][/b]: Ручное переопределение на виде приводит к сложностям при внесении изменений в модели (новые элементы - уже не соответсвуют ручным правилам).\n" +
+                        "[b][ЧТО ДЕЛАТЬ][/b]: В 99% нужно использовать фильтры. Если у тебя есть с этим сложности - напиши BIM-координатору, он поможет.\n");
+                }
+            }
         }
 
         /// <summary>
@@ -497,6 +565,61 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Анализ файлов Концепций КПЛН и оповещение о создании новых проектов и моделей внутри проектов
+        /// </summary>
+        private static void ARKonFileSendMsg(Document doc)
+        {
+            // Если это не концепция АР - в игнор
+            if (MonitoredDocFilePath_ExceptARKon(doc) == null
+                || MonitoredDocFilePath(doc) != null)
+                return;
+
+            // Получаю проект из БД КПЛН
+            string centralPath;
+            if (doc.IsWorkshared && !doc.IsDetached)
+                centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            else
+                centralPath = doc.PathName;
+
+            DBProject dBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+            // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
+            if (dBProject == null)
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
+                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Действие: Произвел сохранение/синхронизацию файла незарезгестрированного проекта.\n" +
+                    $"Имя файла: [b]{doc.Title}[/b].\n" +
+                    $"Путь к модели: [b]{centralPath}[/b].");
+
+                return;
+            }
+
+            // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
+            int prjDBSubDepartmentId = ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+            DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
+            if (dBDocument == null)
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
+                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
+                    $"Имя файла: [b]{doc.Title}[/b].\n" +
+                    $"Путь к модели: [b]{centralPath}[/b].");
+
+                // Создаю, если не нашел
+                ModuleDBWorkerService.Create_DBDocument(
+                    centralPath,
+                    dBProject.Id,
+                    prjDBSubDepartmentId,
+                    ModuleDBWorkerService.CurrentDBUser.Id,
+                    ModuleDBWorkerService.CurrentTimeForDB(),
+                    false);
+
+            }
+        }
+
+        /// <summary>
         /// Событие на открытый документ
         /// </summary>
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
@@ -531,20 +654,15 @@ namespace KPLN_Looker
             {
                 // Ищу документ
                 int prjDBSubDepartmentId = ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-                DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
-                if (dBDocument == null)
-                {
-                    // Создаю, если не нашел
-                    DBSubDepartment dBSubDepartment = ModuleDBWorkerService.CurrentDBUserSubDepartment;
-                    DBUser dbUser = ModuleDBWorkerService.CurrentDBUser;
-                    dBDocument = ModuleDBWorkerService.Create_DBDocument(
-                        centralPath,
-                        dBProject.Id,
-                        prjDBSubDepartmentId,
-                        dbUser.Id,
-                        ModuleDBWorkerService.CurrentTimeForDB(),
-                        false);
-                }
+                DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId)
+                    ?? ModuleDBWorkerService
+                        .Create_DBDocument(
+                            centralPath,
+                            dBProject.Id,
+                            prjDBSubDepartmentId,
+                            ModuleDBWorkerService.CurrentDBUser.Id,
+                            ModuleDBWorkerService.CurrentTimeForDB(),
+                            false);
 
                 //Обрабатываю документ
                 if (dBDocument == null)
@@ -613,7 +731,7 @@ namespace KPLN_Looker
 
                         return;
                     }
-                    
+
 
                     // Отлов пользователей с ограничением допуска к работе в текущем проекте
                     DBProjectsAccessMatrix[] currentPrjMatrixColl = ModuleDBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
@@ -656,23 +774,36 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Событие на сохранение файла (НЕ работает при синзронизации, даже если указать о сохранении локалки)
+        /// </summary>
+        private void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
+        {
+            Document doc = args.Document;
+
+            ARKonFileSendMsg(doc);
+        }
+
+        /// <summary>
         /// Событие на синхронизацию файла
         /// </summary>
         private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
 
+            ARKonFileSendMsg(doc);
+
             if (MonitoredDocFilePath(doc) == null)
                 return;
 
             ModuleDBWorkerService.DropMainCash();
 
-            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
             if (ModuleDBWorkerService.CurrentDBUser.IsUserRestricted)
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
+                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                     $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={ModuleDBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
                     $"Действие: Произвел синхронизацию файла {doc.Title}.");
 
@@ -688,6 +819,8 @@ namespace KPLN_Looker
             #endregion
 
             #region Работа с проектами КПЛН
+            // Получаю проект из БД КПЛН
+            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
             DBProject dBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
             if (dBProject == null)
                 return;

@@ -2,6 +2,7 @@
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -127,10 +128,12 @@ namespace KPLN_Looker.Services
         /// <param name="centralPath">Путь открытого файла Ревит</param>
         /// <param name="dBProject">Проект из БД</param>
         /// <returns></returns>
-        internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject, int dBSubDepartmentId) =>
-            _documentDbService
-                .GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId)
-                .FirstOrDefault(d => d.CentralPath.Equals(centralPath));
+        internal DBDocument Get_DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject, int dBSubDepartmentId)
+        {
+            IEnumerable<DBDocument> docColl = _documentDbService.GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId);
+
+            return docColl.FirstOrDefault(d => d.CentralPath.Equals(centralPath));
+        }
 
         /// <summary>
         /// Получить ID отдела, которому принадлежит файл
