@@ -5,7 +5,6 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using KPLN_Tools.Forms.Models;
@@ -64,7 +63,7 @@ namespace KPLN_Tools.ExternalCommands
 
                     selectedDoc = linkedDoc;
                     Element linkId = linkedDoc.GetElement(selRefer.LinkedElementId);
-                    if (linkId != null) 
+                    if (linkId != null)
                         elementId = linkedDoc.GetElement(selRefer.LinkedElementId).Id;
                     else
                         checkLinkElem = true;
@@ -73,23 +72,23 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     elementId = selElem.Id;
                     selectedDoc = doc;
-                    
+
                     checkDocElem = true;
                 }
 
                 if (elementId != null)
                     selectedIds.Add(elementId.ToString());
             }
-            
-            
+
+
             // Проверка на выборки из разных документов
             if (checkLinkElem && checkDocElem)
             {
                 MessageBox.Show($"Выбраны элементы внутри проекта, и из связи. Такой формат НЕ поддеривается, делай выборку внутри одного документа.", "KPLN", MessageBoxButtons.OK);
-                
+
                 return Result.Cancelled;
             }
-            
+
             // Проверка на выборки из разных документов
             if (checkDoubleLinkElem)
             {
@@ -108,7 +107,7 @@ namespace KPLN_Tools.ExternalCommands
 
             if (selectedIds.Count == 0)
                 throw new System.Exception("Ошибка получения списка ID элементов. Отправь разработчику!");
-            
+
             // Настраиваю имя и путь к проекту (юзерфрендли)
             if (selectedDoc.IsWorkshared)
             {
@@ -119,7 +118,7 @@ namespace KPLN_Tools.ExternalCommands
                     string centralDocPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(selectedDoc.GetWorksharingCentralModelPath());
                     string[] centralDocPathParts = centralDocPath.Split('/');
 
-                    selectedDocPath = $"\n\t[i]Адрес Revit-Server[/i]: http://{centralDocPathParts[2]}/RevitServerAdmin{uiapp.Application.VersionNumber}\n\t[i]Путь по структуре: [/i]" 
+                    selectedDocPath = $"\n\t[i]Адрес Revit-Server[/i]: http://{centralDocPathParts[2]}/RevitServerAdmin{uiapp.Application.VersionNumber}\n\t[i]Путь по структуре: [/i]"
                         + string.Join("/", centralDocPathParts.Where(str => !str.Contains(".rvt")));
                     selectedDocTitle = centralDocPathParts.FirstOrDefault(str => str.Contains(".rvt"));
                 }
@@ -138,7 +137,7 @@ namespace KPLN_Tools.ExternalCommands
                 selectedDocPath = selectedDoc.PathName;
                 selectedDocTitle = selectedDoc.Title;
             }
-            
+
             #endregion
 
             // Обработка данных по пользователям
@@ -159,10 +158,14 @@ namespace KPLN_Tools.ExternalCommands
             if (form.Status == KPLN_Library_Forms.Common.UIStatus.RunStatus.Run)
             {
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-                
+
+                // ИСПРАВИТЬ КОГДА БУДЕТ РЕЛИЗ ПО WebWorker
+                int currentPort = 5100;
+                string elemIds = string.Join(",", selectedIds);
+
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +
                     $"[u]Путь к проету:[/u] {selectedDocPath}\n" +
-                    $"[u]ID элемента/-ов:[/u] {string.Join(", ", selectedIds)}";
+                    $"[u]ID элемента/-ов:[/u] [URL=http://localhost:{currentPort}/select/{elemIds}]{elemIds}[/URL]";
 
                 // ДОПИЛИТЬ ВВОД КОММЕНТАРИЯ ОТ СОТРУДНИКА
 

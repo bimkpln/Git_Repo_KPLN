@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Forms", "..\01
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_PluginActivityWorker", "..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\KPLN_Library_PluginActivityWorker.csproj", "{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Bitrix24Worker", "..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker.csproj", "{B81FECFC-20D8-46E0-88DF-6620FBD3D970}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug2020|x64 = Debug2020|x64
@@ -43,6 +45,14 @@ Global
 		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2020|x64.Build.0 = Revit2020|x64
 		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{5ACFFDF4-72D4-40E6-8C7B-A66D3B8763A1}.Revit2023|x64.Build.0 = Revit2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2020|x64.Build.0 = Debug2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Debug2023|x64.Build.0 = Debug2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2020|x64.Build.0 = Revit2020|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{B81FECFC-20D8-46E0-88DF-6620FBD3D970}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
