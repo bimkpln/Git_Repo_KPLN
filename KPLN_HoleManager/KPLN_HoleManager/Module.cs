@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System.Reflection;
 
@@ -7,6 +8,7 @@ namespace KPLN_HoleManager
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private bool _firstDocumentOpened = false;
 
         public Result Close()
         {
@@ -52,12 +54,24 @@ namespace KPLN_HoleManager
             try
             {
                 UIApplication uiApp = new UIApplication(sender as Autodesk.Revit.ApplicationServices.Application);
-                KPLN_HoleManager.Common.DockablePreferences.HideDockablePane(uiApp);
+                UIDocument uiDoc = uiApp.ActiveUIDocument;
+                Document doc = uiDoc?.Document;
+
+                if (!_firstDocumentOpened)
+                {
+                    // Первый раз скрываем панель всегда
+                    KPLN_HoleManager.Common.DockablePreferences.HideDockablePane(uiApp);
+                    _firstDocumentOpened = true;
+                }
+                else if (doc != null && !doc.IsFamilyDocument) // Проверяем, что это файл проекта (rvt)
+                {
+                    KPLN_HoleManager.Common.DockablePreferences.HideDockablePane(uiApp);
+                }
             }
             catch
             {
-                TaskDialog.Show("Ошибка", "При обработке плагина 'Менеджер отверстий' произошла ошибка. Перед использыванием плагина закройте его и откройте заново." +
-                    "В случае, если ошибка повториться - обратитесь в BIM-отдел.");
+                TaskDialog.Show("Ошибка", "При обработке плагина 'Менеджер отверстий' произошла ошибка. Перед использованием плагина закройте его и откройте заново." +
+                    "В случае, если ошибка повторится — обратитесь в BIM-отдел.");
             }
         }
 

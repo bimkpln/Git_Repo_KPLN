@@ -136,22 +136,16 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Families\199_AR_ORW.rfa">
+    <None Include="Families\199_Отверстие круглое_%28Об_Стена%29.rfa">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Families\199_AR_OSW.rfa">
+    <None Include="Families\199_Отверстие прямоугольное_%28Об_Стена%29.rfa">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Families\199_STR_ORW.rfa">
+    <None Include="Families\501_ЗИ_Отверстие_Круглое_Стена_%28Об%29.rfa">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Families\199_STR_OSW.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Families\501_MEP_TRW.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Families\501_MEP_TSW.rfa">
+    <None Include="Families\501_ЗИ_Отверстие_Прямоугольное_Стена_%28Об%29.rfa">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -28,7 +28,9 @@ namespace KPLN_HoleManager.Commands
             return schemaBuilder.Finish();
         }
 
-        // Метод добавления информации в экземпляр семейства отверстия
+        /// <summary>
+        /// Метод добавления информации в экземпляр семейства отверстия
+        /// </summary>
         public static void AddChatMessage(FamilyInstance instance, string date, string userName, string fromDepartment, string toDepartment, string iElementIdString, string status, string message)
         {
             // Получаем или создаем схему
@@ -55,7 +57,9 @@ namespace KPLN_HoleManager.Commands
             instance.SetEntity(entity); // Применяем изменения
         }
 
-        // Метод получения информации из экземпляра семейства отверстия
+        /// <summary>
+        /// Метод получения информации из экземпляра семейства отверстия
+        /// </summary>
         public static List<string> GetChatMessages(FamilyInstance instance)
         {
             Schema schema = Schema.Lookup(SchemaGuid);
@@ -67,30 +71,6 @@ namespace KPLN_HoleManager.Commands
                 return new List<string>();
 
             return entity.Get<IList<string>>(schema.GetField(FieldName))?.ToList() ?? new List<string>();
-        }
-
-        // Тестовая функция
-        public static void showTestMessage(FamilyInstance instance)
-        {
-            // Получаем сообщения через существующую функцию GetChatMessages
-            var chatMessages = ExtensibleStorageHelper.GetChatMessages(instance);
-
-            // Формируем сообщение для TaskDialog
-            string messageContent = $"Количество сообщений: {chatMessages.Count}\n\n";
-
-            if (chatMessages.Count > 0)
-            {
-                // Если есть сообщения, выводим их
-                messageContent += string.Join("\n", chatMessages.Select(msg => msg.Replace("||||||", "\n")));
-            }
-            else
-            {
-                // Если сообщений нет
-                messageContent += "Нет сообщений.";
-            }
-
-            // Отображаем в диалоговом окне
-            TaskDialog.Show("История изменений", messageContent);
-        }
+        }      
     }
 }

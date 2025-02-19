@@ -93,10 +93,6 @@ namespace KPLN_HoleManager.Forms
             {
                 button.Click += CreateHolesByTask;
             }
-            else if (content.Contains("Расставить отверстия по пересечениям"))
-            {
-                button.Click += PlaceHolesByIntersections;
-            }
 
             ActionButtonDepartment.Children.Add(button);
         }
@@ -141,15 +137,6 @@ namespace KPLN_HoleManager.Forms
 
             List<ElementId> familyInstanceIds = Commands._iDataProcessor.GetFamilyInstanceIds(doc);
             Commands._iDataProcessor.ShowFamilyInstanceCount(doc, uiDoc, Commands._iDataProcessor.familyInstanceNameList);
-        }
-
-        // XAML. Обработчик для кнопки "Расставить отверстия по пересечениям"
-        private void PlaceHolesByIntersections(object sender, RoutedEventArgs e)
-        {
-            UIDocument uiDoc = _uiApp.ActiveUIDocument;
-            Document doc = uiDoc.Document;
-
-
         }
     }
 

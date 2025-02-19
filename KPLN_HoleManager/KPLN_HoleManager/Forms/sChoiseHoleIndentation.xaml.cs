@@ -13,6 +13,7 @@ namespace KPLN_HoleManager.Forms
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
 
+        // XAML. Передаём выбор отступа с помощью кнопки
         private void OffsetButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && double.TryParse(button.Content.ToString().Replace(" мм", ""), out double offset))

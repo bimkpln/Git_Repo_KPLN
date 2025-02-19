@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Windows.Media.Media3D;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
@@ -13,13 +14,13 @@ namespace KPLN_HoleManager.Commands
     {
         private readonly string _userFullName;
         private readonly string _departmentName;
-
         private readonly Element _selectedWall;
-        private string wallType;
 
         private readonly string _departmentHoleName;
         private readonly string _sendingDepartmentHoleName;
         private readonly string _holeTypeName;
+
+        private bool transactionStatus;
 
         public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
@@ -51,35 +52,9 @@ namespace KPLN_HoleManager.Commands
 
             try
             {
-                // Определение типа стены
+                // Стена и её кривая
                 Wall wall = _selectedWall as Wall;
                 LocationCurve locationCurve = wall.Location as LocationCurve;
-
-                // Определяем тип стены
-                if (locationCurve != null)
-                {
-                    Curve curve = locationCurve.Curve;
-                    if (curve is Line)
-                    {
-                        wallType = "default";
-                    }
-                    else if (curve is Arc)
-                    {
-                        wallType = "ArcWall";
-                    }
-                    else if (wall.CurtainGrid != null)
-                    {
-                        wallType = "CurtainGridWall"; 
-                    }
-                    else if (wall.WallType.Kind == WallKind.Stacked)
-                    {
-                        wallType = "StackedCurtainGrid"; 
-                    }
-                    else if (_selectedWall is RevitLinkInstance linkInstance)
-                    {
-                        wallType = "LinkWall";
-                    }
-                }
 
                 // Список допустимых категорий элементов
                 BuiltInCategory[] allowedCategories = new BuiltInCategory[]
@@ -92,6 +67,7 @@ namespace KPLN_HoleManager.Commands
                     BuiltInCategory.OST_Conduit
                 };
 
+                // Выбираемый элемент, который пересекает стену
                 Element intersectingElement = null;
 
                 // Выбор элемента, который пересекает стену
@@ -128,7 +104,7 @@ namespace KPLN_HoleManager.Commands
                 (double width, double height, double length) = GetElementSize(intersectingElement);
 
                 // Определяем точку пересечения
-                XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement);
+                XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement, _departmentHoleName, _holeTypeName);
 
                 if (holeLocation == null)
                 {
@@ -138,6 +114,7 @@ namespace KPLN_HoleManager.Commands
 
                 // Определение файла семейства
                 string familyFileName = GetFamilyFileName(_departmentHoleName, _holeTypeName);
+
                 if (string.IsNullOrEmpty(familyFileName))
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить файл семейства.");
@@ -153,9 +130,12 @@ namespace KPLN_HoleManager.Commands
                     return;
                 }
 
+                // Запуск общей транзакции
                 using (Transaction tx = new Transaction(doc, $"KPLN. Разместить отверстие {familyFileName}"))
                 {
                     tx.Start();
+
+                    transactionStatus = true;
 
                     // Загружаем семейство (если оно уже загружено, берём существующее)
                     Family family = LoadOrGetExistingFamily(doc, familyPath);
@@ -183,7 +163,7 @@ namespace KPLN_HoleManager.Commands
                         doc.Regenerate();
                     }
 
-                    // Создаём отверстие
+                    // Создаём отверстие без преднастроек (указывается только точка самого отверстия)
                     FamilyInstance holeInstance = doc.Create.NewFamilyInstance(holeLocation, holeSymbol, _selectedWall, StructuralType.NonStructural);
 
                     if (holeInstance == null)
@@ -193,45 +173,13 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
-                    Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
+                    // Задаём размеры отверстию и двигаем его
+                    SetHoleDimensions(tx, holeInstance, intersectingElement, width, height, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName);
 
-                    // Устанавливаем размеры отверстия
-                    if (sChoiseHoleIndentation.ShowDialog() == true)
-                    {
-                        double offset = sChoiseHoleIndentation.SelectedOffset;
-
-                        Parameter widthParam = holeInstance.LookupParameter("Ширина");
-                        Parameter heightParam = holeInstance.LookupParameter("Высота");
-
-                        // Отверстие типа - прямоугольник
-                        if (heightParam != null && !heightParam.IsReadOnly)
-                        {
-                            heightParam.Set(UnitUtils.ConvertToInternalUnits(height + offset, UnitTypeId.Millimeters));
-                        }
-
-                        if (widthParam != null && !widthParam.IsReadOnly)
-                        {
-                            widthParam.Set(UnitUtils.ConvertToInternalUnits(width + offset, UnitTypeId.Millimeters));
-                        }
-
-                        // Отверстие типа - круг
-                        if (heightParam != null && !heightParam.IsReadOnly && widthParam != null && widthParam.IsReadOnly)
-                        {
-                            heightParam.Set(UnitUtils.ConvertToInternalUnits(Math.Max(height, width) + offset, UnitTypeId.Millimeters));
-                        }
-
-                        string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
-
-                        ExtensibleStorageHelper.AddChatMessage(holeInstance, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), 
-                            _userFullName, _departmentName, _sendingDepartmentHoleName, intersectingElementIdString, "Без статуса", "Отверстие создано");
-
-                        // Тестовое сообщение
-                        ExtensibleStorageHelper.showTestMessage(holeInstance);
-                    }
-                    else
+                    // Если всё же что-то поёдт не так - отменяем транзакцию :)
+                    if (transactionStatus == false)
                     {
                         tx.RollBack();
-                        TaskDialog.Show("Внимание", "Операция отменена пользователем.");
                         return;
                     }
 
@@ -245,13 +193,55 @@ namespace KPLN_HoleManager.Commands
         }
 
 
+        /// <summary>
+        /// Семейство. Метод выбора файла семейства
+        /// </summary>
+        private string GetFamilyFileName(string department, string holeType)
+        {
+            var familyMap = new Dictionary<string, string>
+            {
+                { "АР_SquareHole", "199_Отверстие прямоугольное_(Об_Стена).rfa" },
+                { "АР_RoundHole", "199_Отверстие круглое_(Об_Стена).rfa" },
+                { "КР_SquareHole", null },
+                { "КР_RoundHole", null },
+                { "ИОС_SquareHole", "501_ЗИ_Отверстие_Прямоугольное_Стена_(Об).rfa" },
+                { "ИОС_RoundHole", "501_ЗИ_Отверстие_Круглое_Стена_(Об).rfa" }
+            };
 
+            string key = $"{department}_{holeType}";
+            return familyMap.ContainsKey(key) ? familyMap[key] : null;
+        }
 
+        /// <summary>
+        /// Семейство. Метод загрузки семейства
+        /// </summary>
+        private Family LoadOrGetExistingFamily(Document doc, string familyPath)
+        {
+            Family family = new FilteredElementCollector(doc).OfClass(typeof(Family))
+                .FirstOrDefault(f => f.Name == Path.GetFileNameWithoutExtension(familyPath)) as Family;
 
+            if (family == null)
+            {
+                doc.LoadFamily(familyPath, out family);
+            }
+            return family;
+        }
 
+        /// <summary>
+        /// Семейство. Метод загрузки типоразмера семейства
+        /// </summary>
+        private FamilySymbol GetFamilySymbol(Family family, Document doc)
+        {
+            foreach (ElementId id in family.GetFamilySymbolIds())
+            {
+                return doc.GetElement(id) as FamilySymbol;
+            }
+            return null;
+        }
 
-
-        // Метод для получения размеров элемента системы
+        /// <summary>
+        /// Пересекающий стену элемент. Метод для получения размеров элемента системы
+        /// </summary>
         private (double width, double height, double length) GetElementSize(Element element)
         {
             double width = 0, height = 0, length = 0;
@@ -306,7 +296,9 @@ namespace KPLN_HoleManager.Commands
             return (width, height, length);
         }
 
-        // Метод для получения значения параметра с переводом футов в метры
+        /// <summary>
+        /// Пересекающий стену элемент. Метод для получения значения параметра с переводом футов в метры
+        /// </summary>
         private double GetParameterValue(Element element, BuiltInParameter paramId)
         {
             Parameter param = element.get_Parameter(paramId);
@@ -326,154 +318,209 @@ namespace KPLN_HoleManager.Commands
 
 
 
-        // Находим точку пересечения стены и входящего элемента
-        private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement)
+
+
+
+
+
+        /// <summary>
+        /// Отверстие. Метод нахождения точки пересечения стены и входящего элемента.
+        /// </summary>
+        private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement, string department, string holeType)
         {
-            if (wallType == "default" || wallType == "ArcWall")
+            // Получаем геометрию трубы (учитываем изгибы)
+            LocationCurve pipeLocation = cElement.Location as LocationCurve;
+            if (pipeLocation == null)
+                return null;
+
+            Curve pipeCurve = pipeLocation.Curve;
+
+            // Разбиваем кривую на точки (Tessellate)
+            List<XYZ> segmentPoints = pipeCurve.Tessellate() as List<XYZ>;
+
+            if (segmentPoints == null || segmentPoints.Count < 2)
+                return null;
+
+            View3D view3D = new FilteredElementCollector(doc)
+                .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
+
+            bool createdView = false;
+            if (view3D == null)
             {
-                // Получаем геометрию трубы (учитываем изгибы)
-                LocationCurve pipeLocation = cElement.Location as LocationCurve;
-                if (pipeLocation == null)
-                    return null;
+                ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ViewFamilyType))
+                    .Cast<ViewFamilyType>()
+                    .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
 
-                Curve pipeCurve = pipeLocation.Curve;
-
-                // Разбиваем кривую на точки (Tessellate)
-                List<XYZ> segmentPoints = pipeCurve.Tessellate() as List<XYZ>;
-
-                if (segmentPoints == null || segmentPoints.Count < 2)
-                    return null;
-
-                View3D view3D = new FilteredElementCollector(doc)
-                    .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
-
-                bool createdView = false;
-                if (view3D == null)
+                if (viewFamilyType != null)
                 {
-                    ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
-                        .OfClass(typeof(ViewFamilyType))
-                        .Cast<ViewFamilyType>()
-                        .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
+                    view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
+                    createdView = true;
+                }
+            }
 
-                    if (viewFamilyType != null)
+            if (view3D == null)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
+                return null;
+            }
+
+            // Создаём фильтр для нашей стены
+            ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
+
+            XYZ closestIntersection = null;
+            double minDistance = double.MaxValue;
+
+            // Проходим по каждой паре точек
+            for (int i = 0; i < segmentPoints.Count - 1; i++)
+            {
+                XYZ start = segmentPoints[i];
+                XYZ end = segmentPoints[i + 1];
+                XYZ direction = (end - start).Normalize();
+
+                ReferenceWithContext referenceWithContext = intersector.FindNearest(start, direction);
+                if (referenceWithContext != null)
+                {
+                    XYZ intersectionPoint = referenceWithContext.GetReference().GlobalPoint;
+
+                    // Вычисляем расстояние до точки трубы
+                    double distanceToPipe = start.DistanceTo(intersectionPoint);
+
+                    // Если точка ближе - запоминаем её
+                    if (distanceToPipe < minDistance)
                     {
-                        view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
-                        createdView = true;
+                        minDistance = distanceToPipe;
+                        closestIntersection = intersectionPoint;
+                    }
+                }
+            }
+
+            // Получаем параметры стены
+            double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
+            double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
+            double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
+
+            if (closestIntersection != null)
+            {
+                double adjustment = 0;
+
+                if (department == "АР")
+                {
+                    if (!wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).IsReadOnly)
+                    {
+                        adjustment = unconnectedHeight - offsetBottom + offsetTop;
                     }
                 }
 
-                if (view3D == null)
+                closestIntersection = new XYZ(closestIntersection.X, closestIntersection.Y, closestIntersection.Z + adjustment);
+            }
+
+            if (createdView)
+            {
+                doc.Delete(view3D.Id);
+            }
+
+            return closestIntersection; 
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Отверстие. Метод изминения размера отверстия после добавления точки
+        /// </summary>
+        public void SetHoleDimensions(Transaction tx, FamilyInstance holeInstance, Element intersectingElement, double width, double height, string _userFullName, string _departmentName, string _departmentHoleName, string _sendingDepartmentHoleName)
+        {
+            Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
+
+            // Открываем диалоговое окно для выбора отступа
+            if (sChoiseHoleIndentation.ShowDialog() == true)
+            {
+                double offset = sChoiseHoleIndentation.SelectedOffset;
+
+                Parameter widthParam = holeInstance.LookupParameter("Ширина");
+                Parameter heightParam = holeInstance.LookupParameter("Высота");
+
+                double internalHeight = UnitUtils.ConvertToInternalUnits(height + offset, UnitTypeId.Millimeters);
+                double internalWidth = UnitUtils.ConvertToInternalUnits(width + offset, UnitTypeId.Millimeters);
+
+                // Обработка прямоугольного отверстия
+                if (heightParam != null && !heightParam.IsReadOnly)
                 {
-                    TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
-                    return null;
+                    heightParam.Set(internalHeight);
                 }
 
-
-                // Создаём фильтр для нашей стены
-                ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
-
-                XYZ closestIntersection = null;
-                double minDistance = double.MaxValue;
-
-                // Проходим по каждой паре точек
-                for (int i = 0; i < segmentPoints.Count - 1; i++)
+                if (widthParam != null && !widthParam.IsReadOnly)
                 {
-                    XYZ start = segmentPoints[i];
-                    XYZ end = segmentPoints[i + 1];
-                    XYZ direction = (end - start).Normalize();
+                    widthParam.Set(internalWidth);
+                }
 
-                    ReferenceWithContext referenceWithContext = intersector.FindNearest(start, direction);
-                    if (referenceWithContext != null)
+                // Обработка круглого отверстия (если ширина не редактируется, но высота есть)
+                if (heightParam != null && !heightParam.IsReadOnly && (widthParam == null || widthParam.IsReadOnly))
+                {
+                    heightParam.Set(UnitUtils.ConvertToInternalUnits(Math.Max(height, width) + offset, UnitTypeId.Millimeters));
+                }
+
+                if (_departmentHoleName == "АР")
+                {
+                    LocationPoint holeLocation = holeInstance.Location as LocationPoint;
+                    if (holeLocation != null)
                     {
-                        XYZ intersectionPoint = referenceWithContext.GetReference().GlobalPoint;
-
-                        // Вычисляем расстояние до точки трубы
-                        double distanceToPipe = start.DistanceTo(intersectionPoint);
-
-                        // Если точка ближе - запоминаем её
-                        if (distanceToPipe < minDistance)
-                        {
-                            minDistance = distanceToPipe;
-                            closestIntersection = intersectionPoint;
-                        }
+                        double shiftZ = -0.5 * internalHeight; // Смещение вниз на половину высоты отверстия
+                        XYZ moveVector = new XYZ(0, 0, shiftZ);
+                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
                     }
                 }
 
-                // Получаем параметры стены
-                double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
-                double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
-                double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
-                bool isUnconnected = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)?.AsElementId() == ElementId.InvalidElementId;
 
-                // Корректируем точку пересечения с учетом смещений и выступов
-                if (closestIntersection != null)
-                {
-                    double adjustment = (isUnconnected ? unconnectedHeight : 0) - offsetBottom + offsetTop;
-                    closestIntersection = new XYZ(closestIntersection.X, closestIntersection.Y, closestIntersection.Z + adjustment);
-                }
 
-                if (createdView)
-                {
-                    doc.Delete(view3D.Id);
-                }
 
-                return closestIntersection;
+
+
+
+
+                // Запись данных в хранилище
+                string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
+                ExtensibleStorageHelper.AddChatMessage(
+                    holeInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    _userFullName,
+                    _departmentName,
+                    _sendingDepartmentHoleName,
+                    intersectingElementIdString,
+                    "Без статуса",
+                    "Отверстие создано"
+                );
             }
             else
             {
-                TaskDialog.Show("Внимание", $"Работа со стенами типа {wallType} не реализована.");
-                return null;
+                transactionStatus = false;
+                TaskDialog.Show("Внимание", "Операция отменена пользователем.");
             }
-        }
-
-
-
-
-
-
-
-
-
-
-
-        // Метод выбора файла семейства
-        private string GetFamilyFileName(string department, string holeType)
-        {
-            var familyMap = new Dictionary<string, string>
-            {
-                { "АР_SquareHole", "199_AR_OSW.rfa" },
-                { "АР_RoundHole", "199_AR_ORW.rfa" },
-                { "КР_SquareHole", "199_STR_OSW.rfa" },
-                { "КР_RoundHole", "199_STR_ORW.rfa" },
-                { "ИОС_SquareHole", "501_MEP_TSW.rfa" },
-                { "ИОС_RoundHole", "501_MEP_TRW.rfa" }
-            };
-
-            string key = $"{department}_{holeType}";
-            return familyMap.ContainsKey(key) ? familyMap[key] : null;
-        }
-
-        // Метод загрузки семейства
-        private Family LoadOrGetExistingFamily(Document doc, string familyPath)
-        {
-            Family family = new FilteredElementCollector(doc).OfClass(typeof(Family))
-                .FirstOrDefault(f => f.Name == Path.GetFileNameWithoutExtension(familyPath)) as Family;
-
-            if (family == null)
-            {
-                doc.LoadFamily(familyPath, out family);
-            }
-            return family;
-        }
-
-        // Метод загрузки типоразмера семейства
-        private FamilySymbol GetFamilySymbol(Family family, Document doc)
-        {
-            foreach (ElementId id in family.GetFamilySymbolIds())
-            {
-                return doc.GetElement(id) as FamilySymbol;
-            }
-            return null;
-        }
+        } 
     }
 }
