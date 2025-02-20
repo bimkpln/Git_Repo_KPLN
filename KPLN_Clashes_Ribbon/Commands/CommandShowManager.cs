@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
@@ -19,7 +20,10 @@ namespace KPLN_Clashes_Ribbon.Commands
         {
             try
             {
-                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm();
+                // Для пользователей бим-отдела - показываю все проекты, включая архивные
+                bool isBIMUser = ClashesMainCollection.CurrentDBUser.SubDepartmentId == 8;
+                
+                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(isBIMUser);
                 bool? dialogResult = selectedProjectForm.ShowDialog();
                 if (selectedProjectForm.Status == UIStatus.RunStatus.Run)
                 {

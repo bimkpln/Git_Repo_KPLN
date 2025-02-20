@@ -3,6 +3,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
@@ -33,10 +34,22 @@ namespace KPLN_Library_Forms.UIFactory
         /// Запуск окна выбора проекта
         /// </summary>
         /// <returns>Возвращает выбранный проект</returns>
-        public static ElementSinglePick CreateForm()
+        public static ElementSinglePick CreateForm(bool showClosedProjects=false)
         {
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
-            foreach (DBProject prj in CurrentProjectDbService.GetDBProjects())
+
+            IEnumerable<DBProject> projectsColl = null;
+            switch (showClosedProjects)
+            {
+                case true:
+                    projectsColl = CurrentProjectDbService.GetDBProjects();
+                    break;  
+                case false:
+                    projectsColl = CurrentProjectDbService.GetDBProjects_Opened();
+                    break;
+            }
+
+            foreach (DBProject prj in projectsColl)
             {
                 if (prj.Name.Equals(null))
                     throw new Exception($"KPLN_Exception: Ошибка в заполнении БД - у элемента проекта с id: {prj.Id} нет имени");

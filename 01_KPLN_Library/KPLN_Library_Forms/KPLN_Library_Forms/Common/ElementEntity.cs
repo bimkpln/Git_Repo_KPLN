@@ -24,7 +24,12 @@ namespace KPLN_Library_Forms.Common
 
             // Анбоксинг на DbProject KPLN_Library_DataBase
             else if (elem is DBProject dbProject)
-                Name = $"{dbProject.Name}. Стадия: {dbProject.Stage}";
+            {
+                if (dbProject.IsClosed)
+                    Name = $"(АРХИВ){dbProject.Name}(АРХИВ). Стадия: {dbProject.Stage}";
+                else
+                    Name = $"{dbProject.Name}. Стадия: {dbProject.Stage}";
+            }
 
             // Анбоксинг на Element Revit
             else if (elem is Element element)
