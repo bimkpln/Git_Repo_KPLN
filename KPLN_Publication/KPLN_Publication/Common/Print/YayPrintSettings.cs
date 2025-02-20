@@ -28,7 +28,7 @@ namespace KPLN_Publication
     {
         #region Настройки экспорта в PDF
         public string printerName = new System.Drawing.Printing.PrinterSettings().PrinterName;
-        public string outputPDFFolder = @"C:\PDF_Print";
+        public string outputPDFFolder = "C:\\PDF_Print";
         public string pdfNameConstructor = "<Номер листа>_<Имя листа>.pdf";
         public HiddenLineViewsType hiddenLineProcessing = HiddenLineViewsType.VectorProcessing;
         public ColorType colorsType = ColorType.Monochrome;
@@ -49,7 +49,7 @@ namespace KPLN_Publication
         #region Настройки экспорта в DWG
         public bool isDWGExport = false;
         public ExportDWGSettingsShell dwgExportSettingShell;
-        public string outputDWGFolder = @"C:\DWG_Print";
+        public string outputDWGFolder = "C:\\DWG_Print";
         public string dwgNameConstructor = "<Номер листа>_<Имя листа>.dwg";
         #endregion
 

@@ -7,6 +7,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -720,10 +721,12 @@ namespace KPLN_Publication.ExternalCommands.Print
                     DWGExportOptions dwgOptions = exportSettings.GetDWGExportOptions() ?? new DWGExportOptions();
                     dwgOptions.MergedViews = true;
                     dwgOptions.FileVersion = ACADVersion.R2013;
+                    dwgOptions.SharedCoords = true;
 
                     // Экспортируем лист в DWG
                     bool exportSuccess = openedDoc.Export(
-                        outputFolder,
+                        // Чтобы избежать формирования пути в формате "C:\\DWG_Print\\Test\\Проект1_20.02.2025 11 17 46\-КП_новая-3213719.jpg", нужно текстовый формат пропустить через Path
+                        Path.GetFullPath(outputFolder),
                         msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor),
                         new List<ElementId> { msheet.sheet.Id },
                         dwgOptions);
