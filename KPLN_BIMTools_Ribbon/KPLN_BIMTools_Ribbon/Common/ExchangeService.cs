@@ -158,7 +158,7 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// </summary>
         private protected void StartService(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum, string pluginName)
         {
-            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm();
+            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(true);
             bool? dialogResult = selectedProjectForm.ShowDialog();
             if (dialogResult == null || selectedProjectForm.Status != UIStatus.RunStatus.Run)
                 return;
@@ -286,16 +286,17 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Подготовка опций к сохранению
         /// </summary>
-        private protected void SetSaveAsOptions()
+        private protected void SetSaveAsOptions(DBRVTConfigData dBRSConfigData)
         {
             _saveAsOptions = new SaveAsOptions() 
             { 
-                OverwriteExistingFile = true 
+                OverwriteExistingFile = true,
+                MaximumBackups = dBRSConfigData.MaxBackup,
             };
             WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() 
             { 
                 SaveAsCentral = true, 
-                OpenWorksetsDefault = SimpleWorksetConfiguration.AskUserToSpecify 
+                OpenWorksetsDefault = SimpleWorksetConfiguration.AskUserToSpecify
             };
             _saveAsOptions.SetWorksharingOptions(worksharingSaveAsOptions);
         }
