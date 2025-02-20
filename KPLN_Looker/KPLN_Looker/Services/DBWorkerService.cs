@@ -149,6 +149,22 @@ namespace KPLN_Looker.Services
         }
 
         /// <summary>
+        /// Получить коллекцию пользователей бим-отдела, которым должны приходить уведомления по файлам АФК_АР
+        /// </summary>
+        /// <returns></returns>
+        internal DBUser[] GetDBUser_SubscribersFromBIMForARKon()
+        {
+            List<DBUser> result = new List<DBUser>()
+            {
+                _userDbService.GetDBUser_ByUserName("tkutsko"),
+                _userDbService.GetDBUser_ByUserName("gfedoseeva"),
+                _userDbService.GetDBUser_ByUserName("ukolomiec"),
+            };
+
+            return result.ToArray();
+        }
+
+        /// <summary>
         /// Обновление статуса документа IsClosed по статусу проекта
         /// </summary>
         /// <param name="dBProject"></param>

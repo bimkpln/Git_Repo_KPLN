@@ -22,6 +22,11 @@ namespace KPLN_Looker
     public class Module : IExternalModule
     {
         /// <summary>
+        /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
+        /// </summary>
+        private static DBUser[] _arKonFileSubscribersFromBIM;
+        
+        /// <summary>
         /// Общий фильтр (для анализа на копирование эл-в)
         /// </summary>
         private static LogicalOrFilter _resultFamInstFilter;
@@ -34,7 +39,7 @@ namespace KPLN_Looker
         /// <summary>
         /// Лимит задержки сообщений
         /// </summary>
-        private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 1, 0);
+        private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 3, 0);
 
         /// <summary>
         /// Метка закрытого для пользователя проекта
@@ -44,6 +49,7 @@ namespace KPLN_Looker
         public Module()
         {
             ModuleDBWorkerService = new DBWorkerService();
+            _arKonFileSubscribersFromBIM = ModuleDBWorkerService.GetDBUser_SubscribersFromBIMForARKon();
         }
 
         public static DBWorkerService ModuleDBWorkerService { get; private set; }
@@ -585,12 +591,16 @@ namespace KPLN_Looker
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
             if (dBProject == null)
             {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                    $"Действие: Произвел сохранение/синхронизацию файла незарезгестрированного проекта.\n" +
-                    $"Имя файла: [b]{doc.Title}[/b].\n" +
-                    $"Путь к модели: [b]{centralPath}[/b].");
+                foreach(DBUser dbUser in _arKonFileSubscribersFromBIM)
+                {
+                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
+                        dbUser,
+                        $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
+                        $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
+                        $"Имя файла: [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{centralPath}[/b].");
+                }
 
                 return;
             }
@@ -697,7 +707,8 @@ namespace KPLN_Looker
                         BitrixMessageSender.SendMsg_ToBIMChat(
                             $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
                             $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
-                            $"Действие: Открыл файл {doc.Title}.");
+                            $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                            $"Путь к модели: [b]{centralPath}[/b].");
                         #endregion
 
 
@@ -707,7 +718,7 @@ namespace KPLN_Looker
                         {
                             string jsonRequestToUser = $@"{{
                                         ""DIALOG_ID"": ""{currentUserBitrixId}"",
-                                        ""MESSAGE"": ""Стадия проекта {doc.Title} закрыта. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
+                                        ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
                                         ""ATTACH"": [
                                             {{
                                                 ""IMAGE"": {{
