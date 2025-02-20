@@ -66,7 +66,7 @@
         <!--Заголовок-->
         <TextBlock 
             Grid.ColumnSpan="2"
-            Text="Редатор настройки экспорта" 
+            Text="Редактор настройки экспорта" 
             Margin="0,0,0,5" 
             FontWeight="Bold" 
             FontSize="14"
@@ -106,27 +106,12 @@
                 <TextBlock 
                     Grid.Column="0"
                     Grid.Row="1"
-                    Text="Имя конфигурации:"/>
+                    Text="Имя (min 5 символов):"/>
                 <TextBox 
                     x:Name="ItemName"
                     Grid.Column="1"
                     Grid.Row="1"
-                    Text="{Binding SettingName}">
-                    <TextBox.ToolTip>
-                        <TextBlock>
-                            <Run 
-                                Text="Не менее " 
-                                Foreground="Black" />
-                            <Run 
-                                Text="5" 
-                                Foreground="Red" 
-                                FontWeight="Bold"/>
-                            <Run 
-                                Text=" символов" 
-                                Foreground="Black"/>
-                        </TextBlock>
-                    </TextBox.ToolTip>
-                </TextBox>
+                    Text="{Binding SettingName}"/>
 
                 <TextBlock 
                     Grid.Column="0"
@@ -142,7 +127,6 @@
                     </Grid.ColumnDefinitions>
                     <TextBox 
                         x:Name="PathTo"
-                        IsReadOnly="True"
                         Text="{Binding SharedPathTo}"
                         TextWrapping="Wrap"
                         HorizontalAlignment="Stretch"/>

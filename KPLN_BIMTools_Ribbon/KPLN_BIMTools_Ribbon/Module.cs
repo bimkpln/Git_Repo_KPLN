@@ -45,7 +45,7 @@ namespace KPLN_BIMTools_Ribbon
             LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;
             #endregion
 
-            CommandRSExchange.SetStaticEnvironment(application, _logger, _revitVersion);
+            CommandRVTExchange.SetStaticEnvironment(application, _logger, _revitVersion);
 
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
 
@@ -62,8 +62,8 @@ namespace KPLN_BIMTools_Ribbon
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
-                CommandRSExchange.PluginName,
-                CommandRSExchange.PluginName,
+                CommandRVTExchange.PluginName,
+                CommandRVTExchange.PluginName,
                 "Обмен Revit-моделями:\n" +
                 "1. Экспорт/импорт моделей с Revit-Server KPLN на другой Revit-Server KPLN;\n" +
                 "2. Экспорт/импорт моделей с Revit-Server KPLN на сервер KPLN и наоборот;\n" +
@@ -74,7 +74,7 @@ namespace KPLN_BIMTools_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(CommandRSExchange).FullName,
+                typeof(CommandRVTExchange).FullName,
                 uploadPullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",

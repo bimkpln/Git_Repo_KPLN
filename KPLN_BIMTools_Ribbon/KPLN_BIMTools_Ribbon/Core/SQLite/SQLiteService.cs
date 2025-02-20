@@ -1,7 +1,9 @@
 ﻿using Dapper;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
@@ -59,10 +61,11 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                 case RevitDocExchangeEnum.RevitServer:
                     ExecuteNonQuery(
                     $"CREATE TABLE {_dbTableName} " +
-                        $"({nameof(DBRSConfigData.Id)} INTEGER PRIMARY KEY, " +
-                        $"{nameof(DBRSConfigData.Name)} TEXT, " +
-                        $"{nameof(DBRSConfigData.PathFrom)} TEXT, " +
-                        $"{nameof(DBRSConfigData.PathTo)} TEXT)");
+                        $"({nameof(DBRVTConfigData.Id)} INTEGER PRIMARY KEY, " +
+                        $"{nameof(DBRVTConfigData.Name)} TEXT, " +
+                        $"{nameof(DBRVTConfigData.PathFrom)} TEXT, " +
+                        $"{nameof(DBRVTConfigData.PathTo)} TEXT, " +
+                        $"{nameof(DBRVTConfigData.MaxBackup)} INTEGER)");
                     break;
             }
         }
@@ -107,18 +110,42 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
         /// <summary>
         /// Создать конфига
         /// </summary>
-        public void PostConfigItems_ByRSConfigs(IEnumerable<DBRSConfigData> rsConfigs)
+        public void PostConfigItems_ByRSConfigs(IEnumerable<DBRVTConfigData> rsConfigs)
         {
-            ExecuteNonQuery(
-                $"INSERT INTO {_dbTableName} " +
-                    $"({nameof(DBRSConfigData.Name)}, " +
-                    $"{nameof(DBRSConfigData.PathFrom)}, " +
-                    $"{nameof(DBRSConfigData.PathTo)}) " +
-                $"VALUES " +
-                    $"(@{nameof(DBRSConfigData.Name)}, " +
-                    $"@{nameof(DBRSConfigData.PathFrom)}, " +
-                    $"@{nameof(DBRSConfigData.PathTo)});",
-                rsConfigs);
+            try
+            {
+                ExecuteNonQuery(
+                    $"INSERT INTO {_dbTableName} " +
+                        $"({nameof(DBRVTConfigData.Name)}, " +
+                        $"{nameof(DBRVTConfigData.PathFrom)}, " +
+                        $"{nameof(DBRVTConfigData.PathTo)}, " +
+                        $"{nameof(DBRVTConfigData.MaxBackup)}) " +
+                    $"VALUES " +
+                        $"(@{nameof(DBRVTConfigData.Name)}, " +
+                        $"@{nameof(DBRVTConfigData.PathFrom)}, " +
+                        $"@{nameof(DBRVTConfigData.PathTo)}, " +
+                        $"@{nameof(DBRVTConfigData.MaxBackup)});",
+                    rsConfigs);
+            }
+            // Старая версия БД, когда не было параметра кол-ва рез. копий
+            catch (Exception ex)
+            {
+                HtmlOutput.Print(
+                    "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
+                    "Если нужно его заменить - сними копию текушего конфига, а старую удали",
+                    MessageType.Warning);
+
+                ExecuteNonQuery(
+                   $"INSERT INTO {_dbTableName} " +
+                       $"({nameof(DBRVTConfigData.Name)}, " +
+                       $"{nameof(DBRVTConfigData.PathFrom)}, " +
+                       $"{nameof(DBRVTConfigData.PathTo)}) " +
+                   $"VALUES " +
+                       $"(@{nameof(DBRVTConfigData.Name)}, " +
+                       $"@{nameof(DBRVTConfigData.PathFrom)}, " +
+                       $"@{nameof(DBRVTConfigData.PathTo)});",
+                   rsConfigs);
+            }
         }
         #endregion
 
@@ -133,7 +160,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                 case RevitDocExchangeEnum.Navisworks:
                     return ExecuteQuery<DBNWConfigData>($"SELECT * FROM {_dbTableName};");
                 case RevitDocExchangeEnum.RevitServer:
-                    return ExecuteQuery<DBRSConfigData>($"SELECT * FROM {_dbTableName};");
+                    return ExecuteQuery<DBRVTConfigData>($"SELECT * FROM {_dbTableName};");
             }
 
             return null;
@@ -172,17 +199,39 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                     }
                     return null;
                 case RevitDocExchangeEnum.RevitServer:
-                    if (dBConfig is DBRSConfigData rsConfig)
+                    if (dBConfig is DBRVTConfigData rsConfig)
                     {
-                        return ExecuteQuery<DBRSConfigData>(
-                            $"UPDATE {_dbTableName} " +
-                            $"SET " +
-                                $"{nameof(DBRSConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
-                                $"{nameof(DBRSConfigData.PathTo)} = '{rsConfig.PathTo}'" +
-                            $"WHERE " +
-                                $"{nameof(DBRSConfigData.Id)} = '{rsConfig.Id}';",
-                            rsConfig)
-                            .FirstOrDefault();
+                        try
+                        {
+                            return ExecuteQuery<DBRVTConfigData>(
+                                $"UPDATE {_dbTableName} " +
+                                $"SET " +
+                                    $"{nameof(DBRVTConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
+                                    $"{nameof(DBRVTConfigData.PathTo)} = '{rsConfig.PathTo}'" +
+                                    $"{nameof(DBRVTConfigData.MaxBackup)} = '{rsConfig.MaxBackup}'" +
+                                $"WHERE " +
+                                    $"{nameof(DBRVTConfigData.Id)} = '{rsConfig.Id}';",
+                                rsConfig)
+                                .FirstOrDefault();
+                        }
+                        // Старая версия БД, когда не было параметра кол-ва рез. копий
+                        catch (Exception ex)
+                        {
+                            HtmlOutput.Print(
+                                "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
+                                "Если нужно его заменить - сними копию текушего конфига, а старую удали", 
+                                MessageType.Warning);
+                            
+                            return ExecuteQuery<DBRVTConfigData>(
+                                $"UPDATE {_dbTableName} " +
+                                $"SET " +
+                                    $"{nameof(DBRVTConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
+                                    $"{nameof(DBRVTConfigData.PathTo)} = '{rsConfig.PathTo}'" +
+                                $"WHERE " +
+                                    $"{nameof(DBRVTConfigData.Id)} = '{rsConfig.Id}';",
+                                rsConfig)
+                                .FirstOrDefault();
+                        }
                     }
                     return null;
             }

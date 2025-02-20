@@ -227,7 +227,7 @@
     <Compile Include="ExternalCommands\batchAddingParameters.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
     <Compile Include="ExternalCommands\CommandNWExport.cs" />
-    <Compile Include="ExternalCommands\CommandRSExchange.cs" />
+    <Compile Include="ExternalCommands\CommandRVTExchange.cs" />
     <Compile Include="Forms\batchAddingParametersWindowFamily.xaml.cs">
       <DependentUpon>batchAddingParametersWindowFamily.xaml</DependentUpon>
     </Compile>
@@ -243,8 +243,12 @@
     <Compile Include="Forms\ConfigItem.xaml.cs">
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\IntValidationRule.cs" />
     <Compile Include="Forms\DoubleValidationRule.cs" />
     <Compile Include="Forms\FileEntity.cs" />
+    <Compile Include="Forms\RVTExtraSettings.xaml.cs">
+      <DependentUpon>RVTExtraSettings.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\NWExtraSettings.xaml.cs">
       <DependentUpon>NWExtraSettings.xaml</DependentUpon>
     </Compile>
@@ -264,7 +268,7 @@
     </Compile>
     <Compile Include="Core\SQLite\Entities\DBConfigEntity.cs" />
     <Compile Include="Core\SQLite\Entities\DBNWConfigData.cs" />
-    <Compile Include="Core\SQLite\Entities\DBRSConfigData.cs" />
+    <Compile Include="Core\SQLite\Entities\DBRVTConfigData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -294,6 +298,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ConfigItem.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\RVTExtraSettings.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

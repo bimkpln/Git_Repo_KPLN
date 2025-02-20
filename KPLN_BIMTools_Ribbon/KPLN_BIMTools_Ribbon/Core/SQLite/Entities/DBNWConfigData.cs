@@ -1,6 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
 {

@@ -157,6 +157,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         _canRunByPathTo = false;
 
                     BtnEnableSwitch();
+
+                    _initialDirectoryForOpenFileDialog = _sharedPathTo;
                 }
             }
         }
@@ -208,6 +210,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     });
                     break;
                 case (RevitDocExchangeEnum.RevitServer):
+                    SelectedConfig = new RVTExtraSettings(new DBRVTConfigData()
+                    {
+                        MaxBackup = 10,
+                    });
                     break;
             }
         }
@@ -224,6 +230,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         SelectedConfig = new NWExtraSettings(dbNWConfigData);
                     break;
                 case (RevitDocExchangeEnum.RevitServer):
+                    if (dBConfigEntity is DBRVTConfigData dbRVTConfigData)
+                        SelectedConfig = new RVTExtraSettings(dbRVTConfigData);
                     break;
             }
         }
@@ -284,8 +292,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 if (openFolderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK 
                     && !string.IsNullOrWhiteSpace(openFolderDialog.SelectedPath))
                 {
-                    _initialDirectoryForOpenFileDialog = openFolderDialog.SelectedPath;
-                    SharedPathTo = _initialDirectoryForOpenFileDialog;
+                    SharedPathTo = openFolderDialog.SelectedPath;
                 }
             }
         }
@@ -490,11 +497,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             switch (_revitDocExchangeEnum)
             {
                 case RevitDocExchangeEnum.Navisworks:
-                    NWExtraSettings extraSettings = (NWExtraSettings)SelectedConfig;
-                    DBNWConfigData sharedDBNWConfigData = extraSettings.CurrentDBNWConfigData;
+                    NWExtraSettings extraNWSettings = (NWExtraSettings)SelectedConfig;
+                    DBNWConfigData dbNWConfigData = extraNWSettings.CurrentDBNWConfigData;
 
                     IEnumerable<DBNWConfigData> dBNWConfigDatas = FileEntitiesList
-                        .Select(fe => new DBNWConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(sharedDBNWConfigData));
+                        .Select(fe => new DBNWConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(dbNWConfigData));
 
                     if (_sqliteService.GetConfigItems().Count() == 0)
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
@@ -506,16 +513,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     break;
                 case RevitDocExchangeEnum.RevitServer:
-                    IEnumerable<DBRSConfigData> dBRSConfigDatas = FileEntitiesList
-                        .Select(fe => new DBRSConfigData(fe.Name, fe.Path, SharedPathTo));
+                    RVTExtraSettings extraRVTSettings = (RVTExtraSettings)SelectedConfig;
+                    DBRVTConfigData dbRVTConfigData = extraRVTSettings.CurrentDBRSConfigData;
+
+                    IEnumerable<DBRVTConfigData> dBRVTConfigDatas = FileEntitiesList
+                        .Select(fe => new DBRVTConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(dbRVTConfigData));
 
                     if (_sqliteService.GetConfigItems().Count() == 0)
-                        _sqliteService.PostConfigItems_ByRSConfigs(dBRSConfigDatas);
+                        _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     else
                     {
                         _sqliteService.DropTable();
                         _revitDocExchangestDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(CurrentDBRevitDocExchanges);
-                        _sqliteService.PostConfigItems_ByRSConfigs(dBRSConfigDatas);
+                        _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     }
                     break;
             }
