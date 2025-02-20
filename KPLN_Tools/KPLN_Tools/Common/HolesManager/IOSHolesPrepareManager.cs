@@ -126,6 +126,7 @@ namespace KPLN_Tools.Common.HolesManager
                     {
                         XYZ upPrjPoint = floor.GetVerticalProjectionPoint(inversedFiBBox.Max, FloorFace.Bottom);
                         if (upPrjPoint == null) continue;
+                        
                         double upDistance = inversedFiBBox.Max.DistanceTo(upPrjPoint);
                         if (Math.Round(inversedFiBBox.Max.Z, 1) <= Math.Round(upPrjPoint.Z, 1) && upDistance <= upMinDist)
                         {
@@ -139,6 +140,7 @@ namespace KPLN_Tools.Common.HolesManager
 
                         XYZ downPrjPoint = floor.GetVerticalProjectionPoint(inversedFiBBox.Min, FloorFace.Top);
                         if (downPrjPoint == null) continue;
+                        
                         double downDistance = inversedFiBBox.Min.DistanceTo(downPrjPoint);
                         if (Math.Round(inversedFiBBox.Min.Z, 1) >= Math.Round(downPrjPoint.Z, 1) && downDistance <= downMinDist)
                         {
@@ -148,21 +150,10 @@ namespace KPLN_Tools.Common.HolesManager
                                 downFloor = floor;
 
                                 Level downFloorLevel = (Level)linkDoc.GetElement(downFloor.LevelId);
-                                downBindElev = downFloorLevel.Elevation;
                                 double floorAboveLevHeight = downFloor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble();
-
-                                if ((downDistance + floorAboveLevHeight) > 0)
-                                    downMinDist = downDistance + floorAboveLevHeight;
-                                else
-                                {
-                                    downMinDist = downDistance;
-                                    rlvDist = downMinDist;
-                                }
-
-                                if (downBindElev < inversedFiBBox.Min.Z)
-                                    rlvDist = downMinDist;
-                                else
-                                    rlvDist = Math.Round(inversedFiBBox.Min.Z - downBindElev, 2);
+                                downBindElev = downFloorLevel.Elevation + floorAboveLevHeight;
+                                downMinDist = downDistance;
+                                rlvDist = downDistance;
                             }
                         }
                     }
@@ -236,7 +227,7 @@ namespace KPLN_Tools.Common.HolesManager
                     foreach (Face flFace in flFaceArray)
                     {
                         IntersectionResult intRes = flFace.Project(prjPoint);
-                        if (intRes != null && intRes.Distance == 0)
+                        if (intRes != null && intRes.Distance < 0.0001)
                         {
                             return true;
                         }

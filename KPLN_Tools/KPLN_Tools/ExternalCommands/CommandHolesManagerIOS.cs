@@ -275,7 +275,7 @@ namespace KPLN_Tools.ExternalCommands
         private string PrepareStringData(double elev) => elev >= 0 ? string.Format("+{0:F3}", elev) : string.Format("{0:F3}", elev);
 
         private void SetRlvElevation(FamilyInstance fi, string prefix, string elemElev, string hostElev) =>
-            fi.get_Parameter(_relativeElevParam).Set($"[Отн]: {prefix} {elemElev} отн. ч.п. на ур. {hostElev}");
+            fi.get_Parameter(_relativeElevParam).Set($"[Отн]: {prefix} {elemElev} отн. ЖБ пл. на отм. {hostElev}");
 
         private void SetAbsElevation(FamilyInstance fi, string prefix, string elemElev) =>
             fi.get_Parameter(_absoluteElevParam).Set($"[Абс]: {prefix} {elemElev} отн. нуля здания");
