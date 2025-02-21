@@ -610,13 +610,17 @@ namespace KPLN_Looker
             DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
             if (dBDocument == null)
             {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                    $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
-                    $"Имя файла: [b]{doc.Title}[/b].\n" +
-                    $"Путь к модели: [b]{centralPath}[/b].");
-
+                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
+                {
+                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
+                        dbUser,
+                        $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
+                        $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
+                        $"Имя файла: [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{centralPath}[/b].");
+                }
+                
                 // Создаю, если не нашел
                 ModuleDBWorkerService.Create_DBDocument(
                     centralPath,

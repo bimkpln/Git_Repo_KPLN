@@ -172,6 +172,7 @@ namespace KPLN_BIMTools_Ribbon.Common
             RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
 
             // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
+            string configNames = "Не определено";
             try
             {
                 DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
@@ -185,7 +186,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 {
                     DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(pluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
-                    string configNames = string.Join(" ~ ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
+                    configNames = string.Join("; ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
                     Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}].\nКонфигурация/-ии: [{configNames}]");
 
                     foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
@@ -229,13 +230,13 @@ namespace KPLN_BIMTools_Ribbon.Common
                         }
                     }
 
-                    SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]");
+                    SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]", configNames);
                     Logger.Info($"Работа плагина [{revitDocExchangeEnum}] завершена.\n");
                 }
             }
             catch (Exception ex)
             {
-                SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]");
+                SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]", configNames);
                 Logger.Error($"Работа плагина [{revitDocExchangeEnum}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
                 throw ex;
             }
@@ -314,15 +315,16 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Отправка результата пользователю в месенджер
         /// </summary>
-        private void SendResultMsg(string moduleName)
+        private void SendResultMsg(string moduleName, string configNames)
         {
             if (CountProcessedDocs < CountSourceDocs || CountProcessedDocs == 0)
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                     CurrentDBUser,
-                    $"Модуль: {moduleName}\n" +
+                    $"Модуль: [b]{moduleName}\n[/b]" +
+                    $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано с ошибками.\n" +
-                    $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: {_sourceProjectName}\n" +
+                    $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
                     $"Ошибки: См. файл логов у пользователя {CurrentDBUser.Surname} {CurrentDBUser.Name}.\n" +
                     $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{RevitVersion}");
             }
@@ -330,9 +332,10 @@ namespace KPLN_BIMTools_Ribbon.Common
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                     CurrentDBUser,
-                    $"Модуль: {moduleName}\n" +
+                    $"Модуль: [b]{moduleName}\n[/b]" +
+                    $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано без ошибок.\n" +
-                    $"Метрик производительности: Обработано {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: {_sourceProjectName}");
+                    $"Метрик производительности: Обработано {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]");
             }
         }
 

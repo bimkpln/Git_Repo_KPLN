@@ -59,7 +59,7 @@
                 TextWrapping="Wrap" 
                 Margin="5,0,0,0" 
                 Grid.Row="0" 
-                Text="Тнформация о файле" 
+                Text="Информация о файле" 
                 FontWeight="Bold" 
                 FontSize="16" 
                 Foreground="White"/>
@@ -68,7 +68,7 @@
                 Grid.Column="0"
                 Grid.Row="1"
                 FontSize="16"
-                Text="Имя файла:"
+                Text="Имя файла\папки:"
                 Foreground="White"/>
             <TextBox 
                 x:Name="InputName"
@@ -81,7 +81,7 @@
                 Grid.Column="0"
                 Grid.Row="3"
                 FontSize="16"
-                Text="Полный путь к файлу:"
+                Text="Полный путь к файлу\папке:"
                 Foreground="White"/>
             <TextBox 
                 x:Name="InputPath"
@@ -96,12 +96,20 @@
                 Grid.ColumnSpan="2">
                 <TextBlock 
                     Style="{StaticResource TXT}" 
-                    Text="Примечание: Путь к файлу на Revit-Server должен быть в формате \\АдресRS\ПолныйПуть\ИмяМодели.rvt" 
+                    Margin="5,5,5,0"
+                    Text="Примечание1: Путь к файлу на Revit-Server должен быть в формате \\АдресRS\ПолныйПуть\ИмяМодели.rvt" 
                     TextWrapping="Wrap"
                     Opacity="0.5"/>
                 <TextBlock 
                     Style="{StaticResource TXT}" 
-                    Text="Например: \\192.168.0.5\СТАК\Стадия_Р\ВК\СТАК_РД_СТЛ_ВК.rvt" 
+                    Margin="5,0,5,0"
+                    Text="Например1: \\192.168.0.5\СТАК\Стадия_Р\ВК\СТАК_РД_СТЛ_ВК.rvt" 
+                    TextWrapping="Wrap"
+                    Opacity="0.5"/>
+                <TextBlock 
+                    Style="{StaticResource TXT}"
+                    Margin="5,5,5,0"
+                    Text="Примечание2: Если указать путь к папке с моделями на сревере KPLN - то загрузятся ВСЕ модели из указанной папки" 
                     TextWrapping="Wrap"
                     Opacity="0.5"/>
             </StackPanel>
