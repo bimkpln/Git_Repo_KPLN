@@ -44,7 +44,7 @@ namespace KPLN_ModelChecker_User.Forms
 
 
                 entity.LastRunText = resultMsg;
-                if (entity.LastRunText.Equals($"Данные отсутсвуют (не запускался)"))
+                if (entity.LastRunText.Equals($"Данные отсутствуют (не запускался)"))
                     entity.TextColor = Brushes.Red;
                 else
                     entity.TextColor = Brushes.Green;

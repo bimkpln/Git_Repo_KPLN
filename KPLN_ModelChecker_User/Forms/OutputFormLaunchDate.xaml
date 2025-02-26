@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ModelChecker_User.Forms"
         mc:Ignorable="d" 
-        Width="1050"
+        Width="1060"
         MaxHeight="750"
         SizeToContent="Height"
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 

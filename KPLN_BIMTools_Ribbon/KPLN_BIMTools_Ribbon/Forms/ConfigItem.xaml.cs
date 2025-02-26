@@ -158,7 +158,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     BtnEnableSwitch();
 
-                    _initialDirectoryForOpenFileDialog = _sharedPathTo;
+                    if(Directory.Exists(_sharedPathTo))
+                        _initialDirectoryForOpenFileDialog = _sharedPathTo;
                 }
             }
         }

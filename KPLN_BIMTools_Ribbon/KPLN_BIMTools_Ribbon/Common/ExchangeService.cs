@@ -289,10 +289,16 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// </summary>
         private protected void SetSaveAsOptions(DBRVTConfigData dBRSConfigData)
         {
+            int backupTempForOldPlugin;
+            if (dBRSConfigData.MaxBackup == -1)
+                backupTempForOldPlugin = 10;
+            else
+                backupTempForOldPlugin = dBRSConfigData.MaxBackup;
+
             _saveAsOptions = new SaveAsOptions() 
             { 
                 OverwriteExistingFile = true,
-                MaximumBackups = dBRSConfigData.MaxBackup,
+                MaximumBackups = backupTempForOldPlugin,
             };
             WorksharingSaveAsOptions worksharingSaveAsOptions = new WorksharingSaveAsOptions() 
             { 

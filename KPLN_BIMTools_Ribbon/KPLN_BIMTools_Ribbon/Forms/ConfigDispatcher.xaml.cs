@@ -184,9 +184,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         _project, _revitDocExchangeEnum, _revitVersion, docExchanges);
                     configItem.SettingName = $"{configItem.SettingName}_new_{DateTime.Now:d}";
 
-                    configItem.ShowDialog();
-
-                    CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                    bool? dialogResult = configItem.ShowDialog();
+                    if ((bool)dialogResult)
+                        CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
                 }
             }
         }
