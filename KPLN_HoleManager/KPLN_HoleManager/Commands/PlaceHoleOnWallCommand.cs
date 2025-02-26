@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Media.Media3D;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
@@ -99,10 +98,7 @@ namespace KPLN_HoleManager.Commands
                         return; 
                     }
                 }
-
-                // Определение размеров элемента, который пересекает стену
-                (double width, double height, double length) = GetElementSize(intersectingElement);
-
+            
                 // Определяем точку пересечения
                 XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement, _departmentHoleName, _holeTypeName);
 
@@ -173,8 +169,9 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
-                    // Задаём размеры отверстию и двигаем его
-                    SetHoleDimensions(tx, holeInstance, intersectingElement, width, height, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName);
+                    // Задаём размеры отверстию, двигаем его и пишем данные в Extensible Storage
+                    (double widthElement, double heightElement, double lengthElement) = GetElementSize(intersectingElement);
+                    SetHoleDimensions(tx, wall, intersectingElement, holeInstance, widthElement, heightElement);
 
                     // Если всё же что-то поёдт не так - отменяем транзакцию :)
                     if (transactionStatus == false)
@@ -239,6 +236,286 @@ namespace KPLN_HoleManager.Commands
             return null;
         }
 
+        //////////////
+        /// <summary>
+        /// XYZ. Метод нахождения точки пересечения стены и входящего элемента.
+        /// </summary>
+        private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement, string department, string holeType)
+        {
+            // Получаем геометрию элемента (трубы, воздуховода и т.д.)
+            LocationCurve cElementLocation = cElement.Location as LocationCurve;
+            if (cElementLocation == null)
+                return null;
+
+            Curve cElementCurve = cElementLocation.Curve;
+            List<XYZ> segmentPoints = cElementCurve.Tessellate() as List<XYZ>;
+
+            if (segmentPoints == null || segmentPoints.Count < 2)
+                return null;
+
+            // Получаем или создаем 3D-вид
+            View3D view3D = new FilteredElementCollector(doc)
+                .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
+
+            bool createdView = false;
+            if (view3D == null)
+            {
+                ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
+                    .OfClass(typeof(ViewFamilyType))
+                    .Cast<ViewFamilyType>()
+                    .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
+
+                if (viewFamilyType != null)
+                {
+                    view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
+                    createdView = true;
+                }
+            }
+
+            if (view3D == null)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
+                return null;
+            }
+                    
+            // Создаем ReferenceIntersector для стены
+            ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
+            List<XYZ> allIntersections = new List<XYZ>();
+
+            // Получаем толщину стены
+            double wallThickness = GetWallThickness(wall);
+
+            // Проходим по сегментам кривой
+            for (int i = 0; i < segmentPoints.Count - 1; i++)
+            {
+                XYZ start = segmentPoints[i];
+                XYZ end = segmentPoints[i + 1];
+
+                // Получаем пересечения для текущего сегмента
+                List<XYZ> segmentIntersections = GetIntersectionsForSegment(intersector, start, end, wall, wallThickness);
+                allIntersections.AddRange(segmentIntersections);
+            }
+
+            if (allIntersections.Count == 0)
+            {
+                if (createdView) doc.Delete(view3D.Id);
+                return null;
+            }
+
+            // Определяем точку пересечения
+            XYZ selectedIntersection;
+            if (allIntersections.Count == 1)
+            {
+                selectedIntersection = allIntersections[0]; // Автоматический выбор, если точка одна
+            }
+            else
+            {
+                // Показываем диалог, если точек несколько
+                selectedIntersection = ShowIntersectionSelectionDialog(allIntersections);
+                if (selectedIntersection == null)
+                {
+                    if (createdView) doc.Delete(view3D.Id);
+                    return null;
+                }
+            }
+
+            // Корректировка по оси Z для АР
+            double adjustmentZ = 0;
+            if (department == "АР")
+            {
+                double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
+                double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
+                double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
+
+                if (!wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).IsReadOnly)
+                {
+                    adjustmentZ = unconnectedHeight - offsetBottom + offsetTop;
+                }
+            }
+
+            selectedIntersection = new XYZ(selectedIntersection.X, selectedIntersection.Y, selectedIntersection.Z + adjustmentZ);
+
+            // Удаляем временный 3D-вид
+            if (createdView)
+            {
+                doc.Delete(view3D.Id);
+            }
+
+            return selectedIntersection;
+        }
+
+        /// <summary>
+        /// XYZ. Получаем пересечения для одного сегмента.
+        /// </summary>
+        private List<XYZ> GetIntersectionsForSegment(ReferenceIntersector intersector, XYZ start, XYZ end, Element wall, double wallThickness)
+        {
+            List<XYZ> intersections = new List<XYZ>();
+            XYZ direction = (end - start).Normalize();
+            double segmentLength = start.DistanceTo(end);
+
+            // Находим все пересечения вдоль сегмента
+            IList<ReferenceWithContext> references = intersector.Find(start, direction);
+
+            foreach (ReferenceWithContext refWithContext in references)
+            {
+                Reference reference = refWithContext.GetReference();
+                XYZ intersectionPoint = reference.GlobalPoint;
+                double distanceFromStart = start.DistanceTo(intersectionPoint);
+
+                if (distanceFromStart > segmentLength)
+                    continue; // Пропускаем точки за границей сегмента
+
+                // Получаем поверхность стены
+                Wall wallElement = wall as Wall;
+                Face wallFace = wallElement?.GetGeometryObjectFromReference(reference) as Face;
+
+                if (wallFace == null)
+                    continue;
+
+                // Определяем, является ли стена изогнутой
+                bool isCurvedWall = (wallElement.Location as LocationCurve)?.Curve is Arc;
+
+                XYZ wallNormal;
+                if (isCurvedWall)
+                {
+                    wallNormal = GetCurvedWallNormal(wallElement, intersectionPoint);
+                }
+                else
+                {
+                    UV uvPoint;
+                    if (!TryGetUVFromFace(wallFace, intersectionPoint, out uvPoint))
+                        continue;
+
+                    wallNormal = wallFace.ComputeNormal(uvPoint).Normalize();
+                }
+
+                // Смещаем точку вдоль нормали стены
+                XYZ shiftedPoint = intersectionPoint + wallNormal * wallThickness;
+
+                // Проверяем, остается ли смещенная точка в стене
+                IList<ReferenceWithContext> shiftedReferences = intersector.Find(shiftedPoint, direction);
+                bool stillInWall = shiftedReferences.Any(r => r.GetReference().ElementId == wall.Id);
+
+                if (stillInWall)
+                {
+                    intersections.Add(intersectionPoint);
+                }
+            }
+
+            return intersections;
+        }
+
+        /// <summary>
+        /// XYZ. Обычная стена. UV-координаты в рамках поверхности
+        /// </summary>
+        private bool TryGetUVFromFace(Face face, XYZ point, out UV uv)
+        {
+            uv = null;
+            BoundingBoxUV bb = face.GetBoundingBox();
+
+            // Перебираем возможные UV-координаты в рамках поверхности
+            for (double u = bb.Min.U; u <= bb.Max.U; u += 0.01)
+            {
+                for (double v = bb.Min.V; v <= bb.Max.V; v += 0.01)
+                {
+                    UV testUV = new UV(u, v);
+                    XYZ testXYZ = face.Evaluate(testUV);
+
+                    // Если найдено совпадение, возвращаем UV
+                    if (testXYZ.DistanceTo(point) < 0.01)
+                    {
+                        uv = testUV;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// XYZ. Изогнутая стена. Вычисляем нормаль
+        /// </summary>
+        private XYZ GetCurvedWallNormal(Wall curvedWall, XYZ point)
+        {
+            LocationCurve locationCurve = curvedWall.Location as LocationCurve;
+            if (locationCurve == null)
+                return XYZ.Zero;
+
+            Arc arc = locationCurve.Curve as Arc;
+            if (arc == null)
+                return XYZ.Zero;
+
+            // Центр дуги (окружности, из которой состоит стена)
+            XYZ arcCenter = arc.Center;
+
+            // Вектор от центра окружности до точки пересечения (по радиусу)
+            XYZ normal = (point - arcCenter).Normalize();
+
+            return normal;
+        }
+
+        /// <summary>
+        /// XYZ. Отображаем диалоговое окно для выбора точки пересечения.
+        /// </summary>
+        private XYZ ShowIntersectionSelectionDialog(List<XYZ> intersections)
+        {
+            if (intersections == null || intersections.Count == 0)
+            {
+                TaskDialog.Show("Ошибка", "Не найдено точек пересечения.");
+                return null;
+            }
+
+            List<string> intersectionStrings = new List<string>();
+            for (int i = 0; i < intersections.Count; i++)
+            {
+                intersectionStrings.Add($"Точка {i + 1}: X = {intersections[i].X:F2}, Y = {intersections[i].Y:F2}, Z = {intersections[i].Z:F2}");
+            }
+
+            TaskDialog td = new TaskDialog("Выберите точку пересечения");
+            td.MainInstruction = "Выберите одну из точек пересечения:";
+
+            for (int i = 0; i < intersectionStrings.Count; i++)
+            {
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1 + i, intersectionStrings[i]);
+            }
+
+            TaskDialogResult result = td.Show();
+
+            for (int i = 0; i < intersectionStrings.Count; i++)
+            {
+                if (result == (TaskDialogResult)(TaskDialogCommandLinkId.CommandLink1 + i))
+                {
+                    return intersections[i];
+                }
+            }
+
+            return null; // Если выбор не сделан
+        }
+
+        //////////////
+        /// <summary>
+        /// Стена. Метод для получения размеров стены
+        /// </summary>
+        double GetWallThickness(Element wall)
+        {
+            // Пробуем получить толщину через параметр WALL_ATTR_WIDTH_PARAM
+            double wallThickness = wall.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM)?.AsDouble() ?? 0;
+
+            // Если не удалось, пробуем через WallType и CompoundStructure
+            if (wallThickness == 0 && wall is Wall actualWall)
+            {
+                WallType wallType = actualWall.Document.GetElement(actualWall.GetTypeId()) as WallType;
+                if (wallType != null && wallType.GetCompoundStructure() != null)
+                {
+                    wallThickness = wallType.GetCompoundStructure().GetWidth();
+                }
+            }
+
+            return wallThickness;
+        }
+
+
         /// <summary>
         /// Пересекающий стену элемент. Метод для получения размеров элемента системы
         /// </summary>
@@ -250,13 +527,13 @@ namespace KPLN_HoleManager.Commands
             if (category == null) return (0, 0, 0);
 
             // Воздуховоды и гибкие воздуховоды
-            if (category.Id.IntegerValue == (int)BuiltInCategory.OST_DuctCurves 
-                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves) 
+            if (category.Id.IntegerValue == (int)BuiltInCategory.OST_DuctCurves
+                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves)
             {
                 double diameter = GetParameterValue(element, BuiltInParameter.RBS_CURVE_DIAMETER_PARAM);
                 if (diameter > 0)
                 {
-                    width = height = diameter; 
+                    width = height = diameter;
                 }
                 else
                 {
@@ -276,7 +553,7 @@ namespace KPLN_HoleManager.Commands
             }
             // Кабельные лотки
             else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_CableTray)
-            {               
+            {
                 height = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM);
                 width = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM);
             }
@@ -318,143 +595,56 @@ namespace KPLN_HoleManager.Commands
 
 
 
-
-
-
-
-
-        /// <summary>
-        /// Отверстие. Метод нахождения точки пересечения стены и входящего элемента.
-        /// </summary>
-        private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement, string department, string holeType)
-        {
-            // Получаем геометрию трубы (учитываем изгибы)
-            LocationCurve pipeLocation = cElement.Location as LocationCurve;
-            if (pipeLocation == null)
-                return null;
-
-            Curve pipeCurve = pipeLocation.Curve;
-
-            // Разбиваем кривую на точки (Tessellate)
-            List<XYZ> segmentPoints = pipeCurve.Tessellate() as List<XYZ>;
-
-            if (segmentPoints == null || segmentPoints.Count < 2)
-                return null;
-
-            View3D view3D = new FilteredElementCollector(doc)
-                .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
-
-            bool createdView = false;
-            if (view3D == null)
-            {
-                ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
-                    .OfClass(typeof(ViewFamilyType))
-                    .Cast<ViewFamilyType>()
-                    .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
-
-                if (viewFamilyType != null)
-                {
-                    view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
-                    createdView = true;
-                }
-            }
-
-            if (view3D == null)
-            {
-                TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
-                return null;
-            }
-
-            // Создаём фильтр для нашей стены
-            ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
-
-            XYZ closestIntersection = null;
-            double minDistance = double.MaxValue;
-
-            // Проходим по каждой паре точек
-            for (int i = 0; i < segmentPoints.Count - 1; i++)
-            {
-                XYZ start = segmentPoints[i];
-                XYZ end = segmentPoints[i + 1];
-                XYZ direction = (end - start).Normalize();
-
-                ReferenceWithContext referenceWithContext = intersector.FindNearest(start, direction);
-                if (referenceWithContext != null)
-                {
-                    XYZ intersectionPoint = referenceWithContext.GetReference().GlobalPoint;
-
-                    // Вычисляем расстояние до точки трубы
-                    double distanceToPipe = start.DistanceTo(intersectionPoint);
-
-                    // Если точка ближе - запоминаем её
-                    if (distanceToPipe < minDistance)
-                    {
-                        minDistance = distanceToPipe;
-                        closestIntersection = intersectionPoint;
-                    }
-                }
-            }
-
-            // Получаем параметры стены
-            double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
-            double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
-            double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
-
-            if (closestIntersection != null)
-            {
-                double adjustment = 0;
-
-                if (department == "АР")
-                {
-                    if (!wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).IsReadOnly)
-                    {
-                        adjustment = unconnectedHeight - offsetBottom + offsetTop;
-                    }
-                }
-
-                closestIntersection = new XYZ(closestIntersection.X, closestIntersection.Y, closestIntersection.Z + adjustment);
-            }
-
-            if (createdView)
-            {
-                doc.Delete(view3D.Id);
-            }
-
-            return closestIntersection; 
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
         /// <summary>
-        /// Отверстие. Метод изминения размера отверстия после добавления точки
+        /// Отверстие. Метод изменения размера отверстия после добавления точки
         /// </summary>
-        public void SetHoleDimensions(Transaction tx, FamilyInstance holeInstance, Element intersectingElement, double width, double height, string _userFullName, string _departmentName, string _departmentHoleName, string _sendingDepartmentHoleName)
+        public void SetHoleDimensions(Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, double widthElement, double heightElement)
         {
+
+            if (_departmentHoleName == "ИОС")
+            {
+
+
+
+
+                LocationPoint holeLocation = holeInstance.Location as LocationPoint;
+                if (holeLocation != null)
+                {
+                    XYZ holePosition = holeLocation.Point; // Центр отверстия (по его реальному размещению)
+
+                    // Получаем направление стены
+                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
+                    XYZ wallDirection = (wallCurve as Line).Direction; // Вектор направления стены
+
+                    // Вычисляем угол поворота (между осью X и направлением стены)
+                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+
+                    // Принудительно фиксируем базовую точку
+                    Transform instanceTransform = holeInstance.GetTransform();
+                    XYZ correctedOrigin = instanceTransform.OfPoint(holePosition); // Коррекция точки
+
+                    // Ось вращения - через **правильный центр отверстия**
+                    Line rotationAxis = Line.CreateBound(correctedOrigin, correctedOrigin + XYZ.BasisZ);
+
+                    // Поворачиваем отверстие относительно правильной оси
+                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+
             Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
 
             // Открываем диалоговое окно для выбора отступа
@@ -464,25 +654,36 @@ namespace KPLN_HoleManager.Commands
 
                 Parameter widthParam = holeInstance.LookupParameter("Ширина");
                 Parameter heightParam = holeInstance.LookupParameter("Высота");
+                Parameter heightOtherParam = holeInstance.LookupParameter("КП_Р_Высота");
+                Parameter diametrParam = holeInstance.LookupParameter("Диаметр");
 
-                double internalHeight = UnitUtils.ConvertToInternalUnits(height + offset, UnitTypeId.Millimeters);
-                double internalWidth = UnitUtils.ConvertToInternalUnits(width + offset, UnitTypeId.Millimeters);
+                double internalHeight = UnitUtils.ConvertToInternalUnits(heightElement + offset, UnitTypeId.Millimeters);
+                double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
+                double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
 
-                // Обработка прямоугольного отверстия
-                if (heightParam != null && !heightParam.IsReadOnly)
+                if (_departmentHoleName == "АР")
                 {
-                    heightParam.Set(internalHeight);
+                    if (_holeTypeName == "SquareHole")
+                    {
+                        heightParam.Set(internalHeight);
+                        widthParam.Set(internalWidth);
+                    }
+                    else
+                    {
+                        heightOtherParam.Set(internalDiametr);
+                    }
                 }
-
-                if (widthParam != null && !widthParam.IsReadOnly)
+                else if (_departmentHoleName == "ИОС")
                 {
-                    widthParam.Set(internalWidth);
-                }
-
-                // Обработка круглого отверстия (если ширина не редактируется, но высота есть)
-                if (heightParam != null && !heightParam.IsReadOnly && (widthParam == null || widthParam.IsReadOnly))
-                {
-                    heightParam.Set(UnitUtils.ConvertToInternalUnits(Math.Max(height, width) + offset, UnitTypeId.Millimeters));
+                    if (_holeTypeName == "SquareHole")
+                    {
+                        heightParam.Set(internalHeight);
+                        widthParam.Set(internalWidth);
+                    }
+                    else
+                    {
+                        diametrParam.Set(internalDiametr);
+                    }
                 }
 
                 if (_departmentHoleName == "АР")
@@ -490,13 +691,20 @@ namespace KPLN_HoleManager.Commands
                     LocationPoint holeLocation = holeInstance.Location as LocationPoint;
                     if (holeLocation != null)
                     {
-                        double shiftZ = -0.5 * internalHeight; // Смещение вниз на половину высоты отверстия
-                        XYZ moveVector = new XYZ(0, 0, shiftZ);
-                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
+                        if (_holeTypeName == "SquareHole")
+                        {
+                            double shiftZ = -0.5 * internalHeight; // Смещение вниз на половину высоты/ширины отверстия
+                            XYZ moveVector = new XYZ(0, 0, shiftZ);
+                            ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
+                        }
+                        else
+                        {
+                            double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight); // Смещение вниз на половину высоты/ширины отверстия
+                            XYZ moveVector = new XYZ(0, 0, shiftZ);
+                            ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
+                        }
                     }
                 }
-
-
 
 
 
