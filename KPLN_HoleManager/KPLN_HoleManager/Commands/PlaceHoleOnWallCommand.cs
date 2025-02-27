@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Autodesk.Revit.DB;
@@ -171,7 +172,8 @@ namespace KPLN_HoleManager.Commands
 
                     // Задаём размеры отверстию, двигаем его и пишем данные в Extensible Storage
                     (double widthElement, double heightElement, double lengthElement) = GetElementSize(intersectingElement);
-                    SetHoleDimensions(tx, wall, intersectingElement, holeInstance, widthElement, heightElement);
+
+                    SetHoleDimensions(tx, wall, intersectingElement, holeInstance, holeLocation, widthElement, heightElement);
 
                     // Если всё же что-то поёдт не так - отменяем транзакцию :)
                     if (transactionStatus == false)
@@ -188,7 +190,6 @@ namespace KPLN_HoleManager.Commands
                 TaskDialog.Show("Ошибка", $"Произошла непредвиденная ошибка:\n{ex.Message}");
             }
         }
-
 
         /// <summary>
         /// Семейство. Метод выбора файла семейства
@@ -236,7 +237,6 @@ namespace KPLN_HoleManager.Commands
             return null;
         }
 
-        //////////////
         /// <summary>
         /// XYZ. Метод нахождения точки пересечения стены и входящего элемента.
         /// </summary>
@@ -493,7 +493,6 @@ namespace KPLN_HoleManager.Commands
             return null; // Если выбор не сделан
         }
 
-        //////////////
         /// <summary>
         /// Стена. Метод для получения размеров стены
         /// </summary>
@@ -514,7 +513,6 @@ namespace KPLN_HoleManager.Commands
 
             return wallThickness;
         }
-
 
         /// <summary>
         /// Пересекающий стену элемент. Метод для получения размеров элемента системы
@@ -587,64 +585,11 @@ namespace KPLN_HoleManager.Commands
             return 0;
         }
 
-
-
-
-
-
-
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
         /// <summary>
-        /// Отверстие. Метод изменения размера отверстия после добавления точки
+        /// Отверстие. Метод изменения размера отверстия и его разворот после создания XYZ
         /// </summary>
-        public void SetHoleDimensions(Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, double widthElement, double heightElement)
+        public void SetHoleDimensions(Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
         {
-
-            if (_departmentHoleName == "ИОС")
-            {
-
-
-
-
-                LocationPoint holeLocation = holeInstance.Location as LocationPoint;
-                if (holeLocation != null)
-                {
-                    XYZ holePosition = holeLocation.Point; // Центр отверстия (по его реальному размещению)
-
-                    // Получаем направление стены
-                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
-                    XYZ wallDirection = (wallCurve as Line).Direction; // Вектор направления стены
-
-                    // Вычисляем угол поворота (между осью X и направлением стены)
-                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-
-                    // Принудительно фиксируем базовую точку
-                    Transform instanceTransform = holeInstance.GetTransform();
-                    XYZ correctedOrigin = instanceTransform.OfPoint(holePosition); // Коррекция точки
-
-                    // Ось вращения - через **правильный центр отверстия**
-                    Line rotationAxis = Line.CreateBound(correctedOrigin, correctedOrigin + XYZ.BasisZ);
-
-                    // Поворачиваем отверстие относительно правильной оси
-                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
-                }
-            }
-
-
-
-
-
-
-
-
-
-
-
-
             Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
 
             // Открываем диалоговое окно для выбора отступа
@@ -672,24 +617,9 @@ namespace KPLN_HoleManager.Commands
                     {
                         heightOtherParam.Set(internalDiametr);
                     }
-                }
-                else if (_departmentHoleName == "ИОС")
-                {
-                    if (_holeTypeName == "SquareHole")
-                    {
-                        heightParam.Set(internalHeight);
-                        widthParam.Set(internalWidth);
-                    }
-                    else
-                    {
-                        diametrParam.Set(internalDiametr);
-                    }
-                }
 
-                if (_departmentHoleName == "АР")
-                {
-                    LocationPoint holeLocation = holeInstance.Location as LocationPoint;
-                    if (holeLocation != null)
+                    LocationPoint holeLocationAR = holeInstance.Location as LocationPoint;
+                    if (holeLocationAR != null)
                     {
                         if (_holeTypeName == "SquareHole")
                         {
@@ -705,8 +635,87 @@ namespace KPLN_HoleManager.Commands
                         }
                     }
                 }
+                else if (_departmentHoleName == "ИОС")
+                {
+                    if (_holeTypeName == "SquareHole")
+                    {
+                        heightParam.Set(internalHeight);
+                        widthParam.Set(internalWidth);
+                    }
+                    else
+                    {
+                        diametrParam.Set(internalDiametr);
+                    }
+
+                    // Получаем кривую стены
+                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
+                    XYZ wallDirection;
+
+                    if (wallCurve is Line line) // Прямая стена
+                    {
+                        wallDirection = line.Direction;
+                    }
+                    else if (wallCurve is Arc arc) // Изогнутая стена
+                    {
+                        // Центр дуги
+                        XYZ arcCenter = arc.Center;
+
+                        // Вектор от центра дуги к точке размещения отверстия
+                        XYZ radialVector = (holeLocation - arcCenter).Normalize();
+
+                        // Касательная = вектор, перпендикулярный радиальному
+                        wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+                    }
+                    else
+                    {
+                        return;
+                    }
+
+                    // Вычисляем угол поворота (между осью X и направлением стены)
+                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+
+                    // Ось вращения - через точку установки отверстия (holeLocation)
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+
+                    // Поворачиваем отверстие относительно нормали стены
+                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
+
+                    double wallThickness = GetWallThickness(wall);
 
 
+                    if (wallThickness > 0)
+                    {
+                        // Вычисляем нормаль к стене
+                        XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
+
+                        // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
+                        XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
+                        XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
+
+                        // Проверяем, в каком направлении двигаться - в сторону нормали или против
+                        double dotProduct = wallNormal.DotProduct(directionToIntersecting);
+                        XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
+
+                        // Рассчитываем смещение
+                        XYZ moveOffset = moveDirection * (wallThickness / 2);
+
+                        // Проверяем, выйдет ли отверстие за пределы стены после смещения
+                        XYZ newHoleLocation = holeLocation + moveOffset;
+
+                        if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            // Если выходит за пределы стены — двигаем в противоположном направлении
+                            moveOffset = -moveOffset;
+                            newHoleLocation = holeLocation + moveOffset;
+                        }
+
+                        // Перемещаем отверстие только если оно осталось внутри стены
+                        if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
+                        }
+                    }
+                }
 
 
 
@@ -729,6 +738,19 @@ namespace KPLN_HoleManager.Commands
                 transactionStatus = false;
                 TaskDialog.Show("Внимание", "Операция отменена пользователем.");
             }
-        } 
+        }
+
+
+
+        /// <summary>
+        /// Проверяет, остаётся ли точка внутри границ стены
+        /// </summary>
+        private bool IsPointInsideWall(XYZ point, Element wall, double wallThickness)
+        {
+            BoundingBoxXYZ bbox = wall.get_BoundingBox(null);
+            return (point.X >= bbox.Min.X && point.X <= bbox.Max.X) &&
+                   (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
+                   (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
+        }
     }
 }
