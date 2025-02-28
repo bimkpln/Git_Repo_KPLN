@@ -703,6 +703,7 @@ namespace KPLN_HoleManager.Commands
                 }
 
                 // Запись данных в хранилище
+                string wallIdString = wall.Id.IntegerValue.ToString();
                 string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
 
                 ExtensibleStorageHelper.AddChatMessage(
@@ -711,6 +712,7 @@ namespace KPLN_HoleManager.Commands
                     _userFullName,
                     _departmentName,
                     _sendingDepartmentHoleName,
+                    wallIdString,
                     intersectingElementIdString,
                     "Без статуса",
                     "Отверстие создано"

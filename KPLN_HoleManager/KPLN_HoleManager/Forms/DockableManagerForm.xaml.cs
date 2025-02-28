@@ -8,6 +8,7 @@ using KPLN_HoleManager.Common;
 using System.Collections.Generic;
 using System.Linq;
 using KPLN_HoleManager.Commands;
+using System.Windows.Documents;
 
 
 namespace KPLN_HoleManager.Forms
@@ -83,7 +84,7 @@ namespace KPLN_HoleManager.Forms
             buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFE0FDFF"))));
             buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
 
-            AddButton("🔄  Обновление данных", buttonStyle);
+            AddButton("🔄  Принудительное обновление данных отверстий", buttonStyle);
             AddButton("➡️  Создать задание на отверстие", buttonStyle);
         }
 
@@ -94,7 +95,7 @@ namespace KPLN_HoleManager.Forms
 
             Document doc = _uiApp.ActiveUIDocument.Document;
             List<ElementId> familyInstanceIds = _iDataProcessor.GetFamilyInstanceIds(doc);
-            List<int> statusCounts = _iDataProcessor.statusHoleTask(doc, familyInstanceIds);
+            List<int> statusCounts = _iDataProcessor.StatusHoleTask(doc, familyInstanceIds);
 
             _buttonDataViewModel.UpdateStatusCounts(statusCounts);
         }
@@ -109,7 +110,7 @@ namespace KPLN_HoleManager.Forms
             };
 
             // Добавляем обработчики для кнопок в зависимости от их содержимого
-            if (content.Contains("Обновление данных"))
+            if (content.Contains("Принудительное обновление данных отверстий"))
             {
                 button.Click += UpdateHoles;
             }
@@ -159,16 +160,100 @@ namespace KPLN_HoleManager.Forms
             var holeWindow = new sChoiseHole(_uiApp, element, userFullName, departmentName);
             holeWindow.ShowDialog();
         }
+
+        // XAML. Вывод информации об отверстиях
+        private void StatusButton_Click(object sender, RoutedEventArgs e)
+        {
+            Button clickedButton = sender as Button;
+            if (clickedButton == null) return;
+
+            // Очищаем панель перед добавлением новых кнопок
+            InfoHolePanel.Children.Clear();
+
+            // Получаем список всех сообщений для отверстий
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            List<ElementId> familyInstanceIds = _iDataProcessor.GetFamilyInstanceIds(doc);
+            List<List<string>> holeTaskMessages = _iDataProcessor.GetHoleTaskMessages(doc, familyInstanceIds);
+
+            // Определяем нужный статус на основе нажатой кнопки
+            string selectedStatus = null;
+            if (clickedButton.Name == "ButtonNoneStatus") selectedStatus = "Без статуса";
+            else if (clickedButton.Name == "ButtonOKStatus") selectedStatus = "Утверждено";
+            else if (clickedButton.Name == "ButtonWarningStatus") selectedStatus = "Предупреждения";
+            else if (clickedButton.Name == "ButtonErrorStatus") selectedStatus = "Ошибки";            
+
+            // Фильтруем сообщения по выбранному статусу
+            List<List<string>> filteredMessages = new List<List<string>>();
+
+            foreach (var messageParts in holeTaskMessages)
+            {
+                if (messageParts[9] == selectedStatus)
+                {
+                    filteredMessages.Add(messageParts);
+                }
+            }
+
+            foreach (var messageParts in filteredMessages)
+            {
+                // Разбиваем messageParts на отдельные переменные
+                string data = messageParts[0];
+                string name = messageParts[1];
+                string departamentFrom = messageParts[2];
+                string departamentIn = messageParts[3];
+                string holeID = messageParts[4];
+                string holeName = messageParts[5];
+                string wallID = messageParts[6];
+                string sEllementID = messageParts[7];
+
+                // Создаем TextBlock для кнопки
+                TextBlock textBlock = new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap
+                };
+
+                textBlock.Inlines.Add(new Run(data) { FontWeight = FontWeights.Bold, Foreground = Brushes.Blue });
+                textBlock.Inlines.Add(new Run($". {name} ({departamentFrom} -> {departamentIn}).\n"));
+                textBlock.Inlines.Add(new Run(holeName) { FontWeight = FontWeights.Bold });
+                textBlock.Inlines.Add(new Run($" ({holeID}).\n"));
+                textBlock.Inlines.Add(new Run("Стена: ") { FontWeight = FontWeights.Bold });
+                textBlock.Inlines.Add(new Run($"{wallID}. "));
+                textBlock.Inlines.Add(new Run("Элементы в стене: ") { FontWeight = FontWeights.Bold });
+                textBlock.Inlines.Add(new Run($"{sEllementID}."));
+
+                Button newButton = new Button
+                {
+                    Content = textBlock,
+                    Height = 68,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left, // Выравнивание текста влево
+                    Margin = new Thickness(2, 2, 2, 0), // Отступы между кнопками
+                    Padding = new Thickness(10, 0, 0, 0) // Внутренний отступ кнопки
+                };
+
+                // Определяем цвет кнопки на основе статуса
+                if (selectedStatus == "Без статуса")
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(235, 235, 235)); // Серый
+                else if (selectedStatus == "Утверждено")
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(188, 252, 157)); // Зеленый
+                else if (selectedStatus == "Предупреждения")
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(253, 245, 138)); // Желтый
+                else if (selectedStatus == "Ошибки")
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 192, 177)); // Красный
+
+                // Добавляем кнопку в панель
+                InfoHolePanel.Children.Add(newButton);
+            }
+        }
     }
 
     // Передаём данные статусов в названия кнопок
     public class ButtonDataViewModel : INotifyPropertyChanged
     {
         // Первичная прогрузка
-        private string _noneStatusButtonText = "❓  Без статуса: ?";
-        private string _approvedButtonText = "✔️  Утверждено: ?";
-        private string _warningButtonText = "⚠️  Предупреждения: ?";
-        private string _errorButtonText = "❌  Ошибки: ?";
+        private string _noneStatusButtonText = "❓  Без статуса: ОШИБКА!";
+        private string _approvedButtonText = "✔️  Утверждено: ОШИБКА!";
+        private string _warningButtonText = "⚠️  Предупреждения: ОШИБКА!";
+        private string _errorButtonText = "❌  Ошибки: ОШИБКА!";
 
         public string NoneStatusButtonText
         {

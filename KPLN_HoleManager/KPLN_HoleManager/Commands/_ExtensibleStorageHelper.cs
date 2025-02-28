@@ -30,7 +30,7 @@ namespace KPLN_HoleManager.Commands
         /// <summary>
         /// Метод добавления информации в экземпляр семейства отверстия
         /// </summary>
-        public static void AddChatMessage(FamilyInstance holeInstance, string date, string userName, string fromDepartment, string toDepartment, string iElementIdString, string status, string message)
+        public static void AddChatMessage(FamilyInstance holeInstance, string date, string userName, string fromDepartment, string toDepartment, string wallIdString, string iElementIdString, string status, string message)
         {
             // Получаем или создаем схему
             Schema schema = GetOrCreateSchema();
@@ -44,6 +44,8 @@ namespace KPLN_HoleManager.Commands
                 entity = new Entity(schema); // Создаем новую сущность с правильной схемой
             }
 
+            string holeInstanceId = holeInstance.Id.IntegerValue.ToString();
+            string holeInstanceName = $"{holeInstance.Symbol.Family.Name} - {holeInstance.Symbol.Name}";
             Transform transformHoleInstance = holeInstance.GetTransform();
             XYZ originHoleInstance = transformHoleInstance.Origin;
             string coordinatesHoleInstance = $"{originHoleInstance.X:F3},{originHoleInstance.Y:F3},{originHoleInstance.Z:F3}";
@@ -52,7 +54,8 @@ namespace KPLN_HoleManager.Commands
             IList<string> messages = entity.Get<IList<string>>(schema.GetField(FieldName)) ?? new List<string>();
 
             // Формируем новое сообщение
-            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, iElementIdString, coordinatesHoleInstance, status, message);
+            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, 
+                holeInstanceId, holeInstanceName, wallIdString, iElementIdString, coordinatesHoleInstance, status, message);
             messages.Add(newMessage);
 
             // Устанавливаем обновленный список сообщений в сущность

@@ -15,7 +15,6 @@ namespace KPLN_HoleManager.Commands
             "501_ЗИ_Отверстие_Прямоугольное_Стена_(Об)", "501_ЗИ_Отверстие_Круглое_Стена_(Об)"
         };
 
-
         // Получение всех ID экземпляров семейств отверстия
         public static List<ElementId> GetFamilyInstanceIds(Document doc)
         {
@@ -35,7 +34,7 @@ namespace KPLN_HoleManager.Commands
         }
 
         // Получение статуса всех заданий на отверстия
-        public static List<int> statusHoleTask(Document doc, List<ElementId> familyInstanceIds)
+        public static List<int> StatusHoleTask(Document doc, List<ElementId> familyInstanceIds)
         {
             // Создаем список, чтобы хранить статистику по статусам: "Без статуса", "Утверждено", "Предупреждения", "Ошибки"
             List<int> statusCounts = new List<int> { 0, 0, 0, 0 };
@@ -58,7 +57,7 @@ namespace KPLN_HoleManager.Commands
                     // Разделяем сообщение на части по разделителю
                     string[] messageParts = lastMessage.Split(new string[] { Commands.ExtensibleStorageHelper.Separator }, StringSplitOptions.None);
 
-                    string status = messageParts[6];
+                    string status = messageParts[9];
 
                     switch (status)
                     {
@@ -80,6 +79,35 @@ namespace KPLN_HoleManager.Commands
             }
 
             return statusCounts;
+        }
+
+        // Получение всех сообщений для заданий на отверстия
+        public static List<List<string>> GetHoleTaskMessages(Document doc, List<ElementId> familyInstanceIds)
+        {
+            List<List<string>> holeTaskMessages = new List<List<string>>();
+
+            foreach (var id in familyInstanceIds)
+            {
+                // Получаем экземпляр семейства
+                FamilyInstance instance = doc.GetElement(id) as FamilyInstance;
+                if (instance == null)
+                    continue;
+
+                // Получаем список сообщений
+                List<string> messages = ExtensibleStorageHelper.GetChatMessages(instance);
+
+                if (messages.Count > 0)
+                {
+                    // Берем последнее сообщение
+                    string lastMessage = messages.Last();
+
+                    // Разделяем сообщение на части по разделителю
+                    string[] messageParts = lastMessage.Split(new string[] { Commands.ExtensibleStorageHelper.Separator }, StringSplitOptions.None);
+                    holeTaskMessages.Add(messageParts.ToList());
+                }
+            }
+
+            return holeTaskMessages;
         }
 
     }

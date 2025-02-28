@@ -14,12 +14,12 @@
         IsManipulationEnabled="True">
     <Grid>
         <Grid.RowDefinitions>
-            
+
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            
+
         </Grid.RowDefinitions>
 
         <!-- Верхняя панель -->
@@ -28,7 +28,7 @@
 
         <!-- Средняя панель -->
         <StackPanel Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Stretch" Margin="0,1,0,0">
-            <Button Content="{Binding NoneStatusButtonText}" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="5,0,0,0" Background="#FFBDBDBD" BorderThickness="1" FontSize="10">
+            <Button x:Name="ButtonNoneStatus" Content="{Binding NoneStatusButtonText}" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="5,0,0,0" Background="#FFBDBDBD" BorderThickness="1" FontSize="10" Click="StatusButton_Click">
                 <Button.Style>
                     <Style TargetType="Button">
                         <Setter Property="Template">
@@ -51,13 +51,14 @@
             </Button>
             <Grid HorizontalAlignment="Stretch" Background="#FFE2E2E2">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="29*"/>
+                    <ColumnDefinition Width="104*"/>
+                    <ColumnDefinition Width="106*"/>
+                    <ColumnDefinition Width="27*"/>
+                    <ColumnDefinition Width="133*"/>
                 </Grid.ColumnDefinitions>
-                <Button Content="{Binding ApprovedButtonText}" Height="25" Grid.Column="0" 
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-                Padding="5,0,0,0" Background="#FF8FE660" BorderThickness="0" FontSize="9">
+                <Button x:Name="ButtonOKStatus" Content="{Binding ApprovedButtonText}" Height="25" Grid.Column="0" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FF8FE660" BorderThickness="0" FontSize="9" Click="StatusButton_Click" Grid.ColumnSpan="2">
                     <Button.Style>
                         <Style TargetType="Button">
                             <Setter Property="Template">
@@ -79,9 +80,8 @@
                     </Button.Style>
                 </Button>
 
-                <Button Content="{Binding WarningButtonText}" Height="25" Grid.Column="1" 
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-                Padding="5,0,0,0" Background="#FFECDC37" BorderThickness="0" FontSize="9">
+                <Button x:Name="ButtonWarningStatus" Content="{Binding WarningButtonText}" Height="25" Grid.Column="1" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FFECDC37" BorderThickness="0" FontSize="9" Click="StatusButton_Click" Grid.ColumnSpan="4" Margin="104,0,133,0">
                     <Button.Style>
                         <Style TargetType="Button">
                             <Setter Property="Template">
@@ -103,9 +103,8 @@
                     </Button.Style>
                 </Button>
 
-                <Button Content="{Binding ErrorButtonText}" Height="25" Grid.Column="2" 
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" 
-                Padding="5,0,0,0" Background="#FFF98A70" BorderThickness="0" FontSize="9">
+                <Button x:Name="ButtonErrorStatus" Content="{Binding ErrorButtonText}" Height="25" Grid.Column="4" HorizontalContentAlignment="Left" 
+                Padding="5,0,0,0" Background="#FFF98A70" BorderThickness="0" FontSize="9" Click="StatusButton_Click">
                     <Button.Style>
                         <Style TargetType="Button">
                             <Setter Property="Template">
@@ -129,18 +128,20 @@
             </Grid>
         </StackPanel>
 
-        <!-- Пустая панель -->
-        <StackPanel Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,2,0,0" Background="White">
-            <!-- Пустое пространство -->
-        </StackPanel>
+        <!-- Панель с информацией -->
+        <Grid Grid.Row="2" Background="White">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="InfoHolePanel"/>
+            </ScrollViewer>
+        </Grid>
 
         <!-- Нижняя панель -->
         <StackPanel Orientation="Vertical" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
-            
+
             <Button Content="⚙️  Пользовательские настройки плагина" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0,0,0" Background="#FFE0FDFF"/>
-            
+
         </StackPanel>
-        
+
     </Grid>
-    
+
 </Page>
