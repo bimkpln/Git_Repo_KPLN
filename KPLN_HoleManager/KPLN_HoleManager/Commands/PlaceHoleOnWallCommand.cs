@@ -7,6 +7,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_HoleManager.Forms;
 
 namespace KPLN_HoleManager.Commands
 {
@@ -70,7 +71,6 @@ namespace KPLN_HoleManager.Commands
                 // Выбираемый элемент, который пересекает стену
                 Element intersectingElement = null;
 
-                // Выбор элемента, который пересекает стену
                 while (true)
                 {
                     try
@@ -182,6 +182,9 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
+                    // Обновление данных интерфейса
+                    DockableManagerForm.Instance?.UpdateStatusCounts();
+
                     tx.Commit();                  
                 }
             }
@@ -215,13 +218,18 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         private Family LoadOrGetExistingFamily(Document doc, string familyPath)
         {
-            Family family = new FilteredElementCollector(doc).OfClass(typeof(Family))
-                .FirstOrDefault(f => f.Name == Path.GetFileNameWithoutExtension(familyPath)) as Family;
+            string familyName = Path.GetFileNameWithoutExtension(familyPath);
+
+            Family family = new FilteredElementCollector(doc)
+                .OfClass(typeof(Family))
+                .Cast<Family>()
+                .FirstOrDefault(f => f.Name == familyName);
 
             if (family == null)
             {
-                doc.LoadFamily(familyPath, out family);
+                doc.LoadFamily(familyPath, new ReplaceNestedFamilyHandler(), out family);
             }
+
             return family;
         }
 
@@ -258,6 +266,7 @@ namespace KPLN_HoleManager.Commands
                 .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
 
             bool createdView = false;
+
             if (view3D == null)
             {
                 ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
@@ -312,6 +321,7 @@ namespace KPLN_HoleManager.Commands
             {
                 // Показываем диалог, если точек несколько
                 selectedIntersection = ShowIntersectionSelectionDialog(allIntersections);
+
                 if (selectedIntersection == null)
                 {
                     if (createdView) doc.Delete(view3D.Id);
@@ -335,11 +345,7 @@ namespace KPLN_HoleManager.Commands
 
             selectedIntersection = new XYZ(selectedIntersection.X, selectedIntersection.Y, selectedIntersection.Z + adjustmentZ);
 
-            // Удаляем временный 3D-вид
-            if (createdView)
-            {
-                doc.Delete(view3D.Id);
-            }
+            if (createdView) doc.Delete(view3D.Id);
 
             return selectedIntersection;
         }
@@ -363,7 +369,7 @@ namespace KPLN_HoleManager.Commands
                 double distanceFromStart = start.DistanceTo(intersectionPoint);
 
                 if (distanceFromStart > segmentLength)
-                    continue; // Пропускаем точки за границей сегмента
+                    continue;
 
                 // Получаем поверхность стены
                 Wall wallElement = wall as Wall;
@@ -392,7 +398,6 @@ namespace KPLN_HoleManager.Commands
                 // Смещаем точку вдоль нормали стены
                 XYZ shiftedPoint = intersectionPoint + wallNormal * wallThickness;
 
-                // Проверяем, остается ли смещенная точка в стене
                 IList<ReferenceWithContext> shiftedReferences = intersector.Find(shiftedPoint, direction);
                 bool stillInWall = shiftedReferences.Any(r => r.GetReference().ElementId == wall.Id);
 
@@ -413,7 +418,6 @@ namespace KPLN_HoleManager.Commands
             uv = null;
             BoundingBoxUV bb = face.GetBoundingBox();
 
-            // Перебираем возможные UV-координаты в рамках поверхности
             for (double u = bb.Min.U; u <= bb.Max.U; u += 0.01)
             {
                 for (double v = bb.Min.V; v <= bb.Max.V; v += 0.01)
@@ -421,7 +425,6 @@ namespace KPLN_HoleManager.Commands
                     UV testUV = new UV(u, v);
                     XYZ testXYZ = face.Evaluate(testUV);
 
-                    // Если найдено совпадение, возвращаем UV
                     if (testXYZ.DistanceTo(point) < 0.01)
                     {
                         uv = testUV;
@@ -446,10 +449,8 @@ namespace KPLN_HoleManager.Commands
             if (arc == null)
                 return XYZ.Zero;
 
-            // Центр дуги (окружности, из которой состоит стена)
             XYZ arcCenter = arc.Center;
 
-            // Вектор от центра окружности до точки пересечения (по радиусу)
             XYZ normal = (point - arcCenter).Normalize();
 
             return normal;
@@ -490,7 +491,7 @@ namespace KPLN_HoleManager.Commands
                 }
             }
 
-            return null; // Если выбор не сделан
+            return null;
         }
 
         /// <summary>
@@ -579,7 +580,6 @@ namespace KPLN_HoleManager.Commands
             Parameter param = element.get_Parameter(paramId);
             if (param != null && param.HasValue)
             {
-                // Используем Revit API для корректного преобразования в мм
                 return UnitUtils.ConvertFromInternalUnits(param.AsDouble(), UnitTypeId.Millimeters);
             }
             return 0;
@@ -623,13 +623,13 @@ namespace KPLN_HoleManager.Commands
                     {
                         if (_holeTypeName == "SquareHole")
                         {
-                            double shiftZ = -0.5 * internalHeight; // Смещение вниз на половину высоты/ширины отверстия
+                            double shiftZ = -0.5 * internalHeight; 
                             XYZ moveVector = new XYZ(0, 0, shiftZ);
                             ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
                         }
                         else
                         {
-                            double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight); // Смещение вниз на половину высоты/ширины отверстия
+                            double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight);
                             XYZ moveVector = new XYZ(0, 0, shiftZ);
                             ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
                         }
@@ -657,13 +657,10 @@ namespace KPLN_HoleManager.Commands
                     }
                     else if (wallCurve is Arc arc) // Изогнутая стена
                     {
-                        // Центр дуги
                         XYZ arcCenter = arc.Center;
 
-                        // Вектор от центра дуги к точке размещения отверстия
                         XYZ radialVector = (holeLocation - arcCenter).Normalize();
 
-                        // Касательная = вектор, перпендикулярный радиальному
                         wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
                     }
                     else
@@ -671,21 +668,14 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
-                    // Вычисляем угол поворота (между осью X и направлением стены)
                     double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-
-                    // Ось вращения - через точку установки отверстия (holeLocation)
                     Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
-
-                    // Поворачиваем отверстие относительно нормали стены
                     ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
-
                     double wallThickness = GetWallThickness(wall);
 
 
                     if (wallThickness > 0)
                     {
-                        // Вычисляем нормаль к стене
                         XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
 
                         // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
@@ -696,7 +686,6 @@ namespace KPLN_HoleManager.Commands
                         double dotProduct = wallNormal.DotProduct(directionToIntersecting);
                         XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
 
-                        // Рассчитываем смещение
                         XYZ moveOffset = moveDirection * (wallThickness / 2);
 
                         // Проверяем, выйдет ли отверстие за пределы стены после смещения
@@ -704,12 +693,9 @@ namespace KPLN_HoleManager.Commands
 
                         if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
                         {
-                            // Если выходит за пределы стены — двигаем в противоположном направлении
                             moveOffset = -moveOffset;
                             newHoleLocation = holeLocation + moveOffset;
                         }
-
-                        // Перемещаем отверстие только если оно осталось внутри стены
                         if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
                         {
                             ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
@@ -717,11 +703,9 @@ namespace KPLN_HoleManager.Commands
                     }
                 }
 
-
-
-
                 // Запись данных в хранилище
                 string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
+
                 ExtensibleStorageHelper.AddChatMessage(
                     holeInstance,
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -740,8 +724,6 @@ namespace KPLN_HoleManager.Commands
             }
         }
 
-
-
         /// <summary>
         /// Проверяет, остаётся ли точка внутри границ стены
         /// </summary>
@@ -753,4 +735,22 @@ namespace KPLN_HoleManager.Commands
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
         }
     }
+
+    // Перезаписываем параметры вложенных семейств
+    public class ReplaceNestedFamilyHandler : IFamilyLoadOptions
+    {
+        public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
+        {
+            overwriteParameterValues = true; 
+            return true; 
+        }
+
+        public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
+        {
+            source = FamilySource.Family;
+            overwriteParameterValues = true;
+            return true; 
+        }
+    }
+
 }

@@ -7,6 +7,7 @@ using System.ComponentModel;
 using KPLN_HoleManager.Common;
 using System.Collections.Generic;
 using System.Linq;
+using KPLN_HoleManager.Commands;
 
 
 namespace KPLN_HoleManager.Forms
@@ -22,27 +23,25 @@ namespace KPLN_HoleManager.Forms
 
     public partial class DockableManagerForm : Page, IDockablePaneProvider
     {
-        UIApplication _uiApp; // Активная Revit-сессия
+        UIApplication _uiApp; // Активная Revit-сессия      
 
         private readonly DBWorkerService _dbWorkerService; // БД
         string userFullName; // Имя пользователя
         string departmentName; // Название отдела
 
-        public DockableManagerForm()
-        {
-            InitializeComponent();
- 
-            // Получаем данные из БД
-            _dbWorkerService = new DBWorkerService();            
-            userFullName = _dbWorkerService.UserFullName;
-            departmentName = _dbWorkerService.DepartmentName;
+        // Данные статусов в названия кнопок
+        private readonly ButtonDataViewModel _buttonDataViewModel; 
+        private static DockableManagerForm _instance;
+        public static DockableManagerForm Instance => _instance;
 
-            // Построение интерфейса
-            AddDepartmentButtons();
-            DataContext = new ButtonDataViewModel();
+        /// Получение Revit-потока
+        public void SetUIApplication(UIApplication uiApp)
+        {
+            _uiApp = uiApp;
+            UpdateStatusCounts();
         }
 
-        // Регистрация кнопок в Revit
+        /// Регистрация Dockable-панели в Revit
         public void SetupDockablePane(DockablePaneProviderData data)
         {
             data.FrameworkElement = this as FrameworkElement;
@@ -53,10 +52,23 @@ namespace KPLN_HoleManager.Forms
             };
         }
 
-        // Получение Revit-потока
-        public void SetUIApplication(UIApplication uiApp)
+        /// DockableManagerForm
+        public DockableManagerForm()
         {
-            _uiApp = uiApp;
+            InitializeComponent();
+ 
+            // Получаем данные из БД
+            _dbWorkerService = new DBWorkerService();            
+            userFullName = _dbWorkerService.UserFullName;
+            departmentName = _dbWorkerService.DepartmentName;
+
+            // Кнопки характерные для отдела
+            AddDepartmentButtons();
+
+            // Общие кнопки для всех
+            _buttonDataViewModel = new ButtonDataViewModel();
+            DataContext = _buttonDataViewModel;
+            _instance = this;
         }
 
         // Растановка кнопок в зависимости от отдела
@@ -71,8 +83,20 @@ namespace KPLN_HoleManager.Forms
             buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFE0FDFF"))));
             buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
 
+            AddButton("🔄  Обновление данных", buttonStyle);
             AddButton("➡️  Создать задание на отверстие", buttonStyle);
-            AddButton("🔂  Расставить отверстия по заданию", buttonStyle);           
+        }
+
+        // Обновление статусов отверстий
+        public void UpdateStatusCounts()
+        {
+            if (_uiApp == null || _uiApp.ActiveUIDocument == null) return;
+
+            Document doc = _uiApp.ActiveUIDocument.Document;
+            List<ElementId> familyInstanceIds = _iDataProcessor.GetFamilyInstanceIds(doc);
+            List<int> statusCounts = _iDataProcessor.statusHoleTask(doc, familyInstanceIds);
+
+            _buttonDataViewModel.UpdateStatusCounts(statusCounts);
         }
 
         // Функция пакетного создания кнопок
@@ -85,19 +109,26 @@ namespace KPLN_HoleManager.Forms
             };
 
             // Добавляем обработчики для кнопок в зависимости от их содержимого
+            if (content.Contains("Обновление данных"))
+            {
+                button.Click += UpdateHoles;
+            }
             if (content.Contains("Создать задание на отверстие"))
             {
                 button.Click += PlaceHolesOnSelectedWall;
-            }
-            else if (content.Contains("Расставить отверстия по заданию"))
-            {
-                button.Click += CreateHolesByTask;
             }
 
             ActionButtonDepartment.Children.Add(button);
         }
 
-        // XAML. Обработчик для кнопки "Расставить отверстия по выбранной стене"
+        // XAML. Обработчик для кнопки "Обновление данных об отверстиях"
+        private void UpdateHoles(object sender, RoutedEventArgs e)
+        {
+            UpdateStatusCounts();
+            TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
+        }
+
+        // XAML. Обработчик для кнопки "Создать задание на отверстие"
         private void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
@@ -128,33 +159,23 @@ namespace KPLN_HoleManager.Forms
             var holeWindow = new sChoiseHole(_uiApp, element, userFullName, departmentName);
             holeWindow.ShowDialog();
         }
-
-        // XAML. Обработчик для кнопки "Создать отверстия по заданию"
-        private void CreateHolesByTask(object sender, RoutedEventArgs e)
-        {
-            UIDocument uiDoc = _uiApp.ActiveUIDocument;
-            Document doc = uiDoc.Document;
-
-            List<ElementId> familyInstanceIds = Commands._iDataProcessor.GetFamilyInstanceIds(doc);
-            Commands._iDataProcessor.ShowFamilyInstanceCount(doc, uiDoc, Commands._iDataProcessor.familyInstanceNameList);
-        }
     }
-
 
     // Передаём данные статусов в названия кнопок
     public class ButtonDataViewModel : INotifyPropertyChanged
     {
-        private string _noneStatusButtonText = $"❓  Без статуса: {null}";
-        private string _approvedButtonText = $"✔️  Утверждено: {null}";
-        private string _warningButtonText = $"⚠️  Предупреждения: {null}";
-        private string _errorButtonText = $"❌  Ошибки: {null}";
+        // Первичная прогрузка
+        private string _noneStatusButtonText = "❓  Без статуса: ?";
+        private string _approvedButtonText = "✔️  Утверждено: ?";
+        private string _warningButtonText = "⚠️  Предупреждения: ?";
+        private string _errorButtonText = "❌  Ошибки: ?";
 
         public string NoneStatusButtonText
         {
             get => _noneStatusButtonText;
             set
             {
-                _approvedButtonText = value;
+                _noneStatusButtonText = value;
                 OnPropertyChanged(nameof(NoneStatusButtonText));
             }
         }
@@ -187,6 +208,17 @@ namespace KPLN_HoleManager.Forms
                 _errorButtonText = value;
                 OnPropertyChanged(nameof(ErrorButtonText));
             }
+        }
+
+        // Обновление статусов отверстий в интерфесе
+        public void UpdateStatusCounts(List<int> statusCounts)
+        {
+            if (statusCounts == null) return;
+
+            NoneStatusButtonText = $"❓  Без статуса: {statusCounts[0]}";
+            ApprovedButtonText = $"✔️  Утверждено: {statusCounts[1]}";
+            WarningButtonText = $"⚠️  Предупреждения: {statusCounts[2]}";
+            ErrorButtonText = $"❌  Ошибки: {statusCounts[3]}";
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

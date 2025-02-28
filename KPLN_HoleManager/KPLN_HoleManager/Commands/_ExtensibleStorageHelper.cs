@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
-using Autodesk.Revit.UI;
 
 namespace KPLN_HoleManager.Commands
 {
@@ -31,13 +30,13 @@ namespace KPLN_HoleManager.Commands
         /// <summary>
         /// Метод добавления информации в экземпляр семейства отверстия
         /// </summary>
-        public static void AddChatMessage(FamilyInstance instance, string date, string userName, string fromDepartment, string toDepartment, string iElementIdString, string status, string message)
+        public static void AddChatMessage(FamilyInstance holeInstance, string date, string userName, string fromDepartment, string toDepartment, string iElementIdString, string status, string message)
         {
             // Получаем или создаем схему
             Schema schema = GetOrCreateSchema();
 
             // Получаем сущность экземпляра семейства
-            Entity entity = instance.GetEntity(schema);
+            Entity entity = holeInstance.GetEntity(schema);
 
             // Если сущность недействительна, создаем новую
             if (!entity.IsValid())
@@ -45,28 +44,32 @@ namespace KPLN_HoleManager.Commands
                 entity = new Entity(schema); // Создаем новую сущность с правильной схемой
             }
 
+            Transform transformHoleInstance = holeInstance.GetTransform();
+            XYZ originHoleInstance = transformHoleInstance.Origin;
+            string coordinatesHoleInstance = $"{originHoleInstance.X:F3},{originHoleInstance.Y:F3},{originHoleInstance.Z:F3}";
+
             // Получаем список сообщений
             IList<string> messages = entity.Get<IList<string>>(schema.GetField(FieldName)) ?? new List<string>();
 
             // Формируем новое сообщение
-            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, iElementIdString, status, message);
+            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, iElementIdString, coordinatesHoleInstance, status, message);
             messages.Add(newMessage);
 
             // Устанавливаем обновленный список сообщений в сущность
             entity.Set(schema.GetField(FieldName), messages);
-            instance.SetEntity(entity); // Применяем изменения
+            holeInstance.SetEntity(entity); // Применяем изменения
         }
 
         /// <summary>
         /// Метод получения информации из экземпляра семейства отверстия
         /// </summary>
-        public static List<string> GetChatMessages(FamilyInstance instance)
+        public static List<string> GetChatMessages(FamilyInstance holeInstance)
         {
             Schema schema = Schema.Lookup(SchemaGuid);
             if (schema == null)
                 return new List<string>();
 
-            Entity entity = instance.GetEntity(schema);
+            Entity entity = holeInstance.GetEntity(schema);
             if (!entity.IsValid())
                 return new List<string>();
 
