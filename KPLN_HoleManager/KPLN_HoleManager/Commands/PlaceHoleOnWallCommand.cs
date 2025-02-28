@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Autodesk.Revit.DB;
@@ -725,7 +724,7 @@ namespace KPLN_HoleManager.Commands
         }
 
         /// <summary>
-        /// Проверяет, остаётся ли точка внутри границ стены
+        /// Отверстие. Вспомогательный метод к SetHoleDimensions для проверки, остаётся ли точка внутри границ стены
         /// </summary>
         private bool IsPointInsideWall(XYZ point, Element wall, double wallThickness)
         {
@@ -752,5 +751,4 @@ namespace KPLN_HoleManager.Commands
             return true; 
         }
     }
-
 }
