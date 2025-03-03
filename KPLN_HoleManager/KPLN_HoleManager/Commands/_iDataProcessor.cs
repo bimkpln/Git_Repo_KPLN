@@ -81,8 +81,8 @@ namespace KPLN_HoleManager.Commands
             return statusCounts;
         }
 
-        // Получение всех сообщений для заданий на отверстия
-        public static List<List<string>> GetHoleTaskMessages(Document doc, List<ElementId> familyInstanceIds)
+        // Получение всех сообщений для заданий на отверстия из всех элементов (получаем последнее)
+        public static List<List<string>> GetHoleLastTaskMessages(Document doc, List<ElementId> familyInstanceIds)
         {
             List<List<string>> holeTaskMessages = new List<List<string>>();
 
@@ -109,6 +109,34 @@ namespace KPLN_HoleManager.Commands
 
             return holeTaskMessages;
         }
+
+        // Получение всех сообщений для заданий на отверстия из одного элемента (получаем всё)
+        public static List<List<string>> GetHoleTaskMessages(Document doc, string holeID)
+        {
+            List<List<string>> holeTaskMessages = new List<List<string>>();
+
+            if (int.TryParse(holeID, out int elementIdValue))
+            {
+                ElementId elementId = new ElementId(elementIdValue);
+                Element element = doc.GetElement(elementId);
+
+                if (element is FamilyInstance instance)
+                {
+                    List<string> messages = ExtensibleStorageHelper.GetChatMessages(instance);
+
+                    foreach (string message in messages)
+                    {
+                        string[] messageParts = message.Split(new string[] { Commands.ExtensibleStorageHelper.Separator }, StringSplitOptions.None);
+
+                        holeTaskMessages.Add(messageParts.ToList());
+                    }
+                }
+            }
+
+            return holeTaskMessages;
+        }
+
+
 
     }
 }

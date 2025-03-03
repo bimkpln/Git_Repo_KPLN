@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using KPLN_HoleManager.Commands;
 using System.Windows.Documents;
+using System.Text;
 
 
 namespace KPLN_HoleManager.Forms
@@ -173,7 +174,7 @@ namespace KPLN_HoleManager.Forms
             // Получаем список всех сообщений для отверстий
             Document doc = _uiApp.ActiveUIDocument.Document;
             List<ElementId> familyInstanceIds = _iDataProcessor.GetFamilyInstanceIds(doc);
-            List<List<string>> holeTaskMessages = _iDataProcessor.GetHoleTaskMessages(doc, familyInstanceIds);
+            List<List<string>> holeTaskMessages = _iDataProcessor.GetHoleLastTaskMessages(doc, familyInstanceIds);
 
             // Определяем нужный статус на основе нажатой кнопки
             string selectedStatus = null;
@@ -187,7 +188,11 @@ namespace KPLN_HoleManager.Forms
 
             foreach (var messageParts in holeTaskMessages)
             {
-                if (messageParts[9] == selectedStatus)
+                bool matchesDepartment = departmentName == "BIM" ||
+                                         messageParts[2] == departmentName ||
+                                         messageParts[3] == departmentName;
+
+                if (matchesDepartment && messageParts[9] == selectedStatus)
                 {
                     filteredMessages.Add(messageParts);
                 }
@@ -239,6 +244,151 @@ namespace KPLN_HoleManager.Forms
                     newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(253, 245, 138)); // Желтый
                 else if (selectedStatus == "Ошибки")
                     newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 192, 177)); // Красный
+
+                // Добавляем обработчик нажатия
+                newButton.Click += (s, ev) =>
+                {
+                    InfoHolePanel.Children.Clear(); // Очищаем панель
+
+                    // Базовая информация**
+                    TextBlock generalInfoTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap, Padding = new Thickness(8) };
+                    generalInfoTextBlock.Inlines.Add(new Run(holeName) { FontWeight = FontWeights.Bold });
+                    generalInfoTextBlock.Inlines.Add(new Run($" ({holeID})\n"));
+
+                    Brush statusColor = Brushes.Gray;
+                    string statusText = messageParts[9];
+
+                    switch (statusText)
+                    {
+                        case "Без статуса":
+                            statusColor = Brushes.Gray;
+                            break;
+                        case "Утверждено":
+                            statusColor = Brushes.Green;
+                            break;
+                        case "Предупреждения":
+                            statusColor = Brushes.DarkGoldenrod;
+                            break;
+                        case "Ошибки":
+                            statusColor = Brushes.Red;
+                            break;
+                    }
+
+                    generalInfoTextBlock.Inlines.Add(new Run(statusText) { FontWeight = FontWeights.Bold, Foreground = statusColor });
+                    generalInfoTextBlock.Inlines.Add(new Run($"\n"));
+                    generalInfoTextBlock.Inlines.Add(new Run("Стена: ") { FontWeight = FontWeights.Bold });
+                    generalInfoTextBlock.Inlines.Add(new Run($"{wallID}\n"));
+                    generalInfoTextBlock.Inlines.Add(new Run("Элементы в отверстии: ") { FontWeight = FontWeights.Bold });
+                    generalInfoTextBlock.Inlines.Add(new Run($"{sEllementID}"));
+
+                    // Получаем список сообщений
+                    List<List<string>> fullHoleInfo = _iDataProcessor.GetHoleTaskMessages(doc, holeID);
+
+                    // Контейнер для сообщений
+                    StackPanel messagesPanel = new StackPanel { Margin = new Thickness(0, 5, 0, 0) };
+
+                    foreach (List<string> fullHoleInfoParts in fullHoleInfo)
+                    {
+                        if (fullHoleInfoParts.Count > 10) // Проверяем, что в списке достаточно элементов
+                        {
+                            // Извлекаем нужные данные
+                            string mDate = fullHoleInfoParts[0];
+                            string mName = fullHoleInfoParts[1];
+                            string mDepartmentFrom = fullHoleInfoParts[2];
+                            string mDepartmentTo = fullHoleInfoParts[3];
+                            string mCoordinates = fullHoleInfoParts[8];
+                            string mMessageText = fullHoleInfoParts[10];
+
+                            // Создаем TextBlock для каждого сообщения
+                            TextBlock messageTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap };
+
+                            messageTextBlock.Inlines.Add(new Run($"{mDate}") { FontWeight = FontWeights.Bold, Foreground = Brushes.BlueViolet });
+                            messageTextBlock.Inlines.Add(new Run($" | {mName} ({mDepartmentFrom} → {mDepartmentTo})\n"));
+
+                            messageTextBlock.Inlines.Add(new Run("Координаты: ") { FontWeight = FontWeights.Bold });
+                            messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n"));
+
+                            messageTextBlock.Inlines.Add(new Run("💬  Сообщение: ") { FontWeight = FontWeights.Bold });
+                            messageTextBlock.Inlines.Add(new Run($"{mMessageText}"));
+
+                            Border messageBorder = new Border
+                            {
+                                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 255)),
+                                BorderBrush = Brushes.LightGray,
+                                BorderThickness = new Thickness(1),
+                                CornerRadius = new CornerRadius(5),
+                                Padding = new Thickness(8),
+                                Child = messageTextBlock
+                            };
+
+                            messagesPanel.Children.Add(messageBorder);
+                        }
+                    }
+
+                    // Если сообщений нет
+                    if (messagesPanel.Children.Count == 0)
+                    {
+                        messagesPanel.Children.Add(new TextBlock
+                        {
+                            Text = "Нет информации об отверстии",
+                            TextWrapping = TextWrapping.Wrap,
+                            Foreground = Brushes.Gray
+                        });
+                    }
+
+                    // Основной контейнер
+                    StackPanel contentPanel = new StackPanel { Margin = new Thickness(5, 5, 5, 0) };
+                    contentPanel.Children.Add(generalInfoTextBlock);
+                    contentPanel.Children.Add(messagesPanel);
+
+                    // Добавляем в основную панель
+                    InfoHolePanel.Children.Add(contentPanel);
+
+
+
+
+
+                    // Перемещение к элементу с ID holeID на 3D виде
+                    if (int.TryParse(holeID, out int elementIdValue))
+                    {
+                        ElementId elementId = new ElementId(elementIdValue);
+                        Element element = doc.GetElement(elementId);
+
+                        if (element != null)
+                        {
+                            UIDocument uiDoc = _uiApp.ActiveUIDocument;
+
+                            // Проверяем, есть ли открытый 3D-вид
+                            View3D active3DView = null;
+                            View currentView = doc.ActiveView;
+
+                            if (currentView is View3D view3D && !view3D.IsTemplate)
+                            {
+                                active3DView = view3D; 
+                            }
+                            else
+                            {
+
+                                active3DView = new FilteredElementCollector(doc)
+                                    .OfClass(typeof(View3D))
+                                    .Cast<View3D>()
+                                    .FirstOrDefault(v => !v.IsTemplate);
+                            }
+
+                            if (active3DView != null)
+                            {
+                                if (doc.ActiveView.Id != active3DView.Id)
+                                {
+                                    uiDoc.ActiveView = active3DView;
+                                }
+
+                                uiDoc.Selection.SetElementIds(new List<ElementId> { elementId });
+
+                                uiDoc.ShowElements(element);
+                            }
+                        }
+                    }
+                };
 
                 // Добавляем кнопку в панель
                 InfoHolePanel.Children.Add(newButton);
