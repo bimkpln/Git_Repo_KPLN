@@ -30,7 +30,7 @@ namespace KPLN_HoleManager.Commands
         /// <summary>
         /// Метод добавления информации в экземпляр семейства отверстия
         /// </summary>
-        public static void AddChatMessage(FamilyInstance holeInstance, string date, string userName, string fromDepartment, string toDepartment, string wallIdString, string iElementIdString, string status, string message)
+        public static void AddChatMessage(FamilyInstance holeInstance, string date, string userName, string department, string fromDepartment, string toDepartment, string wallIdString, string iElementIdString, string status, string statusIO, string message)
         {
             // Получаем или создаем схему
             Schema schema = GetOrCreateSchema();
@@ -54,8 +54,8 @@ namespace KPLN_HoleManager.Commands
             IList<string> messages = entity.Get<IList<string>>(schema.GetField(FieldName)) ?? new List<string>();
 
             // Формируем новое сообщение
-            string newMessage = string.Join(Separator, date, userName, fromDepartment, toDepartment, 
-                holeInstanceId, holeInstanceName, wallIdString, iElementIdString, coordinatesHoleInstance, status, message);
+            string newMessage = string.Join(Separator, date, userName, department, fromDepartment, toDepartment, 
+                holeInstanceId, holeInstanceName, wallIdString, iElementIdString, coordinatesHoleInstance, status, statusIO, message);
             messages.Add(newMessage);
 
             // Устанавливаем обновленный список сообщений в сущность

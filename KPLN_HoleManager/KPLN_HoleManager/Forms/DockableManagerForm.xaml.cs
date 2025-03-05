@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using KPLN_HoleManager.Commands;
 using System.Windows.Documents;
-using System.Text;
 
 
 namespace KPLN_HoleManager.Forms
@@ -73,22 +72,6 @@ namespace KPLN_HoleManager.Forms
             _instance = this;
         }
 
-        // Растановка кнопок в зависимости от отдела
-        public void AddDepartmentButtons()
-        {
-            // Общий стиль кнопок
-            var buttonStyle = new Style(typeof(Button));
-            buttonStyle.Setters.Add(new Setter(Button.HeightProperty, 30.0));
-            buttonStyle.Setters.Add(new Setter(Button.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
-            buttonStyle.Setters.Add(new Setter(Button.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
-            buttonStyle.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(10, 0.5, 0, 0)));
-            buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFE0FDFF"))));
-            buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
-
-            AddButton("🔄  Принудительное обновление данных отверстий", buttonStyle);
-            AddButton("➡️  Создать задание на отверстие", buttonStyle);
-        }
-
         // Обновление статусов отверстий
         public void UpdateStatusCounts()
         {
@@ -101,17 +84,34 @@ namespace KPLN_HoleManager.Forms
             _buttonDataViewModel.UpdateStatusCounts(statusCounts);
         }
 
-        // Функция пакетного создания кнопок
-        private void AddButton(string content, Style style)
+        // Растановка кнопок в зависимости от отдела
+        public void AddDepartmentButtons()
+        {
+            // Общий стиль кнопок
+            var buttonStyle = new Style(typeof(Button));
+            buttonStyle.Setters.Add(new Setter(Button.HeightProperty, 30.0));
+            buttonStyle.Setters.Add(new Setter(Button.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
+            buttonStyle.Setters.Add(new Setter(Button.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
+            buttonStyle.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(10, 0.5, 0, 0)));
+            buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1)));
+
+            AddButton("🔄  Обновление данных отверстий", buttonStyle, "#d1f7ff"); 
+            AddButton("➡️  Создать задание на отверстие", buttonStyle, "#d1f7ff");
+            AddButton("⚙  Настройки плагина", buttonStyle, "#d1f7ff");
+        }
+
+        // Пакетного создания кнопок
+        public void AddButton(string content, Style baseStyle, string backgroundColor)
         {
             var button = new Button
             {
                 Content = content,
-                Style = style
+                Style = baseStyle,
+                Background = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString(backgroundColor))
             };
 
             // Добавляем обработчики для кнопок в зависимости от их содержимого
-            if (content.Contains("Принудительное обновление данных отверстий"))
+            if (content.Contains("Обновление данных отверстий"))
             {
                 button.Click += UpdateHoles;
             }
@@ -123,15 +123,16 @@ namespace KPLN_HoleManager.Forms
             ActionButtonDepartment.Children.Add(button);
         }
 
+
         // XAML. Обработчик для кнопки "Обновление данных об отверстиях"
-        private void UpdateHoles(object sender, RoutedEventArgs e)
+        public void UpdateHoles(object sender, RoutedEventArgs e)
         {
             UpdateStatusCounts();
             TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
         }
 
         // XAML. Обработчик для кнопки "Создать задание на отверстие"
-        private void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
+        public void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
@@ -162,6 +163,11 @@ namespace KPLN_HoleManager.Forms
             holeWindow.ShowDialog();
         }
 
+
+
+
+
+
         // XAML. Вывод информации об отверстиях
         private void StatusButton_Click(object sender, RoutedEventArgs e)
         {
@@ -180,35 +186,41 @@ namespace KPLN_HoleManager.Forms
             string selectedStatus = null;
             if (clickedButton.Name == "ButtonNoneStatus") selectedStatus = "Без статуса";
             else if (clickedButton.Name == "ButtonOKStatus") selectedStatus = "Утверждено";
-            else if (clickedButton.Name == "ButtonWarningStatus") selectedStatus = "Предупреждения";
-            else if (clickedButton.Name == "ButtonErrorStatus") selectedStatus = "Ошибки";            
+            else if (clickedButton.Name == "ButtonWarningStatus") selectedStatus = "Подтверждение";
+            else if (clickedButton.Name == "ButtonErrorStatus") selectedStatus = "Ошибки";
 
             // Фильтруем сообщения по выбранному статусу
-            List<List<string>> filteredMessages = new List<List<string>>();
-
-            foreach (var messageParts in holeTaskMessages)
-            {
-                bool matchesDepartment = departmentName == "BIM" ||
-                                         messageParts[2] == departmentName ||
-                                         messageParts[3] == departmentName;
-
-                if (matchesDepartment && messageParts[9] == selectedStatus)
+            List<List<string>> filteredMessages = holeTaskMessages
+                .Where(messageParts => (departmentName == "BIM" || messageParts[3] == departmentName || messageParts[4] == departmentName) &&
+                messageParts[10] == selectedStatus).OrderByDescending(messageParts => messageParts[4] == departmentName).ThenBy(messageParts =>
                 {
-                    filteredMessages.Add(messageParts);
-                }
-            }
+                    if (departmentName == "BIM")
+                    {
+                        // Определяем приоритет для BIM: "АР" -> "КР" -> "ИОС"
+                        return messageParts[3] == "АР" ? 0 :
+                               messageParts[3] == "КР" ? 1 :
+                               messageParts[3] == "ИОС" ? 2 : 3;
+                    }
+                return 0; // Для остальных департаментов порядок не меняем
+                })
+                .ToList();
 
             foreach (var messageParts in filteredMessages)
             {
                 // Разбиваем messageParts на отдельные переменные
                 string data = messageParts[0];
                 string name = messageParts[1];
-                string departamentFrom = messageParts[2];
-                string departamentIn = messageParts[3];
-                string holeID = messageParts[4];
-                string holeName = messageParts[5];
-                string wallID = messageParts[6];
-                string sEllementID = messageParts[7];
+                string departament = messageParts[2];
+                string departamentFrom = messageParts[3];
+                string departamentIn = messageParts[4];
+                string holeID = messageParts[5];
+                string holeName = messageParts[6];
+                string wallID = messageParts[7];
+                string sEllementID = messageParts[8];
+                string statusIO = messageParts[11];
+                char statusI = statusIO[0]; 
+                char statusO = statusIO[1]; 
+
 
                 // Создаем TextBlock для кнопки
                 TextBlock textBlock = new TextBlock
@@ -222,13 +234,13 @@ namespace KPLN_HoleManager.Forms
                 textBlock.Inlines.Add(new Run($" ({holeID}).\n"));
                 textBlock.Inlines.Add(new Run("Стена: ") { FontWeight = FontWeights.Bold });
                 textBlock.Inlines.Add(new Run($"{wallID}. "));
-                textBlock.Inlines.Add(new Run("Элементы в стене: ") { FontWeight = FontWeights.Bold });
+                textBlock.Inlines.Add(new Run("Элементы в отверстии: ") { FontWeight = FontWeights.Bold });
                 textBlock.Inlines.Add(new Run($"{sEllementID}."));
 
                 Button newButton = new Button
                 {
                     Content = textBlock,
-                    Height = 68,
+                    Height = 60,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     HorizontalContentAlignment = HorizontalAlignment.Left, // Выравнивание текста влево
                     Margin = new Thickness(2, 2, 2, 0), // Отступы между кнопками
@@ -236,42 +248,57 @@ namespace KPLN_HoleManager.Forms
                 };
 
                 // Определяем цвет кнопки на основе статуса
-                if (selectedStatus == "Без статуса")
-                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(235, 235, 235)); // Серый
-                else if (selectedStatus == "Утверждено")
-                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(188, 252, 157)); // Зеленый
-                else if (selectedStatus == "Предупреждения")
-                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(253, 245, 138)); // Желтый
-                else if (selectedStatus == "Ошибки")
-                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 192, 177)); // Красный
+                if (selectedStatus == "Без статуса") // Серый
+                {
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(235, 235, 235)); 
+                }
+                else if (selectedStatus == "Утверждено") // Зеленый
+                {            
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 214, 132));                    
+                }
+                else if (selectedStatus == "Подтверждение") // Желтый
+                {
+                    newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(253, 245, 138));
+                }
+                else if (selectedStatus == "Ошибки") // Красный
+                {
+                     newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 192, 177));                
+                }
+                if (departamentIn == departmentName)
+                {
+                    newButton.BorderThickness = new Thickness(2); 
+                    newButton.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(106, 90, 205)); 
+                }
+
+
+
 
                 // Добавляем обработчик нажатия
                 newButton.Click += (s, ev) =>
                 {
-                    InfoHolePanel.Children.Clear(); // Очищаем панель
+                    // Очищаем панель
+                    InfoHolePanel.Children.Clear();
 
-                    // Базовая информация**
-                    TextBlock generalInfoTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap, Padding = new Thickness(8) };
+                    /// Блок 1. Базовая информация
+                    TextBlock generalInfoTextBlock = new TextBlock
+                    {
+                        TextWrapping = TextWrapping.Wrap,
+                        Padding = new Thickness(8)
+                    };
+
+                    // Заполение базовой информации
                     generalInfoTextBlock.Inlines.Add(new Run(holeName) { FontWeight = FontWeights.Bold });
                     generalInfoTextBlock.Inlines.Add(new Run($" ({holeID})\n"));
 
                     Brush statusColor = Brushes.Gray;
-                    string statusText = messageParts[9];
+                    string statusText = messageParts[10];
 
                     switch (statusText)
                     {
-                        case "Без статуса":
-                            statusColor = Brushes.Gray;
-                            break;
-                        case "Утверждено":
-                            statusColor = Brushes.Green;
-                            break;
-                        case "Предупреждения":
-                            statusColor = Brushes.DarkGoldenrod;
-                            break;
-                        case "Ошибки":
-                            statusColor = Brushes.Red;
-                            break;
+                        case "Без статуса": statusColor = Brushes.Gray; break;
+                        case "Утверждено": statusColor = Brushes.Green; break;
+                        case "Подтверждение": statusColor = Brushes.DarkGoldenrod; break;
+                        case "Ошибки": statusColor = Brushes.Red; break;
                     }
 
                     generalInfoTextBlock.Inlines.Add(new Run(statusText) { FontWeight = FontWeights.Bold, Foreground = statusColor });
@@ -281,68 +308,83 @@ namespace KPLN_HoleManager.Forms
                     generalInfoTextBlock.Inlines.Add(new Run("Элементы в отверстии: ") { FontWeight = FontWeights.Bold });
                     generalInfoTextBlock.Inlines.Add(new Run($"{sEllementID}"));
 
-                    // Получаем список сообщений
-                    List<List<string>> fullHoleInfo = _iDataProcessor.GetHoleTaskMessages(doc, holeID);
+                    InfoHolePanel.Children.Add(generalInfoTextBlock);
 
-                    // Контейнер для сообщений
-                    StackPanel messagesPanel = new StackPanel { Margin = new Thickness(0, 5, 0, 0) };
 
-                    foreach (List<string> fullHoleInfoParts in fullHoleInfo)
+                    /// Блок 2. Изменение статуса отверстия
+                    StackPanel decisionPanel = new StackPanel
                     {
-                        if (fullHoleInfoParts.Count > 10) // Проверяем, что в списке достаточно элементов
-                        {
-                            // Извлекаем нужные данные
-                            string mDate = fullHoleInfoParts[0];
-                            string mName = fullHoleInfoParts[1];
-                            string mDepartmentFrom = fullHoleInfoParts[2];
-                            string mDepartmentTo = fullHoleInfoParts[3];
-                            string mCoordinates = fullHoleInfoParts[8];
-                            string mMessageText = fullHoleInfoParts[10];
+                        Orientation = Orientation.Horizontal,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Margin = new Thickness(2, 0, 0, 0),
+                    };
 
-                            // Создаем TextBlock для каждого сообщения
-                            TextBlock messageTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap };
+                    // Кнопки "Да"/"Нет"
+                    Button yesButton = new Button
+                    {
+                        Content = "✔️",
+                        Width = 30,
+                        Height = 30,
+                        Background = Brushes.Green,
+                        Foreground = Brushes.White,
+                        Margin = new Thickness(6, 0, 3, 0)
+                    };
+                    Button noButton = new Button
+                    {
+                        Content = "❌",
+                        Width = 30,
+                        Height = 30,
+                        Background = Brushes.Red,
+                        Foreground = Brushes.White,
+                        Margin = new Thickness(0, 0, 15, 0)
+                    };
 
-                            messageTextBlock.Inlines.Add(new Run($"{mDate}") { FontWeight = FontWeights.Bold, Foreground = Brushes.BlueViolet });
-                            messageTextBlock.Inlines.Add(new Run($" | {mName} ({mDepartmentFrom} → {mDepartmentTo})\n"));
-
-                            messageTextBlock.Inlines.Add(new Run("Координаты: ") { FontWeight = FontWeights.Bold });
-                            messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n"));
-
-                            messageTextBlock.Inlines.Add(new Run("💬  Сообщение: ") { FontWeight = FontWeights.Bold });
-                            messageTextBlock.Inlines.Add(new Run($"{mMessageText}"));
-
-                            Border messageBorder = new Border
-                            {
-                                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 255)),
-                                BorderBrush = Brushes.LightGray,
-                                BorderThickness = new Thickness(1),
-                                CornerRadius = new CornerRadius(5),
-                                Padding = new Thickness(8),
-                                Child = messageTextBlock
-                            };
-
-                            messagesPanel.Children.Add(messageBorder);
-                        }
+                    // Функция для получения цвета по статусу
+                    Brush GetStatusColor(char status)
+                    {
+                        if (status == '0') return Brushes.LightGray;  // 0 - серый
+                        if (status == '1') return Brushes.LightBlue;  // 1 - голубой
+                        if (status == '2') return Brushes.Purple;     // 2 - красный
+                        if (status == '3') return Brushes.LightGreen; // 3 - зелёный
+                        return Brushes.LightGray; // По умолчанию серый
                     }
 
-                    // Если сообщений нет
-                    if (messagesPanel.Children.Count == 0)
+                    TextBlock taskITextBlock = new TextBlock
                     {
-                        messagesPanel.Children.Add(new TextBlock
-                        {
-                            Text = "Нет информации об отверстии",
-                            TextWrapping = TextWrapping.Wrap,
-                            Foreground = Brushes.Gray
-                        });
-                    }
+                        Text = $"{departamentFrom}",
+                        Width = 50,
+                        Background = GetStatusColor(statusI),
+                        Padding = new Thickness(7),
+                        TextAlignment = TextAlignment.Center
+                    };
 
-                    // Основной контейнер
-                    StackPanel contentPanel = new StackPanel { Margin = new Thickness(5, 5, 5, 0) };
-                    contentPanel.Children.Add(generalInfoTextBlock);
-                    contentPanel.Children.Add(messagesPanel);
+                    TextBlock taskOTextBlock = new TextBlock
+                    {
+                        Text = $"{departamentIn}",
+                        Width = 50,
+                        Background = GetStatusColor(statusO),
+                        Padding = new Thickness(7),
+                        TextAlignment = TextAlignment.Center
+                    };
 
-                    // Добавляем в основную панель
-                    InfoHolePanel.Children.Add(contentPanel);
+                    // Добавляем элементы в панель
+                    decisionPanel.Children.Add(yesButton);
+                    decisionPanel.Children.Add(noButton);
+                    decisionPanel.Children.Add(taskITextBlock);
+                    decisionPanel.Children.Add(taskOTextBlock);
+
+                    InfoHolePanel.Children.Add(decisionPanel);
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -402,7 +444,7 @@ namespace KPLN_HoleManager.Forms
         // Первичная прогрузка
         private string _noneStatusButtonText = "❓  Без статуса: ОШИБКА!";
         private string _approvedButtonText = "✔️  Утверждено: ОШИБКА!";
-        private string _warningButtonText = "⚠️  Предупреждения: ОШИБКА!";
+        private string _warningButtonText = "⚠️  Подтверждение: ОШИБКА!";
         private string _errorButtonText = "❌  Ошибки: ОШИБКА!";
 
         public string NoneStatusButtonText
@@ -452,7 +494,7 @@ namespace KPLN_HoleManager.Forms
 
             NoneStatusButtonText = $"❓  Без статуса: {statusCounts[0]}";
             ApprovedButtonText = $"✔️  Утверждено: {statusCounts[1]}";
-            WarningButtonText = $"⚠️  Предупреждения: {statusCounts[2]}";
+            WarningButtonText = $"⚠️  Подтверждение: {statusCounts[2]}";
             ErrorButtonText = $"❌  Ошибки: {statusCounts[3]}";
         }
 

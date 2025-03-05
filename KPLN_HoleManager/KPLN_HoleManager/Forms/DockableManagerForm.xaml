@@ -134,14 +134,6 @@
                 <StackPanel x:Name="InfoHolePanel"/>
             </ScrollViewer>
         </Grid>
-
-        <!-- Нижняя панель -->
-        <StackPanel Orientation="Vertical" Grid.Row="3" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
-
-            <Button Content="⚙️  Пользовательские настройки плагина" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,0,0,0" Background="#FFE0FDFF"/>
-
-        </StackPanel>
-
     </Grid>
 
 </Page>

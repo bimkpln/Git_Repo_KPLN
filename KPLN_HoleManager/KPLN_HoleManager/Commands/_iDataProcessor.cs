@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +35,7 @@ namespace KPLN_HoleManager.Commands
         // Получение статуса всех заданий на отверстия
         public static List<int> StatusHoleTask(Document doc, List<ElementId> familyInstanceIds)
         {
-            // Создаем список, чтобы хранить статистику по статусам: "Без статуса", "Утверждено", "Предупреждения", "Ошибки"
+            // Создаем список, чтобы хранить статистику по статусам: "Без статуса", "Утверждено", "Подтверждение", "Ошибки"
             List<int> statusCounts = new List<int> { 0, 0, 0, 0 };
 
             foreach (var id in familyInstanceIds)
@@ -57,7 +56,7 @@ namespace KPLN_HoleManager.Commands
                     // Разделяем сообщение на части по разделителю
                     string[] messageParts = lastMessage.Split(new string[] { Commands.ExtensibleStorageHelper.Separator }, StringSplitOptions.None);
 
-                    string status = messageParts[9];
+                    string status = messageParts[10];
 
                     switch (status)
                     {
@@ -67,7 +66,7 @@ namespace KPLN_HoleManager.Commands
                         case "Утверждено":
                             statusCounts[1]++;
                             break;
-                        case "Предупреждения":
+                        case "Подтверждение":
                             statusCounts[2]++;
                             break;
                         case "Ошибки":

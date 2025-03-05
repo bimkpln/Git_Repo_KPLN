@@ -711,17 +711,23 @@ namespace KPLN_HoleManager.Commands
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     _userFullName,
                     _departmentName,
+                    _departmentHoleName,
                     _sendingDepartmentHoleName,
                     wallIdString,
                     intersectingElementIdString,
                     "Без статуса",
+                    "10",
                     "Отверстие создано"
                 );
+
+                // Очистка панели информации перед завершением транзакции
+                DockableManagerForm.Instance?.InfoHolePanel.Children.Clear();
+
             }
             else
             {
                 transactionStatus = false;
-                TaskDialog.Show("Внимание", "Операция отменена пользователем.");
+                TaskDialog.Show("Внимание", "Операция отDменена пользователем.");
             }
         }
 
