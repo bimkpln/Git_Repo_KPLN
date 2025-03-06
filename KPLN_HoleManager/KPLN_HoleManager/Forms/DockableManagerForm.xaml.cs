@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using KPLN_HoleManager.Commands;
 using System.Windows.Documents;
+using System;
+using System.Xml.Linq;
 
 
 namespace KPLN_HoleManager.Forms
@@ -162,11 +164,6 @@ namespace KPLN_HoleManager.Forms
             var holeWindow = new sChoiseHole(_uiApp, element, userFullName, departmentName);
             holeWindow.ShowDialog();
         }
-
-
-
-
-
 
         // XAML. Вывод информации об отверстиях
         private void StatusButton_Click(object sender, RoutedEventArgs e)
@@ -401,6 +398,9 @@ namespace KPLN_HoleManager.Forms
                         VerticalAlignment = VerticalAlignment.Stretch
                     };
 
+                    // Переменная для хранения координат предыдущего сообщения
+                    string previousCoordinates = null;
+
                     foreach (List<string> fullHoleInfoParts in _iDataProcessor.GetHoleTaskMessages(doc, holeID))
                     {
                         if (fullHoleInfoParts.Count > 10)
@@ -409,8 +409,8 @@ namespace KPLN_HoleManager.Forms
                             string mName = fullHoleInfoParts[1];
                             string mDepartmentFrom = fullHoleInfoParts[2];
                             string mDepartmentTo = fullHoleInfoParts[3];
-                            string mCoordinates = fullHoleInfoParts[8];
-                            string mMessageText = fullHoleInfoParts[10];
+                            string mCoordinates = fullHoleInfoParts[9];
+                            string mMessageText = fullHoleInfoParts[12];
 
                             TextBlock messageTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap };
 
@@ -418,7 +418,13 @@ namespace KPLN_HoleManager.Forms
                             messageTextBlock.Inlines.Add(new Run($" | {mName} ({mDepartmentFrom} → {mDepartmentTo})\n"));
 
                             messageTextBlock.Inlines.Add(new Run("Координаты: ") { FontWeight = FontWeights.Bold });
-                            messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n"));
+
+                            // Проверяем, изменились ли координаты с прошлого сообщения
+                            Brush coordinatesColor = previousCoordinates != null && previousCoordinates != mCoordinates
+                                ? Brushes.Red 
+                                : Brushes.Black;
+
+                            messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n") { Foreground = coordinatesColor });
 
                             messageTextBlock.Inlines.Add(new Run("💬  Сообщение: ") { FontWeight = FontWeights.Bold });
                             messageTextBlock.Inlines.Add(new Run($"{mMessageText}"));
@@ -432,6 +438,9 @@ namespace KPLN_HoleManager.Forms
                                 Padding = new Thickness(8),
                                 Child = messageTextBlock
                             };
+                           
+                            // Обновляем previousCoordinates для следующей итерации
+                            previousCoordinates = mCoordinates;
 
                             messagesPanel.Children.Add(messageBorder);
                         }
@@ -470,8 +479,44 @@ namespace KPLN_HoleManager.Forms
                         Height = 45,
                         Width = 30,
                         VerticalAlignment = VerticalAlignment.Center,
-                        HorizontalAlignment = HorizontalAlignment.Stretch
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        IsEnabled = false
                     };
+
+                    commentTextBox.TextChanged += (si, evi) =>
+                    {
+                        sendButton.IsEnabled = !string.IsNullOrWhiteSpace(commentTextBox.Text);
+                    };
+
+                    sendButton.Click += (si, evi) =>
+                    {
+                        if (!int.TryParse(holeID, out int holeElementId))
+                        {
+                            return;
+                        }
+
+                        Element element = doc.GetElement(new ElementId(holeElementId));
+                        FamilyInstance holeInstance = element as FamilyInstance;
+
+                        string commentText = commentTextBox.Text;
+
+                        ExtensibleStorageHelper.AddChatMessage(
+                            holeInstance,
+                            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                            userFullName,
+                            departmentName,
+                            departamentFrom,
+                            departamentIn,
+                            wallID,
+                            sEllementID,
+                            statusText,
+                            statusIO,
+                            commentText 
+                            );
+
+                        newButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    };
+
 
                     System.Windows.Controls.Grid.SetColumn(sendButton, 1);
 
@@ -480,25 +525,6 @@ namespace KPLN_HoleManager.Forms
 
                     System.Windows.Controls.Grid.SetRow(sendMessagesPanel, 3);
                     InfoHolePanel.Children.Add(sendMessagesPanel);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                     // Перемещение к элементу с ID holeID на 3D виде
                     if (int.TryParse(holeID, out int elementIdValue))
