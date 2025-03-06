@@ -174,8 +174,16 @@ namespace KPLN_HoleManager.Forms
             Button clickedButton = sender as Button;
             if (clickedButton == null) return;
 
-            // Очищаем панель перед добавлением новых кнопок
+            // Очищаем панель
             InfoHolePanel.Children.Clear();
+            InfoHolePanel.RowDefinitions.Clear();
+
+            // Создаем вспомогательные элементы
+            ScrollViewer scrollViewer = new ScrollViewer{VerticalScrollBarVisibility = ScrollBarVisibility.Auto};
+            StackPanel holeListPanel = new StackPanel{};
+
+            scrollViewer.Content = holeListPanel;
+            InfoHolePanel.Children.Add(scrollViewer);
 
             // Получаем список всех сообщений для отверстий
             Document doc = _uiApp.ActiveUIDocument.Document;
@@ -220,7 +228,6 @@ namespace KPLN_HoleManager.Forms
                 string statusIO = messageParts[11];
                 char statusI = statusIO[0]; 
                 char statusO = statusIO[1]; 
-
 
                 // Создаем TextBlock для кнопки
                 TextBlock textBlock = new TextBlock
@@ -270,14 +277,18 @@ namespace KPLN_HoleManager.Forms
                     newButton.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(106, 90, 205)); 
                 }
 
-
-
-
                 // Добавляем обработчик нажатия
                 newButton.Click += (s, ev) =>
                 {
                     // Очищаем панель
                     InfoHolePanel.Children.Clear();
+                    InfoHolePanel.RowDefinitions.Clear();
+
+                    // Прокладываем Grid
+                    InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Общая информация
+                    InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Панель действия
+                    InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Чат-область
+                    InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Поле добавления сообщения
 
                     /// Блок 1. Базовая информация
                     TextBlock generalInfoTextBlock = new TextBlock
@@ -308,8 +319,8 @@ namespace KPLN_HoleManager.Forms
                     generalInfoTextBlock.Inlines.Add(new Run("Элементы в отверстии: ") { FontWeight = FontWeights.Bold });
                     generalInfoTextBlock.Inlines.Add(new Run($"{sEllementID}"));
 
+                    System.Windows.Controls.Grid.SetRow(generalInfoTextBlock, 0);
                     InfoHolePanel.Children.Add(generalInfoTextBlock);
-
 
                     /// Блок 2. Изменение статуса отверстия
                     StackPanel decisionPanel = new StackPanel
@@ -373,7 +384,106 @@ namespace KPLN_HoleManager.Forms
                     decisionPanel.Children.Add(taskITextBlock);
                     decisionPanel.Children.Add(taskOTextBlock);
 
+                    System.Windows.Controls.Grid.SetRow(decisionPanel, 1);
                     InfoHolePanel.Children.Add(decisionPanel);
+
+
+                    /// Блок 3. Чат-панель и ScrollViewer
+                    ScrollViewer messagesScrollViewer = new ScrollViewer
+                    {
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
+                        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, 
+                        Margin = new Thickness(5, 8, 5, 8)
+                    };
+
+                    StackPanel messagesPanel = new StackPanel
+                    {
+                        VerticalAlignment = VerticalAlignment.Stretch
+                    };
+
+                    foreach (List<string> fullHoleInfoParts in _iDataProcessor.GetHoleTaskMessages(doc, holeID))
+                    {
+                        if (fullHoleInfoParts.Count > 10)
+                        {
+                            string mDate = fullHoleInfoParts[0];
+                            string mName = fullHoleInfoParts[1];
+                            string mDepartmentFrom = fullHoleInfoParts[2];
+                            string mDepartmentTo = fullHoleInfoParts[3];
+                            string mCoordinates = fullHoleInfoParts[8];
+                            string mMessageText = fullHoleInfoParts[10];
+
+                            TextBlock messageTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap };
+
+                            messageTextBlock.Inlines.Add(new Run($"{mDate}") { FontWeight = FontWeights.Bold, Foreground = Brushes.BlueViolet });
+                            messageTextBlock.Inlines.Add(new Run($" | {mName} ({mDepartmentFrom} → {mDepartmentTo})\n"));
+
+                            messageTextBlock.Inlines.Add(new Run("Координаты: ") { FontWeight = FontWeights.Bold });
+                            messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n"));
+
+                            messageTextBlock.Inlines.Add(new Run("💬  Сообщение: ") { FontWeight = FontWeights.Bold });
+                            messageTextBlock.Inlines.Add(new Run($"{mMessageText}"));
+
+                            Border messageBorder = new Border
+                            {
+                                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 255)),
+                                BorderBrush = Brushes.LightGray,
+                                BorderThickness = new Thickness(1),
+                                CornerRadius = new CornerRadius(5),
+                                Padding = new Thickness(8),
+                                Child = messageTextBlock
+                            };
+
+                            messagesPanel.Children.Add(messageBorder);
+                        }
+                    }
+
+                    messagesScrollViewer.Content = messagesPanel;
+                    System.Windows.Controls.Grid.SetRow(messagesScrollViewer, 2);
+                    InfoHolePanel.Children.Add(messagesScrollViewer);
+
+                    /// Блок 4. Блок добавления комментария
+                    System.Windows.Controls.Grid sendMessagesPanel = new System.Windows.Controls.Grid
+                    {
+                        Margin = new Thickness(5, 5, 5, 5),
+                        VerticalAlignment = VerticalAlignment.Bottom
+                    };
+
+                    sendMessagesPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    sendMessagesPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+
+                    System.Windows.Controls.TextBox commentTextBox = new System.Windows.Controls.TextBox
+                    {
+                        Height = 45,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Padding = new Thickness(5, 5, 5, 5),
+                        Margin = new Thickness(5, 0, 3, 0),
+                        AcceptsReturn = true,
+                        TextWrapping = TextWrapping.Wrap,
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                    };
+
+                    System.Windows.Controls.Grid.SetColumn(commentTextBox, 0);
+
+                    Button sendButton = new Button
+                    {
+                        Content = "🔼",
+                        Height = 45,
+                        Width = 30,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        HorizontalAlignment = HorizontalAlignment.Stretch
+                    };
+
+                    System.Windows.Controls.Grid.SetColumn(sendButton, 1);
+
+                    sendMessagesPanel.Children.Add(commentTextBox);
+                    sendMessagesPanel.Children.Add(sendButton);
+
+                    System.Windows.Controls.Grid.SetRow(sendMessagesPanel, 3);
+                    InfoHolePanel.Children.Add(sendMessagesPanel);
+
+
+
+
 
 
 
@@ -433,7 +543,7 @@ namespace KPLN_HoleManager.Forms
                 };
 
                 // Добавляем кнопку в панель
-                InfoHolePanel.Children.Add(newButton);
+                holeListPanel.Children.Add(newButton);
             }
         }
     }

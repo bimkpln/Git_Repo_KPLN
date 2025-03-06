@@ -722,6 +722,7 @@ namespace KPLN_HoleManager.Commands
 
                 // Очистка панели информации перед завершением транзакции
                 DockableManagerForm.Instance?.InfoHolePanel.Children.Clear();
+                DockableManagerForm.Instance?.InfoHolePanel.RowDefinitions.Clear();
 
             }
             else

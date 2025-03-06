@@ -129,11 +129,8 @@
         </StackPanel>
 
         <!-- Панель с информацией -->
-        <Grid Grid.Row="2" Background="White">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel x:Name="InfoHolePanel"/>
-            </ScrollViewer>
-        </Grid>
+        <Grid x:Name="InfoHolePanel" Grid.Row="2" Background="White"/>
+        
     </Grid>
 
 </Page>
