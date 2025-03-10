@@ -22,11 +22,9 @@
 
         </Grid.RowDefinitions>
 
-        <!-- Верхняя панель -->
         <StackPanel x:Name="ActionButtonDepartment" Orientation="Vertical" Grid.Row="0" HorizontalAlignment="Stretch">
         </StackPanel>
 
-        <!-- Средняя панель -->
         <StackPanel Grid.Row="1" Orientation="Vertical" HorizontalAlignment="Stretch" Margin="0,1,0,0">
             <Button x:Name="ButtonNoneStatus" Content="{Binding NoneStatusButtonText}" Height="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="5,0,0,0" Background="#FFBDBDBD" BorderThickness="1" FontSize="10" Click="StatusButton_Click">
                 <Button.Style>
@@ -128,7 +126,6 @@
             </Grid>
         </StackPanel>
 
-        <!-- Панель с информацией -->
         <Grid x:Name="InfoHolePanel" Grid.Row="2" Background="White"/>
         
     </Grid>

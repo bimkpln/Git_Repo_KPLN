@@ -10,7 +10,7 @@ using System.Linq;
 using KPLN_HoleManager.Commands;
 using System.Windows.Documents;
 using System;
-using System.Xml.Linq;
+using Autodesk.Revit.UI.Selection;
 
 
 namespace KPLN_HoleManager.Forms
@@ -18,24 +18,24 @@ namespace KPLN_HoleManager.Forms
     // Передача данных в функции
     public class HoleSelectionViewModel
     {
+        public HoleSelectionViewModel(Element element, bool wallLink, string userFullName, string departmentName) { }
         public string UserFullName { get; }
-        public string DepartmentName { get; }
-
-        public HoleSelectionViewModel(Element element, string userFullName, string departmentName) {}
+        public string DepartmentName { get; }   
     }
 
     public partial class DockableManagerForm : Page, IDockablePaneProvider
     {
-        UIApplication _uiApp; // Активная Revit-сессия      
+        UIApplication _uiApp;     
 
-        private readonly DBWorkerService _dbWorkerService; // БД
-        string userFullName; // Имя пользователя
-        string departmentName; // Название отдела
+        private readonly DBWorkerService _dbWorkerService; 
+        string userFullName; 
+        string departmentName; 
 
         // Данные статусов в названия кнопок
         private readonly ButtonDataViewModel _buttonDataViewModel; 
         private static DockableManagerForm _instance;
         public static DockableManagerForm Instance => _instance;
+
 
         /// Получение Revit-потока
         public void SetUIApplication(UIApplication uiApp)
@@ -89,7 +89,6 @@ namespace KPLN_HoleManager.Forms
         // Растановка кнопок в зависимости от отдела
         public void AddDepartmentButtons()
         {
-            // Общий стиль кнопок
             var buttonStyle = new Style(typeof(Button));
             buttonStyle.Setters.Add(new Setter(Button.HeightProperty, 30.0));
             buttonStyle.Setters.Add(new Setter(Button.HorizontalAlignmentProperty, HorizontalAlignment.Stretch));
@@ -99,7 +98,8 @@ namespace KPLN_HoleManager.Forms
 
             AddButton("🔄  Обновление данных отверстий", buttonStyle, "#d1f7ff"); 
             AddButton("➡️  Создать задание на отверстие", buttonStyle, "#d1f7ff");
-            AddButton("⚙  Настройки плагина", buttonStyle, "#d1f7ff");
+            AddButton("➡️  Создать задание по стене", buttonStyle, "#d1f7ff");
+            AddButton("⚙  Настройка плагина", buttonStyle, "#d1f7ff");
         }
 
         // Пакетного создания кнопок
@@ -121,49 +121,179 @@ namespace KPLN_HoleManager.Forms
             {
                 button.Click += PlaceHolesOnSelectedWall;
             }
+            if (content.Contains("Создать задание по стене"))
+            {                
+            }
+            if (content.Contains("Настройка плагина"))
+            {
+                button.Click += HolePluginSettings;
+            }
 
             ActionButtonDepartment.Children.Add(button);
         }
 
-
-        // XAML. Обработчик для кнопки "Обновление данных об отверстиях"
+       // XAML. Обработчик для кнопки "Обновление данных об отверстиях"
         public void UpdateHoles(object sender, RoutedEventArgs e)
         {
             UpdateStatusCounts();
             TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
         }
 
+
+
+
+
+
+
         // XAML. Обработчик для кнопки "Создать задание на отверстие"
         public void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
-
-            ICollection<ElementId> selectedIds = uiDoc.Selection.GetElementIds();
-
-            if (selectedIds.Count == 0)
+            Element element = null;
+            bool wallLink = false;
+          
+            try
             {
-                TaskDialog.Show("Предупреждение", "Ничего не выбрано.\nПожалуйста, выберите стену.");
+                // Выбираем элемент (стену или связанный элемент)
+                this.IsEnabled = false;
+
+                Reference pickedRef = uiDoc.Selection.PickObject(ObjectType.Element, new WallAndLinkSelectionFilter(), "Выберите стену или связанный элемент");
+                element = doc.GetElement(pickedRef.ElementId);
+
+                // Обычная стена
+                if (element is Wall wall)
+                {                  
+                    wallLink = false;
+
+                    List<string> settings = DockableManagerFormSettings.LoadSettings();
+
+                    if (settings == null)
+                    {
+                        var holeWindow = new sChoiseHole(_uiApp, wall, wallLink, userFullName, departmentName);
+                        holeWindow.ShowDialog();
+                    }
+                    else if (departmentName != "BIM" && settings[2] != "Не выбрано" && settings[3] != "Не выбрано")
+                    {
+                        _ExternalEventHandler.Instance.Raise((app) =>
+                        {
+                            PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, element, wallLink, departmentName, settings[2], settings[3]);
+                        });
+                    }
+                    else
+                    {
+                        var holeWindow = new sChoiseHole(_uiApp, wall, wallLink, userFullName, departmentName);
+                        holeWindow.ShowDialog();
+                    }
+
+                    return;
+                }
+                // Линкованный элемент
+                else if (element is RevitLinkInstance linkInstance)
+                {                    
+                    Document linkedDoc = linkInstance.GetLinkDocument();
+
+                    if (linkedDoc == null)
+                    {
+                        TaskDialog.Show("Ошибка", "Действие остановлено. Не удалось получить связанный документ.");
+                        this.IsEnabled = true;
+                        return;
+                    }
+
+                    try
+                    {
+                        Reference linkedRef = uiDoc.Selection.PickObject(
+                            ObjectType.LinkedElement,
+                            "Выберите стену в линке"
+                        );
+
+                        Element linkedElement = linkedDoc.GetElement(linkedRef.LinkedElementId);
+
+                        if (linkedElement is Wall linkedWall)
+                        {
+                            wallLink = true;
+
+                            List<string> settings = DockableManagerFormSettings.LoadSettings();
+
+                            if (settings == null)
+                            {
+                                var holeWindow = new sChoiseHole(_uiApp, linkedElement, wallLink, userFullName, departmentName);
+                                holeWindow.ShowDialog();
+                            }
+                            else if (departmentName != "BIM" && settings[2] != "Не выбрано" && settings[3] != "Не выбрано")
+                            {
+                                _ExternalEventHandler.Instance.Raise((app) =>
+                                {
+                                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, linkedElement, wallLink, departmentName, settings[2], settings[3]);
+                                });
+                            }
+                            else
+                            {
+                                var holeWindow = new sChoiseHole(_uiApp, linkedElement, wallLink, userFullName, departmentName);
+                                holeWindow.ShowDialog();
+                            }
+
+                            return;
+                        }
+                    }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                    {
+                        TaskDialog.Show("Отмена", "Выбор отменён пользователем.");
+                        this.IsEnabled = true;
+                        return;
+                    }
+                }
+                else
+                {
+                    TaskDialog.Show("Предупреждение", "Действие остановлено.\nВыбранный элемент не является стеной.");
+                    this.IsEnabled = true;
+                    return;
+                }
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                TaskDialog.Show("Отмена", "Выбор отменён пользователем.");
+                this.IsEnabled = true;
                 return;
             }
-            else if (selectedIds.Count > 1)
-            {
-                TaskDialog.Show("Предупреждение", "Выбрано несколько элементов.\nПожалуйста, выберите только один элемент.");
-                return;
-            }
 
-            ElementId selectedId = selectedIds.First();
-            Element element = doc.GetElement(selectedId);
-
-            if (!(element is Wall wall))
-            {
-                TaskDialog.Show("Предупреждение", "Выбранный элемент не является стеной.\nПожалуйста, выберите стену.");
-                return;
-            }
-
-            var holeWindow = new sChoiseHole(_uiApp, element, userFullName, departmentName);
-            holeWindow.ShowDialog();
+            TaskDialog.Show("Предупреждение", "Действие остановлено.\nВыбранный элемент не является стеной.");
+            this.IsEnabled = true;
         }
+
+        // XAML. Обработчик для кнопки "Настройка плагина"
+        public void HolePluginSettings(object sender, RoutedEventArgs e)
+        {
+            var dockableManagerFormSettings = new DockableManagerFormSettings(userFullName, departmentName);
+            dockableManagerFormSettings.ShowDialog();
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // XAML. Вывод информации об отверстиях
         private void StatusButton_Click(object sender, RoutedEventArgs e)
@@ -574,7 +704,7 @@ namespace KPLN_HoleManager.Forms
         }
     }
 
-    // Передаём данные статусов в названия кнопок
+    // Передача данных статусов в названия кнопок
     public class ButtonDataViewModel : INotifyPropertyChanged
     {
         // Первичная прогрузка
@@ -640,5 +770,16 @@ namespace KPLN_HoleManager.Forms
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    // Фильтр для выбора стен и линков
+    public class WallAndLinkSelectionFilter : ISelectionFilter
+    {
+        public bool AllowElement(Element elem)
+        {
+            return elem is Wall || elem is RevitLinkInstance;
+        }
+
+        public bool AllowReference(Reference reference, XYZ position) => false;
     }
 }

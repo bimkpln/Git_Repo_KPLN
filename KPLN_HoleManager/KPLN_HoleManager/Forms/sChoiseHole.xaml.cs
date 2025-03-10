@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,7 +13,8 @@ namespace KPLN_HoleManager.Forms
     public partial class sChoiseHole : Window
     {
         private readonly UIApplication _uiApp;
-        private readonly Element _selectedElement;
+        private readonly Element _selectedWall;
+        private readonly bool _wallLink;
 
         private readonly string _userFullName;
         private readonly string _departmentName;
@@ -21,18 +23,19 @@ namespace KPLN_HoleManager.Forms
         private string _sendingDepartmentHoleName;
         private string _holeTypeName;
 
-        public sChoiseHole(UIApplication uiApp, Element selectedElement, string userFullName, string departmentName)
+        public sChoiseHole(UIApplication uiApp, Element selectedWall, bool wallLink, string userFullName, string departmentName)
         {
             InitializeComponent();
 
             // Данные для дальнейшей передачи
             _uiApp = uiApp;
-            _selectedElement = selectedElement;            
+            _selectedWall = selectedWall;
+            _wallLink = wallLink;
             _userFullName = userFullName;
             _departmentName = departmentName;
 
             // Устанавливаем DataContext для привязки данных в XAML
-            DataContext = new HoleSelectionViewModel(selectedElement, userFullName, departmentName);
+            DataContext = new HoleSelectionViewModel(selectedWall, wallLink, userFullName, departmentName);
 
             // Настраиваем ComboBox
             SetDepartmentComboBox();
@@ -73,7 +76,7 @@ namespace KPLN_HoleManager.Forms
                 DepartmentComboBox.Foreground = Brushes.Black;
 
                 // Определяем доступные отделы без выбранного
-                List<string> availableDepartments = new List<string> { "АР", "КР", "ИОС" };
+                List<string> availableDepartments = new List<string> { "АР", "КР", "ОВиК", "ВК", "ЭОМ", "CC" };
                 availableDepartments.Remove(selectedDepartment);
 
                 // Очищаем SendingDepartmentComboBox и заполняем его новыми значениями
@@ -84,7 +87,24 @@ namespace KPLN_HoleManager.Forms
                 }
 
                 // Определяем, какой элемент должен быть выбран по умолчанию
-                string defaultSendingDepartment = selectedDepartment == "ИОС" ? "АР" : "ИОС";
+                string defaultSendingDepartment;
+                if (selectedDepartment == "ОВиК" || selectedDepartment == "ВК" ||
+                    selectedDepartment == "ЭОМ" || selectedDepartment == "CC")
+                {
+                    defaultSendingDepartment = "АР";
+                }
+                else
+                {
+                    defaultSendingDepartment = "ОВиК";
+                }
+
+                // При наличии настроек - подгрузка
+                List<string> settings = DockableManagerFormSettings.LoadSettings();
+
+                if (settings != null)
+                {
+                    defaultSendingDepartment = settings[2];
+                }
 
                 // Устанавливаем нужный элемент в SendingDepartmentComboBox
                 foreach (ComboBoxItem item in SendingDepartmentComboBox.Items)
@@ -126,8 +146,10 @@ namespace KPLN_HoleManager.Forms
 
         // XAML. Закрытие окна
         private void CloseWindow(object sender, RoutedEventArgs e)
-        {
+        {            
             this.Close();
+            TaskDialog.Show("Отмена", "Выбор отменён пользователем");
+            if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;          
         }
 
         // Вызов команды _ExternalEventHandler для срабатывание Execute
@@ -138,13 +160,14 @@ namespace KPLN_HoleManager.Forms
             if (_uiApp == null)
             {
                 TaskDialog.Show("Ошибка", "Не удалось получить доступ к Revit.");
+                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return;
             }
           
             // Вызываем команду с параметрами
             _ExternalEventHandler.Instance.Raise((app) =>
             {
-                PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedElement, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
+                PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _wallLink, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
             });
         }
     }

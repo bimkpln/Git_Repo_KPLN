@@ -15,6 +15,7 @@ namespace KPLN_HoleManager.Commands
         private readonly string _userFullName;
         private readonly string _departmentName;
         private readonly Element _selectedWall;
+        private readonly bool _wallLink;
 
         private readonly string _departmentHoleName;
         private readonly string _sendingDepartmentHoleName;
@@ -22,26 +23,28 @@ namespace KPLN_HoleManager.Commands
 
         private bool transactionStatus;
 
-        public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
+        public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, bool wallLink, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
             _userFullName = userFullName;
             _departmentName = departmentName;
             _selectedWall = selectedElement;
+            _wallLink = wallLink;
             _departmentHoleName = departmentHoleName;
             _sendingDepartmentHoleName = sendingDepartmentHoleName;
             _holeTypeName = holeTypeName;
         }
 
-        public static void Execute(UIApplication uiApp, string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
+        public static void Execute(UIApplication uiApp, string userFullName, string departmentName, Element selectedElement, bool wallLink, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
             if (uiApp == null)
             {
                 TaskDialog.Show("Ошибка", "Revit API не доступен.");
+                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return;
             }
 
             // Создаём экземпляр команды и передаём её в ExternalEvent
-            var command = new PlaceHoleOnWallCommand(userFullName, departmentName, selectedElement, departmentHoleName, sendingDepartmentHoleName, holeTypeName);
+            var command = new PlaceHoleOnWallCommand(userFullName, departmentName, selectedElement, wallLink, departmentHoleName, sendingDepartmentHoleName, holeTypeName);
             _ExternalEventHandler.Instance.Raise((app) => command.Run(app));
         }
 
@@ -56,55 +59,78 @@ namespace KPLN_HoleManager.Commands
                 Wall wall = _selectedWall as Wall;
                 LocationCurve locationCurve = wall.Location as LocationCurve;
 
-                // Список допустимых категорий элементов
-                BuiltInCategory[] allowedCategories = new BuiltInCategory[]
-                {
-                    BuiltInCategory.OST_DuctCurves,
-                    BuiltInCategory.OST_FlexDuctCurves,
-                    BuiltInCategory.OST_PipeCurves,
-                    BuiltInCategory.OST_FlexPipeCurves,
-                    BuiltInCategory.OST_CableTray,
-                    BuiltInCategory.OST_Conduit
-                };
-
-                // Выбираемый элемент, который пересекает стену
+                // Выбор элемента
                 Element intersectingElement = null;
 
                 while (true)
                 {
                     try
                     {
-                        TaskDialog.Show("Выбор элемента", "Для продолжения работы выберите элемент, который пересекается с выбранной стеной.");
-                        Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, "Выберите элемент, который пересекается со стеной.");
-                        intersectingElement = doc.GetElement(selectedRef);
+                        // Используем фильтр, который разрешает выбирать только нужные элементы и линки
+                        Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, new CustomSelectionFilter(), "Выберите элемент (воздуховоды, трубы, лотки, короба или линк).");
+                        Element firstSelectedElement = doc.GetElement(selectedRef);
 
-                        if (intersectingElement == null)
+                        if (firstSelectedElement is RevitLinkInstance revitLink)
                         {
-                            TaskDialog.Show("Ошибка", "Не удалось выбрать элемент для пересечения. Попробуйте снова.");
-                            continue;
-                        }
+                            // Если выбран линк, предлагаем выбрать элемент внутри него
+                            Document linkedDoc = revitLink.GetLinkDocument();
 
-                        if (!allowedCategories.Contains((BuiltInCategory)intersectingElement.Category.Id.IntegerValue))
-                        {
-                            TaskDialog.Show("Ошибка", "Выбранный элемент не является допустимым объектом (воздуховоды, трубы, кабельные лотки или короба). Попробуйте снова.");
-                            continue;
+                            if (linkedDoc == null)
+                            {
+                                TaskDialog.Show("Ошибка", "Не удалось получить связанный документ.");
+                                continue;
+                            }
+
+                            try
+                            {
+                                Reference linkedRef = uiDoc.Selection.PickObject(ObjectType.LinkedElement, "Выберите элемент внутри линка.");
+                                Element linkedElement = linkedDoc.GetElement(linkedRef.LinkedElementId);
+
+                                if (linkedElement != null)
+                                {
+                                    intersectingElement = linkedElement;
+                                    break;
+                                }
+                            }
+                            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                            {
+                                TaskDialog.Show("Отмена", "Выбор элемента был отменён.");
+                                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                                continue;
+                            }
                         }
-          
-                        break;                       
+                        else
+                        {
+                            intersectingElement = firstSelectedElement;
+                            break;
+                        }
                     }
                     catch (Autodesk.Revit.Exceptions.OperationCanceledException)
                     {
                         TaskDialog.Show("Отмена", "Выбор элемента был отменён.");
-                        return; 
+                        if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                        continue;
                     }
+
+                    TaskDialog.Show("Предупреждение", "Выбранный элемент не является допустимым объектом. Попробуйте снова.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 }
-            
-                // Определяем точку пересечения
+
+           
+
+               
+
                 XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement, _departmentHoleName, _holeTypeName);
+                
+
+
+
+
 
                 if (holeLocation == null)
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить точку пересечения.\nВыберите стену заново и повторите попытку.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                     return;
                 }
 
@@ -114,6 +140,7 @@ namespace KPLN_HoleManager.Commands
                 if (string.IsNullOrEmpty(familyFileName))
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить файл семейства.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                     return;
                 }
 
@@ -123,8 +150,12 @@ namespace KPLN_HoleManager.Commands
                 if (!File.Exists(familyPath))
                 {
                     TaskDialog.Show("Ошибка", $"Файл семейства не найден:\n{familyPath}");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                     return;
                 }
+
+
+
 
                 // Запуск общей транзакции
                 using (Transaction tx = new Transaction(doc, $"KPLN. Разместить отверстие {familyFileName}"))
@@ -140,6 +171,7 @@ namespace KPLN_HoleManager.Commands
                     {
                         tx.RollBack();
                         TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
+                        if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                         return;
                     }
 
@@ -149,6 +181,7 @@ namespace KPLN_HoleManager.Commands
                     {
                         tx.RollBack();
                         TaskDialog.Show("Ошибка", "Не удалось получить типоразмер семейства.");
+                        if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                         return;
                     }
 
@@ -166,6 +199,7 @@ namespace KPLN_HoleManager.Commands
                     {
                         tx.RollBack();
                         TaskDialog.Show("Ошибка", "Ошибка при создании отверстия.");
+                        if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                         return;
                     }
 
@@ -183,6 +217,7 @@ namespace KPLN_HoleManager.Commands
 
                     // Обновление данных интерфейса
                     DockableManagerForm.Instance?.UpdateStatusCounts();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
 
                     tx.Commit();                  
                 }
@@ -190,6 +225,7 @@ namespace KPLN_HoleManager.Commands
             catch (Exception ex)
             {
                 TaskDialog.Show("Ошибка", $"Произошла непредвиденная ошибка:\n{ex.Message}");
+                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
             }
         }
 
@@ -283,6 +319,7 @@ namespace KPLN_HoleManager.Commands
             if (view3D == null)
             {
                 TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
+                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return null;
             }
                     
@@ -728,7 +765,8 @@ namespace KPLN_HoleManager.Commands
             else
             {
                 transactionStatus = false;
-                TaskDialog.Show("Внимание", "Операция отDменена пользователем.");
+                TaskDialog.Show("Внимание", "Операция отменена пользователем.");
+                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
             }
         }
 
@@ -741,6 +779,43 @@ namespace KPLN_HoleManager.Commands
             return (point.X >= bbox.Min.X && point.X <= bbox.Max.X) &&
                    (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
+        }
+    }
+
+    // Фильтр на выбор пересекающего стену элемента
+    public class CustomSelectionFilter : ISelectionFilter
+    {
+        public bool AllowElement(Element elem)
+        {
+            if (elem == null) return false;
+
+            return elem is RevitLinkInstance || CategoryFilter.IsAllowedElement(elem);
+        }
+
+        public bool AllowReference(Reference reference, XYZ position)
+        {
+            return true;
+        }
+    }
+
+    // Фильтр на элементы системы
+    public static class CategoryFilter
+    {
+        public static bool IsAllowedElement(Element element)
+        {
+            if (element == null) return false;
+          
+            var allowedCategories = new HashSet<int>
+            {
+            (int)BuiltInCategory.OST_DuctCurves,
+            (int)BuiltInCategory.OST_FlexDuctCurves,
+            (int)BuiltInCategory.OST_PipeCurves,
+            (int)BuiltInCategory.OST_FlexPipeCurves,
+            (int)BuiltInCategory.OST_CableTray,
+            (int)BuiltInCategory.OST_Conduit
+            };
+
+            return element.Category != null && allowedCategories.Contains(element.Category.Id.IntegerValue);
         }
     }
 
