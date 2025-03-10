@@ -35,7 +35,7 @@ namespace KPLN_Finishing
                     try
                     {
                         Wall wall = element as Wall;
-                        WallType type = wall.WallType as WallType;
+                        WallType type = wall.WallType;
                         if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
                         else { return type; }
                     }
@@ -45,7 +45,7 @@ namespace KPLN_Finishing
                     try
                     {
                         Floor floor = element as Floor;
-                        FloorType type = floor.FloorType as FloorType;
+                        FloorType type = floor.FloorType;
                         if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
                         else { return type; }
                     }

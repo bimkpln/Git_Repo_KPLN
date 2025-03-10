@@ -324,6 +324,10 @@ namespace KPLN_Tools.ExecutableCommand
                         {
                             _sbErrResult.AppendLine($"Файла по указанному пути нет. Проверь наличие файла для обновления тут: {linkUpdateEntity.UpdatedLinkPath}. Если он там есть - обратись к разработчику!");
                         }
+                        catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
+                        {
+                            _sbErrResult.AppendLine($"Попытайся обновить вручную файл {linkUpdateEntity.LinkName}. Ошибка: {ioe.Message}");
+                        }
                     }
                 }
             }

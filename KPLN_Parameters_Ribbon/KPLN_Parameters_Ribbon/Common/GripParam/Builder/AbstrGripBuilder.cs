@@ -290,19 +290,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     else if (tempSectData.Contains("С1"))
                         instElemDataSectParam.Set("Секция 1");
                     else if (tempSectData.Contains("С2"))
-                    {
-                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
-                            instElemDataSectParam.Set("Секция 2-3");
-                        else
-                            instElemDataSectParam.Set("Секция 2");
-                    }
+                        instElemDataSectParam.Set("Секция 2");
                     else if (tempSectData.Contains("С3"))
-                    {
-                        if (tempSectData.Contains("К1") || tempSectData.Contains("К2"))
-                            instElemDataSectParam.Set("Секция 2-3");
-                        else
-                            instElemDataSectParam.Set("Секция 3");
-                    }
+                        instElemDataSectParam.Set("Секция 3");
                     else if (tempSectData.Contains("С4"))
                         instElemDataSectParam.Set("Секция 4");
                     else if (tempSectData.Contains("СТЛ"))

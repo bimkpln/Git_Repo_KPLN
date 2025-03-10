@@ -19,7 +19,7 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandSendMsgToBitrix : IExternalCommand
     {
-        internal const string PluginName = "Отправить в Bitrix";
+        internal const string PluginName = "Отправить\nв Bitrix";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -131,6 +131,10 @@ namespace KPLN_Tools.ExternalCommands
                     selectedDocPath = string.Join("\\", centralDocPathParts.Where(str => !str.Contains(".rvt")));
                     selectedDocTitle = centralDocPathParts.FirstOrDefault(str => str.Contains(".rvt"));
                 }
+
+                // У отсоединенных файлов путь МХ не выцепить - они в оперативке висят
+                if (string.IsNullOrEmpty(selectedDocTitle))
+                    selectedDocTitle = doc.Title;
             }
             else
             {
@@ -148,7 +152,9 @@ namespace KPLN_Tools.ExternalCommands
 
             #region Подготовка и формирование окна
             ObservableCollection<SendMsgToBitrix_UserEntity> modelsForForm = new ObservableCollection<SendMsgToBitrix_UserEntity>(dbUsers
-                .Select(user => new SendMsgToBitrix_UserEntity(user, DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartment_ByDBUser(user))));
+                .Select(user => new SendMsgToBitrix_UserEntity(user, DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartment_ByDBUser(user)))
+                .OrderByDescending(user => user.DBSubDepartment.Id)
+                .ThenBy(user => user.DBUser.Id));
 
             SendMsgToBitrix form = new SendMsgToBitrix(modelsForForm);
             form.ShowDialog();

@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using System.Windows.Forms;В
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Looker
@@ -39,7 +39,7 @@ namespace KPLN_Looker
         /// <summary>
         /// Лимит задержки сообщений
         /// </summary>
-        private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 3, 0);
+        private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 10, 0);
 
         /// <summary>
         /// Метка закрытого для пользователя проекта
