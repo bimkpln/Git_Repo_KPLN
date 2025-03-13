@@ -33,7 +33,7 @@ namespace KPLN_HoleManager.Commands
         }
 
         // Получение статуса всех заданий на отверстия
-        public static List<int> StatusHoleTask(Document doc, List<ElementId> familyInstanceIds)
+        public static List<int> StatusHoleTask(Document doc, List<ElementId> familyInstanceIds, string userName, string userDepartament)
         {
             // Создаем список, чтобы хранить статистику по статусам: "Без статуса", "Утверждено", "Подтверждение", "Ошибки"
             List<int> statusCounts = new List<int> { 0, 0, 0, 0 };
@@ -57,23 +57,23 @@ namespace KPLN_HoleManager.Commands
                     string[] messageParts = lastMessage.Split(new string[] { Commands.ExtensibleStorageHelper.Separator }, StringSplitOptions.None);
 
                     string status = messageParts[10];
-
+                
                     switch (status)
                     {
                         case "Без статуса":
-                            statusCounts[0]++;
+                            if (messageParts[1] == userName || messageParts[3] == userDepartament || messageParts[1] == "Функция плагина" || userDepartament == "BIM") statusCounts[0]++;
                             break;
                         case "Утверждено":
-                            statusCounts[1]++;
+                            if (messageParts[1] == userName || messageParts[3] == userDepartament || messageParts[4] == userDepartament || userDepartament == "BIM") statusCounts[1]++;
                             break;
                         case "Подтверждение":
-                            statusCounts[2]++;
+                            if (messageParts[1] == userName || messageParts[3] == userDepartament || messageParts[4] == userDepartament || userDepartament == "BIM") statusCounts[2]++;
                             break;
                         case "Ошибки":
-                            statusCounts[3]++;
+                            if (messageParts[1] == userName || messageParts[3] == userDepartament || messageParts[4] == userDepartament || userDepartament == "BIM") statusCounts[3]++;
                             break;
                     }
-                    
+                                    
                 }
             }
 

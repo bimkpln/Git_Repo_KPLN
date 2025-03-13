@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -22,6 +23,9 @@ namespace KPLN_HoleManager.Forms
         private string _departmentHoleName;
         private string _sendingDepartmentHoleName;
         private string _holeTypeName;
+
+        // При наличии настроек - подгрузка значений
+        List<string> settings = DockableManagerFormSettings.LoadSettings();
 
         public sChoiseHole(UIApplication uiApp, Element selectedWall, bool wallLink, string userFullName, string departmentName)
         {
@@ -65,6 +69,36 @@ namespace KPLN_HoleManager.Forms
                 }
                 DepartmentComboBox.Foreground = Brushes.Gray;
             }
+          
+            if (settings != null)
+            {
+                if (settings[2] != "Не выбрано")
+                {
+                    foreach (ComboBoxItem item in DepartmentComboBox.Items)
+                    {
+                        if (item.Content.ToString() == settings[2])
+                        {
+                            DepartmentComboBox.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+                if (settings[3] != "Не выбрано")
+                {
+                    foreach (ComboBoxItem item in SendingDepartmentComboBox.Items)
+                    {
+                        if (item.Content.ToString() == settings[3])
+                        {
+                            SendingDepartmentComboBox.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    SendingDepartmentComboBox.SelectedIndex = 0;
+                }
+            }
         }
 
         // XAML. Выпадающий список с отделамми
@@ -75,48 +109,30 @@ namespace KPLN_HoleManager.Forms
                 string selectedDepartment = selectedItem.Content.ToString();
                 DepartmentComboBox.Foreground = Brushes.Black;
 
-                // Определяем доступные отделы без выбранного
-                List<string> availableDepartments = new List<string> { "АР", "КР", "ОВиК", "ВК", "ЭОМ", "CC" };
-                availableDepartments.Remove(selectedDepartment);
+                // Исходный список всех отделов
+                List<string> allDepartments = new List<string> { "АР", "КР", "ОВиК", "ВК", "ЭОМ", "СС" };
 
-                // Очищаем SendingDepartmentComboBox и заполняем его новыми значениями
+                List<string> availableDepartments;
+                if (selectedDepartment == "ОВиК" || selectedDepartment == "ВК" || selectedDepartment == "ЭОМ" || selectedDepartment == "СС")
+                {
+                    availableDepartments = new List<string> { "АР", "КР" };
+                }
+                else
+                {
+                    availableDepartments = allDepartments.Where(d => d != selectedDepartment).ToList();
+                }
+
                 SendingDepartmentComboBox.Items.Clear();
+
                 foreach (string department in availableDepartments)
                 {
                     SendingDepartmentComboBox.Items.Add(new ComboBoxItem { Content = department });
                 }
 
-                // Определяем, какой элемент должен быть выбран по умолчанию
-                string defaultSendingDepartment;
-                if (selectedDepartment == "ОВиК" || selectedDepartment == "ВК" ||
-                    selectedDepartment == "ЭОМ" || selectedDepartment == "CC")
-                {
-                    defaultSendingDepartment = "АР";
-                }
-                else
-                {
-                    defaultSendingDepartment = "ОВиК";
-                }
-
-                // При наличии настроек - подгрузка
-                List<string> settings = DockableManagerFormSettings.LoadSettings();
-
-                if (settings != null)
-                {
-                    defaultSendingDepartment = settings[2];
-                }
-
-                // Устанавливаем нужный элемент в SendingDepartmentComboBox
-                foreach (ComboBoxItem item in SendingDepartmentComboBox.Items)
-                {
-                    if (item.Content.ToString() == defaultSendingDepartment)
-                    {
-                        SendingDepartmentComboBox.SelectedItem = item;
-                        break;
-                    }
-                }
+                SendingDepartmentComboBox.SelectedIndex = 0;
             }
         }
+
 
         // XAML. Кнопка с прямоугольным отверстием
         private void SquareHoleButton_Click(object sender, RoutedEventArgs e)

@@ -41,7 +41,7 @@
             <ComboBoxItem Content="АР" />
             <ComboBoxItem Content="КР" />
             <ComboBoxItem Content="ОВиК" />
-            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
             <ComboBoxItem Content="ЭОМ" />
             <ComboBoxItem Content="СС" />
         </ComboBox>

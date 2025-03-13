@@ -17,9 +17,10 @@ namespace KPLN_HoleManager.Commands
         private readonly Element _selectedWall;
         private readonly bool _wallLink;
 
-        private readonly string _departmentHoleName;
-        private readonly string _sendingDepartmentHoleName;
-        private readonly string _holeTypeName;
+        
+        private string _departmentHoleName;
+        private string _sendingDepartmentHoleName;
+        private string _holeTypeName;
 
         private bool transactionStatus;
 
@@ -52,6 +53,15 @@ namespace KPLN_HoleManager.Commands
         {
             UIDocument uiDoc = uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
+
+            // Чтение файлов преднастроек
+            List<string> settings = DockableManagerFormSettings.LoadSettings();
+            if (settings != null)
+            {
+                _departmentHoleName = settings[2];
+                _sendingDepartmentHoleName = settings[3];
+                _holeTypeName = settings[4];
+            }
 
             try
             {
@@ -114,19 +124,10 @@ namespace KPLN_HoleManager.Commands
 
                     TaskDialog.Show("Предупреждение", "Выбранный элемент не является допустимым объектом. Попробуйте снова.");
                     if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-                }
-
-           
-
-               
+                }          
 
                 XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement, _departmentHoleName, _holeTypeName);
                 
-
-
-
-
-
                 if (holeLocation == null)
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить точку пересечения.\nВыберите стену заново и повторите попытку.");
@@ -153,9 +154,6 @@ namespace KPLN_HoleManager.Commands
                     if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                     return;
                 }
-
-
-
 
                 // Запуск общей транзакции
                 using (Transaction tx = new Transaction(doc, $"KPLN. Разместить отверстие {familyFileName}"))
@@ -212,6 +210,7 @@ namespace KPLN_HoleManager.Commands
                     if (transactionStatus == false)
                     {
                         tx.RollBack();
+                        if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                         return;
                     }
 
@@ -234,6 +233,12 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         private string GetFamilyFileName(string department, string holeType)
         {
+            if (department == "ОВиК" || department == "ВК" 
+                || department == "ЭОМ" || department == "СС")
+            {
+                department = "ИОС";
+            }
+
             var familyMap = new Dictionary<string, string>
             {
                 { "АР_SquareHole", "199_Отверстие прямоугольное_(Об_Стена).rfa" },
@@ -273,12 +278,47 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         private FamilySymbol GetFamilySymbol(Family family, Document doc)
         {
+            // Сопоставление отделов с существующими типами
+            Dictionary<string, string> departmentMapping = new Dictionary<string, string>
+            {
+                { "ОВиК", "ОВ" },
+                { "ВК", "ВК" },
+                { "ЭОМ", "ЭОМ" },
+                { "СС", "СС" }
+            };
+
+            string targetType = departmentMapping.ContainsKey(_departmentHoleName)
+                ? departmentMapping[_departmentHoleName]
+                : _departmentHoleName;
+
+            // Ищем тип ИОС-семейства 
+            foreach (ElementId id in family.GetFamilySymbolIds())
+            {
+                FamilySymbol symbol = doc.GetElement(id) as FamilySymbol;
+                if (symbol != null && symbol.Name == targetType)
+                {
+                    return symbol;
+                }
+            }
+
+            // Если не найден нужный тип, возвращаем первый попавшийся
             foreach (ElementId id in family.GetFamilySymbolIds())
             {
                 return doc.GetElement(id) as FamilySymbol;
             }
+
             return null;
         }
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// XYZ. Метод нахождения точки пересечения стены и входящего элемента.
@@ -530,6 +570,13 @@ namespace KPLN_HoleManager.Commands
             return null;
         }
 
+
+
+
+
+
+
+
         /// <summary>
         /// Стена. Метод для получения размеров стены
         /// </summary>
@@ -626,118 +673,148 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         public void SetHoleDimensions(Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
         {
-            Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
+            double offset = -900;
+            List<string> settings = DockableManagerFormSettings.LoadSettings();
 
-            // Открываем диалоговое окно для выбора отступа
-            if (sChoiseHoleIndentation.ShowDialog() == true)
+            if (settings != null && settings[5] != "Не выбрано")
             {
-                double offset = sChoiseHoleIndentation.SelectedOffset;
+                if (!double.TryParse(settings[5], out offset))
+                {
+                    transactionStatus = false;
+                    TaskDialog.Show("Ошибка", "Некорректное значение отступа в настройках.");
+                    return;
+                }
+            }
+            else
+            {
+                Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
 
-                Parameter widthParam = holeInstance.LookupParameter("Ширина");
-                Parameter heightParam = holeInstance.LookupParameter("Высота");
-                Parameter heightOtherParam = holeInstance.LookupParameter("КП_Р_Высота");
-                Parameter diametrParam = holeInstance.LookupParameter("Диаметр");
+                // Открываем диалоговое окно для выбора отступа
+                if (sChoiseHoleIndentation.ShowDialog() == true)
+                {
+                    offset = sChoiseHoleIndentation.SelectedOffset;
+                }
+                else
+                {
+                    transactionStatus = false;
+                    TaskDialog.Show("Внимание", "Операция отменена пользователем.");
+                    return;
+                }
+            }
 
-                double internalHeight = UnitUtils.ConvertToInternalUnits(heightElement + offset, UnitTypeId.Millimeters);
-                double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
-                double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
+            if (offset == -900)
+            {
+                transactionStatus = false;
+                TaskDialog.Show("Ошибка", "Не удалось обработать смещение от отверстия. Операция была отменена.");
+                return;
+            }
 
-                if (_departmentHoleName == "АР")
+            Parameter widthParam = holeInstance.LookupParameter("Ширина");
+            Parameter heightParam = holeInstance.LookupParameter("Высота");
+            Parameter heightOtherParam = holeInstance.LookupParameter("КП_Р_Высота");
+            Parameter diametrParam = holeInstance.LookupParameter("Диаметр");
+
+            double internalHeight = UnitUtils.ConvertToInternalUnits(heightElement + offset, UnitTypeId.Millimeters);
+            double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
+            double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
+
+            if (_departmentHoleName == "АР")
+            {
+                if (_holeTypeName == "SquareHole")
+                {
+                    heightParam.Set(internalHeight);
+                    widthParam.Set(internalWidth);
+                }
+                else
+                {
+                    heightOtherParam.Set(internalDiametr);
+                }
+
+                LocationPoint holeLocationAR = holeInstance.Location as LocationPoint;
+                if (holeLocationAR != null)
                 {
                     if (_holeTypeName == "SquareHole")
                     {
-                        heightParam.Set(internalHeight);
-                        widthParam.Set(internalWidth);
+                        double shiftZ = -0.5 * internalHeight;
+                        XYZ moveVector = new XYZ(0, 0, shiftZ);
+                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
                     }
                     else
                     {
-                        heightOtherParam.Set(internalDiametr);
-                    }
-
-                    LocationPoint holeLocationAR = holeInstance.Location as LocationPoint;
-                    if (holeLocationAR != null)
-                    {
-                        if (_holeTypeName == "SquareHole")
-                        {
-                            double shiftZ = -0.5 * internalHeight; 
-                            XYZ moveVector = new XYZ(0, 0, shiftZ);
-                            ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
-                        }
-                        else
-                        {
-                            double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight);
-                            XYZ moveVector = new XYZ(0, 0, shiftZ);
-                            ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
-                        }
+                        double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight);
+                        XYZ moveVector = new XYZ(0, 0, shiftZ);
+                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
                     }
                 }
-                else if (_departmentHoleName == "ИОС")
+            }
+            else if (_departmentHoleName == "ОВиК" || _departmentHoleName == "ВК"
+                || _departmentHoleName == "ЭОМ" || _departmentHoleName == "СС")
+            {
+                if (_holeTypeName == "SquareHole")
                 {
-                    if (_holeTypeName == "SquareHole")
+                    heightParam.Set(internalHeight);
+                    widthParam.Set(internalWidth);
+                }
+                else
+                {
+                    diametrParam.Set(internalDiametr);
+                }
+
+                // Получаем кривую стены
+                Curve wallCurve = (wall.Location as LocationCurve).Curve;
+                XYZ wallDirection;
+
+                if (wallCurve is Line line) // Прямая стена
+                {
+                    wallDirection = line.Direction;
+                }
+                else if (wallCurve is Arc arc) // Изогнутая стена
+                {
+                    XYZ arcCenter = arc.Center;
+
+                    XYZ radialVector = (holeLocation - arcCenter).Normalize();
+
+                    wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+                }
+                else
+                {
+                    return;
+                }
+
+                double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+                Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
+                double wallThickness = GetWallThickness(wall);
+
+
+                if (wallThickness > 0)
+                {
+                    XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
+
+                    // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
+                    XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
+                    XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
+
+                    // Проверяем, в каком направлении двигаться - в сторону нормали или против
+                    double dotProduct = wallNormal.DotProduct(directionToIntersecting);
+                    XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
+
+                    XYZ moveOffset = moveDirection * (wallThickness / 2);
+
+                    // Проверяем, выйдет ли отверстие за пределы стены после смещения
+                    XYZ newHoleLocation = holeLocation + moveOffset;
+
+                    if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
                     {
-                        heightParam.Set(internalHeight);
-                        widthParam.Set(internalWidth);
+                        moveOffset = -moveOffset;
+                        newHoleLocation = holeLocation + moveOffset;
                     }
-                    else
+                    if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
                     {
-                        diametrParam.Set(internalDiametr);
-                    }
-
-                    // Получаем кривую стены
-                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
-                    XYZ wallDirection;
-
-                    if (wallCurve is Line line) // Прямая стена
-                    {
-                        wallDirection = line.Direction;
-                    }
-                    else if (wallCurve is Arc arc) // Изогнутая стена
-                    {
-                        XYZ arcCenter = arc.Center;
-
-                        XYZ radialVector = (holeLocation - arcCenter).Normalize();
-
-                        wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
-                    }
-                    else
-                    {
-                        return;
-                    }
-
-                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
-                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
-                    double wallThickness = GetWallThickness(wall);
-
-
-                    if (wallThickness > 0)
-                    {
-                        XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
-
-                        // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
-                        XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
-                        XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
-
-                        // Проверяем, в каком направлении двигаться - в сторону нормали или против
-                        double dotProduct = wallNormal.DotProduct(directionToIntersecting);
-                        XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
-
-                        XYZ moveOffset = moveDirection * (wallThickness / 2);
-
-                        // Проверяем, выйдет ли отверстие за пределы стены после смещения
-                        XYZ newHoleLocation = holeLocation + moveOffset;
-
-                        if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
-                        {
-                            moveOffset = -moveOffset;
-                            newHoleLocation = holeLocation + moveOffset;
-                        }
-                        if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
-                        {
-                            ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
-                        }
+                        ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
                     }
                 }
+            }
 
                 // Запись данных в хранилище
                 string wallIdString = wall.Id.IntegerValue.ToString();
@@ -753,21 +830,13 @@ namespace KPLN_HoleManager.Commands
                     wallIdString,
                     intersectingElementIdString,
                     "Без статуса",
-                    "10",
+                    "00",
                     "Отверстие создано"
                 );
 
                 // Очистка панели информации перед завершением транзакции
                 DockableManagerForm.Instance?.InfoHolePanel.Children.Clear();
-                DockableManagerForm.Instance?.InfoHolePanel.RowDefinitions.Clear();
-
-            }
-            else
-            {
-                transactionStatus = false;
-                TaskDialog.Show("Внимание", "Операция отменена пользователем.");
-                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-            }
+                DockableManagerForm.Instance?.InfoHolePanel.RowDefinitions.Clear();                    
         }
 
         /// <summary>
@@ -781,6 +850,20 @@ namespace KPLN_HoleManager.Commands
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Фильтр на выбор пересекающего стену элемента
     public class CustomSelectionFilter : ISelectionFilter

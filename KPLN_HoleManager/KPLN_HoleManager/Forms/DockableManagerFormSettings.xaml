@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_HoleManager.Forms"
         mc:Ignorable="d" 
-        Height="250" Width="250"
+        Height="295" Width="250"
         WindowStyle="None"
         ResizeMode="NoResize"
         Topmost="True"
@@ -14,6 +14,8 @@
 
     <Grid Margin="10,5,5,0">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -34,18 +36,40 @@
                     HorizontalAlignment="Right" Margin="0,2,5,0" Click="CloseWindow"/>
         </DockPanel>
 
-        <TextBlock Grid.Row="1" Text="Задание для отдела по умолчанию" FontSize="8" Foreground="White" 
-                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+        <TextBlock Grid.Row="1" Text="Задание от отдела по умолчанию (только для BIM)" FontSize="8" Foreground="White" 
+           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,8,0,0"/>
 
-        <ComboBox x:Name="DepartmentComboBox" Grid.Row="2" Margin="0,3,0,5" 
-          VerticalAlignment="Center" HorizontalAlignment="Left" 
-          Width="230" FontSize="13" SelectedIndex="0">
+        <ComboBox x:Name="DepartmentFromComboBox" IsEnabled="False" Grid.Row="2" Margin="0,3,0,5" 
+            VerticalAlignment="Center" HorizontalAlignment="Left" Width="230" FontSize="13" SelectedIndex="0" 
+            Foreground="#FF929292" SelectionChanged="DepartmentFromComboBox_SelectionChanged">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
         </ComboBox>
 
-        <TextBlock Grid.Row="3" Text="Тип отверстия по умолчанию" FontSize="8" Foreground="White" 
+        <TextBlock Grid.Row="3" Text="Задание для отдела по умолчанию" FontSize="8" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+
+        <ComboBox x:Name="DepartmentInComboBox" Grid.Row="4" Margin="0,3,0,5" 
+          VerticalAlignment="Center" HorizontalAlignment="Left" 
+          Width="230" FontSize="13" SelectedIndex="0">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
+        </ComboBox>
+
+        <TextBlock Grid.Row="5" Text="Тип отверстия по умолчанию" FontSize="8" Foreground="White" 
            VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
 
-        <ComboBox x:Name="HoleTypeComboBox" Grid.Row="4" Margin="0,3,0,5" 
+        <ComboBox x:Name="HoleTypeComboBox" Grid.Row="6" Margin="0,3,0,5" 
           VerticalAlignment="Center" HorizontalAlignment="Left" 
           Width="230" FontSize="13" SelectedIndex="0">
             <ComboBoxItem Content="Не выбрано" />
@@ -53,30 +77,30 @@
             <ComboBoxItem Content="Круглое" />
         </ComboBox>
 
-        <TextBlock Grid.Row="5" Text="Отступ по умолчанию" FontSize="8" Foreground="White" 
+        <TextBlock Grid.Row="7" Text="Отступ по умолчанию в милиметрах" FontSize="8" Foreground="White" 
                    VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
 
-        <ComboBox x:Name="HoleIndentComboBox" Grid.Row="6" Margin="0,3,0,10" 
+        <ComboBox x:Name="HoleIndentComboBox" Grid.Row="8" Margin="0,3,0,10" 
                   VerticalAlignment="Center" HorizontalAlignment="Left" 
                   Width="230" FontSize="13" SelectedIndex="0">
             <ComboBoxItem Content="Не выбрано" />
-            <ComboBoxItem Content="0 мм" />
-            <ComboBoxItem Content="25 мм" />
-            <ComboBoxItem Content="50 мм" />
-            <ComboBoxItem Content="75 мм" />
-            <ComboBoxItem Content="100 мм" />
-            <ComboBoxItem Content="125 мм" />
-            <ComboBoxItem Content="150 мм" />
-            <ComboBoxItem Content="175 мм" />
-            <ComboBoxItem Content="200 мм" />
+            <ComboBoxItem Content="0" />
+            <ComboBoxItem Content="25" />
+            <ComboBoxItem Content="50" />
+            <ComboBoxItem Content="75" />
+            <ComboBoxItem Content="100" />
+            <ComboBoxItem Content="125" />
+            <ComboBoxItem Content="150" />
+            <ComboBoxItem Content="175" />
+            <ComboBoxItem Content="200" />
         </ComboBox>
 
-        <Button Grid.Row="7" Content="Сбросить настройки" FontSize="12" 
+        <Button Grid.Row="9" Content="Сбросить настройки" FontSize="12" 
                 VerticalAlignment="Center" HorizontalAlignment="Left" 
                 HorizontalContentAlignment="Center" Padding="10,0" 
                 Width="230" Height="30" Margin="0,5,0,0" Background="#FFFFBBAC" Click="CleanSettings_Click"/>
 
-        <Button Grid.Row="8" Content="Сохранить настройки" FontSize="12" 
+        <Button Grid.Row="10" Content="Сохранить настройки" FontSize="12" 
         VerticalAlignment="Center" HorizontalAlignment="Left" 
         HorizontalContentAlignment="Center" Padding="10,0" 
         Width="230" Height="30" Margin="0,5,0,0" Background="#FFC8FFCE" Click="SaveSettings_Click"/>
