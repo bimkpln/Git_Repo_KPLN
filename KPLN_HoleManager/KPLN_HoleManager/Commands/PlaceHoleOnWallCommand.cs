@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
@@ -204,7 +208,7 @@ namespace KPLN_HoleManager.Commands
                     // Задаём размеры отверстию, двигаем его и пишем данные в Extensible Storage
                     (double widthElement, double heightElement, double lengthElement) = GetElementSize(intersectingElement);
 
-                    SetHoleDimensions(tx, wall, intersectingElement, holeInstance, holeLocation, widthElement, heightElement);
+                    SetHoleDimensions(uiDoc, doc, tx, wall, intersectingElement, holeInstance, holeLocation, widthElement, heightElement);
 
                     // Если всё же что-то поёдт не так - отменяем транзакцию :)
                     if (transactionStatus == false)
@@ -217,7 +221,7 @@ namespace KPLN_HoleManager.Commands
                     // Обновление данных интерфейса
                     DockableManagerForm.Instance?.UpdateStatusCounts();
                     if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-
+                  
                     tx.Commit();                  
                 }
             }
@@ -570,13 +574,6 @@ namespace KPLN_HoleManager.Commands
             return null;
         }
 
-
-
-
-
-
-
-
         /// <summary>
         /// Стена. Метод для получения размеров стены
         /// </summary>
@@ -671,7 +668,7 @@ namespace KPLN_HoleManager.Commands
         /// <summary>
         /// Отверстие. Метод изменения размера отверстия и его разворот после создания XYZ
         /// </summary>
-        public void SetHoleDimensions(Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
+        public void SetHoleDimensions(UIDocument uiDoc, Document doc, Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
         {
             double offset = -900;
             List<string> settings = DockableManagerFormSettings.LoadSettings();
@@ -816,27 +813,25 @@ namespace KPLN_HoleManager.Commands
                 }
             }
 
-                // Запись данных в хранилище
-                string wallIdString = wall.Id.IntegerValue.ToString();
-                string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
+            // Запись данных в хранилище
+            string wallIdString = wall.Id.IntegerValue.ToString();
+            string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
 
-                ExtensibleStorageHelper.AddChatMessage(
-                    holeInstance,
-                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    _userFullName,
-                    _departmentName,
-                    _departmentHoleName,
-                    _sendingDepartmentHoleName,
-                    wallIdString,
-                    intersectingElementIdString,
-                    "Без статуса",
-                    "00",
-                    "Отверстие создано"
-                );
+            ExtensibleStorageHelper.AddChatMessage(
+                holeInstance,
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                _userFullName,
+                _departmentName,
+                _departmentHoleName,
+                _sendingDepartmentHoleName,
+                wallIdString,
+                intersectingElementIdString,
+                "Без статуса",
+                "00",
+                "Отверстие создано"
+            );
 
-                // Очистка панели информации перед завершением транзакции
-                DockableManagerForm.Instance?.InfoHolePanel.Children.Clear();
-                DockableManagerForm.Instance?.InfoHolePanel.RowDefinitions.Clear();                    
+            CreateHoleTaskIntrerface(uiDoc, doc, holeInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, intersectingElementIdString);
         }
 
         /// <summary>
@@ -849,21 +844,276 @@ namespace KPLN_HoleManager.Commands
                    (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод отрисовки интерфейса задания
+        /// </summary>
+        private void CreateHoleTaskIntrerface(UIDocument uiDoc, Document doc, FamilyInstance holeInstance, 
+            string userFullName, string departmentName, string departamentFrom, string departamentIn, string wallID, string sEllementID)
+        {
+            string holeID = holeInstance.Id.IntegerValue.ToString();
+            string holeName = $"{holeInstance.Symbol.Family.Name} - {holeInstance.Symbol.Name}";
+
+            DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Общая информация
+            DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Панель действия
+            DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // Чат-область
+            DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // Поле добавления сообщения
+
+            ///////////////////// Блок 1. Базовая информация
+            TextBlock generalInfoTextBlock = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                Padding = new Thickness(8)
+            };
+
+            // Заполение базовой информации
+            generalInfoTextBlock.Inlines.Add(new Run(holeName) { FontWeight = FontWeights.Bold });
+            generalInfoTextBlock.Inlines.Add(new Run($" ({holeID})\n"));
+            generalInfoTextBlock.Inlines.Add(new Run("Без статуса") { FontWeight = FontWeights.Bold, Foreground = Brushes.Gray });
+            generalInfoTextBlock.Inlines.Add(new Run($"\n"));
+            generalInfoTextBlock.Inlines.Add(new Run("Стена: ") { FontWeight = FontWeights.Bold });
+            generalInfoTextBlock.Inlines.Add(new Run($"{wallID}\n"));
+            generalInfoTextBlock.Inlines.Add(new Run("Элементы в отверстии: ") { FontWeight = FontWeights.Bold });
+            generalInfoTextBlock.Inlines.Add(new Run($"{sEllementID}"));
+
+            System.Windows.Controls.Grid.SetRow(generalInfoTextBlock, 0);
+            DockableManagerForm.Instance.InfoHolePanel.Children.Add(generalInfoTextBlock);
+
+            ///////////////////// Блок 2. Изменение статуса отверстия
+            StackPanel decisionPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(2, 0, 0, 0),
+            };
+
+            // Кнопка "Да"
+            System.Windows.Controls.Button yesButton = new System.Windows.Controls.Button
+            {
+                Content = "✔️",
+                Width = 30,
+                Height = 30,
+                Background = Brushes.Green,
+                Foreground = Brushes.White,
+                Margin = new Thickness(6, 0, 15, 0)
+            };
+           
+            yesButton.Click += (si, evi) =>
+            {
+                if (!int.TryParse(holeID, out int holeElementId))
+                {
+                    return;
+                }
+
+                ExtensibleStorageHelper.AddChatMessage(
+                        holeInstance,
+                        DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        userFullName,
+                        departmentName,
+                        departamentFrom,
+                        departamentIn,
+                        wallID,
+                        sEllementID,
+                        "Подтверждение",
+                        "10",
+                        $"Смена статуса на отверстия `Подтверждение`"
+                        );
+
+                DockableManagerForm.Instance.InfoHolePanel.Children.Clear();
+                DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Clear();
+                DockableManagerForm.Instance.UpdateStatusCounts();
+
+                TaskDialog.Show("Информация", $"{holeName} ({holeID}). Статус обновлён на ``Подтверждение``");
+            };
+       
+            TextBlock taskITextBlock = new TextBlock
+            {
+                Text = $"{departamentFrom}",
+                Width = 55,
+                Background = Brushes.LightGray,
+                Padding = new Thickness(7),
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0)
+            };
+
+            TextBlock taskOTextBlock = new TextBlock
+            {
+                Text = $"{departamentIn}",
+                Width = 55,
+                Background = Brushes.LightGray,
+                Padding = new Thickness(7),
+                TextAlignment = TextAlignment.Center
+            };
+
+            // Добавляем элементы в панель
+            if (departmentName != "BIM")
+            {
+                decisionPanel.Children.Add(yesButton);                        
+            }
+            else
+            {
+                decisionPanel.Margin = new Thickness(8, 0, 0, 0);
+            }
+
+            decisionPanel.Children.Add(taskITextBlock);
+            decisionPanel.Children.Add(taskOTextBlock);
+
+            System.Windows.Controls.Grid.SetRow(decisionPanel, 1);
+            DockableManagerForm.Instance.InfoHolePanel.Children.Add(decisionPanel);
+
+            ///////////////////// Блок 3. Чат и ScrollViewer
+            ScrollViewer messagesScrollViewer = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Margin = new Thickness(5, 8, 5, 8)
+            };
+
+            StackPanel messagesPanel = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+
+            // Переменная для хранения координат предыдущего сообщения
+            string previousCoordinates = null;
+
+            foreach (List<string> fullHoleInfoParts in _iDataProcessor.GetHoleTaskMessages(doc, holeID))
+            {
+                if (fullHoleInfoParts.Count > 10)
+                {
+                    string mDate = fullHoleInfoParts[0];
+                    string mName = fullHoleInfoParts[1];
+                    string mDepartmentFrom = fullHoleInfoParts[3];
+                    string mDepartmentTo = fullHoleInfoParts[4];
+                    string mCoordinates = fullHoleInfoParts[9];
+                    string mMessageText = fullHoleInfoParts[12];
+
+                    TextBlock messageTextBlock = new TextBlock { TextWrapping = TextWrapping.Wrap };
+
+                    messageTextBlock.Inlines.Add(new Run($"{mDate}") { FontWeight = FontWeights.Bold, Foreground = Brushes.BlueViolet });
+                    messageTextBlock.Inlines.Add(new Run($" | {mName} ({mDepartmentFrom} → {mDepartmentTo})\n"));
+
+                    messageTextBlock.Inlines.Add(new Run("Координаты: ") { FontWeight = FontWeights.Bold });
+
+                    // Проверяем, изменились ли координаты с прошлого сообщения
+                    Brush coordinatesColor = previousCoordinates != null && previousCoordinates != mCoordinates
+                        ? Brushes.Red
+                        : Brushes.Black;
+
+                    messageTextBlock.Inlines.Add(new Run($"{mCoordinates}\n") { Foreground = coordinatesColor });
+
+                    messageTextBlock.Inlines.Add(new Run("💬  Сообщение: ") { FontWeight = FontWeights.Bold });
+                    messageTextBlock.Inlines.Add(new Run($"{mMessageText}"));
+
+                    Border messageBorder = new Border
+                    {
+                        Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 245, 255)),
+                        BorderBrush = Brushes.LightGray,
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(5),
+                        Padding = new Thickness(8),
+                        Child = messageTextBlock
+                    };
+
+                    // Обновляем previousCoordinates для следующей итерации
+                    previousCoordinates = mCoordinates;
+
+                    messagesPanel.Children.Add(messageBorder);
+                }
+            }
+
+            messagesScrollViewer.Content = messagesPanel;
+            System.Windows.Controls.Grid.SetRow(messagesScrollViewer, 2);
+            DockableManagerForm.Instance.InfoHolePanel.Children.Add(messagesScrollViewer);
+
+            ///////////////////// Блок 4. Блок добавления комментария
+            System.Windows.Controls.Grid sendMessagesPanel = new System.Windows.Controls.Grid
+            {
+                Margin = new Thickness(5, 5, 5, 5),
+                VerticalAlignment = VerticalAlignment.Bottom
+            };
+
+            sendMessagesPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            sendMessagesPanel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+
+            System.Windows.Controls.TextBox commentTextBox = new System.Windows.Controls.TextBox
+            {
+                Height = 45,
+                VerticalAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(5, 5, 5, 5),
+                Margin = new Thickness(5, 0, 3, 0),
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+
+            System.Windows.Controls.Grid.SetColumn(commentTextBox, 0);
+
+            System.Windows.Controls.Button sendButton = new System.Windows.Controls.Button
+            {
+                Content = "🔼",
+                Height = 45,
+                Width = 30,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                IsEnabled = false
+            };
+
+            commentTextBox.TextChanged += (si, evi) =>
+            {
+                sendButton.IsEnabled = !string.IsNullOrWhiteSpace(commentTextBox.Text);
+            };
+
+            sendButton.Click += (si, evi) =>
+            {
+                if (!int.TryParse(holeID, out int holeElementId))
+                {
+                    return;
+                }
+
+                string commentText = commentTextBox.Text;
+
+                ExtensibleStorageHelper.AddChatMessage(
+                    holeInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    userFullName,
+                    departmentName,
+                    departamentFrom,
+                    departamentIn,
+                    wallID,
+                    sEllementID,
+                    "Без статуса",
+                    "00",
+                    commentText
+                    );
+
+                DockableManagerForm.Instance.InfoHolePanel.Children.Clear();
+                DockableManagerForm.Instance.InfoHolePanel.RowDefinitions.Clear();
+
+                CreateHoleTaskIntrerface(uiDoc, doc, holeInstance, userFullName, departmentName, departamentFrom, departamentIn, wallID, sEllementID);
+            };
+
+            System.Windows.Controls.Grid.SetColumn(sendButton, 1);
+
+            sendMessagesPanel.Children.Add(commentTextBox);
+            sendMessagesPanel.Children.Add(sendButton);
+
+            System.Windows.Controls.Grid.SetRow(sendMessagesPanel, 3);
+            DockableManagerForm.Instance.InfoHolePanel.Children.Add(sendMessagesPanel);
+        }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // Фильтр на выбор пересекающего стену элемента
     public class CustomSelectionFilter : ISelectionFilter
