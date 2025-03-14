@@ -127,6 +127,8 @@
                 Margin="5,0,5,0"/>
             <TextBox 
                 x:Name="HeaderTBox"
+                xml:lang="ru-RU"
+                SpellCheck.IsEnabled="True"
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskHeader, UpdateSourceTrigger=PropertyChanged}"
                 TextAlignment="Left" 
@@ -208,10 +210,13 @@
                 Margin="5,0,5,0"/>
             <TextBox 
                 x:Name="BodyTBox"
+                xml:lang="ru-RU"
+                SpellCheck.IsEnabled="True"
                 IsEnabled="False"
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskBody}"
                 Height="80"
+                AcceptsReturn="True"
                 TextWrapping="Wrap"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Center" 

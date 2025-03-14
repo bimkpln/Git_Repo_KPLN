@@ -33,7 +33,7 @@ namespace KPLN_TaskManager.Forms
             CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TaskManagerDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
             TaskItem_Comments.ItemsSource = CurrentTaskComments;
 
-            if(CurrentTaskItemEntity.BitrixTaskId == 0 || CurrentTaskItemEntity.BitrixTaskId == -1)
+            if (CurrentTaskItemEntity.BitrixTaskId == 0 || CurrentTaskItemEntity.BitrixTaskId == -1)
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
             if (string.IsNullOrEmpty(CurrentTaskItemEntity.ModelName))
@@ -45,7 +45,7 @@ namespace KPLN_TaskManager.Forms
             #region Настройка уровня доступа в зависимости от пользователя
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
             bool isCreatorEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId;
-            bool isFullEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId 
+            bool isFullEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
                 || MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId;
 
             HeaderTBox.IsEnabled = isCreatorEditable;
@@ -110,7 +110,7 @@ namespace KPLN_TaskManager.Forms
                 SelectRevitElems.IsEnabled = true;
 
             CurrentTaskItemEntity.ModelName = CurrentModelName(doc);
-            
+
             CurrentTaskItemEntity.ElementIds = string.Join(",", selectedIds);
         }
 
@@ -140,7 +140,7 @@ namespace KPLN_TaskManager.Forms
 
                 return;
             }
-            
+
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
             Document doc = uidoc.Document;
             string currentDocName = CurrentModelName(doc);
@@ -181,7 +181,7 @@ namespace KPLN_TaskManager.Forms
 
             CurrentTaskItemEntity.LastChangeData = CurrentTaskItemEntity.CreatedTaskData;
             // Если id = 0 - это новая задача
-            if(CurrentTaskItemEntity.Id == 0)
+            if (CurrentTaskItemEntity.Id == 0)
             {
                 CurrentTaskItemEntity.CreatedTaskData = GetCurrentData();
 
@@ -226,7 +226,7 @@ namespace KPLN_TaskManager.Forms
                         commetnStatus = "Возобновлено";
                         break;
                 }
-                
+
                 UserTextInput userTextInput = new UserTextInput(inputFormTitle);
                 bool? createNewComment = userTextInput.ShowDialog();
                 if ((bool)createNewComment)
@@ -365,7 +365,7 @@ namespace KPLN_TaskManager.Forms
                     taskBodyWithElems = $"{CurrentTaskItemEntity.TaskBody}";
                 else
                     taskBodyWithElems = $"{CurrentTaskItemEntity.TaskBody}\n\nИмя файла: {CurrentTaskItemEntity.ModelName}\nID элемента/-ов: {CurrentTaskItemEntity.ElementIds}";
-                
+
                 return BitrixMessageSender
                     .CreateTask_ByMainFields_AutoAuditors(
                         groupId,
@@ -408,7 +408,7 @@ namespace KPLN_TaskManager.Forms
             #endregion
 
             #region Загрузка рисунка в задачу
-            if (CurrentTaskItemEntity.ImageBuffer == null && CurrentTaskItemEntity.ImageBuffer.Length < 2)
+            if (CurrentTaskItemEntity.ImageBuffer == null || CurrentTaskItemEntity.ImageBuffer.Length < 2)
             {
                 this.Show();
                 return;
