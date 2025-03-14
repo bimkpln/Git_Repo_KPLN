@@ -31,6 +31,17 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             .FirstOrDefault();
 
         /// <summary>
+        /// Получить пользователя по Id
+        /// </summary>
+        /// <param name="sysUserName">Системное имя пользователя</param>
+        /// <returns>Пользователь</returns>
+        public DBUser GetDBUser_ById(int id) =>
+            ExecuteQuery<DBUser>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBUser.Id)}='{id}';")
+            .FirstOrDefault();
+
+        /// <summary>
         /// Получить пользователя по имени учетки
         /// </summary>
         /// <param name="sysUserName">Системное имя пользователя</param>
@@ -48,6 +59,15 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public IEnumerable<DBUser> GetDBUsers() => 
             ExecuteQuery<DBUser>(
                 $"SELECT * FROM {_dbTableName};");
+
+        /// <summary>
+        /// Получить коллекцию ВСЕХ пользователей ОТДЕЛА (по ID)
+        /// </summary>
+        /// <returns>Коллекция пользователей</returns>
+        public IEnumerable<DBUser> GetDBUsers_BySubDepID(int subDepId) =>
+            ExecuteQuery<DBUser>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBUser.SubDepartmentId)}='{subDepId}';");
         #endregion
 
         #region Update

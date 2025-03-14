@@ -59,6 +59,7 @@ namespace KPLN_Library_Forms.UI
         {
             _isRun = true;
             Status = RunStatus.Run;
+            DialogResult = true;
             UserInput = tBox.Text;
 
             Close();

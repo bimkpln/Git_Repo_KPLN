@@ -22,11 +22,20 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         }
 
         /// <summary>
-        /// Получить отдел по пользователю
+        /// Получить отделы КПЛН
         /// </summary>
         public IEnumerable<DBSubDepartment> GetDBSubDepartments() =>
             ExecuteQuery<DBSubDepartment>(
                 $"SELECT * FROM {_dbTableName};");
+
+        /// <summary>
+        /// Получить отдел по ID
+        /// </summary>
+        public DBSubDepartment GetDBSubDepartment_ById(int id) =>
+            ExecuteQuery<DBSubDepartment>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBSubDepartment.Id)}='{id}';")
+            .FirstOrDefault();
 
         /// <summary>
         /// Получить отдел по пользователю

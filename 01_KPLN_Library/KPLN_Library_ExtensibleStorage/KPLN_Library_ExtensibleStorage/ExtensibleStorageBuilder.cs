@@ -65,7 +65,7 @@ namespace KPLN_Library_ExtensibleStorage
             return new ResultMessage()
             {
                 CurrentStatus = MessageStatus.Error,
-                Description = $"Данные отсутсвуют (не запускался)",
+                Description = $"Данные отсутствуют (не запускался)",
             };
         }
 
