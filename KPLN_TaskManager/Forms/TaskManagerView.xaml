@@ -1,0 +1,266 @@
+﻿<Page 
+    x:Class="KPLN_TaskManager.Forms.TaskManagerView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_TaskManager.Forms.Converters"
+    mc:Ignorable="d" 
+    Width="300"
+    Height="500"
+    Background="White">
+
+    <Page.Resources>
+
+        <local:TextToBooleanConverter x:Key="TextToBooleanConverter"/>
+
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="ItemBTN" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                            CornerRadius="5" 
+                            Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"
+                                    Margin="5"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RunBTN" TargetType="Button">
+            <Setter Property="Background" Value="Orange"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="MinWidth" Value="30"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                            CornerRadius="5" 
+                            Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CHCBX" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+        <Style TargetType="RadioButton" x:Key="RB">
+            <Setter Property="Margin" Value="5,3,0,3"/>
+        </Style>
+
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+
+            <TextBlock 
+                Text="Фильтрация" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5"/>
+
+            <DockPanel 
+                LastChildFill="True">
+                <TextBlock 
+                    Text="Заголовок:" 
+                    VerticalAlignment="Center" 
+                    Margin="5"/>
+                <TextBox 
+                    Text="{Binding SearchHeader, UpdateSourceTrigger=PropertyChanged}" 
+                    Style="{StaticResource TXTBX}" 
+                    TextAlignment="Left"
+                    VerticalAlignment="Center"/>
+            </DockPanel>
+
+            <DockPanel 
+                LastChildFill="True">
+
+                <RadioButton
+                    Name="OpenStatusTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="StatusSelection"
+                    IsChecked="{Binding SelectedOpenStausTasks,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=Open, Mode=TwoWay}"
+                    Content="Открытые"
+                    ToolTip="Получить ОТКРЫТЫЕ задачи по проекту"/>
+
+                <RadioButton
+                    Name="CloseStatusTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="StatusSelection"
+                    IsChecked="{Binding SelectedOpenStausTasks,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=Close, Mode=TwoWay}"
+                    Content="Закрытые"
+                    ToolTip="Получить ЗАКРЫТЫЕ задачи по проекту"/>
+
+                <RadioButton
+                    Name="AllStatusTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="StatusSelection"
+                    IsChecked="{Binding SelectedOpenStausTasks,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=All, Mode=TwoWay}"
+                    Content="Все"
+                    ToolTip="Получить ВСЕ задачи по проекту, вне зависимости от статуса"/>
+
+            </DockPanel>
+
+            <DockPanel 
+                LastChildFill="True">
+                
+                <RadioButton
+                    Name="AllTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="SubDepSelection"
+                    IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=AllSuDepTask, Mode=TwoWay}"
+                    Content="Все"
+                    ToolTip="Получить ВСЕ задачи по проекту"/>
+
+                <RadioButton
+                    Name="InputTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="SubDepSelection"
+                    IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=InputSubDepTask, Mode=TwoWay}"
+                    Content="ЗВ"
+                    ToolTip="Получить задачи ДЛЯ сотрудника текущего отдела по проекту"/>
+
+                <RadioButton
+                    Name="OutputTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="SubDepSelection"
+                    IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=OutputSubDepTask, Mode=TwoWay}"
+                    Content="ЗИ"
+                    ToolTip="Получить задачи ОТ сотрудника текущего отдела по проекту"/>
+
+            </DockPanel>
+
+            <GridSplitter 
+                Height="3"
+                HorizontalAlignment="Stretch"/>
+
+            <TextBlock 
+                Text="Список задач" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5"/>
+
+            <ScrollViewer 
+                Grid.Row="1"
+                HorizontalScrollBarVisibility="Auto" 
+                VerticalScrollBarVisibility="Auto">
+                <StackPanel Orientation="Vertical">
+                    <ItemsControl 
+                        x:Name="TaskItems"
+                        ItemsSource="{Binding FilteredTasks, UpdateSourceTrigger=PropertyChanged}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button 
+                                    Name="TaskItem"
+                                    Style="{StaticResource ItemBTN}" 
+                                    Background="{Binding TaskBackground}"
+                                    Click="TaskItem_Click">
+                                    <TextBlock
+                                        TextWrapping="Wrap"
+                                        MaxWidth="250"
+                                        TextAlignment="Center"
+                                        Text="{Binding TaskTitle}"/>
+                                    <Button.ToolTip>
+                                        <StackPanel MaxWidth="250">
+                                            <TextBlock 
+                                                Text="{Binding TaskBody, Mode=OneWay, StringFormat= 'Описание: \{0\}'}"
+                                                TextWrapping="Wrap"/>
+                                            <TextBlock 
+                                                Text="{Binding CreatedTaskUserFullName, Mode=OneWay, StringFormat= 'Автор: \{0\}'}"
+                                                TextWrapping="Wrap"/>
+                                            <TextBlock 
+                                                Text="{Binding CreatedTaskData, Mode=OneWay, StringFormat= 'Создано: \{0\}'}"
+                                                TextWrapping="Wrap"/>
+                                            <TextBlock 
+                                                Text="{Binding LastChangeData, Mode=OneWay, StringFormat= 'Изменено: \{0\}'}"
+                                                TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Button.ToolTip>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+        </StackPanel>
+
+        <GridSplitter 
+            Grid.Row="2"
+            Height="3"
+            Margin="0,-3,0,0"
+            VerticalAlignment="Top"
+            HorizontalAlignment="Stretch"/>
+
+        <DockPanel
+            Grid.Row="2"
+            LastChildFill="False"
+            HorizontalAlignment="Center">
+
+            <GridSplitter 
+                Height="3"
+                HorizontalAlignment="Stretch"/>
+
+            <Button
+                Name="AddTask"
+                Content="➕"
+                Style="{StaticResource RunBTN}" 
+                ToolTip="Создать новую задачу"
+                Click="AddTask_Click"/>
+            <Button
+                Name="UpdateData"
+                Content="🔄"
+                Style="{StaticResource RunBTN}"
+                ToolTip="Обновить задачи по проекту"
+                Click="UpdateData_Click"/>
+            <Button
+                Name="ExportExcel"
+                Content="💾"
+                Style="{StaticResource RunBTN}"
+                ToolTip="Экспорт в Excel"
+                Click="ExportExcel_Click"/>
+        </DockPanel>
+    </Grid>
+</Page>

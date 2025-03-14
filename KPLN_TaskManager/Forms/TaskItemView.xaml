@@ -1,0 +1,381 @@
+﻿<Window 
+    x:Class="KPLN_TaskManager.Forms.TaskItemView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_TaskManager.Forms"
+    mc:Ignorable="d" 
+    Width="500"
+    Height="Auto"
+    SizeToContent="Height"
+    Background="White">
+
+    <Window.Resources>
+
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,0,5,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MinWidth" Value="400"/>
+        </Style>
+
+        <Style x:Key="RunBTN" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,2,5,2"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                            CornerRadius="5" 
+                            Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CHCBX" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+
+            <StackPanel 
+                Background="{Binding TaskBackground}">
+                <TextBlock 
+                    Text="{Binding TaskTitle, Mode=OneWay}" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center"
+                    FontWeight="Bold" 
+                    Margin="5,5,5,0"/>
+                <TextBlock 
+                    Text="{Binding CreatedTaskUserFullName, Mode=OneWay, StringFormat= 'Автор: \{0\}'}" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center"
+                    FontSize="10"
+                    Margin="5,2,5,0"/>
+                <TextBlock 
+                    Text="{Binding CreatedTaskData, Mode=OneWay, StringFormat= 'Создано: \{0\}'}" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center"
+                    FontSize="10"
+                    Margin="5,0,5,2"/>
+                <Button 
+                    x:Name="BtnBitrixTask"
+                    Style="{StaticResource RunBTN}" 
+                    Background="{Binding TaskBackground}"
+                    ToolTip="Нажми, чтобы открыть задачу в Bitrix"
+                    Click="BtnBitrixTask_Click">
+                    <Button.Content>
+                        <TextBlock
+                            Text="{Binding BitrixTaskId, StringFormat= 'ID задачи в Bitrix: \{0\}'}" 
+                            FontSize="10"/>
+                    </Button.Content>
+                </Button>
+            </StackPanel>
+
+            <GridSplitter 
+                Height="3"
+                HorizontalAlignment="Stretch"/>
+
+            <TextBlock 
+                Text="Отдел исполнителя" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5,0,5,0"/>
+            <ComboBox 
+                x:Name="DelegateDepCBox"
+                IsEnabled="False"
+                Background="White" 
+                ItemsSource="{Binding DBSubDepartmentColl}"
+                SelectedValue="{Binding DelegatedDepartmentId, UpdateSourceTrigger=PropertyChanged}"
+                DisplayMemberPath="Code"
+                SelectedValuePath="Id"
+                Margin="5,0,5,0"/>
+
+            <TextBlock 
+                Text="Заголовок" 
+                VerticalAlignment="Center" 
+                IsEnabled="False"
+                FontWeight="Bold" 
+                Margin="5,0,5,0"/>
+            <TextBox 
+                x:Name="HeaderTBox"
+                Style="{StaticResource TXTBX}" 
+                Text="{Binding TaskHeader, UpdateSourceTrigger=PropertyChanged}"
+                TextAlignment="Left" 
+                VerticalAlignment="Center" 
+                FontStretch="ExtraExpanded"/>
+
+            <Expander
+                Name="BitrixExpander"
+                Header="Данные для Bitrix (строго ПОСЛЕ постановки задачи в Менеджер задач)"
+                FontWeight="Bold"
+                IsEnabled="False"
+                IsExpanded="False">
+                <StackPanel>
+                    <TextBlock 
+                        Text="Исполнитель (обязательно при постановке задачи в Bitrix)" 
+                        VerticalAlignment="Center" 
+                        FontWeight="Bold" 
+                        Margin="5,0,5,0"/>
+                    <ComboBox 
+                        x:Name="DelegateUserCBox"
+                        IsEnabled="False"
+                        Background="White" 
+                        ItemsSource="{Binding DBUserColl}"
+                        SelectedValue="{Binding DelegatedTaskUserId, UpdateSourceTrigger=PropertyChanged}"
+                        SelectedValuePath="Id"
+                        Margin="5,0,5,0">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock
+                                        Text="{Binding Surname, StringFormat= '\{0\} '}" />
+                                    <TextBlock
+                                        Text="{Binding Name}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBlock 
+                        Text="ID базовой задачи в Bitrix (обязательно при постановке задачи в Bitrix)" 
+                        VerticalAlignment="Center" 
+                        IsEnabled="False"
+                        FontWeight="Bold" 
+                        Margin="5,0,5,0"/>
+                    <TextBox 
+                        x:Name="BitrixParentTaskIdTBox"
+                        Style="{StaticResource TXTBX}" 
+                        IsEnabled="False"
+                        Margin="5,0,5,5"
+                        Text="{Binding BitrixParentTaskId, UpdateSourceTrigger=PropertyChanged}"
+                        TextAlignment="Left" 
+                        VerticalAlignment="Center" 
+                        FontStretch="ExtraExpanded">
+                        <TextBox.ToolTip>
+                            <StackPanel>
+                                <TextBlock 
+                                    Text="Укажи ID базавой задачи из Bitrix. Это важно для соблюдения структуры хранения задач в Bitrix"
+                                    TextWrapping="Wrap"/>
+                                <TextBlock 
+                                    TextWrapping="Wrap">
+                                    Чтобы аннулировать привязку к задаче укажи <Bold>-1</Bold>
+                                </TextBlock>
+                                <Image 
+                                    Source="pack://application:,,,/KPLN_TaskManager;component/Imagens/parentTaskInBitrix.png"
+                                    Width="500" 
+                                    Height="250"/>
+                            </StackPanel>
+                        </TextBox.ToolTip>
+                    </TextBox>
+
+
+                </StackPanel>
+            </Expander>
+
+            <TextBlock 
+                Text="Описание" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5,0,5,0"/>
+            <TextBox 
+                x:Name="BodyTBox"
+                IsEnabled="False"
+                Style="{StaticResource TXTBX}" 
+                Text="{Binding TaskBody}"
+                Height="80"
+                TextWrapping="Wrap"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Center" 
+                FontStretch="ExtraExpanded"/>
+
+            <TextBlock 
+                Name="ModelNameTBl"
+                Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged, Mode=OneWay, StringFormat= 'Имя модели: \{0\}'}"
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5,0,5,0"
+                TextWrapping="Wrap"/>
+            
+            <DockPanel 
+                LastChildFill="False">
+                <Button
+                    Name="AddElementIdsBtn"
+                    Content="Добавить эл-ты модели к задаче"
+                    Style="{StaticResource RunBTN}" 
+                    Background="{Binding TaskBackground}"
+                    DockPanel.Dock="Left"
+                    IsEnabled="False"
+                    ToolTip="Нажми, чтобы добавить выбранные элементы к задаче"
+                    Click="AddElementIdsBtn_Click"/>
+                <Button
+                    Name="RemoveElementIdsBtn"
+                    Content="Удалить эл-ты модели из задачи"
+                    Style="{StaticResource RunBTN}" 
+                    Background="{Binding TaskBackground}"
+                    DockPanel.Dock="Right"
+                    IsEnabled="False"
+                    ToolTip="Нажми, чтобы удалить привязку к элементам модели"
+                    Click="RemoveElementIdsBtn_Click"/>
+            </DockPanel>
+
+        </StackPanel>
+
+        <Expander
+            Grid.Row="1"
+            Header="Изображение"
+            FontWeight="Bold"
+            IsExpanded="False">
+            <Grid>
+                <Image 
+                    Name="BodyImg"
+                    Width="200" 
+                    Height="200" 
+                    VerticalAlignment="Top" 
+                    ToolTip="Нажми ЛМК, чтобы открытьизображение в большем формате"
+                    Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"
+                    MouseLeftButtonDown="BodyImg_MouseLeftButtonDown"/>
+
+            </Grid>
+        </Expander>
+
+        <StackPanel
+            Grid.Row="2">
+            <GridSplitter 
+                Height="1"
+                HorizontalAlignment="Stretch"/>
+            <TextBlock 
+                Text="История взаимодействий" 
+                VerticalAlignment="Bottom" 
+                FontWeight="Bold" 
+                Margin="5,0,5,0"/>
+        </StackPanel>
+
+        <ScrollViewer 
+            Grid.Row="3"
+            x:Name="CommentScroll"
+            PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
+            HorizontalScrollBarVisibility="Disabled" 
+            VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="TaskItem_Comments">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock
+                            Text="{Binding CommentFullData, UpdateSourceTrigger=PropertyChanged}"
+                            HorizontalAlignment="Left"
+                            MaxWidth="375"
+                            Margin="2,1,2,1"
+                            TextWrapping="Wrap"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel
+            Grid.Row="4">
+
+            <GridSplitter 
+                Height="3"
+                HorizontalAlignment="Stretch"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel
+                    Grid.Column="0">
+                    <Button
+                        Name="AddChangeTaskBtn"
+                        Content="Создать/Изменить"
+                        Style="{StaticResource RunBTN}" 
+                        IsEnabled="False"
+                        Background="{Binding TaskBackground}"
+                        ToolTip="Нажми, чтобы создать новую задачу, или сохранить изменения"
+                        Click="AddChangeTaskBtn_Click"/>
+
+                    <Button
+                        Name="ToggleStatusBtn"
+                        Content="Сменить статус"
+                        Style="{StaticResource RunBTN}" 
+                        IsEnabled="False"
+                        Background="{Binding TaskBackground}"
+                        ToolTip="Нажми, чтобы закрыть или возобновить задачу"
+                        Click="ToggleStatusBtn_Click"/>
+
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="1">
+                    <Button
+                        Name="ImgLoad"
+                        Content="Загрузить/обновить изображение"
+                        Style="{StaticResource RunBTN}" 
+                        IsEnabled="False"
+                        Background="{Binding TaskBackground}"
+                        ToolTip="Нажми, чтобы добавить/обновить изображение из буфера обмена (предварительно создай его любым удобным способом)"
+                        Click="ImgLoad_Click"/>
+                    
+                    <Button
+                        Name="CommentBtn"
+                        Content="Комментировать"
+                        Style="{StaticResource RunBTN}" 
+                        IsEnabled="False"
+                        Background="{Binding TaskBackground}"
+                        ToolTip="Нажми, чтобы комментировать"
+                        Click="CommentBtn_Click"/>
+
+                </StackPanel>
+
+            </Grid>
+
+            <Button
+                Name="SelectRevitElems"
+                Content="Выделить элементы в модели"
+                Style="{StaticResource RunBTN}" 
+                Background="{Binding TaskBackground}"
+                ToolTip="Нажми, чтобы выделить элементы модели"
+                Click="SelectRevitElems_Click"/>
+
+            <Button
+                Name="SendToBitrix"
+                Content="Поставить задачу в Bitrix"
+                Style="{StaticResource RunBTN}" 
+                Background="{Binding TaskBackground}"
+                IsEnabled="False"
+                ToolTip="Нажми, чтобы поставить задачу в Битрикс (автоматически сохранятся данные в окне задачи)"
+                Click="SendToBitrix_Click"/>
+
+        </StackPanel>
+
+    </Grid>
+</Window>

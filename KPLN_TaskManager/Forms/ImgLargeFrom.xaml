@@ -1,0 +1,18 @@
+﻿<Window 
+    x:Class="KPLN_TaskManager.Forms.ImgLargeFrom"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_TaskManager.Forms"
+    mc:Ignorable="d" 
+    SizeToContent="WidthAndHeight"
+    Background="White">
+
+    <Grid>
+        <Image 
+            Name="BodyImg"
+            VerticalAlignment="Top" 
+            Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+    </Grid>
+</Window>
