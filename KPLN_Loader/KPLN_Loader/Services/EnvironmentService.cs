@@ -19,6 +19,11 @@ namespace KPLN_Loader.Services
     /// </summary>
     internal sealed class EnvironmentService
     {
+        /// <summary>
+        /// Вебхук для работы с BitrixAPI
+        /// </summary>
+        private static readonly string _webHook = "uemokhg11u78vdvs";
+
         ///<summary>
         ///Путь до локальной папки пользователя
         ///</summary>
@@ -69,7 +74,7 @@ namespace KPLN_Loader.Services
             using (HttpClient client = new HttpClient())
             {
                 // Выполнение GET - запроса к странице
-                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/152/7nqwflagfu7wnirl/user.search.json?NAME={name}&LAST_NAME={surname}");
+                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/1310/{_webHook}/user.search.json?NAME={name}&LAST_NAME={surname}");
                 if (response.IsSuccessStatusCode)
                 {
                     string content = await response.Content.ReadAsStringAsync();

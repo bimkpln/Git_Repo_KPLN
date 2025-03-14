@@ -21,6 +21,8 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
+        private static readonly string _webHookUrl = "https://kpln.bitrix24.ru/rest/1310/uemokhg11u78vdvs";
+
         /// <summary>
         /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
         /// </summary>
@@ -737,7 +739,7 @@ namespace KPLN_Looker
                                     }}";
 
                             BitrixMessageSender.SendMsg_ToUser_ByWebhookKeyANDJSONRequest(
-                                "https://kpln.bitrix24.ru/rest/1310/pzyudfrm0pp3gq19/im.message.add.json",
+                                $"{_webHookUrl}/im.message.add.json",
                                 jsonRequestToUser);
                         }
                         #endregion
