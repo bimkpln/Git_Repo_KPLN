@@ -232,11 +232,6 @@ namespace KPLN_Library_Bitrix24Worker
         public static async Task<string> UploadFile(int groupId, byte[] fileBytes, string fileName)
         {
             int rootObjId = await GetDiskRootObjId_ByGroupId(groupId);
-            if (rootObjId == -1)
-            {
-                MessageBox.Show($"Ошибка при загрузке файла на диск Bitrix: Не удалось найти ID диска", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
 
             try
             {
@@ -316,7 +311,8 @@ namespace KPLN_Library_Bitrix24Worker
                 MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            return -1;
+            // Бывает, что не у всех проектов есть открытытй диск. В таком случае - кидаю на BIM (общая)
+            return 23560;
         }
         #endregion
 
