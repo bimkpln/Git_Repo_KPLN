@@ -208,8 +208,12 @@ namespace KPLN_Parameters_Ribbon.Command
 
                             foreach (Element element in elemArr)
                             {
-                                Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
-                                Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter);
+                                Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter) 
+                                    ?? throw new Exception($"Не удалось получить парамтер {rule.SelectedSourceParameter.Name} для элемента с id: {element.Id}");
+                                
+                                Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter) 
+                                    ?? throw new Exception($"Не удалось получить парамтер {rule.SelectedTargetParameter.Name} для элемента с id: {element.Id}");
+                                
                                 if (targetParameter.Definition is InternalDefinition intParamDef)
                                     SetElemParamByRule(sourceParameter, targetParameter, pb);
                                 else

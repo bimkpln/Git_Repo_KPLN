@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Forms;В
+using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Looker
@@ -391,6 +391,11 @@ namespace KPLN_Looker
                 && !lowerTransName.Equals("hide/isolate"))
                 return;
 
+            // Игнор хардкодом определенных сотрудников, которые внушают доверие
+            if (ModuleDBWorkerService.CurrentDBUser.Surname.Equals("Тамарин")
+                && ModuleDBWorkerService.CurrentDBUser.Surname.Equals("Егор"))
+                return;
+            
             DateTime temp = DateTime.Now;
             if (_delayAlarm < (temp - _lastAlarm))
             {
