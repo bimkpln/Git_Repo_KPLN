@@ -810,7 +810,7 @@ namespace KPLN_Finishing.Forms
                 
                 int n = stack.Description.Count(x => x == '\n');
                 description += string.Format("Тип: «{0}»\n{1}\n\n", stack.Mark, stack.Description);
-                area += string.Format("Тип: «{0}»\n{1} {2}\n\n", stack.Mark, Math.Round(Math.Round(stack.Value * div, 2) * q, 2).ToString(), units);
+                area += string.Format("\n{0} {1}\n\n", Math.Round(Math.Round(stack.Value * div, 2) * q, 2).ToString(), units);
                 commonArea += Math.Round(Math.Round(stack.Value * div, 2) * q, 2);
                 while (n > 0)
                 {

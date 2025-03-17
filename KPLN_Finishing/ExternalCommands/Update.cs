@@ -48,24 +48,27 @@ namespace KPLN_Finishing.ExternalCommands
                         t.Start();
                         foreach (Element room in new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements())
                         {
+                            pf.Increment();
                             pf.SetInfoStrip(string.Format("Помещение: {0}", room.Id.ToString()));
-                            foreach (string param in new string[] { "О_ПОМ_Ведомость",
-                                                                    "О_ПОМ_ГОСТ_Описание стен",
-                                                                    "О_ПОМ_ГОСТ_Описание стен_Текст",
-                                                                    "О_ПОМ_ГОСТ_Описание полов",
-                                                                    "О_ПОМ_ГОСТ_Описание полов_Текст",
-                                                                    "О_ПОМ_ГОСТ_Описание потолков",
-                                                                    "О_ПОМ_ГОСТ_Описание потолков_Текст",
-                                                                    "О_ПОМ_ГОСТ_Описание плинтусов",
-                                                                    "О_ПОМ_ГОСТ_Длина плинтусов_Текст",
-                                                                    "О_ПОМ_Группа"})
+                            foreach (string param in new string[] 
+                            { 
+                                "О_ПОМ_Ведомость",
+                                "О_ПОМ_ГОСТ_Описание стен",
+                                "О_ПОМ_ГОСТ_Описание стен_Текст",
+                                "О_ПОМ_ГОСТ_Описание полов",
+                                "О_ПОМ_ГОСТ_Описание полов_Текст",
+                                "О_ПОМ_ГОСТ_Описание потолков",
+                                "О_ПОМ_ГОСТ_Описание потолков_Текст",
+                                "О_ПОМ_ГОСТ_Описание плинтусов",
+                                "О_ПОМ_ГОСТ_Длина плинтусов_Текст",
+                                "О_ПОМ_ГОСТ_Площадь полов_Текст",
+                                "О_ПОМ_ГОСТ_Площадь стен_Текст",
+                                "О_ПОМ_ГОСТ_Площадь потолков_Текст",
+                                "О_ПОМ_Группа"})
                             {
-                                pf.Increment();
-                                try
-                                {
-                                    room.LookupParameter(param).Set("");
-                                }
-                                catch (Exception) { }
+                                
+                                Parameter paramToClear = room.LookupParameter(param);
+                                paramToClear?.Set("");
                             }
                         }
                         t.Commit();
@@ -77,7 +80,7 @@ namespace KPLN_Finishing.ExternalCommands
                 new WPFParameter()
             };
 
-            BuiltInParameter[] roomBIPs = new BuiltInParameter[] 
+            BuiltInParameter[] roomBIPs = new BuiltInParameter[]
             {
                 BuiltInParameter.ROOM_NAME,
                 BuiltInParameter.EDITED_BY,
@@ -85,7 +88,7 @@ namespace KPLN_Finishing.ExternalCommands
                 BuiltInParameter.LEVEL_NAME,
                 BuiltInParameter.ROOM_NUMBER,
                 BuiltInParameter.ROOM_DEPARTMENT,
-                BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS 
+                BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS
             };
 
             Element[] docRooms = new FilteredElementCollector(doc)
@@ -137,17 +140,14 @@ namespace KPLN_Finishing.ExternalCommands
                     {
                         pf.Increment();
                         if (GetGroupParameter(doc, element) != "отделка") { continue; }
-                        try
+
+                        MetaElement meta = new MetaElement(element);
+                        // Если ID нет, то считаем, что не нужно
+                        if (int.TryParse(element.LookupParameter("О_Id помещения").AsString(), out int linkedRoomId))
                         {
-                            MetaElement meta = new MetaElement(element);
-                            int linkedRoomId = int.Parse(element.LookupParameter("О_Id помещения").AsString(), System.Globalization.NumberStyles.Integer);
                             MetaRoom room = roomCollection.Find(o => o.Id == linkedRoomId);
-                            if (room != null)
-                            {
-                                room.AddElement(meta);
-                            }
+                            room?.AddElement(meta);
                         }
-                        catch (Exception) { }
                     }
                 }
             }
