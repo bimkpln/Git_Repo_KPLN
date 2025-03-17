@@ -65,9 +65,6 @@ namespace KPLN_HoleManager.Forms
             userFullName = _dbWorkerService.UserFullName;
             departmentName = _dbWorkerService.DepartmentName;
 
-            userFullName = "Анатолий Иванов";
-            departmentName = "АР";
-
             // Кнопки характерные для отдела
             AddDepartmentButtons();
 
@@ -144,12 +141,19 @@ namespace KPLN_HoleManager.Forms
             TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
         }
 
+
+
+
+
+
+
+
+
         // XAML. Обработчик для кнопки "Создать задание на отверстие"
         public void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
-            Element element = null;
             bool wallLink = false;
 
             InfoHolePanel.Children.Clear();
@@ -157,97 +161,55 @@ namespace KPLN_HoleManager.Forms
 
             try
             {
-                // Выбираем элемент (стену или связанный элемент)
+                // Отключаем UI
                 this.IsEnabled = false;
 
-                Reference pickedRef = uiDoc.Selection.PickObject(ObjectType.Element, new WallAndLinkSelectionFilter(), "Выберите стену или связанный элемент");
-                element = doc.GetElement(pickedRef.ElementId);
+                // 🟢 ШАГ 1: Выбираем стену или ссылку
+                Reference pickedRef = uiDoc.Selection.PickObject(
+                    ObjectType.Element,
+                    new WallAndLinkSelectionFilter(),
+                    "Выберите стену или связанный элемент"
+                );
 
-                // Обычная стена
-                if (element is Wall wall)
-                {                  
+                Element selectedElement = doc.GetElement(pickedRef.ElementId);
+
+                // Если выбрана обычная стена
+                if (selectedElement is Wall wall)
+                {
                     wallLink = false;
-
-                    List<string> settings = DockableManagerFormSettings.LoadSettings();
-
-                    if (settings == null)
-                    {
-                        var holeWindow = new sChoiseHole(_uiApp, wall, wallLink, userFullName, departmentName);
-                        holeWindow.ShowDialog();
-                    }
-                    else if (settings[2] != "Не выбрано" && settings[3] != "Не выбрано" && settings[4] != "Не выбрано")
-                    {
-                        _ExternalEventHandler.Instance.Raise((app) =>
-                        {
-                            PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, element, wallLink, departmentName, settings[3], settings[4]);
-                        });
-                    }
-                    else
-                    {
-                        var holeWindow = new sChoiseHole(_uiApp, wall, wallLink, userFullName, departmentName);
-                        holeWindow.ShowDialog();
-                    }
-
+                    ProcessHolePlacement(uiDoc, wall, wallLink);
                     return;
                 }
-                // Линкованный элемент
-                else if (element is RevitLinkInstance linkInstance)
-                {                    
+                // Если выбран RevitLinkInstance
+                else if (selectedElement is RevitLinkInstance linkInstance)
+                {
                     Document linkedDoc = linkInstance.GetLinkDocument();
 
                     if (linkedDoc == null)
                     {
-                        TaskDialog.Show("Ошибка", "Действие остановлено. Не удалось получить связанный документ.");
+                        TaskDialog.Show("Ошибка", "Не удалось получить связанный документ.");
                         this.IsEnabled = true;
                         return;
                     }
 
-                    try
+                    // 🟢 ШАГ 2: Выбираем элемент внутри линка
+                    Reference linkedRef = uiDoc.Selection.PickObject(
+                        ObjectType.LinkedElement,
+                        "Выберите стену в линке"
+                    );
+
+                    Element linkedElement = linkedDoc.GetElement(linkedRef.LinkedElementId);
+
+                    if (linkedElement is Wall linkedWall)
                     {
-                        Reference linkedRef = uiDoc.Selection.PickObject(
-                            ObjectType.LinkedElement,
-                            "Выберите стену в линке"
-                        );
-
-                        Element linkedElement = linkedDoc.GetElement(linkedRef.LinkedElementId);
-
-                        if (linkedElement is Wall linkedWall)
-                        {
-                            wallLink = true;
-
-                            List<string> settings = DockableManagerFormSettings.LoadSettings();
-
-                            if (settings == null)
-                            {
-                                var holeWindow = new sChoiseHole(_uiApp, linkedElement, wallLink, userFullName, departmentName);
-                                holeWindow.ShowDialog();
-                            }
-                            else if (settings[2] != "Не выбрано" && settings[3] != "Не выбрано" && settings[4] != "Не выбрано")
-                            {
-                                _ExternalEventHandler.Instance.Raise((app) =>
-                                {
-                                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, linkedElement, wallLink, departmentName, settings[3], settings[4]);
-                                });
-                            }
-                            else
-                            {
-                                var holeWindow = new sChoiseHole(_uiApp, linkedElement, wallLink, userFullName, departmentName);
-                                holeWindow.ShowDialog();
-                            }
-
-                            return;
-                        }
-                    }
-                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
-                    {
-                        TaskDialog.Show("Отмена", "Выбор отменён пользователем.");
-                        this.IsEnabled = true;
+                        wallLink = true;
+                        ProcessHolePlacement(uiDoc, linkedWall, wallLink);
                         return;
                     }
                 }
                 else
                 {
-                    TaskDialog.Show("Предупреждение", "Действие остановлено.\nВыбранный элемент не является стеной.");
+                    TaskDialog.Show("Ошибка", "Выбранный элемент не является стеной.");
                     this.IsEnabled = true;
                     return;
                 }
@@ -259,9 +221,41 @@ namespace KPLN_HoleManager.Forms
                 return;
             }
 
-            TaskDialog.Show("Предупреждение", "Действие остановлено.\nВыбранный элемент не является стеной.");
+            TaskDialog.Show("Ошибка", "Выбранный элемент не является стеной.");
             this.IsEnabled = true;
         }
+
+        // Метод для обработки выбора и размещения отверстий
+        private void ProcessHolePlacement(UIDocument uiDoc, Element wall, bool isLinked)
+        {
+            List<string> settings = DockableManagerFormSettings.LoadSettings();
+
+            if (settings == null)
+            {
+                var holeWindow = new sChoiseHole(_uiApp, wall, isLinked, userFullName, departmentName);
+                holeWindow.ShowDialog();
+            }
+            else if (settings[2] != "Не выбрано" && settings[3] != "Не выбрано" && settings[4] != "Не выбрано")
+            {
+                _ExternalEventHandler.Instance.Raise((app) =>
+                {
+                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, isLinked, departmentName, settings[3], settings[4]);
+                });
+            }
+            else
+            {
+                var holeWindow = new sChoiseHole(_uiApp, wall, isLinked, userFullName, departmentName);
+                holeWindow.ShowDialog();
+            }
+        }
+
+
+
+
+
+
+
+
 
         // XAML. Обработчик для кнопки "Настройка плагина"
         public void HolePluginSettings(object sender, RoutedEventArgs e)

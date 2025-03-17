@@ -92,12 +92,21 @@ namespace KPLN_HoleManager.Commands
                             if (linkedDoc == null)
                             {
                                 TaskDialog.Show("Ошибка", "Не удалось получить связанный документ.");
-                                continue;
+                                break;
                             }
 
                             try
                             {
                                 Reference linkedRef = uiDoc.Selection.PickObject(ObjectType.LinkedElement, "Выберите элемент внутри линка.");
+
+                                // Проверяем, что получили корректный идентификатор
+                                if (linkedRef.LinkedElementId == null)
+                                {
+                                    TaskDialog.Show("Ошибка", "Не удалось получить элемент внутри линка.");
+                                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                                    break;
+                                }
+
                                 Element linkedElement = linkedDoc.GetElement(linkedRef.LinkedElementId);
 
                                 if (linkedElement != null)
@@ -110,7 +119,7 @@ namespace KPLN_HoleManager.Commands
                             {
                                 TaskDialog.Show("Отмена", "Выбор элемента был отменён.");
                                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-                                continue;
+                                break;
                             }
                         }
                         else
@@ -123,15 +132,22 @@ namespace KPLN_HoleManager.Commands
                     {
                         TaskDialog.Show("Отмена", "Выбор элемента был отменён.");
                         if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-                        continue;
+                        break;
                     }
 
-                    TaskDialog.Show("Предупреждение", "Выбранный элемент не является допустимым объектом. Попробуйте снова.");
+                    TaskDialog.Show("Предупреждение", "Выбранный элемент не является допустимым объектом. Операция отменена.");
                     if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    break;
                 }          
 
+                if (intersectingElement == null)
+                {
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
                 XYZ holeLocation = GetIntersectionPoint(doc, _selectedWall, intersectingElement, _departmentHoleName, _holeTypeName);
-                
+
                 if (holeLocation == null)
                 {
                     TaskDialog.Show("Ошибка", "Не удалось определить точку пересечения.\nВыберите стену заново и повторите попытку.");
@@ -314,76 +330,168 @@ namespace KPLN_HoleManager.Commands
             return null;
         }
 
-
-
-
-
-
-
-
-
-
-
         /// <summary>
         /// XYZ. Метод нахождения точки пересечения стены и входящего элемента.
         /// </summary>
         private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement, string department, string holeType)
         {
-            // Получаем геометрию элемента (трубы, воздуховода и т.д.)
+            // Определяем трансформацию для обоих элементов
+            Autodesk.Revit.DB.Transform wallTransform = GetElementTransform(doc, wall);
+            Autodesk.Revit.DB.Transform cElementTransform = GetElementTransform(doc, cElement);
+
+            // Проверяем, находится ли стена в связанном файле
+            RevitLinkInstance linkInstance = new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                .Cast<RevitLinkInstance>()
+                .FirstOrDefault(link => link.GetLinkDocument()?.Equals(wall.Document) == true);
+
+            Autodesk.Revit.DB.Transform linkTransform = linkInstance?.GetTotalTransform() ?? Autodesk.Revit.DB.Transform.Identity;
+
+            // Получаем геометрию трубы, воздуховода и т.д.
             LocationCurve cElementLocation = cElement.Location as LocationCurve;
             if (cElementLocation == null)
                 return null;
 
             Curve cElementCurve = cElementLocation.Curve;
             List<XYZ> segmentPoints = cElementCurve.Tessellate() as List<XYZ>;
-
             if (segmentPoints == null || segmentPoints.Count < 2)
                 return null;
 
-            // Получаем или создаем 3D-вид
-            View3D view3D = new FilteredElementCollector(doc)
+            // Применяем трансформацию к точкам сегментации, если элемент из связанного файла
+            segmentPoints = segmentPoints.Select(pt => cElementTransform.OfPoint(pt)).ToList();
+
+            // Список всех пересечений
+            List<XYZ> allIntersections = new List<XYZ>();
+
+            // Создавался ли 3D-вид для ReferenceIntersector
+            bool createdView = false;
+            View3D view3D = null;
+        
+            if (linkInstance == null)
+            {
+                // Получаем или создаем 3D-вид
+                view3D = new FilteredElementCollector(doc)
                 .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
 
-            bool createdView = false;
-
-            if (view3D == null)
-            {
-                ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
-                    .OfClass(typeof(ViewFamilyType))
-                    .Cast<ViewFamilyType>()
-                    .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
-
-                if (viewFamilyType != null)
+                if (view3D == null)
                 {
-                    view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
-                    createdView = true;
+                    ViewFamilyType viewFamilyType = new FilteredElementCollector(doc)
+                        .OfClass(typeof(ViewFamilyType))
+                        .Cast<ViewFamilyType>()
+                        .FirstOrDefault(vft => vft.ViewFamily == ViewFamily.ThreeDimensional);
+
+                    if (viewFamilyType != null)
+                    {
+                        view3D = View3D.CreateIsometric(doc, viewFamilyType.Id);
+                        createdView = true;
+                    }
+                }
+
+                if (view3D == null)
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return null;
+                }
+
+                // Создаем ReferenceIntersector для стены
+                ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
+
+                // Получаем толщину стены
+                double wallThickness = GetWallThickness(wall);
+
+                // Проходим по сегментам кривой
+                for (int i = 0; i < segmentPoints.Count - 1; i++)
+                {
+                    XYZ start = segmentPoints[i];
+                    XYZ end = segmentPoints[i + 1];
+
+                    // Получаем пересечения для текущего сегмента
+                    List<XYZ> segmentIntersections = GetIntersectionsForSegment(intersector, start, end, wall, wallThickness);
+                    allIntersections.AddRange(segmentIntersections);
                 }
             }
-
-            if (view3D == null)
+            else if (linkInstance != null && department == "АР")
             {
-                TaskDialog.Show("Ошибка", "Не удалось создать 3D-вид для ReferenceIntersector.");
+                TaskDialog.Show("Ошибка", "Вы пытаетесь вырезать отверстие в стене из связанного файла. Операция отменена.");
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return null;
             }
-                    
-            // Создаем ReferenceIntersector для стены
-            ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
-            List<XYZ> allIntersections = new List<XYZ>();
 
-            // Получаем толщину стены
-            double wallThickness = GetWallThickness(wall);
 
-            // Проходим по сегментам кривой
-            for (int i = 0; i < segmentPoints.Count - 1; i++)
+
+
+
+
+
+
+
+
+            else
             {
-                XYZ start = segmentPoints[i];
-                XYZ end = segmentPoints[i + 1];
+                // Получаем геометрию стены в связанном файле
+                GeometryElement wallGeometry = wall.get_Geometry(new Options());
 
-                // Получаем пересечения для текущего сегмента
-                List<XYZ> segmentIntersections = GetIntersectionsForSegment(intersector, start, end, wall, wallThickness);
-                allIntersections.AddRange(segmentIntersections);
+                if (wallGeometry == null)
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось получить геометрию стены.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return null;
+                }
+
+                // Получаем трансформацию связанного файла 
+                RevitLinkInstance linkInstanceWall = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Cast<RevitLinkInstance>()
+                    .First(link => link.GetLinkDocument().Equals(wall.Document));
+
+                Autodesk.Revit.DB.Transform linkTransformWall = linkInstance.GetTotalTransform();
+
+                List<Solid> transformedSolids = new List<Solid>();
+
+                foreach (GeometryObject geomObj in wallGeometry)
+                {
+                    if (geomObj is Solid solid && solid.Volume > 0)
+                    {
+                        transformedSolids.Add(SolidUtils.CreateTransformed(solid, linkTransform));
+                    }
+                }
+
+                if (transformedSolids.Count == 0)
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось трансформировать геометрию стены.");
+                    return null;
+                }
+
+                for (int i = 0; i < segmentPoints.Count - 1; i++)
+                {
+                    XYZ start = segmentPoints[i];
+                    XYZ end = segmentPoints[i + 1];
+                    Line segmentLine = Line.CreateBound(start, end);
+                    XYZ direction = (end - start).Normalize();
+
+                    foreach (Solid solid in transformedSolids)
+                    {
+                        foreach (Face face in solid.Faces)
+                        {
+                            IntersectionResultArray results;
+                            if (face.Intersect(segmentLine, out results) == SetComparisonResult.Overlap && results.Size > 0)
+                            {
+                                for (int j = 0; j < results.Size; j++)
+                                {
+                                    allIntersections.Add(results.get_Item(j).XYZPoint);
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+
+
+
+
+
 
             if (allIntersections.Count == 0)
             {
@@ -431,7 +539,46 @@ namespace KPLN_HoleManager.Commands
         }
 
         /// <summary>
-        /// XYZ. Получаем пересечения для одного сегмента.
+        /// Получает трансформацию элемента, если он находится в связанном файле.
+        /// </summary>
+        private Autodesk.Revit.DB.Transform GetElementTransform(Document doc, Element element)
+        {
+            Document elementDoc = element.Document;
+            if (doc.Equals(elementDoc))
+                return Autodesk.Revit.DB.Transform.Identity;
+
+            // Найти связанный файл
+            RevitLinkInstance linkInstance = new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                .Cast<RevitLinkInstance>()
+                .FirstOrDefault(rl => rl.GetLinkDocument()?.Equals(elementDoc) == true);
+
+            return linkInstance?.GetTransform() ?? Autodesk.Revit.DB.Transform.Identity;
+        }
+
+        /// <summary>
+        /// Стена. Метод для получения размеров стены
+        /// </summary>
+        double GetWallThickness(Element wall)
+        {
+            // Пробуем получить толщину через параметр WALL_ATTR_WIDTH_PARAM
+            double wallThickness = wall.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM)?.AsDouble() ?? 0;
+
+            // Если не удалось, пробуем через WallType и CompoundStructure
+            if (wallThickness == 0 && wall is Wall actualWall)
+            {
+                WallType wallType = actualWall.Document.GetElement(actualWall.GetTypeId()) as WallType;
+                if (wallType != null && wallType.GetCompoundStructure() != null)
+                {
+                    wallThickness = wallType.GetCompoundStructure().GetWidth();
+                }
+            }
+
+            return wallThickness;
+        }
+
+        /// <summary>
+        /// XYZ. Обычная стена. Получаем пересечения для одного сегмента.
         /// </summary>
         private List<XYZ> GetIntersectionsForSegment(ReferenceIntersector intersector, XYZ start, XYZ end, Element wall, double wallThickness)
         {
@@ -572,27 +719,6 @@ namespace KPLN_HoleManager.Commands
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Стена. Метод для получения размеров стены
-        /// </summary>
-        double GetWallThickness(Element wall)
-        {
-            // Пробуем получить толщину через параметр WALL_ATTR_WIDTH_PARAM
-            double wallThickness = wall.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM)?.AsDouble() ?? 0;
-
-            // Если не удалось, пробуем через WallType и CompoundStructure
-            if (wallThickness == 0 && wall is Wall actualWall)
-            {
-                WallType wallType = actualWall.Document.GetElement(actualWall.GetTypeId()) as WallType;
-                if (wallType != null && wallType.GetCompoundStructure() != null)
-                {
-                    wallThickness = wallType.GetCompoundStructure().GetWidth();
-                }
-            }
-
-            return wallThickness;
         }
 
         /// <summary>
@@ -757,60 +883,72 @@ namespace KPLN_HoleManager.Commands
                     diametrParam.Set(internalDiametr);
                 }
 
-                // Получаем кривую стены
-                Curve wallCurve = (wall.Location as LocationCurve).Curve;
-                XYZ wallDirection;
 
-                if (wallCurve is Line line) // Прямая стена
+
+
+
+                if (!wall.Document.IsLinked)
                 {
-                    wallDirection = line.Direction;
-                }
-                else if (wallCurve is Arc arc) // Изогнутая стена
-                {
-                    XYZ arcCenter = arc.Center;
+                    // Получаем кривую стены
+                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
+                    XYZ wallDirection;
 
-                    XYZ radialVector = (holeLocation - arcCenter).Normalize();
+                    if (wallCurve is Line line) // Прямая стена
+                    {
+                        wallDirection = line.Direction;
+                    }
+                    else if (wallCurve is Arc arc) // Изогнутая стена
+                    {
+                        XYZ arcCenter = arc.Center;
 
-                    wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+                        XYZ radialVector = (holeLocation - arcCenter).Normalize();
+
+                        wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+                    }
+                    else
+                    {
+                        return;
+                    }
+
+                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
+                    double wallThickness = GetWallThickness(wall);
+
+                    if (wallThickness > 0)
+                    {
+                        XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
+
+                        // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
+                        XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
+                        XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
+
+                        // Проверяем, в каком направлении двигаться - в сторону нормали или против
+                        double dotProduct = wallNormal.DotProduct(directionToIntersecting);
+                        XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
+
+                        XYZ moveOffset = moveDirection * (wallThickness / 2);
+
+                        // Проверяем, выйдет ли отверстие за пределы стены после смещения
+                        XYZ newHoleLocation = holeLocation + moveOffset;
+
+                        if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            moveOffset = -moveOffset;
+                            newHoleLocation = holeLocation + moveOffset;
+                        }
+                        if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
+                        }
+                    }
                 }
                 else
                 {
-                    return;
+
                 }
 
-                double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-                Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
-                ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
-                double wallThickness = GetWallThickness(wall);
 
-
-                if (wallThickness > 0)
-                {
-                    XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
-
-                    // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
-                    XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
-                    XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
-
-                    // Проверяем, в каком направлении двигаться - в сторону нормали или против
-                    double dotProduct = wallNormal.DotProduct(directionToIntersecting);
-                    XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
-
-                    XYZ moveOffset = moveDirection * (wallThickness / 2);
-
-                    // Проверяем, выйдет ли отверстие за пределы стены после смещения
-                    XYZ newHoleLocation = holeLocation + moveOffset;
-
-                    if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
-                    {
-                        moveOffset = -moveOffset;
-                        newHoleLocation = holeLocation + moveOffset;
-                    }
-                    if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
-                    {
-                        ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
-                    }
-                }
             }
 
             // Запись данных в хранилище
@@ -844,18 +982,6 @@ namespace KPLN_HoleManager.Commands
                    (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// <summary>
         /// Отверстие. Вспомогательный метод отрисовки интерфейса задания
