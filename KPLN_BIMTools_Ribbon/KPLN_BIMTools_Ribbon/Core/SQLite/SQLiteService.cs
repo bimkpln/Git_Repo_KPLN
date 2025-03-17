@@ -65,6 +65,8 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                         $"{nameof(DBRVTConfigData.Name)} TEXT, " +
                         $"{nameof(DBRVTConfigData.PathFrom)} TEXT, " +
                         $"{nameof(DBRVTConfigData.PathTo)} TEXT, " +
+                        $"{nameof(DBRVTConfigData.NameChangeFind)} TEXT, " +
+                        $"{nameof(DBRVTConfigData.NameChangeSet)} TEXT, " +
                         $"{nameof(DBRVTConfigData.MaxBackup)} INTEGER)");
                     break;
             }
@@ -119,15 +121,19 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                         $"({nameof(DBRVTConfigData.Name)}, " +
                         $"{nameof(DBRVTConfigData.PathFrom)}, " +
                         $"{nameof(DBRVTConfigData.PathTo)}, " +
+                        $"{nameof(DBRVTConfigData.NameChangeFind)}, " +
+                        $"{nameof(DBRVTConfigData.NameChangeSet)}, " +
                         $"{nameof(DBRVTConfigData.MaxBackup)}) " +
                     $"VALUES " +
                         $"(@{nameof(DBRVTConfigData.Name)}, " +
                         $"@{nameof(DBRVTConfigData.PathFrom)}, " +
                         $"@{nameof(DBRVTConfigData.PathTo)}, " +
+                        $"@{nameof(DBRVTConfigData.NameChangeFind)}, " +
+                        $"@{nameof(DBRVTConfigData.NameChangeSet)}, " +
                         $"@{nameof(DBRVTConfigData.MaxBackup)});",
                     rsConfigs);
             }
-            // Старая версия БД, когда не было параметра кол-ва рез. копий
+            // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
             catch (Exception ex)
             {
                 HtmlOutput.Print(
@@ -208,13 +214,15 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                                 $"SET " +
                                     $"{nameof(DBRVTConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
                                     $"{nameof(DBRVTConfigData.PathTo)} = '{rsConfig.PathTo}'" +
+                                    $"{nameof(DBRVTConfigData.NameChangeFind)} = '{rsConfig.NameChangeFind}'" +
+                                    $"{nameof(DBRVTConfigData.NameChangeSet)} = '{rsConfig.NameChangeSet}'" +
                                     $"{nameof(DBRVTConfigData.MaxBackup)} = '{rsConfig.MaxBackup}'" +
                                 $"WHERE " +
                                     $"{nameof(DBRVTConfigData.Id)} = '{rsConfig.Id}';",
                                 rsConfig)
                                 .FirstOrDefault();
                         }
-                        // Старая версия БД, когда не было параметра кол-ва рез. копий
+                        // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
                         catch (Exception ex)
                         {
                             HtmlOutput.Print(

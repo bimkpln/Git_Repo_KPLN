@@ -108,8 +108,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
 
             ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, _revitVersion);
-            configItem.ShowDialog();
-            if (configItem.IsRun)
+            if ((bool)configItem.ShowDialog())
             {
                 CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
                 SortCurrentDBRevitDocExchanges();

@@ -109,11 +109,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 
         /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        public bool IsRun { get; private set; }
-
-        /// <summary>
         /// Имя текущего конфига
         /// </summary>
         public string SettingName
@@ -214,6 +209,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     SelectedConfig = new RVTExtraSettings(new DBRVTConfigData()
                     {
                         MaxBackup = 10,
+                        NameChangeFind = string.Empty
                     });
                     break;
             }
@@ -240,7 +236,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                this.DialogResult = false;
                 Close();
+            }
         }
 
         /// <summary>
@@ -451,14 +450,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnBtnCancelClick(object sender, RoutedEventArgs e)
         {
-            IsRun = false;
+            this.DialogResult = false;
             this.Close();
         }
 
         private void OnBtnOkClick(object sender, RoutedEventArgs e)
         {
-            IsRun = true;
-
             // Настройка CurrentDBRevitDocExchanges. Если её нет, то создаём с нуля, иначе - делаем уточнение по параметрам
             if (CurrentDBRevitDocExchanges == null)
             {
@@ -531,6 +528,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     break;
             }
 
+            this.DialogResult = true;
             this.Close();
         }
     }

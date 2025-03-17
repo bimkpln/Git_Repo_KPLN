@@ -85,18 +85,45 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     return null;
                 }
 
-                string newPath = $"{rsn}{rsConfigData.PathTo}\\{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}.rvt";
-                ModelPath newModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(newPath);
+                string docTitle = doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0];
+                string newPath = $"{rsn}{rsConfigData.PathTo}\\{docTitle}.rvt";
+                string mutablePath = NameMutabledByConfig(newPath, docTitle, rsConfigData);
 
-                doc.SaveAs(newModelPath, _saveAsOptions);
+                ModelPath newMutableModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(mutablePath);
+
+                doc.SaveAs(newMutableModelPath, _saveAsOptions);
                 CurrentDocName = doc.Title;
                 WorksharingUtils.RelinquishOwnership(doc, new RelinquishOptions(true), new TransactWithCentralOptions());
                 doc.Close(false);
 
-                return newPath;
+                return mutablePath;
             }
             else
                 throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRVTConfigData)}");
+        }
+
+        /// <summary>
+        /// Замена пути в соответсвии с требованиями конфига
+        /// </summary>
+        private string NameMutabledByConfig(string newPath, string docTitle, DBRVTConfigData rsConfigData)
+        {
+            if (string.IsNullOrEmpty(rsConfigData.NameChangeFind))
+                return newPath;
+
+            string configNameChangeFind = rsConfigData.NameChangeFind;
+            if (!newPath.Contains(configNameChangeFind))
+            {
+                Print(
+                    $"Внимание - в модели по пути \'{docTitle}\' нет совпадения в имени \'{configNameChangeFind}\' для замены на \'{rsConfigData.NameChangeSet}\'. " +
+                        $"Модель сохранена со СТАРЫМ именем.", 
+                    MessageType.Warning);
+                return newPath;
+            }
+            else
+            {
+                string mutablePath = newPath.Replace(configNameChangeFind, rsConfigData.NameChangeSet);
+                return mutablePath;
+            }
         }
     }
 }

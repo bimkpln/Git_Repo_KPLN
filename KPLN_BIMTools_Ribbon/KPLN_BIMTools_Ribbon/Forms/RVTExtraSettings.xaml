@@ -22,7 +22,7 @@
         <Style 
             x:Key="TBox"
             TargetType="TextBox">
-            <Setter Property="Width" Value="30"/>
+            <Setter Property="MinWidth" Value="50"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -76,10 +76,13 @@
             Style="{StaticResource TBlock}"
             Text="Количество резервных копий"/>
         <TextBox
+            Name="MaxBackUpTBox"
             Grid.Row="1"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            TextChanged="MaxBackupTBox_TextChanged">
+            TextChanged="MaxBackupTBox_TextChanged"
+            IsEnabled="False"
+            ToolTipService.ShowOnDisabled="True">
             <TextBox.Text>
                 <Binding 
                     Path="MaxBackup" 
@@ -90,16 +93,75 @@
                 </Binding>
             </TextBox.Text>
             <TextBox.ToolTip>
-                <TextBlock>
-                    <Run 
-                        Text="Количество резервных копий (по умолчанию 10 шт.)."
-                        Foreground="Black" />
-                    <Run 
-                        Text="ВАЖНО: Если значение -1, то резервные копии не применимы для этого конфига" 
-                        Foreground="Red" 
-                        FontWeight="Bold"/>
+                <TextBlock 
+                    TextWrapping="Wrap"
+                    MaxWidth="300"
+                    HorizontalAlignment="Center"
+                    TextAlignment="Left"
+                    Foreground="Black">
+                    Количество резервных копий (по умолчанию 10 шт.).
+                    <LineBreak/>
+                    <Bold>ВАЖНО:</Bold> Если значение -1, то резервные копии не применимы для этого конфига (создай новый)
                 </TextBlock>
             </TextBox.ToolTip>
         </TextBox>
+
+        <TextBlock
+            Grid.Row="2"
+            Grid.Column="1"
+            Style="{StaticResource TBlock}"
+            Text="Фрагмент имени на замену"/>
+        <TextBox
+            Name="NameChangeFindTBox"
+            Grid.Row="2"
+            Grid.Column="2"
+            Style="{StaticResource TBox}"
+            Text="{Binding NameChangeFind, UpdateSourceTrigger=PropertyChanged}"
+            TextChanged="NameChangeFindTBox_TextChanged"
+            IsEnabled="False"
+            ToolTipService.ShowOnDisabled="True">
+            <TextBox.ToolTip>
+                <TextBlock 
+                    TextWrapping="Wrap"
+                    MaxWidth="300"
+                    HorizontalAlignment="Center"
+                    TextAlignment="Left"
+                    Foreground="Black">
+                    Часть имени, чтобы заменить на новое значение. Например: 'ПД'
+                    <LineBreak/>
+                    <Bold>ВАЖНО:</Bold> Если значение '🔐', то замена имени не применима для этого конфига (создай новый)
+                    <LineBreak/>
+                    <Bold>ВАЖНО2:</Bold> Чувствительно к регистру
+                </TextBlock>
+            </TextBox.ToolTip>
+        </TextBox>
+
+        <TextBlock
+            Grid.Row="3"
+            Grid.Column="1"
+            Style="{StaticResource TBlock}"
+            Text="Новый фаргмент имени"/>
+        <TextBox
+            Name="NameChangeSetTBox"
+            Grid.Row="3"
+            Grid.Column="2"
+            Style="{StaticResource TBox}"
+            Text="{Binding NameChangeSet, UpdateSourceTrigger=PropertyChanged}"
+            IsEnabled="False"
+            ToolTipService.ShowOnDisabled="True">
+            <TextBox.ToolTip>
+                <TextBlock 
+                    TextWrapping="Wrap"
+                    MaxWidth="300"
+                    HorizontalAlignment="Center"
+                    TextAlignment="Left"
+                    Foreground="Black">
+                    Новый фрагмент имени, на который будет заменён фрагмент из ячейки выше. Например: 'ПДКорр'
+                    <LineBreak/>
+                    <Bold>ВАЖНО:</Bold> Если значение '🔐', то фрагмент имени на замену - пуст (основа для анализа), либо замена имени не применима для этого конфига (создай новый)
+                    </TextBlock>
+                </TextBox.ToolTip>
+        </TextBox>
+
     </Grid>
 </UserControl>
