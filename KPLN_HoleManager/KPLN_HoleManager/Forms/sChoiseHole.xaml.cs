@@ -183,7 +183,7 @@ namespace KPLN_HoleManager.Forms
             // Вызываем команду с параметрами
             _ExternalEventHandler.Instance.Raise((app) =>
             {
-                PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _wallLink, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
+                PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
             });
         }
     }

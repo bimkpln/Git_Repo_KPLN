@@ -19,27 +19,25 @@ namespace KPLN_HoleManager.Commands
         private readonly string _userFullName;
         private readonly string _departmentName;
         private readonly Element _selectedWall;
-        private readonly bool _wallLink;
 
-        
+       
         private string _departmentHoleName;
         private string _sendingDepartmentHoleName;
         private string _holeTypeName;
 
         private bool transactionStatus;
 
-        public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, bool wallLink, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
+        public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
             _userFullName = userFullName;
             _departmentName = departmentName;
             _selectedWall = selectedElement;
-            _wallLink = wallLink;
             _departmentHoleName = departmentHoleName;
             _sendingDepartmentHoleName = sendingDepartmentHoleName;
             _holeTypeName = holeTypeName;
         }
 
-        public static void Execute(UIApplication uiApp, string userFullName, string departmentName, Element selectedElement, bool wallLink, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
+        public static void Execute(UIApplication uiApp, string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
             if (uiApp == null)
             {
@@ -49,7 +47,7 @@ namespace KPLN_HoleManager.Commands
             }
 
             // Создаём экземпляр команды и передаём её в ExternalEvent
-            var command = new PlaceHoleOnWallCommand(userFullName, departmentName, selectedElement, wallLink, departmentHoleName, sendingDepartmentHoleName, holeTypeName);
+            var command = new PlaceHoleOnWallCommand(userFullName, departmentName, selectedElement, departmentHoleName, sendingDepartmentHoleName, holeTypeName);
             _ExternalEventHandler.Instance.Raise((app) => command.Run(app));
         }
 
@@ -85,8 +83,7 @@ namespace KPLN_HoleManager.Commands
                         Element firstSelectedElement = doc.GetElement(selectedRef);
 
                         if (firstSelectedElement is RevitLinkInstance revitLink)
-                        {
-                            // Если выбран линк, предлагаем выбрать элемент внутри него
+                        {                         
                             Document linkedDoc = revitLink.GetLinkDocument();
 
                             if (linkedDoc == null)
@@ -99,7 +96,6 @@ namespace KPLN_HoleManager.Commands
                             {
                                 Reference linkedRef = uiDoc.Selection.PickObject(ObjectType.LinkedElement, "Выберите элемент внутри линка.");
 
-                                // Проверяем, что получили корректный идентификатор
                                 if (linkedRef.LinkedElementId == null)
                                 {
                                     TaskDialog.Show("Ошибка", "Не удалось получить элемент внутри линка.");
@@ -203,7 +199,6 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
-                    // Активируем типоразмер, если он не активен
                     if (!holeSymbol.IsActive)
                     {
                         holeSymbol.Activate();
@@ -335,6 +330,8 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         private XYZ GetIntersectionPoint(Document doc, Element wall, Element cElement, string department, string holeType)
         {
+            List<XYZ> allIntersections = new List<XYZ>();
+
             // Определяем трансформацию для обоих элементов
             Autodesk.Revit.DB.Transform wallTransform = GetElementTransform(doc, wall);
             Autodesk.Revit.DB.Transform cElementTransform = GetElementTransform(doc, cElement);
@@ -346,6 +343,9 @@ namespace KPLN_HoleManager.Commands
                 .FirstOrDefault(link => link.GetLinkDocument()?.Equals(wall.Document) == true);
 
             Autodesk.Revit.DB.Transform linkTransform = linkInstance?.GetTotalTransform() ?? Autodesk.Revit.DB.Transform.Identity;
+
+            // Получаем толщину стены
+            double wallThickness = GetWallThickness(wall);
 
             // Получаем геометрию трубы, воздуховода и т.д.
             LocationCurve cElementLocation = cElement.Location as LocationCurve;
@@ -360,16 +360,12 @@ namespace KPLN_HoleManager.Commands
             // Применяем трансформацию к точкам сегментации, если элемент из связанного файла
             segmentPoints = segmentPoints.Select(pt => cElementTransform.OfPoint(pt)).ToList();
 
-            // Список всех пересечений
-            List<XYZ> allIntersections = new List<XYZ>();
-
-            // Создавался ли 3D-вид для ReferenceIntersector
+            // 3D-вид и ReferenceIntersector
             bool createdView = false;
             View3D view3D = null;
         
             if (linkInstance == null)
             {
-                // Получаем или создаем 3D-вид
                 view3D = new FilteredElementCollector(doc)
                 .OfClass(typeof(View3D)).Cast<View3D>().FirstOrDefault(v => !v.IsTemplate);
 
@@ -396,17 +392,13 @@ namespace KPLN_HoleManager.Commands
 
                 // Создаем ReferenceIntersector для стены
                 ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
-
-                // Получаем толщину стены
-                double wallThickness = GetWallThickness(wall);
-
+               
                 // Проходим по сегментам кривой
                 for (int i = 0; i < segmentPoints.Count - 1; i++)
                 {
                     XYZ start = segmentPoints[i];
                     XYZ end = segmentPoints[i + 1];
 
-                    // Получаем пересечения для текущего сегмента
                     List<XYZ> segmentIntersections = GetIntersectionsForSegment(intersector, start, end, wall, wallThickness);
                     allIntersections.AddRange(segmentIntersections);
                 }
@@ -417,16 +409,6 @@ namespace KPLN_HoleManager.Commands
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return null;
             }
-
-
-
-
-
-
-
-
-
-
             else
             {
                 // Получаем геометрию стены в связанном файле
@@ -446,7 +428,6 @@ namespace KPLN_HoleManager.Commands
                     .First(link => link.GetLinkDocument().Equals(wall.Document));
 
                 Autodesk.Revit.DB.Transform linkTransformWall = linkInstance.GetTotalTransform();
-
                 List<Solid> transformedSolids = new List<Solid>();
 
                 foreach (GeometryObject geomObj in wallGeometry)
@@ -468,7 +449,8 @@ namespace KPLN_HoleManager.Commands
                     XYZ start = segmentPoints[i];
                     XYZ end = segmentPoints[i + 1];
                     Line segmentLine = Line.CreateBound(start, end);
-                    XYZ direction = (end - start).Normalize();
+
+                    List<XYZ> segmentIntersections = new List<XYZ>();
 
                     foreach (Solid solid in transformedSolids)
                     {
@@ -479,35 +461,103 @@ namespace KPLN_HoleManager.Commands
                             {
                                 for (int j = 0; j < results.Size; j++)
                                 {
-                                    allIntersections.Add(results.get_Item(j).XYZPoint);
+                                    XYZ intersectionPoint = results.get_Item(j).XYZPoint;
+                                    segmentIntersections.Add(intersectionPoint);
                                 }
                             }
+                        }
+                    }
+                    if (segmentIntersections.Count > 0)
+                    {
+                        // Временное решение расчёта гибких элементов (1 из 2)
+                        if (cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves ||
+                            cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves)
+                        {
+                            allIntersections.AddRange(segmentIntersections);
+                        }
+
+                        else if (segmentIntersections.Count == 1)
+                        {
+                            allIntersections.Add(segmentIntersections[0]);
+                        }
+                        else if (segmentIntersections.Count == 2)
+                        {
+                            XYZ first = segmentIntersections.First();
+                            XYZ last = segmentIntersections.Last();
+                            XYZ middle = (first + last) / 2;
+                            allIntersections.Add(middle);
+                        }
+                        else
+                        {
+                            List<XYZ> processedIntersections = new List<XYZ>();
+
+                            segmentIntersections = segmentIntersections.OrderBy(p => p.DistanceTo(start)).ToList();
+
+                            bool[] used = new bool[segmentIntersections.Count]; 
+
+                            for (int j = 0; j < segmentIntersections.Count - 1; j++)
+                            {
+                                if (used[j]) continue; 
+
+                                XYZ first = segmentIntersections[j];
+
+                                for (int k = j + 1; k < segmentIntersections.Count; k++)
+                                {
+                                    if (used[k]) continue;
+
+                                    XYZ second = segmentIntersections[k];
+                                    double distance = first.DistanceTo(second);
+
+                                    if (Math.Abs(distance - wallThickness) < wallThickness * 0.3) 
+                                    {
+                                        XYZ middle = (first + second) / 2;
+                                        processedIntersections.Add(middle);
+
+                                        used[j] = true;
+                                        used[k] = true;
+                                        break; 
+                                    }
+                                }
+                            }
+
+                            allIntersections.AddRange(processedIntersections);
                         }
                     }
                 }
             }
 
+            // Временное решение расчёта гибких элементов (2 из 2)
+            if (allIntersections.Count > 0 && (cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves ||
+                cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves))
+            {
+                List<XYZ> processedIntersections = new List<XYZ>();
 
+                for (int i = 0; i < allIntersections.Count - 1; i += 2)
+                {
+                    XYZ first = allIntersections[i];
+                    XYZ second = allIntersections[i + 1];
 
+                    XYZ middle = (first + second) / 2;
+                    processedIntersections.Add(middle);
+                }
 
+                allIntersections = processedIntersections;
+            }
 
-
-
+            // Выбор точки в диалоговом окне
             if (allIntersections.Count == 0)
             {
                 if (createdView) doc.Delete(view3D.Id);
                 return null;
             }
 
-            // Определяем точку пересечения
             XYZ selectedIntersection;
             if (allIntersections.Count == 1)
             {
-                selectedIntersection = allIntersections[0]; // Автоматический выбор, если точка одна
+                selectedIntersection = allIntersections[0]; 
             }
             else
-            {
-                // Показываем диалог, если точек несколько
+            {               
                 selectedIntersection = ShowIntersectionSelectionDialog(allIntersections);
 
                 if (selectedIntersection == null)
@@ -571,6 +621,27 @@ namespace KPLN_HoleManager.Commands
                 if (wallType != null && wallType.GetCompoundStructure() != null)
                 {
                     wallThickness = wallType.GetCompoundStructure().GetWidth();
+                }
+            }
+
+            // Проверяем, находится ли стена в связанном файле
+            Document wallDoc = wall.Document;
+            RevitLinkInstance linkInstance = new FilteredElementCollector(wallDoc.Application.Documents.Cast<Document>()
+                .FirstOrDefault(d => d.Title == wallDoc.Title)) 
+                .OfClass(typeof(RevitLinkInstance))
+                .Cast<RevitLinkInstance>()
+                .FirstOrDefault(link => link.GetLinkDocument()?.Equals(wallDoc) == true);
+
+            if (linkInstance != null)
+            {
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc != null)
+                {
+                    WallType linkedWallType = linkedDoc.GetElement(wall.GetTypeId()) as WallType;
+                    if (linkedWallType != null && linkedWallType.GetCompoundStructure() != null)
+                    {
+                        wallThickness = linkedWallType.GetCompoundStructure().GetWidth();
+                    }
                 }
             }
 
@@ -883,35 +954,32 @@ namespace KPLN_HoleManager.Commands
                     diametrParam.Set(internalDiametr);
                 }
 
+                // Получаем кривую стены
+                Curve wallCurve = (wall.Location as LocationCurve).Curve;
+                XYZ wallDirection;
 
+                if (wallCurve is Line line) // Прямая стена
+                {
+                    wallDirection = line.Direction;
+                }
+                else if (wallCurve is Arc arc) // Изогнутая стена
+                {
+                    XYZ arcCenter = arc.Center;
 
+                    XYZ radialVector = (holeLocation - arcCenter).Normalize();
 
-
+                    wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+                }
+                else
+                {
+                    return;
+                }
+               
                 if (!wall.Document.IsLinked)
                 {
-                    // Получаем кривую стены
-                    Curve wallCurve = (wall.Location as LocationCurve).Curve;
-                    XYZ wallDirection;
-
-                    if (wallCurve is Line line) // Прямая стена
-                    {
-                        wallDirection = line.Direction;
-                    }
-                    else if (wallCurve is Arc arc) // Изогнутая стена
-                    {
-                        XYZ arcCenter = arc.Center;
-
-                        XYZ radialVector = (holeLocation - arcCenter).Normalize();
-
-                        wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
-                    }
-                    else
-                    {
-                        return;
-                    }
-
                     double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
                     Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+
                     ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
                     double wallThickness = GetWallThickness(wall);
 
@@ -945,8 +1013,24 @@ namespace KPLN_HoleManager.Commands
                 }
                 else
                 {
+                    Autodesk.Revit.DB.Transform transform = GetElementTransform(doc, wall);
+                    XYZ transformedWallDirection = transform.OfVector(wallDirection);
 
+                    // Вычисляем угол поворота и ось вращения
+                    double angle = Math.Atan2(transformedWallDirection.Y, transformedWallDirection.X);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+
+                    // Выполняем поворот отверстия
+                    if (!holeInstance.Document.IsLinked)
+                    {
+                        ElementTransformUtils.RotateElement(holeInstance.Document, holeInstance.Id, rotationAxis, angle);
+                    }
                 }
+
+
+
+
+
 
 
             }

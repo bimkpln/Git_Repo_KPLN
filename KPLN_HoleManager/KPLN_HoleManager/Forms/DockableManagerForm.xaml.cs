@@ -239,7 +239,7 @@ namespace KPLN_HoleManager.Forms
             {
                 _ExternalEventHandler.Instance.Raise((app) =>
                 {
-                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, isLinked, departmentName, settings[3], settings[4]);
+                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
                 });
             }
             else
