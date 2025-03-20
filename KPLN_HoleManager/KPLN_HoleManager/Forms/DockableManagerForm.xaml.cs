@@ -141,14 +141,6 @@ namespace KPLN_HoleManager.Forms
             TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
         }
 
-
-
-
-
-
-
-
-
         // XAML. Обработчик для кнопки "Создать задание на отверстие"
         public void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
@@ -248,14 +240,6 @@ namespace KPLN_HoleManager.Forms
                 holeWindow.ShowDialog();
             }
         }
-
-
-
-
-
-
-
-
 
         // XAML. Обработчик для кнопки "Настройка плагина"
         public void HolePluginSettings(object sender, RoutedEventArgs e)
@@ -638,6 +622,13 @@ namespace KPLN_HoleManager.Forms
                             }
 
                             Element element = doc.GetElement(new ElementId(holeElementId));
+
+                            if (element == null)
+                            {
+                                TaskDialog.Show("Ошибка", $"{holeName} ({holeID}) был удалён из проекта. Обновите данные об отверстия");
+                                return;
+                            }
+
                             FamilyInstance holeInstance = element as FamilyInstance;
 
                             string statusNext = "Без статуса";
@@ -688,6 +679,13 @@ namespace KPLN_HoleManager.Forms
                         }
 
                         Element element = doc.GetElement(new ElementId(holeElementId));
+
+                        if (element == null)
+                        {
+                            TaskDialog.Show("Ошибка", $"{holeName} ({holeID}) был удалён из проекта. Обновите данные об отверстия");
+                            return;
+                        }
+
                         FamilyInstance holeInstance = element as FamilyInstance;
 
                         string statusNext = "Без статуса";
@@ -920,6 +918,13 @@ namespace KPLN_HoleManager.Forms
                         }
 
                         Element element = doc.GetElement(new ElementId(holeElementId));
+
+                        if (element == null)
+                        {
+                            TaskDialog.Show("Ошибка", $"{holeName} ({holeID}) был удалён из проекта. Обновите данные об отверстия");
+                            return;
+                        }
+
                         FamilyInstance holeInstance = element as FamilyInstance;
 
                         string commentText = commentTextBox.Text;
@@ -994,7 +999,22 @@ namespace KPLN_HoleManager.Forms
                 holeListPanel.Children.Add(newButton);
             }
         }
+
+
+
+
+
+
     }
+
+
+
+
+
+
+
+
+
 
     // Передача данных статусов в названия кнопок
     public class ButtonDataViewModel : INotifyPropertyChanged

@@ -11,6 +11,7 @@ using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_HoleManager.Forms;
+using System.Windows.Forms;
 
 namespace KPLN_HoleManager.Commands
 {
@@ -19,13 +20,13 @@ namespace KPLN_HoleManager.Commands
         private readonly string _userFullName;
         private readonly string _departmentName;
         private readonly Element _selectedWall;
-
-       
+      
         private string _departmentHoleName;
         private string _sendingDepartmentHoleName;
         private string _holeTypeName;
 
         private bool transactionStatus;
+        private bool deleteLastHole;
 
         public PlaceHoleOnWallCommand(string userFullName, string departmentName, Element selectedElement, string departmentHoleName, string sendingDepartmentHoleName, string holeTypeName)
         {
@@ -220,6 +221,11 @@ namespace KPLN_HoleManager.Commands
                     (double widthElement, double heightElement, double lengthElement) = GetElementSize(intersectingElement);
 
                     SetHoleDimensions(uiDoc, doc, tx, wall, intersectingElement, holeInstance, holeLocation, widthElement, heightElement);
+
+                    if (deleteLastHole)
+                    {
+                        doc.Delete(holeInstance.Id);
+                    }
 
                     // Если всё же что-то поёдт не так - отменяем транзакцию :)
                     if (transactionStatus == false)
@@ -527,7 +533,7 @@ namespace KPLN_HoleManager.Commands
             }
 
             // Временное решение расчёта гибких элементов (2 из 2)
-            if (allIntersections.Count > 0 && (cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves ||
+            if (linkInstance != null && allIntersections.Count > 0 && (cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves ||
                 cElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves))
             {
                 List<XYZ> processedIntersections = new List<XYZ>();
@@ -867,9 +873,11 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         public void SetHoleDimensions(UIDocument uiDoc, Document doc, Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
         {
+            deleteLastHole = false;
+
             double offset = -900;
             List<string> settings = DockableManagerFormSettings.LoadSettings();
-
+           
             if (settings != null && settings[5] != "Не выбрано")
             {
                 if (!double.TryParse(settings[5], out offset))
@@ -911,6 +919,9 @@ namespace KPLN_HoleManager.Commands
             double internalHeight = UnitUtils.ConvertToInternalUnits(heightElement + offset, UnitTypeId.Millimeters);
             double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
             double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
+
+            double angle = 0;
+            Line rotationAxis = null;
 
             if (_departmentHoleName == "АР")
             {
@@ -977,8 +988,8 @@ namespace KPLN_HoleManager.Commands
                
                 if (!wall.Document.IsLinked)
                 {
-                    double angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                    angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+                    rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
 
                     ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
                     double wallThickness = GetWallThickness(wall);
@@ -1017,8 +1028,8 @@ namespace KPLN_HoleManager.Commands
                     XYZ transformedWallDirection = transform.OfVector(wallDirection);
 
                     // Вычисляем угол поворота и ось вращения
-                    double angle = Math.Atan2(transformedWallDirection.Y, transformedWallDirection.X);
-                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                    angle = Math.Atan2(transformedWallDirection.Y, transformedWallDirection.X);
+                    rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
 
                     // Выполняем поворот отверстия
                     if (!holeInstance.Document.IsLinked)
@@ -1026,34 +1037,217 @@ namespace KPLN_HoleManager.Commands
                         ElementTransformUtils.RotateElement(holeInstance.Document, holeInstance.Id, rotationAxis, angle);
                     }
                 }
-
-
-
-
-
-
-
             }
 
-            // Запись данных в хранилище
             string wallIdString = wall.Id.IntegerValue.ToString();
             string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
 
-            ExtensibleStorageHelper.AddChatMessage(
-                holeInstance,
-                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                _userFullName,
-                _departmentName,
-                _departmentHoleName,
-                _sendingDepartmentHoleName,
-                wallIdString,
-                intersectingElementIdString,
-                "Без статуса",
-                "00",
-                "Отверстие создано"
-            );
 
-            CreateHoleTaskIntrerface(uiDoc, doc, holeInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, intersectingElementIdString);
+
+
+
+
+
+
+
+            // Проверка пересечений
+            List<FamilyInstance> intersectingHoles = GetIntersectingHoles(doc, holeInstance);
+
+            if (intersectingHoles.Any())
+            {
+                deleteLastHole = true;
+
+
+
+
+                // Координаты всех отверстий
+                List<XYZ> holeLocations = intersectingHoles
+                    .Where(h => h.Location is LocationPoint)
+                    .Select(h => (h.Location as LocationPoint).Point)
+                    .ToList();
+
+                if (holeInstance.Location is LocationPoint holeLoc)
+                {
+                    holeLocations.Add(holeLoc.Point);
+                }
+
+
+                double avgX = holeLocations.Average(p => p.X);
+                double avgY = holeLocations.Average(p => p.Y);
+                double avgZ = holeLocations.Average(p => p.Z);
+
+                XYZ newHoleLocation = new XYZ(avgX, avgY, avgZ);
+
+
+
+                // Генерация данных интерфейса и удаление отверстий
+                string allIntersectingHoleIdString = $"{holeInstance.Id}, "  + string.Join(", ", intersectingHoles.Select(h => h.Id.IntegerValue));
+                string allIntersectingElementIdString = intersectingElementIdString;
+
+                foreach (FamilyInstance intersectingHole in intersectingHoles)
+                {
+                    List<List<string>> holeMessages = _iDataProcessor.GetHoleTaskMessages(doc, intersectingHole.Id.IntegerValue.ToString());
+
+                    if (holeMessages.Any())
+                    {
+                        List<string> lastMessage = holeMessages.Last(); 
+                        if (lastMessage.Count > 8) 
+                        {
+                            allIntersectingElementIdString += $", {lastMessage[8]}";
+                        }
+                    }
+
+                    doc.Delete(intersectingHole.Id);
+                }
+
+
+                
+
+
+
+
+
+
+
+
+
+
+                // Загрузка семейства
+                string newFamilyFileName = GetFamilyFileName(_departmentHoleName, "SquareHole");
+                if (string.IsNullOrEmpty(newFamilyFileName))
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось определить файл семейства.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                string newFamilyPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "Families", newFamilyFileName);
+
+                if (!File.Exists(newFamilyPath))
+                {
+                    TaskDialog.Show("Ошибка", $"Файл семейства не найден:\n{newFamilyPath}");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                Family newFamily = LoadOrGetExistingFamily(doc, newFamilyPath);
+
+                if (newFamily == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                // Получаем FamilySymbol
+                FamilySymbol newHoleSymbol = GetFamilySymbol(newFamily, doc);
+                if (newHoleSymbol == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Не удалось получить типоразмер семейства.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                if (!newHoleSymbol.IsActive)
+                {
+                    newHoleSymbol.Activate();
+                    doc.Regenerate();
+                }
+
+
+
+
+                
+
+
+
+
+
+
+                // Создаём отверстие без преднастроек (указывается только точка самого отверстия)
+                FamilyInstance newHoleInstance = doc.Create.NewFamilyInstance(newHoleLocation, newHoleSymbol, _selectedWall, StructuralType.NonStructural);
+
+                if (newHoleInstance == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Ошибка при создании отверстия.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+
+
+
+                Parameter newWidthParam = newHoleInstance.LookupParameter("Ширина");
+                Parameter newHightParam = newHoleInstance.LookupParameter("Высота");
+                heightParam.Set(600);
+                widthParam.Set(600);
+
+
+
+
+                // Вращаем отверстие
+                if (_departmentHoleName != "АР")
+                {
+                    ElementTransformUtils.RotateElement(newHoleInstance.Document, newHoleInstance.Id, rotationAxis, angle);
+                }
+
+
+
+                // Запись данных в хранилище             
+                ExtensibleStorageHelper.AddChatMessage(
+                    newHoleInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    _userFullName,
+                    _departmentName,
+                    _departmentHoleName,
+                    _sendingDepartmentHoleName,
+                    wallIdString,
+                    allIntersectingElementIdString,
+                    "Без статуса",
+                    "00",
+                    $"Отверстия объеденены: {allIntersectingHoleIdString}"
+                );
+
+                // Если всё же что-то поёдт не так - отменяем транзакцию :)
+                if (transactionStatus == false)
+                {
+                    tx.RollBack();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                CreateHoleTaskIntrerface(uiDoc, doc, newHoleInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, allIntersectingElementIdString);
+            }
+            else 
+            {
+                // Запись данных в хранилище             
+                ExtensibleStorageHelper.AddChatMessage(
+                    holeInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    _userFullName,
+                    _departmentName,
+                    _departmentHoleName,
+                    _sendingDepartmentHoleName,
+                    wallIdString,
+                    intersectingElementIdString,
+                    "Без статуса",
+                    "00",
+                    "Отверстие создано"
+                );
+
+                // Если всё же что-то поёдт не так - отменяем транзакцию :)
+                if (transactionStatus == false)
+                {
+                    tx.RollBack();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                CreateHoleTaskIntrerface(uiDoc, doc, holeInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, intersectingElementIdString);
+            }         
         }
 
         /// <summary>
@@ -1065,6 +1259,95 @@ namespace KPLN_HoleManager.Commands
             return (point.X >= bbox.Min.X && point.X <= bbox.Max.X) &&
                    (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
                    (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
+        }
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод к SetHoleDimensions поиск пересекающихся отверстий
+        /// </summary>
+        private static List<FamilyInstance> GetIntersectingHoles(Document doc, FamilyInstance holeInstance)
+        {
+            List<FamilyInstance> intersectingHoles = new List<FamilyInstance>();
+            string holeFamilyName = holeInstance.Symbol.Family.Name;
+
+            // Определяем, с какими отверстиями искать пересечения
+            List<string> targetHoleFamilies = new List<string>();
+
+            if (holeFamilyName == "199_Отверстие прямоугольное_(Об_Стена)" || holeFamilyName == "199_Отверстие круглое_(Об_Стена)")
+            {
+                targetHoleFamilies.Add("199_Отверстие прямоугольное_(Об_Стена)");
+                targetHoleFamilies.Add("199_Отверстие круглое_(Об_Стена)");
+            }
+            else if (holeFamilyName == "501_ЗИ_Отверстие_Прямоугольное_Стена_(Об)" || holeFamilyName == "501_ЗИ_Отверстие_Круглое_Стена_(Об)")
+            {
+                targetHoleFamilies.Add("501_ЗИ_Отверстие_Прямоугольное_Стена_(Об)");
+                targetHoleFamilies.Add("501_ЗИ_Отверстие_Круглое_Стена_(Об)");
+            }
+            else
+            {
+                return intersectingHoles;
+            }
+
+            // Получаем bounding box для holeInstance
+            BoundingBoxXYZ bbox = holeInstance.get_BoundingBox(null);
+            if (bbox == null) return intersectingHoles;
+
+            // Используем BoundingBoxIntersectsFilter для быстрого отбора потенциальных пересечений
+            BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(new Outline(bbox.Min, bbox.Max));
+
+            // Собираем все FamilyInstance, которые могут пересекаться
+            List<FamilyInstance> candidateInstances = new FilteredElementCollector(doc)
+                .WherePasses(filter)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(fi => fi.Id != holeInstance.Id && targetHoleFamilies.Contains(fi.Symbol.Family.Name)) // Оставляем только нужные семейства
+                .ToList();
+
+            // Проверяем пересечение по Solid
+            Solid holeSolid = GetSolidFromInstance(holeInstance);
+            if (holeSolid == null) return intersectingHoles;
+
+            foreach (FamilyInstance otherInstance in candidateInstances)
+            {
+                Solid otherSolid = GetSolidFromInstance(otherInstance);
+                if (otherSolid == null) continue;
+
+                Solid intersection = BooleanOperationsUtils.ExecuteBooleanOperation(holeSolid, otherSolid, BooleanOperationsType.Intersect);
+                if (intersection != null && intersection.Volume > 0)
+                {
+                    intersectingHoles.Add(otherInstance);
+                }
+            }
+
+            return intersectingHoles;
+        }
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод к GetIntersectingHoles прасчёт геометрии пересекающихся элементов
+        /// </summary>
+        private static Solid GetSolidFromInstance(FamilyInstance instance)
+        {
+            Options options = new Options { ComputeReferences = false };
+            GeometryElement geometry = instance.get_Geometry(options);
+
+            foreach (GeometryObject obj in geometry)
+            {
+                if (obj is GeometryInstance geomInstance)
+                {
+                    Autodesk.Revit.DB.Transform transform = geomInstance.Transform;
+                    foreach (GeometryObject instanceObj in geomInstance.GetSymbolGeometry())
+                    {
+                        if (instanceObj is Solid solid && solid.Volume > 0)
+                        {
+                            return SolidUtils.CreateTransformed(solid, transform); 
+                        }
+                    }
+                }
+                else if (obj is Solid solid && solid.Volume > 0)
+                {
+                    return solid;
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -1104,8 +1387,8 @@ namespace KPLN_HoleManager.Commands
             ///////////////////// Блок 2. Изменение статуса отверстия
             StackPanel decisionPanel = new StackPanel
             {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Left,
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
                 Margin = new Thickness(2, 0, 0, 0),
             };
 
@@ -1277,7 +1560,7 @@ namespace KPLN_HoleManager.Commands
                 Height = 45,
                 Width = 30,
                 VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
                 IsEnabled = false
             };
 
