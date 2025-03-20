@@ -68,18 +68,17 @@ namespace KPLN_HoleManager.Commands
 
             try
             {
-                // Стена и её кривая
                 Wall wall = _selectedWall as Wall;
                 LocationCurve locationCurve = wall.Location as LocationCurve;
 
-                // Выбор элемента
-                Element intersectingElement = null;
+                
+                Element intersectingElement = null; // Выбор элемента
 
                 while (true)
                 {
                     try
                     {
-                        // Используем фильтр, который разрешает выбирать только нужные элементы и линки
+                        // Фильтр, который разрешает выбирать только нужные элементы и линки
                         Reference selectedRef = uiDoc.Selection.PickObject(ObjectType.Element, new CustomSelectionFilter(), "Выберите элемент (воздуховоды, трубы, лотки, короба или линк).");
                         Element firstSelectedElement = doc.GetElement(selectedRef);
 
@@ -179,7 +178,7 @@ namespace KPLN_HoleManager.Commands
 
                     transactionStatus = true;
 
-                    // Загружаем семейство (если оно уже загружено, берём существующее)
+                    // Загрузка семейства
                     Family family = LoadOrGetExistingFamily(doc, familyPath);
 
                     if (family == null)
@@ -190,7 +189,6 @@ namespace KPLN_HoleManager.Commands
                         return;
                     }
 
-                    // Получаем FamilySymbol
                     FamilySymbol holeSymbol = GetFamilySymbol(family, doc);
                     if (holeSymbol == null)
                     {
@@ -219,7 +217,6 @@ namespace KPLN_HoleManager.Commands
 
                     // Задаём размеры отверстию, двигаем его и пишем данные в Extensible Storage
                     (double widthElement, double heightElement, double lengthElement) = GetElementSize(intersectingElement);
-
                     SetHoleDimensions(uiDoc, doc, tx, wall, intersectingElement, holeInstance, holeLocation, widthElement, heightElement);
 
                     if (deleteLastHole)
@@ -227,7 +224,6 @@ namespace KPLN_HoleManager.Commands
                         doc.Delete(holeInstance.Id);
                     }
 
-                    // Если всё же что-то поёдт не так - отменяем транзакцию :)
                     if (transactionStatus == false)
                     {
                         tx.RollBack();
@@ -299,7 +295,6 @@ namespace KPLN_HoleManager.Commands
         /// </summary>
         private FamilySymbol GetFamilySymbol(Family family, Document doc)
         {
-            // Сопоставление отделов с существующими типами
             Dictionary<string, string> departmentMapping = new Dictionary<string, string>
             {
                 { "ОВиК", "ОВ" },
@@ -312,7 +307,6 @@ namespace KPLN_HoleManager.Commands
                 ? departmentMapping[_departmentHoleName]
                 : _departmentHoleName;
 
-            // Ищем тип ИОС-семейства 
             foreach (ElementId id in family.GetFamilySymbolIds())
             {
                 FamilySymbol symbol = doc.GetElement(id) as FamilySymbol;
@@ -338,22 +332,20 @@ namespace KPLN_HoleManager.Commands
         {
             List<XYZ> allIntersections = new List<XYZ>();
 
-            // Определяем трансформацию для обоих элементов
+            // Трансформация для обоих элементов
             Autodesk.Revit.DB.Transform wallTransform = GetElementTransform(doc, wall);
             Autodesk.Revit.DB.Transform cElementTransform = GetElementTransform(doc, cElement);
 
-            // Проверяем, находится ли стена в связанном файле
+            // Работа со стеной
             RevitLinkInstance linkInstance = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 .Cast<RevitLinkInstance>()
                 .FirstOrDefault(link => link.GetLinkDocument()?.Equals(wall.Document) == true);
 
             Autodesk.Revit.DB.Transform linkTransform = linkInstance?.GetTotalTransform() ?? Autodesk.Revit.DB.Transform.Identity;
-
-            // Получаем толщину стены
             double wallThickness = GetWallThickness(wall);
 
-            // Получаем геометрию трубы, воздуховода и т.д.
+            // Работа с пересекающим стену элементом
             LocationCurve cElementLocation = cElement.Location as LocationCurve;
             if (cElementLocation == null)
                 return null;
@@ -370,6 +362,7 @@ namespace KPLN_HoleManager.Commands
             bool createdView = false;
             View3D view3D = null;
         
+            // Стена не в связном файле
             if (linkInstance == null)
             {
                 view3D = new FilteredElementCollector(doc)
@@ -396,7 +389,6 @@ namespace KPLN_HoleManager.Commands
                     return null;
                 }
 
-                // Создаем ReferenceIntersector для стены
                 ReferenceIntersector intersector = new ReferenceIntersector(wall.Id, FindReferenceTarget.Face, view3D);
                
                 // Проходим по сегментам кривой
@@ -409,15 +401,16 @@ namespace KPLN_HoleManager.Commands
                     allIntersections.AddRange(segmentIntersections);
                 }
             }
+            // Обработка ошибки вырезания отверстия в стене связного файла
             else if (linkInstance != null && department == "АР")
             {
                 TaskDialog.Show("Ошибка", "Вы пытаетесь вырезать отверстие в стене из связанного файла. Операция отменена.");
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return null;
             }
+            // Стена в связнеом файле
             else
             {
-                // Получаем геометрию стены в связанном файле
                 GeometryElement wallGeometry = wall.get_Geometry(new Options());
 
                 if (wallGeometry == null)
@@ -427,7 +420,6 @@ namespace KPLN_HoleManager.Commands
                     return null;
                 }
 
-                // Получаем трансформацию связанного файла 
                 RevitLinkInstance linkInstanceWall = new FilteredElementCollector(doc)
                     .OfClass(typeof(RevitLinkInstance))
                     .Cast<RevitLinkInstance>()
@@ -573,7 +565,7 @@ namespace KPLN_HoleManager.Commands
                 }
             }
 
-            // Корректировка по оси Z для АР
+            // Корректировка по оси Z для АР (временное решение?)
             double adjustmentZ = 0;
             if (department == "АР")
             {
@@ -603,7 +595,6 @@ namespace KPLN_HoleManager.Commands
             if (doc.Equals(elementDoc))
                 return Autodesk.Revit.DB.Transform.Identity;
 
-            // Найти связанный файл
             RevitLinkInstance linkInstance = new FilteredElementCollector(doc)
                 .OfClass(typeof(RevitLinkInstance))
                 .Cast<RevitLinkInstance>()
@@ -620,7 +611,6 @@ namespace KPLN_HoleManager.Commands
             // Пробуем получить толщину через параметр WALL_ATTR_WIDTH_PARAM
             double wallThickness = wall.get_Parameter(BuiltInParameter.WALL_ATTR_WIDTH_PARAM)?.AsDouble() ?? 0;
 
-            // Если не удалось, пробуем через WallType и CompoundStructure
             if (wallThickness == 0 && wall is Wall actualWall)
             {
                 WallType wallType = actualWall.Document.GetElement(actualWall.GetTypeId()) as WallType;
@@ -663,7 +653,6 @@ namespace KPLN_HoleManager.Commands
             XYZ direction = (end - start).Normalize();
             double segmentLength = start.DistanceTo(end);
 
-            // Находим все пересечения вдоль сегмента
             IList<ReferenceWithContext> references = intersector.Find(start, direction);
 
             foreach (ReferenceWithContext refWithContext in references)
@@ -675,14 +664,12 @@ namespace KPLN_HoleManager.Commands
                 if (distanceFromStart > segmentLength)
                     continue;
 
-                // Получаем поверхность стены
                 Wall wallElement = wall as Wall;
                 Face wallFace = wallElement?.GetGeometryObjectFromReference(reference) as Face;
 
                 if (wallFace == null)
                     continue;
 
-                // Определяем, является ли стена изогнутой
                 bool isCurvedWall = (wallElement.Location as LocationCurve)?.Curve is Arc;
 
                 XYZ wallNormal;
@@ -871,11 +858,12 @@ namespace KPLN_HoleManager.Commands
         /// <summary>
         /// Отверстие. Метод изменения размера отверстия и его разворот после создания XYZ
         /// </summary>
-        public void SetHoleDimensions(UIDocument uiDoc, Document doc, Transaction tx, Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
+        public void SetHoleDimensions(UIDocument uiDoc, Document doc, Transaction tx, 
+            Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
         {
             deleteLastHole = false;
 
-            double offset = -900;
+            double offset = -900; // Заведомо нереалистичное смещение
             List<string> settings = DockableManagerFormSettings.LoadSettings();
            
             if (settings != null && settings[5] != "Не выбрано")
@@ -891,7 +879,6 @@ namespace KPLN_HoleManager.Commands
             {
                 Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
 
-                // Открываем диалоговое окно для выбора отступа
                 if (sChoiseHoleIndentation.ShowDialog() == true)
                 {
                     offset = sChoiseHoleIndentation.SelectedOffset;
@@ -904,6 +891,7 @@ namespace KPLN_HoleManager.Commands
                 }
             }
 
+            // Обработка в случае ошибки поиска смещения
             if (offset == -900)
             {
                 transactionStatus = false;
@@ -920,11 +908,33 @@ namespace KPLN_HoleManager.Commands
             double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
             double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
 
+            Curve wallCurve = (wall.Location as LocationCurve).Curve;
+            XYZ wallDirection;
+
+            if (wallCurve is Line line)
+            {
+                wallDirection = line.Direction;
+            }
+            else if (wallCurve is Arc arc)
+            {
+                XYZ arcCenter = arc.Center;
+
+                XYZ radialVector = (holeLocation - arcCenter).Normalize();
+
+                wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+            }
+            else
+            {
+                return;
+            }
+            XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize(); ;
+
             double angle = 0;
-            Line rotationAxis = null;
 
             if (_departmentHoleName == "АР")
             {
+                wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
+
                 if (_holeTypeName == "SquareHole")
                 {
                     heightParam.Set(internalHeight);
@@ -964,40 +974,18 @@ namespace KPLN_HoleManager.Commands
                 {
                     diametrParam.Set(internalDiametr);
                 }
-
-                // Получаем кривую стены
-                Curve wallCurve = (wall.Location as LocationCurve).Curve;
-                XYZ wallDirection;
-
-                if (wallCurve is Line line) // Прямая стена
-                {
-                    wallDirection = line.Direction;
-                }
-                else if (wallCurve is Arc arc) // Изогнутая стена
-                {
-                    XYZ arcCenter = arc.Center;
-
-                    XYZ radialVector = (holeLocation - arcCenter).Normalize();
-
-                    wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
-                }
-                else
-                {
-                    return;
-                }
-               
+       
                 if (!wall.Document.IsLinked)
                 {
                     angle = Math.Atan2(wallDirection.Y, wallDirection.X);
-                    rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
 
                     ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
                     double wallThickness = GetWallThickness(wall);
 
+                    // Обработка ИОСных отверстий
                     if (wallThickness > 0)
-                    {
-                        XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
-
+                    {                       
                         // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
                         XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
                         XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
@@ -1027,11 +1015,9 @@ namespace KPLN_HoleManager.Commands
                     Autodesk.Revit.DB.Transform transform = GetElementTransform(doc, wall);
                     XYZ transformedWallDirection = transform.OfVector(wallDirection);
 
-                    // Вычисляем угол поворота и ось вращения
                     angle = Math.Atan2(transformedWallDirection.Y, transformedWallDirection.X);
-                    rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
 
-                    // Выполняем поворот отверстия
                     if (!holeInstance.Document.IsLinked)
                     {
                         ElementTransformUtils.RotateElement(holeInstance.Document, holeInstance.Id, rotationAxis, angle);
@@ -1042,75 +1028,59 @@ namespace KPLN_HoleManager.Commands
             string wallIdString = wall.Id.IntegerValue.ToString();
             string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
 
-
-
-
-
-
-
-
-
             // Проверка пересечений
             List<FamilyInstance> intersectingHoles = GetIntersectingHoles(doc, holeInstance);
 
             if (intersectingHoles.Any())
             {
                 deleteLastHole = true;
+                List<XYZ> holeCenters = new List<XYZ>();
 
-
-
-
-                // Координаты всех отверстий
-                List<XYZ> holeLocations = intersectingHoles
-                    .Where(h => h.Location is LocationPoint)
-                    .Select(h => (h.Location as LocationPoint).Point)
-                    .ToList();
-
-                if (holeInstance.Location is LocationPoint holeLoc)
+                // Центр каждого отверстия + вычесление общего центра
+                foreach (FamilyInstance hole in intersectingHoles)
                 {
-                    holeLocations.Add(holeLoc.Point);
+                    XYZ center = null;
+
+                    BoundingBoxXYZ bbox = hole.get_BoundingBox(null);
+                    if (bbox != null)
+                    {
+                        center = (bbox.Min + bbox.Max) / 2;
+                    }                  
+
+                    if (center != null)
+                    {
+                        holeCenters.Add(center);
+                    }
                 }
 
+                BoundingBoxXYZ bboxHoleInstance = holeInstance.get_BoundingBox(null);
+                if (bboxHoleInstance != null)
+                {
+                    XYZ holeInstanceCenter = (bboxHoleInstance.Min + bboxHoleInstance.Max) / 2;
+                    holeCenters.Add(holeInstanceCenter); 
+                }
 
-                double avgX = holeLocations.Average(p => p.X);
-                double avgY = holeLocations.Average(p => p.Y);
-                double avgZ = holeLocations.Average(p => p.Z);
-
+                double avgX = holeCenters.Average(p => p.X);
+                double avgY = holeCenters.Average(p => p.Y);
+                double avgZ = holeCenters.Average(p => p.Z);
                 XYZ newHoleLocation = new XYZ(avgX, avgY, avgZ);
 
-
-
-                // Генерация данных интерфейса и удаление отверстий
-                string allIntersectingHoleIdString = $"{holeInstance.Id}, "  + string.Join(", ", intersectingHoles.Select(h => h.Id.IntegerValue));
-                string allIntersectingElementIdString = intersectingElementIdString;
-
-                foreach (FamilyInstance intersectingHole in intersectingHoles)
+                // Корректировка по оси Z для АР (временное решение?)
+                if (_departmentHoleName == "АР")
                 {
-                    List<List<string>> holeMessages = _iDataProcessor.GetHoleTaskMessages(doc, intersectingHole.Id.IntegerValue.ToString());
+                    double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
+                    double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
+                    double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
 
-                    if (holeMessages.Any())
+                    double adjustmentZ = 0;
+
+                    if (!wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).IsReadOnly)
                     {
-                        List<string> lastMessage = holeMessages.Last(); 
-                        if (lastMessage.Count > 8) 
-                        {
-                            allIntersectingElementIdString += $", {lastMessage[8]}";
-                        }
+                        adjustmentZ = unconnectedHeight - offsetBottom + offsetTop;
                     }
 
-                    doc.Delete(intersectingHole.Id);
+                    newHoleLocation = new XYZ(newHoleLocation.X, newHoleLocation.Y, newHoleLocation.Z + adjustmentZ);
                 }
-
-
-                
-
-
-
-
-
-
-
-
-
 
                 // Загрузка семейства
                 string newFamilyFileName = GetFamilyFileName(_departmentHoleName, "SquareHole");
@@ -1156,16 +1126,6 @@ namespace KPLN_HoleManager.Commands
                     doc.Regenerate();
                 }
 
-
-
-
-                
-
-
-
-
-
-
                 // Создаём отверстие без преднастроек (указывается только точка самого отверстия)
                 FamilyInstance newHoleInstance = doc.Create.NewFamilyInstance(newHoleLocation, newHoleSymbol, _selectedWall, StructuralType.NonStructural);
 
@@ -1177,24 +1137,82 @@ namespace KPLN_HoleManager.Commands
                     return;
                 }
 
-
-
-
                 Parameter newWidthParam = newHoleInstance.LookupParameter("Ширина");
                 Parameter newHightParam = newHoleInstance.LookupParameter("Высота");
-                heightParam.Set(600);
-                widthParam.Set(600);
 
+                double minX = double.MaxValue, maxX = double.MinValue;
+                double minY = double.MaxValue, maxY = double.MinValue;
+                double minZ = double.MaxValue, maxZ = double.MinValue;
 
+                foreach (FamilyInstance hole in intersectingHoles)
+                {
+                    BoundingBoxXYZ bbox = hole.get_BoundingBox(null);
+                    if (bbox != null)
+                    {
+                        minX = Math.Min(minX, bbox.Min.X);
+                        maxX = Math.Max(maxX, bbox.Max.X);
 
+                        minY = Math.Min(minY, bbox.Min.Y);
+                        maxY = Math.Max(maxY, bbox.Max.Y);
+
+                        minZ = Math.Min(minZ, bbox.Min.Z);
+                        maxZ = Math.Max(maxZ, bbox.Max.Z);
+                    }
+                }
+
+                BoundingBoxXYZ bboxHoleInstanceNew = holeInstance.get_BoundingBox(null);
+                if (bboxHoleInstanceNew != null)
+                {
+                    minX = Math.Min(minX, bboxHoleInstance.Min.X);
+                    maxX = Math.Max(maxX, bboxHoleInstance.Max.X);
+
+                    minY = Math.Min(minY, bboxHoleInstance.Min.Y);
+                    maxY = Math.Max(maxY, bboxHoleInstance.Max.Y);
+
+                    minZ = Math.Min(minZ, bboxHoleInstance.Min.Z);
+                    maxZ = Math.Max(maxZ, bboxHoleInstance.Max.Z);
+                }
+
+                // Проверяем ориентацию стены
+                bool isWallVertical = Math.Abs(wallNormal.Z) > 0.9; 
+                double width = isWallVertical ? maxX - minX : maxY - minY; 
+                double height = maxZ - minZ; 
+      
+                newHightParam.Set(height);
+                newWidthParam.Set(width);
 
                 // Вращаем отверстие
                 if (_departmentHoleName != "АР")
                 {
+                    Line rotationAxis = Line.CreateBound(newHoleLocation, newHoleLocation + XYZ.BasisZ);
                     ElementTransformUtils.RotateElement(newHoleInstance.Document, newHoleInstance.Id, rotationAxis, angle);
                 }
+                else
+                {               
+                    double shiftZ = -0.5 * height;
+                    XYZ moveVector = new XYZ(0, 0, shiftZ);
+                    ElementTransformUtils.MoveElement(newHoleInstance.Document, newHoleInstance.Id, moveVector);
+                }
 
+                // Генерация данных интерфейса и удаление отверстий
+                string allIntersectingHoleIdString = $"{holeInstance.Id}, " + string.Join(", ", intersectingHoles.Select(h => h.Id.IntegerValue));
+                string allIntersectingElementIdString = intersectingElementIdString;
 
+                foreach (FamilyInstance intersectingHole in intersectingHoles)
+                {
+                    List<List<string>> holeMessages = _iDataProcessor.GetHoleTaskMessages(doc, intersectingHole.Id.IntegerValue.ToString());
+
+                    if (holeMessages.Any())
+                    {
+                        List<string> lastMessage = holeMessages.Last();
+                        if (lastMessage.Count > 8)
+                        {
+                            allIntersectingElementIdString += $", {lastMessage[8]}";
+                        }
+                    }
+
+                    doc.Delete(intersectingHole.Id);
+                }
 
                 // Запись данных в хранилище             
                 ExtensibleStorageHelper.AddChatMessage(
@@ -1211,7 +1229,6 @@ namespace KPLN_HoleManager.Commands
                     $"Отверстия объеденены: {allIntersectingHoleIdString}"
                 );
 
-                // Если всё же что-то поёдт не так - отменяем транзакцию :)
                 if (transactionStatus == false)
                 {
                     tx.RollBack();
@@ -1221,6 +1238,7 @@ namespace KPLN_HoleManager.Commands
 
                 CreateHoleTaskIntrerface(uiDoc, doc, newHoleInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, allIntersectingElementIdString);
             }
+
             else 
             {
                 // Запись данных в хранилище             
@@ -1238,7 +1256,6 @@ namespace KPLN_HoleManager.Commands
                     "Отверстие создано"
                 );
 
-                // Если всё же что-то поёдт не так - отменяем транзакцию :)
                 if (transactionStatus == false)
                 {
                     tx.RollBack();
@@ -1287,22 +1304,18 @@ namespace KPLN_HoleManager.Commands
                 return intersectingHoles;
             }
 
-            // Получаем bounding box для holeInstance
             BoundingBoxXYZ bbox = holeInstance.get_BoundingBox(null);
             if (bbox == null) return intersectingHoles;
 
-            // Используем BoundingBoxIntersectsFilter для быстрого отбора потенциальных пересечений
             BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(new Outline(bbox.Min, bbox.Max));
 
-            // Собираем все FamilyInstance, которые могут пересекаться
             List<FamilyInstance> candidateInstances = new FilteredElementCollector(doc)
                 .WherePasses(filter)
                 .OfClass(typeof(FamilyInstance))
                 .Cast<FamilyInstance>()
-                .Where(fi => fi.Id != holeInstance.Id && targetHoleFamilies.Contains(fi.Symbol.Family.Name)) // Оставляем только нужные семейства
+                .Where(fi => fi.Id != holeInstance.Id && targetHoleFamilies.Contains(fi.Symbol.Family.Name)) 
                 .ToList();
 
-            // Проверяем пересечение по Solid
             Solid holeSolid = GetSolidFromInstance(holeInstance);
             if (holeSolid == null) return intersectingHoles;
 
