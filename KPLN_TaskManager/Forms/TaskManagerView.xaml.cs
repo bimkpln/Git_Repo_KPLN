@@ -41,7 +41,7 @@ namespace KPLN_TaskManager.Forms
                 _searchHeader = value;
                 OnPropertyChanged();
 
-                FilteredTasks.Refresh();
+                FilteredTasks?.Refresh();
             }
         }
 
@@ -56,7 +56,7 @@ namespace KPLN_TaskManager.Forms
                 _selectedOpenStausTasks = value;
                 OnPropertyChanged();
 
-                FilteredTasks.Refresh();
+                FilteredTasks?.Refresh();
             }
         }
 
@@ -71,7 +71,7 @@ namespace KPLN_TaskManager.Forms
                 _subDepDependence = value;
                 OnPropertyChanged();
 
-                FilteredTasks.Refresh();
+                FilteredTasks?.Refresh();
             }
         }
 
@@ -81,8 +81,49 @@ namespace KPLN_TaskManager.Forms
         /// <returns></returns>
         public TaskManagerView LoadTaskData()
         {
-            _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
             _dBProject = Module.CurrentDBProject;
+            
+            // Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
+            if (MainDBService.CurrentDBUserSubDepartment.Id == 8)
+            {
+                switch (MainDBService.CurrentDBUser.Surname)
+                {
+                    case "Куцко":
+                        goto default;
+                    case "Коломиец":
+                        goto case "Федосеева";
+                    case "Федосеева":
+                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 2));
+                        break;
+                    case "Тарчоков":
+                        goto case "Ямковой";
+                    case "Ямковой":
+                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 3));
+                        break;
+                    case "Садовская":
+                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5));
+                        IEnumerable<TaskItemEntity> secondColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7);
+                        foreach (TaskItemEntity item in secondColl)
+                        {
+                            _collection.Add(item);
+                        }
+                        break;
+                    case "Чичева":
+                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 4));
+                        IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 6);
+                        foreach (TaskItemEntity item in secondColl2)
+                        {
+                            _collection.Add(item);
+                        }
+                        break;
+                    default:
+                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
+                        break;
+                }
+            }
+            // Для остальных пользователей - выбор из ЗВ и ЗИ
+            else
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndUser(Module.CurrentDBProject, MainDBService.CurrentDBUser));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
             FilteredTasks.Filter = FilterTasks;
@@ -155,7 +196,7 @@ namespace KPLN_TaskManager.Forms
                 _collection.Add(taskItemView.CurrentTaskItemEntity);
 
                 FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
-                FilteredTasks.Refresh();
+                FilteredTasks?.Refresh();
             }
         }
 

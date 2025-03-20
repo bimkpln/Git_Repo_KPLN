@@ -72,6 +72,8 @@
                     Text="{Binding TaskTitle, Mode=OneWay}" 
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Center"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap"
                     FontWeight="Bold" 
                     Margin="5,5,5,0"/>
                 <TextBlock 
@@ -215,21 +217,49 @@
                 IsEnabled="False"
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskBody}"
-                Height="80"
+                MinHeight="80"
+                MaxHeight="120"
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Center" 
                 FontStretch="ExtraExpanded"/>
 
-            <TextBlock 
-                Name="ModelNameTBl"
-                Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged, Mode=OneWay, StringFormat= 'Имя модели: \{0\}'}"
-                VerticalAlignment="Center" 
-                FontWeight="Bold" 
-                Margin="5,0,5,0"
-                TextWrapping="Wrap"/>
-            
+            <DockPanel
+                LastChildFill="True">
+                <TextBlock 
+                    Text="Имя модели: "
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    FontWeight="Bold" 
+                    Margin="5,0,5,0"
+                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
+                <TextBlock 
+                    Name="ModelNameTBl"
+                    Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left"
+                    Margin="0,0,5,0"
+                    TextWrapping="Wrap"/>
+            </DockPanel>
+            <DockPanel
+                LastChildFill="True">
+                <TextBlock 
+                    Text="Кол-во эл-в: "
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    FontWeight="Bold" 
+                    Margin="5,0,5,0"
+                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
+                <TextBlock 
+                    Name="ModelElemsContTBl"
+                    Text="{Binding ElementIdsCount, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left"
+                    Margin="0,0,5,0"
+                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
+            </DockPanel>
+
             <DockPanel 
                 LastChildFill="False">
                 <Button

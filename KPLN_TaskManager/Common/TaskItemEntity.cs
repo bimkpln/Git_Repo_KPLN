@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -249,6 +250,7 @@ namespace KPLN_TaskManager.Common
             {
                 _elementIds = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(ElementIdsCount));
             }
         }
 
@@ -419,6 +421,20 @@ namespace KPLN_TaskManager.Common
         public List<DBUser> DBUserColl
         {
             get => MainDBService.GetDBUsers_BySubDepId(DelegatedDepartmentId);
+        }
+
+        /// <summary>
+        /// Счетчик количества элементов прикрепленных к задаче
+        /// </summary>
+        public int ElementIdsCount
+        {
+            get
+            {
+                if (ElementIds == null || !ElementIds.Any())
+                    return 0;
+                else
+                    return Regex.Matches(ElementIds, ",").Count + 1;
+            }
         }
         #endregion
 

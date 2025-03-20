@@ -37,7 +37,10 @@ namespace KPLN_TaskManager.Forms
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
             if (string.IsNullOrEmpty(CurrentTaskItemEntity.ModelName))
+            {
+
                 ModelNameTBl.Visibility = System.Windows.Visibility.Collapsed;
+            }
 
             if (string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds))
                 SelectRevitElems.IsEnabled = false;

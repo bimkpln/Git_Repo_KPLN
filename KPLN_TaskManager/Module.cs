@@ -90,15 +90,7 @@ namespace KPLN_TaskManager
             if (CurrentDBProject == null)
                 return;
 
-            IEnumerable<TaskItemEntity> docTasks = TaskManagerDBService.GetEntities_ByDBProject(CurrentDBProject);
-
-            if (docTasks
-                .Where(task => 
-                    task.CreatedTaskDepartmentId == MainDBService.CurrentDBUserSubDepartment.Id 
-                    || task.DelegatedDepartmentId == MainDBService.CurrentDBUserSubDepartment.Id)
-                .Any(task =>
-                    task.TaskStatus == TaskStatusEnum.Open))
-                MainMenuViewer.LoadTaskData();
+            MainMenuViewer.LoadTaskData();
             
             ShowMainMenu.ShowPanel(_uiContrApp, false);
         }

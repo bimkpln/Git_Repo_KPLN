@@ -91,6 +91,26 @@ namespace KPLN_TaskManager.Services
                 $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBProject.Id}';");
 
         /// <summary>
+        /// Получить коллекцию TaskItemEntity по текущему проекту для текущего BIM-пользователя
+        /// </summary>
+        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBProjectAndBIMUserSubDepId(DBProject dBProject, int userSubDepId, int coordSubDep) =>
+            ExecuteQuery<TaskItemEntity>(
+                $"SELECT * FROM {_dbMainTableName} " +
+                $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBProject.Id}'" +
+                $"AND ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{userSubDepId}' AND {nameof(TaskItemEntity.DelegatedDepartmentId)}='{coordSubDep}')"+
+                $"OR ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{coordSubDep}' AND {nameof(TaskItemEntity.DelegatedDepartmentId)}='{userSubDepId}');");
+
+        /// <summary>
+        /// Получить коллекцию TaskItemEntity по текущему проекту для текущего пользователя
+        /// </summary>
+        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBProjectAndUser(DBProject dBProject, DBUser dbUser) =>
+            ExecuteQuery<TaskItemEntity>(
+                $"SELECT * FROM {_dbMainTableName} " +
+                $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBProject.Id}'" +
+                $"AND ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{dbUser.SubDepartmentId}'" +
+                $"OR {nameof(TaskItemEntity.DelegatedDepartmentId)}='{dbUser.SubDepartmentId}');");
+
+        /// <summary>
         /// Получить коллекцию TaskItemEntity_Comment по текущему TaskItemEntity
         /// </summary>
         internal static IEnumerable<TaskItemEntity_Comment> GetComments_ByTaskItem(TaskItemEntity taskItemEntity) =>
