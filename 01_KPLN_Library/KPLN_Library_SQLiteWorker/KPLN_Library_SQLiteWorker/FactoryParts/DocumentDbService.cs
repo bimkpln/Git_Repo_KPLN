@@ -1,6 +1,7 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
@@ -43,6 +44,15 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBDocument.ProjectId)}='{projectId}'" +
                 $"AND {nameof(DBDocument.SubDepartmentId)}='{subDepartmentId}';");
+
+        /// <summary>
+        /// Получить документы по пути к файлу
+        /// </summary>
+        public DBDocument GetDBDocuments_ByFileFullPath(string fileFullPath) =>
+            ExecuteQuery<DBDocument>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBDocument.CentralPath)}='{fileFullPath}';")
+            .FirstOrDefault();
         #endregion
 
         #region Update
