@@ -15,7 +15,7 @@ namespace KPLN_HoleManager.Forms
     {
         private readonly UIApplication _uiApp;
         private readonly Element _selectedWall;
-        private readonly bool _wallLink;
+        private readonly bool _manyHolesButton;
 
         private readonly string _userFullName;
         private readonly string _departmentName;
@@ -27,19 +27,19 @@ namespace KPLN_HoleManager.Forms
         // При наличии настроек - подгрузка значений
         List<string> settings = DockableManagerFormSettings.LoadSettings();
 
-        public sChoiseHole(UIApplication uiApp, Element selectedWall, bool wallLink, string userFullName, string departmentName)
+        public sChoiseHole(UIApplication uiApp, Element selectedWall, string userFullName, string departmentName, bool manyHolesButton)
         {
             InitializeComponent();
 
             // Данные для дальнейшей передачи
             _uiApp = uiApp;
             _selectedWall = selectedWall;
-            _wallLink = wallLink;
+            _manyHolesButton = manyHolesButton;
             _userFullName = userFullName;
             _departmentName = departmentName;
 
             // Устанавливаем DataContext для привязки данных в XAML
-            DataContext = new HoleSelectionViewModel(selectedWall, wallLink, userFullName, departmentName);
+            DataContext = new HoleSelectionViewModel(selectedWall, userFullName, departmentName, manyHolesButton);
 
             // Настраиваем ComboBox
             SetDepartmentComboBox();
@@ -133,7 +133,6 @@ namespace KPLN_HoleManager.Forms
             }
         }
 
-
         // XAML. Кнопка с прямоугольным отверстием
         private void SquareHoleButton_Click(object sender, RoutedEventArgs e)
         {
@@ -179,12 +178,21 @@ namespace KPLN_HoleManager.Forms
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
                 return;
             }
-          
-            // Вызываем команду с параметрами
-            _ExternalEventHandler.Instance.Raise((app) =>
+
+            if (_manyHolesButton == false)
             {
-                PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
-            });
+                _ExternalEventHandler.Instance.Raise((app) =>
+                {
+                    PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
+                });
+            }
+            else
+            {
+                _ExternalEventHandler.Instance.Raise((app) =>
+                {
+                    PlaceAllHoleOnWallCommand.Execute(app, _userFullName, _departmentName, _selectedWall, _departmentHoleName, _sendingDepartmentHoleName, _holeTypeName);
+                });
+            }
         }
     }
 }

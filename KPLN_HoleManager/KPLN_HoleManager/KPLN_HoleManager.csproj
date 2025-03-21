@@ -89,6 +89,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\PlaceAllHoleOnWallCommands.cs" />
     <Compile Include="Commands\_iDataProcessor.cs" />
     <Compile Include="Commands\_ExtensibleStorageHelper.cs" />
     <Compile Include="Common\DockablePreferences.cs" />

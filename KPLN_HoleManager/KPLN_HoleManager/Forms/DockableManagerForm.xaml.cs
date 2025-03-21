@@ -18,7 +18,7 @@ namespace KPLN_HoleManager.Forms
     // Передача данных в функции
     public class HoleSelectionViewModel
     {
-        public HoleSelectionViewModel(Element element, bool wallLink, string userFullName, string departmentName) { }
+        public HoleSelectionViewModel(Element element, string userFullName, string departmentName, bool manyHolesButton) { }
         public string UserFullName { get; }
         public string DepartmentName { get; }   
     }
@@ -29,14 +29,14 @@ namespace KPLN_HoleManager.Forms
 
         private readonly DBWorkerService _dbWorkerService; 
         string userFullName; 
-        string departmentName; 
+        string departmentName;
+        bool manyHolesButton;
 
         // Данные статусов в названия кнопок
         private readonly ButtonDataViewModel _buttonDataViewModel; 
         private static DockableManagerForm _instance;
         public static DockableManagerForm Instance => _instance;
-
-
+      
         /// Получение Revit-потока
         public void SetUIApplication(UIApplication uiApp)
         {
@@ -120,9 +120,12 @@ namespace KPLN_HoleManager.Forms
             if (content.Contains("Создать задание на отверстие"))
             {
                 button.Click += PlaceHolesOnSelectedWall;
+                button.CommandParameter = false;
             }
             if (content.Contains("Создать задание по стене"))
-            {                
+            {
+                button.Click += PlaceHolesOnSelectedWall;
+                button.CommandParameter = true;
             }
             if (content.Contains("Настройка плагина"))
             {
@@ -141,22 +144,23 @@ namespace KPLN_HoleManager.Forms
             TaskDialog.Show("Обновление данных", "Данные об отверстиях обновлены.");
         }
 
-        // XAML. Обработчик для кнопки "Создать задание на отверстие"
+        // XAML. Обработчик для кнопки "Создать задание на отверстие"/"Создать задание по стене"
         public void PlaceHolesOnSelectedWall(object sender, RoutedEventArgs e)
         {
             UIDocument uiDoc = _uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
-            bool wallLink = false;
-
+            
             InfoHolePanel.Children.Clear();
             InfoHolePanel.RowDefinitions.Clear();
+
+            manyHolesButton = (bool)((Button)sender).CommandParameter;
 
             try
             {
                 // Отключаем UI
                 this.IsEnabled = false;
 
-                // 🟢 ШАГ 1: Выбираем стену или ссылку
+                // Выбираем стену или ссылку
                 Reference pickedRef = uiDoc.Selection.PickObject(
                     ObjectType.Element,
                     new WallAndLinkSelectionFilter(),
@@ -168,8 +172,7 @@ namespace KPLN_HoleManager.Forms
                 // Если выбрана обычная стена
                 if (selectedElement is Wall wall)
                 {
-                    wallLink = false;
-                    ProcessHolePlacement(uiDoc, wall, wallLink);
+                    ProcessHolePlacement(uiDoc, wall, manyHolesButton);
                     return;
                 }
                 // Если выбран RevitLinkInstance
@@ -184,7 +187,7 @@ namespace KPLN_HoleManager.Forms
                         return;
                     }
 
-                    // 🟢 ШАГ 2: Выбираем элемент внутри линка
+                    // Выбираем элемент внутри линка
                     Reference linkedRef = uiDoc.Selection.PickObject(
                         ObjectType.LinkedElement,
                         "Выберите стену в линке"
@@ -194,8 +197,7 @@ namespace KPLN_HoleManager.Forms
 
                     if (linkedElement is Wall linkedWall)
                     {
-                        wallLink = true;
-                        ProcessHolePlacement(uiDoc, linkedWall, wallLink);
+                        ProcessHolePlacement(uiDoc, linkedWall, manyHolesButton);
                         return;
                     }
                 }
@@ -218,25 +220,36 @@ namespace KPLN_HoleManager.Forms
         }
 
         // Метод для обработки выбора и размещения отверстий
-        private void ProcessHolePlacement(UIDocument uiDoc, Element wall, bool isLinked)
+        private void ProcessHolePlacement(UIDocument uiDoc, Element wall, bool manyHolesButton)
         {
             List<string> settings = DockableManagerFormSettings.LoadSettings();
 
             if (settings == null)
             {
-                var holeWindow = new sChoiseHole(_uiApp, wall, isLinked, userFullName, departmentName);
+                var holeWindow = new sChoiseHole(_uiApp, wall, userFullName, departmentName, manyHolesButton);
                 holeWindow.ShowDialog();
             }
+
             else if (settings[2] != "Не выбрано" && settings[3] != "Не выбрано" && settings[4] != "Не выбрано")
             {
-                _ExternalEventHandler.Instance.Raise((app) =>
+                if (manyHolesButton == false)
                 {
-                    PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
-                });
+                    _ExternalEventHandler.Instance.Raise((app) =>
+                    {
+                        PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
+                    });
+                }
+                else
+                {
+                    _ExternalEventHandler.Instance.Raise((app) =>
+                    {
+                        PlaceAllHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
+                    });
+                }
             }
             else
             {
-                var holeWindow = new sChoiseHole(_uiApp, wall, isLinked, userFullName, departmentName);
+                var holeWindow = new sChoiseHole(_uiApp, wall, userFullName, departmentName, manyHolesButton);
                 holeWindow.ShowDialog();
             }
         }

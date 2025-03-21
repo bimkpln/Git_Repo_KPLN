@@ -70,8 +70,7 @@ namespace KPLN_HoleManager.Commands
             {
                 Wall wall = _selectedWall as Wall;
                 LocationCurve locationCurve = wall.Location as LocationCurve;
-
-                
+            
                 Element intersectingElement = null; // Выбор элемента
 
                 while (true)
@@ -175,7 +174,6 @@ namespace KPLN_HoleManager.Commands
                 using (Transaction tx = new Transaction(doc, $"KPLN. Разместить отверстие {familyFileName}"))
                 {
                     tx.Start();
-
                     transactionStatus = true;
 
                     // Загрузка семейства
