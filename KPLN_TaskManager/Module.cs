@@ -3,7 +3,6 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
-using KPLN_TaskManager.Common;
 using KPLN_TaskManager.ExternalCommands;
 using KPLN_TaskManager.Forms;
 using KPLN_TaskManager.Services;
@@ -23,11 +22,12 @@ namespace KPLN_TaskManager
         internal static TaskManagerView MainMenuViewer;
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
-        private static string _currentFileName;
         private static UIControlledApplication _uiContrApp;
 
-        internal static DBProject CurrentDBProject { get; private set; }
         internal static UIApplication CurrentUIApplication { get; private set; }
+        internal static string CurrentFileName {  get; private set; }
+        internal static DBProject CurrentDBProject { get; private set; }
+        internal static Document CurrentDocument { get; private set; }
 
         public Result Close()
         {
@@ -74,44 +74,44 @@ namespace KPLN_TaskManager
 
         private void Application_DocumentOpened(object sender, Autodesk.Revit.DB.Events.DocumentOpenedEventArgs args)
         {
-            Document doc = args.Document;
+            CurrentDocument = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (doc == null || doc.IsFamilyDocument)
+            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
                 return;
 
             if (CurrentUIApplication == null)
-                CurrentUIApplication = new UIApplication(doc.Application);
+                CurrentUIApplication = new UIApplication(CurrentDocument.Application);
 
-            _currentFileName = doc.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
+            CurrentFileName = CurrentDocument.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
+                : CurrentDocument.PathName;
 
-            CurrentDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(_currentFileName);
+            CurrentDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
             if (CurrentDBProject == null)
                 return;
 
             MainMenuViewer.LoadTaskData();
-            
+
             ShowMainMenu.ShowPanel(_uiContrApp, false);
         }
 
         private void Application_ViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            Document doc = args.Document;
+            CurrentDocument = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (doc == null || doc.IsFamilyDocument)
+            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
                 return;
 
-            string openViewFileName = doc.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
+            string openViewFileName = CurrentDocument.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
+                : CurrentDocument.PathName;
 
-            if (openViewFileName == _currentFileName)
+            if (openViewFileName == CurrentFileName)
                 return;
 
-            _currentFileName = openViewFileName;
+            CurrentFileName = openViewFileName;
 
-            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(_currentFileName);
+            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
             if (openViewDBProject == null || CurrentDBProject == null || openViewDBProject.Id == CurrentDBProject.Id)
                 return;
 

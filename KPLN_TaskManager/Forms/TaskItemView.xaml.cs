@@ -36,14 +36,13 @@ namespace KPLN_TaskManager.Forms
             if (CurrentTaskItemEntity.BitrixTaskId == 0 || CurrentTaskItemEntity.BitrixTaskId == -1)
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
-            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ModelName))
+            
+            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds) && CurrentTaskItemEntity.ModelName.Equals(Module.CurrentDocument))
             {
-
-                ModelNameTBl.Visibility = System.Windows.Visibility.Collapsed;
-            }
-
-            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds))
+                ModelElemsContTBl.Visibility = System.Windows.Visibility.Collapsed;
+                ModelViewIdTBl.Visibility = System.Windows.Visibility.Collapsed;
                 SelectRevitElems.IsEnabled = false;
+            }
 
             #region Настройка уровня доступа в зависимости от пользователя
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
@@ -53,7 +52,8 @@ namespace KPLN_TaskManager.Forms
 
             HeaderTBox.IsEnabled = isCreatorEditable;
             DelegateDepCBox.IsEnabled = isCreatorEditable;
-            BodyTBox.IsEnabled = isCreatorEditable;
+            BodyTBox.IsReadOnly = !isCreatorEditable;
+            ModelBindingCBox.IsEnabled = isCreatorEditable;
             ImgLoad.IsEnabled = isCreatorEditable;
             AddElementIdsBtn.IsEnabled = isCreatorEditable;
             RemoveElementIdsBtn.IsEnabled = isCreatorEditable;
@@ -108,18 +108,20 @@ namespace KPLN_TaskManager.Forms
                 return;
             }
 
-            ModelNameTBl.Visibility = System.Windows.Visibility.Visible;
+            ModelElemsContTBl.Visibility = System.Windows.Visibility.Visible;
+            ModelViewIdTBl.Visibility = System.Windows.Visibility.Visible;
+
             if (CurrentTaskItemEntity.Id != -1 && CurrentTaskItemEntity.Id != 0)
                 SelectRevitElems.IsEnabled = true;
 
-            CurrentTaskItemEntity.ModelName = CurrentModelName(doc);
-
             CurrentTaskItemEntity.ElementIds = string.Join(",", selectedIds);
+            CurrentTaskItemEntity.ModelViewId = uidoc.ActiveView.Id.IntegerValue;
         }
 
         private void RemoveElementIdsBtn_Click(object sender, RoutedEventArgs e)
         {
-            ModelNameTBl.Visibility = System.Windows.Visibility.Collapsed;
+            ModelElemsContTBl.Visibility = System.Windows.Visibility.Collapsed;
+            ModelViewIdTBl.Visibility = System.Windows.Visibility.Collapsed;
             SelectRevitElems.IsEnabled = false;
 
             CurrentTaskItemEntity.ModelName = string.Empty;
@@ -146,7 +148,7 @@ namespace KPLN_TaskManager.Forms
 
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
             Document doc = uidoc.Document;
-            string currentDocName = CurrentModelName(doc);
+            string currentDocName = TaskItemEntity.CurrentModelName(doc);
 
             if (CurrentTaskItemEntity.ModelName != currentDocName)
             {
@@ -159,16 +161,21 @@ namespace KPLN_TaskManager.Forms
                 return;
             }
 
-            List<ElementId> elemIds = new List<ElementId>();
-            foreach (string strId in CurrentTaskItemEntity.ElementIds.Split(','))
+            // Открываю вид. В Idling нельзя запихивать - не обработает: https://www.revitapidocs.com/2023/b6adb74b-39af-9213-c37b-f54db76b75a3.htm
+            View viewFromTask = null;
+            if (CurrentTaskItemEntity.ModelViewId != -1 || CurrentTaskItemEntity.ModelViewId != 0)
             {
-                if (int.TryParse(strId, out int id))
-                    elemIds.Add(new ElementId(id));
-                else
-                    HtmlOutput.Print($"Ошибка парсинга данных - скинь разработчику! {strId} - НЕ число", MessageType.Error);
+                viewFromTask = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View))
+                    .WhereElementIsNotElementType()
+                    .Cast<View>()
+                    .Where(v => !v.IsTemplate)
+                    .FirstOrDefault(v => v.Id.IntegerValue == CurrentTaskItemEntity.ModelViewId);
             }
+            if (viewFromTask != null)
+                uidoc.ActiveView = viewFromTask;
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(elemIds));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(CurrentTaskItemEntity));
             this.Close();
         }
 
@@ -508,25 +515,12 @@ namespace KPLN_TaskManager.Forms
                     $"Обязательно заполни заголовок, ответсвенный отдел и описание ошибки, прежде чем ставить задачу",
                     "Ошибка",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Asterisk);
+                    MessageBoxImage.Error);
 
                 return false;
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Выделить имя файла из Document
-        /// </summary>
-        /// <returns></returns>
-        private string CurrentModelName(Document doc)
-        {
-            string openViewFileName = doc.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
-
-            return openViewFileName.Split('\\').FirstOrDefault(fn => fn.Contains(".rvt"));
         }
     }
 }

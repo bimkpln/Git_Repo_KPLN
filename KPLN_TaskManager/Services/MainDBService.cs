@@ -1,5 +1,8 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_TaskManager.Common;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,6 +15,7 @@ namespace KPLN_TaskManager.Services
     {
         private static UserDbService _userDbService;
         private static ProjectDbService _projectDbService;
+        private static DocumentDbService _docDbService;
         private static SubDepartmentDbService _subDepartmentDbService;
 
         private static DBUser _dBUser;
@@ -37,6 +41,17 @@ namespace KPLN_TaskManager.Services
                     _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
 
                 return _projectDbService;
+            }
+        }
+
+        internal static DocumentDbService DocDbService
+        {
+            get
+            {
+                if (_docDbService == null)
+                    _docDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
+
+                return _docDbService;
             }
         }
 

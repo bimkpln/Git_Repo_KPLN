@@ -31,6 +31,7 @@ namespace KPLN_TaskManager.Services
                 $"{nameof(TaskItemEntity.TaskBody)}, " +
                 $"{nameof(TaskItemEntity.ImageBuffer)}, " +
                 $"{nameof(TaskItemEntity.ModelName)}, " +
+                $"{nameof(TaskItemEntity.ModelViewId)}, " +
                 $"{nameof(TaskItemEntity.ElementIds)}, " +
                 $"{nameof(TaskItemEntity.TaskStatus)}, " +
                 $"{nameof(TaskItemEntity.DelegatedDepartmentId)}, " +
@@ -44,6 +45,7 @@ namespace KPLN_TaskManager.Services
                 $"@{nameof(TaskItemEntity.TaskBody)}, " +
                 $"@{nameof(TaskItemEntity.ImageBuffer)}, " +
                 $"@{nameof(TaskItemEntity.ModelName)}, " +
+                $"@{nameof(TaskItemEntity.ModelViewId)}, " +
                 $"@{nameof(TaskItemEntity.ElementIds)}, " +
                 $"@{nameof(TaskItemEntity.TaskStatus)}, " +
                 $"@{nameof(TaskItemEntity.DelegatedDepartmentId)}, " +
@@ -139,6 +141,7 @@ namespace KPLN_TaskManager.Services
                     {nameof(TaskItemEntity.TaskBody)} = @TaskBody, 
                     {nameof(TaskItemEntity.ImageBuffer)} = @ImageBuffer, 
                     {nameof(TaskItemEntity.ModelName)} = @ModelName, 
+                    {nameof(TaskItemEntity.ModelViewId)} = @ModelViewId, 
                     {nameof(TaskItemEntity.ElementIds)} = @ElementIds, 
                     {nameof(TaskItemEntity.BitrixTaskId)} = @BitrixTaskId,
                     {nameof(TaskItemEntity.TaskStatus)} = @TaskStatus,
@@ -157,6 +160,7 @@ namespace KPLN_TaskManager.Services
                 tiEnt.TaskBody,
                 tiEnt.ImageBuffer,
                 tiEnt.ModelName,
+                tiEnt.ModelViewId,
                 tiEnt.ElementIds,
                 tiEnt.BitrixTaskId,
                 tiEnt.TaskStatus,

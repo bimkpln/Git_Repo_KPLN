@@ -147,9 +147,17 @@ namespace KPLN_TaskManager.Forms
 
                 bool matchesStatus = SelectedOpenStausTasks == "All" || SelectedOpenStausTasks == task.TaskStatus.ToString();
 
+                string openDocTask = "Nope";
+                if (task.ModelName != null && !string.IsNullOrEmpty(task.ModelName))
+                    openDocTask = Module.CurrentFileName.Contains(task.ModelName) ? "OpenDocTask" : "Nope";
+                
+                
                 string inputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.DelegatedDepartmentId ? "InputSubDepTask" : "Nope";
                 string outputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.CreatedTaskDepartmentId ? "OutputSubDepTask" : "Nope";
-                bool matchesSubDep = SubDepDependence == "AllSuDepTask" || SubDepDependence.Equals(inputSubDepTask) || SubDepDependence.Equals(outputSubDepTask);
+                bool matchesSubDep = SubDepDependence == "AllSuDepTask" 
+                    || SubDepDependence.Equals(openDocTask) 
+                    || SubDepDependence.Equals(inputSubDepTask)
+                    || SubDepDependence.Equals(outputSubDepTask);
 
                 return matchesTitle && matchesStatus && matchesSubDep;
             }
@@ -188,6 +196,17 @@ namespace KPLN_TaskManager.Forms
 
         private void AddTask_Click(object sender, RoutedEventArgs e)
         {
+            if (Module.CurrentDBProject == null)
+            {
+                MessageBox.Show(
+                    $"Работает только с проектами КПЛН, которые хранятся по соответсвующей структуре.\n\nПримечание: На отсоединенных файлах тоже НЕ работает",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                return;
+            }
+
             TaskItemEntity taskItemEntity = new TaskItemEntity(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.Id, MainDBService.CurrentDBUserSubDepartment.Id);
             TaskItemView taskItemView = new TaskItemView(taskItemEntity);
             bool? ceateViewResult = taskItemView.ShowDialog();

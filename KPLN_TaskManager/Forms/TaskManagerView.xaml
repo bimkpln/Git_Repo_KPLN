@@ -155,12 +155,20 @@
                     ToolTip="Получить ВСЕ задачи по проекту"/>
 
                 <RadioButton
+                    Name="OpenDocTaskRBtn"
+                    Style="{StaticResource RB}"
+                    GroupName="SubDepSelection"
+                    IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=OpenDocTask, Mode=TwoWay}"
+                    Content="По модели"
+                    ToolTip="Получить ВСЕ задачи по проекту с привязкой к текущей модели"/>
+
+                <RadioButton
                     Name="InputTaskRBtn"
                     Style="{StaticResource RB}"
                     GroupName="SubDepSelection"
                     IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=InputSubDepTask, Mode=TwoWay}"
                     Content="ЗВ"
-                    ToolTip="Получить задачи ДЛЯ сотрудника текущего отдела по проекту"/>
+                    ToolTip="Получить ВСЕ задачи ДЛЯ сотрудника текущего отдела по проекту"/>
 
                 <RadioButton
                     Name="OutputTaskRBtn"
@@ -168,7 +176,7 @@
                     GroupName="SubDepSelection"
                     IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=OutputSubDepTask, Mode=TwoWay}"
                     Content="ЗИ"
-                    ToolTip="Получить задачи ОТ сотрудника текущего отдела по проекту"/>
+                    ToolTip="Получить ВСЕ задачи ОТ сотрудника текущего отдела по проекту"/>
 
             </DockPanel>
 

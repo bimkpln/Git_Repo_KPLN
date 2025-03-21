@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
+using KPLN_TaskManager.Common;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -8,24 +10,25 @@ namespace KPLN_TaskManager.ExecutableCommand
 {
     internal class CommandShowElement : IExecutableCommand
     {
-        private readonly ICollection<ElementId> _elemIdColl;
+        private readonly TaskItemEntity _taskItemEntity;
 
-        public CommandShowElement(ICollection<ElementId> elemIdColl)
+        public CommandShowElement(TaskItemEntity taskItemEntity)
         {
-            _elemIdColl = elemIdColl;
+            _taskItemEntity = taskItemEntity;
         }
 
         public Result Execute(UIApplication app)
         {
-            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Демонстрация"))
+            List<ElementId> elemIds = new List<ElementId>();
+            foreach (string strId in _taskItemEntity.ElementIds.Split(','))
             {
-                t.Start();
-
-                app.ActiveUIDocument.ShowElements(_elemIdColl.FirstOrDefault());
-                app.ActiveUIDocument.Selection.SetElementIds(_elemIdColl);
-
-                t.Commit();
+                if (int.TryParse(strId, out int id))
+                    elemIds.Add(new ElementId(id));
+                else
+                    HtmlOutput.Print($"Ошибка парсинга данных - скинь разработчику! {strId} - НЕ число", MessageType.Error);
             }
+
+            app.ActiveUIDocument.Selection.SetElementIds(elemIds);
 
             return Result.Succeeded;
         }

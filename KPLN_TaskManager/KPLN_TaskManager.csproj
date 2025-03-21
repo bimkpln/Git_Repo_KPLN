@@ -229,7 +229,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Services\ClipboardService.cs" />
     <Compile Include="Services\ExportToExcelService.cs" />
     <Compile Include="Services\MainDBService.cs" />
     <Compile Include="Services\TaskManagerDBService.cs" />

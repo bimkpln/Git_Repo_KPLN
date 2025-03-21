@@ -137,12 +137,25 @@
                 VerticalAlignment="Center" 
                 FontStretch="ExtraExpanded"/>
 
+            <TextBlock 
+                Text="Модель, к которой выдано замечание" 
+                VerticalAlignment="Center" 
+                FontWeight="Bold" 
+                Margin="5,0,5,0"/>
+            <ComboBox 
+                x:Name="ModelBindingCBox"
+                Background="White" 
+                ItemsSource="{Binding ModelNamesColl}"
+                SelectedValue="{Binding ModelName, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                Margin="5,0,5,0"/>
+
             <Expander
                 Name="BitrixExpander"
                 Header="Данные для Bitrix (строго ПОСЛЕ постановки задачи в Менеджер задач)"
                 FontWeight="Bold"
                 IsEnabled="False"
-                IsExpanded="False">
+                IsExpanded="False"
+                Margin="0,5,0,0">
                 <StackPanel>
                     <TextBlock 
                         Text="Исполнитель (обязательно при постановке задачи в Bitrix)" 
@@ -209,12 +222,11 @@
                 Text="Описание" 
                 VerticalAlignment="Center" 
                 FontWeight="Bold" 
-                Margin="5,0,5,0"/>
+                Margin="5,5,5,0"/>
             <TextBox 
                 x:Name="BodyTBox"
                 xml:lang="ru-RU"
                 SpellCheck.IsEnabled="True"
-                IsEnabled="False"
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskBody}"
                 MinHeight="80"
@@ -228,36 +240,35 @@
             <DockPanel
                 LastChildFill="True">
                 <TextBlock 
-                    Text="Имя модели: "
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
-                    FontWeight="Bold" 
-                    Margin="5,0,5,0"
-                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
-                <TextBlock 
-                    Name="ModelNameTBl"
-                    Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left"
-                    Margin="0,0,5,0"
-                    TextWrapping="Wrap"/>
-            </DockPanel>
-            <DockPanel
-                LastChildFill="True">
-                <TextBlock 
                     Text="Кол-во эл-в: "
                     VerticalAlignment="Center"
                     HorizontalAlignment="Left"
                     FontWeight="Bold" 
                     Margin="5,0,5,0"
-                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
+                    Visibility="{Binding ElementName=ModelElemsContTBl, Path=Visibility}"/>
                 <TextBlock 
                     Name="ModelElemsContTBl"
                     Text="{Binding ElementIdsCount, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Left"
-                    Margin="0,0,5,0"
-                    Visibility="{Binding ElementName=ModelNameTBl, Path=Visibility}"/>
+                    Margin="0,0,5,0"/>
+            </DockPanel>
+
+            <DockPanel
+                LastChildFill="True">
+                <TextBlock 
+                    Text="Id вида: "
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    FontWeight="Bold" 
+                    Margin="5,0,5,0"
+                    Visibility="{Binding ElementName=ModelViewIdTBl, Path=Visibility}"/>
+                <TextBlock 
+                    Name="ModelViewIdTBl"
+                    Text="{Binding ModelViewId, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left"
+                    Margin="0,0,5,0"/>
             </DockPanel>
 
             <DockPanel 
