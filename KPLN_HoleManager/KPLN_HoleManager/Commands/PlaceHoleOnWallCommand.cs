@@ -61,9 +61,14 @@ namespace KPLN_HoleManager.Commands
             List<string> settings = DockableManagerFormSettings.LoadSettings();
             if (settings != null)
             {
-                _departmentHoleName = settings[2];
-                _sendingDepartmentHoleName = settings[3];
-                _holeTypeName = settings[4];
+                if (settings[2] != "Не выбрано")
+                    _departmentHoleName = settings[2];
+
+                if (settings[3] != "Не выбрано")
+                    _sendingDepartmentHoleName = settings[3];
+
+                if (settings[4] != "Не выбрано")
+                    _holeTypeName = settings[4];
             }
 
             try
@@ -240,6 +245,7 @@ namespace KPLN_HoleManager.Commands
             {
                 TaskDialog.Show("Ошибка", $"Произошла непредвиденная ошибка:\n{ex.Message}");
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                DockableManagerForm.Instance?.UpdateStatusCounts();
             }
         }
 
@@ -1236,7 +1242,6 @@ namespace KPLN_HoleManager.Commands
 
                 CreateHoleTaskIntrerface(uiDoc, doc, newHoleInstance, _userFullName, _departmentName, _departmentHoleName, _sendingDepartmentHoleName, wallIdString, allIntersectingElementIdString);
             }
-
             else 
             {
                 // Запись данных в хранилище             

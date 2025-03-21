@@ -2,16 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Media;
-using System.Windows;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using KPLN_HoleManager.Forms;
-using System.Windows.Forms;
 
 namespace KPLN_HoleManager.Commands
 {
@@ -24,6 +18,7 @@ namespace KPLN_HoleManager.Commands
         private string _departmentHoleName;
         private string _sendingDepartmentHoleName;
         private string _holeTypeName;
+        double offset = -900; 
 
         private bool transactionStatus;
         private bool deleteLastHole;
@@ -61,9 +56,14 @@ namespace KPLN_HoleManager.Commands
             List<string> settings = DockableManagerFormSettings.LoadSettings();
             if (settings != null)
             {
-                _departmentHoleName = settings[2];
-                _sendingDepartmentHoleName = settings[3];
-                _holeTypeName = settings[4];
+                if (settings[2] != "Не выбрано")
+                    _departmentHoleName = settings[2];
+
+                if (settings[3] != "Не выбрано")
+                    _sendingDepartmentHoleName = settings[3];
+
+                if (settings[4] != "Не выбрано")
+                    _holeTypeName = settings[4];
             }
 
             try
@@ -91,7 +91,7 @@ namespace KPLN_HoleManager.Commands
                 // Основной файл
                 FilteredElementCollector collector = new FilteredElementCollector(doc)
                     .WherePasses(categoryFilter).WhereElementIsNotElementType();
-                mainFileElements.AddRange(collector.ToList());
+                mainFileElements.AddRange(collector);
 
                 // Связные файлы            
                 FilteredElementCollector linkedCollector = new FilteredElementCollector(doc)
@@ -145,9 +145,47 @@ namespace KPLN_HoleManager.Commands
                     {
                         Autodesk.Revit.DB.Transform transform = linkedElementTransforms.ContainsKey(el) ? linkedElementTransforms[el] : null;
 
-                        if (ElementsIntersect(wall, el, transform))
-                            intersectingElements.Add(el);
+                        if (RoughlyIntersects(wall, el, transform))
+                        {
+                            intersectingElements.Add(el);                          
+                        }
                     }
+                }
+             
+                if (intersectingElements != null)
+                {              
+                    if (settings != null && settings[5] != "Не выбрано")
+                    {
+                        if (!double.TryParse(settings[5], out offset))
+                        {
+                            TaskDialog.Show("Ошибка", "Некорректное значение отступа в настройках.");
+                            if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        Forms.sChoiseHoleIndentation sChoiseHoleIndentation = new Forms.sChoiseHoleIndentation();
+
+                        if (sChoiseHoleIndentation.ShowDialog() == true)
+                        {
+                            offset = sChoiseHoleIndentation.SelectedOffset;
+                        }
+                        else
+                        {
+                            TaskDialog.Show("Внимание", "Операция отменена пользователем.");
+                            if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                            return;
+                        }
+                    }
+                }
+
+                // Обработка в случае ошибки поиска смещения
+                if (offset == -900)
+                {                   
+                    TaskDialog.Show("Ошибка", "Не удалось обработать смещение от отверстия. Операция была отменена.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
                 }
 
                 // Определение файла семейства
@@ -205,7 +243,7 @@ namespace KPLN_HoleManager.Commands
                     foreach (Element cElement in intersectingElements)
                     {
                         List<XYZ> holeLocation = GetIntersectionPoint(doc, _selectedWall, cElement, _departmentHoleName, _holeTypeName);
-
+                    
                         foreach (XYZ cHoleLocation in holeLocation)
                         {
                             // Создаём отверстие без преднастроек (указывается только точка самого отверстия)
@@ -216,55 +254,42 @@ namespace KPLN_HoleManager.Commands
                                 tx.RollBack();
                                 TaskDialog.Show("Ошибка", "Ошибка при создании отверстия.");
                                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
-                                return;
+                                continue;
                             }
 
+                            // Задаём размеры отверстию, двигаем его и пишем данные в Extensible Storage
+                            (double widthElement, double heightElement, double lengthElement) = GetElementSize(cElement);
+                            SetHoleDimensions(uiDoc, doc, tx, wall, cElement, holeInstance, cHoleLocation, widthElement, heightElement);
 
+                            if (deleteLastHole)
+                            {
+                                doc.Delete(holeInstance.Id);
+                                deleteLastHole = false;
+                            }
 
-
-
-
-
-                        }
-
-
-
-
-
-
-                        string message = $"Найдено точек: {holeLocation.Count}\n\n";
-                        foreach (XYZ point in holeLocation)
-                        {
-                            message += $"X: {point.X:F2}, Y: {point.Y:F2}, Z: {point.Z:F2}\n";
-                        }
-                        TaskDialog.Show("Координаты отверстий", message);
+                            if (transactionStatus == false)
+                            {
+                                tx.RollBack();
+                                if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                                return;
+                            }
+                        }                      
                     }
-               
+
+                    // Обновление данных интерфейса
+                    DockableManagerForm.Instance?.UpdateStatusCounts();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+
                     tx.Commit();
                 }
-
-
-
-
-
-
-
-                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
             }
             catch (Exception ex)
             {
                 TaskDialog.Show("Ошибка", $"Произошла непредвиденная ошибка:\n{ex.Message}");
                 if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                DockableManagerForm.Instance?.UpdateStatusCounts();
             }          
         }
-
-
-
-
-
-
-
-
 
         /// <summary>
         /// Стена. Определение типа стены
@@ -290,7 +315,7 @@ namespace KPLN_HoleManager.Commands
         }
 
         /// <summary>
-        /// Вспомогательный метод. Стена. Поиск пересечения элементов и стены
+        /// Вспомогательный метод. Стена. Поиск пересечения элементов и стены (точный метод поиска)
         /// </summary>
         private bool ElementsIntersect(Element wall, Element otherElement, 
             Autodesk.Revit.DB.Transform otherTransform = null, Autodesk.Revit.DB.Transform wallTransform = null)
@@ -315,6 +340,28 @@ namespace KPLN_HoleManager.Commands
         }
 
         /// <summary>
+        /// Вспомогательный метод. Стена. Поиск пересечения элементов и стены (грубый метод поиска)
+        /// </summary>
+        private bool RoughlyIntersects(Element wall, Element otherElement, Autodesk.Revit.DB.Transform transform = null)
+        {
+            BoundingBoxXYZ wallBox = wall.get_BoundingBox(null);
+            BoundingBoxXYZ otherBox = otherElement.get_BoundingBox(null);
+
+            if (wallBox == null || otherBox == null) return false;
+
+            if (transform != null)
+            {
+                otherBox.Min = transform.OfPoint(otherBox.Min);
+                otherBox.Max = transform.OfPoint(otherBox.Max);
+            }
+
+            Outline outlineWall = new Outline(wallBox.Min, wallBox.Max);
+            Outline outlineOther = new Outline(otherBox.Min, otherBox.Max);
+
+            return outlineWall.Intersects(outlineOther, 0.1);
+        }
+
+        /// <summary>
         /// Вспомогательный метод. Обработка геометрии
         /// </summary>
         private Solid GetElementSolid(Element element, Autodesk.Revit.DB.Transform transform = null)
@@ -329,36 +376,36 @@ namespace KPLN_HoleManager.Commands
             GeometryElement geoElement = element.get_Geometry(options);
             if (geoElement == null) return null;
 
+            List<Solid> solids = new List<Solid>();
+
             foreach (GeometryObject obj in geoElement)
             {
-                Solid solid = null;
-
-                if (obj is GeometryInstance geoInst)
+                if (obj is GeometryInstance geoInstance)
                 {
-                    foreach (GeometryObject instObj in geoInst.GetSymbolGeometry())
+                    GeometryElement symbolGeo = geoInstance.GetSymbolGeometry();
+                    Autodesk.Revit.DB.Transform instanceTransform = geoInstance.Transform;
+
+                    foreach (GeometryObject symbolObj in symbolGeo)
                     {
-                        if (instObj is Solid s && s.Volume > 0)
+                        if (symbolObj is Solid s && s.Volume > 0)
                         {
-                            solid = s;
-                            break;
+                            Solid transformed = s;
+                            if (transform != null)
+                                transformed = SolidUtils.CreateTransformed(transformed, transform);
+                            transformed = SolidUtils.CreateTransformed(transformed, instanceTransform);
+                            solids.Add(transformed);
                         }
                     }
                 }
                 else if (obj is Solid s && s.Volume > 0)
                 {
-                    solid = s;
-                }
-
-                if (solid != null)
-                {
                     if (transform != null)
-                        solid = SolidUtils.CreateTransformed(solid, transform);
-
-                    return solid;
+                        s = SolidUtils.CreateTransformed(s, transform);
+                    solids.Add(s);
                 }
             }
 
-            return null;
+            return solids.FirstOrDefault();
         }
 
         /// <summary>
@@ -440,7 +487,6 @@ namespace KPLN_HoleManager.Commands
 
             return null;
         }
-
 
         /// <summary>
         /// XYZ. Метод нахождения точкек пересечения стены и входящего элемента.
@@ -845,6 +891,544 @@ namespace KPLN_HoleManager.Commands
             XYZ normal = (point - arcCenter).Normalize();
 
             return normal;
+        }
+
+        /// <summary>
+        /// Пересекающий стену элемент. Метод для получения размеров элемента системы
+        /// </summary>
+        private (double width, double height, double length) GetElementSize(Element element)
+        {
+            double width = 0, height = 0, length = 0;
+
+            Category category = element.Category;
+            if (category == null) return (0, 0, 0);
+
+            // Воздуховоды и гибкие воздуховоды
+            if (category.Id.IntegerValue == (int)BuiltInCategory.OST_DuctCurves
+                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexDuctCurves)
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_CURVE_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter;
+                }
+                else
+                {
+                    height = GetParameterValue(element, BuiltInParameter.RBS_CURVE_HEIGHT_PARAM);
+                    width = GetParameterValue(element, BuiltInParameter.RBS_CURVE_WIDTH_PARAM);
+                }
+            }
+            // Трубы и гибкие трубы
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves
+                || category.Id.IntegerValue == (int)BuiltInCategory.OST_FlexPipeCurves)
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_PIPE_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter;
+                }
+            }
+            // Кабельные лотки
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_CableTray)
+            {
+                height = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM);
+                width = GetParameterValue(element, BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM);
+            }
+            // Короба
+            else if (category.Id.IntegerValue == (int)BuiltInCategory.OST_Conduit)
+            {
+                double diameter = GetParameterValue(element, BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM);
+                if (diameter > 0)
+                {
+                    width = height = diameter;
+                }
+            }
+
+            // Определяем длину элемента (универсально для всех категорий)
+            length = GetParameterValue(element, BuiltInParameter.CURVE_ELEM_LENGTH);
+
+            return (width, height, length);
+        }
+
+        /// <summary>
+        /// Пересекающий стену элемент. Метод для получения значения параметра с переводом футов в метры
+        /// </summary>
+        private double GetParameterValue(Element element, BuiltInParameter paramId)
+        {
+            Parameter param = element.get_Parameter(paramId);
+            if (param != null && param.HasValue)
+            {
+                return UnitUtils.ConvertFromInternalUnits(param.AsDouble(), UnitTypeId.Millimeters);
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Отверстие. Метод изменения размера отверстия и его разворот после создания XYZ
+        /// </summary>
+        public void SetHoleDimensions(UIDocument uiDoc, Document doc, Transaction tx,
+            Wall wall, Element intersectingElement, FamilyInstance holeInstance, XYZ holeLocation, double widthElement, double heightElement)
+        {
+            deleteLastHole = false;
+           
+            Parameter widthParam = holeInstance.LookupParameter("Ширина");
+            Parameter heightParam = holeInstance.LookupParameter("Высота");
+            Parameter heightOtherParam = holeInstance.LookupParameter("КП_Р_Высота");
+            Parameter diametrParam = holeInstance.LookupParameter("Диаметр");
+
+            double internalHeight = UnitUtils.ConvertToInternalUnits(heightElement + offset, UnitTypeId.Millimeters);
+            double internalWidth = UnitUtils.ConvertToInternalUnits(widthElement + offset, UnitTypeId.Millimeters);
+            double internalDiametr = UnitUtils.ConvertToInternalUnits(Math.Max(widthElement, heightElement) + offset, UnitTypeId.Millimeters);
+
+            Curve wallCurve = (wall.Location as LocationCurve).Curve;
+            XYZ wallDirection;
+
+            if (wallCurve is Line line)
+            {
+                wallDirection = line.Direction;
+            }
+            else if (wallCurve is Arc arc)
+            {
+                XYZ arcCenter = arc.Center;
+
+                XYZ radialVector = (holeLocation - arcCenter).Normalize();
+
+                wallDirection = new XYZ(-radialVector.Y, radialVector.X, 0);
+            }
+            else
+            {
+                return;
+            }
+            XYZ wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize(); ;
+
+            double angle = 0;
+
+            if (_departmentHoleName == "АР")
+            {
+                wallNormal = new XYZ(-wallDirection.Y, wallDirection.X, 0).Normalize();
+
+                if (_holeTypeName == "SquareHole")
+                {
+                    heightParam.Set(internalHeight);
+                    widthParam.Set(internalWidth);
+                }
+                else
+                {
+                    heightOtherParam.Set(internalDiametr);
+                }
+
+                LocationPoint holeLocationAR = holeInstance.Location as LocationPoint;
+                if (holeLocationAR != null)
+                {
+                    if (_holeTypeName == "SquareHole")
+                    {
+                        double shiftZ = -0.5 * internalHeight;
+                        XYZ moveVector = new XYZ(0, 0, shiftZ);
+                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
+                    }
+                    else
+                    {
+                        double shiftZ = -0.5 * Math.Max(internalWidth, internalHeight);
+                        XYZ moveVector = new XYZ(0, 0, shiftZ);
+                        ElementTransformUtils.MoveElement(holeInstance.Document, holeInstance.Id, moveVector);
+                    }
+                }
+            }
+            else if (_departmentHoleName == "ОВиК" || _departmentHoleName == "ВК"
+                || _departmentHoleName == "ЭОМ" || _departmentHoleName == "СС")
+            {
+                if (_holeTypeName == "SquareHole")
+                {
+                    heightParam.Set(internalHeight);
+                    widthParam.Set(internalWidth);
+                }
+                else
+                {
+                    diametrParam.Set(internalDiametr);
+                }
+
+                if (!wall.Document.IsLinked)
+                {
+                    angle = Math.Atan2(wallDirection.Y, wallDirection.X);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+
+                    ElementTransformUtils.RotateElement(wall.Document, holeInstance.Id, rotationAxis, angle);
+                    double wallThickness = GetWallThickness(wall);
+
+                    // Обработка ИОСных отверстий
+                    if (wallThickness > 0)
+                    {
+                        // Определяем сторону, в которую нужно сдвигать (в сторону intersectingElement)
+                        XYZ intersectingElementLocation = (intersectingElement.Location as LocationPoint)?.Point ?? XYZ.Zero;
+                        XYZ directionToIntersecting = (intersectingElementLocation - holeLocation).Normalize();
+
+                        // Проверяем, в каком направлении двигаться - в сторону нормали или против
+                        double dotProduct = wallNormal.DotProduct(directionToIntersecting);
+                        XYZ moveDirection = dotProduct >= 0 ? wallNormal : -wallNormal;
+
+                        XYZ moveOffset = moveDirection * (wallThickness / 2);
+
+                        // Проверяем, выйдет ли отверстие за пределы стены после смещения
+                        XYZ newHoleLocation = holeLocation + moveOffset;
+
+                        if (!IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            moveOffset = -moveOffset;
+                            newHoleLocation = holeLocation + moveOffset;
+                        }
+                        if (IsPointInsideWall(newHoleLocation, wall, wallThickness))
+                        {
+                            ElementTransformUtils.MoveElement(wall.Document, holeInstance.Id, moveOffset);
+                        }
+                    }
+                }
+                else
+                {
+                    Autodesk.Revit.DB.Transform transform = GetElementTransform(doc, wall);
+                    XYZ transformedWallDirection = transform.OfVector(wallDirection);
+
+                    angle = Math.Atan2(transformedWallDirection.Y, transformedWallDirection.X);
+                    Line rotationAxis = Line.CreateBound(holeLocation, holeLocation + XYZ.BasisZ);
+
+                    if (!holeInstance.Document.IsLinked)
+                    {
+                        ElementTransformUtils.RotateElement(holeInstance.Document, holeInstance.Id, rotationAxis, angle);
+                    }
+                }
+            }
+
+            string wallIdString = wall.Id.IntegerValue.ToString();
+            string intersectingElementIdString = intersectingElement.Id.IntegerValue.ToString();
+
+            // Проверка пересечений
+            List<FamilyInstance> intersectingHoles = GetIntersectingHoles(doc, holeInstance);
+
+            if (intersectingHoles.Any())
+            {
+                deleteLastHole = true;
+                List<XYZ> holeCenters = new List<XYZ>();
+
+                // Центр каждого отверстия + вычесление общего центра
+                foreach (FamilyInstance hole in intersectingHoles)
+                {
+                    XYZ center = null;
+
+                    BoundingBoxXYZ bbox = hole.get_BoundingBox(null);
+                    if (bbox != null)
+                    {
+                        center = (bbox.Min + bbox.Max) / 2;
+                    }
+
+                    if (center != null)
+                    {
+                        holeCenters.Add(center);
+                    }
+                }
+
+                BoundingBoxXYZ bboxHoleInstance = holeInstance.get_BoundingBox(null);
+                if (bboxHoleInstance != null)
+                {
+                    XYZ holeInstanceCenter = (bboxHoleInstance.Min + bboxHoleInstance.Max) / 2;
+                    holeCenters.Add(holeInstanceCenter);
+                }
+
+                double avgX = holeCenters.Average(p => p.X);
+                double avgY = holeCenters.Average(p => p.Y);
+                double avgZ = holeCenters.Average(p => p.Z);
+                XYZ newHoleLocation = new XYZ(avgX, avgY, avgZ);
+
+                // Корректировка по оси Z для АР (временное решение?)
+                if (_departmentHoleName == "АР")
+                {
+                    double offsetBottom = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)?.AsDouble() ?? 0;
+                    double offsetTop = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.AsDouble() ?? 0;
+                    double unconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)?.AsDouble() ?? 0;
+
+                    double adjustmentZ = 0;
+
+                    if (!wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).IsReadOnly)
+                    {
+                        adjustmentZ = unconnectedHeight - offsetBottom + offsetTop;
+                    }
+
+                    newHoleLocation = new XYZ(newHoleLocation.X, newHoleLocation.Y, newHoleLocation.Z + adjustmentZ);
+                }
+
+                // Загрузка семейства
+                string newFamilyFileName = GetFamilyFileName(_departmentHoleName, "SquareHole");
+                if (string.IsNullOrEmpty(newFamilyFileName))
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось определить файл семейства.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                string newFamilyPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "Families", newFamilyFileName);
+
+                if (!File.Exists(newFamilyPath))
+                {
+                    TaskDialog.Show("Ошибка", $"Файл семейства не найден:\n{newFamilyPath}");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                Family newFamily = LoadOrGetExistingFamily(doc, newFamilyPath);
+
+                if (newFamily == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Не удалось загрузить семейство.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                // Получаем FamilySymbol
+                FamilySymbol newHoleSymbol = GetFamilySymbol(newFamily, doc);
+                if (newHoleSymbol == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Не удалось получить типоразмер семейства.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                if (!newHoleSymbol.IsActive)
+                {
+                    newHoleSymbol.Activate();
+                    doc.Regenerate();
+                }
+
+                // Создаём отверстие без преднастроек (указывается только точка самого отверстия)
+                FamilyInstance newHoleInstance = doc.Create.NewFamilyInstance(newHoleLocation, newHoleSymbol, _selectedWall, StructuralType.NonStructural);
+
+                if (newHoleInstance == null)
+                {
+                    tx.RollBack();
+                    TaskDialog.Show("Ошибка", "Ошибка при создании отверстия.");
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+
+                Parameter newWidthParam = newHoleInstance.LookupParameter("Ширина");
+                Parameter newHightParam = newHoleInstance.LookupParameter("Высота");
+
+                double minX = double.MaxValue, maxX = double.MinValue;
+                double minY = double.MaxValue, maxY = double.MinValue;
+                double minZ = double.MaxValue, maxZ = double.MinValue;
+
+                foreach (FamilyInstance hole in intersectingHoles)
+                {
+                    BoundingBoxXYZ bbox = hole.get_BoundingBox(null);
+                    if (bbox != null)
+                    {
+                        minX = Math.Min(minX, bbox.Min.X);
+                        maxX = Math.Max(maxX, bbox.Max.X);
+
+                        minY = Math.Min(minY, bbox.Min.Y);
+                        maxY = Math.Max(maxY, bbox.Max.Y);
+
+                        minZ = Math.Min(minZ, bbox.Min.Z);
+                        maxZ = Math.Max(maxZ, bbox.Max.Z);
+                    }
+                }
+
+                BoundingBoxXYZ bboxHoleInstanceNew = holeInstance.get_BoundingBox(null);
+                if (bboxHoleInstanceNew != null)
+                {
+                    minX = Math.Min(minX, bboxHoleInstance.Min.X);
+                    maxX = Math.Max(maxX, bboxHoleInstance.Max.X);
+
+                    minY = Math.Min(minY, bboxHoleInstance.Min.Y);
+                    maxY = Math.Max(maxY, bboxHoleInstance.Max.Y);
+
+                    minZ = Math.Min(minZ, bboxHoleInstance.Min.Z);
+                    maxZ = Math.Max(maxZ, bboxHoleInstance.Max.Z);
+                }
+
+                // Проверяем ориентацию стены
+                bool isWallVertical = Math.Abs(wallNormal.Z) > 0.9;
+                double width = isWallVertical ? maxX - minX : maxY - minY;
+                double height = maxZ - minZ;
+
+                newHightParam.Set(height);
+                newWidthParam.Set(width);
+
+                // Вращаем отверстие
+                if (_departmentHoleName != "АР")
+                {
+                    Line rotationAxis = Line.CreateBound(newHoleLocation, newHoleLocation + XYZ.BasisZ);
+                    ElementTransformUtils.RotateElement(newHoleInstance.Document, newHoleInstance.Id, rotationAxis, angle);
+                }
+                else
+                {
+                    double shiftZ = -0.5 * height;
+                    XYZ moveVector = new XYZ(0, 0, shiftZ);
+                    ElementTransformUtils.MoveElement(newHoleInstance.Document, newHoleInstance.Id, moveVector);
+                }
+
+                // Генерация данных интерфейса и удаление отверстий
+                string allIntersectingHoleIdString = $"{holeInstance.Id}, " + string.Join(", ", intersectingHoles.Select(h => h.Id.IntegerValue));
+                string allIntersectingElementIdString = intersectingElementIdString;
+
+                foreach (FamilyInstance intersectingHole in intersectingHoles)
+                {
+                    List<List<string>> holeMessages = _iDataProcessor.GetHoleTaskMessages(doc, intersectingHole.Id.IntegerValue.ToString());
+
+                    if (holeMessages.Any())
+                    {
+                        List<string> lastMessage = holeMessages.Last();
+                        if (lastMessage.Count > 8)
+                        {
+                            allIntersectingElementIdString += $", {lastMessage[8]}";
+                        }
+                    }
+
+                    doc.Delete(intersectingHole.Id);
+                }
+
+                // Запись данных в хранилище             
+                ExtensibleStorageHelper.AddChatMessage(
+                    newHoleInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    _userFullName,
+                    _departmentName,
+                    _departmentHoleName,
+                    _sendingDepartmentHoleName,
+                    wallIdString,
+                    allIntersectingElementIdString,
+                    "Без статуса",
+                    "00",
+                    $"Отверстия объеденены [задание по стене]: {allIntersectingHoleIdString}"
+                );
+
+                if (transactionStatus == false)
+                {
+                    tx.RollBack();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+            }
+
+            else
+            {
+                // Запись данных в хранилище             
+                ExtensibleStorageHelper.AddChatMessage(
+                    holeInstance,
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    _userFullName,
+                    _departmentName,
+                    _departmentHoleName,
+                    _sendingDepartmentHoleName,
+                    wallIdString,
+                    intersectingElementIdString,
+                    "Без статуса",
+                    "00",
+                    "Отверстие создано [задание по стене]"
+                );
+
+                if (transactionStatus == false)
+                {
+                    tx.RollBack();
+                    if (DockableManagerForm.Instance != null) DockableManagerForm.Instance.IsEnabled = true;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод к SetHoleDimensions для проверки, остаётся ли точка внутри границ стены
+        /// </summary>
+        private bool IsPointInsideWall(XYZ point, Element wall, double wallThickness)
+        {
+            BoundingBoxXYZ bbox = wall.get_BoundingBox(null);
+            return (point.X >= bbox.Min.X && point.X <= bbox.Max.X) &&
+                   (point.Y >= bbox.Min.Y && point.Y <= bbox.Max.Y) &&
+                   (point.Z >= bbox.Min.Z && point.Z <= bbox.Max.Z);
+        }
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод к SetHoleDimensions поиск пересекающихся отверстий
+        /// </summary>
+        private static List<FamilyInstance> GetIntersectingHoles(Document doc, FamilyInstance holeInstance)
+        {
+            List<FamilyInstance> intersectingHoles = new List<FamilyInstance>();
+            string holeFamilyName = holeInstance.Symbol.Family.Name;
+
+            // Определяем, с какими отверстиями искать пересечения
+            List<string> targetHoleFamilies = new List<string>();
+
+            if (holeFamilyName == "199_Отверстие прямоугольное_(Об_Стена)" || holeFamilyName == "199_Отверстие круглое_(Об_Стена)")
+            {
+                targetHoleFamilies.Add("199_Отверстие прямоугольное_(Об_Стена)");
+                targetHoleFamilies.Add("199_Отверстие круглое_(Об_Стена)");
+            }
+            else if (holeFamilyName == "501_ЗИ_Отверстие_Прямоугольное_Стена_(Об)" || holeFamilyName == "501_ЗИ_Отверстие_Круглое_Стена_(Об)")
+            {
+                targetHoleFamilies.Add("501_ЗИ_Отверстие_Прямоугольное_Стена_(Об)");
+                targetHoleFamilies.Add("501_ЗИ_Отверстие_Круглое_Стена_(Об)");
+            }
+            else
+            {
+                return intersectingHoles;
+            }
+
+            BoundingBoxXYZ bbox = holeInstance.get_BoundingBox(null);
+            if (bbox == null) return intersectingHoles;
+
+            BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(new Outline(bbox.Min, bbox.Max));
+
+            List<FamilyInstance> candidateInstances = new FilteredElementCollector(doc)
+                .WherePasses(filter)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>()
+                .Where(fi => fi.Id != holeInstance.Id && targetHoleFamilies.Contains(fi.Symbol.Family.Name))
+                .ToList();
+
+            Solid holeSolid = GetSolidFromInstance(holeInstance);
+            if (holeSolid == null) return intersectingHoles;
+
+            foreach (FamilyInstance otherInstance in candidateInstances)
+            {
+                Solid otherSolid = GetSolidFromInstance(otherInstance);
+                if (otherSolid == null) continue;
+
+                Solid intersection = BooleanOperationsUtils.ExecuteBooleanOperation(holeSolid, otherSolid, BooleanOperationsType.Intersect);
+                if (intersection != null && intersection.Volume > 0)
+                {
+                    intersectingHoles.Add(otherInstance);
+                }
+            }
+
+            return intersectingHoles;
+        }
+
+        /// <summary>
+        /// Отверстие. Вспомогательный метод к GetIntersectingHoles прасчёт геометрии пересекающихся элементов
+        /// </summary>
+        private static Solid GetSolidFromInstance(FamilyInstance instance)
+        {
+            Options options = new Options { ComputeReferences = false };
+            GeometryElement geometry = instance.get_Geometry(options);
+
+            foreach (GeometryObject obj in geometry)
+            {
+                if (obj is GeometryInstance geomInstance)
+                {
+                    Autodesk.Revit.DB.Transform transform = geomInstance.Transform;
+                    foreach (GeometryObject instanceObj in geomInstance.GetSymbolGeometry())
+                    {
+                        if (instanceObj is Solid solid && solid.Volume > 0)
+                        {
+                            return SolidUtils.CreateTransformed(solid, transform);
+                        }
+                    }
+                }
+                else if (obj is Solid solid && solid.Volume > 0)
+                {
+                    return solid;
+                }
+            }
+            return null;
         }
     }
 }
