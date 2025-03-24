@@ -276,9 +276,11 @@
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
+    <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
     <Compile Include="ExternalCommands\CommandSendMsgToBitrix.cs" />
+    <Compile Include="ExternalCommands\Command_AR_GNSBound.cs" />
     <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
     <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
@@ -396,6 +398,10 @@
     <EmbeddedResource Include="Imagens\sendMsgSmall.png" />
     <EmbeddedResource Include="Imagens\systemMangerBig.png" />
     <EmbeddedResource Include="Imagens\systemMangerSmall.png" />
+    <EmbeddedResource Include="Imagens\eomMainBig.png" />
+    <EmbeddedResource Include="Imagens\eomMainSmall.png" />
+    <EmbeddedResource Include="Imagens\gnsAreaBig.png" />
+    <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

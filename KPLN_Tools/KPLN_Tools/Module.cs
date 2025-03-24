@@ -190,58 +190,41 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(changeRLinks);
             #endregion
 
-            #region Инструменты СС
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            #region Инструменты АР
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 2 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
-                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Плагины СС",
-                    "Плагины СС",
-                    "СС: Коллекция плагинов для автоматизации задач",
+                PulldownButton arToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины АР",
+                    "Плагины АР",
+                    "АР: Коллекция плагинов для автоматизации задач",
                     string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
+                    PngImageSource("KPLN_Tools.Imagens.arMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.arMainBig.png"),
                     panel,
                     false);
 
-                PushButtonData ssSystems = CreateBtnData(
-                    "Слаботочные системы",
-                    "Слаботочные системы",
-                    "Помощь в создании цепей СС",
-                    string.Format("Плагин создаёт цепи нестандартным путём - генерируются отдельные системы на участки между 2мя элементами. " +
-                        "При этом элементу №2 в качестве щита присваивается элемент №1.\n" +
+                PushButtonData arGNSArea = CreateBtnData(
+                    "Площадь ГНС",
+                    "Площадь ГНС",
+                    "Обводит внешние границы здания на плане",
+                    string.Format(
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(Command_SS_Systems).FullName,
-                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
-                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    typeof(Command_AR_GNSBound).FullName,
+                    "KPLN_Tools.Imagens.gnsAreaBig.png",
+                    "KPLN_Tools.Imagens.gnsAreaSmall.png",
                     "http://moodle");
 
-                PushButtonData ssFillInParameters = CreateBtnData(
-                    "Заполнить параметры на чертежном виде",
-                    "Заполнить параметры на чертежном виде",
-                    "Заполнить параметры на чертежном виде",
-                    string.Format("Плагин заполняет параметр ``КП_Позиция_Сумма`` для одинаковых семейств на чертежном виде, собирая значения параметров ``КП_О_Позиция`` с учетом параметра ``КП_О_Группирование``, " +
-                    "а также заполняет параметр ``КП_И_Количество в спецификацию`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_FillInParametersSS).FullName,
-                    "KPLN_Tools.Imagens.FillInParamSmall.png",
-                    "KPLN_Tools.Imagens.FillInParamSmall.png",
-                    "http://moodle/mod/book/view.php?id=502&chapterid=1319");
-
-                ssToolsPullDownBtn.AddPushButton(ssSystems);
-                ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
+                arToolsPullDownBtn.AddPushButton(arGNSArea);
             }
+
             #endregion
 
             #region Инструменты КР
@@ -391,6 +374,101 @@ namespace KPLN_Tools
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
             }
             #endregion
+
+            #region Инструменты СС
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            {
+                PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины СС",
+                    "Плагины СС",
+                    "СС: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
+                    panel,
+                    false);
+
+                PushButtonData ssSystems = CreateBtnData(
+                    "Слаботочные системы",
+                    "Слаботочные системы",
+                    "Помощь в создании цепей СС",
+                    string.Format("Плагин создаёт цепи нестандартным путём - генерируются отдельные системы на участки между 2мя элементами. " +
+                        "При этом элементу №2 в качестве щита присваивается элемент №1.\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_SS_Systems).FullName,
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
+                    "http://moodle");
+
+                PushButtonData ssFillInParameters = CreateBtnData(
+                    "Заполнить параметры на чертежном виде",
+                    "Заполнить параметры на чертежном виде",
+                    "Заполнить параметры на чертежном виде",
+                    string.Format("Плагин заполняет параметр ``КП_Позиция_Сумма`` для одинаковых семейств на чертежном виде, собирая значения параметров ``КП_О_Позиция`` с учетом параметра ``КП_О_Группирование``, " +
+                    "а также заполняет параметр ``КП_И_Количество в спецификацию`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_FillInParametersSS).FullName,
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1319");
+
+                ssToolsPullDownBtn.AddPushButton(ssSystems);
+                ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
+            }
+            #endregion
+
+            #region Инструменты ЭОМ
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 6 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            {
+                PulldownButton eomToolsPullDownBtn = CreatePulldownButtonInRibbon(
+                    "Плагины ЭОМ",
+                    "Плагины ЭОМ",
+                    "ЭОМ: Коллекция плагинов для автоматизации задач",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName),
+                    PngImageSource("KPLN_Tools.Imagens.eomMainSmall.png"),
+                    PngImageSource("KPLN_Tools.Imagens.eomMainBig.png"),
+                    panel,
+                    false);
+
+                PushButtonData setParams = CreateBtnData(
+                    "СЕТ: Заполнить параметры",
+                    "СЕТ: Заполнить параметры",
+                    "СЕТ: Заполнить параметры",
+                    string.Format("Плагин заполняет параметр для формирования спецификации для: \n" +
+                        "1. Кабельных лотков;\n" +
+                        "2. Соед. деталей кабельных лотков;\n" +
+                        "3. Воздуховодов (огнезащита).\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_SET_EOMParams).FullName,
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1319");
+
+                eomToolsPullDownBtn.AddPushButton(setParams);
+            }
+
+            #endregion
+
 
             #region Отверстия
             // Наполняю плагинами в зависимости от отдела
