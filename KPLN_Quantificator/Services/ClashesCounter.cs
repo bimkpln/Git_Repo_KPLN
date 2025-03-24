@@ -59,7 +59,7 @@ namespace KPLN_Quantificator.Services
 
                         isExsist = true;
 
-                        int counter = 0;
+                        int counterAll = 0;
                         int groupCounter = 0;
                         int nonGroupCounter = 0;
 
@@ -79,14 +79,14 @@ namespace KPLN_Quantificator.Services
                                     {
                                         if (savedItemInClashTest.IsGroup)
                                         {
-                                            groupCounter++; 
+                                            groupCounter++;
                                         }
                                         else
                                         {
-                                            nonGroupCounter++; 
+                                            nonGroupCounter++;
                                         }
 
-                                        counter++;
+                                        counterAll++;
                                     }
                                 }
                                 else if (savedItemInClashTest.IsGroup)
@@ -95,7 +95,7 @@ namespace KPLN_Quantificator.Services
 
                                     if (groupItem != null)
                                     {
-                                        groupCounter++;
+                                        bool hasRelevantClash = false;
 
                                         foreach (SavedItem savedItemInClashTestInGroup in groupItem.Children)
                                         {
@@ -105,32 +105,28 @@ namespace KPLN_Quantificator.Services
                                             {
                                                 if (clashResultInGroup.Status == ClashResultStatus.Active || clashResultInGroup.Status == ClashResultStatus.New)
                                                 {
-                                                    counter++;
+                                                    hasRelevantClash = true;
+                                                    counterAll++;
                                                 }
                                             }
                                             else
+                                            {
                                                 Output.PrintAlert($"Проблемы при определении отчета {savedItemInClashTestInGroup.DisplayName}");
+                                            }
                                         }
-                                    }
-                                }
-                                else 
-                                {
-                                    ClashResult clashResultNonGroup = savedItemInClashTest as ClashResult;
-                                    if (clashResultNonGroup != null)
-                                    {
-                                        if (clashResultNonGroup.Status == ClashResultStatus.Active || clashResultNonGroup.Status == ClashResultStatus.New)
-                                        {
-                                            nonGroupCounter++;
-                                        }
-                                    }
-                                }
 
+                                        if (hasRelevantClash)
+                                        {
+                                            groupCounter++;
+                                        }
+                                    }
+                                }
                             }
 
                             if (_counterResult.ContainsKey(namePart))
-                                _counterResult[namePart] += counter;
+                                _counterResult[namePart] += counterAll;
                             else
-                                _counterResult.Add(namePart, counter);
+                                _counterResult.Add(namePart, counterAll);
 
                             if (_counterGroups.ContainsKey(namePart))
                                 _counterGroups[namePart] += groupCounter;
@@ -143,7 +139,9 @@ namespace KPLN_Quantificator.Services
                                 _counterNonGroups.Add(namePart, nonGroupCounter);
                         }
                         else
+                        {
                             Output.PrintAlert($"Проблемы при определении отчета {savedItem.DisplayName}");
+                        }
                     }
                 }
 
@@ -165,9 +163,9 @@ namespace KPLN_Quantificator.Services
                     {
                         int clashCount = _counterResult[key];
                         int groupCount = _counterGroups.ContainsKey(key) ? _counterGroups[key] : 0;
-                        int nonGroupCount = _counterNonGroups.ContainsKey(key) ? _counterNonGroups[key] : 0;  // Получаем количество вне групп
+                        int nonGroupCount = _counterNonGroups.ContainsKey(key) ? _counterNonGroups[key] : 0; 
 
-                        Output.PrintSuccess($"Количество коллизий для раздела {key} составляет: {clashCount} шт. (Групп: {groupCount + nonGroupCount})");
+                        Output.PrintSuccess($"Количество коллизий для раздела {key} составляет: {clashCount} шт. (Групп {groupCount + nonGroupCount})");
                     }
                 }
             }
