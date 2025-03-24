@@ -1,0 +1,18 @@
+﻿<Window x:Class="KPLN_HoleManager.Forms.sChoiseHoleIndentation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Выберите отступ" Height="420" Width="200"
+        ResizeMode="NoResize" Topmost="True" Background="#FFEDEDED">
+    <Grid>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
+            <Button Content="0 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="25 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="50 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="75 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="100 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="125 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="150 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+            <Button Content="200 мм" Click="OffsetButton_Click" Width="120" Height="35" Margin="5" Background="#FFBBBABA" FontFamily="Century Gothic" FontSize="20"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -8,19 +8,13 @@ namespace KPLN_HoleManager
     /// </summary>
     internal static class ModuleData
     {
-        /// <summary>
         /// Версия сборки
-        /// </summary>
         public static string Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-        /// <summary>
         /// Актуальная дата плагина
-        /// </summary>
         public static string Date = GetModuleFileCreationDate();
 
-        /// <summary>
         /// Имя модуля
-        /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
         private static string GetModuleFileCreationDate()

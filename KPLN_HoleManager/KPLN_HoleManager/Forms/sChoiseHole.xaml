@@ -1,0 +1,73 @@
+﻿<Window x:Class="KPLN_HoleManager.Forms.sChoiseHole"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_HoleManager.Forms"
+        mc:Ignorable="d" 
+        Height="222" Width="250"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF616163">
+
+    <Grid Margin="10,5,5,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+            <TextBlock Text="Выберите тип отверстия" FontSize="14" Foreground="White" 
+                       VerticalAlignment="Center" HorizontalAlignment="Left"/>
+            <Button Content="❌" Width="20" Height="20" Background="#FFA90202"
+                    Foreground="White" FontSize="10" FontWeight="Bold"
+                    HorizontalAlignment="Right" Margin="0,2,5,0" Click="CloseWindow"/>
+        </DockPanel>
+
+        <TextBlock Grid.Row="1" Text="От отдела" FontSize="8" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+
+        <ComboBox x:Name="DepartmentComboBox" Grid.Row="2" Margin="0,3,0,5" 
+                  VerticalAlignment="Center" HorizontalAlignment="Left" 
+                  Width="230" FontSize="13"
+                  SelectionChanged="DepartmentComboBox_SelectionChanged">
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
+        </ComboBox>
+
+        <TextBlock Grid.Row="3" Text="Для отдела" FontSize="9" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+
+        <ComboBox x:Name="SendingDepartmentComboBox" Grid.Row="4" Margin="0,3,0,10" 
+                  VerticalAlignment="Center" HorizontalAlignment="Left" 
+                  Width="230" FontSize="13">
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
+        </ComboBox>
+
+        <Button Grid.Row="5" Content="🔲  Прямоугольное отверстие" FontSize="12" 
+                VerticalAlignment="Center" HorizontalAlignment="Left" 
+                HorizontalContentAlignment="Left" Padding="10,0" 
+                Width="230" Height="30" Margin="0,10,0,0" Click="SquareHoleButton_Click"/>
+
+        <Button Grid.Row="6" Content="🔴  Круглое отверстие" FontSize="12" 
+                VerticalAlignment="Center" HorizontalAlignment="Left" 
+                HorizontalContentAlignment="Left" Padding="10,0"
+                Width="230" Height="30" Margin="0,10,0,0" Click="RoundHoleButton_Click" />
+    </Grid>
+</Window>

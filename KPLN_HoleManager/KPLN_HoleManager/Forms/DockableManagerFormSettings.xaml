@@ -1,0 +1,108 @@
+﻿<Window x:Class="KPLN_HoleManager.Forms.DockableManagerFormSettings"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_HoleManager.Forms"
+        mc:Ignorable="d" 
+        Height="295" Width="250"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF616163">
+
+    <Grid Margin="10,5,5,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+            <TextBlock Text="Настройки" FontSize="14" Foreground="White" 
+                       VerticalAlignment="Center" HorizontalAlignment="Left"/>
+            <Button Content="❌" Width="20" Height="20" Background="#FFA90202"
+                    Foreground="White" FontSize="10" FontWeight="Bold"
+                    HorizontalAlignment="Right" Margin="0,2,5,0" Click="CloseWindow"/>
+        </DockPanel>
+
+        <TextBlock Grid.Row="1" Text="Задание от отдела по умолчанию (только для BIM)" FontSize="8" Foreground="White" 
+           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+
+        <ComboBox x:Name="DepartmentFromComboBox" IsEnabled="False" Grid.Row="2" Margin="0,3,0,5" 
+            VerticalAlignment="Center" HorizontalAlignment="Left" Width="230" FontSize="13" SelectedIndex="0" 
+            Foreground="#FF929292" SelectionChanged="DepartmentFromComboBox_SelectionChanged">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
+        </ComboBox>
+
+        <TextBlock Grid.Row="3" Text="Задание для отдела по умолчанию" FontSize="8" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+
+        <ComboBox x:Name="DepartmentInComboBox" Grid.Row="4" Margin="0,3,0,5" 
+          VerticalAlignment="Center" HorizontalAlignment="Left" 
+          Width="230" FontSize="13" SelectedIndex="0">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="АР" />
+            <ComboBoxItem Content="КР" />
+            <ComboBoxItem Content="ОВиК" />
+            <ComboBoxItem Content="ВК" />
+            <ComboBoxItem Content="ЭОМ" />
+            <ComboBoxItem Content="СС" />
+        </ComboBox>
+
+        <TextBlock Grid.Row="5" Text="Тип отверстия по умолчанию" FontSize="8" Foreground="White" 
+           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+
+        <ComboBox x:Name="HoleTypeComboBox" Grid.Row="6" Margin="0,3,0,5" 
+          VerticalAlignment="Center" HorizontalAlignment="Left" 
+          Width="230" FontSize="13" SelectedIndex="0">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="Прямоугольное" />
+            <ComboBoxItem Content="Круглое" />
+        </ComboBox>
+
+        <TextBlock Grid.Row="7" Text="Отступ по умолчанию в милиметрах" FontSize="8" Foreground="White" 
+                   VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0"/>
+
+        <ComboBox x:Name="HoleIndentComboBox" Grid.Row="8" Margin="0,3,0,10" 
+                  VerticalAlignment="Center" HorizontalAlignment="Left" 
+                  Width="230" FontSize="13" SelectedIndex="0">
+            <ComboBoxItem Content="Не выбрано" />
+            <ComboBoxItem Content="0" />
+            <ComboBoxItem Content="25" />
+            <ComboBoxItem Content="50" />
+            <ComboBoxItem Content="75" />
+            <ComboBoxItem Content="100" />
+            <ComboBoxItem Content="125" />
+            <ComboBoxItem Content="150" />
+            <ComboBoxItem Content="175" />
+            <ComboBoxItem Content="200" />
+        </ComboBox>
+
+        <Button Grid.Row="9" Content="Сбросить настройки" FontSize="12" 
+                VerticalAlignment="Center" HorizontalAlignment="Left" 
+                HorizontalContentAlignment="Center" Padding="10,0" 
+                Width="230" Height="30" Margin="0,5,0,0" Background="#FFFFBBAC" Click="CleanSettings_Click"/>
+
+        <Button Grid.Row="10" Content="Сохранить настройки" FontSize="12" 
+        VerticalAlignment="Center" HorizontalAlignment="Left" 
+        HorizontalContentAlignment="Center" Padding="10,0" 
+        Width="230" Height="30" Margin="0,5,0,0" Background="#FFC8FFCE" Click="SaveSettings_Click"/>
+    </Grid>
+</Window>
