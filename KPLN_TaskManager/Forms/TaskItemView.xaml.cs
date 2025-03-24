@@ -37,7 +37,7 @@ namespace KPLN_TaskManager.Forms
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
             
-            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds) && CurrentTaskItemEntity.ModelName.Equals(Module.CurrentDocument))
+            if (CurrentTaskItemEntity.ElementIds != null && string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds) && CurrentTaskItemEntity.ModelName.Equals(Module.CurrentDocument))
             {
                 ModelElemsContTBl.Visibility = System.Windows.Visibility.Collapsed;
                 ModelViewIdTBl.Visibility = System.Windows.Visibility.Collapsed;
