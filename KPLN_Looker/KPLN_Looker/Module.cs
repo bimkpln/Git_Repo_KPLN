@@ -453,8 +453,12 @@ namespace KPLN_Looker
             DocumentSet docSet = doc.Application.Documents;
             foreach (Document openDoc in docSet)
             {
+                // Если это тот же файл - игнор
+                if (openDoc.Title.Equals(docTitle))
+                    continue;
+
                 // Если это линк - ок, пусть копируют
-                if (openDoc.IsLinked || openDoc.Title.Equals(docTitle))
+                if (openDoc.IsLinked)
                     continue;
 
                 if (openDoc.IsWorkshared)
