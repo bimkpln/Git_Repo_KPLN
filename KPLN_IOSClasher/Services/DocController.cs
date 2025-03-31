@@ -46,6 +46,7 @@ namespace KPLN_IOSClasher.Services
         /// </summary>
         public static void CurrentDocumentUpdateData(Document doc)
         {
+#if Revit2020 || Revit2023
             IsDocumentAnalyzing = true;
             if (doc != null)
             {
@@ -75,10 +76,12 @@ namespace KPLN_IOSClasher.Services
                 else
                     IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
             }
+#endif
 
 
 #if Debug2020 || Debug2023
-            //IsDocumentAnalyzing = true;
+            CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+            IsDocumentAnalyzing = true;
 #endif
         }
 
@@ -374,7 +377,7 @@ namespace KPLN_IOSClasher.Services
 
             // Трансформ по координатам (если нужно)
             if (transform != null)
-                resultSolid = SolidUtils.CreateTransformed(resultSolid, transform);
+                resultSolid = SolidUtils.CreateTransformed(resultSolid, transform.Inverse);
 
             return resultSolid;
         }

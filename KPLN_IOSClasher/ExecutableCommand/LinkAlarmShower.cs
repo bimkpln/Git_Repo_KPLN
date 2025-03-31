@@ -7,7 +7,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// <summary>
     /// Обертка для появления сообщения после завершения редактирования (OnIdling), чтобы не таким навязчивым было
     /// </summary>
-    internal class LinkAlarmShower : IExecutableCommand
+    internal sealed class LinkAlarmShower : IExecutableCommand
     {
         private static DateTime _lastAlarm = new DateTime(2025, 01, 01, 0, 0, 0);
         private readonly TimeSpan _delay = new TimeSpan(0, 10, 0);

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace KPLN_IOSClasher.Services
 {
-    public class DBWorkerService
+    public sealed class DBWorkerService
     {
         private readonly UserDbService _userDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;

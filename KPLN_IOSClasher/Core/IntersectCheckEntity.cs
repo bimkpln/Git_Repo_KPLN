@@ -8,7 +8,7 @@ namespace KPLN_IOSClasher.Core
     /// <summary>
     /// Сущность области анализа на коллизии
     /// </summary>
-    internal class IntersectCheckEntity
+    internal sealed class IntersectCheckEntity
     {
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
@@ -60,7 +60,7 @@ namespace KPLN_IOSClasher.Core
                         el.Category != null
                         && !(el is ElementType)
                         && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб_EI150"));
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб"));
                 }
 
                 return _elemFilterFunc;
@@ -74,11 +74,6 @@ namespace KPLN_IOSClasher.Core
             CheckOutline = filterOutline;
 
             CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTotalTransform();
-            CheckDocBasePntPosition = new FilteredElementCollector(CheckDoc)
-                .OfClass(typeof(BasePoint))
-                .Cast<BasePoint>()
-                .FirstOrDefault()
-                .Position;
 
             SetCurrentDocElemsToCheck(CheckDoc);
         }
@@ -89,12 +84,7 @@ namespace KPLN_IOSClasher.Core
             CheckBBox = filterBBox;
             CheckOutline = filterOutline;
 
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTotalTransform();
-            CheckDocBasePntPosition = new FilteredElementCollector(CheckDoc)
-                .OfClass(typeof(BasePoint))
-                .Cast<BasePoint>()
-                .FirstOrDefault()
-                .Position;
+            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
 
             CheckLinkInst = linkInst;
 
@@ -103,25 +93,8 @@ namespace KPLN_IOSClasher.Core
             // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор и аннулирование CheckLinkInst
             if (linkDoc != null)
             {
-                LinkBasePntPosition = new FilteredElementCollector(linkDoc)
-                    .OfClass(typeof(BasePoint))
-                    .Cast<BasePoint>()
-                    .FirstOrDefault()
-                    .Position;
-
-                // Ищу результирующий Transform.
-                if (Math.Abs(CheckDocBasePntPosition.DistanceTo(LinkBasePntPosition)) > 0.1
-                    && Math.Abs(CheckDocBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) > 0.1)
-                {
-                    XYZ resultVect = CheckDocBasePntPosition - LinkBasePntPosition;
-                    Transform difTransform = Transform.CreateTranslation(resultVect);
-                    LinkTransfrom = difTransform;
-                }
-                else if (Math.Abs(LinkBasePntPosition.DistanceTo(new XYZ(0, 0, 0))) < 0.1)
-                    LinkTransfrom = linkDoc.ActiveProjectLocation.GetTransform();
-                else
-                    LinkTransfrom = CheckDocTransform.Inverse * linkDoc.ActiveProjectLocation.GetTransform();
-
+                Instance inst = CheckLinkInst as Instance;
+                LinkTransfrom = inst.GetTransform().Inverse;
                 SetCurrentDocElemsToCheck(linkDoc);
             }
             else CheckLinkInst = null;
@@ -142,19 +115,15 @@ namespace KPLN_IOSClasher.Core
         /// </summary>
         public Outline CheckOutline { get; }
 
+        /// <summary>
+        /// Трансформ проверяемого файла
+        /// </summary>
         public Transform CheckDocTransform { get; }
 
         /// <summary>
-        /// Координаты точки съёмки проверяемого документа
+        /// Трансформ для связи
         /// </summary>
-        public XYZ CheckDocBasePntPosition { get; }
-
         public Transform LinkTransfrom { get; }
-
-        /// <summary>
-        /// Координаты точки съёмки связи
-        /// </summary>
-        public XYZ LinkBasePntPosition { get; }
 
         /// <summary>
         /// Ссылка на линк

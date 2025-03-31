@@ -11,7 +11,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// <summary>
     /// Класс для ОЧИСТКИ элементов пересечений
     /// </summary>
-    internal class IntersectPointCleaner : IntersectPointFamInst, IExecutableCommand
+    internal sealed class IntersectPointCleaner : IntersectPointFamInst, IExecutableCommand
     {
         /// <summary>
         /// Имя транзакции для анализа на наличие

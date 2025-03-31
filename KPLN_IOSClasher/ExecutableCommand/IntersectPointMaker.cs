@@ -14,7 +14,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// <summary>
     /// Класс для СОЗДАНИЯ и ПЕРЕСТРОЕНИЯ элементов пересечений
     /// </summary>
-    internal class IntersectPointMaker : IntersectPointFamInst, IExecutableCommand
+    internal sealed class IntersectPointMaker : IntersectPointFamInst, IExecutableCommand
     {
         /// <summary>
         /// Имя транзакции для анализа на наличие

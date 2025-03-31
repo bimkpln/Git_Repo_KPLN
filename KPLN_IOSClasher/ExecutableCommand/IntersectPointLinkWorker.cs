@@ -14,7 +14,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// <summary>
     /// Класс для АНАЛИЗА пересечений с участием СВЯЗЕЙ
     /// </summary>
-    internal class IntersectPointLinkWorker : IntersectPointFamInst, IExecutableCommand
+    internal sealed class IntersectPointLinkWorker : IntersectPointFamInst, IExecutableCommand
     {
         /// <summary>
         /// Имя транзакции для анализа на наличие
