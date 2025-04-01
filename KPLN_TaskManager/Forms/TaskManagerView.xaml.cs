@@ -2,6 +2,7 @@
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.Services;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -107,11 +108,26 @@ namespace KPLN_TaskManager.Forms
                         {
                             _collection.Add(item);
                         }
+                        IEnumerable<TaskItemEntity> thirdColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
+                        foreach (TaskItemEntity item in thirdColl)
+                        {
+                            _collection.Add(item);
+                        }
+                        IEnumerable<TaskItemEntity> fourthColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
+                        foreach (TaskItemEntity item in fourthColl)
+                        {
+                            _collection.Add(item);
+                        }
                         break;
                     case "Чичева":
                         _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 4));
                         IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 6);
                         foreach (TaskItemEntity item in secondColl2)
+                        {
+                            _collection.Add(item);
+                        }
+                        IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 20);
+                        foreach (TaskItemEntity item in thirdColl2)
                         {
                             _collection.Add(item);
                         }
@@ -121,9 +137,10 @@ namespace KPLN_TaskManager.Forms
                         break;
                 }
             }
-            // Для остальных пользователей - выбор из ЗВ и ЗИ
+            // Для остальных пользователей - выбор по проекту, из ЗВ и ЗИ, а также по модели
             else
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndUser(Module.CurrentDBProject, MainDBService.CurrentDBUser));
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService
+                    .GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.SubDepartmentId, Module.CurrentFileName));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
             FilteredTasks.Filter = FilterTasks;

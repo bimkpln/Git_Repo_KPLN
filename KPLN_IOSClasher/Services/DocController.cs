@@ -377,7 +377,7 @@ namespace KPLN_IOSClasher.Services
 
             // Трансформ по координатам (если нужно)
             if (transform != null)
-                resultSolid = SolidUtils.CreateTransformed(resultSolid, transform.Inverse);
+                resultSolid = SolidUtils.CreateTransformed(resultSolid, transform);
 
             return resultSolid;
         }
