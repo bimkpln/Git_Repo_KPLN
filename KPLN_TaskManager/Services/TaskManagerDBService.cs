@@ -103,34 +103,16 @@ namespace KPLN_TaskManager.Services
                 $"OR ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{coordSubDep}' AND {nameof(TaskItemEntity.DelegatedDepartmentId)}='{userSubDepId}');");
 
         /// <summary>
-        /// Получить коллекцию TaskItemEntity по текущему проекту, И по текущему разделу пользователя (ЗИ ИЛИ ЗВ). Потом выдаём ВСЕ замечания (без привязок к модели)
+        /// Получить коллекцию TaskItemEntity по текущему проекту, И по текущему разделу пользователя (ЗИ ИЛИ ЗВ)
         /// И по текущей модели
         /// </summary>
-        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(int dBPrjId, int dbUserId, string docName)
-        {
-            IEnumerable<TaskItemEntity> tasks = ExecuteQuery<TaskItemEntity>(
+        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(int dBPrjId, int dbUserId) =>
+            ExecuteQuery<TaskItemEntity>(
                 $"SELECT * FROM {_dbMainTableName} " +
                 $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBPrjId}'" +
                 $"AND ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{dbUserId}'" +
                 $"OR {nameof(TaskItemEntity.DelegatedDepartmentId)}='{dbUserId}');");
             
-            // Уточняю выборку по имени отдела
-            if (!tasks.Any()) 
-            {
-                List<TaskItemEntity> resultTasks = new List<TaskItemEntity>();
-                foreach (TaskItemEntity taskItemEntity in tasks)
-                {
-                    if (string.IsNullOrEmpty(taskItemEntity.ModelName))
-                        resultTasks.Add(taskItemEntity);
-                    else if (docName.Contains(taskItemEntity.ModelName))
-                        resultTasks.Add(taskItemEntity);
-                }
-
-                return resultTasks;
-            }
-
-            return null;
-        }
 
         /// <summary>
         /// Получить коллекцию TaskItemEntity_Comment по текущему TaskItemEntity
