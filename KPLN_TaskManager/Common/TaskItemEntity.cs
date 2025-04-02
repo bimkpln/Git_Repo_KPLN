@@ -457,10 +457,10 @@ namespace KPLN_TaskManager.Common
                     return result;
                 }
 
-                result = new List<string>() { "<Весь проект>", TaskItemEntity.CurrentModelName(Module.CurrentDocument) };
-                if (Module.CurrentDocument != null)
+                result = new List<string>() { "<Весь проект>", TaskItemEntity.CurrentModelName(Module.CurrentDoc) };
+                if (Module.CurrentDoc != null)
                 {
-                    var currentDocFiles = new FilteredElementCollector(Module.CurrentDocument)
+                    var currentDocFiles = new FilteredElementCollector(Module.CurrentDoc)
                         .OfClass(typeof(RevitLinkType));
 
                     var docFileNames = currentDocFiles?.OrderBy(f => f.Name).Select(f => f.Name);
@@ -512,7 +512,7 @@ namespace KPLN_TaskManager.Common
             // Если отдел ответсвенного совпадает с отделом модели - то ставим на этот же файл
             if (currentDBDoc.SubDepartmentId == DelegatedDepartmentId)
             {
-                string tempName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDocument)));
+                string tempName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDoc)));
                 ModelName = string.IsNullOrEmpty(tempName) ? "<Выбери вручную>" : tempName;
             }
             else

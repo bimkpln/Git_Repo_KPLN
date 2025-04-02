@@ -27,7 +27,8 @@ namespace KPLN_TaskManager
         internal static UIApplication CurrentUIApplication { get; private set; }
         internal static string CurrentFileName {  get; private set; }
         internal static DBProject CurrentDBProject { get; private set; }
-        internal static Document CurrentDocument { get; private set; }
+        internal static Document CurrentDoc { get; private set; }
+        internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
 
         public Result Close()
         {
@@ -74,17 +75,19 @@ namespace KPLN_TaskManager
 
         private void Application_DocumentOpened(object sender, Autodesk.Revit.DB.Events.DocumentOpenedEventArgs args)
         {
-            CurrentDocument = args.Document;
+            CurrentDoc = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
+            if (CurrentDoc == null || CurrentDoc.IsFamilyDocument)
                 return;
 
-            if (CurrentUIApplication == null)
-                CurrentUIApplication = new UIApplication(CurrentDocument.Application);
+            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
 
-            CurrentFileName = CurrentDocument.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
-                : CurrentDocument.PathName;
+            if (CurrentUIApplication == null)
+                CurrentUIApplication = new UIApplication(CurrentDoc.Application);
+
+            CurrentFileName = CurrentDoc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
+                : CurrentDoc.PathName;
 
             CurrentDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
             if (CurrentDBProject == null)
@@ -97,26 +100,24 @@ namespace KPLN_TaskManager
 
         private void Application_ViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            CurrentDocument = args.Document;
+            CurrentDoc = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
+            if (CurrentDoc == null || CurrentDoc.IsFamilyDocument)
                 return;
 
-            string openViewFileName = CurrentDocument.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
-                : CurrentDocument.PathName;
+            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
+
+            string openViewFileName = CurrentDoc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
+                : CurrentDoc.PathName;
 
             if (openViewFileName == CurrentFileName)
                 return;
 
             CurrentFileName = openViewFileName;
-
             DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
-            if (openViewDBProject == null || CurrentDBProject == null || openViewDBProject.Id == CurrentDBProject.Id)
-                return;
 
             CurrentDBProject = openViewDBProject;
-
 
             MainMenuViewer.LoadTaskData();
         }
