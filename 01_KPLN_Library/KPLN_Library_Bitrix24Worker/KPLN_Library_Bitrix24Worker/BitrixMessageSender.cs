@@ -127,7 +127,7 @@ namespace KPLN_Library_Bitrix24Worker
         }
         #endregion
 
-        #region Создание задач
+        #region Работа с задачами
         /// <summary>
         /// Создать задачу по указанным полям. Наблюдатели заполняются автоматом
         /// </summary>
@@ -220,6 +220,54 @@ namespace KPLN_Library_Bitrix24Worker
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Получить все подзадачи для родительской задчи
+        /// </summary>
+        /// <param name="parnetTaskId">Идентификатор родительской задачи</param>
+        /// <returns>Словарь, где ключ - ID задачи из битриск; значение - ЗАГОЛОВО задачи из битрикс</returns>
+        public static async Task<Dictionary<int, string>> GetAllSubTasks_IdAndTitle_ByParentId(int parnetTaskId)
+        {
+            Dictionary<int, string> result = new Dictionary<int, string>();
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    var requestData = new Dictionary<string, object>
+                    {
+                        { "filter", new Dictionary<string, object> { { "PARENT_ID", parnetTaskId } } }
+                    };
+
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync($"{_webHookUrl}/tasks.task.list", jsonContent);
+                    string responseContent = await response.Content.ReadAsStringAsync();
+
+                    dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+                    try
+                    {
+                        foreach (var item in jsonResponse?.result?.tasks)
+                        {
+                            var id = item.id?.Value;
+                            if (!int.TryParse(id, out int taskId))
+                                throw new Exception($"Ошибка парсинга {item.id} в int. Отправь разаботчику");
+                            string taskTitle = item.title;
+
+                            result[taskId] = taskTitle;
+                        }
+                    }
+                    catch { }
+                        
+                    }
+
+                    return result;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return null;
         }
 
         #endregion
