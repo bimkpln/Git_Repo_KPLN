@@ -9,6 +9,7 @@
     Width="500"
     Height="Auto"
     SizeToContent="Height"
+    ResizeMode="CanResizeWithGrip"
     Background="White">
 
     <Window.Resources>
@@ -58,10 +59,10 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="50" MaxHeight="150"/>
             <RowDefinition Height="20"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="50" MaxHeight="100"/>
+            <RowDefinition Height="*" MinHeight="50" MaxHeight="100"/>
         </Grid.RowDefinitions>
 
         <StackPanel>
@@ -80,13 +81,13 @@
                     Text="{Binding CreatedTaskUserFullName, Mode=OneWay, StringFormat= 'Автор: \{0\}'}" 
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Center"
-                    FontSize="10"
+                    FontSize="8"
                     Margin="5,2,5,0"/>
                 <TextBlock 
                     Text="{Binding CreatedTaskData, Mode=OneWay, StringFormat= 'Создано: \{0\}'}" 
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Center"
-                    FontSize="10"
+                    FontSize="8"
                     Margin="5,0,5,2"/>
                 <Button 
                     x:Name="BtnBitrixTask"
@@ -229,8 +230,8 @@
                 SpellCheck.IsEnabled="True"
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskBody}"
-                MinHeight="80"
-                MaxHeight="120"
+                MinHeight="30"
+                MaxHeight="100"
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 HorizontalAlignment="Stretch" 
@@ -296,6 +297,7 @@
         </StackPanel>
 
         <Expander
+            Name="ImgExpander"
             Grid.Row="1"
             Header="Изображение"
             FontWeight="Bold"

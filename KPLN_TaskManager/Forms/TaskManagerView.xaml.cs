@@ -8,7 +8,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 
 namespace KPLN_TaskManager.Forms
 {
@@ -83,8 +85,8 @@ namespace KPLN_TaskManager.Forms
         public TaskManagerView LoadTaskData()
         {
             _dBProject = Module.CurrentDBProject;
-            
-            // Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
+
+            //Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
             if (MainDBService.CurrentDBUserSubDepartment.Id == 8)
             {
                 switch (MainDBService.CurrentDBUser.Surname)
@@ -137,10 +139,62 @@ namespace KPLN_TaskManager.Forms
                         break;
                 }
             }
+            //Для руководителей - верстка на лету под их отделы, чтобы они видели замечания по своим отделам
+            else if (MainDBService.CurrentDBUser.Surname == "Кудрова")
+            {
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 4));
+                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5);
+                foreach (TaskItemEntity item in secondColl2)
+                {
+                    _collection.Add(item);
+                }
+                IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 20);
+                foreach (TaskItemEntity item in thirdColl2)
+                {
+                    _collection.Add(item);
+                }
+                IEnumerable<TaskItemEntity> thirdColl3 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
+                foreach (TaskItemEntity item in thirdColl2)
+                {
+                    _collection.Add(item);
+                }
+            }
+            else if (MainDBService.CurrentDBUser.Surname == "Тамарин")
+            {
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5));
+                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
+                foreach (TaskItemEntity item in secondColl2)
+                {
+                    _collection.Add(item);
+                }
+            }
+            else if (MainDBService.CurrentDBUser.Surname == "Колодий")
+            {
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 6));
+                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7);
+                foreach (TaskItemEntity item in secondColl2)
+                {
+                    _collection.Add(item);
+                }
+                IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
+                foreach (TaskItemEntity item in thirdColl2)
+                {
+                    _collection.Add(item);
+                }
+            }
+            else if (MainDBService.CurrentDBUser.Surname == "Алиев")
+            {
+                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7));
+                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
+                foreach (TaskItemEntity item in secondColl2)
+                {
+                    _collection.Add(item);
+                }
+            }
             // Для остальных пользователей - выбор по проекту, из ЗВ и ЗИ, а также по модели
             else
                 _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService
-                    .GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.SubDepartmentId, Module.CurrentFileName));
+                    .GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.SubDepartmentId));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
             FilteredTasks.Filter = FilterTasks;

@@ -33,16 +33,21 @@ namespace KPLN_TaskManager.Forms
             CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TaskManagerDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
             TaskItem_Comments.ItemsSource = CurrentTaskComments;
 
+            // Видимость поля с задачей в битрикс
             if (CurrentTaskItemEntity.BitrixTaskId == 0 || CurrentTaskItemEntity.BitrixTaskId == -1)
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
-            
+            // Видимость и нажемаемость кнопки выбора эл-в
             if (CurrentTaskItemEntity.ElementIds != null && string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds) && CurrentTaskItemEntity.ModelName.Equals(Module.CurrentDocument))
             {
                 ModelElemsContTBl.Visibility = System.Windows.Visibility.Collapsed;
                 ModelViewIdTBl.Visibility = System.Windows.Visibility.Collapsed;
                 SelectRevitElems.IsEnabled = false;
             }
+
+            // Настройка экспандера рисунка
+            SetImgExpander();
+
 
             #region Настройка уровня доступа в зависимости от пользователя
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
@@ -94,8 +99,7 @@ namespace KPLN_TaskManager.Forms
         private void AddElementIdsBtn_Click(object sender, RoutedEventArgs e)
         {
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
-            Document doc = uidoc.Document;
-
+            
             ICollection<ElementId> selectedIds = uidoc.Selection.GetElementIds();
             if (selectedIds.Count == 0)
             {
@@ -288,6 +292,7 @@ namespace KPLN_TaskManager.Forms
                 if (image != null)
                 {
                     CurrentTaskItemEntity.ImageBuffer = ConvertToByteArray(image);
+                    SetImgExpander();
 
                     MessageBox.Show(
                         "Рисунок успешно добавлен!",
@@ -521,6 +526,17 @@ namespace KPLN_TaskManager.Forms
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Настройка заголовка и "сворнутости" Expander с изображением
+        /// </summary>
+        private void SetImgExpander()
+        {
+            if (CurrentTaskItemEntity.ImageSource != null)
+                ImgExpander.IsExpanded = true;
+            else 
+                ImgExpander.IsExpanded = false;
         }
     }
 }

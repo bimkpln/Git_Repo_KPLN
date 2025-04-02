@@ -89,6 +89,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="100"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
@@ -145,7 +146,7 @@
 
             <DockPanel 
                 LastChildFill="True">
-                
+
                 <RadioButton
                     Name="AllTaskRBtn"
                     Style="{StaticResource RB}"
@@ -183,7 +184,14 @@
             <GridSplitter 
                 Height="3"
                 HorizontalAlignment="Stretch"/>
+        </StackPanel>
 
+        <Grid
+            Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="25"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
             <TextBlock 
                 Text="Список задач" 
                 VerticalAlignment="Center" 
@@ -192,9 +200,8 @@
 
             <ScrollViewer 
                 Grid.Row="1"
-                HorizontalScrollBarVisibility="Auto" 
                 VerticalScrollBarVisibility="Auto">
-                <StackPanel Orientation="Vertical">
+                <Grid>
                     <ItemsControl 
                         x:Name="TaskItems"
                         ItemsSource="{Binding FilteredTasks, UpdateSourceTrigger=PropertyChanged}">
@@ -213,9 +220,6 @@
                                     <Button.ToolTip>
                                         <StackPanel MaxWidth="250">
                                             <TextBlock 
-                                                Text="{Binding TaskBody, Mode=OneWay, StringFormat= 'Описание: \{0\}'}"
-                                                TextWrapping="Wrap"/>
-                                            <TextBlock 
                                                 Text="{Binding CreatedTaskUserFullName, Mode=OneWay, StringFormat= 'Автор: \{0\}'}"
                                                 TextWrapping="Wrap"/>
                                             <TextBlock 
@@ -230,10 +234,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </StackPanel>
+                </Grid>
             </ScrollViewer>
 
-        </StackPanel>
+        </Grid>
 
         <GridSplitter 
             Grid.Row="2"
