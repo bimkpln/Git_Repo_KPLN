@@ -26,6 +26,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         /// Отображение влк/выкл (True/False) для окна авторизации. В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsAuthEnabled { get; set; }
+
+        /// <summary>
+        /// Ссыока на ID родительского отдела (например ИТП - входит в состав ОВ, ПТ - в состав ВК, АВ - в состав СС)
+        /// </summary>
+        public int DependentSubDepId { get; set; }
         #endregion
 
         /// <summary>
