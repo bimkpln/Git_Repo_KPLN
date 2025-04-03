@@ -2,7 +2,6 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.ExecutableCommand;
 using KPLN_TaskManager.Services;
@@ -48,12 +47,36 @@ namespace KPLN_TaskManager.Forms
             // Настройка экспандера рисунка
             SetImgExpander();
 
+            // Настройка уровня доступа в зависимости от пользователя
+            SetUserAccessLevel();
+        }
 
-            #region Настройка уровня доступа в зависимости от пользователя
+        public TaskItemEntity CurrentTaskItemEntity { get; set; }
+
+        public ObservableCollection<TaskItemEntity_Comment> CurrentTaskComments { get; set; }
+
+        private static string GetCurrentData() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
+
+        private void HandlePressBtn(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape) Close();
+        }
+
+        /// <summary>
+        /// Настройка уровня доступа в зависимости от пользователя
+        /// </summary>
+        private void SetUserAccessLevel()
+        {
+            bool isDepSubDep = MainDBService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id);
+            
+            // Настройка выбора отдела ОТ в завиисмости от наличия подчиненных подотделов
+            CreateDepCBox.IsEnabled = isDepSubDep;
+
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
-            bool isCreatorEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId;
+            bool isCreatorEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
             bool isFullEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
-                || MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId;
+                || MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
+                || isDepSubDep;
 
             HeaderTBox.IsEnabled = isCreatorEditable;
             DelegateDepCBox.IsEnabled = isCreatorEditable;
@@ -71,19 +94,12 @@ namespace KPLN_TaskManager.Forms
             SendToBitrix.IsEnabled = isFullEditable && !isNewTask;
             ToggleStatusBtn.IsEnabled = isFullEditable && !isNewTask;
             CommentBtn.IsEnabled = isFullEditable && !isNewTask;
-            #endregion
         }
 
-        public TaskItemEntity CurrentTaskItemEntity { get; set; }
-
-        public ObservableCollection<TaskItemEntity_Comment> CurrentTaskComments { get; set; }
-
-        private static string GetCurrentData() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
-
-        private void HandlePressBtn(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape) Close();
-        }
+        /// <summary>
+        /// Дополнительный триггер на замену отдела для управления уровнем доступа
+        /// </summary>
+        private void CreateDepCBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => SetUserAccessLevel();
 
         /// <summary>
         /// Событие наведения мыши в окно ScrollViewer. Связано с потеряй фокуса на колесо мыши
@@ -99,7 +115,7 @@ namespace KPLN_TaskManager.Forms
         private void AddElementIdsBtn_Click(object sender, RoutedEventArgs e)
         {
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
-            
+
             ICollection<ElementId> selectedIds = uidoc.Selection.GetElementIds();
             if (selectedIds.Count == 0)
             {
@@ -193,7 +209,6 @@ namespace KPLN_TaskManager.Forms
             if (!VerifyMainFields())
                 return;
 
-            CurrentTaskItemEntity.LastChangeData = CurrentTaskItemEntity.CreatedTaskData;
             // Если id = 0 - это новая задача
             if (CurrentTaskItemEntity.Id == 0)
             {
@@ -206,6 +221,7 @@ namespace KPLN_TaskManager.Forms
             // Иначе - задача уже была, нужно пересохранить
             else
             {
+                CurrentTaskItemEntity.LastChangeData = GetCurrentData();
                 TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
 
                 LogToCommentSender("Отредактировано");
@@ -416,6 +432,7 @@ namespace KPLN_TaskManager.Forms
 
             #region Фикисрую данные в БД
             CurrentTaskItemEntity.BitrixTaskId = bitrTaskId;
+            CurrentTaskItemEntity.LastChangeData = GetCurrentData();
             BtnBitrixTask.Visibility = System.Windows.Visibility.Visible;
             TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
 
@@ -535,7 +552,7 @@ namespace KPLN_TaskManager.Forms
         {
             if (CurrentTaskItemEntity.ImageSource != null)
                 ImgExpander.IsExpanded = true;
-            else 
+            else
                 ImgExpander.IsExpanded = false;
         }
     }
