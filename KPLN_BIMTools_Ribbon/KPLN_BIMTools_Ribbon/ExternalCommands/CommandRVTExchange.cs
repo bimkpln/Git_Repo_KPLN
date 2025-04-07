@@ -111,6 +111,10 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 return newPath;
 
             string configNameChangeFind = rsConfigData.NameChangeFind;
+            // Для обработки старых конфигов, чтобы не писал об ошибках
+            if (configNameChangeFind == "🔐")
+                return newPath;
+            
             if (!newPath.Contains(configNameChangeFind))
             {
                 Print(
