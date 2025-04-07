@@ -166,7 +166,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 BoundingBoxXYZ pntEntBBox = DocController.CreateElemsBBox(new List<Element>(1) { oldPntElem });
                 Outline filterOutline = DocController.CreateFilterOutline(pntEntBBox, 1);
 
-                IntersectCheckEntity oldDockEnt = new IntersectCheckEntity(doc, pntEntBBox, filterOutline, linkInst);
+                IntersectCheckEntity oldDockEnt = new IntersectCheckEntity(doc, filterOutline, linkInst);
 
                 IEnumerable<IntersectPointEntity> docIntPntEntities = oldDockEnt
                     .CurrentDocElemsToCheck

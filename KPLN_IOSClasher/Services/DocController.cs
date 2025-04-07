@@ -95,7 +95,7 @@ namespace KPLN_IOSClasher.Services
                 BoundingBoxXYZ filterBBox = CreateElemsBBox(elems);
                 Outline filterOutline = CreateFilterOutline(filterBBox, 1);
 
-                IntersectCheckEntity_Doc = new IntersectCheckEntity(doc, filterBBox, filterOutline);
+                IntersectCheckEntity_Doc = new IntersectCheckEntity(doc, filterOutline);
             }
         }
 
@@ -155,7 +155,7 @@ namespace KPLN_IOSClasher.Services
 
                             // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор
                             if (rLink != null)
-                                IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterBBox, filterOutline, rLink));
+                                IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterOutline, rLink));
 
                             break;
 

@@ -67,21 +67,19 @@ namespace KPLN_IOSClasher.Core
             }
         }
 
-        public IntersectCheckEntity(Document checkDoc, BoundingBoxXYZ filterBBox, Outline filterOutline)
+        public IntersectCheckEntity(Document checkDoc, Outline filterOutline)
         {
             CheckDoc = checkDoc;
-            CheckBBox = filterBBox;
             CheckOutline = filterOutline;
 
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTotalTransform();
+            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
 
             SetCurrentDocElemsToCheck(CheckDoc);
         }
 
-        public IntersectCheckEntity(Document checkDoc, BoundingBoxXYZ filterBBox, Outline filterOutline, RevitLinkInstance linkInst)
+        public IntersectCheckEntity(Document checkDoc, Outline filterOutline, RevitLinkInstance linkInst)
         {
             CheckDoc = checkDoc;
-            CheckBBox = filterBBox;
             CheckOutline = filterOutline;
 
             CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
@@ -110,11 +108,6 @@ namespace KPLN_IOSClasher.Core
         /// Ссылка на проверяемый документ
         /// </summary>
         public Document CheckDoc { get; }
-
-        /// <summary>
-        /// BoundingBoxXYZ для проверки
-        /// </summary>
-        public BoundingBoxXYZ CheckBBox { get; }
 
         /// <summary>
         /// Outline для проверки
