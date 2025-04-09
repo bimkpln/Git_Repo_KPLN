@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -19,6 +20,23 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
     public sealed class ReportItem : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// Вручную прописал отделы из БД, т.к. они не меняются
+        /// </summary>
+        private ObservableCollection<SubDepartmentBtn> _subDepartmentBtns = new ObservableCollection<SubDepartmentBtn>()
+        {
+            new SubDepartmentBtn(2, "АР"),
+            new SubDepartmentBtn(3, "КР"),
+            new SubDepartmentBtn(4, "ОВ"),
+            new SubDepartmentBtn(5, "ВК"),
+            new SubDepartmentBtn(6, "ЭОМ"),
+            new SubDepartmentBtn(7, "СС"),
+            new SubDepartmentBtn(20, "ИТП"),
+            new SubDepartmentBtn(21, "ПТ"),
+            new SubDepartmentBtn(22, "АВ", "Подраздел СС: Автоматизация"),
+            new SubDepartmentBtn(99, "✖", "Сбросить делегирование и вернуть статус пересечения «Открытое»"),
+        };
 
         private int _statusId;
         private string _comments;
@@ -37,14 +55,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public ReportItem()
         {
-            // Генерация кнопок делегирования
-            foreach (SubDepartmentBtn sdBtn in SubDepartmentBtns)
-            {
-                if (sdBtn.Id == DelegatedDepartmentId)
-                    sdBtn.SetBinding(this, Brushes.Aqua);
-                else
-                    sdBtn.SetBinding(this, Brushes.Transparent);
-            }
         }
 
         /// <summary>
@@ -53,6 +63,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public ReportItem(
             int id,
             int repGroupId,
+            int repId,
             string name,
             string element_1_id,
             string element_2_id,
@@ -67,6 +78,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             Id = id;
             ReportGroupId = repGroupId;
+            ReportId = repId;
             Name = name;
             ParentGroupId = parentGroupId;
 
@@ -109,6 +121,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public int Id { get; set; }
 
         public int ReportGroupId { get; set; }
+
+        public int ReportId { get; set; }
 
         public string Name { get; set; }
 
@@ -175,7 +189,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         public int DelegatedDepartmentId
         {
             get => _delegatedDepartmentId;
-            private set { _delegatedDepartmentId = value; }
+            set 
+            { 
+                _delegatedDepartmentId = value;
+                NotifyPropertyChanged();
+
+                //Вёрстка на лету цвета кнопки делегации
+                SubDepartmentBtn subDep = _subDepartmentBtns.FirstOrDefault(sdb => sdb.Id == _delegatedDepartmentId);
+                if (subDep != null)
+                    subDep.DelegateBtnBackground = Brushes.Aqua;
+            }
         }
 
 
@@ -289,16 +312,18 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
-        public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns { get; } = new ObservableCollection<SubDepartmentBtn>()
+        /// <summary>
+        /// Коллекция кастомных отделов КПЛН (только внутри данного плагина)
+        /// </summary>
+        public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns 
         {
-            new SubDepartmentBtn(1, "АР", "Разделы АР"),
-            new SubDepartmentBtn(2, "КР", "Разделы КР"),
-            new SubDepartmentBtn(3, "ВК", "Разделы АУПТ, ВК, НС"),
-            new SubDepartmentBtn(4, "ОВ", "Разделы ИТП, ОВиК"),
-            new SubDepartmentBtn(5, "СС", "Разделы СС"),
-            new SubDepartmentBtn(6, "ЭОМ", "Разделы ЭОМ"),
-            new SubDepartmentBtn(7, "✖", "Сбросить делегирование и вернуть статус пересечения «Открытое»"),
-        };
+            get => _subDepartmentBtns;
+            set
+            {
+                _subDepartmentBtns = value;
+                NotifyPropertyChanged();
+            }
+        } 
 
         /// <summary>
         /// Коллекция субэлементов, если коллизия в группе

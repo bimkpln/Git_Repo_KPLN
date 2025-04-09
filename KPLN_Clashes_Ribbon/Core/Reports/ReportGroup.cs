@@ -32,6 +32,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private bool _isExpandedItem = false;
         private static ProjectDbService _libProjectDbService;
 
+        private int _bitrixTaskIdAR;
+        private int _bitrixTaskIdKR;
+        private int _bitrixTaskIdOV;
+        private int _bitrixTaskIdITP;
+        private int _bitrixTaskIdVK;
+        private int _bitrixTaskIdAUPT;
+        private int _bitrixTaskIdEOM;
+        private int _bitrixTaskIdSS;
+        private int _bitrixTaskIdAV;
+
         #region Данные из БД
         [Key]
         public int Id
@@ -141,6 +151,123 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                     NotifyPropertyChanged();
                     NotifySelectedPropertyChanged(nameof(LastUserFullName));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу AR
+        /// </summary>
+        public int BitrixTaskIdAR
+        {
+            get => _bitrixTaskIdAR;
+            set
+            {
+                _bitrixTaskIdAR = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу KR
+        /// </summary>
+        public int BitrixTaskIdKR
+        {
+            get => _bitrixTaskIdKR;
+            set
+            {
+                _bitrixTaskIdKR = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу OV
+        /// </summary>
+        public int BitrixTaskIdOV
+        {
+            get => _bitrixTaskIdOV;
+            set
+            {
+                _bitrixTaskIdOV = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу ITP
+        /// </summary>
+        public int BitrixTaskIdITP
+        {
+            get => _bitrixTaskIdITP;
+            set
+            {
+                _bitrixTaskIdITP = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу VK
+        /// </summary>
+        public int BitrixTaskIdVK
+        {
+            get => _bitrixTaskIdVK;
+            set
+            {
+                _bitrixTaskIdVK = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу AUPT
+        /// </summary>
+        public int BitrixTaskIdAUPT
+        {
+            get => _bitrixTaskIdAUPT;
+            set
+            {
+                _bitrixTaskIdAUPT = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу EOM
+        /// </summary>
+        public int BitrixTaskIdEOM
+        {
+            get => _bitrixTaskIdEOM;
+            set
+            {
+                _bitrixTaskIdEOM= value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу SS
+        /// </summary>
+        public int BitrixTaskIdSS
+        {
+            get => _bitrixTaskIdSS;
+            set
+            {
+                _bitrixTaskIdSS = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на задачу AV
+        /// </summary>
+        public int BitrixTaskIdAV
+        {
+            get => _bitrixTaskIdAV;
+            set
+            {
+                _bitrixTaskIdAV = value;
+                NotifyPropertyChanged();
             }
         }
         #endregion

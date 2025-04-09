@@ -11,8 +11,6 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class TextInputForm : Window
     {
-        public bool IsConfirmed = false;
-        
         public TextInputForm(Window parent, string header)
         {
             Owner = parent;
@@ -31,7 +29,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnBtnApply(object sender, RoutedEventArgs e)
         {
             UserComment = tbox.Text;
-            IsConfirmed = true;
+            this.DialogResult = true;
             Close();
         }
 

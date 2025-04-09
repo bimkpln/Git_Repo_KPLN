@@ -2,14 +2,17 @@
 using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Library_Bitrix24Worker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -19,30 +22,32 @@ using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 namespace KPLN_Clashes_Ribbon.Forms
 {
     /// <summary>
-    /// Логика взаимодействия для ReportWindow.xaml
+    /// Логика взаимодействия для ReportItemFrom.xaml
     /// </summary>
-    public partial class ReportWindow : Window
+    public partial class ReportForm : Window
     {
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
+        private readonly ReportManagerForm _reportManager;
+        private readonly ReportGroup _repourtGroup;
         private readonly Report _currentReport;
         private readonly Services.SQLite.SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
-        private readonly ReportManager _reportManager;
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
         private string _conflictDataTBx = string.Empty;
         private string _idDataTBx = string.Empty;
         private string _conflictMetaDataTBx = string.Empty;
 
-        public ReportWindow(Report report, bool isEnabled, ReportManager reportManager)
+        public ReportForm(Report report, ReportGroup reportGroup, ReportManagerForm reportManager)
         {
-            _currentReport = report;
             _reportManager = reportManager;
+            _repourtGroup = reportGroup;
+            _currentReport = report;
 
             _sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
-            if (isEnabled)
+            if (_repourtGroup.IsEnabled)
             {
                 foreach (ReportItem instance in ReportInstancesColl)
                 {
@@ -333,7 +338,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// <param name="msg">Сообщение при смене статуса</param>
         private void ItemMessageWorker(ReportItem item, KPItemStatus itemStatus, string msg)
         {
-            _sqliteService_ReportInstanceDB.SetStatusId_ByReportItem(itemStatus, item);
+            _sqliteService_ReportInstanceDB.SetStatusAndDepartment_ByReportItem(itemStatus, item);
             _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
 
             _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
@@ -341,8 +346,6 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             item.Status = itemStatus;
             item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
-
-            ResetDelegateBtnBrush(item);
         }
 
         private void OnCorrected(object sender, RoutedEventArgs e)
@@ -386,17 +389,78 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             SubDepartmentBtn subDepartmentBtn = button.DataContext as SubDepartmentBtn;
-            ReportItem item = subDepartmentBtn.Parent;
-            if (subDepartmentBtn.Id == 7)
+            if (!(FindParent<ItemsControl>(button).DataContext is ReportItem item))
+                return;
+
+            // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
+            if (subDepartmentBtn.Id == 99)
             {
-                // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
+                ResetDelegateBtnBrush(item);
                 ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
             }
+            // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
             else
             {
-                // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
+                int delegBitrixTaskId = 0;
+                switch (subDepartmentBtn.Id)
+                {
+                    case 2:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAR;
+                        break;
+                    case 3:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdKR;
+                        break;
+                    case 4:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdOV;
+                        break;
+                    case 5:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdVK;
+                        break;
+                    case 6:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdEOM;
+                        break;
+                    case 7:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdSS;
+                        break;
+                    case 20:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdITP;
+                        break;
+                    case 21:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAUPT;
+                        break;
+                    case 22:
+                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAV;
+                        break;
+                }
+                
+                // Анализ задачи в Bitrix (если есть)
+                if (delegBitrixTaskId > 0)
+                {
+                    Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
+                    {
+                        return BitrixMessageSender
+                            .SendMsgToTask_ByTaskId(
+                            delegBitrixTaskId, 
+                            $"Пользователь <{CurrentDBUser.Name} {CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\"");
+                    });
+
+                    if (sendMsgToTaskTask.Result)
+                        System.Windows.MessageBox.Show(
+                            $"Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}", 
+                            "Bitrix", 
+                            (MessageBoxButton)MessageBoxButtons.OK, 
+                            (MessageBoxImage)MessageBoxIcon.Asterisk);
+                }
+
                 SetDelegateBtnBrush(item, subDepartmentBtn);
                 ItemMessageWorker(item, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
+            }
+
+            // Обновление коллекции по делегировнным кнопкам
+            foreach (ReportItem ri in ReportInstancesColl)
+            {
+                if (ri.Id == item.Id)
+                    ri.SubDepartmentBtns = item.SubDepartmentBtns;
             }
         }
 
@@ -410,6 +474,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 sdBtn.DelegateBtnBackground = Brushes.Transparent;
             }
+            report.DelegatedDepartmentId = -1;
         }
 
         /// <summary>
@@ -421,10 +486,12 @@ namespace KPLN_Clashes_Ribbon.Forms
             foreach (SubDepartmentBtn sdBtn in subDepartmentBtns)
             {
                 if (sdBtn.Id == btn.Id)
-                { btn.DelegateBtnBackground = Brushes.Aqua; }
+                {
+                    btn.DelegateBtnBackground = Brushes.Aqua;
+                    report.DelegatedDepartmentId = sdBtn.Id;
+                }
                 else
-                { sdBtn.DelegateBtnBackground = Brushes.Transparent; }
-
+                    sdBtn.DelegateBtnBackground = Brushes.Transparent;
             }
         }
 
@@ -538,6 +605,18 @@ namespace KPLN_Clashes_Ribbon.Forms
             parts.Add(Optimize(instance.Element_2_Info));
             parts.Add(Optimize(instance.Point));
             return string.Join("\t", parts);
+        }
+
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
+
+            while (parentObject != null && !(parentObject is T))
+            {
+                parentObject = VisualTreeHelper.GetParent(parentObject);
+            }
+
+            return parentObject as T;
         }
     }
 }

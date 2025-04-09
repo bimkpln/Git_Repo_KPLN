@@ -14,9 +14,9 @@ namespace KPLN_Clashes_Ribbon.Core
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private Brush _delegateBtnBackground;
+        private Brush _delegateBtnBackground = Brushes.Transparent;
 
-        public SubDepartmentBtn(int id, string name, string description)
+        public SubDepartmentBtn(int id, string name, string description = null)
         {
             Id = id;
             Name = name;
@@ -28,11 +28,6 @@ namespace KPLN_Clashes_Ribbon.Core
         public string Name { get; private set; }
 
         public string Description { get; private set; }
-        
-        /// <summary>
-        /// Привязка к экземпляру отчета
-        /// </summary>
-        public ReportItem Parent { get; private set; }
 
         public Brush DelegateBtnBackground
         {
@@ -47,15 +42,6 @@ namespace KPLN_Clashes_Ribbon.Core
         public void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        /// <summary>
-        /// Установка привязок к инстансам отчетов и установка цвета
-        /// </summary>
-        public void SetBinding(ReportItem reportItem, Brush delegateBtnBackground)
-        {
-            this.Parent = reportItem;
-            this.DelegateBtnBackground = delegateBtnBackground;
         }
     }
 }

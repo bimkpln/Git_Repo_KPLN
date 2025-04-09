@@ -28,7 +28,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (selectedProjectForm.Status == UIStatus.RunStatus.Run)
                 {
                     DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
-                    ReportManager mainForm = new ReportManager(dBProject);
+                    ReportManagerForm mainForm = new ReportManagerForm(dBProject);
                     mainForm.Show();
                 }
                 else

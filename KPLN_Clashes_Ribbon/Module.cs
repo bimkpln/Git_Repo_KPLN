@@ -21,7 +21,7 @@ namespace KPLN_Clashes_Ribbon
             ModuleData.RevitVersion = application.ControlledApplication.VersionNumber;
 
             //Добавляю панель
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Clashes");
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Междисциплинарный анализ");
 
             //Добавляю кнопку в панель (тут приведен пример поиска панели, вместо этого - панель можно создать)
             AddPushButtonDataInPanel(
