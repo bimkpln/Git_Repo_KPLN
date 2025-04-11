@@ -1,32 +1,22 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using KPLN_ViewsAndLists_Ribbon.Common.Lists;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using Autodesk.Revit.DB;
-using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
     /// <summary>
     /// Interaction logic for UserControl1.xaml
     /// </summary>
-    public partial class FormListRename : Window
+    public partial class FormListRenumber : Window
     {
+        private readonly List<Parameter> _tBParams;
         public bool IsRun = false;
-        private List<Parameter> _tBParams;
 
-        public FormListRename(ParameterSet TBS)
+        public FormListRenumber(ParameterSet TBS)
         {
             List<Parameter> mixedParamList = new List<Parameter>();
             foreach (Parameter curParam in TBS)
@@ -36,7 +26,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _tBParams = mixedParamList.OrderBy(p => p.Definition.Name).ToList();
             InitializeComponent();
         }
-        
+
         private void UseUNICode(object sender, RoutedEventArgs e)
         {
 
@@ -45,9 +35,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             ExpBlocker(ExpParamRefresh, false);
             ExpBlocker(ExpClearRenumb, false);
 
-            cmbUniCode.ItemsSource = UniCodesCollection.CorretcUniCodes;
+            //cmbUniCode.ItemsSource = UniCodesCollection.CorretcUniCodes;
         }
-        
+
         private void UsePrefix(object sender, RoutedEventArgs e)
         {
             ExpBlocker(ExpUnicodes, false);
@@ -55,15 +45,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             ExpBlocker(ExpParamRefresh, false);
             ExpBlocker(ExpClearRenumb, false);
         }
-        
+
         private void RefreshParam(object sender, RoutedEventArgs e)
         {
             ExpBlocker(ExpUnicodes, false);
             ExpBlocker(ExpPrefixes, false);
             ExpBlocker(ExpParamRefresh, true);
             ExpBlocker(ExpClearRenumb, false);
-            
-            cmbParam.ItemsSource = _tBParams;
+
+            cmbParam2.ItemsSource = _tBParams;
         }
 
         private void UseClearRenumb(object sender, RoutedEventArgs e)
@@ -79,34 +69,34 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             IsRun = true;
             Close();
         }
-        
+
         private void OnCancel(object sender, RoutedEventArgs e)
         {
             Close();
         }
-        
-        private void Renumb(object sender, EventArgs e)
+
+        private void Prefixes_Renumb(object sender, EventArgs e)
         {
-            if ((bool)isRenumbering.IsChecked)
-            {
-                strNumTextBox.IsEnabled = true;
-            }
+            if ((bool)Prefixes_IsRenumbering.IsChecked)
+                Prefixes_StartNumberTBox.IsEnabled = true;
             else
-            {
-                strNumTextBox.IsEnabled = false;
-            }
+                Prefixes_StartNumberTBox.IsEnabled = false;
         }
 
-        private void UniCouneter(object sender, EventArgs e)
+        private void Prefixes_ParamUbpdate(object sender, EventArgs e)
         {
-            if ((bool)isStrongUniCounter.IsChecked)
-            {
-                strNumUniCode.IsEnabled = true;
-            }
+            if ((bool)Prefixes_IsRenumbering.IsChecked)
+                Prefixes_StartNumberTBox.IsEnabled = true;
             else
-            {
-                strNumUniCode.IsEnabled = false;
-            }
+                Prefixes_StartNumberTBox.IsEnabled = false;
+        }
+
+        private void UseUNICode_UniCouneter(object sender, EventArgs e)
+        {
+            if ((bool)UseUNICode_IsStrongUniCounter.IsChecked)
+                UseUNICode_NumberOfUniCode.IsEnabled = true;
+            else
+                UseUNICode_NumberOfUniCode.IsEnabled = false;
         }
 
         private void ExpBlocker(Expander exp, bool rule)
