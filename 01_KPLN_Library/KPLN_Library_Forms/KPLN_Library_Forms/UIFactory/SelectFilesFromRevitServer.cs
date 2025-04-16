@@ -75,9 +75,6 @@ namespace KPLN_Library_Forms.UIFactory
             }
             foreach (Folder folder in folderContents.Folders)
             {
-                if (folder.Name.ToLower().Contains("архив"))
-                    continue;
-
                 FolderContents recFolderContents = CurrentRevitServer.GetFolderContents(folder.Path);
                 models.AddRange(GetModelsFromMainDir(recFolderContents));
             }

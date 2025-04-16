@@ -1,8 +1,6 @@
-﻿using System.Text.RegularExpressions;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -14,9 +12,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         public TextInputForm(Window parent, string header)
         {
             Owner = parent;
-            
+
             InitializeComponent();
-            
+
             tbHeader.Text = header;
             runBtn.IsEnabled = false;
         }
@@ -78,6 +76,6 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// <summary>
         /// Проверка на ввод данных
         /// </summary>
-        private bool VerifyInput(string msg) => !string.IsNullOrWhiteSpace(msg) && tbox.Text.Length > 5;
+        private bool VerifyInput(string msg) => !string.IsNullOrWhiteSpace(msg) && tbox.Text.Length > 4;
     }
 }
