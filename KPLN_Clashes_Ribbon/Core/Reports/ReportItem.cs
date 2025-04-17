@@ -26,15 +26,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         private ObservableCollection<SubDepartmentBtn> _subDepartmentBtns = new ObservableCollection<SubDepartmentBtn>()
         {
-            new SubDepartmentBtn(2, "АР"),
-            new SubDepartmentBtn(3, "КР"),
-            new SubDepartmentBtn(4, "ОВ"),
-            new SubDepartmentBtn(5, "ВК"),
-            new SubDepartmentBtn(6, "ЭОМ"),
-            new SubDepartmentBtn(7, "СС"),
-            new SubDepartmentBtn(20, "ИТП"),
-            new SubDepartmentBtn(21, "ПТ"),
-            new SubDepartmentBtn(22, "АВ", "Подраздел СС: Автоматизация"),
+            new SubDepartmentBtn(2, "АР",  "Архитектурный раздел"),
+            new SubDepartmentBtn(3, "КР", "Конструктивные и объемно-планировочные решения"),
+            new SubDepartmentBtn(4, "ОВ", "Отопление, вентиляция и кондиционирование"),
+            new SubDepartmentBtn(5, "ВК", "Водоснабжение и канализация"),
+            new SubDepartmentBtn(6, "ЭОМ", "Внутреннее электрооборудование и освещение"),
+            new SubDepartmentBtn(7, "СС", "Слаботочные системы"),
+            new SubDepartmentBtn(20, "ИТП", "Индивидуальный тепловой пункт"),
+            new SubDepartmentBtn(21, "ПТ", "Система пожаротушения"),
+            new SubDepartmentBtn(22, "АВ", "Автоматизация (подраздел СС)"),
             new SubDepartmentBtn(99, "✖", "Сбросить делегирование и вернуть статус пересечения «Открытое»"),
         };
 

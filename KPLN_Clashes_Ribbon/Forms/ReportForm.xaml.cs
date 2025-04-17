@@ -436,20 +436,30 @@ namespace KPLN_Clashes_Ribbon.Forms
                 // Анализ задачи в Bitrix (если есть)
                 if (delegBitrixTaskId > 0)
                 {
-                    Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
+                    Task<bool> isTaskOpenTask = Task<bool>.Run(() =>
                     {
-                        return BitrixMessageSender
-                            .SendMsgToTask_ByTaskId(
-                            delegBitrixTaskId, 
-                            $"Пользователь <{CurrentDBUser.Name} {CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\"");
+                        return BitrixMessageSender.CheckTaskOpens_ByTaskId(delegBitrixTaskId);
                     });
 
-                    if (sendMsgToTaskTask.Result)
-                        System.Windows.MessageBox.Show(
-                            $"Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}", 
-                            "Bitrix", 
-                            (MessageBoxButton)MessageBoxButtons.OK, 
-                            (MessageBoxImage)MessageBoxIcon.Asterisk);
+                    // Спам ТОЛЬКО в закрытые задачи
+                    if (!isTaskOpenTask.Result)
+                    {
+                        Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
+                        {
+                            return BitrixMessageSender
+                                .SendMsgToTask_ByTaskId(
+                                delegBitrixTaskId,
+                                $"Пользователь <{CurrentDBUser.Name} {CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\"");
+                        });
+
+                        if (sendMsgToTaskTask.Result)
+                            System.Windows.MessageBox.Show(
+                                $"ВНИМАНИЕ! Отдел, которому вы делегируете замечание - уже отработал свою задачу. Свяжитесь с исполнителем лично" +
+                                $"\nИНФО: Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}",
+                                "Bitrix",
+                                (MessageBoxButton)MessageBoxButtons.OK,
+                                (MessageBoxImage)MessageBoxIcon.Asterisk);
+                    }
                 }
 
                 SetDelegateBtnBrush(item, subDepartmentBtn);
