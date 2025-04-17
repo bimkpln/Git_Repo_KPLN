@@ -72,8 +72,6 @@ namespace KPLN_IOSClasher.Core
             CheckDoc = checkDoc;
             CheckOutline = filterOutline;
 
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
-
             SetCurrentDocElemsToCheck(CheckDoc);
         }
 
@@ -82,8 +80,6 @@ namespace KPLN_IOSClasher.Core
             CheckDoc = checkDoc;
             CheckOutline = filterOutline;
 
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
-
             CheckLinkInst = linkInst;
 
             Document linkDoc = CheckLinkInst.GetLinkDocument();
@@ -91,13 +87,7 @@ namespace KPLN_IOSClasher.Core
             // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор и аннулирование CheckLinkInst
             if (linkDoc != null)
             {
-                Instance inst = CheckLinkInst as Instance;
-                Transform instTrans = inst.GetTransform();
-                // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
-                if (instTrans.IsTranslation)
-                    LinkTransfrom = instTrans;
-                else
-                    LinkTransfrom = Transform.CreateTranslation(instTrans.Origin);
+                LinkTransfrom = GetLinkTransform(CheckLinkInst);
                 
                 SetCurrentDocElemsToCheck(linkDoc);
             }
@@ -115,11 +105,6 @@ namespace KPLN_IOSClasher.Core
         public Outline CheckOutline { get; }
 
         /// <summary>
-        /// Трансформ проверяемого файла
-        /// </summary>
-        public Transform CheckDocTransform { get; }
-
-        /// <summary>
         /// Трансформ для связи
         /// </summary>
         public Transform LinkTransfrom { get; }
@@ -133,6 +118,20 @@ namespace KPLN_IOSClasher.Core
         /// Коллекция элементов, которые нужно детально проверить на коллизии (они попали в фильтры по геометрии CheckOutline)
         /// </summary>
         public HashSet<Element> CurrentDocElemsToCheck { get; } = new HashSet<Element>(new ElementComparerById());
+
+        /// <summary>
+        /// Задать Transform связи
+        /// </summary>
+        public static Transform GetLinkTransform(RevitLinkInstance linkInst)
+        {
+            Instance inst = linkInst as Instance;
+            Transform instTrans = inst.GetTransform();
+            // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
+            if (instTrans.IsTranslation)
+                return instTrans;
+            else
+                return Transform.CreateTranslation(instTrans.Origin);
+        }
 
         /// <summary>
         /// Получить коллекцию уточненных элементов по элементу на проверку ДЛЯ СВЯЗИ (для текущего документа этот список уже сформирован по элементу)

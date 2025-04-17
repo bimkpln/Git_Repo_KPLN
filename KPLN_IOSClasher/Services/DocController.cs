@@ -29,8 +29,6 @@ namespace KPLN_IOSClasher.Services
         /// </summary>
         public static List<IntersectCheckEntity> IntersectCheckEntity_Link { get; private set; }
 
-        public static Document CheckRevitDoc { get; private set; }
-
         public static int CheckDocDBSubDepartmentId { get; private set; }
 
         public static bool CheckIf_OVLoad { get; set; } = false;
@@ -47,13 +45,16 @@ namespace KPLN_IOSClasher.Services
         public static void CurrentDocumentUpdateData(Document doc)
         {
 #if Revit2020 || Revit2023
+            //#if Debug2020 || Debug2023
             IsDocumentAnalyzing = true;
             if (doc != null)
             {
-                CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+                string fileName = doc.IsWorkshared
+                    ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
+                    : doc.PathName;
 
                 // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
-                DBProject currentDBPrj = Module.ModuleDBWorkerService.Get_DBProject(doc);
+                DBProject currentDBPrj = Module.ModuleDBWorkerService.Get_DBProject(fileName);
                 if (currentDBPrj == null
                     || currentDBPrj.Stage.Equals("АФК") 
                     || currentDBPrj.Stage.Equals("ПД") 
@@ -69,16 +70,26 @@ namespace KPLN_IOSClasher.Services
                 // тех, на которые есть исключения - игнорируются, а этого быть не должно
                 if (prjMatrix.Count() == 0)
                     IsDocumentAnalyzing = false;
-                // Игнор по всему отделу
-                else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == Module.ModuleDBWorkerService.CurrentDBUser.SubDepartmentId))
-                    IsDocumentAnalyzing = false;
-                // Игнор по отдельным пользователям
                 else
-                    IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
+                {
+                    int dbDocId = Module.ModuleDBWorkerService.Get_DBDocument(fileName).Id;
+
+                    // Игнор по ID модели
+                    if (prjMatrix.Any(prj => prj.ExceptionDocumentId == dbDocId))
+                        IsDocumentAnalyzing = false;
+                    // Игнор по всему отделу
+                    else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == Module.ModuleDBWorkerService.CurrentDBUser.SubDepartmentId))
+                        IsDocumentAnalyzing = false;
+                    // Игнор по отдельным пользователям
+                    else
+                        IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
+                    
+                }
+
+                if (IsDocumentAnalyzing)
+                    CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
             }
 #endif
-
-
 #if Debug2020 || Debug2023
             CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
             IsDocumentAnalyzing = true;

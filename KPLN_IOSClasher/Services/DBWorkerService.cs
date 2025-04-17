@@ -10,8 +10,9 @@ namespace KPLN_IOSClasher.Services
         private readonly UserDbService _userDbService;
         private readonly SubDepartmentDbService _subDepartmentDbService;
         private readonly ProjectsIOSClashMatrixDbService _projectsIOSClashMatrixDbService;
+        private readonly DocumentDbService _documentDbService;
         private readonly ProjectDbService _projectDbService;
-        
+
         private DBUser _dBUser;
         private DBSubDepartment _dBSubDepartment;
 
@@ -21,6 +22,8 @@ namespace KPLN_IOSClasher.Services
             _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
             _subDepartmentDbService = (SubDepartmentDbService)new CreatorSubDepartmentDbService().CreateService();
             _projectsIOSClashMatrixDbService  = (ProjectsIOSClashMatrixDbService)new CreatorProjectIOSClashMatrixDbService().CreateService();
+
+            _documentDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
             _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
         }
 
@@ -65,19 +68,15 @@ namespace KPLN_IOSClasher.Services
             return -1;
         }
 
-        internal DBProject Get_DBProject(Document doc)
-        {
-            string fileName = doc.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
+        internal DBProject Get_DBProject(string fileName) =>
+            _projectDbService.GetDBProject_ByRevitDocFileName(fileName);
 
-            return _projectDbService.GetDBProject_ByRevitDocFileName(fileName);
-        }
+        internal DBDocument Get_DBDocument(string fileName) =>
+            _documentDbService.GetDBDocuments_ByFileFullPath(fileName);
 
         /// <summary>
         /// Получить коллекцию DBProjectsIOSClashMatrix, которые приняты на проекте
         /// </summary>
-        /// <returns></returns>
         internal IEnumerable<DBProjectsIOSClashMatrix> Get_DBProjectsIOSClashMatrix(DBProject currentDBPrj) =>
             _projectsIOSClashMatrixDbService.GetDBProjectMatrix_ByProject(currentDBPrj);
     }

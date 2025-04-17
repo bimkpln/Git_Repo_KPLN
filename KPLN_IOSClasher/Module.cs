@@ -14,6 +14,8 @@ namespace KPLN_IOSClasher
 {
     public class Module : IExternalModule
     {
+        public static string RevitVersion {  get; private set; }
+
         public Module()
         {
             ModuleDBWorkerService = new DBWorkerService();
@@ -35,6 +37,8 @@ namespace KPLN_IOSClasher
                 || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
                 return Result.Succeeded;
 #endif
+            RevitVersion = application.ControlledApplication.VersionNumber;
+            
             //Подписка на события
             application.ViewActivated += OnViewActivated;
             application.ControlledApplication.DocumentChanged += OnDocumentChanged;
@@ -171,12 +175,7 @@ namespace KPLN_IOSClasher
                 .ToArray();
 
             if (deletedLinearElems.Any())
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointCleaner(deletedLinearElems));
-
-            // При удалении элементов - по цепочке соседи считаются модифицированными.
-            // Если я только удалил элементы, и ничего не создал (это не запараллелить, но на всякий) - то дальнейший анализ отменяется
-            if (addedLinearElems.Count() == 0 && deletedLinearElems.Count() != 0)
-                return;
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointDelElemCleaner(deletedLinearElems));
 
             Element[] allChangedElems = addedLinearElems.Concat(modifyedLinearElems).ToArray();
 
@@ -230,7 +229,7 @@ namespace KPLN_IOSClasher
             }
 
             if (allChangedElems.Any())
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointMaker(intersectedPointEntities, allChangedElems));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointDocWorker(intersectedPointEntities, allChangedElems));
         }
     }
 }
