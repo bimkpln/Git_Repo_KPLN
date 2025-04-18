@@ -339,14 +339,34 @@ namespace KPLN_IOSClasher.Services
                 linkInstanceId = intEnt.CheckLinkInst.Id.IntegerValue;
 
             Solid solidToCheck = GetElemSolid(elemToCheck, intEnt.LinkTransfrom);
-            Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(addedElemSolid, solidToCheck, BooleanOperationsType.Intersect);
-            if (intersectionSolid != null && intersectionSolid.Volume > 0)
-                return new IntersectPointEntity(
-                    intersectionSolid.ComputeCentroid(),
-                    addedElem.Id.IntegerValue,
-                    elemToCheck.Id.IntegerValue,
-                    linkInstanceId,
-                    Module.ModuleDBWorkerService.CurrentDBUser);
+            try
+            {
+                Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(addedElemSolid, solidToCheck, BooleanOperationsType.Intersect);
+                if (intersectionSolid != null && intersectionSolid.Volume > 0)
+                {
+                    XYZ intersectCentroid = intersectionSolid.ComputeCentroid();
+                    XYZ intersectCorrectedByELevation = new XYZ(intersectCentroid.X, intersectCentroid.Y, intersectCentroid.Z - intEnt.CheckDocBPElevation);
+
+                    return new IntersectPointEntity(
+                        intersectCorrectedByELevation,
+                        addedElem.Id.IntegerValue,
+                        elemToCheck.Id.IntegerValue,
+                        linkInstanceId,
+                        Module.ModuleDBWorkerService.CurrentDBUser);
+
+                }
+            }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException) 
+            {
+                if (intEnt.CheckLinkInst == null)
+                    HtmlOutput.Print($"При поиске коллизии попался сложный элемент. Это элемент твоей модели либо с id: {addedElem.Id}, " +
+                        $"либо с id: {elemToCheck.Id}. Решение - проверь вручную свои элементы, и устрани потенцальную коллизию.",
+                        MessageType.Warning);
+                else
+                    HtmlOutput.Print($"При поиске коллизии попался сложный элемент. Либо элемент твоей модели с id: {addedElem.Id}, " +
+                        $"либо элемент из связи {intEnt.CheckLinkInst.Name} с id: {elemToCheck.Id}. Решение - проверь вручную свои элементы, и устрани потенцальную коллизию.",
+                        MessageType.Warning);
+            }
 
             return null;
         }

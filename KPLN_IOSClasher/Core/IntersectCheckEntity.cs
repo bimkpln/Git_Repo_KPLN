@@ -13,6 +13,8 @@ namespace KPLN_IOSClasher.Core
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
 
+        private double _checkDocBPElevation = -99.99;
+
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
@@ -98,6 +100,37 @@ namespace KPLN_IOSClasher.Core
         /// Ссылка на проверяемый документ
         /// </summary>
         public Document CheckDoc { get; }
+
+        /// <summary>
+        /// Ссылка на отметку БТП проверяемого документа (только на неё идёт смещение)
+        /// </summary>
+        public double CheckDocBPElevation 
+        {
+            get
+            {
+                if(_checkDocBPElevation == -99.99)
+                {
+                    _checkDocBPElevation = new FilteredElementCollector(CheckDoc)
+                        .OfClass(typeof(BasePoint))
+                        .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                        .WhereElementIsNotElementType()
+                        .FirstOrDefault()
+                        .get_BoundingBox(null)
+                        .Min
+                        .Z;
+                }
+                _checkDocBPElevation = new FilteredElementCollector(CheckDoc)
+                        .OfClass(typeof(BasePoint))
+                        .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                        .WhereElementIsNotElementType()
+                        .FirstOrDefault()
+                        .get_BoundingBox(null)
+                        .Min
+                        .Z;
+
+                return _checkDocBPElevation;
+            }
+        }
 
         /// <summary>
         /// Outline для проверки
