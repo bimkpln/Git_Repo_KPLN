@@ -222,7 +222,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             if (isEmptyConflData && isEmptyConflictMetaData && isEmptyIDData)
             {
-                if (!FilteredInstancesColl.Contains(report))
+                if (!FilteredInstancesColl.Any(ri => ri.Id == report.Id))
                     FilteredInstancesColl.Add(report);
             }
             else
@@ -239,7 +239,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
                 if (checkConflData || checkConflictMetaData || checkIDData)
                 {
-                    if (!FilteredInstancesColl.Contains(report))
+                    if (!FilteredInstancesColl.Any(ri => ri.Id == report.Id))
                         FilteredInstancesColl.Add(report);
                 }
                 else
@@ -272,9 +272,9 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnUpdate(object sender, RoutedEventArgs args)
         {
-            _reportManager.UpdateGroups();
-
+            FilteredInstancesColl.Clear();
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+            UpdateCollection();
 
             OnSelectionChanged(null, null);
         }

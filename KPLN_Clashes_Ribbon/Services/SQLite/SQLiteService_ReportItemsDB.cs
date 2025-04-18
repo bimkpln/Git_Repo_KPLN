@@ -87,6 +87,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 var parent = resultRepItems.FirstOrDefault(z => z.Id == i.ParentGroupId);
                 parent?.SubElements.Add(i);
             }
+
             return resultRepItems;
         }
 
