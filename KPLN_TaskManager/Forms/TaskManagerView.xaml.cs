@@ -96,6 +96,9 @@ namespace KPLN_TaskManager.Forms
         /// <returns></returns>
         public TaskManagerView LoadTaskData()
         {
+            if (Module.CurrentDBProject == null)
+                return null;
+
             _dBProject = Module.CurrentDBProject;
 
             _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
