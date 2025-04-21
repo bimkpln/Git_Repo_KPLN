@@ -40,7 +40,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         IEnumerable<View> mainDocumentCollector;
         IEnumerable<View> additionalDocumentCollector;
 
-        private Dictionary<string, Tuple<string, View>> viewTemplateChanges = new Dictionary<string, Tuple<string, View>>();
+        private Dictionary<string, Tuple<string,string,View>> viewTemplateChanges = new Dictionary<string, Tuple<string,string,View>>();
 
         public CopyViewForm(UIApplication uiapp)
         {
@@ -98,8 +98,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                     if (additionalDocument != null)
                     {
-                        MessageBox.Show($"Выбранный документ загружен:\n{additionalDocument.Title}", "Информация");
-
                         string additionalDocName = additionalDocument.Title;
 
                         StackPanel panel = new StackPanel
@@ -136,11 +134,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         // Обработка документа
                         if (mainDocument != null && additionalDocument != null)
                         {
-                            DisplayAllViewsInPanel(mainDocument, additionalDocument);
+                            BTN_OpenTempalte.IsEnabled = true;
+                            BTN_OpenTemplateAndView.IsEnabled = true;
+
+                            DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
                         }
                         else
                         {
                             MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
+                            BTN_OpenTempalte.IsEnabled = false;
+                            BTN_OpenTemplateAndView.IsEnabled = false;
                             BTN_Run.IsEnabled = false;
                         }
                     }
@@ -152,12 +155,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     additionalDocument = null;
                     SP_OtherFile.Children.Clear();
                     SP_OtherFileSetings.Children.Clear();
+
+                    BTN_OpenTempalte.IsEnabled = false;
+                    BTN_OpenTemplateAndView.IsEnabled = false;
                     BTN_Run.IsEnabled = false;
                 }
             }
             else
             {
                 MessageBox.Show("Нет доступных открытых документов.", "Предупреждение");
+
+                BTN_OpenTempalte.IsEnabled = false;
+                BTN_OpenTemplateAndView.IsEnabled = false;
                 BTN_Run.IsEnabled = false;
             }
         }
@@ -192,9 +201,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         
                         if (externalDoc != null)
                         {
-                            MessageBox.Show($"Документ открыт\n" +
-                                $"{externalDoc.Title}", "Информация");
-
                             uiapp.DialogBoxShowing -= OnDialogBoxShowing;
                             uiapp.Application.FailuresProcessing -= OnFailureProcessing;
 
@@ -234,12 +240,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                             // Обработка документа
                             if (mainDocument != null && additionalDocument != null)
-                            {
-                                DisplayAllViewsInPanel(mainDocument, additionalDocument);
+                            {                               
+                                BTN_OpenTempalte.IsEnabled = true;
+                                BTN_OpenTemplateAndView.IsEnabled = true;
+
+                                DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
                             }
                             else
                             {
                                 MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
+                                BTN_OpenTempalte.IsEnabled = false;
+                                BTN_OpenTemplateAndView.IsEnabled = false;
                                 BTN_Run.IsEnabled = false;
                             }
                         }
@@ -247,6 +258,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     catch (Exception ex)
                     {
                         MessageBox.Show($"Ошибка при открытии файла: {ex.Message}", "Ошибка");
+                        BTN_OpenTempalte.IsEnabled = false;
+                        BTN_OpenTemplateAndView.IsEnabled = false;
                         BTN_Run.IsEnabled = false;
                         uiapp.DialogBoxShowing -= OnDialogBoxShowing;
                     }
@@ -258,8 +271,54 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        // Чтение видов и шаблонов
-        private void DisplayAllViewsInPanel(Document mainDocument, Document additionalDocument)
+        // XAML. Кнопка "Шаблоны"
+        private void BTN_OpenTempalte_Click(object sender, RoutedEventArgs e)
+        {
+            mainDocumentTemplates = null;
+            additionalDocumentTemplates = null;
+            additionalDocumentViews = null;
+            mainDocumentCollector = null;
+            additionalDocumentCollector = null;
+
+            DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
+        }
+
+        // XAML. Кнопка "Шаблоны и виды"
+        private void BTN_OpenTemplateAndView_Click(object sender, RoutedEventArgs e)
+        {
+            mainDocumentTemplates = null;
+            additionalDocumentTemplates = null;
+            additionalDocumentViews = null;
+            mainDocumentCollector = null;
+            additionalDocumentCollector = null;
+
+            DisplayAllViewsAndTemplatesInPanel(mainDocument, additionalDocument);
+        }
+
+
+
+
+
+
+
+
+
+
+
+        // Шаблоны
+        private void DisplayAllTemplatesInPanel(Document mainDocument, Document additionalDocument)
+        {
+            SP_OtherFileSetings.Children.Clear();
+        }
+
+
+
+
+
+
+
+        // Виды и шаблоны
+        private void DisplayAllViewsAndTemplatesInPanel(Document mainDocument, Document additionalDocument)
         {
             SP_OtherFileSetings.Children.Clear();
          
@@ -298,14 +357,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             Grid grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(285) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(68) });
 
             TextBlock nameHeader = new TextBlock
             {
                 Text = "Имя вида",
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
-                Margin = new Thickness(5, 3, 0, 3),
+                Margin = new Thickness(2, 3, 0, 3),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
 
@@ -318,6 +378,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 HorizontalAlignment = HorizontalAlignment.Left
             };
 
+            TextBlock copyTemplateHeader = new TextBlock
+            {
+                Text = "Резерв. копия",
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 3, 0, 3),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             Grid.SetRow(nameHeader, 0);
             Grid.SetColumn(nameHeader, 0);
@@ -325,6 +394,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             Grid.SetRow(templateHeader, 0);
             Grid.SetColumn(templateHeader, 1);
             grid.Children.Add(templateHeader);
+            Grid.SetRow(copyTemplateHeader, 0);
+            Grid.SetColumn(copyTemplateHeader, 2);
+            grid.Children.Add(copyTemplateHeader);
             int row = 1;
 
             foreach (var kvp in additionalDocumentViews)
@@ -405,15 +477,25 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 templateComboBox.Text = initialTemplateName;
                 string lockedTemplate = initialTemplateName;
 
+                CheckBox copyTemplateCheckBox = new CheckBox
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Margin = new Thickness(0, 5, 5, 5),
+                    IsEnabled = false,
+                };
+
                 templateCheckBox.Checked += (s, e) =>
                 {
                     templateComboBox.IsEnabled = true;
-                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox);
+                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
+                    UpdateCopyCheckBox(templateCheckBox, templateComboBox, copyTemplateCheckBox);
                 };
 
                 templateCheckBox.Unchecked += (s, e) =>
                 {
                     templateComboBox.IsEnabled = false;
+                    copyTemplateCheckBox.IsEnabled = false;
 
                     if (mainDocumentTemplates.ContainsKey(lockedTemplate))
                     {
@@ -431,7 +513,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         templateComboBox.Foreground = Brushes.Black;
                     }
 
-                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox);
+                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
                 };
 
                 templateComboBox.SelectionChanged += (s, e) =>
@@ -453,7 +535,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         }
                     }
 
-                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox);
+                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
+                    UpdateCopyCheckBox(templateCheckBox, templateComboBox, copyTemplateCheckBox);
+                };
+
+                copyTemplateCheckBox.Checked += (s, e) =>
+                {
+                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
+                    UpdateCopyCheckBox(templateCheckBox, templateComboBox, copyTemplateCheckBox);
+                };
+
+                copyTemplateCheckBox.Unchecked += (s, e) =>
+                {
+                    UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
+                    UpdateCopyCheckBox(templateCheckBox, templateComboBox, copyTemplateCheckBox);
                 };
 
                 StackPanel templatePanel = new StackPanel
@@ -470,10 +565,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 Grid.SetRow(templatePanel, row);
                 Grid.SetColumn(templatePanel, 1);
                 grid.Children.Add(templatePanel);
+                Grid.SetRow(copyTemplateCheckBox, row);
+                Grid.SetColumn(copyTemplateCheckBox, 2);
+                grid.Children.Add(copyTemplateCheckBox);
 
                 row++;
 
-                UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox);
+                UpdateTemplateChange(view.Name, templateComboBox, templateCheckBox, copyTemplateCheckBox);
             }
 
             scrollViewer.Content = grid;
@@ -481,32 +579,57 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             BTN_Run.IsEnabled = true;
         }
 
+        // Вспомогательный метод проверки данных CheckBox
+        void UpdateCopyCheckBox(CheckBox templateCheckBox, ComboBox templateComboBox, CheckBox copyTemplateCheckBox)
+        {
+            string selectedName = templateComboBox.SelectedItem as string ?? templateComboBox.Text;
+            if (templateCheckBox.IsChecked == true && selectedName != "Нет шаблона")
+            {
+                copyTemplateCheckBox.IsEnabled = true;
+            }
+            else
+            {
+                copyTemplateCheckBox.IsEnabled = false;
+            }
+        }
+
         // Вспомогательный метод записи данных с интерфейса в словарь
-        void UpdateTemplateChange(string viewName, ComboBox comboBox, CheckBox checkBox)
+        void UpdateTemplateChange(string viewName, ComboBox comboBox, CheckBox statusCheckBox, CheckBox statusCopyCheckBox)
         {
             string selectedName = comboBox.SelectedItem as string ?? comboBox.Text;
 
             View selectedTemplate = null;
             mainDocumentTemplates.TryGetValue(selectedName, out selectedTemplate);
 
-            string status;       
-            if (checkBox.IsChecked == true)
+            string statusView;
+            string statusCopyView;
+
+            if (statusCheckBox.IsChecked == true)
             {
                 if (selectedName == "Нет шаблона")
                 {
-                    status = "delete";
+                    statusView = "delete";
                 }
                 else
                 {
-                    status = "resave";                    
+                    statusView = "resave";                    
                 }
             }
             else
             {
-                status = "ignore";
+                statusView = "ignore";
             }
 
-            viewTemplateChanges[viewName] = new Tuple<string, View>(status, selectedTemplate);
+            if (statusCopyCheckBox.IsChecked == true)
+            {
+                statusCopyView = "copyView";
+            }
+            else
+            {
+                statusCopyView = "ignoreCopyView";
+            }
+
+            viewTemplateChanges[viewName] = new Tuple<string, string, View>(statusView, statusCopyView, selectedTemplate);
         }
 
 
@@ -518,6 +641,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // XAML. Кнопка запускающая работу плагина
         private void BTN_Run_Click(object sender, RoutedEventArgs e)
         {
             // ОТЛАДКА
@@ -528,13 +666,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 foreach (var kvp in viewTemplateChanges)
                 {
                     string key = kvp.Key;
-                    string status = kvp.Value.Item1;
-                    string viewName = kvp.Value.Item2 != null ? kvp.Value.Item2.Name : "Нет шаблона";
+                    string statusView = kvp.Value.Item1;
+                    string statusCopyView = kvp.Value.Item2;
+                    string viewName = kvp.Value.Item3 != null ? kvp.Value.Item3.Name : "Нет шаблона";
                     
-                    writer.WriteLine($"{key}: {viewName} - {status}");
+                    writer.WriteLine($"{key}: {viewName} - {statusView}. {statusCopyView};");
                 }
             }
-            MessageBox.Show("Файл сохранён на рабочем столе:\n" + filePath);
 
             // КОПИРОВАНИЕ ШАБЛОНОВ
             List<string> errorMessages = new List<string>();
@@ -546,30 +684,116 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 foreach (var kvp in viewTemplateChanges)
                 {
                     string viewName = kvp.Key;
-                    string status = kvp.Value.Item1;
-                    View template = kvp.Value.Item2;
+                    string statusView = kvp.Value.Item1;
+                    string statusCopyView = kvp.Value.Item2;
+                    View templateView = kvp.Value.Item3;
 
                     View viewToUpdate = new FilteredElementCollector(additionalDocument)
                         .OfClass(typeof(View))
                         .Cast<View>()
                         .FirstOrDefault(v => !v.IsTemplate && v.Name == viewName);
 
+                    ElementId oldTemplateViewId = viewToUpdate.ViewTemplateId;
+
                     if (viewToUpdate == null)
                         continue;
 
-                    if (status == "delete")
+                    if (statusView == "delete")
                     {
                         viewToUpdate.ViewTemplateId = ElementId.InvalidElementId;
                     }
-                    else if (status == "resave" && template != null)
+
+                    else if (statusView == "resave" && templateView != null)
                     {
-                        if (template.IsTemplate && viewToUpdate.ViewType == template.ViewType)
-                        {
-                            viewToUpdate.ViewTemplateId = template.Id;
+                        ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+
+                        ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                        View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
+                        string templateName = copiedTemplateViewNew.Name;
+
+                        var viewsUsingTemplate = new FilteredElementCollector(additionalDocument).OfClass(typeof(View)).Cast<View>()
+                            .Where(v => !v.IsTemplate && v.ViewTemplateId != ElementId.InvalidElementId && additionalDocument.GetElement(v.ViewTemplateId) is View vt && vt.Name == templateName).ToList();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        if (statusCopyView == "ignoreCopyView")
+                        {                           
+                            foreach (var v in viewsUsingTemplate)
+                            {
+                                v.ViewTemplateId = copiedTemplateIdNew;
+                            }
+
+                            viewToUpdate.ViewTemplateId = copiedTemplateIdNew;
+
+                            if (oldTemplateViewId != ElementId.InvalidElementId)
+                            {
+                                try
+                                {
+                                    additionalDocument.Delete(oldTemplateViewId);
+                                }
+                                catch (Exception ex)
+                                {
+                                    errorMessages.Add($"❌ Не удалось удалить шаблон \"{oldTemplateViewId.ToString()}\": {ex.Message}");
+                                }
+                            }
                         }
+                        else if (statusCopyView == "copyView")
+                        {
+                            viewToUpdate.ViewTemplateId = copiedTemplateIdNew;
+
+                            foreach (var v in viewsUsingTemplate)
+                            {
+                                v.ViewTemplateId = copiedTemplateIdNew;
+                            }
+
+                            string newViewTemplateName = $"{templateView.Name}_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+                            View existingTemplate = new FilteredElementCollector(additionalDocument)
+                                .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == templateView.Name);
+
+                            if (existingTemplate != null)
+                            {
+                                try
+                                {
+                                    existingTemplate.Name = newViewTemplateName;
+                                }
+                                catch (Exception ex)
+                                {
+                                    TaskDialog.Show("Ошибка", $"Не удалось переименовать шаблон \"{existingTemplate.Name}\": {ex.Message}");
+                                }
+                            }
+                        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                         else
                         {
-                            errorMessages.Add($"❌ Вид \"{viewToUpdate.Name}\" не совместим с шаблоном \"{template.Name}\"");
+                            errorMessages.Add($"❌ Вид \"{viewToUpdate.Name}\" не совместим с шаблоном \"{templateView.Name}\"");
                         }
                     }
                 }
