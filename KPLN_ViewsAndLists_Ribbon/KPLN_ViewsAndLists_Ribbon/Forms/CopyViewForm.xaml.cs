@@ -308,12 +308,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void BTN_OpenTempalte_Click(object sender, RoutedEventArgs e)
         {           
             DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
+            viewTemplateChanges.Clear();
         }
 
         // XAML. Кнопка "Шаблоны и виды"
         private void BTN_OpenTemplateAndView_Click(object sender, RoutedEventArgs e)
         {          
             DisplayAllViewsAndTemplatesInPanel(mainDocument, additionalDocument);
+            viewOnlyTemplateChanges.Clear();
         }
 
         // Отрисовка интефейса. Шаблоны
