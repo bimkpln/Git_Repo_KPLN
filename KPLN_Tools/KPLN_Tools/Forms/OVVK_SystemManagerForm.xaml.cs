@@ -43,8 +43,34 @@ namespace KPLN_Tools.Forms
 
         private void BtnCreateViews_Click(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(CurrentViewModel));
-            Close();
+            // Анализ вида
+            Autodesk.Revit.DB.View activeView = CurrentViewModel.CurrentDoc.ActiveView;
+            if (activeView == null || activeView.ViewType != ViewType.ThreeD)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    $"Скрипт нужно запускать при открытом 3D-виде, т.к. на основании его будут создаваиться аналоги",
+                    "Ошибка",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+
+                return;
+            }
+
+            ElementMultiPick elementMultiPick = new ElementMultiPick(CurrentViewModel
+                .SystemSumParameters
+                .Where(pName => !pName.Contains("ВНИМАНИЕ!!!"))
+                .Select(pName => new KPLN_Library_Forms.Common.ElementEntity(pName)));
+            
+            if ((bool)elementMultiPick.ShowDialog())
+            {
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(
+                    CurrentViewModel.CurrentDoc,
+                    elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray(),
+                    CurrentViewModel.ParameterName, 
+                    CurrentViewModel.SysNameSeparator));
+
+                Close();
+            }
         }
 
         private void BtnSelectWarningsElems_Click(object sender, RoutedEventArgs e)

@@ -52,6 +52,7 @@ namespace KPLN_Tools.ExternalCommands
             && !x.Symbol.FamilyName.StartsWith("501_")
             && !x.Symbol.FamilyName.StartsWith("502_")
             && !x.Symbol.FamilyName.StartsWith("503_")
+            && !x.Symbol.FamilyName.StartsWith("ASML_О_Отверстие_")
             && !x.Symbol.FamilyName.StartsWith("ClashPoint");
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)

@@ -9,11 +9,10 @@ using System.Linq;
 namespace KPLN_Tools.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
-    internal class Command_SET_EOMParams : IExternalCommand
+    public class Command_SET_EOMParams : IExternalCommand
     {
         private const double FEET_TO_METERS = 0.3048;
         private const int ROUNDING_PRECISION = 2;
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
@@ -47,16 +46,34 @@ namespace KPLN_Tools.ExternalCommands
                 .Where(e => e.Category != null && IsValidElement(e))
                 .ToList();
         }
-        private static bool IsValidElement(Element element)
+        private enum ElementType
+        {
+            None,
+            CableTray,
+            CableTrayFitting,
+            DuctOGK,
+            DuctEG
+        }
+        private static ElementType GetElementType(Element element)
         {
             int categoryId = element.Category.Id.IntegerValue;
             string typeParam = element.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString();
             string familyParam = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString();
 
-            return (categoryId == (int)BuiltInCategory.OST_CableTray && typeParam?.Contains("tray") == true) ||
-                   (categoryId == (int)BuiltInCategory.OST_CableTrayFitting && familyParam?.Contains("bend") == true) ||
-                   (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ОГК") == true) ||
-                   (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_") == true);
+            if (categoryId == (int)BuiltInCategory.OST_CableTray && typeParam?.Contains("tray") == true)
+                return ElementType.CableTray;
+            if (categoryId == (int)BuiltInCategory.OST_CableTrayFitting && familyParam?.Contains("bend") == true)
+                return ElementType.CableTrayFitting;
+            if (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ОГК") == true)
+                return ElementType.DuctOGK;
+            if (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ЭГ") == true)
+                return ElementType.DuctEG;
+
+            return ElementType.None;
+        }
+        private static bool IsValidElement(Element element)
+        {
+            return GetElementType(element) != ElementType.None;
         }
         private static void ProcessAllElements(IReadOnlyCollection<Element> elements,
             List<Tuple<string, ElementId>> failedElements)
@@ -89,19 +106,26 @@ namespace KPLN_Tools.ExternalCommands
             {
                 try
                 {
-                    SetQuantityParameter(element, failedElements);
-                    int categoryId = element.Category.Id.IntegerValue;
-                    if (categoryId == (int)BuiltInCategory.OST_DuctCurves)
-                    {
-                        CopyMappedParameters(element, ductMappings, failedElements);
-                        CopyMappedParameters(element, mzMappings, failedElements);
-                    }
-                    else if (categoryId == (int)BuiltInCategory.OST_CableTray ||
-                            categoryId == (int)BuiltInCategory.OST_CableTrayFitting)
-                    {
-                        CopyMappedParameters(element, cableTrayMappings, failedElements);
-                    }
+                    string typeParam = element.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString();
+                    SetQuantityParameter(element, failedElements, typeParam);
+                    ElementType elementType = GetElementType(element);
 
+                    switch (elementType)
+                    {
+                        case ElementType.CableTray:
+                        case ElementType.CableTrayFitting:
+                            CopyMappedParameters(element, cableTrayMappings, failedElements);
+                            break;
+                        case ElementType.DuctOGK:
+                            CopyMappedParameters(element, ductMappings, failedElements);
+                            break;
+                        case ElementType.DuctEG:
+                            CopyMappedParameters(element, mzMappings, failedElements);
+                            break;
+                        case ElementType.None:
+                            AddFailedElement(element, failedElements, "Элемент не прошел фильтр");
+                            break;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -109,22 +133,37 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
         }
-        private static void SetQuantityParameter(Element element, List<Tuple<string, ElementId>> failedElements)
+        private static void SetQuantityParameter(Element element,
+        List<Tuple<string, ElementId>> failedElements,
+        string typeParam)
         {
             var qtyParam = element.LookupParameter("ASML_Количество");
+            if (qtyParam == null)
+            {
+                AddFailedElement(element, failedElements, "Отсутствует параметр ASML_Количество");
+                return;
+            }
+
             int categoryId = element.Category.Id.IntegerValue;
             if (categoryId == (int)BuiltInCategory.OST_CableTray || categoryId == (int)BuiltInCategory.OST_DuctCurves)
             {
-                var lengthParam = element.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH);
-                if (lengthParam != null)
+                var lengthParam = element.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH)?.AsDouble() ?? 0.0;
+                var widthParam = element.get_Parameter(BuiltInParameter.RBS_CURVE_WIDTH_PARAM)?.AsDouble() ?? 0.0;
+
+                double lengthInMeters = lengthParam * FEET_TO_METERS;
+                double widthInMeters = widthParam * FEET_TO_METERS;
+
+                double quantity = lengthInMeters;
+                if (typeParam?.Contains("ASML_ОГК") == true)
                 {
-                    double lengthInMeters = lengthParam.AsDouble() * FEET_TO_METERS;
-                    qtyParam.Set(Math.Round(lengthInMeters, ROUNDING_PRECISION));
+                    quantity = lengthInMeters * widthInMeters;
                 }
+
+                qtyParam.Set((double)Math.Round(quantity, 2));
             }
             else if (categoryId == (int)BuiltInCategory.OST_CableTrayFitting)
             {
-                qtyParam.Set(1.0);
+                qtyParam.Set(1);
             }
         }
         private static void CopyMappedParameters(Element element,
@@ -136,8 +175,22 @@ namespace KPLN_Tools.ExternalCommands
                 var sourceParam = element.LookupParameter(mapping.Item1);
                 var targetParam = element.LookupParameter(mapping.Item2);
 
+                if (sourceParam == null)
+                {
+                    AddFailedElement(element, failedElements, $"Источник {mapping.Item1} не найден");
+                    continue;
+                }
+                if (targetParam == null)
+                {
+                    AddFailedElement(element, failedElements, $"Цель {mapping.Item2} не найдена");
+                    continue;
+                }
+                if (targetParam.IsReadOnly)
+                {
+                    AddFailedElement(element, failedElements, $"Цель {mapping.Item2} только для чтения");
+                    continue;
+                }
                 CopyParameterValue(sourceParam, targetParam);
-
             }
         }
         private static void CopyParameterValue(Parameter source, Parameter target)
@@ -148,13 +201,12 @@ namespace KPLN_Tools.ExternalCommands
                 case StorageType.Double: target.Set(source.AsDouble()); break;
                 case StorageType.Integer: target.Set(source.AsInteger()); break;
                 case StorageType.ElementId: target.Set(source.AsElementId()); break;
-                default: throw new ArgumentException($"Неподдерживаемый тип параметра: {source.Definition.Name}");
             }
         }
         private static void AddFailedElement(Element element,
             List<Tuple<string, ElementId>> failedElements, string error)
         {
-            string familyName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString() ?? "Неизвестно";
+            string familyName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString();
             failedElements.Add(Tuple.Create($"{familyName}: {error}", element.Id));
         }
         private static Result DisplayResults(IReadOnlyCollection<Tuple<string, ElementId>> failedElements,

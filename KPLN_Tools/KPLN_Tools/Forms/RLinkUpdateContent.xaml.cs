@@ -160,15 +160,14 @@ namespace KPLN_Tools.Forms
                 if (rsFilesPickForm == null)
                     return;
 
-                bool? dialogResult = rsFilesPickForm.ShowDialog();
-                if (dialogResult == null || rsFilesPickForm.Status != UIStatus.RunStatus.Run)
-                    return;
+                if ((bool)rsFilesPickForm.ShowDialog())
+                {
+                    string fileName = rsFilesPickForm.SelectedElements.FirstOrDefault().Name;
+                    string filePath = $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{rsFilesPickForm.SelectedElements.FirstOrDefault().Name}";
+                    LinkManagerUpdateEntity newEntity = new LinkManagerUpdateEntity(currentLME.LinkName, currentLME.LinkPath, fileName, filePath);
 
-                string fileName = rsFilesPickForm.SelectedElements.FirstOrDefault().Name;
-                string filePath = $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{rsFilesPickForm.SelectedElements.FirstOrDefault().Name}";
-                LinkManagerUpdateEntity newEntity = new LinkManagerUpdateEntity(currentLME.LinkName, currentLME.LinkPath, fileName, filePath);
-
-                ReloadWithNewData(currentLME, newEntity);
+                    ReloadWithNewData(currentLME, newEntity);
+                }
             }
         }
 
