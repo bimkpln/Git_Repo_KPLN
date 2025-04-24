@@ -3,7 +3,6 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Forms;
-using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
@@ -24,17 +23,14 @@ namespace KPLN_Clashes_Ribbon.Commands
                 bool isBIMUser = ClashesMainCollection.CurrentDBUser.SubDepartmentId == 8;
                 
                 ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(isBIMUser);
-                bool? dialogResult = selectedProjectForm.ShowDialog();
-                if (selectedProjectForm.Status == UIStatus.RunStatus.Run)
+                if ((bool)selectedProjectForm.ShowDialog())
                 {
                     DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
                     ReportManagerForm mainForm = new ReportManagerForm(dBProject);
                     mainForm.Show();
                 }
                 else
-                {
                     return Result.Cancelled;
-                }
 
                 return Result.Succeeded;
             }
