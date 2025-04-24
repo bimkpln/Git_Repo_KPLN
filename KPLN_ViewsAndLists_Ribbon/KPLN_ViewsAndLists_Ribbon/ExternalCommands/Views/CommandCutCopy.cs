@@ -54,7 +54,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 ElementMultiPick mainForm = new ElementMultiPick(viewEntities, "Выбери планы для подрезки");
                 mainForm.ShowDialog();
 
-                if (mainForm.Status == UIStatus.RunStatus.Run && mainForm.SelectedElements.Count > 0)
+                if (mainForm.SelectedElements.Count > 0)
                 {
                     using (Transaction trans = new Transaction(doc, "KPLN: Копировать подрезку"))
                     {

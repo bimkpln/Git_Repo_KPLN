@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Windows.Media;
-using System.Windows.Interop;
 using Microsoft.Win32;
 using System.Collections.Generic;
 using System.Windows;
@@ -17,7 +16,7 @@ using RevitApp = Autodesk.Revit.ApplicationServices.Application;
 using Document = Autodesk.Revit.DB.Document;
 using Grid = System.Windows.Controls.Grid;
 using ComboBox = System.Windows.Controls.ComboBox;
-using System.Text;
+
 
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
@@ -39,11 +38,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly ExternalEvent _copyEvent;
         private readonly CopyViewExternalHandler _copyHandler;
 
-        UIApplication uiapp;
+        UIApplication _uiapp;
         private readonly DBRevitDialog[] _dbRevitDialogs;
 
         Document mainDocument = null;
         Document additionalDocument = null;
+
+        Document heritageMainDocument = null;
+        Document heritageAdditionalDocument = null;
 
         SortedDictionary<string, View> mainTemplates;
 
@@ -57,12 +59,81 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private Dictionary<string, Tuple<string, string, View>> viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, View>>();
         private Dictionary<string, Tuple<string,string,View>> viewTemplateChanges = new Dictionary<string, Tuple<string,string,View>>();
 
-        public CopyViewForm(UIApplication uiapp)
+        public CopyViewForm(UIApplication uiapp, Document heritageMainDocument, Document heritageAdditionalDocument)
         {
             InitializeComponent();
-            this.uiapp = uiapp;
+            _uiapp = uiapp;
 
-            mainDocument = uiapp.ActiveUIDocument.Document;
+            if (heritageMainDocument == null)
+            {
+                mainDocument = uiapp.ActiveUIDocument.Document;
+            }
+            else
+            {
+                mainDocument = heritageMainDocument;
+            }
+
+            if (heritageAdditionalDocument != null)
+            {
+                additionalDocument = heritageAdditionalDocument;
+
+                if (additionalDocument != null)
+                {
+                    string additionalDocName = additionalDocument.Title;
+
+                    StackPanel panel = new StackPanel
+                    {
+                        Orientation = Orientation.Vertical,
+                        Margin = new Thickness(10, 4, 0, 4)
+                    };
+
+                    TextBlock textBlock = new TextBlock
+                    {
+                        Text = "Имя открытого документа",
+                        Height = 15,
+                        FontSize = 11
+                    };
+
+                    System.Windows.Controls.TextBox textBox = new System.Windows.Controls.TextBox
+                    {
+                        Name = "TB_OtherDocumentName",
+                        Height = 25,
+                        Width = 655,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Margin = new Thickness(0, 0, 15, 0),
+                        Padding = new Thickness(3),
+                        Cursor = System.Windows.Input.Cursors.Arrow,
+                        IsReadOnly = true,
+                        Text = additionalDocName,
+                        ToolTip = additionalDocument.PathName
+                    };
+
+                    panel.Children.Add(textBlock);
+                    panel.Children.Add(textBox);
+                    SP_OtherFile.Children.Add(panel);
+
+                    // Обработка документа
+                    if (mainDocument != null && additionalDocument != null)
+                    {
+                        BTN_OpenTempalte.IsEnabled = true;
+                        BTN_OpenTemplateAndView.IsEnabled = true;
+
+                        DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
+
+                        viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, View>>();
+                        viewTemplateChanges = new Dictionary<string, Tuple<string, string, View>>();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
+                        BTN_OpenTempalte.IsEnabled = false;
+                        BTN_OpenTemplateAndView.IsEnabled = false;
+                        BTN_RunOneFile.IsEnabled = false;
+                        BTN_RunManyFile.IsEnabled = false;
+                    }
+                }
+            }
+
             string mainDocPath = mainDocument.PathName;
             string mainDocName = mainDocument.Title;
 
@@ -76,14 +147,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _copyEvent = ExternalEvent.Create(_copyHandler);
         }
 
-
         // XAML. Обработка открытых документов
         private void BTN_LoadLinkedDoc_Click(object sender, RoutedEventArgs e)
         {
             additionalDocument = null;
 
             // Поиск документа
-            RevitApp revitApp = uiapp.Application;
+            RevitApp revitApp = _uiapp.Application;
             DocumentSet docSet = revitApp.Documents;
             List<Document> allOpenDocuments = new List<Document>();
 
@@ -112,11 +182,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                     if (additionalDocument != null)
                     {
-                        this.Hide();
-                        this.Show();
-                        this.Topmost = true;
-                        this.Activate();
-
                         string additionalDocName = additionalDocument.Title;
 
                         StackPanel panel = new StackPanel
@@ -156,6 +221,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             BTN_OpenTempalte.IsEnabled = true;
                             BTN_OpenTemplateAndView.IsEnabled = true;
 
+                            CB_ReplaceInViews.IsEnabled = true;
+                            CB_ReplaceInViews.Foreground = Brushes.Black;
+
                             DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
 
                             viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, View>>();
@@ -164,9 +232,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         else
                         {
                             MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
+                            CB_ReplaceInViews.IsEnabled = false;
+                            CB_ReplaceInViews.IsChecked = false;
+                            CB_ReplaceInViews.Foreground = Brushes.Gray;
                             BTN_OpenTempalte.IsEnabled = false;
                             BTN_OpenTemplateAndView.IsEnabled = false;
-                            BTN_Run.IsEnabled = false;
+                            BTN_RunOneFile.IsEnabled = false;
+                            BTN_RunManyFile.IsEnabled = false;
                         }
                     }
                 }
@@ -178,18 +250,26 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     SP_OtherFile.Children.Clear();
                     SP_OtherFileSetings.Children.Clear();
 
+                    CB_ReplaceInViews.IsEnabled = false;
+                    CB_ReplaceInViews.IsChecked = false;
+                    CB_ReplaceInViews.Foreground = Brushes.Gray;
                     BTN_OpenTempalte.IsEnabled = false;
                     BTN_OpenTemplateAndView.IsEnabled = false;
-                    BTN_Run.IsEnabled = false;
+                    BTN_RunOneFile.IsEnabled = false;
+                    BTN_RunManyFile.IsEnabled = false;
                 }
             }
             else
             {
                 MessageBox.Show("Нет доступных открытых документов.", "Предупреждение");
 
+                CB_ReplaceInViews.IsEnabled = false;
+                CB_ReplaceInViews.IsChecked = false;
+                CB_ReplaceInViews.Foreground = Brushes.Gray;
                 BTN_OpenTempalte.IsEnabled = false;
                 BTN_OpenTemplateAndView.IsEnabled = false;
-                BTN_Run.IsEnabled = false;
+                BTN_RunOneFile.IsEnabled = false;
+                BTN_RunManyFile.IsEnabled = false;
             }
         }
 
@@ -216,22 +296,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         SP_OtherFile.Children.Clear();
                         SP_OtherFileSetings.Children.Clear();
 
-                        RevitApp revitApp = uiapp.Application;
-                        uiapp.DialogBoxShowing += OnDialogBoxShowing;
-                        uiapp.Application.FailuresProcessing += OnFailureProcessing;
+                        _uiapp.DialogBoxShowing += OnDialogBoxShowing;
+                        _uiapp.Application.FailuresProcessing += OnFailureProcessing;
 
-                        this.Hide();
-                        Document externalDoc = uiapp.OpenAndActivateDocument(filePath).Document;
+                        Document externalDoc = _uiapp.OpenAndActivateDocument(filePath).Document;
 
                         if (externalDoc != null)
                         {
-                            uiapp.DialogBoxShowing -= OnDialogBoxShowing;
-                            uiapp.Application.FailuresProcessing -= OnFailureProcessing;
-
-                            System.Threading.Thread.Sleep(200); 
-                            this.Show();
-                            this.Topmost = true;
-                            this.Activate();
+                            _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
+                            _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
 
                             // Отрисовка интерфейса
                             additionalDocument = externalDoc;
@@ -270,7 +343,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                             // Обработка документа
                             if (mainDocument != null && additionalDocument != null)
-                            {                               
+                            {
                                 BTN_OpenTempalte.IsEnabled = true;
                                 BTN_OpenTemplateAndView.IsEnabled = true;
 
@@ -282,25 +355,56 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             else
                             {
                                 MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
+                                CB_ReplaceInViews.IsEnabled = false;
+                                CB_ReplaceInViews.IsChecked = false;
+                                CB_ReplaceInViews.Foreground = Brushes.Gray;
                                 BTN_OpenTempalte.IsEnabled = false;
                                 BTN_OpenTemplateAndView.IsEnabled = false;
-                                BTN_Run.IsEnabled = false;
+                                BTN_RunOneFile.IsEnabled = false;
+                                BTN_RunManyFile.IsEnabled = false;
                             }
                         }
                     }
                     catch (Exception ex)
                     {
                         MessageBox.Show($"Ошибка при открытии файла: {ex.Message}", "Ошибка");
+                        CB_ReplaceInViews.IsEnabled = false;
+                        CB_ReplaceInViews.IsChecked = false;
+                        CB_ReplaceInViews.Foreground = Brushes.Gray;
                         BTN_OpenTempalte.IsEnabled = false;
                         BTN_OpenTemplateAndView.IsEnabled = false;
-                        BTN_Run.IsEnabled = false;
-                        uiapp.DialogBoxShowing -= OnDialogBoxShowing;
+                        BTN_RunOneFile.IsEnabled = false;
+                        BTN_RunManyFile.IsEnabled = false;
+                        _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
                     }
                 }
                 else
                 {
                     MessageBox.Show("Файл не найден.", "Ошибка");
+
+                    CB_ReplaceInViews.IsEnabled = false;
+                    CB_ReplaceInViews.IsChecked = false;
+                    CB_ReplaceInViews.Foreground = Brushes.Gray;
+                    BTN_OpenTempalte.IsEnabled = false;
+                    BTN_OpenTemplateAndView.IsEnabled = false;
+                    BTN_RunOneFile.IsEnabled = false;
+                    BTN_RunManyFile.IsEnabled = false;
+
                 }
+            }
+            else
+            {
+                additionalDocument = null;
+                SP_OtherFile.Children.Clear();
+                SP_OtherFileSetings.Children.Clear();
+
+                CB_ReplaceInViews.IsEnabled = false;
+                CB_ReplaceInViews.IsChecked = false;
+                CB_ReplaceInViews.Foreground = Brushes.Gray;
+                BTN_OpenTempalte.IsEnabled = false;
+                BTN_OpenTemplateAndView.IsEnabled = false;
+                BTN_RunOneFile.IsEnabled = false;
+                BTN_RunManyFile.IsEnabled = false;
             }
         }
 
@@ -308,19 +412,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void BTN_OpenTempalte_Click(object sender, RoutedEventArgs e)
         {           
             DisplayAllTemplatesInPanel(mainDocument, additionalDocument);
-            viewTemplateChanges.Clear();
         }
 
         // XAML. Кнопка "Шаблоны и виды"
         private void BTN_OpenTemplateAndView_Click(object sender, RoutedEventArgs e)
         {          
             DisplayAllViewsAndTemplatesInPanel(mainDocument, additionalDocument);
-            viewOnlyTemplateChanges.Clear();
         }
 
         // Отрисовка интефейса. Шаблоны
         private void DisplayAllTemplatesInPanel(Document mainDocument, Document additionalDocument)
         {
+            CB_ReplaceInViews.IsEnabled = true;
+            CB_ReplaceInViews.Foreground = Brushes.Black;
+
+            viewTemplateChanges.Clear();
+            viewOnlyTemplateChanges.Clear();
             SP_OtherFileSetings.Children.Clear();
 
             var viewTemplateFilter = new ElementClassFilter(typeof(View));
@@ -456,7 +563,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             scrollViewer.Content = grid;
             SP_OtherFileSetings.Children.Add(scrollViewer);
-            BTN_Run.IsEnabled = true;
+            BTN_RunOneFile.IsEnabled = true;
+            BTN_RunManyFile.IsEnabled = true;
         }
 
         // Виды. Метод записи изменений для шаблонов
@@ -471,6 +579,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         // Отрисовка интефейса. Виды и шаблоны
         private void DisplayAllViewsAndTemplatesInPanel(Document mainDocument, Document additionalDocument)
         {
+            CB_ReplaceInViews.IsEnabled = false;
+            CB_ReplaceInViews.IsChecked = false;
+            CB_ReplaceInViews.Foreground = Brushes.Gray;
+
+            viewTemplateChanges.Clear();
+            viewOnlyTemplateChanges.Clear();
             SP_OtherFileSetings.Children.Clear();
          
             var viewTemplateFilter = new ElementClassFilter(typeof(View));
@@ -729,7 +843,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             scrollViewer.Content = grid;
             SP_OtherFileSetings.Children.Add(scrollViewer);
-            BTN_Run.IsEnabled = true;
+            BTN_RunOneFile.IsEnabled = true;
+            BTN_RunManyFile.IsEnabled = true;
         }
 
         // Виды и шаблоны. Вспомогательный метод проверки данных CheckBox
@@ -798,64 +913,85 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             viewTemplateChanges[viewName] = new Tuple<string, string, View>(statusView, statusCopyView, selectedTemplate);
         }
 
-        // XAML. Кнопка запускающая работу плагина
-        private void BTN_Run_Click(object sender, RoutedEventArgs e)
-        {
+
+
+
+
+
+
+
+
+
+        // XAML. Кнопка запускающая работу плагина. Один файл
+        private void BTN_RunOneFile_Click(object sender, RoutedEventArgs e)
+        {         
+            if (viewOnlyTemplateChanges.Count == 0 && viewTemplateChanges.Count == 0)
+            {
+                MessageBox.Show($"Нет изменений для приминения", "KPLN. Информация");
+                return;
+            }
+
+            this.Close();
+
             _copyHandler.ExecuteAction = (uiApp) =>
             {
+                _uiapp.DialogBoxShowing += OnDialogBoxShowing;
+                _uiapp.Application.FailuresProcessing += OnFailureProcessing;
+
+                string pathAD = additionalDocument.PathName;
+                if (!string.IsNullOrEmpty(pathAD))
+                {
+                    uiApp.OpenAndActivateDocument(pathAD);
+                }
+
                 List<string> errorMessages = new List<string>();
 
                 using (Transaction trans = new Transaction(additionalDocument, "KPLN. Копирование шаблонов видов"))
                 {
                     trans.Start();
 
-                    foreach (var kvp in viewOnlyTemplateChanges)
+
+
+
+
+
+                    // Шаблоны видов
+                    if (viewOnlyTemplateChanges.Count > 0)
                     {
-                        string viewTemplateName = kvp.Key;
-                        string statusView = kvp.Value.Item1;
-                        string statusCopyView = kvp.Value.Item2;
-                        View templateView = kvp.Value.Item3;
+                        foreach (var kvp in viewOnlyTemplateChanges)
+                        {
+                            string viewTemplateName = kvp.Key;
+                            string statusView = kvp.Value.Item1;
+                            string statusCopyView = kvp.Value.Item2;
+                            View templateView = kvp.Value.Item3;
 
-                        if (statusView == "resave" && templateView != null)
-                        {                          
-                            if (statusCopyView == "ignoreCopyView")
+                            if (statusView == "resave" && templateView != null)
                             {
-                                var existingTemplate = new FilteredElementCollector(additionalDocument)
-                                    .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
-
-                                if (existingTemplate != null)
+                                // Удаление
+                                if (statusCopyView == "ignoreCopyView")
                                 {
-                                    try
-                                    {
-                                        additionalDocument.Delete(existingTemplate.Id);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        errorMessages.Add($"❌ Не удалось удалить шаблон \"{existingTemplate.ToString()}\": {ex.Message}");
-                                    }
-                                }
+                                    var existingTemplate = new FilteredElementCollector(additionalDocument)
+                                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
 
-                                ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
-                                ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
-                                View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
-                                string templateName = templateView.Name;
+                                    List<View> viewsUsingexistingTemplate = null;
 
-                                copiedTemplateViewNew.Name = viewTemplateName;
-                            }
-                            else if (statusCopyView == "copyView")
-                            {
-                                var existingTemplate = new FilteredElementCollector(additionalDocument)
-                                    .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
+                                    if (existingTemplate != null)
+                                    {
+                                        viewsUsingexistingTemplate = new FilteredElementCollector(additionalDocument)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
+                                            .ToList();
 
-                                if (existingTemplate != null)
-                                {
-                                    try
-                                    {
-                                        existingTemplate.Name = $"{viewTemplateName}_{DateTime.Now:yyyyMMdd_HHmmss}";
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        TaskDialog.Show("Ошибка", $"Не удалось переименовать шаблон \"{existingTemplate.Name}\": {ex.Message}");
+                                        try
+                                        {
+                                            existingTemplate.Name = $"{existingTemplate.Name}_temp{DateTime.Now:yyyyMMddHHmmss}";
+                                            additionalDocument.Delete(existingTemplate.Id);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось удалить шаблон {existingTemplate.ToString()}: {ex.Message}\n");
+                                        }
                                     }
 
                                     ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
@@ -863,126 +999,444 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                     View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
                                     string templateName = templateView.Name;
 
+                                    try
+                                    {
+                                        copiedTemplateViewNew.Name = viewTemplateName;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errorMessages.Add($"Не переименовать шаблон {copiedTemplateViewNew.Name}: {ex.Message}\n");
+                                    }
+
+                                    if (CB_ReplaceInViews.IsChecked == true && viewsUsingexistingTemplate != null)
+                                    {
+                                        foreach (View view in viewsUsingexistingTemplate)
+                                        {
+                                            try
+                                            {
+                                                view.ViewTemplateId = copiedTemplateIdNew;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                errorMessages.Add($"Не удалось назначить новый шаблон на вид '{view.Name}': {ex.Message}");
+                                            }
+                                        }
+                                    }
+                                }
+                                // Резервная копия
+                                else if (statusCopyView == "copyView")
+                                {
+                                    var existingTemplate = new FilteredElementCollector(additionalDocument)
+                                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
+
+                                    List<View> viewsUsingexistingTemplate = null;
+
+                                    if (existingTemplate != null)
+                                    {
+                                        viewsUsingexistingTemplate = new FilteredElementCollector(additionalDocument)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
+                                            .ToList();
+
+                                        try
+                                        {
+                                            existingTemplate.Name = $"{viewTemplateName}_{DateTime.Now:yyyyMMdd_HHmmss}";
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n");
+                                        }
+                                    }
+
+                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+                                    ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                                    View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
+
                                     copiedTemplateViewNew.Name = viewTemplateName;
+
+                                    if (CB_ReplaceInViews.IsChecked == true && viewsUsingexistingTemplate != null)
+                                    {
+                                        foreach (View view in viewsUsingexistingTemplate)
+                                        {
+                                            try
+                                            {
+                                                view.ViewTemplateId = copiedTemplateIdNew;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                errorMessages.Add($"Не удалось назначить новый шаблон на вид '{view.Name}': {ex.Message}");
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    foreach (var kvp in viewTemplateChanges)
+
+
+
+
+
+
+
+                    // Шаблоны на видах
+                    if (viewTemplateChanges.Count > 0)
                     {
-                        string viewName = kvp.Key;
-                        string statusView = kvp.Value.Item1;
-                        string statusCopyView = kvp.Value.Item2;
-                        View templateView = kvp.Value.Item3;
-
-                        View viewToUpdate = new FilteredElementCollector(additionalDocument)
-                            .OfClass(typeof(View))
-                            .Cast<View>()
-                            .FirstOrDefault(v => !v.IsTemplate && v.Name == viewName);
-
-                        ElementId oldTemplateViewId = viewToUpdate.ViewTemplateId;
-
-                        if (viewToUpdate == null)
-                            continue;
-
-                        if (statusView == "delete")
+                        foreach (var kvp in viewTemplateChanges)
                         {
-                            viewToUpdate.ViewTemplateId = ElementId.InvalidElementId;
-                        }
+                            string viewName = kvp.Key;
+                            string statusView = kvp.Value.Item1;
+                            string statusCopyView = kvp.Value.Item2;
+                            View templateView = kvp.Value.Item3;
 
-                        else if (statusView == "resave" && templateView != null)
-                        {
-                            ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
-                            ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
-                            View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
-                            string templateName = templateView.Name;
+                            View viewToUpdate = new FilteredElementCollector(additionalDocument)
+                                .OfClass(typeof(View))
+                                .Cast<View>()
+                                .FirstOrDefault(v => !v.IsTemplate && v.Name == viewName);
 
-                            var viewsUsingTemplate = new FilteredElementCollector(additionalDocument).OfClass(typeof(View)).Cast<View>()
-                                .Where(v => !v.IsTemplate && v.ViewTemplateId != ElementId.InvalidElementId && additionalDocument.GetElement(v.ViewTemplateId) is View vt && vt.Name == templateName).ToList();
+                            if (viewToUpdate == null)
+                                continue;
 
-                            if (statusCopyView == "ignoreCopyView")
+                            // Удаление шаблона на виде
+                            if (statusView == "delete")
                             {
-                                if (oldTemplateViewId != ElementId.InvalidElementId)
+                                try
                                 {
-                                    try
-                                    {
-                                        additionalDocument.Delete(oldTemplateViewId);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        errorMessages.Add($"❌ Не удалось удалить шаблон \"{oldTemplateViewId.ToString()}\": {ex.Message}");
-                                    }
+                                    viewToUpdate.ViewTemplateId = ElementId.InvalidElementId;
                                 }
-
-                                foreach (var v in viewsUsingTemplate)
+                                catch (Exception ex)
                                 {
-                                    v.ViewTemplateId = copiedTemplateIdNew;
-                                }
-
-                                copiedTemplateViewNew.Name = templateName;
-                                viewToUpdate.ViewTemplateId = copiedTemplateIdNew;                         
-                            }
-                            else if (statusCopyView == "copyView")
-                            {
-                                string newViewTemplateName = $"{templateView.Name}_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-                                View existingTemplate = new FilteredElementCollector(additionalDocument)
-                                    .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == templateView.Name);
-
-                                if (existingTemplate != null)
-                                {
-                                    try
-                                    {
-                                        existingTemplate.Name = newViewTemplateName;
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        TaskDialog.Show("Ошибка", $"Не удалось переименовать шаблон \"{existingTemplate.Name}\": {ex.Message}");
-                                    }
-                                }
-
-                                viewToUpdate.ViewTemplateId = copiedTemplateIdNew;
-
-                                foreach (var v in viewsUsingTemplate)
-                                {
-                                    v.ViewTemplateId = copiedTemplateIdNew;
-                                }
-                              
-                                if (copiedTemplateViewNew != null)
-                                {
-                                    try
-                                    {
-                                        copiedTemplateViewNew.Name = templateName;
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        TaskDialog.Show("Ошибка", $"Не удалось переименовать шаблон \"{copiedTemplateViewNew.Name}\": {ex.Message}");
-                                    }
+                                    errorMessages.Add($"Не удалось удалить шаблон на виде {viewToUpdate.Name}: {ex.Message}\n");
                                 }
                             }
-                            else
-                            {
-                                errorMessages.Add($"❌ Вид \"{viewToUpdate.Name}\" не совместим с шаблоном \"{templateView.Name}\"");
+
+                            // Перезапись шаблона вида
+                            else if (statusView == "resave")
+                            {                              
+                                if (statusCopyView == "ignoreCopyView")
+                                {
+                                    List<View> viewsUsingTemplateFD = null;
+                                    List<View> viewsUsingTemplateFDD = null;
+
+                                    List<View> viewsUsingSameTemplateName = new FilteredElementCollector(additionalDocument)
+                                        .OfClass(typeof(View))
+                                        .Cast<View>()
+                                        .Where(v =>
+                                            !v.IsTemplate &&
+                                            v.ViewTemplateId != ElementId.InvalidElementId &&
+                                            additionalDocument.GetElement(v.ViewTemplateId) is View vt &&
+                                            vt.IsTemplate &&
+                                            vt.Name == templateView.Name)
+                                        .ToList();
+
+                                    List<View> viewsWithSameTemplateAsViewName = new List<View>();
+
+                                    View viewNamed = new FilteredElementCollector(additionalDocument)
+                                        .OfClass(typeof(View))
+                                        .Cast<View>()
+                                        .FirstOrDefault(v => !v.IsTemplate && v.Name == viewName);
+
+                                    if (viewNamed != null && viewNamed.ViewTemplateId != ElementId.InvalidElementId)
+                                    {
+                                        ElementId templateId = viewNamed.ViewTemplateId;
+                                        View template = additionalDocument.GetElement(templateId) as View;
+
+                                        if (template != null && template.IsTemplate)
+                                        {
+                                            viewsWithSameTemplateAsViewName = new FilteredElementCollector(additionalDocument)
+                                                .OfClass(typeof(View))
+                                                .Cast<View>()
+                                                .Where(v =>
+                                                    !v.IsTemplate &&
+                                                    v.ViewTemplateId == template.Id)
+                                                .ToList();
+                                        }
+                                    }
+
+                                    List<View> allUniqueViews = viewsWithSameTemplateAsViewName
+                                        .Concat(viewsUsingSameTemplateName)
+                                        .GroupBy(v => v.Id)
+                                        .Select(g => g.First())
+                                        .ToList();
+
+                                    // Удаление шаблонов из словаря
+                                    ElementId templateIdFD = viewToUpdate.ViewTemplateId;
+                                    View templateViewFD = additionalDocument.GetElement(templateIdFD) as View;
+
+                                    viewsUsingTemplateFD = new FilteredElementCollector(additionalDocument).OfClass(typeof(View)).Cast<View>()
+                                        .Where(v => !v.IsTemplate && v.ViewTemplateId == templateIdFD).ToList();
+
+                                    foreach (var view in viewsUsingTemplateFD)
+                                    {
+                                        try
+                                        {
+                                            view.ViewTemplateId = ElementId.InvalidElementId;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось удалить шаблон {view.ViewTemplateId.ToString()} у вида {view}: {ex.Message}\n");
+                                        }
+                                    }
+
+                                    try
+                                    {
+                                        if (templateViewFD != null)
+                                        {
+                                            templateViewFD.Name = $"{templateViewFD.Name}_temp{DateTime.Now:yyyyMMddHHmmss}";
+                                            additionalDocument.Delete(templateIdFD);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errorMessages.Add($"Не удалось удалить шаблон '{templateViewFD.Name}': {ex.Message}");
+                                    }
+
+                                    // Удаление шаблонов из файла
+                                    View matchingTemplateInDoc = new FilteredElementCollector(additionalDocument)
+                                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == templateView.Name);
+
+                                    if (matchingTemplateInDoc != null)
+                                    {
+                                        ElementId matchingTemplateId = matchingTemplateInDoc.Id;
+
+                                        viewsUsingTemplateFDD = new FilteredElementCollector(additionalDocument).OfClass(typeof(View)).Cast<View>()
+                                        .Where(v => !v.IsTemplate && v.ViewTemplateId == matchingTemplateId).ToList();
+
+                                        foreach (var view in viewsUsingTemplateFDD)
+                                        {
+                                            try
+                                            {
+                                                view.ViewTemplateId = ElementId.InvalidElementId;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                errorMessages.Add($"Не удалось удалить шаблон {view.ViewTemplateId.ToString()} у вида {view}: {ex.Message}\n");
+                                            }
+                                        }
+
+                                        try
+                                        {
+                                            matchingTemplateInDoc.Name = $"{templateView.Name}_temp{DateTime.Now:yyyyMMddHHmmss}";
+                                            additionalDocument.Delete(matchingTemplateId);                                        
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось удалить шаблон '{templateView.Name}': {ex.Message}");
+                                        }
+                                    }
+
+                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+                                    ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                                    View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
+
+                                    foreach (var v in allUniqueViews)
+                                    {
+                                        try
+                                        {
+                                            v.ViewTemplateId = copiedTemplateIdNew;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид {v.Name}: {ex.Message}\n");
+                                        }
+                                    }
+                                    
+                                    try
+                                    {
+                                        copiedTemplateViewNew.Name = templateView.Name;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errorMessages.Add($"Не удалось переименовать шаблон вида {copiedTemplateViewNew.Name}: {ex.Message}\n");
+                                    }
+
+                                    try
+                                    {
+                                        viewToUpdate.ViewTemplateId = copiedTemplateIdNew;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errorMessages.Add($"Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид {viewToUpdate.Name}: {ex.Message}\n");
+                                    }               
+                                    
+                                    if (viewToUpdate.ViewType != copiedTemplateViewNew.ViewType)
+                                    {
+                                        errorMessages.Add($"Типы видов не совпадают: {viewToUpdate.ViewType} ≠ {copiedTemplateViewNew.ViewType}.");
+
+                                        try
+                                        {
+                                            additionalDocument.Delete(copiedTemplateIdNew);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Ошибка при удалении шаблона '{copiedTemplateViewNew.Name}': {ex.Message}");
+                                        }
+                                    }
+                                }
+
+
+
+
+
+
+
+
+
+
+
+
+                                else if (statusCopyView == "copyView")
+                                {                                
+                                    View templateViewCopy = additionalDocument.GetElement(viewToUpdate.ViewTemplateId) as View;
+                                    string newViewTemplateName;
+
+                                    if (templateViewCopy != null)
+                                    {
+                                        newViewTemplateName = $"{templateViewCopy.Name}_{DateTime.Now:yyyyMMdd_HHmmss}";
+                                    }
+                                    else
+                                    {
+                                        newViewTemplateName = "Не выбрано";
+                                    }
+
+                                    View existingTemplate = null; 
+
+                                    if (templateViewCopy != null)
+                                    {
+                                        existingTemplate = new FilteredElementCollector(additionalDocument)
+                                            .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == templateViewCopy.Name);
+                                    }
+
+                                    if (existingTemplate != null)
+                                    {
+                                        try
+                                        {
+                                            existingTemplate.Name = newViewTemplateName;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n");
+                                        }
+                                    }
+
+                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+                                    ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                                    View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
+
+                                    try
+                                    {
+                                        viewToUpdate.ViewTemplateId = copiedTemplateIdNew;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        errorMessages.Add($"Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид {viewToUpdate.Name}: {ex.Message}\n");
+                                    }
+
+                                    List <View> viewsUsingTemplate = null;
+                                    foreach (var v in viewsUsingTemplate)
+                                    {
+                                        try
+                                        {
+                                            v.ViewTemplateId = copiedTemplateIdNew;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид {v.Name}: {ex.Message}\n");
+                                        }
+                                    }
+
+                                    if (copiedTemplateViewNew != null)
+                                    {
+                                        try
+                                        {
+                                            copiedTemplateViewNew.Name = templateView.Name;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            errorMessages.Add($"Не удалось переименовать шаблон {copiedTemplateViewNew.Name}: {ex.Message}\n");
+                                        }
+                                    }
+                                }
+
+
+
+                                else
+                                {
+                                    errorMessages.Add($"❌ Вид \"{viewToUpdate.Name}\" не совместим с шаблоном \"{templateView.Name}\"");
+                                }
                             }
                         }
                     }
+
+
+
+
+
+
+
+
+                    _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
+                    _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
 
                     trans.Commit();
-                }
 
-                if (errorMessages.Count > 0)
-                {
-                    string combined = string.Join("\n", errorMessages);
-                    MessageBox.Show($"Применение завершено с ошибками:\n\n{combined}", "KPLN. Завершено с ошибками");
-                }
-                else
-                {
-                    MessageBox.Show("Изменения успешно применены к документу.", "KPLN. Готово");
-                }
+                    if (errorMessages.Count > 0)
+                    {
+                        string combined = string.Join("\n", errorMessages);
+                        MessageBox.Show($"Применение завершено с ошибками:\n\n{combined}", "KPLN. Завершено с ошибками");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Изменения успешно применены к документу.", "KPLN. Готово");
+                    }
+
+                    heritageMainDocument = mainDocument;
+                    heritageAdditionalDocument = additionalDocument;
+;
+                    string pathMD = mainDocument.PathName;
+                    if (!string.IsNullOrEmpty(pathMD))
+                    {
+                        uiApp.OpenAndActivateDocument(pathMD);
+                    }
+
+                    CopyViewForm copyViewForm = new CopyViewForm(_uiapp, heritageMainDocument, heritageAdditionalDocument);
+                    copyViewForm.ShowDialog();
+                }           
             };
-            _copyEvent.Raise();
+
+            _copyEvent.Raise();         
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // XAML. Кнопка запускающая работу плагина. Несколько файлов
+        private void BTN_RunManyFile_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+
+
+
+
+
+
+
+
+
 
         // Обработчик ошибок. OnFailureProcessing
         internal void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)

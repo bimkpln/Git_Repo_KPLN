@@ -21,7 +21,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            CopyViewForm copyViewForm = new CopyViewForm(uiapp);
+            CopyViewForm copyViewForm = new CopyViewForm(uiapp, null, null);
             copyViewForm.ShowDialog();
 
             return Result.Failed;
