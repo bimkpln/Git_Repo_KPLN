@@ -130,6 +130,14 @@ namespace KPLN_IOSClasher
                 return;
 
             string transName = args.GetTransactionNames().FirstOrDefault();
+            
+            // При синхроне - уходит в анализ. Это приводит к росту отклика и потенциальной перезаписи коллизии на другого пользователя
+            if (transName.Equals("Обновление рабочих наборов до последней версии из хранилища"))
+                return;
+            
+            UIDocument uidoc = new UIDocument(doc);
+            View activeView = uidoc.ActiveView ?? throw new Exception("Отправь разработчику - не удалось определить класс View");
+            
             // Обновляю по линкам, если были транзакции
             if (// Рунчая загрузка связи
                 transName.Equals("Связать с проектом Revit")
@@ -148,9 +156,6 @@ namespace KPLN_IOSClasher
                 // Редактирование границы подрезки
                 || transName.Equals("Принять эскиз"))
             {
-                UIDocument uidoc = new UIDocument(doc);
-                View activeView = uidoc.ActiveView ?? throw new Exception("Отправь разработчику - не удалось определить класс View");
-
                 // Анализирую коллизии по линкам
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointLinkWorker());
 
@@ -158,17 +163,23 @@ namespace KPLN_IOSClasher
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
 
-            Element[] addedLinearElems = args
+             Element[] addedLinearElems = args
                 .GetAddedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
                 .Select(id => doc.GetElement(id))
                 .Where(IntersectCheckEntity.ElemExtraFilterFunc)
                 .ToArray();
 
-            Element[] modifyedLinearElems = args
-                .GetModifiedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
-                .Select(id => doc.GetElement(id))
-                .Where(IntersectCheckEntity.ElemExtraFilterFunc)
-                .ToArray();
+            Element[] modifyedLinearElems = null;
+            // Если пользователь удаляет элементы, то модифицированные не смотрим (если удаляется при редактировании - транзакция носит другое имя)
+            if (!transName.Equals("Удалить выбранные")
+                // Если пользователь делит систему/редактирует ОВВК - то модификации не смотрим
+                && !transName.Equals("Разделить систему")
+                && !transName.Equals("Изменить систему"))
+                modifyedLinearElems = args
+                    .GetModifiedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
+                    .Select(id => doc.GetElement(id))
+                    .Where(IntersectCheckEntity.ElemExtraFilterFunc)
+                    .ToArray();
 
             ElementId[] deletedLinearElems = args
                 .GetDeletedElementIds()
@@ -181,6 +192,22 @@ namespace KPLN_IOSClasher
 
             if (!allChangedElems.Any())
                 return;
+            // Масштабные модификации в 90% случаев - это изменение параметров типа, типа системы и т.п.
+            // Размеры труб - это экземплярные параметры, и их масштабно тоже можно поменять, но чтобы это отработать - нужно много ресурсов, пока опускаем
+            // (далее - может вписывать в ExtStorage кэш по эл-там, и его читать, но тут нужен тест по скорости работы). 
+            else if (modifyedLinearElems.Count() > 100)
+            {
+                TaskDialog td = new TaskDialog("ВНИМАНИЕ: Коллизии")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                    MainInstruction = "Было отредактировано большое количество элементов. Это усложняет анализ на коллизии, поэтому анализ - ОТМЕНЕН.",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+
+                td?.Show();
+
+                return;
+            }
 
             // Обновляю коллекцию на потенциальных элементов ВНУТРИ документа
             DocController.UpdateIntCheckEntities_Doc(doc, allChangedElems);

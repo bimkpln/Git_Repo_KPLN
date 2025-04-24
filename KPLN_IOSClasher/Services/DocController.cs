@@ -92,7 +92,7 @@ namespace KPLN_IOSClasher.Services
 #endif
 #if Debug2020 || Debug2023
             CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-            IsDocumentAnalyzing = true;
+            IsDocumentAnalyzing = false;
 #endif
         }
 
@@ -220,7 +220,6 @@ namespace KPLN_IOSClasher.Services
 
                 // Анализирую элементы в линках
                 Outline addedElemOutline = CreateFilterOutline(addedElemBB, 1);
-
                 foreach (IntersectCheckEntity checkEnt in IntersectCheckEntity_Link)
                 {
                     Element[] potentialIntersectElems = checkEnt.GetPotentioalIntersectedElems_ForLink(addedElemOutline);
