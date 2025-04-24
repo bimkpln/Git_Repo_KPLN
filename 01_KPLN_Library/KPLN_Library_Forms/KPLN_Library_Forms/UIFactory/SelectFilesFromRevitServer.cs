@@ -21,45 +21,46 @@ namespace KPLN_Library_Forms.UIFactory
 
         public static ElementMultiPick CreateForm(int revitVersion)
         {
-            #region Выбор РС
             ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(revitVersion);
-            bool? dialogResult = selectedRevitServerMainDirForm.ShowDialog();
-            if (dialogResult == null || selectedRevitServerMainDirForm.Status != UIStatus.RunStatus.Run)
-                return null;
-
-            string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
-            string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
-            string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
-            #endregion
-
-            #region Выбор элементов с РС
-            try
+            
+            if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
-                ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
+                #region Выбор РС
+                string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
+                string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
+                string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
+                #endregion
 
-                CurrentRevitServer = new RevitServer(selectedRSHostName, revitVersion);
-                FolderContents folderContents = CurrentRevitServer.GetFolderContents(selectedRSMainDir);
-                List<Model> activeModelsFromMainDir = GetModelsFromMainDir(folderContents);
-
-                IEnumerable<ElementEntity> activeEntitiesForForm = activeModelsFromMainDir.Select(e => new ElementEntity(e.Path));
-
-                ElementMultiPick pickForm = new ElementMultiPick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери файлы");
-
-                return pickForm;
-            }
-            catch (Exception ex)
-            {
-                TaskDialog td = new TaskDialog("KPLN: Ошибка")
+                #region Выбор элементов с РС
+                try
                 {
-                    MainContent = $"При обращении к Revit-Server возникла ошибка:\n{ex.Message}",
-                    MainIcon = TaskDialogIcon.TaskDialogIconError,
-                };
-                td.Show();
+                    ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
 
-                return null;
+                    CurrentRevitServer = new RevitServer(selectedRSHostName, revitVersion);
+                    FolderContents folderContents = CurrentRevitServer.GetFolderContents(selectedRSMainDir);
+                    List<Model> activeModelsFromMainDir = GetModelsFromMainDir(folderContents);
+
+                    IEnumerable<ElementEntity> activeEntitiesForForm = activeModelsFromMainDir.Select(e => new ElementEntity(e.Path));
+
+                    ElementMultiPick pickForm = new ElementMultiPick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери файлы");
+
+                    return pickForm;
+                }
+                catch (Exception ex)
+                {
+                    TaskDialog td = new TaskDialog("KPLN: Ошибка")
+                    {
+                        MainContent = $"При обращении к Revit-Server возникла ошибка:\n{ex.Message}",
+                        MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    };
+                    td.Show();
+
+                    return null;
+                }
+                #endregion
             }
-            #endregion
 
+            return null;
         }
 
         private static List<Model> GetModelsFromMainDir(FolderContents folderContents)
