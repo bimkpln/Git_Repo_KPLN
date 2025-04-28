@@ -12,9 +12,14 @@ namespace KPLN_Tools.Forms
 {
     public partial class OVVK_SystemManagerForm : Window
     {
-        public OVVK_SystemManagerForm(Document doc, List<Element> elemsInModel)
+        public OVVK_SystemManagerForm(Document doc)
         {
-            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc, elemsInModel);
+            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc);
+            if (!CurrentViewModel.ElementColl.Any())
+            {
+                MessageBox.Show("В модели отсутсвуют элементы ОВВК для анализа!", "KPLN: Внимание", MessageBoxButton.OK);
+                return;
+            }
 
             InitializeComponent();
 
@@ -41,10 +46,20 @@ namespace KPLN_Tools.Forms
             UpdateEnable();
         }
 
+        private void BtnSummSystems_Click(object sender, RoutedEventArgs e)
+        {
+            OVVK_MergeSystemsForm mergeSysForm = new OVVK_MergeSystemsForm(CurrentViewModel);
+            if ((bool)mergeSysForm.ShowDialog())
+            {
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_MergeSystem(CurrentViewModel, mergeSysForm.SysDataToMerge.ToArray()));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_VMUpdater(CurrentViewModel));
+            }
+        }
+
         private void BtnCreateViews_Click(object sender, RoutedEventArgs e)
         {
             // Анализ вида
-            Autodesk.Revit.DB.View activeView = CurrentViewModel.CurrentDoc.ActiveView;
+            View activeView = CurrentViewModel.CurrentDoc.ActiveView;
             if (activeView == null || activeView.ViewType != ViewType.ThreeD)
             {
                 System.Windows.Forms.MessageBox.Show(
@@ -64,10 +79,8 @@ namespace KPLN_Tools.Forms
             if ((bool)elementMultiPick.ShowDialog())
             {
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(
-                    CurrentViewModel.CurrentDoc,
-                    elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray(),
-                    CurrentViewModel.ParameterName, 
-                    CurrentViewModel.SysNameSeparator));
+                    CurrentViewModel,
+                    elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray()));
 
                 Close();
             }
@@ -81,7 +94,8 @@ namespace KPLN_Tools.Forms
 
         private void UpdateEnable()
         {
-            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any();
+            BtnSummSystems.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
+            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
             BtnSelectWarningsElems.IsEnabled = CurrentViewModel.WarningsElementColl.Any();
         }
     }

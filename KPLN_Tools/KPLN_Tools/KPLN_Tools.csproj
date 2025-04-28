@@ -255,6 +255,7 @@
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
     <Compile Include="Common\OVVK_System\DuctThicknessEntity.cs" />
+    <Compile Include="Common\OVVK_System\OVVK_MergeSystem.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
@@ -270,6 +271,8 @@
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\LinkManager\LoadRLI_Service.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
+    <Compile Include="ExecutableCommand\CommandSystemManager_VMUpdater.cs" />
+    <Compile Include="ExecutableCommand\CommandSystemManager_MergeSystem.cs" />
     <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
@@ -307,6 +310,9 @@
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
+    <Compile Include="Forms\OVVK_MergeSystemsForm.xaml.cs">
+      <DependentUpon>OVVK_MergeSystemsForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\OVVK_SystemManagerForm.xaml.cs">
       <DependentUpon>OVVK_SystemManagerForm.xaml</DependentUpon>
     </Compile>
@@ -416,6 +422,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\FormChageLevel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\OVVK_MergeSystemsForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

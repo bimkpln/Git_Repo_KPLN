@@ -10,7 +10,6 @@
         MaxHeight="750"
         SizeToContent="WidthAndHeight"
         ResizeMode="CanResizeWithGrip"
-        Topmost="True"
         Title="KPLN: ОВВК_Менеджер систем"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
@@ -169,6 +168,7 @@
             <Button
                 Name="BtnSummSystems"
                 Grid.Row="1"
+                Click="BtnSummSystems_Click"
                 IsEnabled="False"
                 Style="{StaticResource ItemButtons}">
                 <Button.Content>
