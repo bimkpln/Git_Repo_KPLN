@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="685" Width="730"
+        Height="660" Width="730"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Title="KPLN. Копирование шаблонов вида">
@@ -36,51 +36,32 @@
         </StackPanel>
 
         <StackPanel x:Name="SP_BtnViewPanel" Grid.Row="2" Height="25" Margin="0 10 0 0" Orientation="Horizontal">
-            <Button x:Name="BTN_OpenTempalte" IsEnabled="False" Content="Шаблоны" Width="100" Margin="5 0" FontSize="12" Click="BTN_OpenTempalte_Click"/>
-            <Button x:Name="BTN_OpenTemplateAndView" IsEnabled="False" Content="Виды и шаблоны" Width="120" Margin="5 0" FontSize="12" Click="BTN_OpenTemplateAndView_Click"/>
+            <Button x:Name="BTN_OpenTempalte" IsEnabled="False" Content="Обновить список шаблонов" Width="170" Margin="5 0" FontSize="12" Click="BTN_OpenTempalte_Click"/>
         </StackPanel>
 
-        <StackPanel x:Name="SP_CB_CopyInView" Grid.Row="3" Height="15" Margin="0 10 0 0" Orientation="Horizontal">
-            <CheckBox x:Name="CB_ReplaceInViews"
-              Content="Принудительно заменить все шаблоны на видах"
-              IsEnabled="False"
-              IsChecked="False"
-              VerticalAlignment="Center"
-              Margin="5,0,0,0"
-              Foreground="Gray" FontSize="12"/>
-        </StackPanel>
-
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="4" Height="410" Margin="0 10 0 10" Background="#FFF1F1F1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="3" Height="410" Margin="0 10 0 10" Background="#FFF1F1F1">
             <Border Padding="5" Background="#FFF1F1F1">
                 <StackPanel x:Name="SP_OtherFileSetings" Background="#FFF1F1F1"/>
             </Border>
         </ScrollViewer>
 
-        <Grid Grid.Row="5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Button x:Name="BTN_RunManyFile"
-            Grid.Column="0"
-            HorizontalAlignment="Left"
-            IsEnabled="False"
-            Content="⚠️ Копировать шаблоны в несколько файлов"
-            Width="270"
-            Height="23"
-            FontSize="12"
-            Click="BTN_RunManyFile_Click" />
-            
-            <Button x:Name="BTN_RunOneFile"
-            Grid.Column="1"
+        <Grid Grid.Row="4">
+            <Button x:Name="BTN_RunOneFile"   
             HorizontalAlignment="Right"
             IsEnabled="False"
-            Content="Копировать шаблоны"
-            Width="140"
+            Content="Копировать шаблоны в открытый документ"
+            Width="270"
             Height="23"
+            Margin="0 0 240 0"
             FontSize="12"
             Click="BTN_RunOneFile_Click" />
+            <Button x:Name="BTN_RunManyFile"
+            HorizontalAlignment="Right"
+            IsEnabled="False"
+            Content="Обработать несколько документов"
+            Width="220"
+            Margin="0 0 7 0"
+            FontSize="12" Click="BTN_RunManyFile_Click"/>
         </Grid>
 
     </Grid>

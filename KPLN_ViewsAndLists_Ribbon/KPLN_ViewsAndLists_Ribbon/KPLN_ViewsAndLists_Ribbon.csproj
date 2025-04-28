@@ -142,8 +142,14 @@
     <Compile Include="Forms\CopyViewForm.xaml.cs">
       <DependentUpon>CopyViewForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\CopyViewFormDebugMessageWindows.xaml.cs">
+      <DependentUpon>CopyViewFormDebugMessageWindows.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CopyViewFormSelectDoc.xaml.cs">
       <DependentUpon>CopyViewFormSelectDoc.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
+      <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormListRename.xaml.cs">
       <DependentUpon>FormListRename.xaml</DependentUpon>
@@ -225,7 +231,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\CopyViewFormDebugMessageWindows.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\CopyViewFormSelectDoc.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
