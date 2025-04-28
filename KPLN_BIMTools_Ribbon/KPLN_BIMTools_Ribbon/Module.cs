@@ -128,7 +128,7 @@ namespace KPLN_BIMTools_Ribbon
             AddPushButtonDataInPullDown(
                 "Пакетное добавление параметров",
                 "Пакетное добавление параметров",
-                "Пакетно добавить в семейство парамтеры",
+                "Пакетно добавить в семейство параметры",
                 string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -138,7 +138,7 @@ namespace KPLN_BIMTools_Ribbon
                 typeof(batchAddingParameters).FullName,
                 paramPullDown,
                 "KPLN_BIMTools_Ribbon.Imagens.batchAddingParameters.png",
-                "http://moodle/",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1329",
                 false
             );
             #endregion
