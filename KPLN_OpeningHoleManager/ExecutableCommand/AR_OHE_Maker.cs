@@ -7,9 +7,9 @@ using System.Collections.Generic;
 namespace KPLN_OpeningHoleManager.ExecutableCommand
 {
     /// <summary>
-    /// Класс по расстановке отверстия АР по заданию от ИОС
+    /// Класс по расстановке отверстия АР
     /// </summary>
-    internal sealed class OpeningByIOSTaskMaker : IExecutableCommand
+    internal sealed class AR_OHE_Maker : IExecutableCommand
     {
         /// <summary>
         /// Имя транзакции для анализа на наличие
@@ -18,7 +18,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
         private readonly List<AROpeningHoleEntity> _arEntities;
 
-        public OpeningByIOSTaskMaker(List<AROpeningHoleEntity> arEntities)
+        public AR_OHE_Maker(List<AROpeningHoleEntity> arEntities)
         {
             _arEntities = arEntities;
         }
@@ -38,7 +38,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                 foreach (AROpeningHoleEntity arEntity in _arEntities)
                 {
-                    arEntity.CreateIntersectFamilyInstance(doc, arEntity.AR_OHE_HostElement);
+                    arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
                 }
 
                 trans.Commit();

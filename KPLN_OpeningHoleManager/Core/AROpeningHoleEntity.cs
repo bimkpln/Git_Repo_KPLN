@@ -1,20 +1,24 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_OpeningHoleManager.Core.MainEntity;
-using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Linq;
+using System.Windows.Media.Media3D;
 
 namespace KPLN_OpeningHoleManager.Core
 {
     internal sealed class AROpeningHoleEntity : OpeningHoleEntity
     {
-        public AROpeningHoleEntity(XYZ point, Element hostElem, OpenigHoleShape shape, string iosSubDepCode)
+        public AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point)
         {
-            OHE_Point = point;
-            AR_OHE_HostElement = hostElem;
             OHE_Shape = shape;
             AR_OHE_IOSDubDepCode = iosSubDepCode;
+            AR_OHE_HostElement = hostElem;
+            OHE_Point = point;
+        }
+
+        public AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point, Element elem) : this(shape, iosSubDepCode, hostElem, point)
+        {
+            OHE_Element = elem;
         }
 
         /// <summary>
@@ -25,7 +29,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Код раздела, от которого падает задание
         /// </summary>
-        public string AR_OHE_IOSDubDepCode{ get; private set; }
+        public string AR_OHE_IOSDubDepCode { get; private set; }
 
         /// <summary>
         /// Установить путь к Revit семействам
@@ -92,33 +96,34 @@ namespace KPLN_OpeningHoleManager.Core
         }
 
         /// <summary>
-        /// Установить основные геометрические параметры (ширина, высота, диамтер)
+        /// Установить основные геометрические параметры (ширина, высота, диамтер) И ОКРГУЛИТЬ с шагом 50 мм
         /// </summary>
-        public AROpeningHoleEntity SetGeomParamsData(double height, double width, double radius)
+        public AROpeningHoleEntity SetGeomParamsRoundData(double height, double width, double radius)
         {
+            double roundHeight = RoundGeomParam(height);
+            double roundWidh = RoundGeomParam(width);
+            double roundRadius = RoundGeomParam(radius);
+
+
             if (OHE_Shape == OpenigHoleShape.Rectangle)
             {
                 if (OHE_FamilyName_Rectangle.Contains("199_Отверстие прямоугольное"))
                 {
-                    OHE_Height = height;
-                    OHE_Width = width;
+                    OHE_Height = roundHeight;
+                    OHE_Width = roundWidh;
                 }
                 else if (OHE_FamilyName_Rectangle.Contains("ASML_АР_Отверстие прямоугольное"))
                 {
-                    OHE_Height = height;
-                    OHE_Width = width;
+                    OHE_Height = roundHeight;
+                    OHE_Width = roundWidh;
                 }
             }
             else
             {
                 if (OHE_FamilyName_Circle.Contains("199_Отверстие круглое"))
-                {
-                    OHE_Radius = radius;
-                }
+                    OHE_Radius = roundRadius;
                 else if (OHE_FamilyName_Circle.Contains("ASML_АР_Отверстие круглое"))
-                {
-                    OHE_Radius = radius;
-                }
+                    OHE_Radius = roundRadius;
             }
 
             return this;
@@ -141,9 +146,9 @@ namespace KPLN_OpeningHoleManager.Core
         }
 
         /// <summary>
-        /// Разместить экземпляр семейства по указанным координатам
+        /// Разместить экземпляр семейства по указанным координатам и заполнить параметры в модели
         /// </summary>
-        public void CreateIntersectFamilyInstance(Document doc, Element host)
+        public void CreateIntersectFamInstAndSetRevitParamsData(Document doc, Element host)
         {
             // Определяю ключевую часть имени для поиска нужного типа семейства
             string famType = string.Empty;
@@ -161,6 +166,8 @@ namespace KPLN_OpeningHoleManager.Core
                 famType = "СС";
             else if (AR_OHE_IOSDubDepCode.Equals("АВ"))
                 famType = "СС";
+            else
+                famType = "Несколько категорий";
 
             FamilySymbol openingFamSymb;
             if (OHE_Shape == OpenigHoleShape.Rectangle)
@@ -202,6 +209,18 @@ namespace KPLN_OpeningHoleManager.Core
             }
 
             doc.Regenerate();
+        }
+
+        private double RoundGeomParam(double geomParam)
+        {
+            double round_mm;
+            double mm = UnitUtils.ConvertFromInternalUnits(geomParam, DisplayUnitType.DUT_MILLIMETERS);
+            if (mm % 50 < 0.1)
+                round_mm = Math.Round(mm);
+            else
+                round_mm = Math.Ceiling(mm / 50) * 50;
+
+            return UnitUtils.ConvertToInternalUnits(round_mm, DisplayUnitType.DUT_MILLIMETERS);
         }
     }
 }

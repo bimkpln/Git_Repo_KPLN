@@ -103,14 +103,5 @@ namespace KPLN_OpeningHoleManager.Core
 
             return this;
         }
-
-        /// <summary>
-        /// Задать основные геометрические параметры (ширина, высота, диамтер) в элемент
-        /// </summary>
-        public OpeningHoleEntity SetGeomParamsToElem(double height, double width, double radius)
-        {
-
-            return this;
-        }
     }
 }

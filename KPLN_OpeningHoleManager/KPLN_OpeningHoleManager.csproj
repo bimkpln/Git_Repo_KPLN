@@ -137,13 +137,16 @@
     <Compile Include="Core\AROpeningHoleEntity.cs" />
     <Compile Include="Core\IOSOpeningHoleTaskEntity.cs" />
     <Compile Include="Core\MainEntity\OpeningHoleEntity.cs" />
-    <Compile Include="ExecutableCommand\OpeningByIOSTaskMaker.cs" />
+    <Compile Include="ExecutableCommand\AR_OHE_ElementDeleter.cs" />
+    <Compile Include="ExecutableCommand\AR_OHE_Maker.cs" />
     <Compile Include="ExternalCommands\ShowMainMenu.cs" />
     <Compile Include="Forms\MainMenu.xaml.cs">
       <DependentUpon>MainMenu.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\MVVMCommand\RelayCommandWithParams.cs" />
     <Compile Include="Forms\MVVMCommand\RelayCommand.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\MechEquipDocSelectionFilter.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\MechEquipLinkSelectionFilter.cs" />
     <Compile Include="Forms\MVVMCore_MainMenu\ViewModel.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />

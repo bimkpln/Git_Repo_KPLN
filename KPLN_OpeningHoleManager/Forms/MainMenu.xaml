@@ -14,20 +14,21 @@
 
         <Style x:Key="TXTBX" TargetType="TextBox">
             <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5,0,5,0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MinWidth" Value="400"/>
         </Style>
 
-        <Style x:Key="RunBTN" TargetType="Button">
+        <Style x:Key="BTN" TargetType="Button">
             <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="Margin" Value="5,2,5,2"/>
-            <Setter Property="Height" Value="20"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border 
                             CornerRadius="5" 
+                            Padding="1"
                             Background="{TemplateBinding Background}">
                             <Grid>
                                 <ContentPresenter 
@@ -49,6 +50,7 @@
 
         <Style x:Key="CHCBX" TargetType="CheckBox">
             <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="Margin" Value="5"/>
         </Style>
 
@@ -56,21 +58,60 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="50"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
 
         <StackPanel>
-            <DockPanel
-                LastChildFill="False"
-                HorizontalAlignment="Center">
-                <Button
-                    Name="SetOpenHoleByTask"
-                    Content="Поставить отверстие по заданию"
-                    Style="{StaticResource RunBTN}"
-                    ToolTip="Потсавить отверстие по заданию от ИОС"
-                    Command="{Binding SetOpenHoleByTaskCommand}"/>
+
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Потсавить отверстие по пересечению элементов ИОС со стеной АР"
+                Command="{Binding CreateOpenHoleByIOSElemsCommand}">
+                <TextBlock
+                    Text="Расставить отверстия по элементам ИОС"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
+
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Потсавить отверстие по заданию от ИОС"
+                Command="{Binding SetOpenHoleByTaskCommand}">
+                <TextBlock
+                    Text="Поставить отверстие по заданию"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
+
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Объеденить несколько отверстий в одно"
+                Command="{Binding UnitOpenHolesCommand}">
+                <TextBlock
+                    Text="Объеденить отверстия"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
+
+            <DockPanel 
+                LastChildFill="True">
+                <TextBlock 
+                    Text="Зазор для отверстий:"
+                    FontWeight="Bold"
+                    VerticalAlignment="Center" 
+                    Margin="5"/>
+                <TextBox 
+                    Text="{Binding OpenHoleExpandedValue, UpdateSourceTrigger=PropertyChanged}" 
+                    Style="{StaticResource TXTBX}" 
+                    TextAlignment="Left"
+                    VerticalAlignment="Center"
+                    PreviewTextInput="TextBox_PreviewTextInput"
+                    DataObject.Pasting="TextBox_Pasting"/>
             </DockPanel>
 
             <GridSplitter 
