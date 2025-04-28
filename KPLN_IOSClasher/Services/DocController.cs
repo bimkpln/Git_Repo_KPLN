@@ -45,8 +45,10 @@ namespace KPLN_IOSClasher.Services
         public static void CurrentDocumentUpdateData(Document doc)
         {
 #if Revit2020 || Revit2023
-            //#if Debug2020 || Debug2023
-            IsDocumentAnalyzing = true;
+//#if Debug2020 || Debug2023
+            // Есть вопрос к тому, как всё же её включать. Скорее всего - нужно только в ПАР, и только после 2го этапа проверок. Думаю стоит заменить подход от исключений, на
+            // список моделей на проверку
+            IsDocumentAnalyzing = false;
             if (doc != null)
             {
                 string fileName = doc.IsWorkshared
@@ -61,7 +63,6 @@ namespace KPLN_IOSClasher.Services
                     || currentDBPrj.Stage.Equals("ПД_Корр") 
                     || currentDBPrj.Stage.Equals("АН"))
                 {
-                    IsDocumentAnalyzing = false;
                     return;
                 }
                 
@@ -69,17 +70,17 @@ namespace KPLN_IOSClasher.Services
                 // Это - затычка. Когда перейдём на схему контроля по всем проектам, эту часть нужно заменить, т.к. все объекты, кроме
                 // тех, на которые есть исключения - игнорируются, а этого быть не должно
                 if (prjMatrix.Count() == 0)
-                    IsDocumentAnalyzing = false;
+                    return;
                 else
                 {
                     int dbDocId = Module.ModuleDBWorkerService.Get_DBDocument(fileName).Id;
 
                     // Игнор по ID модели
                     if (prjMatrix.Any(prj => prj.ExceptionDocumentId == dbDocId))
-                        IsDocumentAnalyzing = false;
+                        return;
                     // Игнор по всему отделу
                     else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == Module.ModuleDBWorkerService.CurrentDBUser.SubDepartmentId))
-                        IsDocumentAnalyzing = false;
+                        return;
                     // Игнор по отдельным пользователям
                     else
                         IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
