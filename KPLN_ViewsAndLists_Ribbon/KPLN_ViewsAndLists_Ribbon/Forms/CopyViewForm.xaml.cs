@@ -113,6 +113,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     {
                         MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
                         BTN_OpenTempalte.IsEnabled = false;
+                        CHK_ReplaceTypes.IsEnabled = false;
+                        CHK_ReplaceTypes.IsChecked = false;
+                        CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                         BTN_RunOneFile.IsEnabled = false;
                         BTN_RunManyFile.IsEnabled = false;
                     }
@@ -214,6 +217,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
 
                             BTN_OpenTempalte.IsEnabled = false;
+                            CHK_ReplaceTypes.IsEnabled = false;
+                            CHK_ReplaceTypes.IsChecked = false;
+                            CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                             BTN_RunOneFile.IsEnabled = false;
                             BTN_RunManyFile.IsEnabled = false;
                         }
@@ -228,6 +234,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     SP_OtherFile.Children.Clear();
                     SP_OtherFileSetings.Children.Clear();
                     BTN_OpenTempalte.IsEnabled = false;
+                    CHK_ReplaceTypes.IsEnabled = false;
+                    CHK_ReplaceTypes.IsChecked = false;
+                    CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                     BTN_RunOneFile.IsEnabled = false;
                     BTN_RunManyFile.IsEnabled = false;
                 }
@@ -237,6 +246,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 MessageBox.Show("Нет доступных открытых документов.", "Предупреждение");
 
                 BTN_OpenTempalte.IsEnabled = false;
+                CHK_ReplaceTypes.IsEnabled = false;
+                CHK_ReplaceTypes.IsChecked = false;
+                CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                 BTN_RunOneFile.IsEnabled = false;
                 BTN_RunManyFile.IsEnabled = false;
             }
@@ -324,6 +336,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                 MessageBox.Show("Ошибка при обработке документа", "Предупреждение");
 
                                 BTN_OpenTempalte.IsEnabled = false;
+                                CHK_ReplaceTypes.IsEnabled = false;
+                                CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                                 BTN_RunOneFile.IsEnabled = false;
                                 BTN_RunManyFile.IsEnabled = false;
                             }
@@ -334,6 +348,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         MessageBox.Show($"Ошибка при открытии файла: {ex.Message}", "Ошибка");
 
                         BTN_OpenTempalte.IsEnabled = false;
+                        CHK_ReplaceTypes.IsEnabled = false;
+                        CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                         BTN_RunOneFile.IsEnabled = false;
                         BTN_RunManyFile.IsEnabled = false;
                         _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
@@ -344,6 +360,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     MessageBox.Show("Файл не найден.", "Ошибка");
 
                     BTN_OpenTempalte.IsEnabled = false;
+                    CHK_ReplaceTypes.IsEnabled = false;
+                    CHK_ReplaceTypes.IsChecked = false;
+                    CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                     BTN_RunOneFile.IsEnabled = false;
                     BTN_RunManyFile.IsEnabled = false;
 
@@ -356,6 +375,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 SP_OtherFileSetings.Children.Clear();
 
                 BTN_OpenTempalte.IsEnabled = false;
+                CHK_ReplaceTypes.IsEnabled = false;
+                CHK_ReplaceTypes.IsChecked = false;
+                CHK_ReplaceTypes.Foreground = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FF7F7F7F"));
                 BTN_RunOneFile.IsEnabled = false;
                 BTN_RunManyFile.IsEnabled = false;
             }
@@ -537,6 +559,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             scrollViewer.Content = grid;
             SP_OtherFileSetings.Children.Add(scrollViewer);
+
+            CHK_ReplaceTypes.IsEnabled = true;
+            CHK_ReplaceTypes.IsChecked = true;
+            CHK_ReplaceTypes.Foreground = new SolidColorBrush(Colors.Black);
+
             BTN_RunOneFile.IsEnabled = true;
             BTN_RunManyFile.IsEnabled = true;
         }
@@ -611,7 +638,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                                 // Удаление
                                 if (statusCopyView == "ignoreCopyView")
-                                {                                 
+                                {
+                                    if (CHK_ReplaceTypes.IsChecked == true)
+                                    {
+                                        RemoveDuplicateTypes(mainDocument, additionalDocument, existingTemplate);
+                                    }
+
                                     if (existingTemplate != null)
                                     {
                                         viewsUsingexistingTemplate = new FilteredElementCollector(additionalDocument)
@@ -631,7 +663,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                         }
                                     }
 
-                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+                                    CopyPasteOptions options = new CopyPasteOptions();
+                                    options.SetDuplicateTypeNamesHandler(new MyDuplicateTypeNamesHandler());
+
+                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
+                                        mainDocument,
+                                        new List<ElementId> { templateView.Id },
+                                        additionalDocument,
+                                        null,
+                                        options
+                                    );
+                                  
                                     ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
                                     View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
                                     string templateName = templateView.Name;
@@ -663,6 +705,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                 // Резервная копия
                                 else if (statusCopyView == "copyView")
                                 {
+                                    if (CHK_ReplaceTypes.IsChecked == true)
+                                    {
+                                        RemoveDuplicateTypes(mainDocument, additionalDocument, existingTemplate);
+                                    }
+
                                     if (existingTemplate != null)
                                     {
                                         viewsUsingexistingTemplate = new FilteredElementCollector(additionalDocument)
@@ -681,10 +728,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                         }
                                     }
 
-                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(mainDocument, new List<ElementId> { templateView.Id }, additionalDocument, null, new CopyPasteOptions());
+                                    CopyPasteOptions options = new CopyPasteOptions();
+                                    options.SetDuplicateTypeNamesHandler(new MyDuplicateTypeNamesHandler());
+
+                                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
+                                        mainDocument,
+                                        new List<ElementId> { templateView.Id },
+                                        additionalDocument,
+                                        null,
+                                        options
+                                    );
+
                                     ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
                                     View copiedTemplateViewNew = additionalDocument.GetElement(copiedTemplateIdNew) as View;
-
                                     copiedTemplateViewNew.Name = viewTemplateName;
 
                                     if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
@@ -738,10 +794,110 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _copyEvent.Raise();         
         }
 
+        // Поиск одинаковых типов в разных документах
+        public static HashSet<ElementId> GetUsedTypeIdsFromView(View view)
+        {
+            Document doc = view.Document;
+            HashSet<ElementId> result = new HashSet<ElementId>();
+
+            foreach (Parameter param in view.Parameters)
+            {
+                if (param.StorageType == StorageType.ElementId)
+                {
+                    ElementId id = param.AsElementId();
+                    if (id != ElementId.InvalidElementId)
+                    {
+                        Element elem = doc.GetElement(id);
+                        if (elem is ElementType)
+                        {
+                            result.Add(id);
+                        }
+                    }
+                }
+            }
+
+            foreach (Category category in doc.Settings.Categories)
+            {
+                OverrideGraphicSettings ogs = view.GetCategoryOverrides(category.Id);
+                if (ogs != null)
+                {
+                    AddElementTypesFromOverrideGraphicSettings(doc, ogs, result);
+                }
+            }
+
+            foreach (ElementId filterId in view.GetFilters())
+            {
+                OverrideGraphicSettings ogs = view.GetFilterOverrides(filterId);
+                if (ogs != null)
+                {
+                    AddElementTypesFromOverrideGraphicSettings(doc, ogs, result);
+                }
+            }
+
+            return result;
+        }
+
+        // Вспомогательный метод для поиск одинаковых типов в разных документах
+        private static void AddElementTypesFromOverrideGraphicSettings(Document doc, OverrideGraphicSettings ogs, HashSet<ElementId> result)
+        {
+            ElementId[] ids =
+            {
+                ogs.CutLinePatternId,
+                ogs.ProjectionLinePatternId,
+                ogs.SurfaceForegroundPatternId,
+                ogs.SurfaceBackgroundPatternId,
+                ogs.CutForegroundPatternId,
+                ogs.CutBackgroundPatternId
+            };
+
+            foreach (ElementId id in ids)
+            {
+                if (id != ElementId.InvalidElementId)
+                {
+                    Element elem = doc.GetElement(id);
+                    if (elem is ElementType)
+                    {
+                        result.Add(id);
+                    }
+                }
+            }
+        }
+
+        // Удалить из additionalDocument те типы, у которых такие же имена, как в mainDocument
+        void RemoveDuplicateTypes(Document sourceDoc, Document targetDoc, View sourceView)
+        {
+            var usedTypeIds = GetUsedTypeIdsFromView(sourceView);
+
+            foreach (ElementId typeId in usedTypeIds)
+            {
+                Element typeInSource = sourceDoc.GetElement(typeId);
+                if (typeInSource is ElementType sourceType)
+                {
+                    ElementType matchingType = new FilteredElementCollector(targetDoc)
+                        .OfClass(sourceType.GetType())
+                        .Cast<ElementType>()
+                        .FirstOrDefault(t => t.Name == sourceType.Name);
+
+                    if (matchingType != null)
+                    {
+                        try
+                        {
+                            targetDoc.Delete(matchingType.Id);
+                        }
+                        catch 
+                        {
+
+                        }
+                    }
+                }
+            }
+        }
+
         // XAML. Выбор и обработка нескольких документов
         private void BTN_RunManyFile_Click(object sender, RoutedEventArgs e)
         {
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, additionalDocument, viewOnlyTemplateChanges);
+            bool replaceTypes = CHK_ReplaceTypes.IsChecked == true;
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, additionalDocument, viewOnlyTemplateChanges, replaceTypes);
             openManeDocsWindows.Owner = this;           
             openManeDocsWindows.ShowDialog();
         }
@@ -801,6 +957,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 {
                     return;
                 }
+            }
+        }
+
+        // Обработчик копировани типов. Оставляем старые типы, которые уже есть
+        public class MyDuplicateTypeNamesHandler : IDuplicateTypeNamesHandler
+        {
+            public DuplicateTypeAction OnDuplicateTypeNamesFound(DuplicateTypeNamesHandlerArgs args)
+            {
+                return DuplicateTypeAction.UseDestinationTypes;
             }
         }
     }

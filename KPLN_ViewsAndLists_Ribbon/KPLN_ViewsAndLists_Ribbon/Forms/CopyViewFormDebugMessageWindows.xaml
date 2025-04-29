@@ -10,16 +10,18 @@
             <Button Content="ОК" Width="50" Height="20" Click="OkButton_Click"/>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible" Margin="0,0,0,0" Background="#FFF7F7F7">
-            <TextBox Name="MessageTextBox" 
-                     IsReadOnly="True" 
-                     TextWrapping="Wrap"
-                     BorderThickness="0"
-                     Background="Transparent"
-                     FontSize="11"
-                     VerticalAlignment="Stretch"
-                     HorizontalAlignment="Stretch"/>
-        </ScrollViewer>
+        <RichTextBox Name="MessageTextBox"
+             IsReadOnly="True"
+             BorderThickness="0"
+             Padding="5"
+             Background="#FFF7F7F7"
+             FontSize="11"
+             VerticalAlignment="Stretch"
+             HorizontalAlignment="Stretch"
+             IsDocumentEnabled="True" 
+             VerticalScrollBarVisibility="Visible"
+             HorizontalScrollBarVisibility="Visible"
+             />
 
     </DockPanel>
 </Window>
