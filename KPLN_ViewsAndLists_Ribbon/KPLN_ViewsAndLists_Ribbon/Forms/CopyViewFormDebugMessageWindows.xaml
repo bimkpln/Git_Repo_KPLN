@@ -1,0 +1,27 @@
+﻿<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.DebugMessageWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Результаты обработки" Height="400" Width="900"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="ОК" Width="50" Height="20" Click="OkButton_Click"/>
+        </StackPanel>
+
+        <RichTextBox Name="MessageTextBox"
+             IsReadOnly="True"
+             BorderThickness="0"
+             Padding="5"
+             Background="#FFF7F7F7"
+             FontSize="11"
+             VerticalAlignment="Stretch"
+             HorizontalAlignment="Stretch"
+             IsDocumentEnabled="True" 
+             VerticalScrollBarVisibility="Visible"
+             HorizontalScrollBarVisibility="Visible"
+             />
+
+    </DockPanel>
+</Window>

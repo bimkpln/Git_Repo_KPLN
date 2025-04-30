@@ -1,0 +1,17 @@
+﻿<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.DocumentSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Выбор документа" Height="300" Width="400"
+        WindowStartupLocation="CenterOwner"
+        Topmost="True">
+    <Grid>
+        <StackPanel Margin="10">
+            <TextBlock Text="Выберите документ:" Margin="0,0,0,10"/>
+            <ListBox x:Name="DocumentListBox" Height="180" SelectionMode="Single"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button Content="ОК" Width="80" Click="OK_Click" Margin="0,0,10,0"/>
+                <Button Content="Отмена" Width="80" Click="Cancel_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

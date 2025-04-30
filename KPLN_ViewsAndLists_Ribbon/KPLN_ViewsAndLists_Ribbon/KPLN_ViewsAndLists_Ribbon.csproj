@@ -1,9 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{CA8DE30C-7493-4B17-AD21-1CC0D8F4B2CE}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -13,27 +13,27 @@
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>true</Optimize>
@@ -45,7 +45,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ViewsAndLists_Ribbon\2023\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
@@ -58,16 +58,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
     </Reference>
-    <Reference Include="KPLN_Library_PluginActivityWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -142,14 +139,21 @@
     <Compile Include="ExternalCommands\Lists\CommandListRenumber.cs" />
     <Compile Include="ExternalCommands\Views\CommandViewTemplateCopy.cs" />
     <Compile Include="ExternalCommands\Views\CommandCutCopy.cs" />
-    <Compile Include="Forms\ListRenumberForm.xaml.cs">
-      <DependentUpon>ListRenumberForm.xaml</DependentUpon>
+    <Compile Include="Forms\CopyViewForm.xaml.cs">
+      <DependentUpon>CopyViewForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormListRenumber.xaml.cs">
-      <DependentUpon>FormListRenumber.xaml</DependentUpon>
+    <Compile Include="Forms\CopyViewFormDebugMessageWindows.xaml.cs">
+      <DependentUpon>CopyViewFormDebugMessageWindows.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\MVVM\ListRenumberVM.cs" />
-    <Compile Include="Forms\MVVM\RelayCommand.cs" />
+    <Compile Include="Forms\CopyViewFormSelectDoc.xaml.cs">
+      <DependentUpon>CopyViewFormSelectDoc.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
+      <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormListRename.xaml.cs">
+      <DependentUpon>FormListRename.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ModuleData.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="Common\Views\Colorize\ColorsCollection.cs" />
@@ -223,11 +227,23 @@
     <EmbeddedResource Include="Resources\mainViews.png" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Forms\ListRenumberForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
+    <Page Include="Forms\CopyViewForm.xaml">
       <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\FormListRenumber.xaml">
+    <Page Include="Forms\CopyViewFormDebugMessageWindows.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\CopyViewFormSelectDoc.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\FormListRename.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -242,8 +258,7 @@
     <EmbeddedResource Include="Resources\ViewTemplateCopy_small.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
+
   <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild">
