@@ -480,7 +480,6 @@
             this.checkBox_isDWGExport.TabIndex = 13;
             this.checkBox_isDWGExport.Text = "Выполнить экспорт в DWG?";
             this.checkBox_isDWGExport.UseVisualStyleBackColor = true;
-            this.checkBox_isDWGExport.CheckedChanged += new System.EventHandler(this.checkBoxMergePdfs_CheckedChanged);
             // 
             // textBox_DWGNameConstructor
             // 
