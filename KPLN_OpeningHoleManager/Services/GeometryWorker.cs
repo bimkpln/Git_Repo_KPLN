@@ -37,12 +37,11 @@ namespace KPLN_OpeningHoleManager.Services
                 }
             }
 
-            if (resultSolid == null)
+            if (resultSolid == null && (elem is FamilyInstance fi && fi.SuperComponent == null))
                 throw new Exception($"У элемента с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
 
-
             // Трансформ по координатам (если нужно)
-            if (transform != null)
+            if (resultSolid != null && transform != null)
                 resultSolid = SolidUtils.CreateTransformed(resultSolid, transform);
 
             return resultSolid;
@@ -52,7 +51,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Получить общий BoundingBoxXYZ на основе всех заданий от ИОС с УЧЁТОМ вшитого Transform
         /// </summary>
         /// <returns></returns>
-        public static BoundingBoxXYZ CreateOverallBBox(List<IOSOpeningHoleTaskEntity> iosTasks)
+        public static BoundingBoxXYZ CreateOverallBBox(IOSOpeningHoleTaskEntity[] iosTasks)
         {
             BoundingBoxXYZ resultBBox = null;
 

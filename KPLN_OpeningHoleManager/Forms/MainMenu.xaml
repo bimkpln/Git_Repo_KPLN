@@ -65,27 +65,29 @@
 
         <StackPanel>
 
-            <Button
-                Style="{StaticResource BTN}"
-                ToolTip="Потсавить отверстие по пересечению элементов ИОС со стеной АР"
-                Command="{Binding CreateOpenHoleByIOSElemsCommand}">
-                <TextBlock
-                    Text="Расставить отверстия по элементам ИОС"
-                    TextWrapping="Wrap"
-                    MaxWidth="250"
-                    TextAlignment="Center"/>
-            </Button>
-
-            <Button
-                Style="{StaticResource BTN}"
-                ToolTip="Потсавить отверстие по заданию от ИОС"
-                Command="{Binding SetOpenHoleByTaskCommand}">
-                <TextBlock
-                    Text="Поставить отверстие по заданию"
-                    TextWrapping="Wrap"
-                    MaxWidth="250"
-                    TextAlignment="Center"/>
-            </Button>
+            <DockPanel
+                LastChildFill="True">
+                <Button
+                    Style="{StaticResource BTN}"
+                    ToolTip="Потсавить отверстие по пересечению элементов ИОС со стеной АР"
+                    Command="{Binding CreateOpenHoleByIOSElemsCommand}">
+                    <TextBlock
+                        Text="Расставить отверстия по элементам ИОС"
+                        TextWrapping="Wrap"
+                        MaxWidth="225"
+                        TextAlignment="Center"/>
+                </Button>
+                    <Button
+                        Style="{StaticResource BTN}"
+                        ToolTip="Открыть меню настроек для расстановки отверстий по пересечению с элементами ИОС"
+                        Click="SetParamsOpenHoleByIOSElems_Click">
+                        <TextBlock
+                            Text="Настройки расстановки"
+                            TextWrapping="Wrap"
+                            MaxWidth="125"
+                            TextAlignment="Center"/>
+                    </Button>
+            </DockPanel>
 
             <Button
                 Style="{StaticResource BTN}"
@@ -97,22 +99,17 @@
                     MaxWidth="250"
                     TextAlignment="Center"/>
             </Button>
-
-            <DockPanel 
-                LastChildFill="True">
-                <TextBlock 
-                    Text="Зазор для отверстий:"
-                    FontWeight="Bold"
-                    VerticalAlignment="Center" 
-                    Margin="5"/>
-                <TextBox 
-                    Text="{Binding OpenHoleExpandedValue, UpdateSourceTrigger=PropertyChanged}" 
-                    Style="{StaticResource TXTBX}" 
-                    TextAlignment="Left"
-                    VerticalAlignment="Center"
-                    PreviewTextInput="TextBox_PreviewTextInput"
-                    DataObject.Pasting="TextBox_Pasting"/>
-            </DockPanel>
+            
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Потсавить отверстие по заданию от ИОС"
+                Command="{Binding SetOpenHoleByTaskCommand}">
+                <TextBlock
+                    Text="Поставить отверстие по заданию"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
 
             <GridSplitter 
                 Height="3"

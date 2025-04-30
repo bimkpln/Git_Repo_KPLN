@@ -16,9 +16,13 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         /// </summary>
         public static readonly string TransName = "KPLN: Отверстие по заданию";
 
-        private readonly List<AROpeningHoleEntity> _arEntities;
+        private readonly AROpeningHoleEntity[] _arEntities;
 
-        public AR_OHE_Maker(List<AROpeningHoleEntity> arEntities)
+        /// <summary>
+        /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
+        /// </summary>
+        /// <param name="arEntities"></param>
+        public AR_OHE_Maker(ref AROpeningHoleEntity[] arEntities)
         {
             _arEntities = arEntities;
         }

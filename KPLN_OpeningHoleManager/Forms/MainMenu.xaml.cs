@@ -1,19 +1,21 @@
 ﻿using Autodesk.Revit.UI;
-using System.Text.RegularExpressions;
-using System.Windows.Input;
-using System.Windows;
 
 namespace KPLN_OpeningHoleManager.Forms
 {
     public partial class MainMenu : System.Windows.Controls.Page, IDockablePaneProvider
     {
-        private static readonly Regex _regex = new Regex(@"[^0-9.,]+");
-
         public MainMenu()
         {
+            MainMenu_VM = new MVVMCore_MainMenu.ViewModel();
+            
             InitializeComponent();
-            DataContext = new MVVMCore_MainMenu.ViewModel();
+            DataContext = MainMenu_VM;
         }
+
+        /// <summary>
+        /// Ссылка на ViewModel
+        /// </summary>
+        public MVVMCore_MainMenu.ViewModel MainMenu_VM {  get; private set; }
 
         public void SetupDockablePane(DockablePaneProviderData data)
         {
@@ -24,21 +26,14 @@ namespace KPLN_OpeningHoleManager.Forms
             };
         }
 
-        private void TextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        private void SetParamsOpenHoleByIOSElems_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            e.Handled = _regex.IsMatch(e.Text);
-        }
-
-        private void TextBox_Pasting(object sender, DataObjectPastingEventArgs e)
-        {
-            if (e.DataObject.GetDataPresent(typeof(string)))
+            ParamsOpenHoleByIOSElemsForm paramsForm = new ParamsOpenHoleByIOSElemsForm(MainMenu_VM);
+            if ((bool)paramsForm.ShowDialog())
             {
-                string text = (string)e.DataObject.GetData(typeof(string));
-                if (_regex.IsMatch(text))
-                    e.CancelCommand();
+                MainMenu_VM = paramsForm.ParamsOpenHoleByIOSElemsForm_VM;
+                DataContext = MainMenu_VM;
             }
-            else
-                e.CancelCommand();
         }
     }
 }

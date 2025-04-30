@@ -12,7 +12,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         public bool AllowElement(Element elem)
         {
             if (elem is FamilyInstance fi)
-                return fi.Symbol.FamilyName.StartsWith("199_") || fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие");
+                return fi.Symbol.FamilyName.StartsWith("199_Отвер") || fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие");
 
             return false;
         }

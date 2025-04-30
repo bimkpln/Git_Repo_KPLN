@@ -2,7 +2,6 @@
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using System;
 using System.Linq;
-using System.Windows.Media.Media3D;
 
 namespace KPLN_OpeningHoleManager.Core
 {
@@ -71,7 +70,6 @@ namespace KPLN_OpeningHoleManager.Core
                 {
                     OHE_ParamNameHeight = "Высота";
                     OHE_ParamNameWidth = "Ширина";
-                    OHE_ParamNameExpander = "Расширение границ";
                 }
                 else if (OHE_FamilyName_Rectangle.Contains("ASML_АР_Отверстие прямоугольное"))
                 {
@@ -84,7 +82,6 @@ namespace KPLN_OpeningHoleManager.Core
                 if (OHE_FamilyName_Circle.Contains("199_Отверстие круглое"))
                 {
                     OHE_ParamNameRadius = "КП_Р_Высота";
-                    OHE_ParamNameExpander = "Расширение границ";
                 }
                 else if (OHE_FamilyName_Circle.Contains("ASML_АР_Отверстие круглое"))
                 {
@@ -98,11 +95,11 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить основные геометрические параметры (ширина, высота, диамтер) И ОКРГУЛИТЬ с шагом 50 мм
         /// </summary>
-        public AROpeningHoleEntity SetGeomParamsRoundData(double height, double width, double radius)
+        public AROpeningHoleEntity SetGeomParamsRoundData(double height, double width, double radius, double expandValue = 0)
         {
-            double roundHeight = RoundGeomParam(height);
-            double roundWidh = RoundGeomParam(width);
-            double roundRadius = RoundGeomParam(radius);
+            double roundHeight = RoundGeomParam(height) + RoundGeomParam(UnitUtils.ConvertToInternalUnits(expandValue, DisplayUnitType.DUT_MILLIMETERS));
+            double roundWidh = RoundGeomParam(width) + RoundGeomParam(UnitUtils.ConvertToInternalUnits(expandValue, DisplayUnitType.DUT_MILLIMETERS));
+            double roundRadius = RoundGeomParam(radius) + RoundGeomParam(UnitUtils.ConvertToInternalUnits(expandValue, DisplayUnitType.DUT_MILLIMETERS));
 
 
             if (OHE_Shape == OpenigHoleShape.Rectangle)
@@ -130,17 +127,17 @@ namespace KPLN_OpeningHoleManager.Core
         }
 
         /// <summary>
-        /// Уточнить значения точки по IOSTask
+        /// Уточнить значения точки в зависимости от формы
         /// </summary>
         /// <returns></returns>
-        public AROpeningHoleEntity UpdatePointData(IOSOpeningHoleTaskEntity iosTask)
+        public AROpeningHoleEntity UpdatePointData_ByShape()
         {
-            XYZ iosTransPnt = iosTask.OHE_LinkTransform.OfPoint(iosTask.OHE_Point);
+            XYZ iosTransPnt = this.OHE_Point;
 
-            if (iosTask.OHE_Shape == OpenigHoleShape.Rectangle)
-                OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - iosTask.OHE_Height / 2);
+            if (this.OHE_Shape == OpenigHoleShape.Rectangle)
+                OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - this.OHE_Height / 2);
             else
-                OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - iosTask.OHE_Radius / 2);
+                OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - this.OHE_Radius / 2);
 
             return this;
         }
@@ -185,6 +182,7 @@ namespace KPLN_OpeningHoleManager.Core
                 .Create
                 .NewFamilyInstance(OHE_Point, openingFamSymb, host, hostLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 
+            OHE_Element = instance;
             doc.Regenerate();
 
             // Указать уровень
@@ -195,18 +193,9 @@ namespace KPLN_OpeningHoleManager.Core
             {
                 instance.LookupParameter(OHE_ParamNameHeight).Set(OHE_Height);
                 instance.LookupParameter(OHE_ParamNameWidth).Set(OHE_Width);
-
-                Parameter expandParam = instance.LookupParameter(OHE_ParamNameExpander);
-                if (expandParam != null)
-                    instance.LookupParameter(OHE_ParamNameExpander).Set(0);
             }
             else
-            {
                 instance.LookupParameter(OHE_ParamNameRadius).Set(OHE_Radius);
-                Parameter expandParam = instance.LookupParameter(OHE_ParamNameExpander);
-                if (expandParam != null)
-                    instance.LookupParameter(OHE_ParamNameExpander).Set(0);
-            }
 
             doc.Regenerate();
         }

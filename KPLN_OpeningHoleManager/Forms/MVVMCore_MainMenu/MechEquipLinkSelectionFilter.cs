@@ -29,7 +29,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 return 
                     fi.Category != null
                     && fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_MechanicalEquipment
-                    && fi.Symbol.FamilyName.StartsWith("501_");
+                    && fi.Symbol.FamilyName.StartsWith("501_ЗИ_Отвер");
 
             return false;
         }

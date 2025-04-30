@@ -67,22 +67,12 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         public double OHE_Radius { get; private protected set; }
 
         /// <summary>
-        /// Имя параметра расширения отверстия/задания
-        /// </summary>
-        public string OHE_ParamNameExpander { get; private protected set; }
-
-        /// <summary>
-        /// Значение расширения отверстия/задания
-        /// </summary>
-        public double OHE_Expander { get; private protected set; }
-
-        /// <summary>
         /// Форма элемента (ЗИ или отверстия)
         /// </summary>
         public OpenigHoleShape OHE_Shape { get; private protected set; }
 
         /// <summary>
-        /// Форма элемента (ЗИ или отверстия)
+        /// Имя отдела
         /// </summary>
         public string OHE_SubDepartment_Name { get; private protected set; }
 
