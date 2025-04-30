@@ -121,10 +121,10 @@ namespace KPLN_Looker
             if (doc.IsWorkshared
                 && !doc.IsDetached
                 && docPathWithARKon != null
-                && !docPathWithARKon.ToLower().Contains(".Архитектурная концепция")
+                && !docPathWithARKon.ToLower().Contains("концепция")
+                && !docPathWithARKon.ToLower().Contains("kon_")
                 && !docPathWithARKon.Contains(".АГО")
-                && !docPathWithARKon.Contains(".АГР")
-                && !docPathWithARKon.ToLower().Contains("kon"))
+                && !docPathWithARKon.Contains(".АГР"))
                 return docPathWithARKon;
 
             return null;
