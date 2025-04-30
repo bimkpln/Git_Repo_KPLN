@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Clashes_Ribbon.Forms.ReportManager"
+﻿<Window x:Class="KPLN_Clashes_Ribbon.Forms.ReportManagerForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -132,9 +132,19 @@
                                                         <RowDefinition/>
                                                     </Grid.RowDefinitions>
                                                     <!--Прямоугольник с отчетом-->
-                                                    <Rectangle Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="-4" RadiusX="3" RadiusY="3" 
-                                                               MouseEnter="RecEnter" MouseLeave="RecLeave" Fill="{Binding Fill, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MouseUp="OnUp"
-                                                               Visibility="{Binding IsReportVisible, Converter={StaticResource BoolToVis}}"/>
+                                                    <Rectangle 
+                                                        Grid.Row="0" 
+                                                        Grid.RowSpan="3" 
+                                                        Grid.Column="0" 
+                                                        Grid.ColumnSpan="3" 
+                                                        Margin="-4" 
+                                                        RadiusX="3" 
+                                                        RadiusY="3" 
+                                                        MouseEnter="RecEnter" 
+                                                        MouseLeave="RecLeave"
+                                                        Fill="{Binding Fill, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                        MouseUp="OnUp"
+                                                        Visibility="{Binding IsReportVisible, Converter={StaticResource BoolToVis}}"/>
                                                     <!--Прогерссбар по отработке-->
                                                     <ProgressBar Margin="0,0,0,2" Height="3" Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Value="{Binding Progress, UpdateSourceTrigger=PropertyChanged}" Foreground="Green" Maximum="100"/>
                                                     <!--Прогерссбар по делегированию-->
@@ -291,11 +301,29 @@
         </ScrollViewer>
         
         <StackPanel Orientation="Horizontal" Grid.Row="2">
-            <Button x:Name="btnAddGroup" Margin="5,5,5,5" Content="Добавить новую группу" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnAddGroup" Foreground="White"/>
-            <Button x:Name="btnUpdate" Margin="5,5,5,5" Content="Обновить отчеты" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnUpdate" Foreground="White">
+            <Button 
+                x:Name="btnAddGroup" 
+                Margin="5,5,5,5" 
+                Content="Добавить новую группу" 
+                Background="#19FFFFFF" 
+                BorderBrush="White" 
+                Click="OnBtnAddGroup" 
+                Foreground="White"/>
+            
+            <Button 
+                x:Name="btnUpdate" 
+                Margin="5,5,5,5" 
+                Content="Обновить отчеты" 
+                Background="#19FFFFFF" 
+                BorderBrush="White" 
+                Click="OnBtnUpdate" 
+                Foreground="White">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
-                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Обновляет статусы по отчетам" FontStyle="Italic"/>
+                        <TextBlock 
+                            TextWrapping="Wrap" 
+                            Text="Подсказка: Обновляет статусы по отчетам" 
+                            FontStyle="Italic"/>
                     </StackPanel>
                 </Button.ToolTip>
             </Button>

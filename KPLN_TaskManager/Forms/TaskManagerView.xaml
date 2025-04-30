@@ -89,7 +89,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="100"/>
+            <RowDefinition Height="125"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
@@ -146,14 +146,23 @@
 
             <DockPanel 
                 LastChildFill="True">
+                <CheckBox
+                    Content="Полный список задач проекта"
+                    ToolTip="Получить ВСЕ задачи по проекту, ВНЕ зависимости от раздела и модели"
+                    IsChecked="{Binding FullTaskCollection}"
+                    Style="{StaticResource CHCBX}"/>
+            </DockPanel>
+
+            <DockPanel 
+                LastChildFill="True">
 
                 <RadioButton
                     Name="AllTaskRBtn"
                     Style="{StaticResource RB}"
                     GroupName="SubDepSelection"
                     IsChecked="{Binding SubDepDependence,Converter={StaticResource TextToBooleanConverter}, ConverterParameter=AllSuDepTask, Mode=TwoWay}"
-                    Content="Все"
-                    ToolTip="Получить ВСЕ задачи по проекту"/>
+                    Content="Для раздела"
+                    ToolTip="Получить ВСЕ задачи по проекту, для раздела"/>
 
                 <RadioButton
                     Name="OpenDocTaskRBtn"

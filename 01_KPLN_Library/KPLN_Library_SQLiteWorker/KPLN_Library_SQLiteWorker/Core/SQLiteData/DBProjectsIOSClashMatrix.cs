@@ -20,6 +20,12 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public int ProjectId { get; set; }
 
         /// <summary>
+        /// Модель, на которую правило блокировки НЕ распространяется
+        /// </summary>
+        [ForeignKey(nameof(DBDocument))]
+        public int ExceptionDocumentId { get; set; }
+
+        /// <summary>
         /// Отдел, на пользователей которого правило блокировки НЕ распространяется
         /// </summary>
         [ForeignKey(nameof(DBSubDepartment))]

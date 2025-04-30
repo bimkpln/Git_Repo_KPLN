@@ -98,10 +98,10 @@
     <Compile Include="Core\ElementComparerById.cs" />
     <Compile Include="Core\IntersectCheckEntity.cs" />
     <Compile Include="Core\IntersectPointEntity.cs" />
-    <Compile Include="Core\IntersectPointFamInst.cs" />
-    <Compile Include="ExecutableCommand\IntersectPointCleaner.cs" />
+    <Compile Include="Core\IntersectPointMaker.cs" />
+    <Compile Include="ExecutableCommand\IntersectPointDelElemCleaner.cs" />
     <Compile Include="ExecutableCommand\IntersectPointLinkWorker.cs" />
-    <Compile Include="ExecutableCommand\IntersectPointMaker.cs" />
+    <Compile Include="ExecutableCommand\IntersectPointDocWorker.cs" />
     <Compile Include="ExecutableCommand\LinkAlarmShower.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />

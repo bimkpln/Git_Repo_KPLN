@@ -19,18 +19,20 @@ using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using Image = System.Windows.Controls.Image;
 using Path = System.IO.Path;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
+using static System.Net.Mime.MediaTypeNames;
+using System.Text.RegularExpressions;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
     /// <summary>
-    /// Логика взаимодействия для ReportManager.xaml
+    /// Логика взаимодействия для ReportManagerForm.xaml
     /// </summary>
-    public partial class ReportManager : Window
+    public partial class ReportManagerForm : Window
     {
         private readonly DBProject _project;
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
-        public ReportManager(DBProject project)
+        public ReportManagerForm(DBProject project)
         {
             _project = project ?? throw new ArgumentNullException("\n[KPLN]: Попытка передачи пустого проекта\n");
 
@@ -138,13 +140,17 @@ namespace KPLN_Clashes_Ribbon.Forms
                         foreach (string file_name in dialog.FileNames)
                         {
                             FileInfo file = new FileInfo(file_name);
-                            ObservableCollection<ReportItem> reportInstances = ParseHtmlToRepInstColelction(file, group);
+                            string reportInstanceName = file.Name.Replace(".html", "");
+                            
+                            // Публикую запись о новом репорте
+                            FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
+                            int newReportId = _sqliteService_MainDB.PostReport_NewReport_ByNameAndReportGroup(reportInstanceName, group, db_FI);
+                            
+                            ObservableCollection<ReportItem> reportInstances = ParseHtmlToRepInstColelction(file, group, newReportId);
                             if (reportInstances != null)
                             {
                                 if (reportInstances.Count != 0)
                                 {
-                                    FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
-
                                     //Создаю БД под item и публикую в него данные
                                     Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportItemsDB = new Services.SQLite.SQLiteService_ReportItemsDB(db_FI.FullName);
                                     Task fiWorkTask = Task.Run(() =>
@@ -153,9 +159,6 @@ namespace KPLN_Clashes_Ribbon.Forms
                                         sqliteService_ReportItemsDB.PostNewItems_ByReports(reportInstances);
                                     });
                                     riWorkerTasks[taskCount++] = fiWorkTask;
-
-                                    // Публикую запись о новом репорте
-                                    _sqliteService_MainDB.PostReport_NewReport_ByNameAndReportGroup(file.Name.Replace(".html", ""), group, db_FI);
                                 }
                                 else
                                 {
@@ -200,7 +203,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// </summary>
         /// <param name="file">Html-файл для парсинга</param>
         /// <returns></returns>
-        private ObservableCollection<ReportItem> ParseHtmlToRepInstColelction(FileInfo file, ReportGroup repGroup)
+        private ObservableCollection<ReportItem> ParseHtmlToRepInstColelction(FileInfo file, ReportGroup repGroup, int reportId)
         {
             ObservableCollection<ReportItem> reportInstances = new ObservableCollection<ReportItem>();
             if (file.Extension == ".html")
@@ -325,6 +328,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             reportInstances.Add(new ReportItem(
                                 num_id,
                                 repGroup.Id,
+                                reportId,
                                 name,
                                 id1,
                                 id2,
@@ -342,6 +346,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             reportInstances.Add(new ReportItem(
                                 num_id,
                                 repGroup.Id,
+                                reportId,
                                 name,
                                 id1,
                                 id2,
@@ -406,12 +411,11 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
             if (CurrentDBUser.SubDepartmentId != 8) { return; }
-            
-            TextInputForm textInputForm = new TextInputForm(this, "Введите наименование отчета:");
-            textInputForm.ShowDialog();
-            if (textInputForm.IsConfirmed)
+
+            ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm();
+            if ((bool)groupCreateForm.ShowDialog())
             {
-                _sqliteService_MainDB.PostReportGroups_NewGroupByProjectAndName(_project, textInputForm.UserComment);
+                _sqliteService_MainDB.PostReportGroups_NewGroupByProjectAndName(_project, groupCreateForm.CurrentReportGroup);
                 UpdateGroups();
             }
         }
@@ -495,19 +499,19 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportWindow form = new ReportWindow(report, GetGroupById(report.ReportGroupId).IsEnabled, this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
                         form.Show();
                     }
                 }

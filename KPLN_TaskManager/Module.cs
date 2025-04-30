@@ -21,13 +21,15 @@ namespace KPLN_TaskManager
         internal static readonly DockablePaneId PaneId = new DockablePaneId(new Guid("B1234567-89AB-CDEF-0123-456789ABCDEF"));
         internal static TaskManagerView MainMenuViewer;
 
-        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private static UIControlledApplication _uiContrApp;
 
         internal static UIApplication CurrentUIApplication { get; private set; }
         internal static string CurrentFileName {  get; private set; }
         internal static DBProject CurrentDBProject { get; private set; }
-        internal static Document CurrentDocument { get; private set; }
+        internal static Document CurrentDoc { get; private set; }
+        internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
+        
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
         {
@@ -74,17 +76,19 @@ namespace KPLN_TaskManager
 
         private void Application_DocumentOpened(object sender, Autodesk.Revit.DB.Events.DocumentOpenedEventArgs args)
         {
-            CurrentDocument = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
+            if (args.Document == null || args.Document.IsFamilyDocument)
                 return;
+            
+            CurrentDoc = args.Document;
 
-            if (CurrentUIApplication == null)
-                CurrentUIApplication = new UIApplication(CurrentDocument.Application);
-
-            CurrentFileName = CurrentDocument.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
-                : CurrentDocument.PathName;
+            CurrentUIApplication = new UIApplication(CurrentDoc.Application);
+            
+            CurrentFileName = CurrentDoc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
+                : CurrentDoc.PathName;
+            
+            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
 
             CurrentDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
             if (CurrentDBProject == null)
@@ -97,27 +101,32 @@ namespace KPLN_TaskManager
 
         private void Application_ViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            CurrentDocument = args.Document;
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (CurrentDocument == null || CurrentDocument.IsFamilyDocument)
+            if (args.Document == null || args.Document.IsFamilyDocument)
                 return;
+            
+            CurrentDoc = args.Document;
 
-            string openViewFileName = CurrentDocument.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDocument.GetWorksharingCentralModelPath())
-                : CurrentDocument.PathName;
+            string openViewFileName = CurrentDoc.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
+                : CurrentDoc.PathName;
 
             if (openViewFileName == CurrentFileName)
                 return;
 
-            CurrentFileName = openViewFileName;
+            CurrentUIApplication = new UIApplication(CurrentDoc.Application);
 
+            CurrentFileName = openViewFileName;
             DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
-            if (openViewDBProject == null || CurrentDBProject == null || openViewDBProject.Id == CurrentDBProject.Id)
+            if (openViewDBProject == null)
                 return;
 
             CurrentDBProject = openViewDBProject;
+            
+            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
 
-
+            // Возможно стоит заблочить, нужен дальнейший анализ. Оно конечно удобно, но при переключениях между видами, когда будет много тасок - будет лишний оверхед. Достаточно обновить список вручную,
+            // и плюсом - они обновятся, если открыть отдельно таску.  
             MainMenuViewer.LoadTaskData();
         }
 

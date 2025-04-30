@@ -13,8 +13,8 @@ namespace KPLN_Tools.ExecutableCommand
 {
     internal class CommandSystemManager_ViewCreator : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_ViewModel _currentViewModel;
-        private readonly List<Element> _docElemsColl = new List<Element>();
+        private readonly OVVK_SystemManager_ViewModel _viewModel;
+        private readonly string[] _systemSumParameters;
         private readonly List<ElementId> _docCatIdColl = new List<ElementId>();
 
         /// <summary>
@@ -26,9 +26,10 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_ViewCreator(OVVK_SystemManager_ViewModel vm)
+        public CommandSystemManager_ViewCreator(OVVK_SystemManager_ViewModel currentViewModel, string[] systemSumParameters)
         {
-            _currentViewModel = vm;
+            _viewModel = currentViewModel;
+            _systemSumParameters = systemSumParameters;
         }
 
         public Result Execute(UIApplication app)
@@ -36,40 +37,9 @@ namespace KPLN_Tools.ExecutableCommand
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{Command_OVVK_SystemManager.PluginName}_Создание видов", ModuleData.ModuleName).ConfigureAwait(false);
 
             #region Подготовка коллекции и элементов
-            Document doc = _currentViewModel.CurrentDoc;
-            Autodesk.Revit.DB.View activeView = doc.ActiveView;
+            Autodesk.Revit.DB.View activeView = _viewModel.CurrentDoc.ActiveView;
 
-            // Анализ вида
-            if (activeView == null || activeView.ViewType != ViewType.ThreeD)
-            {
-                MessageBox.Show(
-                    $"Скрипт нужно запускать при открытом 3D-виде, т.к. на основании его будут создаваиться аналоги",
-                    "Ошибка",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                return Result.Cancelled;
-            }
-
-            // Готовлю коллекцию элементов для анализа
-            foreach (BuiltInCategory bic in Command_OVVK_SystemManager.FamileInstanceBICs)
-            {
-                _docElemsColl.AddRange(new FilteredElementCollector(doc, activeView.Id)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(bic)
-                    .WhereElementIsNotElementType()
-                    .Cast<FamilyInstance>()
-                    .Where(Command_OVVK_SystemManager.FamilyNameFilter));
-            }
-
-            foreach (BuiltInCategory bic in Command_OVVK_SystemManager.MEPCurveBICs)
-            {
-                _docElemsColl.AddRange(new FilteredElementCollector(doc, activeView.Id)
-                    .OfCategory(bic)
-                    .WhereElementIsNotElementType());
-            }
-
-            _docCatIdColl.AddRange(_docElemsColl.Select(e => e.Category.Id));
+            _docCatIdColl.AddRange(_viewModel.ElementColl.Select(e => e.Category.Id).Distinct());
 
             // Вывод критических ошибок и остановка работы
             if (_errorDict.Keys.Count != 0)
@@ -79,13 +49,13 @@ namespace KPLN_Tools.ExecutableCommand
                    "Внимание",
                    MessageBoxButtons.OK,
                    MessageBoxIcon.Asterisk);
-                PrintErrors( _errorDict );
+                PrintErrors(_errorDict);
 
                 return Result.Cancelled;
             }
 
             // Получение шаблона вида
-            Autodesk.Revit.DB.View viewTempl = (Autodesk.Revit.DB.View)doc.GetElement(activeView.get_Parameter(BuiltInParameter.VIEW_TEMPLATE).AsElementId());
+            Autodesk.Revit.DB.View viewTempl = (Autodesk.Revit.DB.View)_viewModel.CurrentDoc.GetElement(activeView.get_Parameter(BuiltInParameter.VIEW_TEMPLATE).AsElementId());
             if (viewTempl == null)
             {
                 DialogResult userRes = MessageBox.Show(
@@ -132,11 +102,11 @@ namespace KPLN_Tools.ExecutableCommand
             #endregion
 
             #region Обработка коллекции
-            using (Transaction t = new Transaction(doc, $"KPLN: Создание видов"))
+            using (Transaction t = new Transaction(_viewModel.CurrentDoc, $"KPLN: Создание видов"))
             {
                 t.Start();
 
-                if (!CreateViews(doc, viewTempl))
+                if (!CreateViews(_viewModel.CurrentDoc, viewTempl))
                 {
                     t.RollBack();
                     return Result.Cancelled;
@@ -172,26 +142,56 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private bool CreateViews(Document doc, Autodesk.Revit.DB.View viewTempl)
         {
-            foreach (string sysName in _currentViewModel.SystemSumParameters)
-            {
-                string filterName = $"prog_{_currentViewModel.ParameterName} = !*{sysName}*!";
+            Dictionary<ElementId, string> docViewDict = new FilteredElementCollector(doc)
+                .OfClass(typeof(Autodesk.Revit.DB.View))
+                .Cast<Autodesk.Revit.DB.View>()
+                .Where(v => !v.IsTemplate)
+                .ToDictionary(d => d.Id, d => d.Name);
 
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotContainsRule(_docElemsColl.FirstOrDefault().LookupParameter(_currentViewModel.ParameterName).Id, sysName, false);
+            ParameterFilterElement[] docFilters = new FilteredElementCollector(doc)
+                .OfClass(typeof(ParameterFilterElement))
+                .Cast<ParameterFilterElement>()
+                .ToArray();
+
+            foreach (string sysName in _systemSumParameters)
+            {
+                string filterName = $"prog_{_viewModel.ParameterName} = НРВ_{sysName}";
+
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_viewModel.ElementColl.FirstOrDefault().LookupParameter(_viewModel.ParameterName).Id, sysName, false);
                 ElementParameterFilter filterRules = new ElementParameterFilter(fRule);
-                ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, _docCatIdColl, filterRules);
-                ElementId newViewFilterId = newViewFilter.Id;
+
+                ElementId viewFilterId = null;
+                ParameterFilterElement oldEqualFRule = docFilters.FirstOrDefault(df => df.Name.Equals(filterName));
+                if (oldEqualFRule != null)
+                    viewFilterId = oldEqualFRule.Id;
+                else
+                {
+                    ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, _docCatIdColl, filterRules);
+                    viewFilterId = newViewFilter.Id;
+                }
+
+                string newViewName = sysName.Contains(_viewModel.SysNameSeparator) ? $"Схема систем_{sysName}" : $"Схема системы_{sysName}";
+                bool viewNameError = false;
+                foreach (KeyValuePair<ElementId, string> kvp in docViewDict)
+                {
+                    if (kvp.Value.Equals(newViewName))
+                    {
+                        AddToErrorDict(_warningDict, $"Вид с имением {newViewName} уже существует", kvp.Key);
+                        viewNameError = true;
+                    }
+                }
+
+                if (viewNameError)
+                    continue;
 
                 Autodesk.Revit.DB.View newView = doc.GetElement(doc.ActiveView.Duplicate(ViewDuplicateOption.Duplicate)) as Autodesk.Revit.DB.View;
-                newView.AddFilter(newViewFilterId);
-                newView.SetFilterVisibility(newViewFilterId, false);
+                newView.AddFilter(viewFilterId);
+                newView.SetFilterVisibility(viewFilterId, false);
 
                 if (viewTempl != null)
                     newView.ApplyViewTemplateParameters(viewTempl);
 
-                if (sysName.Contains(_currentViewModel.SysNameSeparator))
-                    newView.Name = $"Схема систем_{sysName}";
-                else
-                    newView.Name = $"Схема системы_{sysName}";
+                newView.Name = newViewName;
             }
 
             return true;

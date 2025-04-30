@@ -142,19 +142,18 @@ namespace KPLN_Tools.Forms
             if (rsFilesPickForm == null)
                 return;
 
-            bool? dialogResult = rsFilesPickForm.ShowDialog();
-            if (dialogResult == null || rsFilesPickForm.Status != UIStatus.RunStatus.Run)
-                return;
-
-            foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
+            if ((bool)rsFilesPickForm.ShowDialog())
             {
-                LinkManagerLoadEntity newEntity = new LinkManagerLoadEntity(formEntity.Name,
-                    $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}");
+                foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
+                {
+                    LinkManagerLoadEntity newEntity = new LinkManagerLoadEntity(formEntity.Name,
+                        $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}");
 
-                SelectedConfig.AddNewItem(newEntity);
+                    SelectedConfig.AddNewItem(newEntity);
+                }
+
+                DataContext = this;
             }
-
-            DataContext = this;
         }
 
 

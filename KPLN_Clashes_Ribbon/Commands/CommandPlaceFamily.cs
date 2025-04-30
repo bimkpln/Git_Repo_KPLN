@@ -1,15 +1,13 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Loader.Common;
 using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Clashes_Ribbon.Tools;
+using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Commands
@@ -19,7 +17,7 @@ namespace KPLN_Clashes_Ribbon.Commands
         private static readonly string _familyName = "ClashPoint";
         private static FamilySymbol _intersectFamSymb;
 
-        private readonly ReportWindow _reportWindow;
+        private readonly ReportForm _reportWindow;
 
         private readonly XYZ _point;
         private readonly int _id1;
@@ -27,7 +25,7 @@ namespace KPLN_Clashes_Ribbon.Commands
         private readonly int _id2;
         private readonly string _elementInfo2;
 
-        public CommandPlaceFamily(XYZ point, int id1, string info1, int id2, string info2, ReportWindow window)
+        public CommandPlaceFamily(XYZ point, int id1, string info1, int id2, string info2, ReportForm window)
         {
             _reportWindow = window;
             _id1 = id1;
@@ -36,7 +34,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             _elementInfo2 = info2;
             _point = new XYZ(point.X * 3.28084, point.Y * 3.28084, point.Z * 3.28084);
         }
-        
+
         public Result Execute(UIApplication app)
         {
             Document doc = app.ActiveUIDocument.Document;
@@ -53,7 +51,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                         TaskDialog.Show("Внимание!", "Все элементы в связи. Метку необходимо расставлять в документах, где элемент присутсвует (см. информацию об элементах отчета)");
                         return Result.Cancelled;
                     }
-                    
+
                     // Проверка на совпадение элемента в файле и элемента в отчете
                     bool el1 = true;
                     bool el2 = true;
@@ -77,7 +75,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                             "Произошла подмена id-элементов, коллизию нужно уточнить у проверяющего");
                         return Result.Cancelled;
                     }
-                    
+
                     using (Transaction t = new Transaction(doc, "Указатель"))
                     {
                         t.Start();
@@ -94,7 +92,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                         // Создание новых
                         XYZ transformed_location = doc.ActiveProjectLocation.GetTotalTransform().OfPoint(_point);
                         FamilyInstance createdinstance = CreateFamilyInstance(doc, transformed_location);
-                    
+
                         // Выделяю элементы пересечения в модели
                         if (element1 != null && element2 != null)
                             uidoc.Selection.SetElementIds(new List<ElementId>() { element1.Id, element2.Id });
@@ -106,11 +104,11 @@ namespace KPLN_Clashes_Ribbon.Commands
                         else
                             uidoc.Selection.SetElementIds(new List<ElementId>() { createdinstance.Id });
 
-                        if (createdinstance != null) 
+                        if (createdinstance != null)
                             _reportWindow.OnClosingActions.Add(new CommandRemoveInstance(doc, createdinstance));
-                    
+
                         ZoomTools.ZoomElement(createdinstance.get_BoundingBox(null), app.ActiveUIDocument);
-                    
+
                         t.Commit();
                     }
                 }
@@ -170,8 +168,8 @@ namespace KPLN_Clashes_Ribbon.Commands
                 .ToArray();
 
             FamilyInstance oldEqualFI = oldFamInsOfGM
-                .FirstOrDefault(old => 
-                    old.Location is LocationPoint oldLocPnt 
+                .FirstOrDefault(old =>
+                    old.Location is LocationPoint oldLocPnt
                     && Math.Abs(oldLocPnt.Point.DistanceTo(point)) < 0.05);
             if (oldEqualFI != null)
                 return oldEqualFI;
@@ -179,14 +177,14 @@ namespace KPLN_Clashes_Ribbon.Commands
             FamilyInstance instance = doc
                 .Create
                 .NewFamilyInstance(point, intersectFamSymb, level, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            
+
             doc.Regenerate();
             instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(point.Z - level.Elevation);
             doc.Regenerate();
-            
+
             return instance;
         }
-        
+
         private static FamilySymbol GetFamilySymbol(Document doc)
         {
             FamilySymbol[] oldFamSymbOfGM = new FilteredElementCollector(doc)

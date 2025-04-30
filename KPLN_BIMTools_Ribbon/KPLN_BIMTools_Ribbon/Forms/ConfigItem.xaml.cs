@@ -300,29 +300,25 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
         {
             ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(_revitVersion);
-            bool? dialogResult = selectedRevitServerMainDirForm.ShowDialog();
-            if (dialogResult == null || selectedRevitServerMainDirForm.Status != UIStatus.RunStatus.Run)
-                return;
+            if ((bool)selectedRevitServerMainDirForm.ShowDialog())
+            {
+                string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
+                string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
+                string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
 
-            string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
-            string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
-            string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
+                RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
 
-            RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
+                IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
+                List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
+                    rsFolders
+                        .Where(f => f.LockState != LockState.Locked)
+                        .Select(f => new ElementEntity(f.Path))
+                        .ToArray());
 
-            IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
-            List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
-                rsFolders
-                    .Where(f => f.LockState != LockState.Locked)
-                    .Select(f => new ElementEntity(f.Path))
-                    .ToArray());
-
-            ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
-            bool? pickFormResult = pickForm.ShowDialog();
-            if (pickFormResult == null || pickForm.Status != UIStatus.RunStatus.Run)
-                return;
-            
-            SharedPathTo = $"\\\\{selectedRSHostName}{pickForm.SelectedElement.Name}";
+                ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
+                if ((bool)pickForm.ShowDialog())
+                    SharedPathTo = $"\\\\{selectedRSHostName}{pickForm.SelectedElement.Name}";
+            }
         }
 
         #region Добавление/удаление файлов
@@ -352,13 +348,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (rsFilesPickForm == null)
                 return;
 
-            bool? dialogResult = rsFilesPickForm.ShowDialog();
-            if (dialogResult == null || rsFilesPickForm.Status != UIStatus.RunStatus.Run)
-                return;
-
-            foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
+            if ((bool)rsFilesPickForm.ShowDialog())
             {
-                AddToFileEntitiesWithCheck(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
+                foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
+                {
+                    AddToFileEntitiesWithCheck(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
+                }
             }
         }
 

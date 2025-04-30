@@ -107,20 +107,51 @@
                 Height="3"
                 HorizontalAlignment="Stretch"/>
 
-            <TextBlock 
-                Text="Отдел исполнителя" 
-                VerticalAlignment="Center" 
-                FontWeight="Bold" 
-                Margin="5,0,5,0"/>
-            <ComboBox 
-                x:Name="DelegateDepCBox"
-                IsEnabled="False"
-                Background="White" 
-                ItemsSource="{Binding DBSubDepartmentColl}"
-                SelectedValue="{Binding DelegatedDepartmentId, UpdateSourceTrigger=PropertyChanged}"
-                DisplayMemberPath="Code"
-                SelectedValuePath="Id"
-                Margin="5,0,5,0"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="75"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+            
+                <TextBlock 
+                    Text="Отдел от" 
+                    VerticalAlignment="Center" 
+                    FontWeight="Bold" 
+                    Margin="5,2,5,2"/>
+                <ComboBox 
+                    x:Name="CreateDepCBox"
+                    Grid.Column="1"
+                    IsEnabled="False"
+                    Background="White" 
+                    SelectionChanged="CreateDepCBox_SelectionChanged"
+                    ItemsSource="{Binding DBSubDepartmentColl_Output}"
+                    SelectedValue="{Binding CreatedTaskDepartmentId, UpdateSourceTrigger=PropertyChanged}"
+                    DisplayMemberPath="Code"
+                    SelectedValuePath="Id"
+                    Margin="5,2,5,2"/>
+
+                <TextBlock 
+                    Text="Отдел для"
+                    Grid.Row="1"
+                    VerticalAlignment="Center" 
+                    FontWeight="Bold" 
+                    Margin="5,2,5,2"/>
+                <ComboBox 
+                    x:Name="DelegateDepCBox"
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    IsEnabled="False"
+                    Background="White" 
+                    ItemsSource="{Binding DBSubDepartmentColl_Input}"
+                    SelectedValue="{Binding DelegatedDepartmentId, UpdateSourceTrigger=PropertyChanged}"
+                    DisplayMemberPath="Code"
+                    SelectedValuePath="Id"
+                    Margin="5,2,5,2"/>
+            </Grid>
 
             <TextBlock 
                 Text="Заголовок" 

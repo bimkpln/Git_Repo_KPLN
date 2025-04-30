@@ -11,11 +11,6 @@ namespace KPLN_Library_Forms.UI
 {
     public partial class ElementMultiPick : Window
     {
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        private bool _isRun = false;
-
         private readonly ObservableCollection<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
@@ -43,32 +38,13 @@ namespace KPLN_Library_Forms.UI
             get => _collection.Where(ee => ee.IsSelected).ToList();
         }
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; }
-
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
-            {
-                Status = RunStatus.Close;
                 Close();
-            }
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Keyboard.Focus(SearchText);
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if (!_isRun)
-            {
-                Status = RunStatus.Close;
-            }
-        }
+        private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchText);
 
         /// <summary>
         /// Фильтрация по имени
@@ -88,8 +64,7 @@ namespace KPLN_Library_Forms.UI
 
         private void RunBtn_Click(object sender, RoutedEventArgs e)
         {
-            _isRun = true;
-            Status = RunStatus.Run;
+            this.DialogResult = true;
             Close();
         }
 

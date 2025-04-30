@@ -25,7 +25,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// </summary>
         /// <param name="name">Имя группы</param>
         /// <param name="project">Проект</param>
-        public void PostReportGroups_NewGroupByProjectAndName(DBProject project, string name) =>
+        public void PostReportGroups_NewGroupByProjectAndName(DBProject project, ReportGroup rGroup) =>
             ExecuteNonQuery(
                 $"INSERT INTO {MainDB_Enumerator.ReportGroups} " +
                     $"({nameof(ReportGroup.ProjectId)}, " +
@@ -34,15 +34,33 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"{nameof(ReportGroup.DateCreated)}, " +
                     $"{nameof(ReportGroup.UserCreated)}, " +
                     $"{nameof(ReportGroup.DateLast)}, " +
-                    $"{nameof(ReportGroup.UserLast)}) " +
+                    $"{nameof(ReportGroup.UserLast)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdAR)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdKR)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdOV)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdITP)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdVK)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdAUPT)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdEOM)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdSS)}, " +
+                    $"{nameof(ReportGroup.BitrixTaskIdAV)})" +
                 "VALUES " +
                     $"({project.Id}, " +
-                    $"'{name}', " +
+                    $"'{rGroup.Name}', " +
                     $"'{KPItemStatus.New}', " +
                     $"'{CurrentTime}', " +
                     $"'{_userSystemName}', " +
                     $"'{CurrentTime}', " +
-                    $"'{_userSystemName}')");
+                    $"'{_userSystemName}', " +
+                    $"'{rGroup.BitrixTaskIdAR}', " +
+                    $"'{rGroup.BitrixTaskIdKR}', " +
+                    $"'{rGroup.BitrixTaskIdOV}', " +
+                    $"'{rGroup.BitrixTaskIdITP}', " +
+                    $"'{rGroup.BitrixTaskIdVK}', " +
+                    $"'{rGroup.BitrixTaskIdAUPT}', " +
+                    $"'{rGroup.BitrixTaskIdEOM}', " +
+                    $"'{rGroup.BitrixTaskIdSS}', " +
+                    $"'{rGroup.BitrixTaskIdAV}')");
 
         /// <summary>
         /// Опубликовать новый отчет (Report) с привязкой к группе (ReportGroup)
@@ -50,26 +68,39 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// <param name="name">Имя группы отчета</param>
         /// <param name="group">Экземпляр класса-группы (ReportGroup)</param>
         /// <param name="groupDbFi">Файл БД (ReportInstance)</param>
-        public void PostReport_NewReport_ByNameAndReportGroup(string name, ReportGroup group, FileInfo groupDbFi) =>
-            ExecuteNonQuery(
+        /// <param name="bitrTaskId_1">ID задачи из битрикс №1</param>
+        /// <param name="bitrTaskId_2">ID задачи из битрикс №2</param>
+        /// <returns>ID созданного Report</returns>
+        public int PostReport_NewReport_ByNameAndReportGroup(string name, ReportGroup group, FileInfo groupDbFi)
+        {
+            string query =
                 $"INSERT INTO {MainDB_Enumerator.Reports} " +
-                    $"({nameof(Report.ReportGroupId)}, " +
-                    $"{nameof(Report.Name)}, " +
-                    $"{nameof(Report.Status)}, " +
-                    $"{nameof(Report.PathToReportInstance)}, " +
-                    $"{nameof(Report.DateCreated)}, " +
-                    $"{nameof(Report.UserCreated)}, " +
-                    $"{nameof(Report.DateLast)}, " +
-                    $"{nameof(Report.UserLast)})" +
+                $"({nameof(Report.ReportGroupId)}, " +
+                $"{nameof(Report.Name)}, " +
+                $"{nameof(Report.Status)}, " +
+                $"{nameof(Report.PathToReportInstance)}, " +
+                $"{nameof(Report.DateCreated)}, " +
+                $"{nameof(Report.UserCreated)}, " +
+                $"{nameof(Report.DateLast)}, " +
+                $"{nameof(Report.UserLast)}) " +
                 "VALUES " +
-                    $"({group.Id}, " +
-                    $"'{name}', " +
-                    $"'{KPItemStatus.New}', " +
-                    $"'{groupDbFi.FullName}', " +
-                    $"'{CurrentTime}', " +
-                    $"'{_userSystemName}', " +
-                    $"'{CurrentTime}', " +
-                    $"'{_userSystemName}')");
+                $"(@GroupId, @Name, @Status, @Path, @DateCreated, @UserCreated, @DateLast, @UserLast); " +
+                "SELECT last_insert_rowid();";
+
+            var parameters = new
+            {
+                GroupId = group.Id,
+                Name = name,
+                Status = KPItemStatus.New.ToString(),
+                Path = groupDbFi.FullName,
+                DateCreated = CurrentTime,
+                UserCreated = _userSystemName,
+                DateLast = CurrentTime,
+                UserLast = _userSystemName
+            };
+
+            return ExecuteInsertWithId(query, parameters);
+        }
         #endregion
 
         #region Read

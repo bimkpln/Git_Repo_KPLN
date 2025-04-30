@@ -6,8 +6,14 @@
         xmlns:local="clr-namespace:KPLN_Clashes_Ribbon.Forms"
         mc:Ignorable="d" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
-        Title="KPLN: Создание" Width="400" Height="200"  Background="#FF292D36" WindowStartupLocation="CenterOwner" 
-            ResizeMode="NoResize" WindowStyle="ToolWindow" Topmost="True" Loaded="OnLoaded">
+        Title="KPLN: Создание" 
+        Width="400" Height="200"  
+        Background="#FF292D36" 
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        Loaded="OnLoaded">
     <Window.Resources>
         <Style TargetType="TextBox" x:Key="BX">
             <Setter Property="Background" Value="#FF292D36"/>
