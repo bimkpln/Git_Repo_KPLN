@@ -7,8 +7,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
-using System.Net.Sockets;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -256,7 +254,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
         // 5. Управление
         public RelayCommand OkCommand { get; set; }
-        
+
         public RelayCommand CancelCommand { get; set; }
 
         public Action CloseAction { get; set; }
@@ -266,7 +264,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             Document doc = _uiapp.ActiveUIDocument.Document;
             UIDocument uidoc = _uiapp.ActiveUIDocument;
             if (uidoc == null) return;
-            
+
             CloseAction?.Invoke();
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
@@ -294,7 +292,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                                 isRun = UseUniCodes(_shetsToRenumber, cmbSelUni, uniNumber, Unicode_IsChangePrefixToUnicode);
                             }
                             break;
-                        
+
                         // Меняю номер листа с использованием префиксов
                         case RenameMode.Prefix:
                             if (string.IsNullOrEmpty(Prefix_Text))
@@ -305,21 +303,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                             string userPrefix = $"{Prefix_Text}/";
                             UsePrefix(_shetsToRenumber, userPrefix);
 
-                            if(Prefix_IsParamUpdate)
+                            if (Prefix_IsParamUpdate)
                                 ParamRefresh(_shetsToRenumber, Prefix_SelectedTitleBlockParameter);
 
                             break;
-                        
+
                         //Меняю номер листа без редактирования префиксов и Юникодов
                         case RenameMode.OnlyRenumber:
                             if (int.TryParse(OnlyRenumber_StartNumber, out int or_startNumber))
                             {
                                 ClearRenumber(_shetsToRenumber, or_startNumber);
 
-                                if(OnlyRenumber_IsParamUpdate)
+                                if (OnlyRenumber_IsParamUpdate)
                                     ParamRefresh(_shetsToRenumber, OnlyRenumber_SelectedTitleBlockParameter);
                             }
-                            
+
                             break;
 
                         // Заполняю пользовательский параметр для нумерации в штампе
@@ -360,7 +358,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
         private void UpdateSelectedMode()
         {
-            if (IsUnicode) 
+            if (IsUnicode)
                 SelectedMode = RenameMode.Unicode;
             else if (IsPrefix)
                 SelectedMode = RenameMode.Prefix;
@@ -394,7 +392,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                     }
                     else
                         trueNumbStr = curVSheet.SheetNumber;
-                    
+
                     curVSheet.SheetNumber = String.Concat(Enumerable.Repeat(cmbSelUni.Code, counter)) + trueNumbStr;
 
                     Parameter uniCodeParam = curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e"));
@@ -460,7 +458,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             {
                 string strVSheetNumb = curVSheet.SheetNumber;
                 string onlyNumb = UserNumber(strVSheetNumb);
-                
+
                 string ZeroNumber;
                 if (OnlyNumber(onlyNumb) < 10)
                 {
@@ -547,7 +545,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
                 if (matchNumberByPrefix.Success)
                     textPrefix = matchNumberByPrefix.Value;
-                
+
                 if (matchByZeroPrefix.Success)
                 {
                     if (number < 10)

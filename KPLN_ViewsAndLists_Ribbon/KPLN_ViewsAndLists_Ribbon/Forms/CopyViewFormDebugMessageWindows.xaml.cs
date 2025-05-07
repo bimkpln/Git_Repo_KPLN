@@ -25,13 +25,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 var paragraph = new Paragraph(new Run(line));
                 paragraph.Margin = new Thickness(0);
 
-                if (line.Contains("ОШИБКА"))
+                if (line.Contains("ИНФО."))
                 {
-                    paragraph.Foreground = Brushes.Red;
+                    paragraph.Foreground = Brushes.Black;
                 }
                 else
                 {
-                    paragraph.Foreground = Brushes.Black;
+                    paragraph.Foreground = Brushes.Red;
                 }
 
                 MessageTextBox.Document.Blocks.Add(paragraph);

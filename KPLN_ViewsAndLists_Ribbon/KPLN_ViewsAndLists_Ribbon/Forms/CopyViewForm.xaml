@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="695" Width="730"
+        Height="565" Width="730"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Title="KPLN. Копирование шаблонов вида">
@@ -25,46 +25,24 @@
             <TextBlock Text="Имя активного документа"  Height="15" FontSize="11"/>
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="TB_ActivDocumentName" Height="25" Width="410" Margin="0 0 15 0" Padding="3" Cursor="Arrow" IsReadOnly="True"/>
-                <Button x:Name="BTN_LoadLinkedDoc" Content="Открытый документ" Width="125px" Margin="0 0 5 0" FontSize="12" Click="BTN_LoadLinkedDoc_Click"/>
-                <Button x:Name="BTN_LoadCustomDoc" Content="Внешний документ" Width="125px" FontSize="12" Click="BTN_LoadCustomDoc_Click"/>
             </StackPanel>
         </StackPanel>
 
-
-
-        <StackPanel x:Name="SP_OtherFile" Grid.Row="1" Height="50" Margin="0 10 0 0" Background="#FFF1F1F1">
-        </StackPanel>
-
-        <StackPanel x:Name="SP_BtnViewPanel" Grid.Row="2" Height="25" Margin="0 10 0 0" Orientation="Horizontal">
-            <Button x:Name="BTN_OpenTempalte" IsEnabled="False" Content="Обновить список шаблонов" Width="170" Margin="5 0" FontSize="12" Click="BTN_OpenTempalte_Click"/>
-        </StackPanel>
-
-        <StackPanel x:Name="SP_BtnTypePanel" Grid.Row="3" Height="25" Margin="0 10 0 0" Orientation="Horizontal">
-            <CheckBox x:Name="CHK_ReplaceTypes" IsEnabled="False" Content="Заменить используемые в шаблонах типы (фильтры, цвет. схемы и т.д.)" Margin="10 0" VerticalAlignment="Center" Foreground="#FF7F7F7F"/>
-        </StackPanel>
-
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="4" Height="410" Margin="0 10 0 10" Background="#FFF1F1F1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="1" Height="410" Margin="0 10 0 10" Background="#FFF1F1F1">
             <Border Padding="5" Background="#FFF1F1F1">
                 <StackPanel x:Name="SP_OtherFileSetings" Background="#FFF1F1F1"/>
             </Border>
         </ScrollViewer>
 
-        <Grid Grid.Row="5">
-            <Button x:Name="BTN_RunOneFile"   
-            HorizontalAlignment="Right"
-            IsEnabled="False"
-            Content="Копировать шаблоны в открытый документ (подробный лог)"
-            Width="360"
-            Height="23"
-            Margin="0 0 240 0"
-            FontSize="12"
-            Click="BTN_RunOneFile_Click" />
+        <Grid Grid.Row="2">
+
             <Button x:Name="BTN_RunManyFile"
             HorizontalAlignment="Right"
             IsEnabled="False"
-            Content="Обработать несколько документов"
+            Content="Выбрать документы для обработки"
             Width="220"
-            Margin="0 0 7 0"
+            Height="24px"
+            Margin="0 0 0 0"
             FontSize="12" Click="BTN_RunManyFile_Click"/>
         </Grid>
 

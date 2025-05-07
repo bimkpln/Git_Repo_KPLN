@@ -9,9 +9,8 @@ using System.Collections.Generic;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI.Events;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using System.Windows.Media;
-using System.Windows.Documents;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
@@ -20,32 +19,26 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     /// </summary>
     public partial class ManyDocumentsSelectionWindow : Window
     {
-        private UIApplication _uiapp;
-        private readonly DBRevitDialog[] _dbRevitDialogs;
+        private UIApplication _uiapp;      
         private Document _mainDocument;
+
         private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
         private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
-        private bool _replaceTypes;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Document additionalDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool replaceTypes)
+        string debugMessage;
+
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges)
         {
             InitializeComponent();
 
             _uiapp = uiApp;
             _mainDocument = mainDocument;
+
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
-            _replaceTypes = replaceTypes;
+
             ItemsList.ItemsSource = _items;
 
-            if (additionalDocument != null && additionalDocument.IsValidObject)
-            {
-                string path = additionalDocument.PathName;
-
-                if (!string.IsNullOrEmpty(path) && Path.GetExtension(path).Equals(".rvt", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    _items.Add(new FileItem { FullPath = path });
-                }
-            }
+            debugMessage = "";
         }
 
         public class FileItem
@@ -53,14 +46,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             public string FullPath { get; set; }
         }
 
-        // Запуск работы плагина
         private void ProcessButton_Click(object sender, RoutedEventArgs e)
         {
-            string debugMessage = "";
-
             if (_uiapp == null)
             {
-                MessageBox.Show($"Revit-uiapp не передан", "KPLN. Ошибка");
+                MessageBox.Show($"Revit-поток не передан или не обработан в плагине. Пожалуйста, перезагрузите Revit.", "KPLN. Ошибка");
+                return;
+            }
+
+            if (_items.Count == 0)
+            {
+                MessageBox.Show($"Нет выбранных документов для внесения изменений", "KPLN. Информация");
                 return;
             }
 
@@ -89,7 +85,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     {
                         doc = _uiapp.Application.OpenDocumentFile(item.FullPath);
 
-                        debugMessage += $"Открыт документ {doc.Title} ({item.FullPath}).\n";                        
+                        debugMessage += $"ИНФО. Открыт документ {doc.Title} ({item.FullPath}).\n";                        
                     }
                     catch (Exception ex)
                     {
@@ -117,25 +113,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                 {
                                     View existingTemplate = new FilteredElementCollector(doc)
                                             .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
-
                                     List<View> viewsUsingexistingTemplate = null;
 
                                     // Удаление
                                     if (statusCopyView == "ignoreCopyView")
-                                    {
-                                        if (_replaceTypes)
-                                        {
-                                            try
-                                            {
-                                                RemoveDuplicateTypes(_mainDocument, doc, existingTemplate);
-                                                debugMessage += $"Связные типы из {templateView.Name}.\n";
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                debugMessage += $"ОШИБКА. Не удалось удалить cвязные типы из {templateView.Name}: {ex.Message}.\n";
-                                            }
-                                        }
-
+                                    {                                       
                                         if (existingTemplate != null)
                                         {
                                             viewsUsingexistingTemplate = new FilteredElementCollector(doc)
@@ -150,24 +132,23 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 existingTemplate.Name = $"{existingTemplateName}_DeleteTemp{DateTime.Now:yyyyMMddHHmmss}";
                                                 doc.Delete(existingTemplate.Id);
 
-                                                debugMessage += $"Временный шаблон {existingTemplate.ToString()} удалён.\n";
+                                                debugMessage += $"ИНФО. Временный шаблон {existingTemplate.ToString()} удалён.\n";
                                             }
                                             catch (Exception ex)
                                             {
                                                 debugMessage += $"ОШИБКА. Не удалось удалить шаблон {existingTemplate.ToString()}: {ex.Message}.\n";
                                             }
                                         }                                        
-
+                                                                             
                                         CopyPasteOptions options = new CopyPasteOptions();
-                                        options.SetDuplicateTypeNamesHandler(new MyDuplicateTypeNamesHandler());
-
+                                        options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
                                         ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
                                             _mainDocument,
                                             new List<ElementId> { templateView.Id },
                                             doc,
                                             null,
                                             options
-                                        );
+                                        );                                       
 
                                         ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
                                         View copiedTemplateViewNew = doc.GetElement(copiedTemplateIdNew) as View;
@@ -177,7 +158,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                         {
                                             copiedTemplateViewNew.Name = viewTemplateName;
 
-                                            debugMessage += $"Шаблон {viewTemplateName} переименован.\n";
+                                            debugMessage += $"ИНФО. Шаблон {viewTemplateName} переименован.\n";
                                         }
                                         catch (Exception ex)
                                         {
@@ -192,7 +173,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 {
                                                     view.ViewTemplateId = copiedTemplateIdNew;
 
-                                                    debugMessage += $"Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
+                                                    debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
                                                 }
                                                 catch (Exception ex)
                                                 {
@@ -201,23 +182,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                             }
                                         }
                                     }
-
-                                    // Резервная копия
                                     else if (statusCopyView == "copyView")
                                     {
-                                        if (_replaceTypes)
-                                        {
-                                            try
-                                            {
-                                                RemoveDuplicateTypes(_mainDocument, doc, existingTemplate);
-                                                debugMessage += $"Связные типы из {templateView.Name}.\n";
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                debugMessage += $"ОШИБКА. Не удалось удалить cвязные типы из {templateView.Name}: {ex.Message}.\n";
-                                            }
-                                        }
-
                                         if (existingTemplate != null)
                                         {
                                             viewsUsingexistingTemplate = new FilteredElementCollector(doc)
@@ -230,17 +196,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                             {
                                                 existingTemplate.Name = $"{viewTemplateName}_{DateTime.Now:yyyyMMdd_HHmmss}";
 
-                                                debugMessage += $"Шаблон {existingTemplate.Name} переименован.\n";
+                                                debugMessage += $"ИНФО. Шаблон {existingTemplate.Name} переименован.\n";
                                             }
                                             catch (Exception ex)
                                             {
                                                 debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n";
                                             }
                                         }
-
+                                                                             
                                         CopyPasteOptions options = new CopyPasteOptions();
-                                        options.SetDuplicateTypeNamesHandler(new MyDuplicateTypeNamesHandler());
-
+                                        options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
                                         ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
                                             _mainDocument,
                                             new List<ElementId> { templateView.Id },
@@ -248,7 +213,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                             null,
                                             options
                                         );
-
+                                        
                                         ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
                                         View copiedTemplateViewNew = doc.GetElement(copiedTemplateIdNew) as View;
 
@@ -262,27 +227,26 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 {
                                                     view.ViewTemplateId = copiedTemplateIdNew;
 
-                                                    debugMessage += $"Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
+                                                    debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
                                                 }
                                                 catch (Exception ex)
                                                 {
                                                     debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
                                                 }
                                             }
-                                        }
-                                    }
+                                        }                                        
+                                    }                              
                                 }
                             }
                         }
 
                         trans.Commit();
                     }
-
                     try
                     {
                         doc.Save();
 
-                        debugMessage += $"Документ сохранён {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                        debugMessage += $"ИНФО. Документ сохранён {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
                     }
                     catch (Exception ex)
                     {
@@ -309,7 +273,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                             doc.SynchronizeWithCentral(transOptions, options);
 
-                            debugMessage += $"Документ синхронизирован {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                            debugMessage += $"ИНФО. Документ синхронизирован {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
                         }
                         catch (Exception ex)
                         {
@@ -322,13 +286,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     {
                         doc.Close(false);
 
-                        debugMessage += $"Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                        debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
                     }
                     catch (Exception ex)
                     {
                         debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex}.\n";
                         continue;
-                    }                  
+                    }
                 }
             }
 
@@ -341,106 +305,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             debugWindow.ShowDialog();
         }
 
-        // Поиск одинаковых типов в разных документах
-        public static HashSet<ElementId> GetUsedTypeIdsFromView(View view)
-        {
-            Document doc = view.Document;
-            HashSet<ElementId> result = new HashSet<ElementId>();
-
-            foreach (Parameter param in view.Parameters)
-            {
-                if (param.StorageType == StorageType.ElementId)
-                {
-                    ElementId id = param.AsElementId();
-                    if (id != ElementId.InvalidElementId)
-                    {
-                        Element elem = doc.GetElement(id);
-                        if (elem is ElementType)
-                        {
-                            result.Add(id);
-                        }
-                    }
-                }
-            }
-
-            foreach (Category category in doc.Settings.Categories)
-            {
-                OverrideGraphicSettings ogs = view.GetCategoryOverrides(category.Id);
-                if (ogs != null)
-                {
-                    AddElementTypesFromOverrideGraphicSettings(doc, ogs, result);
-                }
-            }
-
-            foreach (ElementId filterId in view.GetFilters())
-            {
-                OverrideGraphicSettings ogs = view.GetFilterOverrides(filterId);
-                if (ogs != null)
-                {
-                    AddElementTypesFromOverrideGraphicSettings(doc, ogs, result);
-                }
-            }
-
-            return result;
-        }
-
-        // Вспомогательный метод для поиск одинаковых типов в разных документах
-        private static void AddElementTypesFromOverrideGraphicSettings(Document doc, OverrideGraphicSettings ogs, HashSet<ElementId> result)
-        {
-            ElementId[] ids =
-            {
-                ogs.CutLinePatternId,
-                ogs.ProjectionLinePatternId,
-                ogs.SurfaceForegroundPatternId,
-                ogs.SurfaceBackgroundPatternId,
-                ogs.CutForegroundPatternId,
-                ogs.CutBackgroundPatternId
-            };
-
-            foreach (ElementId id in ids)
-            {
-                if (id != ElementId.InvalidElementId)
-                {
-                    Element elem = doc.GetElement(id);
-                    if (elem is ElementType)
-                    {
-                        result.Add(id);
-                    }
-                }
-            }
-        }
-
-        // Удалить из additionalDocument те типы, у которых такие же имена, как в mainDocument
-        void RemoveDuplicateTypes(Document sourceDoc, Document targetDoc, View sourceView)
-        {
-            var usedTypeIds = GetUsedTypeIdsFromView(sourceView);
-
-            foreach (ElementId typeId in usedTypeIds)
-            {
-                Element typeInSource = sourceDoc.GetElement(typeId);
-                if (typeInSource is ElementType sourceType)
-                {
-                    ElementType matchingType = new FilteredElementCollector(targetDoc)
-                        .OfClass(sourceType.GetType())
-                        .Cast<ElementType>()
-                        .FirstOrDefault(t => t.Name == sourceType.Name);
-
-                    if (matchingType != null)
-                    {
-                        try
-                        {
-                            targetDoc.Delete(matchingType.Id);
-                        }
-                        catch
-                        {
-
-                        }
-                    }
-                }
-            }
-        }
-
-        // XAML. Добавить документы
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
@@ -462,7 +326,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        // XAML. Удалить документ
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && fe.DataContext is FileItem item)
@@ -471,7 +334,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        // Обработчик ошибок. OnFailureProcessing
         internal void OnFailureProcessing(object sender, FailuresProcessingEventArgs args)
         {
             FailuresAccessor fa = args.GetFailuresAccessor();
@@ -504,7 +366,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        // Обработчик ошибок. OnDialogBoxShowing
         internal void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
             if (args.Cancellable)
@@ -512,25 +373,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 args.Cancel();
             }
             else
-            {
-                DBRevitDialog currentDBDialog = null;
-                if (string.IsNullOrEmpty(args.DialogId))
-                {
-                    TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
-                }
-                else
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
-
-                if (currentDBDialog == null)
-                {
-                    return;
-                }
+            {                
+                return;              
             }
         }
 
-        // Обработчик копировани типов. Оставляем старые типы, которые уже есть
-        public class MyDuplicateTypeNamesHandler : IDuplicateTypeNamesHandler
+        public class ReplaceDuplicateTypeNamesHandler : IDuplicateTypeNamesHandler
         {
             public DuplicateTypeAction OnDuplicateTypeNamesFound(DuplicateTypeNamesHandlerArgs args)
             {

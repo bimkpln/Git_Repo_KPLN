@@ -1,6 +1,5 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using KPLN_ViewsAndLists_Ribbon.Forms.MVVM;
 using System.IO;
 using System.Reflection;
 using System.Windows.Media;
@@ -141,7 +140,7 @@ namespace KPLN_ViewsAndLists_Ribbon
             #region Добавляю в выпадающий список элементы для листов
             AddPushButtonDataInPullDown(
                 "CommandListRenumber",
-                ListRenumberVM.PluginName,
+                "Перенумеровать\nлисты",
                 "Перенумеровать листы",
                 string.Format(
                     "Изменяет нумерацию по заданной функции;\n" +
