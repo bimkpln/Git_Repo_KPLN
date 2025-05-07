@@ -57,6 +57,10 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_ConfigWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
@@ -137,12 +141,14 @@
     <Compile Include="Core\AROpeningHoleEntity.cs" />
     <Compile Include="Core\IOSElemEntity.cs" />
     <Compile Include="Core\IOSOpeningHoleTaskEntity.cs" />
+    <Compile Include="Core\MainConfig.cs" />
     <Compile Include="Core\MainEntity\OpeningHoleEntity.cs" />
+    <Compile Include="ExecutableCommand\AR_OHE_MakerWithUnion.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\IOSElemsLinkSelectionFilter.cs" />
     <Compile Include="Forms\ParamsOpenHoleByIOSElemsForm.xaml.cs">
       <DependentUpon>ParamsOpenHoleByIOSElemsForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Services\IOSElemsCollectionCreator.cs" />
-    <Compile Include="ExecutableCommand\AR_OHE_ElementDeleter.cs" />
     <Compile Include="ExecutableCommand\AR_OHE_Maker.cs" />
     <Compile Include="ExternalCommands\ShowMainMenu.cs" />
     <Compile Include="Forms\MainMenu.xaml.cs">

@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
     xmlns:local="clr-namespace:KPLN_OpeningHoleManager.Forms"
     mc:Ignorable="d" 
@@ -48,13 +49,13 @@
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Суммарный зазор между эл-м ИОС и гранью отверстия"/>
-                    <TextBox 
-                        Text="{Binding OpenHoleExpandedValue, UpdateSourceTrigger=PropertyChanged}" 
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"
-                        IsEnabled="False"/>
+                    <ComboBox 
+                        SelectedItem="{Binding OpenHoleExpandedValue, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" 
+                        VerticalAlignment="Center">
+                        <sys:Double>50</sys:Double>
+                        <sys:Double>100</sys:Double>
+                        <sys:Double>150</sys:Double>
+                    </ComboBox>
                 </DockPanel>
 
                 <TextBlock 
@@ -64,12 +65,28 @@
                     VerticalAlignment="Center"
                     HorizontalAlignment="Left"
                     Margin="5,10,5,0"/>
-                
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min высота/диаметр отверстий в АР:" 
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding AR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
                 <DockPanel 
                     LastChildFill="True">
                     <TextBlock 
                         Text="Min ширина отверстий в АР:"
-                        Width="175"
+                        Width="200"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
@@ -81,22 +98,6 @@
                         DataObject.Pasting="TextBox_Pasting"/>
                 </DockPanel>
 
-                <DockPanel 
-                    LastChildFill="True">
-                    <TextBlock 
-                        Text="Min высота отверстий в АР:" 
-                        Width="175"
-                        VerticalAlignment="Center" 
-                        Margin="5"
-                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
-                    <TextBox 
-                        Text="{Binding AR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
-                </DockPanel>
-                
                 <DockPanel 
                     LastChildFill="True">
                     <TextBlock 
@@ -120,12 +121,28 @@
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Left"
                     Margin="5,10,5,0"/>
+                
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min высота/диаметр отверстий в КР:" 
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding KR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
 
                 <DockPanel 
                     LastChildFill="True">
                     <TextBlock 
                         Text="Min ширина отверстий в КР:"
-                        Width="175"
+                        Width="200"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
@@ -137,22 +154,6 @@
                         DataObject.Pasting="TextBox_Pasting"/>
                 </DockPanel>
 
-                <DockPanel 
-                    LastChildFill="True">
-                    <TextBlock 
-                        Text="Min высота отверстий в КР:" 
-                        Width="175"
-                        VerticalAlignment="Center" 
-                        Margin="5"
-                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
-                    <TextBox 
-                        Text="{Binding KR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
-                </DockPanel>
-                
                  <DockPanel 
                      LastChildFill="True">
                      <TextBlock 

@@ -1,4 +1,8 @@
-﻿using System.Text.RegularExpressions;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_OpeningHoleManager.Core;
+using KPLN_OpeningHoleManager.ExecutableCommand;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 
@@ -15,7 +19,7 @@ namespace KPLN_OpeningHoleManager.Forms
             InitializeComponent();
             DataContext = ParamsOpenHoleByIOSElemsForm_VM;
 
-            PreviewKeyDown += new KeyEventHandler(HandleEsc);
+            PreviewKeyDown += new KeyEventHandler(HandleKeyboardPush);
         }
 
         /// <summary>
@@ -23,10 +27,17 @@ namespace KPLN_OpeningHoleManager.Forms
         /// </summary>
         public MVVMCore_MainMenu.ViewModel ParamsOpenHoleByIOSElemsForm_VM { get; private set; }
 
-        private void HandleEsc(object sender, KeyEventArgs e)
+        private void HandleKeyboardPush(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
                 Close();
+
+            if (e.Key == Key.Enter)
+            {
+                this.DialogResult = true;
+                SetConfigData();
+                this.Close();
+            }
         }
 
         private void TextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -49,7 +60,10 @@ namespace KPLN_OpeningHoleManager.Forms
         private void OnBtnApply_Click(object sender, RoutedEventArgs e)
         {
             this.DialogResult = true;
+            SetConfigData();
             this.Close();
         }
+
+        private void SetConfigData() => MainConfig.SetData_ToConfig(ParamsOpenHoleByIOSElemsForm_VM);
     }
 }

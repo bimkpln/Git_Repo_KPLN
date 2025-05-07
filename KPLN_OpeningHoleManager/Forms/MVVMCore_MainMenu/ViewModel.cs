@@ -3,6 +3,7 @@ using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.ExecutableCommand;
@@ -32,14 +33,19 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         private double _kr_openHoleMinDistanceValue = 100;
 
         /// <summary>
-        /// Комманда: Расставить отверстия по элементам ИОС
+        /// Комманда: Расставить отверстия по ВСЕМ элементам ИОС
         /// </summary>
         public ICommand CreateOpenHoleByIOSElemsCommand { get; }
 
         /// <summary>
+        /// Комманда: Расставить отверстия по ВЫБРАННЫМ элементам ИОС
+        /// </summary>
+        public ICommand CreateOpenHoleBySelectedIOSElemsCommand { get; }
+
+        /// <summary>
         /// Комманда: Объеденить отверстия
         /// </summary>
-        public ICommand UnitOpenHolesCommand { get; }
+        public ICommand UnionOpenHolesCommand { get; }
 
         /// <summary>
         /// Комманда: Выбрать задания и расстваить отверстия в модели
@@ -139,14 +145,36 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
         public ViewModel()
         {
+            // Устанавливаю команды
             CreateOpenHoleByIOSElemsCommand = new RelayCommand(CreateOpenHoleByIOSElems);
-            UnitOpenHolesCommand = new RelayCommand(UnitOpenHoles);
+            CreateOpenHoleBySelectedIOSElemsCommand = new RelayCommand(CreateOpenHoleBySelectedIOSElems);
+            UnionOpenHolesCommand = new RelayCommand(UnionOpenHoles);
             SetOpenHoleByTaskCommand = new RelayCommand(SetOpenHoleByTask);
         }
 
-        #region Расставить отверстия по элементам ИОС
         /// <summary>
-        /// Реализация: Расставить отверстия по элементам ИОС
+        /// Чтение и установка переменных (длина, ширина и т.п.) из файла-конфигурации (если он есть)
+        /// </summary>
+        public void SetDataGeomParamsData(DBProject dBProject)
+        {
+            MainConfig mainConfig = MainConfig.GetData_FromConfig(dBProject);
+            if (mainConfig != null)
+            {
+                OpenHoleExpandedValue = mainConfig.OpenHoleExpandedValue;
+
+                AR_OpenHoleMinDistanceValue = mainConfig.AR_OpenHoleMinDistanceValue;
+                AR_OpenHoleMinHeightValue = mainConfig.AR_OpenHoleMinHeightValue;
+                AR_OpenHoleMinWidthValue = mainConfig.AR_OpenHoleMinWidthValue;
+
+                KR_OpenHoleMinDistanceValue = mainConfig.KR_OpenHoleMinDistanceValue;
+                KR_OpenHoleMinHeightValue = mainConfig.KR_OpenHoleMinHeightValue;
+                KR_OpenHoleMinWidthValue = mainConfig.KR_OpenHoleMinWidthValue;
+            }
+        }
+
+        #region Расставить отверстия по ВСЕМ элементам ИОС
+        /// <summary>
+        /// Реализация: Расставить отверстия по ВСЕМ элементам ИОС
         /// </summary>
         private void CreateOpenHoleByIOSElems()
         {
@@ -175,24 +203,56 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
                 }
 
-                AROpeningHoleEntity[] arEntities = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities);
-
-                AROpeningHoleEntity[] arEntitiesForUnion = GetAROpeningsFromIOSElems_UnionByParams(arEntities);
-                if (arEntitiesForUnion.Any())
+                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities, false);
+                if (elemToCreate.Any())
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this));
+            }
+            catch (Exception ex)
+            {
+                new TaskDialog("Ошибка")
                 {
-                    List<AROpeningHoleEntity> tempAREntities = new List<AROpeningHoleEntity>(arEntitiesForUnion.Count());
-                    foreach(AROpeningHoleEntity arEnt_Union in arEntitiesForUnion)
-                    {
-                        tempAREntities.Add(CreateUnitOpeningHole(doc, arEntitiesForUnion));
-                    }
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                }.Show();
+            }
+        }
 
-                    AROpeningHoleEntity[] resultAREntities = tempAREntities.ToArray();
-                    if (resultAREntities != null)
+        /// <summary>
+        /// Реализация: Расставить отверстия по ВЫБРАННЫМ элементам ИОС
+        /// </summary>
+        private void CreateOpenHoleBySelectedIOSElems()
+        {
+            try
+            {
+                if (Module.CurrentUIApplication == null) return;
+
+                UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
+                Document doc = uidoc.Document;
+
+
+                Element selectedHost = SelectARHost(uidoc, doc);
+                if (selectedHost == null)
+                    return;
+
+
+                IOSElemEntity[] iosEntities = SelectAndGetIOSElemsFromLink(uidoc, doc, selectedHost);
+                if (iosEntities == null)
+                    return;
+
+                if (iosEntities.Count() == 0)
+                {
+                    new TaskDialog("Внимание")
                     {
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(ref resultAREntities));
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_ElementDeleter(resultAREntities));
-                    }
+                        MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                        MainInstruction = $"У выбранного элемента АР нет коллизий с выбранными элементами ИОС. Создать отверстия невозможно",
+                    }.Show();
+
+                    return;
                 }
+
+                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities, false);
+                if (elemToCreate.Any())
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this));
             }
             catch (Exception ex)
             {
@@ -241,13 +301,71 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         }
 
         /// <summary>
+        /// Выбрать эл-ты ИОС и получить коллекцию эл-в для анализа по выбранному основанию
+        /// </summary>
+        private IOSElemEntity[] SelectAndGetIOSElemsFromLink(UIDocument uidoc, Document doc, Element selectedHostElem)
+        {
+            Solid selectedHostElemSolid = GeometryWorker.GetRevitElemSolid(selectedHostElem);
+
+            List<IOSElemEntity> iosEntities = new List<IOSElemEntity>();
+
+            IOSElemsLinkSelectionFilter selectionFilter = new IOSElemsLinkSelectionFilter(doc);
+
+            IList<Reference> pickedRefs = null;
+            try
+            {
+                // Запуск выбару элементаў карыстальнікам
+                pickedRefs = uidoc.Selection.PickObjects(
+                    ObjectType.LinkedElement,
+                    selectionFilter,
+                    "Выберите элементы ИОС, по которым нужно расставить отверстия в выбранной стене");
+            }
+            // Отмена пользователем
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
+            // Отмена пользователем
+            // Отмена пользователем
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
+            {
+                if (ioe.Message.Contains("Cannot re-enter the pick operation"))
+                {
+                    new TaskDialog("Ошибка")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconError,
+                        MainInstruction = $"Сначала заверши предыдущий выбор, прежде чем начинать новый",
+                    }.Show();
+                    return null;
+                }
+            }
+
+            foreach (Reference reference in pickedRefs)
+            {
+                RevitLinkInstance linkInstance = doc.GetElement(reference.ElementId) as RevitLinkInstance;
+                if (linkInstance == null)
+                    continue;
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                    continue;
+
+                Element linkedElement = linkedDoc.GetElement(reference.LinkedElementId);
+
+
+                IOSElemEntity iosElemEntity = IOSElemsCollectionCreator.CreateIOSElemEntityForLinkElem_BySolid(linkInstance, linkedElement, selectedHostElemSolid);
+                if (iosElemEntity != null)
+                    iosEntities.Add(iosElemEntity);
+            }
+
+            return iosEntities.ToArray();
+        }
+
+        /// <summary>
         /// Получить коллекцию эл-в ИОС для анализа по выбранному основанию
         /// </summary>
         private IOSElemEntity[] GetIOSElemsFromLink(Document doc, Element selectedHostElem)
         {
             List<IOSElemEntity> iosEntities = new List<IOSElemEntity>();
 
-            Solid selectedHostElemSolid = GeometryWorker.GetElemSolid(selectedHostElem);
+            Solid selectedHostElemSolid = GeometryWorker.GetRevitElemSolid(selectedHostElem);
 
             // Анализирую ИОС файлы, и забираю из них элементы для анализа на коллизии
             RevitLinkInstance[] revitLinkInsts = new FilteredElementCollector(doc)
@@ -294,16 +412,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         }
 
         /// <summary>
-        /// Получить коллекцию отверстий АР по элементам ИОС БЕЗ объединения
+        /// Получить коллекцию отверстий АР по элементам ИОС
         /// </summary>
         /// <returns></returns>
-        private AROpeningHoleEntity[] GetAROpeningsFromIOSElems_WithoutUnion(Document doc, Element hostElem, IOSElemEntity[] iosElemColl)
+        private AROpeningHoleEntity[] GetAROpeningsFromIOSElems_WithoutUnion(Document doc, Element hostElem, IOSElemEntity[] iosElemColl, bool isSolidMabeByExtrusionByZAxis)
         {
             List<AROpeningHoleEntity> result = new List<AROpeningHoleEntity>();
 
-            XYZ hostDir = GetHostDirection(hostElem);
-            Face hostDirFace = GetFace_ParalleledForDirection(GeometryWorker.GetElemSolid(hostElem), hostDir);
-            Surface hostSurface = hostDirFace.GetSurface();
+            XYZ hostDir = GeometryWorker.GetHostDirection(hostElem);
 
             // Одиночная обработка каждого эл-та
             foreach (IOSElemEntity iosElemEnt in iosElemColl)
@@ -329,23 +445,15 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 }
 
 
-                // Получаю координаты экстремумов
-                XYZ[] minMaxPnts = GetMinAndMaxSolidPoints(iosElemEnt.ARIOS_IntesectionSolid, hostDir);
+                // Получаю ширину и высоту
+                double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARIOS_IntesectionSolid, hostDir, isSolidMabeByExtrusionByZAxis);
+                double resultWidth = widthAndHeight[0];
+                double resultHeight = widthAndHeight[1];
+                double resultRadius = widthAndHeight[1];
 
 
                 // Получаю координаты центра пересечения
                 XYZ docCoord = iosElemEnt.IOS_LinkTransform.OfPoint(iosElemEnt.ARIOS_IntesectionSolid.ComputeCentroid());
-
-
-                // Получаю высоту/ширину пересечения
-                hostSurface.Project(minMaxPnts[0], out UV minUV, out double minDist);
-                hostSurface.Project(minMaxPnts[1], out UV maxUV, out double maxDist);
-                if (minUV == null || maxUV == null)
-                    throw new Exception("Не удалось осуществить проекцию на отверстие. Отправь разработчику!");
-
-                double resultWidth = Math.Abs(maxUV.U - minUV.U);
-                double resultHeight = Math.Abs(maxUV.V - minUV.V);
-                double resultRadius = Math.Abs(maxUV.V - minUV.V);
 
 
                 // Создаю сущность AROpeningHoleEntity
@@ -354,83 +462,21 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     as AROpeningHoleEntity;
 
                 arEntity.SetGeomParams();
-                arEntity.SetGeomParamsRoundData(resultWidth, resultHeight, resultRadius, OpenHoleExpandedValue);
+                arEntity.SetGeomParamsRoundData(resultHeight, resultWidth, resultRadius, OpenHoleExpandedValue);
                 arEntity.UpdatePointData_ByShape();
 
-
-                // Фильтрую отверстия в одной точке c меньшими размерами - они идут в игнор, т.к. ничего не вырежут
-                if (result.Any(arEnt => arEnt.OHE_Point.IsAlmostEqualTo(arEntity.OHE_Point, 0.01)
-                    && arEnt.OHE_Height <= arEntity.OHE_Height
-                    && arEnt.OHE_Width <= arEntity.OHE_Width
-                    && arEnt.OHE_Radius <= arEntity.OHE_Radius))
-                    continue;
-                else
-                    result.Add(arEntity);
+                result.Add(arEntity);
             }
-
-            return result.ToArray();
-        }
-
-        /// <summary>
-        /// Получить коллекцию отверстий АР, которые могут быть объеденены по нужным параметрам
-        /// </summary>
-        /// <returns></returns>
-        private AROpeningHoleEntity[] GetAROpeningsFromIOSElems_UnionByParams(AROpeningHoleEntity[] arEntities)
-        {
-            List<AROpeningHoleEntity> result = new List<AROpeningHoleEntity>();
-            foreach (AROpeningHoleEntity arCheckIntersectEntity1 in arEntities)
-            {
-                List<AROpeningHoleEntity> intersectedAREntities = new List<AROpeningHoleEntity>();
-                List<AROpeningHoleEntity> closeInDistAREntities = new List<AROpeningHoleEntity>();
-
-                // Параметры для нахождения пересечений
-                double volume1 = arCheckIntersectEntity1.OHE_Solid.Volume;
-                XYZ centr1 = arCheckIntersectEntity1.OHE_Solid.ComputeCentroid();
-
-                // Параметры для нахождения расстояния
-                XYZ hostDir1 = GetHostDirection(arCheckIntersectEntity1.AR_OHE_HostElement);
-                Face hostDirFace1 = GetFace_ParalleledForDirection(arCheckIntersectEntity1.OHE_Solid, hostDir1);
-                Surface hostSurface1 = hostDirFace1.GetSurface();
-
-                foreach (AROpeningHoleEntity arCheckIntersectEntity2 in arEntities)
-                {
-                    // Игнорирую эквивалентный солид
-                    double volume2 = arCheckIntersectEntity2.OHE_Solid.Volume;
-                    XYZ centr2 = arCheckIntersectEntity2.OHE_Solid.ComputeCentroid();
-                    if (Math.Abs(volume1 - volume2) <= 0.01 && centr1.IsAlmostEqualTo(centr2, 0.01))
-                        continue;
-
-
-                    // Нахожу пересечение солидов
-                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arCheckIntersectEntity1.OHE_Solid, arCheckIntersectEntity2.OHE_Solid, BooleanOperationsType.Intersect);
-                    if (intersectSolid != null && intersectSolid.Volume > 0)
-                    {
-                        intersectedAREntities.Add(arCheckIntersectEntity2);
-                        break;
-                    }
-
-
-                    // Нахожу близкие по расстоянию элементы
-                    var a = AR_OpenHoleMinDistanceValue;
-                    var b = KR_OpenHoleMinDistanceValue;
-
-
-                }
-
-
-            }
-
 
             return result.ToArray();
         }
         #endregion
 
-
         #region Объеденить отверстия
         /// <summary>
         /// Реализация: Объеденить отверстия
         /// </summary>
-        private void UnitOpenHoles()
+        private void UnionOpenHoles()
         {
             try
             {
@@ -443,13 +489,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 if (arOHEColl == null)
                     return;
 
-                AROpeningHoleEntity[] unionAR_OHE = new AROpeningHoleEntity[] { CreateUnitOpeningHole(doc, arOHEColl) };
-
+                AROpeningHoleEntity[] unionAR_OHE = new AROpeningHoleEntity[] { AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl, false) };
                 if (unionAR_OHE != null)
-                {
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(ref unionAR_OHE));
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_ElementDeleter(unionAR_OHE));
-                }
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(unionAR_OHE, "KPLN: Объединить отверстия"));
             }
             catch (Exception ex)
             {
@@ -537,106 +579,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             return arOHEColl.ToArray();
         }
-
-        /// <summary>
-        /// Создать объединённое отверстие по выбранной коллекции
-        /// </summary>
-        private AROpeningHoleEntity CreateUnitOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl)
-        {
-            // Подбираю результирующий тип для семейства
-            string resultSubDep = string.Empty;
-            IEnumerable<string> arOHESubDeps = arOHEColl.Select(ohe => ohe.AR_OHE_IOSDubDepCode);
-            if (arOHESubDeps.Distinct().Count() > 1 || arOHESubDeps.All(subDep => subDep.Equals("Несколько категорий")))
-                resultSubDep = "Несколько категорий";
-            else
-                resultSubDep = arOHESubDeps.FirstOrDefault();
-
-
-            // Анализирую на наличие нескольких основ у выборки отверстий
-            IEnumerable<int> arOHEHostId = arOHEColl.Select(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue);
-            if (arOHEHostId.Distinct().Count() > 1)
-            {
-                HtmlOutput.Print(
-                    $"Выбранные отверстия относятся к разным основаниям. Можно объединять отверстия ТОЛЬКО в рамках одной стены. Проанализируй корректность, и выполни объединение вручную",
-                    MessageType.Error);
-                return null;
-            }
-
-            // Получаю единственную основу
-            Element hostElem = doc.GetElement(new ElementId(arOHEHostId.FirstOrDefault()));
-
-            // Анализирую сущности и нахожу результирующий размер
-            Solid unionSolid = null;
-            foreach (AROpeningHoleEntity arOHE in arOHEColl)
-            {
-                try
-                {
-                    if (unionSolid == null)
-                        unionSolid = arOHE.OHE_Solid;
-                    else
-                    {
-                        Solid tempUnionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, arOHE.OHE_Solid, BooleanOperationsType.Union);
-                        if (tempUnionSolid != null && tempUnionSolid.Volume > 0)
-                            unionSolid = tempUnionSolid;
-
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Актуально для семейств, у которых нет тела (т.е. просто отверстия, например для СЕТ)
-                    if (ex.Message.Contains("проблемы с получением Solid. Отправь разработчику"))
-                    {
-
-                    }
-                    else
-                        throw;
-                }
-            }
-
-            // Анализирую вектор основы
-            XYZ hostDir = GetHostDirection(hostElem);
-
-            // Получаю координаты экстремумов
-            XYZ[] minMaxPnts = GetMinAndMaxSolidPoints(unionSolid, hostDir);
-
-
-            // Получаю высоту/шиирину
-            Solid hostSolid = GeometryWorker.GetElemSolid(hostElem);
-            Face hostFace = GetFace_ParalleledForDirection(hostSolid, hostDir);
-            Surface hostSurface = hostFace.GetSurface();
-
-            hostSurface.Project(minMaxPnts[0], out UV minUV, out double minDist);
-            hostSurface.Project(minMaxPnts[1], out UV maxUV, out double maxDist);
-            if (minUV == null || maxUV == null)
-                throw new Exception("Не удалось осуществить проекцию на стену. Отправь разработчику!");
-
-            double resultWidth = Math.Abs(maxUV.U - minUV.U);
-            double resultHeight = Math.Abs(maxUV.V - minUV.V);
-
-            // Создаю точку вставки
-            XYZ unionSolidCentroid = unionSolid.ComputeCentroid();
-            BoundingBoxXYZ unionSolidBBox = unionSolid.GetBoundingBox();
-            Transform bboxTrans = unionSolidBBox.Transform;
-
-            double locPointX = (bboxTrans.OfPoint(unionSolidBBox.Min).X + bboxTrans.OfPoint(unionSolidBBox.Max).X) / 2;
-            double locPointY = (bboxTrans.OfPoint(unionSolidBBox.Min).Y + bboxTrans.OfPoint(unionSolidBBox.Max).Y) / 2;
-            double locPointZ = minMaxPnts[0].Z;
-            XYZ locPoint = new XYZ(locPointX, locPointY, locPointZ);
-
-
-            // Создаю сущность для заполнения
-            AROpeningHoleEntity result = new AROpeningHoleEntity(
-                OpenigHoleShape.Rectangle,
-                resultSubDep,
-                hostElem,
-                locPoint);
-
-            result.SetFamilyPathAndName(doc);
-            result.SetGeomParams();
-            result.SetGeomParamsRoundData(resultHeight, resultWidth, 0);
-
-            return result;
-        }
         #endregion
 
 
@@ -660,7 +602,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 AROpeningHoleEntity[] arEntities = GetAROpeningsFromIOSTask(doc, iosTasks);
 
                 if (arEntities.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(ref arEntities));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(arEntities, "KPLN: Отверстия по заданию"));
             }
             catch (Exception ex)
             {
@@ -764,6 +706,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 arEntity.SetGeomParams();
                 arEntity.SetGeomParamsRoundData(iosTask.OHE_Height, iosTask.OHE_Width, iosTask.OHE_Radius);
                 arEntity.UpdatePointData_ByShape();
+                arEntity.CreateSolid_ByParams();
 
                 arEntities.Add(arEntity);
             }
@@ -809,7 +752,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             double maxIntersection = 0;
             foreach (Element arPotHost in arPotentialHosts)
             {
-                Solid arPotHostSolid = GeometryWorker.GetElemSolid(arPotHost);
+                Solid arPotHostSolid = GeometryWorker.GetRevitElemSolid(arPotHost);
                 Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arPotHostSolid, iosTask.OHE_Solid, BooleanOperationsType.Intersect);
                 if (intersectionSolid != null && intersectionSolid.Volume > maxIntersection)
                 {
@@ -821,112 +764,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             return host;
         }
         #endregion
-
-        /// <summary>
-        /// Получить вектор для основы отверстия
-        /// </summary>
-        private XYZ GetHostDirection(Element host)
-        {
-            // Получаю вектор для стены
-            XYZ wallDirection;
-            if (host is Wall wall)
-            {
-                Curve curve = (wall.Location as LocationCurve).Curve ??
-                    throw new Exception($"Не обработанная основа (не Curve) с id: {host.Id}. Отправь разработчику!");
-
-                XYZ wallOrigin = curve.GetEndPoint(0);
-                XYZ wallEndPoint = curve.GetEndPoint(1);
-                wallDirection = wallEndPoint - wallOrigin;
-            }
-            else
-                throw new Exception($"Не обработанная основа с id: {host.Id}. Отправь разработчику!");
-
-
-            return wallDirection;
-        }
-
-
-        /// <summary>
-        /// Получить вектор для основы отверстия
-        /// </summary>
-        private Face GetFace_ParalleledForDirection(Solid checkSolid, XYZ hostDirection)
-        {
-            foreach (Face face in checkSolid.Faces)
-            {
-                if (face is PlanarFace planarFace)
-                {
-                    XYZ faceNormal = planarFace.FaceNormal;
-                    XYZ checkOrigin = new XYZ(faceNormal.X, faceNormal.Y, hostDirection.Z);
-
-                    double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), DisplayUnitType.DUT_DEGREES_AND_MINUTES);
-                    if (Math.Round(angle, 5) == 90)
-                        return face;
-                }
-            }
-
-            return null;
-        }
-
-
-        /// <summary>
-        /// Получить массив из МИНИМАЛЬНО и МАКСИМАЛЬНОЙ (именно в таком порядке) точек для солида с проекцией на вектор стены
-        /// </summary>
-        private XYZ[] GetMinAndMaxSolidPoints(Solid inputSolid, XYZ hostDirection)
-        {
-            double minX, minY, minZ;
-            double maxX, maxY, maxZ;
-            minX = minY = minZ = double.MaxValue;
-            maxX = maxY = maxZ = double.MinValue;
-
-            // Получаю параллельную поверхность
-            IList<Solid> splitedSolids = SolidUtils.SplitVolumes(inputSolid);
-            foreach (Solid solid in splitedSolids)
-            {
-                double tempFaceArea = 0;
-                Face checkFace = null;
-                foreach (Face face in solid.Faces)
-                {
-                    if (face is PlanarFace planarFace)
-                    {
-                        XYZ faceNormal = planarFace.FaceNormal;
-                        XYZ checkOrigin = new XYZ(faceNormal.X, faceNormal.Y, hostDirection.Z);
-
-                        double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), DisplayUnitType.DUT_DEGREES_AND_MINUTES);
-                        if (Math.Round(angle, 5) == 90 && face.Area > tempFaceArea)
-                        {
-                            tempFaceArea = face.Area;
-                            checkFace = face;
-                        }
-                    }
-                }
-
-                if (checkFace == null)
-                    throw new Exception($"Не удалось подобрать необходимую плоскость для отверстия. Отправь разработчику!");
-
-                // Триангулирую поверхность и нахажу мин и макс точки
-                Mesh chFaceMesh = checkFace.Triangulate(1);
-                IList<XYZ> meshVertices = chFaceMesh.Vertices;
-                foreach (XYZ vertex in meshVertices)
-                {
-                    if (vertex.X > maxX) maxX = vertex.X;
-                    if (vertex.Y > maxY) maxY = vertex.Y;
-                    if (vertex.Z > maxZ) maxZ = vertex.Z;
-
-                    if (vertex.X < minX) minX = vertex.X;
-                    if (vertex.Y < minY) minY = vertex.Y;
-                    if (vertex.Z < minZ) minZ = vertex.Z;
-                }
-            }
-
-            // Проецирую полученные минимумы и максимумы с трансофрмом на вектор
-            Transform wallTrans = Transform.CreateTranslation(hostDirection);
-
-            return new XYZ[2]
-            {
-                    wallTrans.OfPoint(new XYZ(minX, minY, minZ)),
-                    wallTrans.OfPoint(new XYZ(maxX, maxY, maxZ))
-            };
-        }
 
         private void OnPropertyChanged([CallerMemberName] string name = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

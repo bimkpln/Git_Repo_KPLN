@@ -67,32 +67,44 @@
 
             <DockPanel
                 LastChildFill="True">
-                <Button
-                    Style="{StaticResource BTN}"
-                    ToolTip="Потсавить отверстие по пересечению элементов ИОС со стеной АР"
-                    Command="{Binding CreateOpenHoleByIOSElemsCommand}">
-                    <TextBlock
-                        Text="Расставить отверстия по элементам ИОС"
-                        TextWrapping="Wrap"
-                        MaxWidth="225"
-                        TextAlignment="Center"/>
-                </Button>
+                <StackPanel>
                     <Button
                         Style="{StaticResource BTN}"
-                        ToolTip="Открыть меню настроек для расстановки отверстий по пересечению с элементами ИОС"
-                        Click="SetParamsOpenHoleByIOSElems_Click">
+                        ToolTip="Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР"
+                        Command="{Binding CreateOpenHoleByIOSElemsCommand}">
                         <TextBlock
-                            Text="Настройки расстановки"
+                            Text="Отверстия по стене по всем эл-там ИОС"
                             TextWrapping="Wrap"
-                            MaxWidth="125"
+                            MaxWidth="200"
                             TextAlignment="Center"/>
                     </Button>
+                    <Button
+                        Style="{StaticResource BTN}"
+                        ToolTip="Потсавить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР"
+                        Command="{Binding CreateOpenHoleBySelectedIOSElemsCommand}">
+                        <TextBlock
+                            Text="Отверстия по стене по выбранным эл-там ИОС"
+                            TextWrapping="Wrap"
+                            MaxWidth="200"
+                            TextAlignment="Center"/>
+                    </Button>
+                </StackPanel>
+                <Button
+                    Style="{StaticResource BTN}"
+                    ToolTip="Открыть меню настроек для расстановки отверстий по пересечению с элементами ИОС"
+                    Click="SetParamsOpenHoleByIOSElems_Click">
+                    <TextBlock
+                        Text="Настройки расстановки"
+                        TextWrapping="Wrap"
+                        MaxWidth="125"
+                        TextAlignment="Center"/>
+                </Button>
             </DockPanel>
 
             <Button
                 Style="{StaticResource BTN}"
                 ToolTip="Объеденить несколько отверстий в одно"
-                Command="{Binding UnitOpenHolesCommand}">
+                Command="{Binding UnionOpenHolesCommand}">
                 <TextBlock
                     Text="Объеденить отверстия"
                     TextWrapping="Wrap"

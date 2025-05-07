@@ -5,6 +5,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.ExternalCommands;
 using KPLN_OpeningHoleManager.Forms;
+using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -78,7 +79,23 @@ namespace KPLN_OpeningHoleManager
             if (args.Document == null || args.Document.IsFamilyDocument)
                 return;
 
+            string openViewFileName = args.Document.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(args.Document.GetWorksharingCentralModelPath())
+                : args.Document.PathName;
+
+            if (openViewFileName == CurrentFileName)
+                return;
+
             CurrentUIApplication = new UIApplication(args.Document.Application);
+
+            CurrentFileName = openViewFileName;
+            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
+            if (openViewDBProject == null)
+                return;
+
+            CurrentDBProject = openViewDBProject;
+
+            MainMenuViewer.MainMenu_VM.SetDataGeomParamsData(CurrentDBProject);
         }
 
         /// <summary>

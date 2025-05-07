@@ -112,7 +112,8 @@ namespace KPLN_OpeningHoleManager.Services
 #if Debug2020
         internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => new DBSubDepartment() { Code = "ОВиК" };
 #else
-        internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => _subDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+        internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
 #endif
+
     }
 }

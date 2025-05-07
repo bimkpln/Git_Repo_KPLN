@@ -29,7 +29,7 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// <summary>
         /// Ссылка на элемент модели
         /// </summary>
-        public Element OHE_Element { get; private protected set; }
+        public Element OHE_Element { get; set; }
 
         /// <summary>
         /// Точка вставки элемента (ЗИ или отверстия)
@@ -65,6 +65,11 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// Радиус отверстия/задания
         /// </summary>
         public double OHE_Radius { get; private protected set; }
+
+        /// <summary>
+        /// Имя параметра расширения отверстия/задания
+        /// </summary>
+        public string OHE_ParamNameExpander { get; private protected set; }
 
         /// <summary>
         /// Форма элемента (ЗИ или отверстия)
@@ -106,13 +111,15 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
                 if (_ohe_Solid == null)
                 {
                     if (OHE_LinkTransform == null)
-                        _ohe_Solid = GeometryWorker.GetElemSolid(OHE_Element);
+                        _ohe_Solid = GeometryWorker.GetRevitElemSolid(OHE_Element);
                     else
-                        _ohe_Solid = GeometryWorker.GetElemSolid(OHE_Element, OHE_LinkTransform);
+                        _ohe_Solid = GeometryWorker.GetRevitElemSolid(OHE_Element, OHE_LinkTransform);
                 }
 
                 return _ohe_Solid;
             }
+
+            protected private set => _ohe_Solid = value;
         }
 
         /// <summary>

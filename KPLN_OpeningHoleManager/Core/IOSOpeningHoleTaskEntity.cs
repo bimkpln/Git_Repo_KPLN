@@ -55,13 +55,15 @@ namespace KPLN_OpeningHoleManager.Core
                     {
                         OHE_ParamNameHeight = "Высота";
                         OHE_ParamNameWidth = "Ширина";
+                        OHE_ParamNameExpander = "Расширение границ";
                     }
                 }
                 else
                 {
                     if (OHE_FamilyName_Circle.Contains("501_ЗИ_Отверстие_Круглое"))
                     {
-                        OHE_ParamNameRadius = "КП_Р_Радиус";
+                        OHE_ParamNameRadius = "КП_Р_Диаметр";
+                        OHE_ParamNameExpander = "Расширение границ";
                     }
                 }
             }
@@ -80,21 +82,21 @@ namespace KPLN_OpeningHoleManager.Core
                 {
                     if (OHE_FamilyName_Rectangle.Contains("501_ЗИ_Отверстие_Прямоугольное"))
                     {
-                        if (OHE_ParamNameHeight == null || OHE_ParamNameWidth == null)
+                        if (OHE_ParamNameHeight == null || OHE_ParamNameWidth == null || OHE_ParamNameExpander == null)
                             throw new System.Exception ("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
-                        
-                        OHE_Height = OHE_Element.LookupParameter(OHE_ParamNameHeight).AsDouble();
-                        OHE_Width = OHE_Element.LookupParameter(OHE_ParamNameWidth).AsDouble();
+
+                        OHE_Height = OHE_Element.LookupParameter(OHE_ParamNameHeight).AsDouble() + OHE_Element.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
+                        OHE_Width = OHE_Element.LookupParameter(OHE_ParamNameWidth).AsDouble() + OHE_Element.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
                     }
                 }
                 else
                 {
                     if (OHE_FamilyName_Circle.Contains("501_ЗИ_Отверстие_Круглое"))
                     {
-                        if (OHE_ParamNameRadius == null)
+                        if (OHE_ParamNameRadius == null || OHE_ParamNameExpander == null)
                             throw new System.Exception("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
                         
-                        OHE_Radius = OHE_Element.LookupParameter(OHE_ParamNameRadius).AsDouble() * 2;
+                        OHE_Radius = OHE_Element.LookupParameter(OHE_ParamNameRadius).AsDouble();
                     }
                 }
             }

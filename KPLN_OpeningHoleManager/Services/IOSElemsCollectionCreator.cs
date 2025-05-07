@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Services;
@@ -33,6 +34,62 @@ namespace KPLN_OpeningHoleManager.Services
         private static Func<Element, bool> _elemFilterFunc;
 
         /// <summary>
+        /// Фильтр для ключевой фильтрации по категориям
+        /// </summary>
+        public static LogicalOrFilter ElemCatLogicalOrFilter
+        {
+            get
+            {
+                if (_elemCatLogicalOrFilter == null)
+                {
+                    List<ElementFilter> catFilters = new List<ElementFilter>();
+                    catFilters.AddRange(BuiltInCategories.Select(bic => new ElementCategoryFilter(bic)));
+
+                    _elemCatLogicalOrFilter = new LogicalOrFilter(catFilters);
+                }
+
+                return _elemCatLogicalOrFilter;
+            }
+        }
+        /// <summary>
+        /// Общая функция для фильтра для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
+        /// </summary>
+        public static Func<Element, bool> ElemExtraFilterFunc
+        {
+            get
+            {
+                if (_elemFilterFunc == null)
+                {
+                    _elemFilterFunc = (el) =>
+                        el.Category != null
+                        && !(el is ElementType)
+                        // Молниезащита ЭОМ
+                        && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Полоса_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Пруток_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Уголок_")
+                        // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
+                            || (el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("470_dkc_s5_accessories")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("757_опора_неподвижная")
+                        // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("501_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("551_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("556_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("557_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("560_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("561_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("565_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("570_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("582_")
+                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("592_"));
+                }
+
+                return _elemFilterFunc;
+            }
+        }
+
+
+        /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
         private static List<BuiltInCategory> BuiltInCategories
@@ -55,58 +112,24 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
-        /// Фильтр для ключевой фильтрации по категориям
+        /// Метод генерации IOSElemEntity для линка по текущему элементу-основе АР (ЕСЛИ пересекаются)
         /// </summary>
-        private static LogicalOrFilter ElemCatLogicalOrFilter
+        /// <returns></returns>
+        public static IOSElemEntity CreateIOSElemEntityForLinkElem_BySolid(RevitLinkInstance linkInst, Element linkElem, Solid arHostSolid)
         {
-            get
-            {
-                if (_elemCatLogicalOrFilter == null)
-                {
-                    List<ElementFilter> catFilters = new List<ElementFilter>();
-                    catFilters.AddRange(BuiltInCategories.Select(bic => new ElementCategoryFilter(bic)));
+            // Подготовка линка к обработке
+            Document linkDoc = linkInst.GetLinkDocument();
+            Transform linkTransfrom = GetLinkTransform(linkInst);
 
-                    _elemCatLogicalOrFilter = new LogicalOrFilter(catFilters);
-                }
+            Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(linkElem, linkTransfrom);
+            if (iosElemSolid == null)
+                return null;
 
-                return _elemCatLogicalOrFilter;
-            }
-        }
-        /// <summary>
-        /// Общая функция для фильтра для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
-        /// </summary>
-        private static Func<Element, bool> ElemExtraFilterFunc
-        {
-            get
-            {
-                if (_elemFilterFunc == null)
-                {
-                    _elemFilterFunc = (el) =>
-                        el.Category != null
-                        && !(el is ElementType)
-                        // Молниезащита ЭОМ
-                        && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Полоса_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Пруток_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Уголок_")
-                        // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("ostec")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("470_dkc_s5_accessories")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("757_опора_неподвижная")
-                        // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("501_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("551_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("556_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("557_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("560_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("561_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("565_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("570_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("582_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("592_"));
-                }
+            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arHostSolid, iosElemSolid, BooleanOperationsType.Intersect);
+            if (intersectSolid != null && intersectSolid.Volume > 0)
+                return new IOSElemEntity(linkDoc, linkTransfrom, linkElem, iosElemSolid, intersectSolid);
 
-                return _elemFilterFunc;
-            }
+            return null;
         }
 
         /// <summary>
@@ -143,7 +166,7 @@ namespace KPLN_OpeningHoleManager.Services
             List<IOSElemEntity> result = new List<IOSElemEntity>();
             foreach(Element iosElem in checkLinkElems)
             {
-                Solid iosElemSolid = GeometryWorker.GetElemSolid(iosElem, linkTransfrom);
+                Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosElem, linkTransfrom);
                 if (iosElemSolid == null)
                     continue;
                 
