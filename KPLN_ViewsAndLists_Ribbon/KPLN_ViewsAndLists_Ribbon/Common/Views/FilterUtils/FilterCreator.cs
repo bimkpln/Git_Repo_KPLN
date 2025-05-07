@@ -10,6 +10,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 {
     public static class FilterCreator
     {
+        [Obsolete]
         public static ParameterFilterElement CreateSimpleFilter(Document doc, List<ElementId> catsIds, string filterName, MyParameter mp, CriteriaType ctype)
         {
             List<ParameterFilterElement> filters = new FilteredElementCollector(doc)
@@ -48,6 +49,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             return filter;
         }
 
+        [Obsolete]
         public static ParameterFilterElement CreateConstrFilter(Document doc, List<ElementId> catsIds, Parameter markParam, string mark, string filterNamePrefix)
         {
             string filterName = filterNamePrefix + "_Конструкция " + mark;
@@ -68,6 +70,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             return filter;
         }
 
+        [Obsolete]
         public static ParameterFilterElement CreateRebarHostFilter(
             Document doc, List<ElementId> rebarCatsIds, Parameter rebarIsFamilyParam, Parameter rebarHostParam, Parameter rebarMrkParam,
             string hostMark, string filterNamePrefix, RebarFilterMode filterMode)
@@ -139,7 +142,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             return null;
         }
 
-
+        [Obsolete]
         public static FilterRule CreateRule(MyParameter mp, CriteriaType ctype)
         {
             Parameter param = mp.RevitParameter;
@@ -190,8 +193,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 
         }
 
-
-
+        [Obsolete]
         public static FilterRule CreateRule2(Parameter Param, string Function, string Value)
         {
             ElementId paramId = Param.Id;
@@ -242,7 +244,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             return null;
         }
 
-
+        [Obsolete]
         private static FilterRule CreateRule(ElementId ParameterId, string Function, string Value)
         {
             switch (Function)

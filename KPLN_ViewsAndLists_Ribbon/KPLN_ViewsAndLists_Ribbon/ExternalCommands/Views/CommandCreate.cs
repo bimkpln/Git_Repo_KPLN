@@ -17,6 +17,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
     class CommandCreate : IExternalCommand
     {
+        [Obsolete]
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try

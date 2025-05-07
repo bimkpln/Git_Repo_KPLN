@@ -172,6 +172,23 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "KPLN_ViewsAndLists_Ribbon.Resources.CommandListTBlockParamCopier.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
+
+            AddPushButtonDataInPullDown(
+                "CommandListRevisionClouds",
+                "Ревизии",
+                "Плагин для работы с ИЗМами",
+                string.Format(
+                    "Плагин для работы с ИЗМами.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Lists.CommandListRevisionClouds).FullName,
+                pullDown_Lists,
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRevisionClouds.png",
+                "http://moodle/"
+            );
             #endregion
 
             return Result.Succeeded;

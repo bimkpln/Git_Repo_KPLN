@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -27,7 +27,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -135,6 +135,7 @@
     <Compile Include="Common\Lists\TBlockEntity.cs" />
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
     <Compile Include="Common\UserErrorException.cs" />
+    <Compile Include="ExternalCommands\Lists\CommandListRevisionClouds.cs" />
     <Compile Include="ExternalCommands\Lists\CommandListTBlockParamCopier.cs" />
     <Compile Include="ExternalCommands\Lists\CommandListRenumber.cs" />
     <Compile Include="ExternalCommands\Views\CommandViewTemplateCopy.cs" />
@@ -144,9 +145,6 @@
     </Compile>
     <Compile Include="Forms\CopyViewFormDebugMessageWindows.xaml.cs">
       <DependentUpon>CopyViewFormDebugMessageWindows.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\CopyViewFormSelectDoc.xaml.cs">
-      <DependentUpon>CopyViewFormSelectDoc.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
       <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
@@ -235,10 +233,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\CopyViewFormSelectDoc.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -256,6 +250,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\ViewTemplateCopy_small.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\CommandListRevisionClouds.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
