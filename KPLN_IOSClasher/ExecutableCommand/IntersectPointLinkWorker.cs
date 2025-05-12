@@ -14,7 +14,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
     /// <summary>
     /// Класс для АНАЛИЗА пересечений с участием СВЯЗЕЙ
     /// </summary>
-    internal sealed class IntersectPointLinkWorker : IntersectPointFamInst, IExecutableCommand
+    internal sealed class IntersectPointLinkWorker : IntersectPointMaker, IExecutableCommand
     {
         /// <summary>
         /// Имя транзакции для анализа на наличие
@@ -41,15 +41,15 @@ namespace KPLN_IOSClasher.ExecutableCommand
             {
                 trans.Start();
 
-                Element[] oldPointElems = IntersectPointMaker.GetOldIntersectionPointsEntities(doc);
+                Element[] oldPointElems = GetOldIntersectionPointsEntities(doc);
                 if (oldPointElems.Length == 0) return Result.Cancelled;
 
-                // Обновляю данные по точкам
+                // Получаю данные по точкам
                 Dictionary<ElementId, IntersectPointEntity> oldLinkPointEntities = CreateIntPntEntities_ByOldPoints(doc, oldPointElems);
 
                 // Удаляю не актуальные (если можно их удалить). Проблема с занятами клэшпоинтами приводит к ложным клэшам. В пределах погрешности ок, ведь когда 
                 // юзер зайдет в модель - он свои клэши почистит (для него эти эл-ты уже не заняты)
-                ICollection<ElementId> oldElemsToDel = GetOldToDelete_ByOldPoints(doc, oldLinkPointEntities, oldPointElems);
+                ICollection<ElementId> oldElemsToDel = GetOldToDelete_ByOldPoints(doc, oldLinkPointEntities);
                 ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, oldElemsToDel);
                 doc.Delete(availableWSElemsId);
 
@@ -59,8 +59,8 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 }
 
                 // Создаю новые
-                IntersectPointEntity[] clearedPointEntities = IntersectPointMaker.ClearedNewEntities(oldPointElems, oldLinkPointEntities.Values);
-                IntersectPointMaker.CreateIntersectFamilyInstance(doc, clearedPointEntities);
+                IntersectPointEntity[] clearedPointEntities = ClearedNeighbourEntities(oldPointElems, oldLinkPointEntities.Values);
+                CreateIntersectFamilyInstance(doc, clearedPointEntities);
 
                 trans.Commit();
             }
@@ -73,6 +73,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
         /// </summary>
         private static Dictionary<ElementId, IntersectPointEntity> CreateIntPntEntities_ByOldPoints(Document doc, Element[] pointElemsInModel)
         {
+            // ElementId - это клэшпоинт ИЗ модели, а IntersectPointEntity - это экземпляр класса сущности, по данному клэшпоинту из модели
             Dictionary<ElementId, IntersectPointEntity> result = new Dictionary<ElementId, IntersectPointEntity>();
             foreach (Element pointElem in pointElemsInModel)
             {
@@ -81,14 +82,12 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 if (string.IsNullOrEmpty(linkParamData) || linkParamData.Equals("-1")) continue;
 
                 // Получаю данные об элементах
-                string firstElemParamData = pointElem.get_Parameter(AddedElementId_Param).AsString();
-                string secondElemParamData = pointElem.get_Parameter(OldElementId_Param).AsString();
                 int firstElemId = -1;
                 int secondElemId = -1;
                 try
                 {
-                    firstElemId = int.Parse(firstElemParamData);
-                    secondElemId = int.Parse(secondElemParamData);
+                    firstElemId = int.Parse(pointElem.get_Parameter(AddedElementId_Param).AsString());
+                    secondElemId = int.Parse(pointElem.get_Parameter(OldElementId_Param).AsString());
                 }
                 catch
                 {
@@ -114,7 +113,10 @@ namespace KPLN_IOSClasher.ExecutableCommand
             return result;
         }
 
-        private static List<ElementId> GetOldToDelete_ByOldPoints(Document doc, Dictionary<ElementId, IntersectPointEntity> oldPointEntitiesDict, Element[] oldPointElems)
+        /// <summary>
+        /// Подготовка коллекции на удаление из размещенных ранее клэшпоинтов
+        /// </summary>
+        private static List<ElementId> GetOldToDelete_ByOldPoints(Document doc, Dictionary<ElementId, IntersectPointEntity> oldPointEntitiesDict)
         {
             List<ElementId> resultToDel = new List<ElementId>();
 
@@ -122,41 +124,48 @@ namespace KPLN_IOSClasher.ExecutableCommand
             {
                 Element oldPntElem = doc.GetElement(kvp.Key);
                 IntersectPointEntity oldPntEntity = kvp.Value;
+                
 
+                // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).
+                // Если эл-та нет - удаляем
+                Element addedElemInModel = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id));
+                if (addedElemInModel == null)
+                {
+                    resultToDel.Add(kvp.Key);
+                    continue;
+                }
+
+                
+                // Проверка линка на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).
+                // Если эл-та нет - удаляем
                 RevitLinkInstance linkInst = doc.GetElement(new ElementId(oldPntEntity.LinkInstance_Id)) as RevitLinkInstance;
                 Document linkDoc = linkInst.GetLinkDocument();
 
                 // Если док не подгружен - linkDoc не взять. Просто игнор, до момента подгрузки
                 if (linkDoc == null) continue;
 
-                // Проверка линка на наличие элемента в модели (если нет - удаляем)
-                if (linkDoc.GetElement(new ElementId(oldPntEntity.OldElement_Id)) == null)
+                Element oldElemInMode = linkDoc.GetElement(new ElementId(oldPntEntity.OldElement_Id));
+                if (oldElemInMode == null)
                 {
                     resultToDel.Add(kvp.Key);
                     continue;
                 }
 
-                Element oldAddedElem = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id));
-                // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).Если эл-та нет - удаляем
-                if (oldAddedElem == null)
-                {
-                    resultToDel.Add(kvp.Key);
-                    continue;
-                }
 
                 // Проверка на соответствие полученного по id элемента - линейному эл-ту
                 // (лёгкая компенсация промаха по id, если эл-т уалили, а потом новый создали с тем же id)
-                if (IntersectCheckEntity.BuiltInCategories.Count(bic => (int)bic == oldAddedElem.Category.Id.IntegerValue) == 0)
+                if (IntersectCheckEntity.BuiltInCategories.Count(bic => (int)bic == addedElemInModel.Category.Id.IntegerValue) == 0)
                 {
                     resultToDel.Add(kvp.Key);
                     continue;
                 }
 
 
-                Solid addedElemSolid = DocController.GetElemSolid(oldAddedElem);
+                // Анализ наличия коллизии
+                Solid addedElemSolid = DocController.GetElemSolid(addedElemInModel);
                 if (addedElemSolid == null)
                 {
-                    HtmlOutput.Print($"У элемента с id: {oldAddedElem.Id} из ТВОЕЙ модели проблемы с получением Solid. " +
+                    HtmlOutput.Print($"У элемента с id: {addedElemInModel.Id} из ТВОЕЙ модели проблемы с получением Solid. " +
                         $"Элемент проигнорирован, ошибку стоит отправить разработчику);", MessageType.Error);
                     continue;
                 }
@@ -166,11 +175,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 BoundingBoxXYZ pntEntBBox = DocController.CreateElemsBBox(new List<Element>(1) { oldPntElem });
                 Outline filterOutline = DocController.CreateFilterOutline(pntEntBBox, 1);
 
-                IntersectCheckEntity oldDockEnt = new IntersectCheckEntity(doc, pntEntBBox, filterOutline, linkInst);
+                IntersectCheckEntity oldDocCheckEnt = new IntersectCheckEntity(doc, filterOutline, linkInst);
 
-                IEnumerable<IntersectPointEntity> docIntPntEntities = oldDockEnt
+                IEnumerable<IntersectPointEntity> docIntPntEntities = oldDocCheckEnt
                     .CurrentDocElemsToCheck
-                    .Select(ent => DocController.GetPntEntityFromElems(oldAddedElem, addedElemSolid, ent, oldDockEnt));
+                    .Select(ent => DocController.GetPntEntityFromElems(addedElemInModel, addedElemSolid, ent, oldDocCheckEnt));
 
                 // Если новые IntersectPointEntity не сгенрировались - коллизия для дока ушла
                 if (docIntPntEntities.All(elemToCheck => elemToCheck == null))

@@ -143,7 +143,12 @@
 			<WorksetName>Металлические конструкции</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames>
+				<string>240_</string>
+				<string>242_</string>
+				<string>243_</string>
+				<string>244_</string>
 				<string>250_</string>
+				<string>252_</string>
 				<string>253_</string>
 			</FamilyNames>
 			<TypeNames />

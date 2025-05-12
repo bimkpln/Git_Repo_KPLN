@@ -107,30 +107,34 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Выдача имени файла с проверкой на необходимость в контроле действий, включая концепции АР
+        /// Выдача имени файла с проверкой на необходимость в контроле действий. 
+        /// Исключения: модели НЕ с основных серверов КПЛН (диск Y:\\ и любые RS-ы); НЕ шаблоны проектов; не офис КПЛН; НЕ концепции АР
         /// </summary>
-        public static string MonitoredDocFilePath(Document doc)
+        public static string MonitoredDocFilePath_ExceptARKon(Document doc)
         {
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
             if (doc == null)
                 return null;
 
-            string docPathWithARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            string docPathWithARKon = MonitoredDocFilePath(doc);
 
             if (doc.IsWorkshared
                 && !doc.IsDetached
                 && docPathWithARKon != null
-                && !docPathWithARKon.ToLower().Contains("конц")
-                && !docPathWithARKon.ToLower().Contains("kon"))
+                && !docPathWithARKon.ToLower().Contains("концепция")
+                && !docPathWithARKon.ToLower().Contains("kon_")
+                && !docPathWithARKon.Contains(".АГО")
+                && !docPathWithARKon.Contains(".АГР"))
                 return docPathWithARKon;
 
             return null;
         }
 
         /// <summary>
-        /// Выдача имени файла с проверкой на необходимость в контроле действий. Исключение - концепции АР
+        /// Верхнеуровневая выдача имени файла с проверкой на необходимость в контроле действий
+        /// Исключения: модели НЕ с основных серверов КПЛН (диск Y:\\ и любые RS-ы); НЕ шаблоны проектов; не офис КПЛН
         /// </summary>
-        public static string MonitoredDocFilePath_ExceptARKon(Document doc)
+        public static string MonitoredDocFilePath(Document doc)
         {
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
             if (doc == null)
@@ -143,7 +147,6 @@ namespace KPLN_Looker
             if (!doc.IsFamilyDocument
                 && (fileName.ToLower().Contains("stinproject.local\\project\\") || fileName.ToLower().Contains("rsn"))
                 && !fileName.EndsWith("rte")
-                && !fileName.ToLower().Contains("\\lib\\")
                 // Офис КПЛН
                 && !fileName.ToLower().Contains("16с13"))
                 return fileName;
@@ -181,7 +184,7 @@ namespace KPLN_Looker
 
 #if Revit2020 || Revit2023
             // Игнор НЕ мониторинговых моделей
-            if (MonitoredDocFilePath(doc) == null)
+            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif
             #region Закрываю вид, если он для бим-отдела
@@ -230,12 +233,22 @@ namespace KPLN_Looker
             Document document = args.GetDocument();
 
 #if Debug2020 || Debug2023
-            CheckAndSendError_FamilyInstanceUserHided(args);
+            // Фильтрация по имени проекта
+            string docPath = MonitoredDocFilePath_ExceptARKon(document);
+            if (docPath != null)
+            {
+                CheckAndSendError_FamilyInstanceUserHided(args);
 
-            CheckError_FamilyCopiedFromOtherFile(args);
+                // Анализ загрузки семейств путем копирования
+                if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
+                    !docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    // Отлов проекта Школа 825. Его дорабатываем за другой организацией
+                    && !docPath.ToLower().Contains("sh1-"))
+                    CheckError_FamilyCopiedFromOtherFile(args);
+            }
 #else
             // Фильтрация по имени проекта
-            string docPath = MonitoredDocFilePath(document);
+            string docPath = MonitoredDocFilePath_ExceptARKon(document);
             if (docPath != null)
             {
                 CheckAndSendError_FamilyInstanceUserHided(args);
@@ -265,12 +278,16 @@ namespace KPLN_Looker
             string familyName = args.FamilyName;
             string familyPath = args.FamilyPath;
 
-            string docPath = MonitoredDocFilePath(prjDoc);
+            string docPath = MonitoredDocFilePath_ExceptARKon(prjDoc);
             if (docPath == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
                 || docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
                 || docPath.ToLower().Contains("sh1-"))
+                return;
+
+            // Игнор семейств от BimStep
+            if (familyName.StartsWith("BS_"))
                 return;
 
             foreach (Document doc in appDocsSet)
@@ -476,7 +493,7 @@ namespace KPLN_Looker
             if (countDifferenceProjects > 0)
             {
                 UserVerify userVerify = new UserVerify(
-                    "[ОШИБКА]: Выявлена попытка копирования эл-в через буфер обмена. При несколько открытых моделях РАЗНЫХ, или НЕОПРЕДЕЛЕННЫХ проектов в одном Revit - данный функционал запрещен.\n" +
+                    "[ОШИБКА]: Выявлена попытка копирования эл-в через буфер обмена. При несколько открытых моделях РАЗНЫХ, или НЕОПРЕДЕЛЕННЫХ (в том числе открытых с ОТСОЕДИНЕНИЕМ) проектов в одном Revit - данный функционал запрещен.\n" +
                     "[ЧТО ДЕЛАТЬ]: Если нужно скопировать фрагмент из другой модели - обратитесь в BIM-отдел. Иначе - оставьте открытым только ОДИН проект.\n" +
                     "[ИНФО]: Вместо буфера обмена - пользуйтесь командами со вкладки \"Изменить\"->\"Изменить\"->\"Копировать\").");
                 userVerify.ShowDialog();
@@ -587,8 +604,8 @@ namespace KPLN_Looker
         private static void ARKonFileSendMsg(Document doc)
         {
             // Если это не концепция АР - в игнор
-            if (MonitoredDocFilePath_ExceptARKon(doc) == null
-                || MonitoredDocFilePath(doc) != null)
+            if (MonitoredDocFilePath(doc) == null
+                || MonitoredDocFilePath_ExceptARKon(doc) != null)
                 return;
 
             // Получаю проект из БД КПЛН
@@ -650,7 +667,7 @@ namespace KPLN_Looker
         private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
-            if (MonitoredDocFilePath(doc) == null)
+            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 
             string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
@@ -818,7 +835,7 @@ namespace KPLN_Looker
 
             ARKonFileSendMsg(doc);
 
-            if (MonitoredDocFilePath(doc) == null)
+            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 
             ModuleDBWorkerService.DropMainCash();

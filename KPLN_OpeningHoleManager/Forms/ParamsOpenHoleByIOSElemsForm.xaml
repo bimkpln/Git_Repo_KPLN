@@ -1,0 +1,198 @@
+﻿<Window 
+    x:Class="KPLN_OpeningHoleManager.Forms.ParamsOpenHoleByIOSElemsForm"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_OpeningHoleManager.Forms"
+    mc:Ignorable="d" 
+    Width="450"
+    Height="350"
+    Background="White"
+    ResizeMode="NoResize"
+    WindowStyle="ToolWindow" 
+    Topmost="True">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock 
+            Margin="5"  
+            FontSize="14" 
+            FontWeight="Black" 
+            Grid.Row="0" 
+            Text="Настройки при расстановке отверстий по пересечению" 
+            VerticalAlignment="Center" 
+            HorizontalAlignment="Left"  
+            TextWrapping="Wrap"/>
+        
+        <ScrollViewer 
+            Grid.Row="1" 
+            VerticalScrollBarVisibility="Visible"
+            HorizontalScrollBarVisibility="Disabled" 
+            Background="#FFFFD100">
+            <StackPanel 
+                Orientation="Vertical" 
+                Margin="5">
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Зазор для отверстий:"
+                        Width="175"
+                        FontWeight="Black" 
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Суммарный зазор между эл-м ИОС и гранью отверстия"/>
+                    <ComboBox 
+                        SelectedItem="{Binding OpenHoleExpandedValue, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" 
+                        VerticalAlignment="Center">
+                        <sys:Double>50</sys:Double>
+                        <sys:Double>100</sys:Double>
+                        <sys:Double>150</sys:Double>
+                    </ComboBox>
+                </DockPanel>
+
+                <TextBlock 
+                    Text="Правила расстановки АР:" 
+                    Width="175"
+                    FontWeight="Black"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    Margin="5,10,5,0"/>
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min высота/диаметр отверстий в АР:" 
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding AR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min ширина отверстий в АР:"
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding AR_OpenHoleMinWidthValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min между отв. для объединения в АР:" 
+                        Width="225"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Если расстояние между отверстиями меньше указанного значения (ZY или ZX) - они автоматически объединятся"/>
+                    <TextBox 
+                        Text="{Binding AR_OpenHoleMinDistanceValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
+                <TextBlock 
+                    Text="Правила расстановки КР:" 
+                    Width="175"
+                    FontWeight="Black"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Left"
+                    Margin="5,10,5,0"/>
+                
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min высота/диаметр отверстий в КР:" 
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding KR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
+                <DockPanel 
+                    LastChildFill="True">
+                    <TextBlock 
+                        Text="Min ширина отверстий в КР:"
+                        Width="200"
+                        VerticalAlignment="Center" 
+                        Margin="5"
+                        ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
+                    <TextBox 
+                        Text="{Binding KR_OpenHoleMinWidthValue, UpdateSourceTrigger=PropertyChanged}" 
+                        TextAlignment="Left"
+                        VerticalAlignment="Center"
+                        PreviewTextInput="TextBox_PreviewTextInput"
+                        DataObject.Pasting="TextBox_Pasting"/>
+                </DockPanel>
+
+                 <DockPanel 
+                     LastChildFill="True">
+                     <TextBlock 
+                         Text="Min между отв. для объединения в КР:" 
+                         Width="225"
+                         VerticalAlignment="Center" 
+                         Margin="5"
+                         ToolTip="В миллиметрах. Если расстояние между отверстиями меньше указанного значения (ZY или ZX) - они автоматически объединятся"/>
+                     <TextBox 
+                         Text="{Binding KR_OpenHoleMinDistanceValue, UpdateSourceTrigger=PropertyChanged}" 
+                         TextAlignment="Left"
+                         VerticalAlignment="Center"
+                         PreviewTextInput="TextBox_PreviewTextInput"
+                         DataObject.Pasting="TextBox_Pasting"/>
+                 </DockPanel>
+                
+            </StackPanel>
+        </ScrollViewer>
+        
+        <StackPanel 
+            Grid.Row="2" 
+            Orientation="Horizontal" 
+            Margin="5">
+            
+            <Button 
+                Padding="5,0,5,0" 
+                Content="Применить"
+                Margin="5,0,0,0"
+                Background="White" 
+                Click="OnBtnApply_Click">
+                <Button.ToolTip>
+                    <StackPanel MaxWidth="300">
+                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Применить"/>
+                        <TextBlock TextWrapping="Wrap" Text="Закрыть окно и сохранить изменения"/>
+                    </StackPanel>
+                </Button.ToolTip>
+            </Button>
+            
+        </StackPanel>
+
+    </Grid>
+</Window>

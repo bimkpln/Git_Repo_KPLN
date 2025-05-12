@@ -12,9 +12,14 @@ namespace KPLN_Tools.Forms
 {
     public partial class OVVK_SystemManagerForm : Window
     {
-        public OVVK_SystemManagerForm(Document doc, List<Element> elemsInModel)
+        public OVVK_SystemManagerForm(Document doc)
         {
-            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc, elemsInModel);
+            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc);
+            if (!CurrentViewModel.ElementColl.Any())
+            {
+                MessageBox.Show("В модели отсутсвуют элементы ОВВК для анализа!", "KPLN: Внимание", MessageBoxButton.OK);
+                return;
+            }
 
             InitializeComponent();
 
@@ -41,10 +46,44 @@ namespace KPLN_Tools.Forms
             UpdateEnable();
         }
 
+        private void BtnSummSystems_Click(object sender, RoutedEventArgs e)
+        {
+            OVVK_MergeSystemsForm mergeSysForm = new OVVK_MergeSystemsForm(CurrentViewModel);
+            if ((bool)mergeSysForm.ShowDialog())
+            {
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_MergeSystem(CurrentViewModel, mergeSysForm.SysDataToMerge.ToArray()));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_VMUpdater(CurrentViewModel));
+            }
+        }
+
         private void BtnCreateViews_Click(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(CurrentViewModel));
-            Close();
+            // Анализ вида
+            View activeView = CurrentViewModel.CurrentDoc.ActiveView;
+            if (activeView == null || activeView.ViewType != ViewType.ThreeD)
+            {
+                System.Windows.Forms.MessageBox.Show(
+                    $"Скрипт нужно запускать при открытом 3D-виде, т.к. на основании его будут создаваиться аналоги",
+                    "Ошибка",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Error);
+
+                return;
+            }
+
+            ElementMultiPick elementMultiPick = new ElementMultiPick(CurrentViewModel
+                .SystemSumParameters
+                .Where(pName => !pName.Contains("ВНИМАНИЕ!!!"))
+                .Select(pName => new KPLN_Library_Forms.Common.ElementEntity(pName)));
+            
+            if ((bool)elementMultiPick.ShowDialog())
+            {
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(
+                    CurrentViewModel,
+                    elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray()));
+
+                Close();
+            }
         }
 
         private void BtnSelectWarningsElems_Click(object sender, RoutedEventArgs e)
@@ -55,7 +94,8 @@ namespace KPLN_Tools.Forms
 
         private void UpdateEnable()
         {
-            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any();
+            BtnSummSystems.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
+            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
             BtnSelectWarningsElems.IsEnabled = CurrentViewModel.WarningsElementColl.Any();
         }
     }

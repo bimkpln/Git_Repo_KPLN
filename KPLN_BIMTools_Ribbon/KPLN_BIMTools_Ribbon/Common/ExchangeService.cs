@@ -159,98 +159,96 @@ namespace KPLN_BIMTools_Ribbon.Common
         private protected void StartService(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum, string pluginName)
         {
             ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(true);
-            bool? dialogResult = selectedProjectForm.ShowDialog();
-            if (dialogResult == null || selectedProjectForm.Status != UIStatus.RunStatus.Run)
-                return;
-            
-            RevitEventWorker revitEventWorker = new RevitEventWorker(this, Logger, DBRevitDialogs);
-
-            // Подписка на события
-            RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
-            RevitUIControlledApp.ControlledApplication.DocumentOpening += revitEventWorker.OnDocumentOpening;
-            RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
-            RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
-
-            // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
-            string configNames = "Не определено";
-            try
+            if ((bool)selectedProjectForm.ShowDialog())
             {
-                DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
-                _sourceProjectName = dBProject.Name;
+                RevitEventWorker revitEventWorker = new RevitEventWorker(this, Logger, DBRevitDialogs);
 
-                ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, CurrentRevitDocExchangestDbService, dBProject, 
-                    revitDocExchangeEnum, int.Parse(uiapp.Application.VersionNumber));
-                configDispatcher.ShowDialog();
-                
-                if (configDispatcher.IsRun)
+                // Подписка на события
+                RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
+                RevitUIControlledApp.ControlledApplication.DocumentOpening += revitEventWorker.OnDocumentOpening;
+                RevitUIControlledApp.ControlledApplication.DocumentClosed += revitEventWorker.OnDocumentClosed;
+                RevitUIControlledApp.ControlledApplication.FailuresProcessing += revitEventWorker.OnFailureProcessing;
+
+                // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
+                string configNames = "Не определено";
+                try
                 {
-                    DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(pluginName, ModuleData.ModuleName).ConfigureAwait(false);
+                    DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
+                    _sourceProjectName = dBProject.Name;
 
-                    configNames = string.Join("; ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
-                    Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}].\nКонфигурация/-ии: [{configNames}]");
+                    ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, CurrentRevitDocExchangestDbService, dBProject,
+                        revitDocExchangeEnum, int.Parse(uiapp.Application.VersionNumber));
+                    configDispatcher.ShowDialog();
 
-                    foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
+                    if (configDispatcher.IsRun)
                     {
-                        SQLiteService sqliteService = new SQLiteService(Logger, currentDocExchange.SettingDBFilePath, revitDocExchangeEnum);
-                        IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
-                        foreach (DBConfigEntity config in configs)
+                        DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(pluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
+                        configNames = string.Join("; ", configDispatcher.SelectedDBExchangeEntities.Select(ent => ent.SettingName));
+                        Logger.Info($"Старт экспорта: [{revitDocExchangeEnum}].\nКонфигурация/-ии: [{configNames}]");
+
+                        foreach (DBRevitDocExchanges currentDocExchange in configDispatcher.SelectedDBExchangeEntities)
                         {
-                            List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
-                            if (fileFromPathes != null)
+                            SQLiteService sqliteService = new SQLiteService(Logger, currentDocExchange.SettingDBFilePath, revitDocExchangeEnum);
+                            IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
+                            foreach (DBConfigEntity config in configs)
                             {
-                                CountSourceDocs += fileFromPathes.Count;
-                                foreach (string fileFromPath in fileFromPathes)
+                                List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
+                                if (fileFromPathes != null)
                                 {
-                                    string newFilePath = string.Empty;
-                                    ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
-                                        
-                                    // Проверяю КУДА копирвать.
-                                    // Это папка, если нет - то ревит-сервер
-                                    if (Directory.Exists(config.PathTo))
-                                        newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
-                                    // Убеждаюсь и обрабатываю ревит-сервер
-                                    else if (CheckPathFoRevitServer(config.PathTo))
-                                        newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
-                                    // Если ничего из вышеописанного - то ошибка
-                                    else
+                                    CountSourceDocs += fileFromPathes.Count;
+                                    foreach (string fileFromPath in fileFromPathes)
                                     {
-                                        Logger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
-                                        continue;
+                                        string newFilePath = string.Empty;
+                                        ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
+
+                                        // Проверяю КУДА копирвать.
+                                        // Это папка, если нет - то ревит-сервер
+                                        if (Directory.Exists(config.PathTo))
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
+                                        // Убеждаюсь и обрабатываю ревит-сервер
+                                        else if (CheckPathFoRevitServer(config.PathTo))
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
+                                        // Если ничего из вышеописанного - то ошибка
+                                        else
+                                        {
+                                            Logger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
+                                            continue;
+                                        }
+
+                                        // Если удалось сохранить, то подсчет, иначе - ошибка
+                                        if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
+                                            CountProcessedDocs++;
+                                        else
+                                            Logger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
                                     }
-
-                                    // Если удалось сохранить, то подсчет, иначе - ошибка
-                                    if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
-                                        CountProcessedDocs++;
-                                    else
-                                        Logger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
                                 }
+                                // Все равно добавляю 1, чтобы попало в отчет
+                                else CountSourceDocs++;
                             }
-                            // Все равно добавляю 1, чтобы попало в отчет
-                            else CountSourceDocs++;
                         }
-                    }
 
+                        SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]", configNames);
+                        Logger.Info($"Работа плагина [{revitDocExchangeEnum}] завершена.\n");
+                    }
+                }
+                catch (Exception ex)
+                {
                     SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]", configNames);
-                    Logger.Info($"Работа плагина [{revitDocExchangeEnum}] завершена.\n");
+                    Logger.Error($"Работа плагина [{revitDocExchangeEnum}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
+                    throw ex;
+                }
+                finally
+                {
+                    revitEventWorker.Dispose();
+
+                    //Отписка от событий
+                    RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
+                    RevitUIControlledApp.ControlledApplication.DocumentOpening -= revitEventWorker.OnDocumentOpening;
+                    RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
+                    RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
                 }
             }
-            catch (Exception ex)
-            {
-                SendResultMsg($"Плагин экспорта [{revitDocExchangeEnum}]", configNames);
-                Logger.Error($"Работа плагина [{revitDocExchangeEnum}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
-                throw ex;
-            }
-            finally
-            {
-                revitEventWorker.Dispose();
-
-                //Отписка от событий
-                RevitUIControlledApp.DialogBoxShowing -= revitEventWorker.OnDialogBoxShowing;
-                RevitUIControlledApp.ControlledApplication.DocumentOpening -= revitEventWorker.OnDocumentOpening;
-                RevitUIControlledApp.ControlledApplication.DocumentClosed -= revitEventWorker.OnDocumentClosed;
-                RevitUIControlledApp.ControlledApplication.FailuresProcessing -= revitEventWorker.OnFailureProcessing;
-            }
-                
         }
 
         /// <summary>

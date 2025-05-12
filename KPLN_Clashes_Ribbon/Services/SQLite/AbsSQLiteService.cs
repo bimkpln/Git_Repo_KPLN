@@ -32,6 +32,23 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
             catch (Exception ex) { PrintError(ex); }
         }
 
+        private protected int ExecuteInsertWithId(string query, object parameters = null)
+        {
+            try
+            {
+                using (IDbConnection connection = new SQLiteConnection(_dbConnectionPath))
+                {
+                    connection.Open();
+                    return connection.ExecuteScalar<int>(query, parameters);
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+                return -1;
+            }
+        }
+
         private protected void ExecuteNonQuery_Parameters(string query, IEnumerable<object> parameters)
         {
             try

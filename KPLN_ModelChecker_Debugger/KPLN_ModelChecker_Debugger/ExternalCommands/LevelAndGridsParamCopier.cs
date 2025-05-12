@@ -78,8 +78,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
             {
                 if (isSET)
                 {
-                    _levelParamName = "КП_О_Этаж";
-                    _sectParamName = "КП_О_Секция";
+                    _levelParamName = "СМ_Этаж";
+                    _sectParamName = "СМ_Секция";
                 }
                 else 
                 {

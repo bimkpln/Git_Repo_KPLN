@@ -504,7 +504,7 @@ namespace KPLN_Loader
                     TaskDialog td = new TaskDialog("ОШИБКА")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                        MainInstruction = "Произошла серъезная ошибка при выполнении команды, обратись за помощью в BIM-отдел",
+                        MainInstruction = "Произошла серьезная ошибка при выполнении команды, обратись за помощью в BIM-отдел",
                         FooterText = $"См. файлы логов KPLN_Loader: {MainCashFolder}\\KPLN_Logs\\{RevitVersion}"
                     };
                     td.Show();

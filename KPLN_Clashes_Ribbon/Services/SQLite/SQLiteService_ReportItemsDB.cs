@@ -27,6 +27,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"CREATE TABLE {_dbTableName} " +
                         $"({nameof(ReportItem.Id)} INTEGER PRIMARY KEY, " +
                         $"{nameof(ReportItem.ReportGroupId)} INTEGER, " +
+                        $"{nameof(ReportItem.ReportId)} INTEGER, " +
                         $"{nameof(ReportItem.Name)} TEXT, " +
                         $"{nameof(ReportItem.Image)} BLOB, " +
                         $"{nameof(ReportItem.Element_1_Id)} INTEGER, " +
@@ -50,6 +51,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 $"INSERT INTO {_dbTableName} " +
                     $"({nameof(ReportItem.Id)}, " +
                     $"{nameof(ReportItem.ReportGroupId)}, " +
+                    $"{nameof(ReportItem.ReportId)}, " +
                     $"{nameof(ReportItem.Name)}, " +
                     $"{nameof(ReportItem.Image)}, " +
                     $"{nameof(ReportItem.Element_1_Id)}, " +
@@ -62,7 +64,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"{nameof(ReportItem.StatusId)}, " +
                     $"{nameof(ReportItem.ParentGroupId)}) " +
                 "VALUES " +
-                    "(@Id, @ReportGroupId, @Name, @Image, @Element_1_Id, @Element_1_Info, " +
+                    "(@Id, @ReportGroupId, @ReportId, @Name, @Image, @Element_1_Id, @Element_1_Info, " +
                     "@Element_2_Id, @Element_2_Info, @Point, @ReportParentGroupComments, " +
                     "@ReportItemComments, @StatusId, @ParentGroupId)",
                 reports);
@@ -74,18 +76,19 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// </summary>
         public ObservableCollection<ReportItem> GetAllReporItems()
         {
-            ObservableCollection<ReportItem> reports = new ObservableCollection<ReportItem>(
+            ObservableCollection<ReportItem> repItems = new ObservableCollection<ReportItem>(
                 ExecuteQuery<ReportItem>(
                     $"SELECT * FROM {_dbTableName}"));
 
             // Уточняю данные по группам (SubElements)
-            var result_reports = new ObservableCollection<ReportItem>(reports.Where(i => i.ParentGroupId == -1));
-            foreach (var i in reports.Where(i => i.ParentGroupId != -1))
+            var resultRepItems = new ObservableCollection<ReportItem>(repItems.Where(i => i.ParentGroupId == -1));
+            foreach (var i in repItems.Where(i => i.ParentGroupId != -1))
             {
-                var parent = result_reports.FirstOrDefault(z => z.Id == i.ParentGroupId);
+                var parent = resultRepItems.FirstOrDefault(z => z.Id == i.ParentGroupId);
                 parent?.SubElements.Add(i);
             }
-            return result_reports;
+
+            return resultRepItems;
         }
 
         /// <summary>
@@ -118,10 +121,10 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// <param name="status">Статус для записи</param>
         /// <param name="departmentId">Id-отдела</param>
         /// <param name="reportItem">ReportItem для поиска</param>
-        public void SetStatusAndDepartment_ByReportItem(ClashesMainCollection.KPItemStatus status, int departmentId, ReportItem reportItem) =>
+        public void SetStatusAndDepartment_ByReportItem(ClashesMainCollection.KPItemStatus status, ReportItem reportItem) =>
             ExecuteNonQuery(
                 $"UPDATE {_dbTableName} " +
-                $"SET {nameof(ReportItem.Status)}={status}, {nameof(ReportItem.DelegatedDepartmentId)}={departmentId} " +
+                $"SET {nameof(ReportItem.StatusId)}={(int)status}, {nameof(ReportItem.DelegatedDepartmentId)}={reportItem.DelegatedDepartmentId} " +
                 $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
 
         /// <summary>

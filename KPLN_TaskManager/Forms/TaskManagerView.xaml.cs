@@ -2,15 +2,12 @@
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.Services;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
 
 namespace KPLN_TaskManager.Forms
 {
@@ -23,6 +20,7 @@ namespace KPLN_TaskManager.Forms
 
         private string _searchHeader;
         private string _selectedOpenStausTasks = "Open";
+        private bool _fullTaskCollection = false;
         private string _subDepDependence = "AllSuDepTask";
 
         public TaskManagerView()
@@ -63,6 +61,19 @@ namespace KPLN_TaskManager.Forms
             }
         }
 
+        public bool FullTaskCollection
+        {
+            get => _fullTaskCollection;
+            set
+            {
+                _fullTaskCollection = value;
+                OnPropertyChanged();
+
+                FilteredTasks?.Refresh();
+                UpdateSubDepSelectionEnabled();
+            }
+        }
+
         /// <summary>
         /// Фильтрация по адресату задания (задание входящее, задание исходящее и т.п.)
         /// </summary>
@@ -78,123 +89,19 @@ namespace KPLN_TaskManager.Forms
             }
         }
 
+
         /// <summary>
         /// Загрузить таски в окно
         /// </summary>
         /// <returns></returns>
         public TaskManagerView LoadTaskData()
         {
+            if (Module.CurrentDBProject == null)
+                return null;
+
             _dBProject = Module.CurrentDBProject;
 
-            //Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
-            if (MainDBService.CurrentDBUserSubDepartment.Id == 8)
-            {
-                switch (MainDBService.CurrentDBUser.Surname)
-                {
-                    case "Куцко":
-                        goto default;
-                    case "Коломиец":
-                        goto case "Федосеева";
-                    case "Федосеева":
-                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 2));
-                        break;
-                    case "Тарчоков":
-                        goto case "Ямковой";
-                    case "Ямковой":
-                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 3));
-                        break;
-                    case "Садовская":
-                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5));
-                        IEnumerable<TaskItemEntity> secondColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7);
-                        foreach (TaskItemEntity item in secondColl)
-                        {
-                            _collection.Add(item);
-                        }
-                        IEnumerable<TaskItemEntity> thirdColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
-                        foreach (TaskItemEntity item in thirdColl)
-                        {
-                            _collection.Add(item);
-                        }
-                        IEnumerable<TaskItemEntity> fourthColl = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
-                        foreach (TaskItemEntity item in fourthColl)
-                        {
-                            _collection.Add(item);
-                        }
-                        break;
-                    case "Чичева":
-                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 4));
-                        IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 6);
-                        foreach (TaskItemEntity item in secondColl2)
-                        {
-                            _collection.Add(item);
-                        }
-                        IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 20);
-                        foreach (TaskItemEntity item in thirdColl2)
-                        {
-                            _collection.Add(item);
-                        }
-                        break;
-                    default:
-                        _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
-                        break;
-                }
-            }
-            //Для руководителей - верстка на лету под их отделы, чтобы они видели замечания по своим отделам
-            else if (MainDBService.CurrentDBUser.Surname == "Кудрова")
-            {
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 4));
-                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5);
-                foreach (TaskItemEntity item in secondColl2)
-                {
-                    _collection.Add(item);
-                }
-                IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 20);
-                foreach (TaskItemEntity item in thirdColl2)
-                {
-                    _collection.Add(item);
-                }
-                IEnumerable<TaskItemEntity> thirdColl3 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
-                foreach (TaskItemEntity item in thirdColl2)
-                {
-                    _collection.Add(item);
-                }
-            }
-            else if (MainDBService.CurrentDBUser.Surname == "Тамарин")
-            {
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 5));
-                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 21);
-                foreach (TaskItemEntity item in secondColl2)
-                {
-                    _collection.Add(item);
-                }
-            }
-            else if (MainDBService.CurrentDBUser.Surname == "Колодий")
-            {
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 6));
-                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7);
-                foreach (TaskItemEntity item in secondColl2)
-                {
-                    _collection.Add(item);
-                }
-                IEnumerable<TaskItemEntity> thirdColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
-                foreach (TaskItemEntity item in thirdColl2)
-                {
-                    _collection.Add(item);
-                }
-            }
-            else if (MainDBService.CurrentDBUser.Surname == "Алиев")
-            {
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 7));
-                IEnumerable<TaskItemEntity> secondColl2 = TaskManagerDBService.GetEntities_ByDBProjectAndBIMUserSubDepId(Module.CurrentDBProject, 8, 22);
-                foreach (TaskItemEntity item in secondColl2)
-                {
-                    _collection.Add(item);
-                }
-            }
-            // Для остальных пользователей - выбор по проекту, из ЗВ и ЗИ, а также по модели
-            else
-                _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService
-                    .GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.SubDepartmentId));
+            _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
             FilteredTasks.Filter = FilterTasks;
@@ -218,19 +125,31 @@ namespace KPLN_TaskManager.Forms
 
                 bool matchesStatus = SelectedOpenStausTasks == "All" || SelectedOpenStausTasks == task.TaskStatus.ToString();
 
+                if (FullTaskCollection)
+                    return matchesTitle && matchesStatus;
+
+                bool userProp = GetUserPropValue(task);
+                
+                bool isInputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.DelegatedDepartmentId ? true : false;
+                bool isOutputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.CreatedTaskDepartmentId ? true : false;
+
+                if (SubDepDependence == "AllSuDepTask")
+                    return matchesTitle && matchesStatus && userProp && (isInputSubDepTask || isOutputSubDepTask);
+
+                if (SubDepDependence == "InputSubDepTask")
+                    return matchesTitle && matchesStatus && isInputSubDepTask;
+
+                if (SubDepDependence == "OutputSubDepTask")
+                    return matchesTitle && matchesStatus && isOutputSubDepTask;
+
                 string openDocTask = "Nope";
                 if (task.ModelName != null && !string.IsNullOrEmpty(task.ModelName))
                     openDocTask = Module.CurrentFileName.Contains(task.ModelName) ? "OpenDocTask" : "Nope";
-                
-                
-                string inputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.DelegatedDepartmentId ? "InputSubDepTask" : "Nope";
-                string outputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.CreatedTaskDepartmentId ? "OutputSubDepTask" : "Nope";
-                bool matchesSubDep = SubDepDependence == "AllSuDepTask" 
-                    || SubDepDependence.Equals(openDocTask) 
-                    || SubDepDependence.Equals(inputSubDepTask)
-                    || SubDepDependence.Equals(outputSubDepTask);
+                bool isOpenDocTask = SubDepDependence.Equals(openDocTask);
+                if (SubDepDependence == "OpenDocTask")
+                    return matchesTitle && matchesStatus && isOpenDocTask;
 
-                return matchesTitle && matchesStatus && matchesSubDep;
+                return true;
             }
             return false;
         }
@@ -306,5 +225,80 @@ namespace KPLN_TaskManager.Forms
         }
 
         private void UpdateData_Click(object sender, RoutedEventArgs e) => LoadTaskData();
+
+        /// <summary>
+        /// Обновить управляемость RadioButton группы "SubDepSelection"
+        /// </summary>
+        private void UpdateSubDepSelectionEnabled()
+        {
+            if (FullTaskCollection)
+            {
+                AllTaskRBtn.IsChecked = true;
+                AllTaskRBtn.IsEnabled = false;
+                InputTaskRBtn.IsEnabled = false;
+                OutputTaskRBtn.IsEnabled = false;
+                OpenDocTaskRBtn.IsEnabled = false;
+            }
+            else
+            {
+                AllTaskRBtn.IsEnabled = true;
+                InputTaskRBtn.IsEnabled = true;
+                OutputTaskRBtn.IsEnabled = true;
+                OpenDocTaskRBtn.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Кастомная настройка видимости TaskItemEntity для конкретного пользователя
+        /// </summary>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        private bool GetUserPropValue(TaskItemEntity task)
+        {
+            //Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
+            if (MainDBService.CurrentDBUserSubDepartment.Id == 8)
+            {
+                switch (MainDBService.CurrentDBUser.Surname)
+                {
+                    case "Куцко":
+                        return true;
+                    case "Коломиец":
+                        goto case "Федосеева";
+                    case "Федосеева":
+                        return task.DelegatedDepartmentId == 2 || task.CreatedTaskDepartmentId == 2;
+                    case "Тарчоков":
+                        goto case "Ямковой";
+                    case "Ямковой":
+                        return task.DelegatedDepartmentId == 3 || task.CreatedTaskDepartmentId == 3;
+                    case "Садовская":
+                        return task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
+                            || task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
+                            || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21
+                            || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22;
+                    case "Чичева":
+                        return task.DelegatedDepartmentId == 4 || task.CreatedTaskDepartmentId == 4
+                            || task.DelegatedDepartmentId == 6 || task.CreatedTaskDepartmentId == 6
+                            || task.DelegatedDepartmentId == 20 || task.CreatedTaskDepartmentId == 20;
+                }
+            }
+            //Для руководителей - верстка на лету под их отделы, чтобы они видели замечания по своим отделам
+            if (MainDBService.CurrentDBUser.Surname == "Кудрова")
+                return task.DelegatedDepartmentId == 4 || task.CreatedTaskDepartmentId == 4
+                    || task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
+                    || task.DelegatedDepartmentId == 20 || task.CreatedTaskDepartmentId == 20
+                    || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21;
+            else if (MainDBService.CurrentDBUser.Surname == "Тамарин")
+                return task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
+                    || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21;
+            else if (MainDBService.CurrentDBUser.Surname == "Колодий")
+                return task.DelegatedDepartmentId == 6 || task.CreatedTaskDepartmentId == 6
+                    || task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
+                    || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22;
+            else if (MainDBService.CurrentDBUser.Surname == "Алиев")
+                return task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
+                    || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22;
+
+            return true;
+        }
     }
 }

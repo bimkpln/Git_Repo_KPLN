@@ -16,7 +16,6 @@
         WindowStyle="ToolWindow" 
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
-        Closing="Window_Closing" 
         Loaded="OnLoaded">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">

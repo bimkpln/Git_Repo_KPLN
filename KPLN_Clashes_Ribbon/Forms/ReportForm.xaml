@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Clashes_Ribbon.Forms.ReportWindow"
+﻿<Window x:Class="KPLN_Clashes_Ribbon.Forms.ReportForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -289,8 +289,17 @@
                                 </StackPanel>
 
                                 <!--Кнопки делегирования-->
-                                <TextBlock Margin="4,3,0,0" Grid.Row="2" Grid.Column="1"  Text="Делегировать отделу:" Foreground="White"/>
-                                <ItemsControl Margin="30,3,0,0" Grid.Row="3" Grid.Column="1" ItemsSource="{Binding SubDepartmentBtns}">
+                                <TextBlock 
+                                    Grid.Row="2" 
+                                    Grid.Column="1"  
+                                    Text="Делегировать отделу:" 
+                                    Margin="4,3,0,0" 
+                                    Foreground="White"/>
+                                <ItemsControl 
+                                    Grid.Row="3" 
+                                    Grid.Column="1" 
+                                    Margin="30,3,0,0" 
+                                    ItemsSource="{Binding SubDepartmentBtns}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel />
@@ -305,7 +314,7 @@
                                                         Padding="5,0,5,0" 
                                                         Margin="3,10,0,0" 
                                                         Content="{Binding Name}" 
-                                                        Background="{Binding DelegateBtnBackground}" 
+                                                        Background="{Binding DelegateBtnBackground, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                                         BorderBrush="White" 
                                                         Foreground="White" 
                                                         FontWeight="Bold" 
@@ -368,10 +377,20 @@
         
         <!--Блок обновления-->
         <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.ColumnSpan="2">
-            <Button x:Name="btnUpdate" Margin="5,5,5,5" Content="Обновить отчеты" Background="#19FFFFFF" BorderBrush="White" Click="OnBtnUpdate" Foreground="White">
+            <Button 
+                x:Name="btnUpdate" 
+                Margin="5,5,5,5" 
+                Content="Обновить отчеты" 
+                Background="#19FFFFFF" 
+                BorderBrush="White" 
+                Click="OnBtnUpdate" 
+                Foreground="White">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
-                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Обновляет статусы по отчетам" FontStyle="Italic"/>
+                        <TextBlock 
+                            TextWrapping="Wrap" 
+                            Text="Подсказка: Обновляет статусы по отчетам" 
+                            FontStyle="Italic"/>
                     </StackPanel>
                 </Button.ToolTip>
             </Button>

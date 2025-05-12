@@ -6,17 +6,11 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
     public partial class ElementSinglePick : Window
     {
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        private bool _isRun = false;
-
         private readonly IEnumerable<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
@@ -41,40 +35,19 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         public ElementEntity SelectedElement { get; private set; }
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; }
-
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
-            {
-                Status = RunStatus.Close;
                 Close();
-            }
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Keyboard.Focus(SearchText);
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if (!_isRun)
-            {
-                Status = RunStatus.Close;
-            }
-        }
+        private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchText);
 
         private void OnElementClick(object sender, RoutedEventArgs e)
         {
             SelectedElement = (sender as Button).DataContext as ElementEntity;
+            this.DialogResult = true;
 
-            _isRun = true;
-            Status = RunStatus.Run;
-            
             Close();
         }
 
@@ -101,8 +74,8 @@ namespace KPLN_Library_Forms.UI
         private void OnRunWithoutFilterClick(object sender, RoutedEventArgs e)
         {
             SelectedElement = null;
-            _isRun = true;
-            Status = RunStatus.Run;
+            this.DialogResult = true;
+
             Close();
         }
     }

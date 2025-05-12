@@ -31,50 +31,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
         NODS = 8303
     }
 
-    internal static class UniCodesCollection
-    {
-        private static readonly List<UniEntity> _correctUniCodes = new List<UniEntity>()
-        {
-            new UniEntity()
-            {
-                Name = UniDecCodes.LRE.ToString(),
-                Code = "‪",
-                DecCode = (int)UniDecCodes.LRE
-            },
-            new UniEntity()
-            {
-                Name = UniDecCodes.LRO.ToString(),
-                Code = "‭",
-                DecCode = (int)UniDecCodes.LRO
-            },
-            new UniEntity()
-            {
-                Name = UniDecCodes.PDF.ToString(),
-                Code = "‬",
-                DecCode = (int)UniDecCodes.PDF
-            },
-            new UniEntity()
-            {
-                Name = UniDecCodes.RS.ToString(),
-                Code = "",
-                DecCode = (int)UniDecCodes.RS
-            },
-            new UniEntity()
-            {
-                Name = UniDecCodes.US.ToString(),
-                Code = "",
-                DecCode = (int)UniDecCodes.US
-            }
-        };
-
-        public static List<UniEntity> CorretcUniCodes
-        {
-            get { return _correctUniCodes; }
-        }
-
-    }
-
-    internal sealed class UniEntity
+    public sealed class UniEntity
     {
         public string Name { get; set; }
         public string Code { get; set; }

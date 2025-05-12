@@ -14,10 +14,17 @@ namespace KPLN_Library_ExtensibleStorage
         /// </summary>
         private readonly string _mainDataSeparator = "~ZhvBlr~";
 
-        public ExtensibleStorageBuilder(Guid guid, string name, string storageName)
+        public ExtensibleStorageBuilder(Guid guid, string fieldName, string storageName)
         {
             Guid = guid;
-            FieldName = name;
+            FieldName = fieldName;
+            StorageName = storageName;
+        }
+
+        public ExtensibleStorageBuilder(Guid guid, string[] fieldNames, string storageName)
+        {
+            Guid = guid;
+            FieldNames = fieldNames;
             StorageName = storageName;
         }
 
@@ -30,6 +37,11 @@ namespace KPLN_Library_ExtensibleStorage
         /// Имя поля в ExtensibleStorage
         /// </summary>
         public string FieldName { get; private set; }
+
+        /// <summary>
+        /// Имя полей в ExtensibleStorage
+        /// </summary>
+        public string[] FieldNames { get; private set; }
 
         /// <summary>
         /// Имя ExtensibleStorage
@@ -86,6 +98,25 @@ namespace KPLN_Library_ExtensibleStorage
             }
 
             entity.Set<string>(FieldName, $"{userName}: {dateTime}");
+            elem.SetEntity(entity);
+        }
+
+        /// <summary>
+        /// Установить данные: текстовая пометка с разделителем в формате "Id-элемента+Разделитель+Текстовое описание"
+        /// </summary>
+        /// <param name="elem">Элемент, в который будет записы данные, и из которого получаю Id</param>
+        /// <param name="descr">Текстовое описание</param>
+        public void SetStorageData_TextData(string fieldName, Element elem, string descr)
+        {
+            Schema sch;
+            Entity entity = CheckStorageExists(elem);
+            if (entity == null)
+            {
+                sch = CreateSchema();
+                entity = new Entity(sch);
+            }
+
+            entity.Set<string>(fieldName, $"{descr}");
             elem.SetEntity(entity);
         }
 
@@ -176,7 +207,17 @@ namespace KPLN_Library_ExtensibleStorage
         {
             SchemaBuilder builder = new SchemaBuilder(Guid);
             builder.SetReadAccessLevel(AccessLevel.Public);
-            _ = builder.AddSimpleField(FieldName, typeof(string));
+            
+            if (FieldNames.Length > 0)
+            {
+                foreach (string fieldName in FieldNames)
+                {
+                    builder.AddSimpleField(fieldName, typeof(string));
+                }
+            }
+            else
+                builder.AddSimpleField(FieldName, typeof(string));
+            
             builder.SetSchemaName(StorageName);
 
             Schema sch = builder.Finish();

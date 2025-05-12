@@ -1,8 +1,6 @@
-﻿using System.Text.RegularExpressions;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -11,14 +9,12 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class TextInputForm : Window
     {
-        public bool IsConfirmed = false;
-        
         public TextInputForm(Window parent, string header)
         {
             Owner = parent;
-            
+
             InitializeComponent();
-            
+
             tbHeader.Text = header;
             runBtn.IsEnabled = false;
         }
@@ -31,7 +27,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnBtnApply(object sender, RoutedEventArgs e)
         {
             UserComment = tbox.Text;
-            IsConfirmed = true;
+            this.DialogResult = true;
             Close();
         }
 
@@ -80,6 +76,6 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// <summary>
         /// Проверка на ввод данных
         /// </summary>
-        private bool VerifyInput(string msg) => !string.IsNullOrWhiteSpace(msg) && tbox.Text.Length > 5;
+        private bool VerifyInput(string msg) => !string.IsNullOrWhiteSpace(msg) && tbox.Text.Length > 4;
     }
 }

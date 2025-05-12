@@ -125,9 +125,77 @@ namespace KPLN_Library_Bitrix24Worker
                 MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        /// <summary>
+        /// Отправить комментарий в задачу
+        /// </summary>
+        /// <param name="taskId">ID задачи</param>
+        /// <param name="msg">Сообщение</param>
+        public static async Task<bool> SendMsgToTask_ByTaskId(int taskId, string msg)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    var requestData = new Dictionary<string, string>
+                    {
+                        { "TASKID", taskId.ToString() },
+                        { "FIELDS[POST_MESSAGE]", msg },
+                    };
+
+                    var content = new FormUrlEncodedContent(requestData);
+                    var response = await client.PostAsync($"{_webHookUrl}/task.commentitem.add", content);
+                    return response.IsSuccessStatusCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return false;
+        }
         #endregion
 
         #region Работа с задачами
+        /// <summary>
+        /// Проверка задачи, на то, что она открыта: https://apidocs.bitrix24.ru/api-reference/tasks/fields.html
+        /// </summary>
+        /// <param name="taskId"></param>
+        /// <returns>2 - Ждет выполнения, 3 - Выполняется, 4 - Ожидает контроля, 5 - Завершена, 6 - Отложена.</returns>
+        public static async Task<bool> CheckTaskOpens_ByTaskId(int taskId)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/tasks.task.get.json?taskId={taskId}");
+
+                    string content = await response.Content.ReadAsStringAsync();
+                    if (string.IsNullOrEmpty(content))
+                        throw new Exception("\n[KPLN]: Ошибка получения ответа при поиске задачи в Bitrix\n\n");
+                    else
+                    {
+                        dynamic dynDeserilazeData = JsonConvert.DeserializeObject<dynamic>(content);
+                        string strStatusId = dynDeserilazeData?.result?.task?.status?.Value;
+
+                        if (int.TryParse(strStatusId, out int resultStaus))
+                            return resultStaus == 2 || resultStaus == 3 || resultStaus == 6;
+                        else
+                            throw new Exception("\n[KPLN]: Ошибка получения статуса задачи Bitrix\n\n");
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return false;
+        }
+
+
         /// <summary>
         /// Создать задачу по указанным полям. Наблюдатели заполняются автоматом
         /// </summary>

@@ -1,0 +1,132 @@
+﻿<Page 
+    x:Class="KPLN_OpeningHoleManager.Forms.MainMenu"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_OpeningHoleManager.Forms"
+    mc:Ignorable="d" 
+    Width="300"
+    Height="500"
+    Background="White">
+
+    <Page.Resources>
+
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="BTN" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5,2,5,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                            CornerRadius="5" 
+                            Padding="1"
+                            Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CHCBX" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+
+            <DockPanel
+                LastChildFill="True">
+                <StackPanel>
+                    <Button
+                        Style="{StaticResource BTN}"
+                        ToolTip="Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР"
+                        Command="{Binding CreateOpenHoleByIOSElemsCommand}">
+                        <TextBlock
+                            Text="Отверстия по стене по всем эл-там ИОС"
+                            TextWrapping="Wrap"
+                            MaxWidth="200"
+                            TextAlignment="Center"/>
+                    </Button>
+                    <Button
+                        Style="{StaticResource BTN}"
+                        ToolTip="Потсавить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР"
+                        Command="{Binding CreateOpenHoleBySelectedIOSElemsCommand}">
+                        <TextBlock
+                            Text="Отверстия по стене по выбранным эл-там ИОС"
+                            TextWrapping="Wrap"
+                            MaxWidth="200"
+                            TextAlignment="Center"/>
+                    </Button>
+                </StackPanel>
+                <Button
+                    Style="{StaticResource BTN}"
+                    ToolTip="Открыть меню настроек для расстановки отверстий по пересечению с элементами ИОС"
+                    Click="SetParamsOpenHoleByIOSElems_Click">
+                    <TextBlock
+                        Text="Настройки расстановки"
+                        TextWrapping="Wrap"
+                        MaxWidth="125"
+                        TextAlignment="Center"/>
+                </Button>
+            </DockPanel>
+
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Объеденить несколько отверстий в одно"
+                Command="{Binding UnionOpenHolesCommand}">
+                <TextBlock
+                    Text="Объеденить отверстия"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
+            
+            <Button
+                Style="{StaticResource BTN}"
+                ToolTip="Потсавить отверстие по заданию от ИОС"
+                Command="{Binding SetOpenHoleByTaskCommand}">
+                <TextBlock
+                    Text="Поставить отверстие по заданию"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+            </Button>
+
+            <GridSplitter 
+                Height="3"
+                HorizontalAlignment="Stretch"/>
+        </StackPanel>
+
+    </Grid>
+</Page>

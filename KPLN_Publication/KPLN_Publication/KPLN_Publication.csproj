@@ -114,7 +114,7 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
       <ItemGroup>
-      <Reference Include="KPLN_Loader">
+        <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -134,7 +134,7 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
-      <Reference Include="KPLN_Loader">
+        <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -154,7 +154,7 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
       <ItemGroup>
-      <Reference Include="KPLN_Loader">
+        <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>

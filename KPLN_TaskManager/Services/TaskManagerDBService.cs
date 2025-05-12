@@ -93,25 +93,13 @@ namespace KPLN_TaskManager.Services
                 $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBProject.Id}';");
 
         /// <summary>
-        /// Получить коллекцию TaskItemEntity по текущему проекту для текущего BIM-пользователя
-        /// </summary>
-        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBProjectAndBIMUserSubDepId(DBProject dBProject, int userSubDepId, int coordSubDep) =>
-            ExecuteQuery<TaskItemEntity>(
-                $"SELECT * FROM {_dbMainTableName} " +
-                $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBProject.Id}'" +
-                $"AND ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{userSubDepId}' AND {nameof(TaskItemEntity.DelegatedDepartmentId)}='{coordSubDep}')"+
-                $"OR ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{coordSubDep}' AND {nameof(TaskItemEntity.DelegatedDepartmentId)}='{userSubDepId}');");
-
-        /// <summary>
-        /// Получить коллекцию TaskItemEntity по текущему проекту, И по текущему разделу пользователя (ЗИ ИЛИ ЗВ)
+        /// Получить коллекцию TaskItemEntity по текущему проекту
         /// И по текущей модели
         /// </summary>
-        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBPrjIdAndSubDepIdAndDBDoc(int dBPrjId, int dbUserId) =>
+        internal static IEnumerable<TaskItemEntity> GetEntities_ByDBPrjId(int dBPrjId) =>
             ExecuteQuery<TaskItemEntity>(
                 $"SELECT * FROM {_dbMainTableName} " +
-                $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBPrjId}'" +
-                $"AND ({nameof(TaskItemEntity.CreatedTaskDepartmentId)}='{dbUserId}'" +
-                $"OR {nameof(TaskItemEntity.DelegatedDepartmentId)}='{dbUserId}');");
+                $"WHERE {nameof(TaskItemEntity.ProjectId)}='{dBPrjId}';");
             
 
         /// <summary>

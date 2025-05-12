@@ -85,11 +85,16 @@ namespace KPLN_Publication
             }
 
 
-            char[] arr = name.Where(c => (char.IsLetterOrDigit(c) ||
-                             char.IsWhiteSpace(c) ||
-                             c == '-' ||
-                             c == '_' ||
-                             c == '.' )).ToArray();
+            char[] arr = name
+                .Where(c => 
+                    (char.IsLetterOrDigit(c) 
+                    || char.IsWhiteSpace(c) 
+                    || c == '-' 
+                    || c == '+'
+                    || c == '_' 
+                    || c == '.' 
+                    || c == ','))
+                .ToArray();
 
             name = new string(arr);
 

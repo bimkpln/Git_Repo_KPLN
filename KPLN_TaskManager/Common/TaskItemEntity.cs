@@ -100,7 +100,7 @@ namespace KPLN_TaskManager.Common
         }
 
         /// <summary>
-        /// Отдел, который создал/изменил замечание
+        /// Отдел, ОТ имени которого создал/изменил замечание
         /// </summary>
         public int CreatedTaskDepartmentId
         {
@@ -111,6 +111,7 @@ namespace KPLN_TaskManager.Common
                 {
                     _createdTaskDepartmentId = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(TaskTitle));
                 }
             }
         }
@@ -143,6 +144,7 @@ namespace KPLN_TaskManager.Common
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(TaskTitle));
                     OnPropertyChanged(nameof(DBUserColl));
+                    OnPropertyChanged(nameof(ModelNamesColl));
                     
                     if (Id == 0)
                         FindModelByDlgSubDep();
@@ -426,9 +428,31 @@ namespace KPLN_TaskManager.Common
 
         #region Дополнительные данные
         /// <summary>
-        /// Коллекция отделов КПЛН
+        /// Коллекция отделов КПЛН  ОТ
         /// </summary>
-        public DBSubDepartment[] DBSubDepartmentColl
+        public DBSubDepartment[] DBSubDepartmentColl_Output
+        {
+            get
+            {
+                // Если новое замечание
+                if (Id == 0)
+                {
+                    // Отделы, которые имеют подчинения
+                    if (MainDBService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id))
+                        return MainDBService.DBSubDepartmentColl.Where(sd => sd.Id == MainDBService.CurrentDBUserSubDepartment.Id || sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id).ToArray();
+                    // Остальные
+                    else
+                        return MainDBService.DBSubDepartmentColl.Where(sd => sd.Id == MainDBService.CurrentDBUserSubDepartment.Id).ToArray();
+                }
+
+                return MainDBService.DBSubDepartmentColl;
+            }
+        }
+
+        /// <summary>
+        /// Коллекция отделов КПЛН  ДЛЯ 
+        /// </summary>
+        public DBSubDepartment[] DBSubDepartmentColl_Input
         {
             get => MainDBService.DBSubDepartmentColl;
         }
@@ -448,24 +472,13 @@ namespace KPLN_TaskManager.Common
         {
             get
             {
-                List<string> result = new List<string>();
+                List<string> result = new List<string>() { "<Весь проект>" };
 
-                DBDocument currentDBDoc = MainDBService.DocDbService.GetDBDocuments_ByFileFullPath(Module.CurrentFileName);
-                if (currentDBDoc == null)
-                {
-                    result = new List<string> { "<Ошибка привязки к модели>" };
-                    return result;
-                }
-
-                result = new List<string>() { "<Весь проект>", TaskItemEntity.CurrentModelName(Module.CurrentDocument) };
-                if (Module.CurrentDocument != null)
-                {
-                    var currentDocFiles = new FilteredElementCollector(Module.CurrentDocument)
-                        .OfClass(typeof(RevitLinkType));
-
-                    var docFileNames = currentDocFiles?.OrderBy(f => f.Name).Select(f => f.Name);
-                    result.AddRange(docFileNames);
-                }
+                // Если НЕ новое замечание
+                if (Id != 0 && !string.IsNullOrEmpty(ModelName) && !result.Contains(ModelName))
+                    result.Add(ModelName);
+                else if (Module.CurrentDoc != null && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
+                    result.Add(CurrentModelName(Module.CurrentDoc));
 
                 return result;
             }
@@ -507,14 +520,9 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         internal void FindModelByDlgSubDep()
         {
-            DBDocument currentDBDoc = MainDBService.DocDbService.GetDBDocuments_ByFileFullPath(Module.CurrentFileName);
-
             // Если отдел ответсвенного совпадает с отделом модели - то ставим на этот же файл
-            if (currentDBDoc.SubDepartmentId == DelegatedDepartmentId)
-            {
-                string tempName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDocument)));
-                ModelName = string.IsNullOrEmpty(tempName) ? "<Выбери вручную>" : tempName;
-            }
+            if (Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
+                ModelName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDoc)));
             else
                 ModelName = ModelNamesColl[0];
         }

@@ -13,6 +13,8 @@ namespace KPLN_IOSClasher.Core
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
 
+        private double _checkDocBPElevation = -99.99;
+
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
@@ -67,24 +69,18 @@ namespace KPLN_IOSClasher.Core
             }
         }
 
-        public IntersectCheckEntity(Document checkDoc, BoundingBoxXYZ filterBBox, Outline filterOutline)
+        public IntersectCheckEntity(Document checkDoc, Outline filterOutline)
         {
             CheckDoc = checkDoc;
-            CheckBBox = filterBBox;
             CheckOutline = filterOutline;
-
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTotalTransform();
 
             SetCurrentDocElemsToCheck(CheckDoc);
         }
 
-        public IntersectCheckEntity(Document checkDoc, BoundingBoxXYZ filterBBox, Outline filterOutline, RevitLinkInstance linkInst)
+        public IntersectCheckEntity(Document checkDoc, Outline filterOutline, RevitLinkInstance linkInst)
         {
             CheckDoc = checkDoc;
-            CheckBBox = filterBBox;
             CheckOutline = filterOutline;
-
-            CheckDocTransform = CheckDoc.ActiveProjectLocation.GetTransform();
 
             CheckLinkInst = linkInst;
 
@@ -93,13 +89,7 @@ namespace KPLN_IOSClasher.Core
             // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор и аннулирование CheckLinkInst
             if (linkDoc != null)
             {
-                Instance inst = CheckLinkInst as Instance;
-                Transform instTrans = inst.GetTransform();
-                // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
-                if (instTrans.IsTranslation)
-                    LinkTransfrom = instTrans;
-                else
-                    LinkTransfrom = Transform.CreateTranslation(instTrans.Origin);
+                LinkTransfrom = GetLinkTransform(CheckLinkInst);
                 
                 SetCurrentDocElemsToCheck(linkDoc);
             }
@@ -112,19 +102,40 @@ namespace KPLN_IOSClasher.Core
         public Document CheckDoc { get; }
 
         /// <summary>
-        /// BoundingBoxXYZ для проверки
+        /// Ссылка на отметку БТП проверяемого документа (только на неё идёт смещение)
         /// </summary>
-        public BoundingBoxXYZ CheckBBox { get; }
+        public double CheckDocBPElevation 
+        {
+            get
+            {
+                if(_checkDocBPElevation == -99.99)
+                {
+                    _checkDocBPElevation = new FilteredElementCollector(CheckDoc)
+                        .OfClass(typeof(BasePoint))
+                        .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                        .WhereElementIsNotElementType()
+                        .FirstOrDefault()
+                        .get_BoundingBox(null)
+                        .Min
+                        .Z;
+                }
+                _checkDocBPElevation = new FilteredElementCollector(CheckDoc)
+                        .OfClass(typeof(BasePoint))
+                        .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                        .WhereElementIsNotElementType()
+                        .FirstOrDefault()
+                        .get_BoundingBox(null)
+                        .Min
+                        .Z;
+
+                return _checkDocBPElevation;
+            }
+        }
 
         /// <summary>
         /// Outline для проверки
         /// </summary>
         public Outline CheckOutline { get; }
-
-        /// <summary>
-        /// Трансформ проверяемого файла
-        /// </summary>
-        public Transform CheckDocTransform { get; }
 
         /// <summary>
         /// Трансформ для связи
@@ -140,6 +151,20 @@ namespace KPLN_IOSClasher.Core
         /// Коллекция элементов, которые нужно детально проверить на коллизии (они попали в фильтры по геометрии CheckOutline)
         /// </summary>
         public HashSet<Element> CurrentDocElemsToCheck { get; } = new HashSet<Element>(new ElementComparerById());
+
+        /// <summary>
+        /// Задать Transform связи
+        /// </summary>
+        public static Transform GetLinkTransform(RevitLinkInstance linkInst)
+        {
+            Instance inst = linkInst as Instance;
+            Transform instTrans = inst.GetTransform();
+            // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
+            if (instTrans.IsTranslation)
+                return instTrans;
+            else
+                return Transform.CreateTranslation(instTrans.Origin);
+        }
 
         /// <summary>
         /// Получить коллекцию уточненных элементов по элементу на проверку ДЛЯ СВЯЗИ (для текущего документа этот список уже сформирован по элементу)

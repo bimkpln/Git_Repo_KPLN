@@ -182,6 +182,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -194,6 +198,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
@@ -204,6 +212,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -228,6 +240,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -262,11 +278,14 @@
       <DependentUpon>ConfirmDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\KPTaskDialog.cs" />
-    <Compile Include="Forms\ReportManager.xaml.cs">
-      <DependentUpon>ReportManager.xaml</DependentUpon>
+    <Compile Include="Forms\ReportManagerCreateGroupForm.xaml.cs">
+      <DependentUpon>ReportManagerCreateGroupForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ReportWindow.xaml.cs">
-      <DependentUpon>ReportWindow.xaml</DependentUpon>
+    <Compile Include="Forms\ReportManagerForm.xaml.cs">
+      <DependentUpon>ReportManagerForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ReportForm.xaml.cs">
+      <DependentUpon>ReportForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\TextInputForm.xaml.cs">
       <DependentUpon>TextInputForm.xaml</DependentUpon>
@@ -312,11 +331,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ReportManager.xaml">
+    <Page Include="Forms\ReportManagerCreateGroupForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ReportManagerForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ReportWindow.xaml">
+    <Page Include="Forms\ReportForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
