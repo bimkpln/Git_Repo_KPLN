@@ -172,6 +172,25 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "KPLN_ViewsAndLists_Ribbon.Resources.CommandListTBlockParamCopier.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
+
+            AddPushButtonDataInPullDown(
+                "CommandListRevisionClouds",
+                "Изменения и Пометочные облака",
+                "Плагин автоматически выполняет на всех листах следующее:\n" +
+                "1. Заполняет ячейку \"Кол.уч\" в штампе по количеству пометочных облаков\n" +
+                "2. Перечисляет изменения на листе в параметре \"Ш.ПримечаниеЛиста\" в формате: \"Изм. 1(Зам.), Изм. 2(Нов.)...\"— для отображения в спецификации\n" +
+                "\"О_Ведомость рабочих чертежей основного комплекта...\"",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Lists.CommandListRevisionClouds).FullName,
+                pullDown_Lists,
+                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRevisionClouds.png",
+                "http://moodle/"
+            );
             #endregion
 
             return Result.Succeeded;

@@ -39,6 +39,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.Colorize.FilterData
                 startSymbols = StartSymbols;
         }
 
+        [Obsolete]
         public bool ApplyFilters(Document doc, View v, ElementId fillPatternId, bool colorLines, bool colorFill)
         {
             for (int i = 0; i < valuesList.Count; i++)

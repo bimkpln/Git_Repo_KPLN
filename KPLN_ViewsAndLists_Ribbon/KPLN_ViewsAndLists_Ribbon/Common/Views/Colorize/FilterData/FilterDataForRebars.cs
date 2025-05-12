@@ -48,6 +48,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.Colorize.FilterData
         private string _filterNamePrefix = "_rh_";
         public string FilterNamePrefix => _filterNamePrefix;
 
+        [Obsolete]
         public bool ApplyFilters(Document doc, View v, ElementId fillPatternId, bool colorLines, bool colorFill)
         {
             for (int i = 0; i < values.Count; i++)
