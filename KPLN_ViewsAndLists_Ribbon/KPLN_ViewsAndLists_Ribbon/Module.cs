@@ -189,7 +189,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Lists.CommandListRevisionClouds).FullName,
                 pullDown_Lists,
                 "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRevisionClouds.png",
-                "http://moodle/"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1330"
             );
             #endregion
 
