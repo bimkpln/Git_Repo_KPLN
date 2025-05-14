@@ -2,17 +2,19 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
+using KPLN_OpeningHoleManager.Services;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_OpeningHoleManager.ExecutableCommand
 {
     /// <summary>
-    /// Класс по расстановке и чистке отверстий АР
+    /// Класс по расстановке отверстий АР
     /// </summary>
     internal sealed class AR_OHE_Maker : IExecutableCommand
     {
         private readonly string _transName;
         private readonly AROpeningHoleEntity[] _arEntitiesToCreate;
-        private AROpeningHoleEntity[] _arEntitiesToDelete;
 
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
@@ -34,25 +36,34 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             if (uidoc == null) return Result.Cancelled;
 
 
+            // 3d- вид для изоляция основы для отверстий
+            View3D view = null;
             using (Transaction trans = new Transaction(doc, _transName))
             {
                 trans.Start();
 
-                // Сначала нахожу и удаляю полностью поглащенные отверстия
-                _arEntitiesToDelete = AROpeningHoleEntity.GetEntitesToDel_ByFullIntescect(doc, _arEntitiesToCreate);
-                foreach (AROpeningHoleEntity arEntity in _arEntitiesToDelete)
-                {
-                    doc.Delete(arEntity.OHE_Element.Id);
-                }
-                
-                // Затем создаю новые элементы (порядок важен, чтобы не создавать доп фильтрацию при поиске полностью поглащенных)
+                // Работа с элемнтами
                 foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)
                 {
                     arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
                 }
 
+                // Работа с видом и выделением эл-в
+                view = ViewZoomCreator.SpecialViewCreator(
+                    app, 
+                    _arEntitiesToCreate.Select(ent => ent.AR_OHE_HostElement).ToHashSet(new ElementComparerById()),
+                    true);
+                
+                app.ActiveUIDocument.Selection.SetElementIds(
+                    _arEntitiesToCreate
+                    .Where(ent => doc.GetElement(ent.OHE_Element.Id).IsValidObject)
+                    .Select(ent => ent.OHE_Element.Id)
+                    .ToArray());
+
                 trans.Commit();
             }
+
+            ViewZoomCreator.SpecialViewOpener(app, view);
 
             return Result.Succeeded;
         }

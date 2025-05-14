@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
     xmlns:local="clr-namespace:KPLN_OpeningHoleManager.Forms"
     mc:Ignorable="d" 
-    Width="300"
+    MinWidth="300"
     Height="500"
     Background="White">
 
@@ -64,63 +64,106 @@
         </Grid.RowDefinitions>
 
         <StackPanel>
-
             <DockPanel
                 LastChildFill="True">
                 <StackPanel>
                     <Button
                         Style="{StaticResource BTN}"
-                        ToolTip="Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР"
                         Command="{Binding CreateOpenHoleByIOSElemsCommand}">
                         <TextBlock
-                            Text="Отверстия по стене по всем эл-там ИОС"
+                            Text="АР: Отверстия по всем эл-там ИОС на этаже"
                             TextWrapping="Wrap"
                             MaxWidth="200"
                             TextAlignment="Center"/>
+                        <Button.ToolTip>
+                            <StackPanel MaxWidth="400">
+                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР</TextBlock>
+                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Анализируются элементы с плана, на котором 
+                                запущен плагин</TextBlock>
+                            </StackPanel>
+                        </Button.ToolTip>
                     </Button>
                     <Button
                         Style="{StaticResource BTN}"
-                        ToolTip="Потсавить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР"
-                        Command="{Binding CreateOpenHoleBySelectedIOSElemsCommand}">
+                        Command="{Binding CreateOpenHoleByIOSElemsCommand}">
                         <TextBlock
-                            Text="Отверстия по стене по выбранным эл-там ИОС"
+                            Text="КЖ: Отверстия по стене по всем эл-там ИОС"
                             TextWrapping="Wrap"
                             MaxWidth="200"
                             TextAlignment="Center"/>
+                        <Button.ToolTip>
+                            <StackPanel MaxWidth="400">
+                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной КЖ</TextBlock>
+                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
+                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
+                                    соответсвующий данным требованиям</TextBlock>
+                            </StackPanel>
+                        </Button.ToolTip>
+                    </Button>
+                    <Button
+                        Style="{StaticResource BTN}"
+                        Command="{Binding CreateOpenHoleBySelectedIOSElemsCommand}">
+                        <TextBlock
+                            Text="КЖ: Отверстия по стене по выбранным эл-там ИОС"
+                            TextWrapping="Wrap"
+                            MaxWidth="200"
+                            TextAlignment="Center"/>
+                        <Button.ToolTip>
+                            <StackPanel MaxWidth="400">
+                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной КЖ</TextBlock>
+                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
+                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
+                                    соответсвующий данным требованиям</TextBlock>
+                            </StackPanel>
+                        </Button.ToolTip>
                     </Button>
                 </StackPanel>
                 <Button
                     Style="{StaticResource BTN}"
-                    ToolTip="Открыть меню настроек для расстановки отверстий по пересечению с элементами ИОС"
                     Click="SetParamsOpenHoleByIOSElems_Click">
                     <TextBlock
                         Text="Настройки расстановки"
                         TextWrapping="Wrap"
                         MaxWidth="125"
                         TextAlignment="Center"/>
+                    <Button.ToolTip>
+                        <StackPanel MaxWidth="400">
+                            <TextBlock TextWrapping="Wrap">Открыть меню настроек для расстановки отверстий по пересечению
+                                с элементами ИОС</TextBlock>
+                        </StackPanel>
+                    </Button.ToolTip>
                 </Button>
             </DockPanel>
 
             <Button
                 Style="{StaticResource BTN}"
-                ToolTip="Объеденить несколько отверстий в одно"
                 Command="{Binding UnionOpenHolesCommand}">
                 <TextBlock
                     Text="Объеденить отверстия"
                     TextWrapping="Wrap"
                     MaxWidth="250"
                     TextAlignment="Center"/>
+                <Button.ToolTip>
+                    <StackPanel MaxWidth="400">
+                        <TextBlock TextWrapping="Wrap">Объеденить несколько отверстий в одно 
+                            (БЕЗ учёта правил на зазоры и max/min размеры отверстий, но соблюдая шаг в 50 мм)</TextBlock>
+                    </StackPanel>
+                </Button.ToolTip>
             </Button>
-            
+
             <Button
                 Style="{StaticResource BTN}"
-                ToolTip="Потсавить отверстие по заданию от ИОС"
                 Command="{Binding SetOpenHoleByTaskCommand}">
                 <TextBlock
                     Text="Поставить отверстие по заданию"
                     TextWrapping="Wrap"
                     MaxWidth="250"
                     TextAlignment="Center"/>
+                <Button.ToolTip>
+                    <StackPanel MaxWidth="400">
+                        <TextBlock TextWrapping="Wrap">Потсавить отверстие по заданию от ИОС</TextBlock>
+                    </StackPanel>
+                </Button.ToolTip>
             </Button>
 
             <GridSplitter 

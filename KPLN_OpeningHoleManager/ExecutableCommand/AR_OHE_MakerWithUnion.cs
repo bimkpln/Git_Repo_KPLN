@@ -1,35 +1,35 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
 using KPLN_OpeningHoleManager.Services;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_OpeningHoleManager.ExecutableCommand
 {
     /// <summary>
-    /// Класс по расстановке и чистке отверстий АР С ОБЪЕДИНЕНИЕМ
+    /// Класс по расстановке и объединению отверстий АР С ОБЪЕДИНЕНИЕМ
     /// </summary>
     internal sealed class AR_OHE_MakerWithUnion : IExecutableCommand
     {
         private readonly string _transName;
         private readonly AROpeningHoleEntity[] _arEntities;
         private readonly ViewModel _viewModel;
-        
+        private readonly bool _isUnionOnly;
+
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
         /// </summary>
         /// <param name="arEntities"></param>
-        public AR_OHE_MakerWithUnion(AROpeningHoleEntity[] arEntities, string transName, ViewModel viewModel)
+        public AR_OHE_MakerWithUnion(AROpeningHoleEntity[] arEntities, string transName, ViewModel viewModel, bool isUnionOnly)
         {
             _arEntities = arEntities;
             _transName = transName;
             _viewModel = viewModel;
+            _isUnionOnly = isUnionOnly;
         }
 
         public Result Execute(UIApplication app)
@@ -42,10 +42,12 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             if (uidoc == null) return Result.Cancelled;
 
             bool creationCanceledBySize = false;
+            // 3d- вид для изоляция основы для отверстий
+            View3D view = null;
+            List<AROpeningHoleEntity> arEntitiesForUnion = new List<AROpeningHoleEntity>();
             using (Transaction trans = new Transaction(doc, _transName))
             {
                 trans.Start();
-
 
                 // Создаю новые элементы
                 foreach (AROpeningHoleEntity arEntity in _arEntities)
@@ -53,64 +55,93 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
                 }
 
-                // Делаю проверку на возможность объединения
-                Dictionary<int, List<AROpeningHoleEntity>> arEntitiesForUnionByGroups = GetAROpeningsFromIOSElems_UnionByParams(_arEntities);
-                if (arEntitiesForUnionByGroups.Any())
+                // При простом объединении - нахожу и удаляю отверстия по пересечению
+                if (_isUnionOnly)
                 {
-                    List<AROpeningHoleEntity> arEntitiesForUnion = new List<AROpeningHoleEntity>();
-                    List<AROpeningHoleEntity> arEntitiesForDelete = new List<AROpeningHoleEntity>();
-                    foreach (var kvp in arEntitiesForUnionByGroups)
+                    AROpeningHoleEntity[] arEntities_FullIntersect = AROpeningHoleEntity.GetEntitesToDel_ByIntescect(doc, _arEntities);
+                    foreach (AROpeningHoleEntity arEntity in arEntities_FullIntersect)
                     {
-                        arEntitiesForDelete.AddRange(kvp.Value);
-                        AROpeningHoleEntity unionOHE = AROpeningHoleEntity.CreateUnionOpeningHole(doc, kvp.Value.ToArray(), false);
-
-                        // Уточняю параметры исходя из материала основы
-#if Debug2020 || Revit2020
-                        double minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                        double minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                        double minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS)/ 2;
-                        if (unionOHE.AR_OHE_IsHostElementKR)
-                        {
-                            minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                            minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                            minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS) / 2;
-                        }
-#else
-                        double minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                        double minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                        double minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
-                        if (unionOHE.AR_OHE_IsHostElementKR)
-                        {
-                            minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                            minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                            minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
-                        }
-#endif
-
-                        if (unionOHE.OHE_Height >= minHeight
-                            || unionOHE.OHE_Width >= minWidht
-                            || unionOHE.OHE_Radius >= minRadius)
-                            arEntitiesForUnion.Add(unionOHE);
-                        else
-                            creationCanceledBySize = true;
-                    }
-
-
-                    // Сначала удаляю отверстия, из которых состоит объединённое
-                    foreach (AROpeningHoleEntity arEntity in arEntitiesForDelete)
-                    {
-                        // Может быть, что элемента ещё нет в файле
-                        if (arEntity.OHE_Element.IsValidObject)
-                            doc.Delete(arEntity.OHE_Element.Id);
-                    }
-
-
-                    // Затем создаю новые элементы
-                    foreach (AROpeningHoleEntity arEntity in arEntitiesForUnion)
-                    {
-                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
+                        doc.Delete(arEntity.OHE_Element.Id);
                     }
                 }
+                // При автообъединении - делаю проверку на возможность объединения с послед. удалением лишних 
+                else
+                {
+                    Dictionary<int, List<AROpeningHoleEntity>> arEntitiesForUnionByGroups = GetAROpenings_UnionByParams(_arEntities);
+                    if (arEntitiesForUnionByGroups.Any())
+                    {
+                        List<AROpeningHoleEntity> arEntitiesForDelete = new List<AROpeningHoleEntity>();
+                        foreach (var kvp in arEntitiesForUnionByGroups)
+                        {
+                            // Если словарь состоит из самого себя - игнор, зачем пересоздавать тот же самый эл-т
+                            if (kvp.Value.Count() == 1 && kvp.Key == kvp.Value.FirstOrDefault().OHE_Element.Id.IntegerValue)
+                                continue;
+
+
+                            arEntitiesForDelete.AddRange(kvp.Value);
+                            AROpeningHoleEntity unionOHE = AROpeningHoleEntity.CreateUnionOpeningHole(doc, kvp.Value.ToArray());
+
+                            // Уточняю параметры исходя из материала основы
+    #if Debug2020 || Revit2020
+                            double minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                            double minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                            double minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS) / 2;
+                            if (unionOHE.AR_OHE_IsHostElementKR)
+                            {
+                                minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                                minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                                minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS) / 2;
+                            }
+    #else
+                            double minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                            double minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                            double minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
+                            if (unionOHE.AR_OHE_IsHostElementKR)
+                            {
+                                minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                                minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                                minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
+                            }
+    #endif
+
+                            if (unionOHE.OHE_Height >= minHeight
+                                || unionOHE.OHE_Width >= minWidht
+                                || unionOHE.OHE_Radius >= minRadius)
+                                arEntitiesForUnion.Add(unionOHE);
+                            else
+                                creationCanceledBySize = true;
+                        }
+
+
+                        // Сначала удаляю отверстия, из которых состоит объединённое
+                        foreach (AROpeningHoleEntity arEntity in arEntitiesForDelete)
+                        {
+                            // Может быть, что элемента ещё нет в файле
+                            if (arEntity.OHE_Element.IsValidObject)
+                                doc.Delete(arEntity.OHE_Element.Id);
+                        }
+
+
+                        // Затем создаю новые элементы
+                        foreach (AROpeningHoleEntity arEntity in arEntitiesForUnion)
+                        {
+                            arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
+                        }
+
+                        // Работа с видом и выделением эл-в
+                        view = ViewZoomCreator.SpecialViewCreator(
+                            app, 
+                            _arEntities.Select(ent => ent.AR_OHE_HostElement).ToHashSet(new ElementComparerById()),
+                            _isUnionOnly);
+                        
+                        app.ActiveUIDocument.Selection.SetElementIds(
+                            _arEntities
+                            .Where(ent => ent.OHE_Element.IsValidObject)
+                            .Select(ent => ent.OHE_Element.Id)
+                            .ToArray());
+                    }
+                }
+
 
                 trans.Commit();
 
@@ -123,6 +154,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     }.Show();
                 }
 
+                ViewZoomCreator.SpecialViewOpener(app, view);
             }
 
             return Result.Succeeded;
@@ -133,7 +165,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         /// где: int - id любого отверстия группы, вокруг которого будет вестись объединение, List<AROpeningHoleEntity> - коллекция для объединения
         /// </summary>
         /// <returns></returns>
-        private Dictionary<int, List<AROpeningHoleEntity>> GetAROpeningsFromIOSElems_UnionByParams(AROpeningHoleEntity[] arEntities)
+        private Dictionary<int, List<AROpeningHoleEntity>> GetAROpenings_UnionByParams(AROpeningHoleEntity[] arEntities)
         {
             var adjacency = new Dictionary<int, List<int>>();
             var idToEntity = arEntities.ToDictionary(e => e.OHE_Element.Id.IntegerValue, e => e);
@@ -156,22 +188,30 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     int id2 = ent2.OHE_Element.Id.IntegerValue;
                     if (id1 == id2) continue;
 
-                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(ent1.OHE_Solid, ent2.OHE_Solid, BooleanOperationsType.Intersect);
-                    bool isConnected = intersectSolid != null && intersectSolid.Volume > 0;
-
-                    if (!isConnected)
+                    try
                     {
-                        double dist = GeometryWorker.GetMinimumDistanceBetweenSolids(ent1.OHE_Solid, ent2.OHE_Solid);
-                        isConnected = dist <= minDistance;
+                        Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(ent1.OHE_Solid, ent2.OHE_Solid, BooleanOperationsType.Intersect);
+                        bool isConnected = intersectSolid != null && intersectSolid.Volume > 0;
+
+                        if (!isConnected)
+                        {
+                            double dist = GeometryWorker.GetMinimumDistanceBetweenSolids(ent1.OHE_Solid, ent2.OHE_Solid);
+                            isConnected = dist <= minDistance;
+                        }
+
+                        if (isConnected)
+                        {
+                            if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<int>();
+                            if (!adjacency[id1].Contains(id2)) adjacency[id1].Add(id2);
+
+                            if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<int>();
+                            if (!adjacency[id2].Contains(id1)) adjacency[id2].Add(id1);
+                        }
                     }
-
-                    if (isConnected)
+                    // Могут выпадать ошибки при поиске пересечений, связанные с неточностью. Игнорим такие эл-ты
+                    catch (Autodesk.Revit.Exceptions.InvalidOperationException)
                     {
-                        if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<int>();
-                        if (!adjacency[id1].Contains(id2)) adjacency[id1].Add(id2);
-
-                        if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<int>();
-                        if (!adjacency[id2].Contains(id1)) adjacency[id2].Add(id1);
+                        continue;
                     }
                 }
             }

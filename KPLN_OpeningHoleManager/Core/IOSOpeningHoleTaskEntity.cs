@@ -6,7 +6,7 @@ namespace KPLN_OpeningHoleManager.Core
 {
     internal sealed class IOSOpeningHoleTaskEntity : OpeningHoleEntity
     {
-        public IOSOpeningHoleTaskEntity(Document doc, Element elem, XYZ point)
+        internal IOSOpeningHoleTaskEntity(Document doc, Element elem, XYZ point)
         {
             OHE_LinkDocument = doc;
             OHE_Element = elem;
@@ -16,7 +16,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить путь к Revit семействам
         /// </summary>
-        public OpeningHoleEntity SetFamilyPathAndName(Document doc)
+        internal OpeningHoleEntity SetFamilyPathAndName(Document doc)
         {
             if (doc.Title.Contains("СЕТ_1"))
             {
@@ -45,7 +45,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить основные геометрические параметры (ширина, высота, диамтер)
         /// </summary>
-        public IOSOpeningHoleTaskEntity SetGeomParams()
+        internal IOSOpeningHoleTaskEntity SetGeomParams()
         {
             if (OHE_Element != null)
             {
@@ -74,7 +74,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить данные по основным геометрическим параметрам (ширина, высота, диамтер)
         /// </summary>
-        public IOSOpeningHoleTaskEntity SetGeomParamsData()
+        internal IOSOpeningHoleTaskEntity SetGeomParamsData()
         {
             if (OHE_Element != null)
             {

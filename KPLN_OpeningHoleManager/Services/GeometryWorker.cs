@@ -1,22 +1,23 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.ExtensibleStorage;
+using Autodesk.Revit.DB.Electrical;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_OpeningHoleManager.Core;
-using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_OpeningHoleManager.Services
 {
-    internal sealed class GeometryWorker
+    internal static class GeometryWorker
     {
         /// <summary>
         /// Создать СОЛИД вручную. Выдавливание идёт вдоль оси Z
         /// </summary>
         /// <returns></returns>
-        public static Solid CreateSolid_ZDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
+        internal static Solid CreateSolid_ZDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
         {
+            double extrusionDist = height > 0 ? height : radius; 
+
             // Сістэма каардынат
             XYZ xDir = direction; // па шырыні
             XYZ zDir = XYZ.BasisZ; // уверх
@@ -26,12 +27,12 @@ namespace KPLN_OpeningHoleManager.Services
             if (radius == 0)
             {
                 List<XYZ> points = new List<XYZ>
-        {
-            insertPoint - xDir * width/2,
-            insertPoint - xDir * width/2 + yDir * height,
-            insertPoint + xDir * width/2 + yDir * height,
-            insertPoint + xDir * width/2,
-        };
+                {
+                    insertPoint - xDir * width/2,
+                    insertPoint - xDir * width/2 + yDir * height,
+                    insertPoint + xDir * width/2 + yDir * height,
+                    insertPoint + xDir * width/2,
+                };
 
                 curvesList = GetCurvesList_LinesByPoints(points);
             }
@@ -39,7 +40,12 @@ namespace KPLN_OpeningHoleManager.Services
                 curvesList = GetCurvesList_ArcByInsertPntAndRadius(direction, insertPoint, radius);
 
             CurveLoop[] curves = new CurveLoop[] { CurveLoop.Create(curvesList) };
-            Solid extrSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curves, zDir, 1);
+            Solid extrSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curves, zDir, extrusionDist);
+
+            //var centr1 = extrSolid.ComputeCentroid();
+            //var bbox1 = extrSolid.GetBoundingBox();
+            //var trans1 = bbox1.Transform;
+            //var newbbox1 = new BoundingBoxXYZ() { Min = trans1.OfPoint(bbox1.Min), Max = trans1.OfPoint(bbox1.Max) };
 
             return extrSolid;
         }
@@ -48,7 +54,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Архвная копия метода - выдавливание по перпендикулярной оси для вектора direction
         /// </summary>
         /// <returns></returns>
-        public static Solid CreateSolid_XYDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
+        internal static Solid CreateSolid_XYDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
         {
             // Нармалізуем напрамак
             XYZ xDir = direction.Normalize(); // напрамак шырыні
@@ -85,10 +91,18 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Получить SOLID элемента Ревит
         /// </summary>
-        public static Solid GetRevitElemSolid(Element elem, Transform transform = null)
+        internal static Solid GetRevitElemSolid(Element elem, Transform transform = null)
         {
             Solid resultSolid = null;
-            GeometryElement geomElem = elem.get_Geometry(new Options { DetailLevel = ViewDetailLevel.Fine });
+
+            // Для кабельных лотков лучше подходит средний ур. детализации
+            Options opt = new Options();
+            if (elem is CableTray)
+                opt.DetailLevel = ViewDetailLevel.Medium;
+            else
+                opt.DetailLevel = ViewDetailLevel.Fine;
+
+            GeometryElement geomElem = elem.get_Geometry(opt);
             foreach (GeometryObject gObj in geomElem)
             {
                 Solid solid = gObj as Solid;
@@ -156,7 +170,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Получить общий BoundingBoxXYZ на основе всех заданий от ИОС с УЧЁТОМ вшитого Transform
         /// </summary>
         /// <returns></returns>
-        public static BoundingBoxXYZ CreateOverallBBox(IOSOpeningHoleTaskEntity[] iosTasks)
+        internal static BoundingBoxXYZ CreateOverallBBox(IOSOpeningHoleTaskEntity[] iosTasks)
         {
             BoundingBoxXYZ resultBBox = null;
 
@@ -199,7 +213,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Создать Outline по указанному BoundingBoxXYZ и расширению
         /// </summary>
-        public static Outline CreateFilterOutline(BoundingBoxXYZ bbox, double expandValue)
+        internal static Outline CreateFilterOutline(BoundingBoxXYZ bbox, double expandValue)
         {
             Outline resultOutlie;
 
@@ -252,7 +266,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Получить вектор для основы отверстия
         /// </summary>
-        public static XYZ GetHostDirection(Element host)
+        internal static XYZ GetHostDirection(Element host)
         {
             // Получаю вектор для стены
             XYZ wallDirection = null;
@@ -280,10 +294,10 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Получить плоскость у солида с определенным углом к указанному вектору 
         /// </summary>
-        public static Face GetFace_ByAngleToDirection(Solid checkSolid, XYZ hostDirection, double checkAngle = 90)
+        internal static Face GetFace_ByAngleToDirection(Solid checkSolid, XYZ hostDirection, double checkAngle = 90)
         {
             Face result = null;
-            
+
             double tempArea = 0;
             foreach (Face face in checkSolid.Faces)
             {
@@ -314,11 +328,8 @@ namespace KPLN_OpeningHoleManager.Services
         /// </summary>
         /// <param name="solid">Солид для анализа</param>
         /// <param name="mainDirection">Вектор, на который проецируем точки</param>
-        /// <param name="isSolidMabeByExtrusionByZAxis">Пометка, что перед нами искуственный солид (создан методом CreateSolid) в направлении оси Z.
-        /// Солиды из ревит имеют свою систему координат, которую через API невозможно поднять, но она участвует в остальных методах, 
-        /// связанных с солидами (например анализ на пересечение)</param>
         /// <returns></returns>
-        public static double[] GetSolidWidhtAndHeight_ByDirection(Solid solid, XYZ mainDirection, bool isSolidMabeByExtrusionByZAxis)
+        internal static double[] GetSolidWidhtAndHeight_ByDirection(Solid solid, XYZ mainDirection)
         {
             // Атрымліваем дзве артагональныя восі
             XYZ up = XYZ.BasisZ;
@@ -360,11 +371,7 @@ namespace KPLN_OpeningHoleManager.Services
             double maxZ = projected.Max(p => p.Z);
 
             double width = maxX - minX;
-            double height = 0;
-            if (isSolidMabeByExtrusionByZAxis)
-                height = maxY - minY;
-            else
-                height = maxZ - minZ;
+            double height = maxZ - minZ;
 
             double[] result = new double[2]
             {

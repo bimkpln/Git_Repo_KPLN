@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
@@ -18,7 +17,7 @@ using System.Windows.Input;
 
 namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 {
-    public class ViewModel : INotifyPropertyChanged
+    public sealed class ViewModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -203,9 +202,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
                 }
 
-                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities, false);
+                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities);
                 if (elemToCreate.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false));
             }
             catch (Exception ex)
             {
@@ -250,9 +249,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
                 }
 
-                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities, false);
+                AROpeningHoleEntity[] elemToCreate = GetAROpeningsFromIOSElems_WithoutUnion(doc, selectedHost, iosEntities);
                 if (elemToCreate.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false));
             }
             catch (Exception ex)
             {
@@ -415,7 +414,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         /// Получить коллекцию отверстий АР по элементам ИОС
         /// </summary>
         /// <returns></returns>
-        private AROpeningHoleEntity[] GetAROpeningsFromIOSElems_WithoutUnion(Document doc, Element hostElem, IOSElemEntity[] iosElemColl, bool isSolidMabeByExtrusionByZAxis)
+        private AROpeningHoleEntity[] GetAROpeningsFromIOSElems_WithoutUnion(Document doc, Element hostElem, IOSElemEntity[] iosElemColl)
         {
             List<AROpeningHoleEntity> result = new List<AROpeningHoleEntity>();
 
@@ -429,8 +428,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 ConnectorSet conSet = null;
                 if (iosElemEnt.IOS_Element is MEPCurve mc)
                     conSet = mc.ConnectorManager.Connectors;
-                else if (iosElemEnt.IOS_Element is FamilyInstance fi && fi.MEPModel is MechanicalFitting mf)
-                    conSet = mf.ConnectorManager.Connectors;
+                else if (iosElemEnt.IOS_Element is FamilyInstance fi && fi.MEPModel is MEPModel mepMod)
+                    conSet = mepMod.ConnectorManager.Connectors;
 
                 if (conSet != null)
                 {
@@ -446,14 +445,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                 // Получаю ширину и высоту
-                double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARIOS_IntesectionSolid, hostDir, isSolidMabeByExtrusionByZAxis);
+                double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARIOS_IntesectionSolid, hostDir);
                 double resultWidth = widthAndHeight[0];
                 double resultHeight = widthAndHeight[1];
                 double resultRadius = widthAndHeight[1];
 
 
                 // Получаю координаты центра пересечения
-                XYZ docCoord = iosElemEnt.IOS_LinkTransform.OfPoint(iosElemEnt.ARIOS_IntesectionSolid.ComputeCentroid());
+                XYZ docCoord = iosElemEnt.ARIOS_IntesectionSolid.ComputeCentroid();
 
 
                 // Создаю сущность AROpeningHoleEntity
@@ -485,13 +484,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
                 Document doc = uidoc.Document;
 
+
                 AROpeningHoleEntity[] arOHEColl = SelectAndGetAROpenHoles(uidoc, doc);
                 if (arOHEColl == null)
                     return;
 
-                AROpeningHoleEntity[] unionAR_OHE = new AROpeningHoleEntity[] { AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl, false) };
+                AROpeningHoleEntity[] unionAR_OHE = new AROpeningHoleEntity[] { AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl) };
                 if (unionAR_OHE != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(unionAR_OHE, "KPLN: Объединить отверстия"));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(unionAR_OHE, "KPLN: Объединить отверстия", this, true));
             }
             catch (Exception ex)
             {
@@ -595,14 +595,17 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
                 Document doc = uidoc.Document;
 
+
                 IOSOpeningHoleTaskEntity[] iosTasks = SelectAndGetIOSTasksFromLink(uidoc, doc);
-                if (!iosTasks.Any())
+                if (iosTasks == null || !iosTasks.Any())
                     return;
 
                 AROpeningHoleEntity[] arEntities = GetAROpeningsFromIOSTask(doc, iosTasks);
 
                 if (arEntities.Any())
+                {
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(arEntities, "KPLN: Отверстия по заданию"));
+                }
             }
             catch (Exception ex)
             {
@@ -612,6 +615,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
                 }.Show();
             }
+
         }
 
         /// <summary>
@@ -706,7 +710,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 arEntity.SetGeomParams();
                 arEntity.SetGeomParamsRoundData(iosTask.OHE_Height, iosTask.OHE_Width, iosTask.OHE_Radius);
                 arEntity.UpdatePointData_ByShape();
-                arEntity.CreateSolid_ByParams();
 
                 arEntities.Add(arEntity);
             }
@@ -734,10 +737,10 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             // Подготовка коллекции эл-в пересекаемых и внутри расширенного BoundingBoxXYZ
             result.AddRange(allHostFromDocumentColl
-                .Where(e => bboxIntersectFilter.PassesFilter(doc, e.Id)));
+                .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ElemExtraFilterFunc(e)));
 
             result.AddRange(allHostFromDocumentColl
-                .Where(e => bboxInsideFilter.PassesFilter(doc, e.Id)));
+                .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ElemExtraFilterFunc(e)));
 
             return result.ToArray();
         }

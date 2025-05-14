@@ -12,12 +12,12 @@ namespace KPLN_OpeningHoleManager.Core
     {
         private bool _ar_OHE_IsHostElementKR = false;
 
-        public AROpeningHoleEntity(Element elem)
+        internal AROpeningHoleEntity(Element elem)
         {
             OHE_Element = elem;
         }
 
-        public AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point)
+        internal AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point)
         {
             OHE_Shape = shape;
             AR_OHE_IOSDubDepCode = iosSubDepCode;
@@ -25,7 +25,7 @@ namespace KPLN_OpeningHoleManager.Core
             OHE_Point = point;
         }
 
-        public AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point, Element elem) : this(shape, iosSubDepCode, hostElem, point)
+        internal AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point, Element elem) : this(shape, iosSubDepCode, hostElem, point)
         {
             OHE_Element = elem;
         }
@@ -33,12 +33,12 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Элемент-основа для отверстия
         /// </summary>
-        public Element AR_OHE_HostElement { get; private set; }
+        internal Element AR_OHE_HostElement { get; private set; }
 
         /// <summary>
         /// Элемент-основа для отверстия является элементом КР
         /// </summary>
-        public bool AR_OHE_IsHostElementKR 
+        internal bool AR_OHE_IsHostElementKR 
         {
             get
             {
@@ -58,12 +58,12 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Код раздела, от которого падает задание
         /// </summary>
-        public string AR_OHE_IOSDubDepCode { get; private set; }
+        internal string AR_OHE_IOSDubDepCode { get; private set; }
 
         /// <summary>
         /// Создать объединённое отверстие по выбранной коллекции
         /// </summary>
-        public static AROpeningHoleEntity CreateUnionOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl, bool isSolidMabeByExtrusionByZAxis)
+        internal static AROpeningHoleEntity CreateUnionOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl)
         {
             // Подбираю результирующий тип для семейства
             string resultSubDep = string.Empty;
@@ -119,7 +119,7 @@ namespace KPLN_OpeningHoleManager.Core
             XYZ hostDir = GeometryWorker.GetHostDirection(hostElem);
 
             // Получаю ширину и высоту
-            double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir, isSolidMabeByExtrusionByZAxis);
+            double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir);
             double resultWidth = widthAndHeight[0];
             double resultHeight = widthAndHeight[1];
 
@@ -145,39 +145,54 @@ namespace KPLN_OpeningHoleManager.Core
             result.SetFamilyPathAndName(doc);
             result.SetGeomParams();
             result.SetGeomParamsRoundData(resultHeight, resultWidth, 0);
-            result.CreateSolid_ByParams();
 
             return result;
         }
 
         /// <summary>
-        /// Очистить коллекцию от ложных инстансов по полному поглащению
+        /// Очистить коллекцию от ложных инстансов по пересечению
         /// </summary>
-        public static AROpeningHoleEntity[] GetEntitesToDel_ByFullIntescect(Document doc, AROpeningHoleEntity[] arOHEColl)
+        internal static AROpeningHoleEntity[] GetEntitesToDel_ByIntescect(Document doc, AROpeningHoleEntity[] arOHEColl)
         {
             List<AROpeningHoleEntity> elemToClearColl = new List<AROpeningHoleEntity>();
 
-            foreach (AROpeningHoleEntity arEntity in arOHEColl)
+            foreach (AROpeningHoleEntity unionOHEEnt in arOHEColl)
             {
                 AROpeningHoleEntity[] hostOHEColl = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
                     .Where(el => el is FamilyInstance fi
                         && (fi.Symbol.FamilyName.StartsWith("199_Отвер") || fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие"))
-                        && fi.Host.Id.IntegerValue == arEntity.AR_OHE_HostElement.Id.IntegerValue)
+                        && fi.Host.Id.IntegerValue == unionOHEEnt.AR_OHE_HostElement.Id.IntegerValue)
                     .Select(el => new AROpeningHoleEntity(el))
                     .ToArray();
 
-                foreach (AROpeningHoleEntity hostOHE in hostOHEColl)
+                foreach (AROpeningHoleEntity checkHostOHE in hostOHEColl)
                 {
-                    Solid hostSolid = GeometryWorker.GetRevitElemSolid(hostOHE.OHE_Element);
-                    if (hostSolid == null)
+                    Solid hostOHESolid = GeometryWorker.GetRevitElemSolid(checkHostOHE.OHE_Element);
+                    if (hostOHESolid == null)
                         continue;
 
-                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(hostSolid, arEntity.OHE_Solid, BooleanOperationsType.Intersect);
+
+                    if ((unionOHEEnt.OHE_Element != null && checkHostOHE.OHE_Element != null)
+                        && (unionOHEEnt.OHE_Element.Id.IntegerValue == checkHostOHE.OHE_Element.Id.IntegerValue))
+                        continue;
+
+                    //var centr1 = unionOHEEnt.OHE_Solid.ComputeCentroid();
+                    //var bbox1 = unionOHEEnt.OHE_Solid.GetBoundingBox();
+                    //var trans1 = bbox1.Transform;
+                    //var newbbox1 = new BoundingBoxXYZ() { Min = trans1.OfPoint(bbox1.Min), Max = trans1.OfPoint(bbox1.Max)};
+
+                    //var idd2 = checkHostOHE.OHE_Element.Id;
+                    //var centr2 = checkHostOHE.OHE_Solid.ComputeCentroid();
+                    //var bbox2 = checkHostOHE.OHE_Solid.GetBoundingBox();
+                    //var trans2 = bbox2.Transform;
+                    //var newbbox2 = new BoundingBoxXYZ() { Min = trans2.OfPoint(bbox2.Min), Max = trans2.OfPoint(bbox2.Max) };
+
+                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(hostOHESolid, unionOHEEnt.OHE_Solid, BooleanOperationsType.Intersect);
                     if (intersectSolid != null
-                        && intersectSolid.Volume > 0
-                        && !elemToClearColl.Any(ohe => ohe.OHE_Element.Id.IntegerValue == hostOHE.OHE_Element.Id.IntegerValue))
-                        elemToClearColl.Add(hostOHE);
+                        && intersectSolid.Volume > 0 
+                        && !elemToClearColl.Any(ohe => ohe.OHE_Element.Id.IntegerValue == checkHostOHE.OHE_Element.Id.IntegerValue))
+                        elemToClearColl.Add(checkHostOHE);
                 }
             }
 
@@ -187,7 +202,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить путь к Revit семействам
         /// </summary>
-        public OpeningHoleEntity SetFamilyPathAndName(Document doc)
+        internal OpeningHoleEntity SetFamilyPathAndName(Document doc)
         {
             if (doc.Title.Contains("СЕТ_1"))
             {
@@ -216,7 +231,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить основные геометрические параметры (ширина, высота, диамтер)
         /// </summary>
-        public AROpeningHoleEntity SetGeomParams()
+        internal AROpeningHoleEntity SetGeomParams()
         {
             if (OHE_Shape == OpenigHoleShape.Rectangle)
             {
@@ -251,7 +266,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Установить основные геометрические параметры (ширина, высота, диамтер) И ОКРГУЛИТЬ с шагом 50 мм
         /// </summary>
-        public AROpeningHoleEntity SetGeomParamsRoundData(double height, double width, double radius, double expandValue = 0)
+        internal AROpeningHoleEntity SetGeomParamsRoundData(double height, double width, double radius, double expandValue = 0)
         {
 #if Debug2020 || Revit2020
             double roundHeight = RoundGeomParam(height) + RoundGeomParam(UnitUtils.ConvertToInternalUnits(expandValue, DisplayUnitType.DUT_MILLIMETERS));
@@ -290,7 +305,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Создать СОЛИД используя параметры AROpeningHoleEntity
         /// </summary>
-        public AROpeningHoleEntity CreateSolid_ByParams()
+        internal AROpeningHoleEntity CreateSolid_ByParams()
         {
             OHE_Solid = GeometryWorker.CreateSolid_ZDir(GeometryWorker.GetHostDirection(AR_OHE_HostElement), OHE_Point, OHE_Height, OHE_Width, OHE_Radius);
 
@@ -301,7 +316,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// Уточнить значения точки в зависимости от формы
         /// </summary>
         /// <returns></returns>
-        public AROpeningHoleEntity UpdatePointData_ByShape()
+        internal AROpeningHoleEntity UpdatePointData_ByShape()
         {
             XYZ iosTransPnt = this.OHE_Point;
 
@@ -316,7 +331,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Разместить экземпляр семейства по указанным координатам и заполнить параметры в модели
         /// </summary>
-        public void CreateIntersectFamInstAndSetRevitParamsData(Document doc, Element host)
+        internal void CreateIntersectFamInstAndSetRevitParamsData(Document doc, Element host)
         {
             // Определяю ключевую часть имени для поиска нужного типа семейства
             string famType = string.Empty;
@@ -357,8 +372,8 @@ namespace KPLN_OpeningHoleManager.Core
             OHE_Element = instance;
             doc.Regenerate();
 
-            // Указать уровень
-            instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(OHE_Point.Z - hostLevel.Elevation);
+            // Указать уровень - для семейств на основе указывать НЕ нужно
+            //instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(OHE_Point.Z - hostLevel.Elevation);
 
             // Заполнить параметры
             if (OHE_Shape == OpenigHoleShape.Rectangle)
@@ -381,6 +396,9 @@ namespace KPLN_OpeningHoleManager.Core
 
 
             doc.Regenerate();
+            
+            // Присваиваю солид ПОСЛЕ установки параметров
+            OHE_Solid = GeometryWorker.GetRevitElemSolid(instance);
         }
 
         private double RoundGeomParam(double geomParam)

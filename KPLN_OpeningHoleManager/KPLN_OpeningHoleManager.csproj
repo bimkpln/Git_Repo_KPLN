@@ -148,6 +148,8 @@
     <Compile Include="Forms\ParamsOpenHoleByIOSElemsForm.xaml.cs">
       <DependentUpon>ParamsOpenHoleByIOSElemsForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Services\ARKRElemsWorker.cs" />
+    <Compile Include="Services\ElementComparerById.cs" />
     <Compile Include="Services\IOSElemsCollectionCreator.cs" />
     <Compile Include="ExecutableCommand\AR_OHE_Maker.cs" />
     <Compile Include="ExternalCommands\ShowMainMenu.cs" />
@@ -170,6 +172,7 @@
     </Compile>
     <Compile Include="Services\GeometryWorker.cs" />
     <Compile Include="Services\MainDBService.cs" />
+    <Compile Include="Services\ViewZoomCreator.cs" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Imagens\ar_hummer.png">

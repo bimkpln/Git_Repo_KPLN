@@ -9,7 +9,7 @@ using System;
 
 namespace KPLN_OpeningHoleManager.Core
 {
-    public class MainConfig : IJsonSerializable
+    public sealed class MainConfig : IJsonSerializable
     {
         private static readonly string _cofigName = "AR_OHEManagerConfig";
         private static bool _isLocalConfig = true;

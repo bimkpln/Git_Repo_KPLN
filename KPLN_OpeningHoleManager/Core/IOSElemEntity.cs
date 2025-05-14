@@ -2,9 +2,9 @@
 
 namespace KPLN_OpeningHoleManager.Core
 {
-    public class IOSElemEntity
+    internal sealed class IOSElemEntity
     {
-        public IOSElemEntity(Document linkDoc, Transform linkTrans, Element elem, Solid elemSolid, Solid aRIOS_IntesectionSolid)
+        internal IOSElemEntity(Document linkDoc, Transform linkTrans, Element elem, Solid elemSolid, Solid aRIOS_IntesectionSolid)
         {
             IOS_LinkDocument = linkDoc;
             IOS_LinkTransform = linkTrans;
@@ -16,26 +16,26 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Ссылка на документ линка
         /// </summary>
-        public Document IOS_LinkDocument { get; private set; }
+        internal Document IOS_LinkDocument { get; private set; }
 
         /// <summary>
         /// Ссылка на Transform для линка
         /// </summary>
-        public Transform IOS_LinkTransform { get; private set; }
+        internal Transform IOS_LinkTransform { get; private set; }
 
         /// <summary>
         /// Ссылка на элемент модели
         /// </summary>
-        public Element IOS_Element { get; private set; }
+        internal Element IOS_Element { get; private set; }
 
         /// <summary>
         /// Кэширование SOLID геометрии
         /// </summary>
-        public Solid IOS_Solid { get; private set; }
+        internal Solid IOS_Solid { get; private set; }
 
         /// <summary>
         /// Кэширование SOLID геометрии ПЕРЕСЕЧЕНИЯ между АР и ИОС
         /// </summary>
-        public Solid ARIOS_IntesectionSolid { get; private set; }
+        internal Solid ARIOS_IntesectionSolid { get; private set; }
     }
 }

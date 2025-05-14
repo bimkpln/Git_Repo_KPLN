@@ -1,8 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_OpeningHoleManager.Core;
-using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,25 +7,9 @@ using System.Linq;
 namespace KPLN_OpeningHoleManager.Services
 {
     /// <summary>
-    /// Класс для сравнения элементов по ID (для создания HashSet)
-    /// </summary>
-    internal sealed class ElementComparerById : IEqualityComparer<Element>
-    {
-        public bool Equals(Element x, Element y)
-        {
-            if (x == null || y == null)
-                return false;
-
-            return x.Id == y.Id;
-        }
-
-        public int GetHashCode(Element obj) => obj.Id.GetHashCode();
-    }
-
-    /// <summary>
     /// Сервис по созданию сущностей IOSElemEntity
     /// </summary>
-    public static class IOSElemsCollectionCreator
+    internal static class IOSElemsCollectionCreator
     {
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
@@ -36,7 +17,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Фильтр для ключевой фильтрации по категориям
         /// </summary>
-        public static LogicalOrFilter ElemCatLogicalOrFilter
+        internal static LogicalOrFilter ElemCatLogicalOrFilter
         {
             get
             {
@@ -51,10 +32,11 @@ namespace KPLN_OpeningHoleManager.Services
                 return _elemCatLogicalOrFilter;
             }
         }
+
         /// <summary>
         /// Общая функция для фильтра для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
         /// </summary>
-        public static Func<Element, bool> ElemExtraFilterFunc
+        internal static Func<Element, bool> ElemExtraFilterFunc
         {
             get
             {
@@ -67,11 +49,11 @@ namespace KPLN_OpeningHoleManager.Services
                         && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Полоса_")
                             || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Пруток_")
                             || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Уголок_")
-                        // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
+                            // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
                             || (el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
                             || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("470_dkc_s5_accessories")
                             || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("757_опора_неподвижная")
-                        // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
+                            // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
                             || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("501_")
                             || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("551_")
                             || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("556_")
@@ -100,6 +82,7 @@ namespace KPLN_OpeningHoleManager.Services
                     // ОВВК (ЭОМСС - огнезащита)
                     BuiltInCategory.OST_DuctCurves,
                     BuiltInCategory.OST_DuctFitting,
+                    BuiltInCategory.OST_DuctTerminal,
                     BuiltInCategory.OST_DuctAccessory,
                     BuiltInCategory.OST_PipeCurves,
                     BuiltInCategory.OST_PipeFitting,
@@ -115,7 +98,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Метод генерации IOSElemEntity для линка по текущему элементу-основе АР (ЕСЛИ пересекаются)
         /// </summary>
         /// <returns></returns>
-        public static IOSElemEntity CreateIOSElemEntityForLinkElem_BySolid(RevitLinkInstance linkInst, Element linkElem, Solid arHostSolid)
+        internal static IOSElemEntity CreateIOSElemEntityForLinkElem_BySolid(RevitLinkInstance linkInst, Element linkElem, Solid arHostSolid)
         {
             // Подготовка линка к обработке
             Document linkDoc = linkInst.GetLinkDocument();
@@ -136,7 +119,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Метод генерации коллекции IOSElemEntity для линка по текущему элементу-основе АР
         /// </summary>
         /// <returns></returns>
-        public static IOSElemEntity[] CreateIOSElemEntitiesForLink_BySolid(RevitLinkInstance linkInst, Solid arHostSolid)
+        internal static IOSElemEntity[] CreateIOSElemEntitiesForLink_BySolid(RevitLinkInstance linkInst, Solid arHostSolid)
         {
             // Подготовка линка к обработке
             Document linkDoc = linkInst.GetLinkDocument();
@@ -162,14 +145,14 @@ namespace KPLN_OpeningHoleManager.Services
                 .Where(ElemExtraFilterFunc));
 
 
-            // Уточнение по пересечениям со хостом из АР
+            // Уточнение по пересечениям с хостом из АР
             List<IOSElemEntity> result = new List<IOSElemEntity>();
-            foreach(Element iosElem in checkLinkElems)
+            foreach (Element iosElem in checkLinkElems)
             {
                 Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosElem, linkTransfrom);
                 if (iosElemSolid == null)
                     continue;
-                
+
                 Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arHostSolid, iosElemSolid, BooleanOperationsType.Intersect);
                 if (intersectSolid != null && intersectSolid.Volume > 0)
                     result.Add(new IOSElemEntity(linkDoc, linkTransfrom, iosElem, iosElemSolid, intersectSolid));
