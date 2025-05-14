@@ -18,10 +18,10 @@ namespace KPLN_IOSClasher.Core
         /// <summary>
         /// Список BuiltInCategory для файлов ИОС, которые обрабатываются
         /// </summary>
-        public static List<BuiltInCategory> BuiltInCategories
+        public static BuiltInCategory[] BuiltInCategories
         {
             get =>
-                new List<BuiltInCategory>()
+                new BuiltInCategory[]
                 { 
                     // ОВВК (ЭОМСС - огнезащита)
                     BuiltInCategory.OST_DuctCurves,
