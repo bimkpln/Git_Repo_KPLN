@@ -80,7 +80,7 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.searchUserSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1301",
                 true);
-            
+
             PushButtonData tagWiper = CreateBtnData(
                 CommandTagWiper.PluginName,
                 CommandTagWiper.PluginName,
@@ -364,7 +364,7 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.smlt_Small.png",
                     "KPLN_Tools.Imagens.smlt_Small.png",
                     "http://moodle");
-                
+
                 ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
 #endif
 
