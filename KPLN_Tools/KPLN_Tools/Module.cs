@@ -222,7 +222,23 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.gnsAreaSmall.png",
                     "http://moodle");
 
+                PushButtonData TEPDesign = CreateBtnData(
+                    "Оформление ТЭП",
+                    "Оформление ТЭП",
+                    "Плагин для оформления ТЭП",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_AR_TEPDesign).FullName,
+                    "KPLN_Tools.Imagens.TEPDesignBig.png",
+                    "KPLN_Tools.Imagens.TEPDesignSmall.png",
+                    "http://moodle");
+
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
+                arToolsPullDownBtn.AddPushButton(TEPDesign);
             }
 
             #endregion
