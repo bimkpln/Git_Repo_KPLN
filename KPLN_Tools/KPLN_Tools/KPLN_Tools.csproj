@@ -56,19 +56,25 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\obj\Revit2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_ConfigWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_ExtensibleStorage">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+    </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_ModelChecker_Lib">
@@ -112,7 +118,7 @@
     <When Condition=" '$(Configuration)'=='Debug2020' ">
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
@@ -120,7 +126,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_WebWorker">
@@ -143,16 +149,8 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
       <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_WebWorker">
@@ -279,6 +277,7 @@
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
+    <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
     <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
@@ -300,6 +299,12 @@
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
     <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
+    <Compile Include="Forms\AR_TEPDesign_categorySelect.xaml.cs">
+      <DependentUpon>AR_TEPDesign_categorySelect.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\AR_TEPDesign_paramNameSelect.xaml.cs">
+      <DependentUpon>AR_TEPDesign_paramNameSelect.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\Converters\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
     <Compile Include="Forms\FormChageLevel.xaml.cs">
@@ -408,6 +413,8 @@
     <EmbeddedResource Include="Imagens\eomMainSmall.png" />
     <EmbeddedResource Include="Imagens\gnsAreaBig.png" />
     <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
+    <EmbeddedResource Include="Imagens\TEPDesignBig.png" />
+    <EmbeddedResource Include="Imagens\TEPDesignSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -421,6 +428,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\AR_TEPDesign_categorySelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\AR_TEPDesign_paramNameSelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\FormChageLevel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

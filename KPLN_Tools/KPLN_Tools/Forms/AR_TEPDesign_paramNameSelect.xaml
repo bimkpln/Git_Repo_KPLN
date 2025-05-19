@@ -1,0 +1,33 @@
+﻿<Window x:Class="KPLN_Tools.Forms.AR_TEPDesign_paramNameSelect"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            Title="Выбор параметров для формирования таблицы"
+            Height="300" Width="450"
+            WindowStartupLocation="CenterScreen"
+            ResizeMode="NoResize"
+            WindowStyle="SingleBorderWindow"
+            Topmost="True"
+            ShowInTaskbar="False">
+    <StackPanel Margin="20">
+        <TextBlock Text="Параметр по которому будет формироваться оформление ТЭПа:" Margin="0 0 0 3" FontSize="11"/>
+        <ComboBox x:Name="ComboBoxParams" Margin="0 0 0 15"/>
+        <TextBlock Text="Параметры ниже опциональны и меняются только при необходимости:" FontSize="9" Foreground="Gray" Margin="0 0 0 10"/>
+        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
+            <TextBlock Text="Высота ячейки (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
+            <TextBox x:Name="TextBoxTableHeight" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxTableHeight_LostFocus"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
+            <TextBlock Text="Размер шрифта (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
+            <TextBox x:Name="TextBoxFontSize" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxFontSize_LostFocus"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
+            <TextBlock Text="Коэффициент осветления:" VerticalAlignment="Center" Width="130" FontSize="10"/>
+            <TextBox x:Name="TextBoxLighten" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLighten_LostFocus"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0 0 0 15">
+            <TextBlock Text="Коэффициент затемнения:" VerticalAlignment="Center" Width="130" FontSize="10"/>
+            <TextBox x:Name="TextBoxDarken" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxDarken_LostFocus"/>
+        </StackPanel>
+        <Button Content="ОК" Width="100" HorizontalAlignment="Right" Click="ButtonOk_Click"/>
+    </StackPanel>
+</Window>
