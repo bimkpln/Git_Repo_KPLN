@@ -528,9 +528,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             int startVSheetNumber = OnlyNumber(sortedSheets[0].SheetNumber);
             int deltaNumber = startNumber - startVSheetNumber;
 
-            sortedSheets.Reverse();
+            ViewSheet[] reversedSheets = sortedSheets.Reverse().ToArray();
             // Задаю нумерацию с учетом стартовой разницы
-            foreach (ViewSheet curVSheet in sortedSheets)
+            foreach (ViewSheet curVSheet in reversedSheets)
             {
                 string uniCode = string.Empty;
                 string textPrefix = string.Empty;
@@ -540,11 +540,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
                 string sheetNumber = curVSheet.SheetNumber;
                 var matchNumberByPrefix = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)/");
+                var matchNumberByPrefixWithNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)\d/");
                 var matchByZeroPrefix = Regex.Match(sheetNumber, @"(/[0]?)");
                 var matchBySubNumber = Regex.Match(sheetNumber, @"(\d?)\.(\d?)");
 
                 if (matchNumberByPrefix.Success)
                     textPrefix = matchNumberByPrefix.Value;
+
+                if (matchNumberByPrefixWithNumb.Success)
+                    textPrefix = matchNumberByPrefixWithNumb.Value;
 
                 if (matchByZeroPrefix.Success)
                 {
