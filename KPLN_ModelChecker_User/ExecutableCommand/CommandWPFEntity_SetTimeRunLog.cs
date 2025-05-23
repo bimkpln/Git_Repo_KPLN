@@ -27,8 +27,10 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         public Result Execute(UIApplication app)
         {
             // Игнорирую специалистов BIM-отдела
+#if Revit2020 || Revit2023
             if (_currentDbUser.SubDepartmentId == 8) 
                 return Result.Cancelled;
+#endif
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Время"))
             {
