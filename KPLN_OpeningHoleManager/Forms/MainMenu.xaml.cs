@@ -6,7 +6,7 @@ namespace KPLN_OpeningHoleManager.Forms
     {
         public MainMenu()
         {
-            MainMenu_VM = new MVVMCore_MainMenu.ViewModel();
+            MainMenu_VM = new MVVMCore_MainMenu.MainViewModel();
             
             InitializeComponent();
             DataContext = MainMenu_VM;
@@ -15,7 +15,7 @@ namespace KPLN_OpeningHoleManager.Forms
         /// <summary>
         /// Ссылка на ViewModel
         /// </summary>
-        public MVVMCore_MainMenu.ViewModel MainMenu_VM {  get; private set; }
+        public MVVMCore_MainMenu.MainViewModel MainMenu_VM {  get; private set; }
 
         public void SetupDockablePane(DockablePaneProviderData data)
         {

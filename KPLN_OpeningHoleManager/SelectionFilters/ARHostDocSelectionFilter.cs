@@ -2,7 +2,7 @@
 using Autodesk.Revit.UI.Selection;
 using KPLN_OpeningHoleManager.Services;
 
-namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
+namespace KPLN_OpeningHoleManager.Forms.SelectionFilters
 {
     internal sealed class ARHostDocSelectionFilter : ISelectionFilter
     {
@@ -17,7 +17,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 string typeParamData = wall.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString();
 
                 bool isMatchTypeNameFilter = ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(elem);
-                bool isMatchExtraFilter = ARKRElemsWorker.ElemExtraFilterFunc(elem);
+                bool isMatchExtraFilter = ARKRElemsWorker.ARKRElemExtraFilterFunc(elem);
 
                 return isMatchTypeNameFilter && isMatchExtraFilter;
             }

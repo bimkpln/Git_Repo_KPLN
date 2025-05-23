@@ -8,10 +8,13 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
 {
     public enum OpenigHoleShape
     {
-        Rectangle,
-        Circle
+        Rectangular,
+        Round
     }
 
+    /// <summary>
+    /// Обобщение отверстия в модели
+    /// </summary>
     public class OpeningHoleEntity
     {
         private Solid _ohe_Solid;
@@ -27,7 +30,7 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         public Transform OHE_LinkTransform { get; private protected set; }
 
         /// <summary>
-        /// Ссылка на элемент модели
+        /// Ссылка на элемент модели (ЗИ или отверстия)
         /// </summary>
         public Element OHE_Element { get; set; }
 
@@ -129,9 +132,9 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         {
             string fiName = fi.Symbol.FamilyName;
             if (fiName.Equals(OHE_FamilyName_Rectangle))
-                OHE_Shape = OpenigHoleShape.Rectangle;
+                OHE_Shape = OpenigHoleShape.Rectangular;
             else if (fiName.Equals(OHE_FamilyName_Circle))
-                OHE_Shape = OpenigHoleShape.Circle;
+                OHE_Shape = OpenigHoleShape.Round;
             else
                 throw new Exception("Вы выбрали экзмеляр, который НЕ является заданием на отверстие");
 

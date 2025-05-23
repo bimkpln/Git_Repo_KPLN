@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI.Selection;
 
-namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
+namespace KPLN_OpeningHoleManager.Forms.SelectionFilters
 {
     internal sealed class MechEquipDocSelectionFilter : ISelectionFilter
     {

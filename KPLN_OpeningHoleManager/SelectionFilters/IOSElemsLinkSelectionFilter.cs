@@ -1,8 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI.Selection;
+using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Services;
 
-namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
+namespace KPLN_OpeningHoleManager.Forms.SelectionFilters
 {
     internal sealed class IOSElemsLinkSelectionFilter : ISelectionFilter
     {
@@ -28,8 +29,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             if (_linkDoc.GetElement(reference.LinkedElementId) is Element elem)
             {
-                bool isMatchCatFilter = IOSElemsCollectionCreator.ElemCatLogicalOrFilter.PassesFilter(elem);
-                bool isMatchExtraFilter = IOSElemsCollectionCreator.ElemExtraFilterFunc(elem);
+                bool isMatchCatFilter = IOSElemEntity.ElemCatLogicalOrFilter.PassesFilter(elem);
+                bool isMatchExtraFilter = IOSElemEntity.ElemExtraFilterFunc(elem);
 
                 return isMatchCatFilter && isMatchExtraFilter;
             }

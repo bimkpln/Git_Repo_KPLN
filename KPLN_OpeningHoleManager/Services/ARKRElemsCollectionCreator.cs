@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.ExtensibleStorage;
 using KPLN_OpeningHoleManager.Core;
 using System;
 using System.Collections.Generic;
@@ -7,9 +8,9 @@ using System.Linq;
 namespace KPLN_OpeningHoleManager.Services
 {
     /// <summary>
-    /// Сервис по созданию сущностей IOSElemEntity
+    /// Сервис по созданию сущностей ARKRIOSElemEntity
     /// </summary>
-    internal static class IOSElemsCollectionCreator
+    internal static class ARKRElemsCollectionCreator
     {
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
@@ -95,70 +96,89 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
-        /// Метод генерации IOSElemEntity для линка по текущему элементу-основе АР (ЕСЛИ пересекаются)
+        /// Установить коллекцию IOSElemEntities для ARKRElemEntity ПО ВЫБРАННЫМ ЭЛ-ТАМ
         /// </summary>
         /// <returns></returns>
-        internal static IOSElemEntity CreateIOSElemEntityForLinkElem_BySolid(RevitLinkInstance linkInst, Element linkElem, Solid arHostSolid)
+        internal static ARKRElemEntity SetIOSEntities_BySelectedIOSElems(ARKRElemEntity arkrEntity, RevitLinkInstance iosLinkInst, Element iosLinkElem)
         {
             // Подготовка линка к обработке
-            Document linkDoc = linkInst.GetLinkDocument();
-            Transform linkTransfrom = GetLinkTransform(linkInst);
+            Document iosLinkDoc = iosLinkInst.GetLinkDocument();
+            Transform iosLinkTransfrom = GetLinkTransform(iosLinkInst);
 
-            Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(linkElem, linkTransfrom);
-            if (iosElemSolid == null)
-                return null;
+            IOSElemEntity iosEnt = GetIOSElemEntities_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransfrom);
+            if (iosEnt != null)
+                arkrEntity.IOSElemEntities.Add(iosEnt);
 
-            Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arHostSolid, iosElemSolid, BooleanOperationsType.Intersect);
-            if (intersectSolid != null && intersectSolid.Volume > 0)
-                return new IOSElemEntity(linkDoc, linkTransfrom, linkElem, iosElemSolid, intersectSolid);
-
-            return null;
+            return arkrEntity;
         }
 
         /// <summary>
-        /// Метод генерации коллекции IOSElemEntity для линка по текущему элементу-основе АР
+        /// Установить коллекцию IOSElemEntities для ARKRElemEntity ПО ВСЕМ ФАЙЛАМ
         /// </summary>
         /// <returns></returns>
-        internal static IOSElemEntity[] CreateIOSElemEntitiesForLink_BySolid(RevitLinkInstance linkInst, Solid arHostSolid)
+        internal static ARKRElemEntity SetIOSEntities_ByLinks(ARKRElemEntity arkrEntity, List<RevitLinkInstance> iosLinkInsts)
         {
-            // Подготовка линка к обработке
-            Document linkDoc = linkInst.GetLinkDocument();
-            Transform linkTransfrom = GetLinkTransform(linkInst);
-
-
-            // Генерация Outline для быстрого поиска (QuickFilter)
-            Outline filterOutline = CreateFilterOutline_BySolid(arHostSolid, 2);
-
-
-            // Генерация потенциальных эл-в (QuickFilter)
-            Outline checkOutline = new Outline(linkTransfrom.Inverse.OfPoint(filterOutline.MinimumPoint), linkTransfrom.Inverse.OfPoint(filterOutline.MaximumPoint));
-            HashSet<Element> checkLinkElems = new HashSet<Element>(new ElementComparerById());
-
-            BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
-            BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
-
-            checkLinkElems.UnionWith(new FilteredElementCollector(linkDoc)
-                .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, intersectsFilter))
-                .Where(ElemExtraFilterFunc));
-            checkLinkElems.UnionWith(new FilteredElementCollector(linkDoc)
-                .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, insideFilter))
-                .Where(ElemExtraFilterFunc));
-
-
-            // Уточнение по пересечениям с хостом из АР
-            List<IOSElemEntity> result = new List<IOSElemEntity>();
-            foreach (Element iosElem in checkLinkElems)
+            foreach (var iosLinkInst in iosLinkInsts)
             {
-                Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosElem, linkTransfrom);
-                if (iosElemSolid == null)
-                    continue;
+                // Подготовка линка к обработке
+                Document iosLinkDoc = iosLinkInst.GetLinkDocument();
+                Transform iosLinkTransfrom = GetLinkTransform(iosLinkInst);
 
-                Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arHostSolid, iosElemSolid, BooleanOperationsType.Intersect);
-                if (intersectSolid != null && intersectSolid.Volume > 0)
-                    result.Add(new IOSElemEntity(linkDoc, linkTransfrom, iosElem, iosElemSolid, intersectSolid));
+
+                // Генерация Outline для быстрого поиска (QuickFilter)
+                Outline filterOutline = CreateFilterOutline_BySolid(arkrEntity.ARKRHost_Solid, 2);
+
+
+                // Генерация потенциальных эл-в (QuickFilter)
+                Outline checkOutline = new Outline(iosLinkTransfrom.Inverse.OfPoint(filterOutline.MinimumPoint), iosLinkTransfrom.Inverse.OfPoint(filterOutline.MaximumPoint));
+                HashSet<Element> checkLinkElems = new HashSet<Element>(new ElementComparerById());
+
+                BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
+                BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
+
+                checkLinkElems.UnionWith(new FilteredElementCollector(iosLinkDoc)
+                    .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, intersectsFilter))
+                    .Where(ElemExtraFilterFunc));
+                checkLinkElems.UnionWith(new FilteredElementCollector(iosLinkDoc)
+                    .WherePasses(new LogicalAndFilter(ElemCatLogicalOrFilter, insideFilter))
+                    .Where(ElemExtraFilterFunc));
+
+
+                // Уточнение по пересечениям с хостом из АР (SlowFilter)
+                foreach (Element iosLinkElem in checkLinkElems)
+                {
+                    IOSElemEntity iosEnt = GetIOSElemEntities_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransfrom);
+                    if (iosEnt != null)
+                        arkrEntity.IOSElemEntities.Add(iosEnt);
+                }
             }
 
-            return result.ToArray();
+            return arkrEntity;
+        }
+
+        private static IOSElemEntity GetIOSElemEntities_BySolidIntersect(ARKRElemEntity entity, Document iosLinkDoc, Element iosLinkElem, Transform iosLinkTransfrom)
+        {
+            Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosLinkElem, iosLinkTransfrom);
+            if (iosElemSolid != null)
+            {
+                try
+                {
+                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(entity.ARKRHost_Solid, iosElemSolid, BooleanOperationsType.Intersect);
+                    if (intersectSolid != null && intersectSolid.Volume > 0)
+                        return new IOSElemEntity(iosLinkDoc, iosLinkTransfrom, iosLinkElem, iosElemSolid, intersectSolid);
+                }
+                // Может падать ошибка если тела неточно расположены между собой: https://www.revitapidocs.com/2023/89cb7975-cc76-65ba-b996-bcb78d12161a.htm
+                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                {
+                    throw new Exception($"Для эл-та с id: {iosLinkElem.Id} из файла {iosLinkElem.Document.Title} не удалось провести анализ на пересечение со стеной АР с id: {entity.ARKRHost_Element.Id}");
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

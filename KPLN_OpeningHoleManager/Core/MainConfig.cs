@@ -84,7 +84,7 @@ namespace KPLN_OpeningHoleManager.Core
             return null;
         }
 
-        public static void SetData_ToConfig(ViewModel vm)
+        public static void SetData_ToConfig(MainViewModel vm)
         {
             if (Module.CurrentUIApplication == null) return;
 
