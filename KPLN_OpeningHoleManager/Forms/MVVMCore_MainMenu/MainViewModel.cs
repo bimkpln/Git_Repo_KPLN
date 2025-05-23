@@ -58,6 +58,11 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         public ICommand SetOpenHoleByTaskCommand { get; }
 
         /// <summary>
+        /// Возможность запуска команы CreateOpenHole_AllARElemsCommand
+        /// </summary>
+        public bool CanCreateOpenHole_AllARElemsCommand { get; private set; }
+
+        /// <summary>
         /// Значение расширение отверстия при расстановке
         /// </summary>
         public double OpenHoleExpandedValue
@@ -150,6 +155,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
         public MainViewModel()
         {
+            CanCreateOpenHole_AllARElemsCommand = MainDBService.CurrentDBUser.IsDebugMode;
+
             // Устанавливаю команды
             CreateOpenHole_AllARElemsCommand = new RelayCommand(CreateOpenHole_AllARElems);
             CreateOpenHole_SelectedARKRAndIOSElemsCommand = new RelayCommand(CreateOpenHole_SelectedARKRAndIOSElems);
