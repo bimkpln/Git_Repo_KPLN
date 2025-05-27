@@ -1,8 +1,8 @@
 ﻿<Window x:Class="KPLN_Tools.Forms.AR_TEPDesign_paramNameSelect"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             Title="Выбор параметров для формирования таблицы"
-            Height="300" Width="450"
+            Height="500" Width="500"
             WindowStartupLocation="CenterScreen"
             ResizeMode="NoResize"
             WindowStyle="SingleBorderWindow"
@@ -10,24 +10,65 @@
             ShowInTaskbar="False">
     <StackPanel Margin="20">
         <TextBlock Text="Параметр по которому будет формироваться оформление ТЭПа:" Margin="0 0 0 3" FontSize="11"/>
-        <ComboBox x:Name="ComboBoxParams" Margin="0 0 0 15"/>
-        <TextBlock Text="Параметры ниже опциональны и меняются только при необходимости:" FontSize="9" Foreground="Gray" Margin="0 0 0 10"/>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Высота ячейки (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
-            <TextBox x:Name="TextBoxTableHeight" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxTableHeight_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Размер шрифта (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
-            <TextBox x:Name="TextBoxFontSize" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxFontSize_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Коэффициент осветления:" VerticalAlignment="Center" Width="130" FontSize="10"/>
-            <TextBox x:Name="TextBoxLighten" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLighten_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 15">
-            <TextBlock Text="Коэффициент затемнения:" VerticalAlignment="Center" Width="130" FontSize="10"/>
-            <TextBox x:Name="TextBoxDarken" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxDarken_LostFocus"/>
-        </StackPanel>
+        <ComboBox x:Name="ComboBoxParams" Margin="0 0 0 10" SelectionChanged="ComboBoxParams_SelectionChanged"/>
+        <TextBlock x:Name="TextBlockParamsCount" Text="Найдено уникальных значений параметра:" FontSize="10"/>
+        <TextBlock x:Name="TextBlockParamsTableInfo" Text="Информация:" FontSize="10" Margin="0 5 0 15"/>
+
+        <TextBlock Text="Настройки оформления:" Margin="0 0 0 8" FontSize="11" FontWeight="Bold"/>
+
+        <GroupBox Header="Компоновка" FontSize="10">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Месторасположение заглушки:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxEmptyLocation" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" SelectedIndex="0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Сортировка таблицы:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxTableSortType" SelectedIndex="0" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center">
+                        <ComboBoxItem>Значение параметра. Вверх</ComboBoxItem>
+                        <ComboBoxItem>Значение параметра. Вниз</ComboBoxItem>
+                        <ComboBoxItem>Площадь. Вверх</ComboBoxItem>
+                        <ComboBoxItem>Площадь. Вниз</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Header="Цвет" FontSize="10">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Цвет заглушки и пустых значений (по-умолчанию: серый):" VerticalAlignment="Center" Width="265" FontSize="9"/>
+                    <Button x:Name="ColorPickerButton" Content="Выбрать" Width="160" Height="22" FontSize="9" Click="ColorPickerButton_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Жёсткая привязка к цвету параметра:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxColorBinding" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" HorizontalAlignment="Right" SelectedIndex="0">
+                        <ComboBoxItem>Первый ряд уникальный</ComboBoxItem>
+                        <ComboBoxItem>Уникальные все ячейки</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 7">
+                    <TextBlock Text="Коэффициент изменения цвета для ячеек:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <TextBox x:Name="TextBoxLighten" Text="0.5" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" TextAlignment="Right" Padding="2 2 3 4"
+                             PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLighten_LostFocus"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Header="Шрифт" FontSize="10"  Margin="0 0 0 15">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Имя шрифта:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxFontName" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 7">
+                    <TextBlock Text="Размер шрифта:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <TextBox x:Name="TextBoxFontSize" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" HorizontalAlignment="Right" TextAlignment="Right" Padding="2 2 3 4"
+                             PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxFontSize_LostFocus"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
         <Button Content="ОК" Width="100" HorizontalAlignment="Right" Click="ButtonOk_Click"/>
     </StackPanel>
 </Window>

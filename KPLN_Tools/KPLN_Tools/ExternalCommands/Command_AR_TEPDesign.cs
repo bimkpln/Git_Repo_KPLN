@@ -1,29 +1,32 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using Autodesk.Revit.DB.Analysis;
 using Autodesk.Revit.UI;
 using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Windows;
+using System.Collections.Generic;
+
 using View = Autodesk.Revit.DB.View;
-using System.Text;
+
 
 namespace KPLN_Tools.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_AR_TEPDesign : IExternalCommand
-    {        
+    {
+        UIApplication uiapp;
+
         ICollection<ElementId> viewportIds;
 
         int selectedCategory;
-        private const string CellFillTypeName = "KPLN_CellFill";
         int errorStatus = 0;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiapp = commandData.Application;
+            uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
             View activeView = doc.ActiveView;
@@ -46,19 +49,7 @@ namespace KPLN_Tools.ExternalCommands
                     .OfClass(typeof(TextNoteType))
                     .FirstElementId();
 
-            double fontSize = 0.5;
-            TextNoteType textNoteType = doc.GetElement(textTypeId) as TextNoteType;
-            if (textNoteType != null)
-            {
-                double internalSize = textNoteType.get_Parameter(BuiltInParameter.TEXT_SIZE).AsDouble();
 
-#if (Debug2020 || Revit2020)
-    fontSize = UnitUtils.ConvertFromInternalUnits(internalSize, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-#if (Debug2023 || Revit2023)
-                fontSize = UnitUtils.ConvertFromInternalUnits(internalSize, UnitTypeId.Millimeters);
-#endif
-            }
 
             var dialogSelectCategory = new Forms.AR_TEPDesign_categorySelect();
 
@@ -73,27 +64,16 @@ namespace KPLN_Tools.ExternalCommands
             // Помещения
             else if (selectedCategory == 1)
             {
-                HandlingCategoryRoom(doc, viewSheet, fontSize); 
+                HandlingCategoryRoom(doc, viewSheet); 
 
                 if (errorStatus == 1)
                 {
                     return Result.Failed;
                 }
             }
-
-
-
-
-
-
-
-
-
             // Цветовые области (элементы узлов)
             else if (selectedCategory == 2)
             {
-
-
                 if (errorStatus == 1)
                 {
                     return Result.Failed;
@@ -102,8 +82,6 @@ namespace KPLN_Tools.ExternalCommands
             // Зоны
             else if (selectedCategory == 3)
             {
-
-
                 if (errorStatus == 1)
                 {
                     return Result.Failed;
@@ -112,7 +90,6 @@ namespace KPLN_Tools.ExternalCommands
             // Формы перекрытия
             else if (selectedCategory == 4)
             {
-
                 if (errorStatus == 1)
                 {
                     return Result.Failed;
@@ -132,10 +109,10 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
-
-
-        // Обработка категории "Помещения"
-        public void HandlingCategoryRoom(Document doc, ViewSheet viewSheet, double fontSize)
+        /// <summary>
+        ///  Обработка категории "Помещения"
+        /// </summary>
+        public void HandlingCategoryRoom(Document doc, ViewSheet viewSheet)
         {
             FilteredElementCollector collector = new FilteredElementCollector(doc);
             Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = new Dictionary<ElementId, Dictionary<ElementId, Room>>();
@@ -182,7 +159,7 @@ namespace KPLN_Tools.ExternalCommands
             }
             else
             {
-                var categoryDialog = new Forms.AR_TEPDesign_paramNameSelect(doc, allRoomIds, fontSize);
+                var categoryDialog = new Forms.AR_TEPDesign_paramNameSelect(doc, allRoomIds);
                 bool? dialogResult = categoryDialog.ShowDialog(); 
 
                 if (dialogResult != true)
@@ -193,99 +170,184 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 string selectedParamName = categoryDialog.SelectedParamName;
-                double tableHeightInternal = categoryDialog.SelectedTableHeight ?? 0.01;
-                double fontSizeInternal = categoryDialog.SelectedFontSize ?? 0.01;
-                double selectedLightenFactor = categoryDialog.SelectedLightenFactor ?? 0.01;
-                double selectedDarkenFactor = categoryDialog.SelectedDarkenFactor ?? 0.01;
+                string selectedEmptyLocation = categoryDialog.SelectedEmptyLocation;
+                string SelectedTableSortType = categoryDialog.SelectedTableSortType;
+                System.Windows.Media.Color SelectedDefaultColor = categoryDialog.SelectedDefaultColor;
+                string colorBindingType = categoryDialog.SelectedColorBindingType;
+                double selectedLightenFactor = categoryDialog.SelectedLightenFactor ?? 0.5;
+                string SelectedFontName = categoryDialog.SelectedFontName;
+                double SelectedFontSize = categoryDialog.SelectedFontSize ?? 0.5;
 
-                if (tableHeightInternal == 0.01 || fontSizeInternal == 0.01)
+                BuiltInCategory bic = BuiltInCategory.OST_Rooms;
+                Dictionary<ElementId, Dictionary<string, Color>> parametersColor = getpParametersColor(doc, bic, viewportsRoomsDict, selectedParamName);
+                List<(ViewSchedule schedule, Color bgColor)> createdSchedules;
+
+                using (var txCS = new Transaction(doc, "KPLN. Создание ТЭП-спецификаций"))
                 {
-                    TaskDialog.Show("Ошибка", "Не удалось обработать значения высоты таблицы и размера шрифта.");
-                    errorStatus = 1;
-                    return;
+                    txCS.Start();
+
+                    // Удаление устаревших DraftingView
+                    string viewName = $"ТЭП. Цветовая подложка - {viewSheet.SheetNumber}";
+                    ViewDrafting existingDraftingView = new FilteredElementCollector(doc)
+                        .OfClass(typeof(ViewDrafting))
+                        .Cast<ViewDrafting>()
+                        .FirstOrDefault(v => v.Name.Equals(viewName, StringComparison.OrdinalIgnoreCase));
+
+                    if (existingDraftingView != null) 
+                    {
+                        List<ElementId> toDelete = new List<ElementId>();
+
+                        var relatedViewports = new FilteredElementCollector(doc)
+                            .OfClass(typeof(Viewport))
+                            .Cast<Viewport>()
+                            .Where(vp => vp.ViewId == existingDraftingView.Id)
+                            .ToList();
+
+                        foreach (var vp in relatedViewports)
+                        {
+                            toDelete.Add(vp.Id);
+                        }
+
+                        toDelete.Add(existingDraftingView.Id);
+                        if (toDelete.Count > 0)
+                            doc.Delete(toDelete);
+                    }
+              
+                    // Удаление устаревших спецификаций
+                    string prefix = $"ТЭП_{viewSheet.SheetNumber} -";
+                    FilteredElementCollector scheduleCollector = new FilteredElementCollector(doc)
+                        .OfClass(typeof(ViewSchedule));
+                    List<ViewSchedule> schedulesToDelete = scheduleCollector
+                        .Cast<ViewSchedule>()
+                        .Where(s => s.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    foreach (var schedule in schedulesToDelete)
+                    {
+                        doc.Delete(schedule.Id);
+                    }
+
+                    // Добавляем спецификацию через словарь
+                    createdSchedules = CreateScheduleWithParam(doc, viewSheet, selectedParamName, parametersColor);
+
+                    txCS.Commit();
                 }
 
-                Dictionary<ElementId, Dictionary<string, double>> areaByParamValue = GetAreaSummaryByParam(doc, viewportsRoomsDict, selectedParamName);
+                using (var txAS = new Transaction(doc, "KPLN. Добавление ТЭП-спецификаций с оформлением на лист"))
+                {
+                    txAS.Start();
 
-                if (areaByParamValue == null || areaByParamValue.Count == 0)
-                {
-                    TaskDialog.Show("Ошибка", $"Значения параметра {selectedParamName} пусты или элементы не содержат площадь");
-                    errorStatus = 1;
-                    return; 
+                    if (createdSchedules == null || !createdSchedules.Any())
+                    {
+                        TaskDialog.Show("Ошибка", "Не найдено значений для создания спецификаций.");
+                        errorStatus = 1;
+                        return;
+                    }
+                    else
+                    {
+                        List<(ViewSchedule schedule, Color bgColor)> sortedSchedules = SortSchedules(createdSchedules, categoryDialog.SelectedTableSortType);
+                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedEmptyLocation, colorBindingType, selectedLightenFactor);
+
+                        if (errorStatus == 1)
+                        {
+                            txAS.RollBack();
+                            return;
+                        }
+                    }
+                    txAS.Commit();
                 }
-                else
-                {
-                    BuiltInCategory bic = BuiltInCategory.OST_Rooms;
-                    CreateDraftingView(doc, bic, viewSheet, selectedParamName, areaByParamValue, 
-                        tableHeightInternal, fontSizeInternal, selectedLightenFactor, selectedDarkenFactor);
-                }                     
             }             
         }
 
-        // Словарь: ID-плана - <ID-комнаты, комната>
-        public Dictionary<ElementId, Dictionary<string, double>> GetAreaSummaryByParam(Document doc, 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Данные для спецификации "Помещения". Составление словаря с параметром и сопутствующим ему цветом
+        /// </summary>
+        public Dictionary<ElementId, Dictionary<string, Color>> getpParametersColor(Document doc, BuiltInCategory bic, 
             Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict, string selectedParamName)
         {
-            var result = new Dictionary<ElementId, Dictionary<string, double>>();
+            Dictionary<ElementId, Dictionary<string, Color>> result = new Dictionary<ElementId, Dictionary<string, Color>>();
 
-            foreach (var vpEntry in viewportsRoomsDict)
+            foreach (var kvp in viewportsRoomsDict)
             {
-                ElementId vpId = vpEntry.Key;
-                Dictionary<ElementId, Room> roomsDict = vpEntry.Value;
+                ElementId viewportId = kvp.Key;
+                Dictionary<ElementId, Room> roomsDict = kvp.Value;
 
-                Dictionary<string, double> areaByParamValue = new Dictionary<string, double>();
+                Dictionary<string, Color> valueColorMap = new Dictionary<string, Color>();
 
-                foreach (var roomEntry in roomsDict)
+                foreach (var roomKvp in roomsDict)
                 {
-                    Room room = roomEntry.Value;
+                    Room room = roomKvp.Value;
                     if (room == null) continue;
 
-                    string groupingValue = room.LookupParameter(selectedParamName)?.AsString() ?? "—";
+                    string paramValue = room.LookupParameter(selectedParamName)?.AsValueString() ?? room.LookupParameter(selectedParamName)?.AsString();
 
-                    double area = 0;
-
-                    Parameter areaParam = room.LookupParameter("Площадь");
-
-#if (Debug2020 || Revit2020)
-            if (areaParam != null && areaParam.StorageType == StorageType.Double)
-            {
-                area = UnitUtils.ConvertFromInternalUnits(areaParam.AsDouble(), DisplayUnitType.DUT_SQUARE_METERS);
-            }
-            else
-            {
-                area = UnitUtils.ConvertFromInternalUnits(room.Area, DisplayUnitType.DUT_SQUARE_METERS);
-            }
-#endif
-#if (Debug2023 || Revit2023)
-                    if (areaParam != null && areaParam.StorageType == StorageType.Double)
+                    if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
                     {
-                        area = UnitUtils.ConvertFromInternalUnits(areaParam.AsDouble(), UnitTypeId.SquareMeters);
-                    }
-                    else
-                    {
-                        area = UnitUtils.ConvertFromInternalUnits(room.Area, UnitTypeId.SquareMeters);
-                    }
-#endif
-                    if (areaByParamValue.ContainsKey(groupingValue))
-                    {
-                        areaByParamValue[groupingValue] += area;
-                    }
-                    else
-                    {
-                        areaByParamValue[groupingValue] = area;
+                        Color color = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
+                        valueColorMap[paramValue] = color;
                     }
                 }
 
-                areaByParamValue.Remove("—");
-
-                areaByParamValue = areaByParamValue
-                    .OrderBy(entry => entry.Key)
-                    .ToDictionary(entry => entry.Key, entry => entry.Value);
-
-                if (areaByParamValue.Count > 0)
-                {
-                    result[vpId] = areaByParamValue;
-                }
+                result[viewportId] = valueColorMap;
             }
 
             return result;
@@ -301,305 +363,36 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
-
-
-
-
-        // Создание и добавление DraftingView
-        public void CreateDraftingView(Document doc, BuiltInCategory bic, ViewSheet sheet, 
-            string selectedParamName, Dictionary<ElementId, Dictionary<string, double>> areaByParamValue, 
-            double tableHeightInternal, double fontSizeInternal, double selectedLightenFactor, double selectedDarkenFactor)
-        {
-            if (doc == null || sheet == null || areaByParamValue == null)
-            {
-                TaskDialog.Show("Ошибка", "Входные данные некорректны.");
-                return;
-            }
-
-            ViewDrafting tableView;
-
-            using (Transaction t = new Transaction(doc, "KPLN. Создание ТЭП-таблицы"))
-            {
-                t.Start();
-
-                // Создание чертёжного вида
-                string viewTableName = $"ТЭП. {sheet.SheetNumber}";
-
-                ViewDrafting existingView = new FilteredElementCollector(doc)
-                    .OfClass(typeof(ViewDrafting))
-                    .Cast<ViewDrafting>()
-                    .FirstOrDefault(v => v.Name == viewTableName);
-
-                if (existingView != null)
-                {
-                    Viewport existingVP = new FilteredElementCollector(doc)
-                        .OfClass(typeof(Viewport))
-                        .Cast<Viewport>()
-                        .FirstOrDefault(vp => vp.ViewId == existingView.Id);
-
-                    if (existingVP != null)
-                        doc.Delete(existingVP.Id);
-
-                    doc.Delete(existingView.Id);
-                }
-
-                tableView = ViewDrafting.Create(doc, doc.GetDefaultElementTypeId(ElementTypeGroup.ViewTypeDrafting));
-                tableView.Name = viewTableName;
-
-                // Получение размера основной надписи
-                FamilyInstance titleBlock = new FilteredElementCollector(doc, sheet.Id)
-                    .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                    .OfClass(typeof(FamilyInstance))
-                    .Cast<FamilyInstance>()
-                    .FirstOrDefault();
-
-                BoundingBoxXYZ bboxTitleBlock = titleBlock?.get_BoundingBox(sheet);
-                if (bboxTitleBlock == null)
-                {
-                    TaskDialog.Show("Ошибка", "Не удалось определить ширину основной надписи.");
-                    return;
-                }
-
-                double width = (bboxTitleBlock.Max.X - bboxTitleBlock.Min.X) * 10; // Коэффициени "Маштаб вида"
-
-                // Создание словаря-таблицы
-                Dictionary<int, Dictionary<int, (string paramValue, double area, Color color)>> tableDict = BuildTable(doc, bic, selectedParamName, areaByParamValue, selectedLightenFactor, selectedDarkenFactor);
-
-                int columns = tableDict.Any() ? tableDict.First().Value.Count : 0;
-                double cellWidth = width / columns;
-                double cellHeight = tableHeightInternal;
-
-                var categoriesTableDicts = Enumerable.Range(0, columns).Select(colIndex => tableDict.Select(row => row.Value[colIndex].paramValue) 
-                          .First(pv => !string.IsNullOrEmpty(pv))).ToList();
-
-                // Формирование текста внутри ячейки
-                ElementId textTypeId = new FilteredElementCollector(doc)
-                    .OfClass(typeof(TextNoteType))
-                    .FirstElementId();
-
-                TextNoteType textNoteType = doc.GetElement(textTypeId) as TextNoteType;
-                textNoteType.get_Parameter(BuiltInParameter.TEXT_SIZE).Set(fontSizeInternal);
-
-                var optsLeft = new TextNoteOptions
-                {
-                    TypeId = textTypeId,
-                    HorizontalAlignment = HorizontalTextAlignment.Left,
-                    VerticalAlignment = VerticalTextAlignment.Middle
-                };
-
-                var optsRight = new TextNoteOptions
-                {
-                    TypeId = textTypeId,
-                    HorizontalAlignment = HorizontalTextAlignment.Right,
-                    VerticalAlignment = VerticalTextAlignment.Middle
-                };
-
-                double leftPadding = 15.0 / 304.8;
-                double rightPadding = 15.0 / 304.8;
-
-                // Добавление данных в таблицу
-                int rowIndex = 0;
-                foreach (var kvp in tableDict.OrderBy(r => r.Key))
-                {
-                    for (int col = 0; col < columns; col++)
-                    {
-                        string categoryKVP = categoriesTableDicts[col];      
-                        var cell = kvp.Value[col];
-                        Color fillColor = cell.color;
-
-                        double x0 = col * cellWidth;
-                        double y0 = -rowIndex * cellHeight;
-                        double x1 = x0 + cellWidth;
-                        double y1 = y0 - cellHeight;
-
-                        // заливаем задний фон ячейки из cell.color
-                        FillCellBackground(doc, tableView, fillColor, x0, y0, x1, y1);
-
-                        if (!string.IsNullOrEmpty(cell.paramValue))
-                        {
-                            double centerY = (y0 + y1) / 2;
-                            string valueKVP = $"{cell.area:F2} м²";
-
-                            XYZ posLeft = new XYZ(x0 + leftPadding, centerY, 0);
-                            XYZ posRight = new XYZ(x1 - rightPadding, centerY, 0);
-
-                            var noteLeft = TextNote.Create(doc, tableView.Id, posLeft,
-                                                            categoryKVP, optsLeft);
-                            var noteRight = TextNote.Create(doc, tableView.Id, posRight,
-                                                            valueKVP, optsRight);
-
-                            double cellDivisionFactor = 1 + Math.Pow(columns, 0.6) / 5;
-                            noteLeft.Width = ((cellWidth - leftPadding) / 10) / cellDivisionFactor;
-                        }
-                    }
-
-                    rowIndex++;
-                }
-
-                t.Commit();
-            }
-
-            PlaceDraftingViewOnSheet(doc, sheet, tableView);
-        }
-
-
-
-
-
-
-
-        // Таблица-словарь. Формирование
-        public Dictionary<int, Dictionary<int, (string paramValue, double area, Color color)>> BuildTable(Document doc, BuiltInCategory bic, string selectedParamName,
-            Dictionary<ElementId, Dictionary<string, double>> areaByParamValue, double selectedLightenFactor, double selectedDarkenFactor)
-        {
-            var table = new Dictionary<int, Dictionary<int, (string paramValue, double area, Color color)>>();
-
-            List<string> allParamValuesName = areaByParamValue.Values
-                .SelectMany(dict => dict.Keys)
-                .Distinct()
-                .OrderBy(val => val)
-                .ToList();
-
-            List<ElementId> elementIdsList = areaByParamValue.Keys.ToList();
-
-            double darkenFactor = selectedDarkenFactor;
-            double lightenFactor = selectedLightenFactor;
-
-            // Функции затемнения
-            Color Darken(Color color, double factor)
-            {
-                byte DarkenComponent(byte comp)
-                {
-                    double val = comp * (1 - factor);
-                    if (val < 0) val = 0;
-                    if (val > 255) val = 255;
-                    return (byte)val;
-                }
-                return new Color(
-                    DarkenComponent(color.Red),
-                    DarkenComponent(color.Green),
-                    DarkenComponent(color.Blue));
-            }
-
-            // Функция осветления
-            Color Lighten(Color color, double factor)
-            {
-                byte LightenComponent(byte comp)
-                {
-                    double val = comp + (255 - comp) * factor;
-                    if (val < 0) val = 0;
-                    if (val > 255) val = 255;
-                    return (byte)val;
-                }
-                return new Color(
-                    LightenComponent(color.Red),
-                    LightenComponent(color.Green),
-                    LightenComponent(color.Blue));
-            }
-          
-            // Строки таблицы
-            for (int rowIndex = 0; rowIndex < elementIdsList.Count; rowIndex++)
-            {
-                Dictionary<string, double> rowValues = areaByParamValue[elementIdsList[rowIndex]];
-                Dictionary<int, (string, double, Color)> rowDict = new Dictionary<int, (string, double, Color)>();
-
-                // Столбцы таблицы
-                for (int colIndex = 0; colIndex < allParamValuesName.Count; colIndex++)
-                {
-                    string paramName = allParamValuesName[colIndex];
-
-                    if (rowValues.TryGetValue(paramName, out double area))
-                    {
-
-                        List<int> rowsWithValue = elementIdsList
-                            .Select((id, idx) => new { id, idx })
-                            .Where(x => areaByParamValue[x.id].ContainsKey(paramName))
-                            .Select(x => x.idx)
-                            .OrderBy(idx => idx)
-                            .ToList();
-
-                        Color cellColor = GetColorFromColorScheme(doc, bic, elementIdsList[rowIndex], selectedParamName, paramName);
-
-                        rowDict[colIndex] = (paramName, area, cellColor);
-                    }
-                    else
-                    {
-                        rowDict[colIndex] = (string.Empty, 0.0, null);
-                    }
-                }
-
-                table[rowIndex] = rowDict;
-            }
-
-            int rowCount = elementIdsList.Count;
-            int colCount = allParamValuesName.Count;
-
-            // Обработка пустых цветов
-            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
-            {
-                for (int colIndex = 0; colIndex < colCount; colIndex++)
-                {
-                    var cell = table[rowIndex][colIndex];
-                    if (cell.color == null)
-                    {
-                        Color newColor;
-
-                        if (rowIndex > 0 && table[rowIndex - 1][colIndex].color != null)
-                        {
-                            newColor = Lighten(
-                                table[rowIndex - 1][colIndex].color,
-                                lightenFactor);
-                        }
-                        else if (rowIndex < rowCount - 1 && table[rowIndex + 1][colIndex].color != null)
-                        {
-                            newColor = Darken(
-                                table[rowIndex + 1][colIndex].color,
-                                darkenFactor);
-                        }
-                        else
-                        {
-                            newColor = new Color(255, 255, 255);
-                        }
-
-                        table[rowIndex][colIndex] =
-                            (cell.paramValue, cell.area, newColor);
-                    }
-                }
-            }
-
-            return table;
-        }
-
-        // Получение цвета из схемы
+        /// <summary>
+        /// Данные для спецификации. Получение цвета параметра из цветовой схемы
+        /// </summary>
         public Color GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
         {
             var vp = doc.GetElement(elementId) as Viewport;
             if (vp == null)
             {
-                TaskDialog.Show("Ошибка", "Первый ID не является Viewport.");
-                return new Autodesk.Revit.DB.Color(255, 255, 255);
+                return null;
             }
+
             var view = doc.GetElement(vp.ViewId) as View;
             if (view == null)
             {
-                TaskDialog.Show("Ошибка", "Не удалось получить View из Viewport.");
-                return new Autodesk.Revit.DB.Color(255, 255, 255);
+                return null;
             }
 
             var cat = doc.Settings.Categories.get_Item(bic);
             if (cat == null)
             {
-                TaskDialog.Show("Ошибка", $"Категория {bic} не найдена.");
-                return new Autodesk.Revit.DB.Color(255, 255, 255);
+                return null;
             }
 
-            var allSchemes = new FilteredElementCollector(doc)
+            List<ColorFillScheme> allSchemes = new FilteredElementCollector(doc)
                 .OfClass(typeof(ColorFillScheme))
                 .Cast<ColorFillScheme>()
                 .Where(s => s.CategoryId == cat.Id)
                 .ToList();
 
-            var scheme = allSchemes.FirstOrDefault(s =>
+            ColorFillScheme scheme = allSchemes.FirstOrDefault(s =>
             {
                 var pe = doc.GetElement(s.ParameterDefinition) as ParameterElement;
                 string defName = pe != null
@@ -610,13 +403,11 @@ namespace KPLN_Tools.ExternalCommands
 
             if (scheme == null)
             {
-                TaskDialog.Show("Ошибка",
-                    $"Не найдена цветовая схема для категории «{cat.Name}», привязанная к параметру «{selectedParamName}».");
-                return new Autodesk.Revit.DB.Color(255, 255, 255);
+                return null;
             }
 
-            var entries = scheme.GetEntries();
-            var match = entries.FirstOrDefault(e => e.GetStringValue() == paramName);
+            IList<ColorFillSchemeEntry> entries = scheme.GetEntries();
+            ColorFillSchemeEntry match = entries.FirstOrDefault(e => e.GetStringValue() == paramName);
 
             if (match != null)
             {
@@ -624,141 +415,362 @@ namespace KPLN_Tools.ExternalCommands
             }
             else
             {
-                TaskDialog.Show("Ошибка",
-                    $"В ColorFillScheme «{scheme.Name}» нет записи с GetStringValue() = «{paramName}».");
-                return new Autodesk.Revit.DB.Color(255, 255, 255);
+                return null;
             }
         }
 
-        // DraftingView. Расскраска ячеек
-        private static void FillCellBackground(Document doc, View tableView, Color fillColor, double x0, double y0, double x1, double y1)
+        /// <summary>
+        /// Создание словаря со спецификациями и цветом
+        /// <summary>
+        public static List<(ViewSchedule schedule, Color bgColor)> CreateScheduleWithParam(Document doc, ViewSheet sheet, 
+            string selectedParamName, Dictionary<ElementId, Dictionary<string, Color>> parametersColor)
         {
-            var fillType = GetOrCreateCellFillType(doc);
+            const string sourceScheduleName = "Спецификация помещений";
 
-            if (fillColor == null) return;      
-            fillType.ForegroundPatternColor = fillColor;
-            fillType.BackgroundPatternColor = fillColor;
-            
-            var loop = new CurveLoop();
-            loop.Append(Line.CreateBound(new XYZ(x0, y0, 0), new XYZ(x1, y0, 0)));
-            loop.Append(Line.CreateBound(new XYZ(x1, y0, 0), new XYZ(x1, y1, 0)));
-            loop.Append(Line.CreateBound(new XYZ(x1, y1, 0), new XYZ(x0, y1, 0)));
-            loop.Append(Line.CreateBound(new XYZ(x0, y1, 0), new XYZ(x0, y0, 0)));
+            var sourceSched = new FilteredElementCollector(doc)
+                .OfClass(typeof(ViewSchedule))
+                .Cast<ViewSchedule>()
+                .FirstOrDefault(vs => vs.Name.Equals(sourceScheduleName, StringComparison.OrdinalIgnoreCase));
+            if (sourceSched == null)
+            {
+                TaskDialog.Show("Ошибка", $"Шаблон спецификации не найден");
+                return null;
+            }
 
-            var region = FilledRegion.Create(
-                doc,
-                fillType.Id,
-                tableView.Id,
-                new List<CurveLoop> { loop });
+            var uniqueValues = parametersColor
+                .Values
+                .SelectMany(inner => inner.Keys)
+                .Distinct()
+                .ToList();
 
-            var ogs = new OverrideGraphicSettings()
-                .SetProjectionLineColor(fillColor)
-                .SetProjectionLineWeight(1)
-                .SetCutLineColor(fillColor)
-                .SetCutLineWeight(1);
+            var createdSchedules = new List<(ViewSchedule, Color)>();
+            string prefix = $"ТЭП_{sheet.SheetNumber} - {selectedParamName}";
 
-            tableView.SetElementOverrides(region.Id, ogs);
+            // Удаляем старые спецификации по заданному префиксу
+            var oldIds = new FilteredElementCollector(doc)
+                .OfClass(typeof(ViewSchedule))
+                .Cast<ViewSchedule>()
+                .Where(vs => vs.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(vs => vs.Id)
+                .ToList();
+            foreach (var id in oldIds)
+                doc.Delete(id);
+
+            // Создаём новые шаблоны
+            foreach (var value in uniqueValues)
+            {
+                ElementId newId = sourceSched.Duplicate(ViewDuplicateOption.Duplicate);
+                var sched = doc.GetElement(newId) as ViewSchedule;
+
+                string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";
+                string safeValue = new string(value.Where(c => !invalidChars.Contains(c)).ToArray());
+                sched.Name = $"{prefix} ({safeValue})";
+
+                var def = sched.Definition;
+                def.RemoveField(def.GetField(0).FieldId);
+
+                var schedField = def.GetSchedulableFields()
+                    .FirstOrDefault(f => f.GetName(doc)
+                                           .Equals(selectedParamName, StringComparison.OrdinalIgnoreCase));
+                var heightField = def.GetSchedulableFields()
+                    .FirstOrDefault(f => f.GetName(doc)
+                           .Equals("Высота строки", StringComparison.OrdinalIgnoreCase));
+
+                if (schedField == null)
+                {
+                    TaskDialog.Show("Ошибка", $"Параметр \"{selectedParamName}\" не найден в списке полей.");
+                    return null;
+                }            
+                def.InsertField(schedField, 0);
+                ScheduleFieldId fieldId = def.GetFieldId(0);
+
+                def.AddFilter(new ScheduleFilter(fieldId, ScheduleFilterType.Equal,value));
+
+                Color bgColor = parametersColor
+                        .SelectMany(kvp => kvp.Value)
+                        .First(pair => pair.Key.Equals(value, StringComparison.OrdinalIgnoreCase))
+                        .Value;
+
+                    createdSchedules.Add((sched, bgColor));
+                               
+            }
+
+            return createdSchedules;
         }
 
-        // DraftingView. Вспомогательный метод поиска стилей
-        private static FilledRegionType GetOrCreateCellFillType(Document doc)
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Сортировка спецификации по параметру
+        /// </summary>
+        public static List<(ViewSchedule schedule, Color bgColor)> SortSchedules(
+            List<(ViewSchedule schedule, Color bgColor)> schedules,
+            string sortType)
         {
-            const string typeName = "ThisTypeDoesNotExist"; // Это костыль при формировании типа
+            Func<ViewSchedule, string> getFirstCellValue = schedule =>
+            {
+                var section = schedule.GetTableData().GetSectionData(SectionType.Body);
+                return schedule.GetCellText(SectionType.Body, section.FirstRowNumber, section.FirstColumnNumber);
+            };
 
-            var existing = new FilteredElementCollector(doc)
-                .OfClass(typeof(FilledRegionType))
-                .Cast<FilledRegionType>()
-                .FirstOrDefault(frt => frt.Name == typeName);
-            if (existing != null)
-                return existing;
+            Func<ViewSchedule, string> getSecondCellRaw = schedule =>
+            {
+                var section = schedule.GetTableData().GetSectionData(SectionType.Body);
+                return schedule.GetCellText(SectionType.Body, section.FirstRowNumber, section.FirstColumnNumber + 1);
+            };
 
-            var baseType = new FilteredElementCollector(doc)
-                .OfClass(typeof(FilledRegionType))
-                .Cast<FilledRegionType>()
-                .FirstOrDefault()
-                ?? throw new InvalidOperationException("Нет ни одного FilledRegionType для дублирования.");
+            string CleanCellText(string input)
+            {
+                if (string.IsNullOrWhiteSpace(input)) return "";
+                input = input.ToLowerInvariant();
+                input = input.Replace("м²", "");
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                input = input.Replace(",", ".");
+                return input;
+            }
 
-            var newType = baseType.Duplicate(typeName) as FilledRegionType
-                          ?? throw new InvalidOperationException("Не удалось дублировать тип.");
+            Func<ViewSchedule, double> getSecondCellValueAsNumber = schedule =>
+            {
+                string raw = getSecondCellRaw(schedule);
+                string cleaned = CleanCellText(raw);
 
-            var solidId = new FilteredElementCollector(doc)
+                return double.TryParse(cleaned, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double result)
+                    ? result
+                    : double.MinValue;
+            };
+
+            switch (sortType)
+            {
+                case "Значение параметра. Вверх":
+                    return schedules
+                        .OrderBy(item => getFirstCellValue(item.schedule))
+                        .ThenBy(item => getSecondCellValueAsNumber(item.schedule))
+                        .ToList();
+
+                case "Значение параметра. Вниз":
+                    return schedules
+                        .OrderByDescending(item => getFirstCellValue(item.schedule))
+                        .ThenByDescending(item => getSecondCellValueAsNumber(item.schedule))
+                        .ToList();
+
+                case "Площадь. Вверх":
+                    return schedules
+                        .OrderBy(item => getSecondCellValueAsNumber(item.schedule))
+                        .ThenBy(item => getFirstCellValue(item.schedule))
+                        .ToList();
+
+                case "Площадь. Вниз":
+                    return schedules
+                        .OrderByDescending(item => getSecondCellValueAsNumber(item.schedule))
+                        .ThenByDescending(item => getFirstCellValue(item.schedule))
+                        .ToList();
+
+                default:
+                    return schedules;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Добавление спецификаций на лист
+        /// </summary>
+        public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, List<(ViewSchedule schedule, Color bgColor)> createdSchedules,
+           string selectedParamName, string selectedEmptyLocation, string colorBindingType, double selectedLightenFactor)
+        {
+            // Размеры ячеек
+            const double mmToFeet = 0.00328084;
+            double startX = 20 * mmToFeet;
+            double startY = 51.4 * mmToFeet;
+            double heightFrame = 395 * mmToFeet;
+            double rowStep = 10 * mmToFeet;
+
+            int count = createdSchedules.Count;
+            int colCount = (count % 2 == 0) ? count / 2 : (count + 1) / 2;
+            double widthPerSchedule = heightFrame / colCount;
+
+            List<(int row, int col, (ViewSchedule schedule, Color color)? data)> layout =
+                new List<(int row, int col, (ViewSchedule schedule, Color color)? data)>();
+
+            int currentIndex = 0;
+            int totalSlots = colCount * 2;
+
+            Category linesCategory = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Lines);
+            GraphicsStyle invisibleLineStyle = linesCategory.SubCategories
+                .Cast<Category>()
+                .Select(sub => sub.GetGraphicsStyle(GraphicsStyleType.Projection))
+                .FirstOrDefault(style => style != null && style.Name == "<Невидимые линии>");
+
+            if (invisibleLineStyle == null)
+            {
+                TaskDialog.Show("Ошибка", "Не найден стиль '<Невидимые линии>'");
+                return;
+            }
+
+            for (int i = 0; i < totalSlots; i++)
+            {
+                int row = i / colCount;
+                int col = i % colCount;
+
+                bool insertEmpty = false;
+
+                if (selectedEmptyLocation == "Сверху слева" && i == 0)
+                    insertEmpty = true;
+                else if (selectedEmptyLocation == "Сверху справа" && i == colCount - 1)
+                    insertEmpty = true;
+                else if (selectedEmptyLocation == "Снизу слева" && i == colCount)
+                    insertEmpty = true;
+                else if (selectedEmptyLocation == "Снизу справа" && i == totalSlots - 1)
+                    insertEmpty = true;
+
+                if (insertEmpty || currentIndex >= createdSchedules.Count)
+                {
+                    layout.Add((row, col, null));
+                }
+                else
+                {
+                    layout.Add((row, col, createdSchedules[currentIndex]));
+                    currentIndex++;
+                }
+            }
+
+            // ViewDrafting
+            string viewName = $"ТЭП. Цветовая подложка - {viewSheet.SheetNumber}";
+            ViewDrafting draftingView = ViewDrafting.Create(doc, doc.GetDefaultElementTypeId(ElementTypeGroup.ViewTypeDrafting));
+
+            draftingView.Name = viewName;
+            draftingView.Scale = 1;
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
                 .OfClass(typeof(FillPatternElement))
                 .Cast<FillPatternElement>()
-                .FirstOrDefault(fp => fp.GetFillPattern().IsSolidFill)
-                ?.Id ?? ElementId.InvalidElementId;
+                .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
 
-            if (solidId != ElementId.InvalidElementId)
+            if (solidFillPatternId == ElementId.InvalidElementId)
             {
-                newType.ForegroundPatternId = solidId;
-                newType.BackgroundPatternId = solidId;
+                TaskDialog.Show("Ошибка", "Не найден шаблон заливки");
+                return;
             }
 
-            return newType;
-        }
+            FilledRegionType baseRegionType = new FilteredElementCollector(doc)
+                .OfClass(typeof(FilledRegionType))
+                .Cast<FilledRegionType>()
+                .FirstOrDefault();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // Добавление DraftingView на страницу
-        public void PlaceDraftingViewOnSheet(Document doc, ViewSheet sheet, ViewDrafting view)
-        {
-            using (Transaction t = new Transaction(doc, "KPLN. Размещение вида в рамке"))
+            if (baseRegionType == null)
             {
-                t.Start();
+                TaskDialog.Show("Ошибка", "Не найден тип заливки.");
+                return;
+            }
 
-                var existingVP = new FilteredElementCollector(doc)
-                    .OfClass(typeof(Viewport))
-                    .Cast<Viewport>()
-                    .FirstOrDefault(vpO => vpO.ViewId == view.Id);
+            foreach (var (row, col, data) in layout)
+            {
+                if (data == null)
+                    continue;
 
-                if (existingVP != null)
-                    doc.Delete(existingVP.Id);
+                var (schedule, color) = data.Value;
 
-                var titleBlock = new FilteredElementCollector(doc, sheet.Id)
-                    .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                    .FirstElement();
+                double x0 = startX + col * widthPerSchedule;
+                double y0 = startY - row * rowStep;
+                double x1 = x0 + widthPerSchedule;
+                double y1 = y0 - rowStep;
 
-                if (titleBlock == null)
+                List<Curve> curves = new List<Curve>
                 {
-                    TaskDialog.Show("Ошибка", "Не найдена рамка на листе, чтобы разместить DraftingView.");
-                    return;
+                    Line.CreateBound(new XYZ(x0, y0, 0), new XYZ(x1, y0, 0)),
+                    Line.CreateBound(new XYZ(x1, y0, 0), new XYZ(x1, y1, 0)),
+                    Line.CreateBound(new XYZ(x1, y1, 0), new XYZ(x0, y1, 0)),
+                    Line.CreateBound(new XYZ(x0, y1, 0), new XYZ(x0, y0, 0))
+                };
+
+                CurveLoop loop = CurveLoop.Create(curves);
+
+                TableData tableData = schedule.GetTableData();
+                TableSectionData bodyData = tableData.GetSectionData(SectionType.Body);
+                string valueTab00 = schedule.GetCellText(SectionType.Body, 0, 0);
+
+                string typeName = $"ТЭП. {viewSheet.SheetNumber} ({selectedParamName} - {valueTab00})";
+
+                var existing = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FilledRegionType))
+                    .Cast<FilledRegionType>()
+                    .FirstOrDefault(t => t.Name == typeName);
+
+                if (existing != null)
+                {
+                    doc.Delete(existing.Id);
                 }
 
-                BoundingBoxXYZ bbox = titleBlock.get_BoundingBox(sheet);
-                if (bbox == null)
+                FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
+                newType.ForegroundPatternId = solidFillPatternId;
+                newType.ForegroundPatternColor = color;
+                newType.BackgroundPatternId = ElementId.InvalidElementId;
+
+                ElementId typeId = newType.Id;
+
+                FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
+                var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
+
+                foreach (ElementId curveId in curveIds)
                 {
-                    TaskDialog.Show("Ошибка", "Не удалось получить границы рамки.");
-                    return;
+                    CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
+                    if (curveElement is DetailCurve detailCurve)
+                    {
+                        detailCurve.LineStyle = invisibleLineStyle;
+                    }
+                }
+            }
+
+            doc.Regenerate();
+
+            XYZ insertPoint = new XYZ(217.5 * mmToFeet, 41.4 * mmToFeet, 0); // Точка середины марки
+            Viewport vp = Viewport.Create(doc, viewSheet.Id, draftingView.Id, insertPoint);
+
+            Parameter titleOnSheetParam = vp.LookupParameter("Заголовок на листе");
+
+            if (titleOnSheetParam != null && !titleOnSheetParam.IsReadOnly)
+            {
+                titleOnSheetParam.Set("\u200B"); // невидимый символ (Zero-Width Space)
+            }
+
+            // Спецификации
+            foreach (var (row, col, data) in layout)
+            {
+                if (data == null)
+                    continue;
+
+                var (schedule, color) = data.Value;
+
+                // Установка ширины столбцов
+                TableData tableData = schedule.GetTableData();
+                TableSectionData body = tableData.GetSectionData(SectionType.Body);
+
+                if (body.NumberOfColumns > 2)
+                {
+                    body.SetColumnWidth(0, widthPerSchedule / 2);
+                    body.SetColumnWidth(1, widthPerSchedule / 2);
+                    body.SetColumnWidth(2, 0.0000000000001);
                 }
 
-                // Добавим небольшой отступ от рамки
-                double offset = 0.2;
-                XYZ bottomLeft = new XYZ(bbox.Min.X + offset, bbox.Min.Y + offset, 0);
+                double offsetX = col * widthPerSchedule;
+                double offsetY = -row * rowStep;
 
-                // Размещаем DraftingView
-                Viewport vp = Viewport.Create(doc, sheet.Id, view.Id, bottomLeft);
-                if (vp == null)
-                {
-                    TaskDialog.Show("Ошибка", "Не удалось разместить таблицу на листе.");
-                    return;
-                }
-
-                view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION)?.Set("\u200B");
-
-                t.Commit();
+                XYZ point = new XYZ(startX + offsetX, startY + offsetY, 0);
+                ScheduleSheetInstance.Create(doc, viewSheet.Id, schedule.Id, point);
             }
         }
     }
