@@ -110,7 +110,7 @@ namespace KPLN_Tools.ExternalCommands
 
 
         /// <summary>
-        ///  Обработка категории "Помещения"
+        ///  "Помещения". Обработка категории "Помещения"
         /// </summary>
         public void HandlingCategoryRoom(Document doc, ViewSheet viewSheet)
         {
@@ -171,15 +171,16 @@ namespace KPLN_Tools.ExternalCommands
 
                 string selectedParamName = categoryDialog.SelectedParamName;
                 string selectedEmptyLocation = categoryDialog.SelectedEmptyLocation;
-                string SelectedTableSortType = categoryDialog.SelectedTableSortType;
-                System.Windows.Media.Color SelectedDefaultColor = categoryDialog.SelectedDefaultColor;
+                string selectedTableSortType = categoryDialog.SelectedTableSortType;
+                System.Windows.Media.Color selectedColorEmptyColorScheme = categoryDialog.SelectedColorEmptyColorScheme;
+                System.Windows.Media.Color selectedColorDummyСell = categoryDialog.SelectedColorDummyСell;
+                bool SelectedELPriority = categoryDialog.SelectedELPriority;
                 string colorBindingType = categoryDialog.SelectedColorBindingType;
                 double selectedLightenFactor = categoryDialog.SelectedLightenFactor ?? 0.5;
-                string SelectedFontName = categoryDialog.SelectedFontName;
-                double SelectedFontSize = categoryDialog.SelectedFontSize ?? 0.5;
+                double selectedLightenFactorRow = categoryDialog.SelectedLightenFactorRow ?? 0.5;
 
                 BuiltInCategory bic = BuiltInCategory.OST_Rooms;
-                Dictionary<ElementId, Dictionary<string, Color>> parametersColor = getpParametersColor(doc, bic, viewportsRoomsDict, selectedParamName);
+                Dictionary<ElementId, Dictionary<string, Color>> parametersColor = getpParametersColor(doc, bic, viewportsRoomsDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
                 List<(ViewSchedule schedule, Color bgColor)> createdSchedules;
 
                 using (var txCS = new Transaction(doc, "KPLN. Создание ТЭП-спецификаций"))
@@ -236,7 +237,6 @@ namespace KPLN_Tools.ExternalCommands
                 using (var txAS = new Transaction(doc, "KPLN. Добавление ТЭП-спецификаций с оформлением на лист"))
                 {
                     txAS.Start();
-
                     if (createdSchedules == null || !createdSchedules.Any())
                     {
                         TaskDialog.Show("Ошибка", "Не найдено значений для создания спецификаций.");
@@ -245,8 +245,8 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        List<(ViewSchedule schedule, Color bgColor)> sortedSchedules = SortSchedules(createdSchedules, categoryDialog.SelectedTableSortType);
-                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedEmptyLocation, colorBindingType, selectedLightenFactor);
+                        List<(ViewSchedule schedule, Color bgColor)> sortedSchedules = SortSchedules(createdSchedules, selectedTableSortType);
+                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedEmptyLocation, selectedColorDummyСell, SelectedELPriority, colorBindingType, selectedLightenFactorRow);
 
                         if (errorStatus == 1)
                         {
@@ -259,70 +259,11 @@ namespace KPLN_Tools.ExternalCommands
             }             
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         /// <summary>
-        /// Данные для спецификации "Помещения". Составление словаря с параметром и сопутствующим ему цветом
+        /// "Помещения". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
         public Dictionary<ElementId, Dictionary<string, Color>> getpParametersColor(Document doc, BuiltInCategory bic, 
-            Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict, string selectedParamName)
+            Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
             Dictionary<ElementId, Dictionary<string, Color>> result = new Dictionary<ElementId, Dictionary<string, Color>>();
 
@@ -343,6 +284,18 @@ namespace KPLN_Tools.ExternalCommands
                     if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
                     {
                         Color color = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
+
+                        if (color == null)
+                        {
+                            System.Windows.Media.Color wpfColor = selectedColorEmptyColorScheme;
+                            color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
+                        }
+
+                        if (selectedLightenFactor != 0.5)
+                        {
+                            color = AdjustColorBrightness(color, selectedLightenFactor);
+                        }
+
                         valueColorMap[paramValue] = color;
                     }
                 }
@@ -363,8 +316,16 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
+
+
+
+
+
+
+
+
         /// <summary>
-        /// Данные для спецификации. Получение цвета параметра из цветовой схемы
+        /// Цвет. Получение цвета параметра из цветовой схемы
         /// </summary>
         public Color GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
         {
@@ -420,7 +381,24 @@ namespace KPLN_Tools.ExternalCommands
         }
 
         /// <summary>
-        /// Создание словаря со спецификациями и цветом
+        /// Цвет. Изменения цвета ячеек
+        /// </summary>
+        Autodesk.Revit.DB.Color AdjustColorBrightness(Autodesk.Revit.DB.Color color, double factor)
+        {
+            byte Lerp(byte from, byte to, double tp) => (byte)(from + (to - from) * tp);
+
+            if (factor == 0.5) return color;
+
+            double t = (factor > 0.5) ? (factor - 0.5) * 2 : (0.5 - factor) * 2;
+            byte r = Lerp(color.Red, factor > 0.5 ? (byte)255 : (byte)0, t);
+            byte g = Lerp(color.Green, factor > 0.5 ? (byte)255 : (byte)0, t);
+            byte b = Lerp(color.Blue, factor > 0.5 ? (byte)255 : (byte)0, t);
+
+            return new Autodesk.Revit.DB.Color(r, g, b);
+        }
+
+        /// <summary>
+        /// Словарь. Создание словаря со спецификациями и цветом
         /// <summary>
         public static List<(ViewSchedule schedule, Color bgColor)> CreateScheduleWithParam(Document doc, ViewSheet sheet, 
             string selectedParamName, Dictionary<ElementId, Dictionary<string, Color>> parametersColor)
@@ -491,23 +469,14 @@ namespace KPLN_Tools.ExternalCommands
                         .First(pair => pair.Key.Equals(value, StringComparison.OrdinalIgnoreCase))
                         .Value;
 
-                    createdSchedules.Add((sched, bgColor));
-                               
+                    createdSchedules.Add((sched, bgColor));                           
             }
 
             return createdSchedules;
         }
 
-
-
-
-
-
-
-
-
         /// <summary>
-        /// Сортировка спецификации по параметру
+        /// Словарь. Сортировка спецификации по параметру
         /// </summary>
         public static List<(ViewSchedule schedule, Color bgColor)> SortSchedules(
             List<(ViewSchedule schedule, Color bgColor)> schedules,
@@ -548,28 +517,16 @@ namespace KPLN_Tools.ExternalCommands
 
             switch (sortType)
             {
-                case "Значение параметра. Вверх":
+                case "Значение параметра. А-Я":
                     return schedules
                         .OrderBy(item => getFirstCellValue(item.schedule))
                         .ThenBy(item => getSecondCellValueAsNumber(item.schedule))
                         .ToList();
 
-                case "Значение параметра. Вниз":
+                case "Значение параметра. Я-А":
                     return schedules
                         .OrderByDescending(item => getFirstCellValue(item.schedule))
                         .ThenByDescending(item => getSecondCellValueAsNumber(item.schedule))
-                        .ToList();
-
-                case "Площадь. Вверх":
-                    return schedules
-                        .OrderBy(item => getSecondCellValueAsNumber(item.schedule))
-                        .ThenBy(item => getFirstCellValue(item.schedule))
-                        .ToList();
-
-                case "Площадь. Вниз":
-                    return schedules
-                        .OrderByDescending(item => getSecondCellValueAsNumber(item.schedule))
-                        .ThenByDescending(item => getFirstCellValue(item.schedule))
                         .ToList();
 
                 default:
@@ -577,20 +534,11 @@ namespace KPLN_Tools.ExternalCommands
             }
         }
 
-
-
-
-
-
-
-
-
-
         /// <summary>
-        /// Добавление спецификаций на лист
+        /// Лист. Добавление спецификаций на лист
         /// </summary>
         public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, List<(ViewSchedule schedule, Color bgColor)> createdSchedules,
-           string selectedParamName, string selectedEmptyLocation, string colorBindingType, double selectedLightenFactor)
+           string selectedParamName, string selectedEmptyLocation, System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string colorBindingType, double selectedLightenFactorRow)
         {
             // Размеры ячеек
             const double mmToFeet = 0.00328084;
@@ -648,6 +596,38 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
 
+            // Перекрашивание ячеек (уникальный первый столбец)
+            if (colorBindingType == "Первый ряд уникальный")
+            {
+                for (int i = 0; i < layout.Count; i++)
+                {
+                    var (row, col, data) = layout[i];
+                    if (row != 1 || data == null)
+                        continue;
+
+
+                    var topCell = layout.FirstOrDefault(x => x.row == 0 && x.col == col);
+                    System.Windows.Media.Color baseColor;
+
+                    if (topCell.data != null)
+                    {
+                        var c = topCell.data.Value.color;
+                        baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                    }
+                    else
+                    {
+                        baseColor = selectedColorDummyСell;
+                    }
+
+                    byte R = (byte)Math.Min(255, baseColor.R + (255 - baseColor.R) * selectedLightenFactorRow);
+                    byte G = (byte)Math.Min(255, baseColor.G + (255 - baseColor.G) * selectedLightenFactorRow);
+                    byte B = (byte)Math.Min(255, baseColor.B + (255 - baseColor.B) * selectedLightenFactorRow);
+                    var lightenedColor = new Autodesk.Revit.DB.Color(R, G, B);
+
+                    layout[i] = (row, col, (data.Value.schedule, lightenedColor));
+                }
+            }
+
             // ViewDrafting
             string viewName = $"ТЭП. Цветовая подложка - {viewSheet.SheetNumber}";
             ViewDrafting draftingView = ViewDrafting.Create(doc, doc.GetDefaultElementTypeId(ElementTypeGroup.ViewTypeDrafting));
@@ -679,58 +659,149 @@ namespace KPLN_Tools.ExternalCommands
 
             foreach (var (row, col, data) in layout)
             {
+                // Заглушка
                 if (data == null)
-                    continue;
-
-                var (schedule, color) = data.Value;
-
-                double x0 = startX + col * widthPerSchedule;
-                double y0 = startY - row * rowStep;
-                double x1 = x0 + widthPerSchedule;
-                double y1 = y0 - rowStep;
-
-                List<Curve> curves = new List<Curve>
                 {
-                    Line.CreateBound(new XYZ(x0, y0, 0), new XYZ(x1, y0, 0)),
-                    Line.CreateBound(new XYZ(x1, y0, 0), new XYZ(x1, y1, 0)),
-                    Line.CreateBound(new XYZ(x1, y1, 0), new XYZ(x0, y1, 0)),
-                    Line.CreateBound(new XYZ(x0, y1, 0), new XYZ(x0, y0, 0))
-                };
+                    double x0 = startX + col * widthPerSchedule;
+                    double y0 = startY - row * rowStep;
+                    double x1 = x0 + widthPerSchedule;
+                    double y1 = y0 - rowStep;
 
-                CurveLoop loop = CurveLoop.Create(curves);
-
-                TableData tableData = schedule.GetTableData();
-                TableSectionData bodyData = tableData.GetSectionData(SectionType.Body);
-                string valueTab00 = schedule.GetCellText(SectionType.Body, 0, 0);
-
-                string typeName = $"ТЭП. {viewSheet.SheetNumber} ({selectedParamName} - {valueTab00})";
-
-                var existing = new FilteredElementCollector(doc)
-                    .OfClass(typeof(FilledRegionType))
-                    .Cast<FilledRegionType>()
-                    .FirstOrDefault(t => t.Name == typeName);
-
-                if (existing != null)
-                {
-                    doc.Delete(existing.Id);
-                }
-
-                FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
-                newType.ForegroundPatternId = solidFillPatternId;
-                newType.ForegroundPatternColor = color;
-                newType.BackgroundPatternId = ElementId.InvalidElementId;
-
-                ElementId typeId = newType.Id;
-
-                FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
-                var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
-
-                foreach (ElementId curveId in curveIds)
-                {
-                    CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
-                    if (curveElement is DetailCurve detailCurve)
+                    List<Curve> curves = new List<Curve>
                     {
-                        detailCurve.LineStyle = invisibleLineStyle;
+                        Line.CreateBound(new XYZ(x0, y0, 0), new XYZ(x1, y0, 0)),
+                        Line.CreateBound(new XYZ(x1, y0, 0), new XYZ(x1, y1, 0)),
+                        Line.CreateBound(new XYZ(x1, y1, 0), new XYZ(x0, y1, 0)),
+                        Line.CreateBound(new XYZ(x0, y1, 0), new XYZ(x0, y0, 0))
+                    };
+
+                    CurveLoop loop = CurveLoop.Create(curves);
+
+                    string typeName = $"ТЭП. {viewSheet.SheetNumber} ({selectedParamName} - ЗАГЛУШКА)";
+
+                    var existing = new FilteredElementCollector(doc)
+                        .OfClass(typeof(FilledRegionType))
+                        .Cast<FilledRegionType>()
+                        .FirstOrDefault(t => t.Name == typeName);
+
+                    if (existing != null)
+                    {
+                        doc.Delete(existing.Id);
+                    }
+
+                    FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
+                    newType.ForegroundPatternId = solidFillPatternId;
+
+                    if (SelectedELPriority)
+                    {
+                        newType.ForegroundPatternColor = new Autodesk.Revit.DB.Color(selectedColorDummyСell.R, selectedColorDummyСell.G, selectedColorDummyСell.B);
+                    }
+                    else
+                    {
+                        Autodesk.Revit.DB.Color finalColor;
+                        if (row == 1 && colorBindingType == "Первый ряд уникальный")
+                        {
+                            // Ищем ячейку сверху
+                            var topCell = layout.FirstOrDefault(x => x.row == 0 && x.col == col);
+
+                            System.Windows.Media.Color baseColor;
+
+                            if (topCell.data != null)
+                            {
+                                var c = topCell.data.Value.color;
+                                baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                            }
+                            else
+                            {
+                                baseColor = selectedColorDummyСell;
+                            }
+
+                            byte R = (byte)Math.Min(255, baseColor.R + (255 - baseColor.R) * selectedLightenFactorRow);
+                            byte G = (byte)Math.Min(255, baseColor.G + (255 - baseColor.G) * selectedLightenFactorRow);
+                            byte B = (byte)Math.Min(255, baseColor.B + (255 - baseColor.B) * selectedLightenFactorRow);
+
+                            finalColor = new Autodesk.Revit.DB.Color(R, G, B);
+                        }
+                        else
+                        {
+                            finalColor = new Autodesk.Revit.DB.Color(
+                                selectedColorDummyСell.R,
+                                selectedColorDummyСell.G,
+                                selectedColorDummyСell.B
+                            );
+                        }
+                        newType.ForegroundPatternColor = finalColor;
+                    }                  
+
+                    newType.BackgroundPatternId = ElementId.InvalidElementId;
+
+                    ElementId typeId = newType.Id;
+
+                    FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
+                    var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
+
+                    foreach (ElementId curveId in curveIds)
+                    {
+                        CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
+                        if (curveElement is DetailCurve detailCurve)
+                        {
+                            detailCurve.LineStyle = invisibleLineStyle;
+                        }
+                    }
+                }
+                // Всё остальное
+                else
+                {
+                    var (schedule, color) = data.Value;
+
+                    double x0 = startX + col * widthPerSchedule;
+                    double y0 = startY - row * rowStep;
+                    double x1 = x0 + widthPerSchedule;
+                    double y1 = y0 - rowStep;
+
+                    List<Curve> curves = new List<Curve>
+                    {
+                        Line.CreateBound(new XYZ(x0, y0, 0), new XYZ(x1, y0, 0)),
+                        Line.CreateBound(new XYZ(x1, y0, 0), new XYZ(x1, y1, 0)),
+                        Line.CreateBound(new XYZ(x1, y1, 0), new XYZ(x0, y1, 0)),
+                        Line.CreateBound(new XYZ(x0, y1, 0), new XYZ(x0, y0, 0))
+                    };
+
+                    CurveLoop loop = CurveLoop.Create(curves);
+
+                    TableData tableData = schedule.GetTableData();
+                    TableSectionData bodyData = tableData.GetSectionData(SectionType.Body);
+                    string valueTab00 = schedule.GetCellText(SectionType.Body, 0, 0);
+
+                    string typeName = $"ТЭП. {viewSheet.SheetNumber} ({selectedParamName} - {valueTab00})";
+
+                    var existing = new FilteredElementCollector(doc)
+                        .OfClass(typeof(FilledRegionType))
+                        .Cast<FilledRegionType>()
+                        .FirstOrDefault(t => t.Name == typeName);
+
+                    if (existing != null)
+                    {
+                        doc.Delete(existing.Id);
+                    }
+
+                    FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
+                    newType.ForegroundPatternId = solidFillPatternId;
+                    newType.ForegroundPatternColor = color;
+                    newType.BackgroundPatternId = ElementId.InvalidElementId;
+
+                    ElementId typeId = newType.Id;
+
+                    FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
+                    var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
+
+                    foreach (ElementId curveId in curveIds)
+                    {
+                        CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
+                        if (curveElement is DetailCurve detailCurve)
+                        {
+                            detailCurve.LineStyle = invisibleLineStyle;
+                        }
                     }
                 }
             }

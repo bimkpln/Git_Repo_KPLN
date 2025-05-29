@@ -9,6 +9,7 @@ using System.Globalization;
 using System.Windows.Media;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
+using System.Drawing;
 
 namespace KPLN_Tools.Forms
 {
@@ -28,8 +29,8 @@ namespace KPLN_Tools.Forms
             "Снизу справа"
         };
 
-        private System.Windows.Media.Color selectedColor = System.Windows.Media.Colors.LightGray;
-        double fontSizeInDoc;
+        private System.Windows.Media.Color selectedColorEmptyColorScheme = System.Windows.Media.Colors.LightGray;
+        private System.Windows.Media.Color selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
 
         public string SelectedParamName { get; private set; }
 
@@ -49,11 +50,27 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        public System.Windows.Media.Color SelectedDefaultColor
+        public System.Windows.Media.Color SelectedColorEmptyColorScheme
         {
             get
             {
-                return selectedColor;
+                return selectedColorEmptyColorScheme;
+            }
+        }
+
+        public System.Windows.Media.Color SelectedColorDummyСell
+        {
+            get
+            {
+                return selectedColorDummyСell;
+            }
+        }
+
+        public bool SelectedELPriority
+        {
+            get
+            {
+                return ColorPickerButtonELPriority.IsChecked == true;
             }
         }
 
@@ -74,19 +91,11 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        public string SelectedFontName
+        public double? SelectedLightenFactorRow
         {
             get
             {
-                return ComboBoxFontName.SelectedItem as string;
-            }
-        }
-
-        public double? SelectedFontSize
-        {
-            get
-            {
-                if (double.TryParse(TextBoxFontSize.Text.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out double val)) return val;
+                if (double.TryParse(TextBoxLightenRow.Text.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out double val)) return val;
                 return null;
             }
         }
@@ -185,34 +194,6 @@ namespace KPLN_Tools.Forms
             }
 
             UpdateComboBoxEmptyLocation(countUniqueValues);
-
-            var textTypes = new FilteredElementCollector(doc)
-                .OfClass(typeof(TextNoteType))
-                .Cast<TextNoteType>()
-                .ToList();
-
-            var fontNames = textTypes
-                .Select(t => t.get_Parameter(BuiltInParameter.TEXT_FONT)?.AsString())
-                .Where(f => !string.IsNullOrEmpty(f))
-                .Distinct()
-                .OrderBy(f => f)
-                .ToList();
-
-            ComboBoxFontName.ItemsSource = fontNames;
-
-            string defaultFont = "GOST Common";
-            if (fontNames.Contains(defaultFont))
-                ComboBoxFontName.SelectedItem = defaultFont;
-            else
-                ComboBoxFontName.SelectedIndex = 0;
-
-            double? fontSizeFeet = textTypes.FirstOrDefault()?.get_Parameter(BuiltInParameter.TEXT_SIZE)?.AsDouble();
-
-            if (fontSizeFeet.HasValue)
-            {
-                fontSizeInDoc = fontSizeFeet.Value * 304.8;
-                TextBoxFontSize.Text = fontSizeInDoc.ToString("0.##"); 
-            }
         }
 
         public int GetUniqueParamValuesCount(Document doc, List<ElementId> elementIds, string paramName)
@@ -272,6 +253,15 @@ namespace KPLN_Tools.Forms
                 ComboBoxEmptyLocation.ItemsSource = AllLocations;
                 ComboBoxEmptyLocation.SelectedItem = "Не требуется";
                 ComboBoxEmptyLocation.IsEnabled = false;
+
+                ColorPickerButtonELPriority.IsEnabled = false;
+                ColorPickerButtonELPriority.IsChecked = false;
+
+                ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
+                ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
+                ColorPickerButtonEL.IsEnabled = false;
+                selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
+
             }
             else if (countUniqueValues == 1)
             {
@@ -283,6 +273,14 @@ namespace KPLN_Tools.Forms
                 ComboBoxEmptyLocation.ItemsSource = AllLocations;
                 ComboBoxEmptyLocation.SelectedItem = "Не требуется";
                 ComboBoxEmptyLocation.IsEnabled = false;
+
+                ColorPickerButtonELPriority.IsEnabled = false;
+                ColorPickerButtonELPriority.IsChecked = false;
+
+                ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
+                ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
+                ColorPickerButtonEL.IsEnabled = false;
+                selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
             }
             else if (countUniqueValues <= 12)
             {
@@ -296,6 +294,14 @@ namespace KPLN_Tools.Forms
                     ComboBoxEmptyLocation.ItemsSource = AllLocations;
                     ComboBoxEmptyLocation.SelectedItem = "Не требуется";
                     ComboBoxEmptyLocation.IsEnabled = false;
+
+                    ColorPickerButtonELPriority.IsEnabled = false;
+                    ColorPickerButtonELPriority.IsChecked = false;
+
+                    ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
+                    ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
+                    ColorPickerButtonEL.IsEnabled = false;
+                    selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
                 }
                 else
                 {
@@ -308,6 +314,9 @@ namespace KPLN_Tools.Forms
                     ComboBoxEmptyLocation.ItemsSource = listWithoutDefault;
                     ComboBoxEmptyLocation.IsEnabled = true;
                     ComboBoxEmptyLocation.SelectedItem = "Снизу справа";
+
+                    ColorPickerButtonELPriority.IsEnabled = true;
+                    ColorPickerButtonEL.IsEnabled = true;
                 }
             }
             else
@@ -322,6 +331,14 @@ namespace KPLN_Tools.Forms
                     ComboBoxEmptyLocation.ItemsSource = AllLocations;
                     ComboBoxEmptyLocation.SelectedItem = "Не требуется";
                     ComboBoxEmptyLocation.IsEnabled = false;
+
+                    ColorPickerButtonELPriority.IsEnabled = false;
+                    ColorPickerButtonELPriority.IsChecked = false;
+
+                    ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
+                    ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
+                    ColorPickerButtonEL.IsEnabled = false;
+                    selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
                 }
                 else
                 {
@@ -334,6 +351,9 @@ namespace KPLN_Tools.Forms
                     ComboBoxEmptyLocation.ItemsSource = listWithoutDefault;
                     ComboBoxEmptyLocation.IsEnabled = true;
                     ComboBoxEmptyLocation.SelectedItem = "Снизу справа";
+
+                    ColorPickerButtonELPriority.IsEnabled = true;
+                    ColorPickerButtonEL.IsEnabled = true;
                 }
             }
         }
@@ -369,19 +389,36 @@ namespace KPLN_Tools.Forms
             UpdateComboBoxEmptyLocation(countUniqueValues);
         }
 
-        private void ColorPickerButton_Click(object sender, RoutedEventArgs e)
+        private void ColorPickerButton_ClickESC(object sender, RoutedEventArgs e)
         {
             using (var dialog = new ColorDialog())
             {
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     var drawingColor = dialog.Color;
-                    selectedColor = System.Windows.Media.Color.FromArgb(
+                    selectedColorEmptyColorScheme = System.Windows.Media.Color.FromArgb(
                         drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
 
 
-                    ColorPickerButton.Background = new SolidColorBrush(selectedColor);
-                    ColorPickerButton.Content = selectedColor.ToString();
+                    ColorPickerButtonESC.Background = new SolidColorBrush(selectedColorEmptyColorScheme);
+                    ColorPickerButtonESC.Content = selectedColorEmptyColorScheme.ToString();
+                }
+            }
+        }
+
+        private void ColorPickerButton_ClickEL(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new ColorDialog())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    var drawingColor = dialog.Color;
+                    selectedColorDummyСell = System.Windows.Media.Color.FromArgb(
+                        drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
+
+
+                    ColorPickerButtonEL.Background = new SolidColorBrush(selectedColorDummyСell);
+                    ColorPickerButtonEL.Content = selectedColorDummyСell.ToString();
                 }
             }
         }
@@ -414,23 +451,22 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        private void TextBoxFontSize_LostFocus(object sender, RoutedEventArgs e)
+        private void TextBoxLightenRow_LostFocus(object sender, RoutedEventArgs e)
         {
             if (double.TryParse(
-                TextBoxFontSize.Text.Replace(',', '.'),
+                TextBoxLightenRow.Text.Replace(',', '.'),
                 NumberStyles.Any,
                 CultureInfo.InvariantCulture,
                 out double value))
             {
-                value = Math.Max(0.5, Math.Min(9.0, value));
-                TextBoxFontSize.Text = value.ToString("0.##", CultureInfo.InvariantCulture);
+                value = Math.Max(0.0, Math.Min(1.0, value));
+                TextBoxLightenRow.Text = value.ToString("0.##", CultureInfo.InvariantCulture);
             }
             else
             {
-                TextBoxFontSize.Text = fontSizeInDoc.ToString("0.##");
+                TextBoxLightenRow.Text = "0.5";
             }
         }
-
 
         private void ButtonOk_Click(object sender, RoutedEventArgs e)
         {
@@ -454,21 +490,15 @@ namespace KPLN_Tools.Forms
 
             if (string.IsNullOrWhiteSpace(TextBoxLighten.Text))
             {
-                System.Windows.MessageBox.Show("Значение `Коэффициент осветления` не указано. Установлено значение по умолчанию 0.5. Если необходимо изменить — введите новое значение и повторите.", "Предупреждение");
+                System.Windows.MessageBox.Show("Значение `Коэффициент изменения цвета (общий)` не указано. Установлено значение по умолчанию 0.5. Если необходимо изменить — введите новое значение и повторите.", "Предупреждение");
                 TextBoxLighten.Text = "0.5";
                 return;
             }
 
-            if (ComboBoxFontName.SelectedItem == null)
+            if (string.IsNullOrWhiteSpace(TextBoxLightenRow.Text))
             {
-                System.Windows.MessageBox.Show("Выберите имя шрифта.", "Предупреждение");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(TextBoxFontSize.Text))
-            {
-                System.Windows.MessageBox.Show("Размер шрифта не указан. Введите значение от 0.5 до 9.", "Предупреждение");
-                TextBoxFontSize.Text = fontSizeInDoc.ToString("0.##");
+                System.Windows.MessageBox.Show("Значение `Коэффициент изменения цвета (строка к строке)` не указано. Установлено значение по умолчанию 0.5. Если необходимо изменить — введите новое значение и повторите.", "Предупреждение");
+                TextBoxLightenRow.Text = "0.5";
                 return;
             }
 
