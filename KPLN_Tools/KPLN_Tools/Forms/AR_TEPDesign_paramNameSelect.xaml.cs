@@ -8,40 +8,44 @@ using System.Windows.Controls;
 using System.Globalization;
 using System.Windows.Media;
 using System.Windows.Forms;
-using Newtonsoft.Json.Linq;
-using System.Drawing;
 
 namespace KPLN_Tools.Forms
 {
     public partial class AR_TEPDesign_paramNameSelect : Window
     {
         Document _doc;
+
         List<ElementId> _elementIds = new List<ElementId>();
-
         int countUniqueValues;
+        int suggestedRowCount;
 
-        private List<string> AllLocations = new List<string>
+        private System.Windows.Media.Color selectedColorEmptyColorScheme = System.Windows.Media.Colors.LightGray; // Значение при отсутствии цветовой схемы
+        private System.Windows.Media.Color selectedColorDummyСell = System.Windows.Media.Colors.LightGray; // Значение заглушки
+
+        public string SelectedParamName { get; private set; } // Формирующий параметр
+
+        // Компановка. Кол-во столбцов
+        public int SelectedRowCount
         {
-            "Не требуется",
-            "Сверху слева",
-            "Сверху справа",
-            "Снизу слева",
-            "Снизу справа"
-        };
+            get
+            {
+                if (int.TryParse(TextBoxRowCount.Text, out int result))
+                    return result;
+                else
+                    return 0;
+            }
+        }
 
-        private System.Windows.Media.Color selectedColorEmptyColorScheme = System.Windows.Media.Colors.LightGray;
-        private System.Windows.Media.Color selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
-
-        public string SelectedParamName { get; private set; }
-
+        // Компановка. Место расположение "заглушки"
         public string SelectedEmptyLocation
         {
             get
             {
-                return ComboBoxEmptyLocation.SelectedItem as string;
+                return (ComboBoxEmptyLocation.SelectedItem as ComboBoxItem)?.Content?.ToString();
             }
         }
 
+        // Компановка. Тип сортировки данных
         public string SelectedTableSortType
         {
             get
@@ -50,6 +54,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Цвет. Значение при отсутствии цветовой схемы
         public System.Windows.Media.Color SelectedColorEmptyColorScheme
         {
             get
@@ -57,7 +62,8 @@ namespace KPLN_Tools.Forms
                 return selectedColorEmptyColorScheme;
             }
         }
-
+    
+        // Цвет. Цвет заглушки
         public System.Windows.Media.Color SelectedColorDummyСell
         {
             get
@@ -66,6 +72,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Цвет. Приоритет срабатывания заглушки
         public bool SelectedELPriority
         {
             get
@@ -74,6 +81,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Цвет. Приоритет окрашивания ячеек
         public string SelectedColorBindingType
         {
             get
@@ -82,6 +90,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Цвет. Коэф. осветления всех ячеек
         public double? SelectedLightenFactor
         {
             get
@@ -91,6 +100,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Цвет. Коэф. осветления ячеек по отношению первого ряда ко второму
         public double? SelectedLightenFactorRow
         {
             get
@@ -99,6 +109,7 @@ namespace KPLN_Tools.Forms
                 return null;
             }
         }
+
 
         public AR_TEPDesign_paramNameSelect(Document doc, List<ElementId> elementIds)
         {
@@ -139,63 +150,26 @@ namespace KPLN_Tools.Forms
                 ComboBoxParams.SelectedItem = "Назначение";
             }
 
-            ComboBoxEmptyLocation.SelectedIndex = 0; 
-            ComboBoxEmptyLocation.IsEnabled = false;
 
-            countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);             
- 
-            if (countUniqueValues == 0)
-            {
-                TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Red);
-                TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Red);
-                TextBlockParamsCount.Text = "Параметр не имеет уникальных значений";
-                TextBlockParamsTableInfo.Text = "Невозможно сформировать таблицу";
-            }
-            else if (countUniqueValues == 1)
-            {
-                TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Green);
-                TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Blue);
-                TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - 1;";
-                TextBlockParamsTableInfo.Text = "Таблица с одним столбцом. Вы уверены?";
-            }
-            else if (countUniqueValues <= 12)
-            {
-                if (countUniqueValues % 2 == 0)
-                {
-                    TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Green);
-                    TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - {countUniqueValues / 2}";
-                    TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Green);
-                    TextBlockParamsTableInfo.Text = "Таблица будет сформирована без дополнительных условий";
-                }
-                else
-                {
-                    TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Green);
-                    TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - {(countUniqueValues + 1) / 2}";
-                    TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Blue);
-                    TextBlockParamsTableInfo.Text = $"Для формирования таблицы требуется ячейка-заглушка";
-                }
-            }
-            else 
-            {              
-                if (countUniqueValues % 2 == 0)
-                {
-                    TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Red);
-                    TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - {countUniqueValues / 2}";
-                    TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Blue);
-                    TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов, таблица может быть сформирована с ошибками";
-                }
-                else
-                {
-                    TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.Red);
-                    TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - {(countUniqueValues + 1) / 2}";
-                    TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Red);
-                    TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов. Для формирования таблицы требуется ячейка-заглушка";
-                }
-            }
-
+            countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);
             UpdateComboBoxEmptyLocation(countUniqueValues);
+
+
+
+            var fontNames = new FilteredElementCollector(_doc)
+                .OfClass(typeof(TextNoteType))
+                .Cast<TextNoteType>()
+                .Select(t => t.get_Parameter(BuiltInParameter.TEXT_FONT)?.AsString())
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Distinct()
+                .OrderBy(name => name)
+                .ToList();
         }
 
+
+        /// <summary>
+        /// Получение кол-ва значений у уникального параметра
+        /// </summary>
         public int GetUniqueParamValuesCount(Document doc, List<ElementId> elementIds, string paramName)
         {
             HashSet<string> uniqueValues = new HashSet<string>();
@@ -241,6 +215,9 @@ namespace KPLN_Tools.Forms
             return uniqueValues.Count;
         }
 
+        /// <summary>
+        /// Обновление данных
+        /// </summary>
         private void UpdateComboBoxEmptyLocation(int countUniqueValues)
         {
             if (countUniqueValues == 0)
@@ -250,18 +227,8 @@ namespace KPLN_Tools.Forms
                 TextBlockParamsCount.Text = "Параметр не имеет уникальных значений";
                 TextBlockParamsTableInfo.Text = "Невозможно сформировать таблицу";
 
-                ComboBoxEmptyLocation.ItemsSource = AllLocations;
-                ComboBoxEmptyLocation.SelectedItem = "Не требуется";
-                ComboBoxEmptyLocation.IsEnabled = false;
-
-                ColorPickerButtonELPriority.IsEnabled = false;
-                ColorPickerButtonELPriority.IsChecked = false;
-
-                ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
-                ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
-                ColorPickerButtonEL.IsEnabled = false;
-                selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
-
+                TextBoxRowCount.Text = "0";
+                TextBoxRowCount.IsEnabled = false;
             }
             else if (countUniqueValues == 1)
             {
@@ -270,17 +237,8 @@ namespace KPLN_Tools.Forms
                 TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}. Столбцов - 1;";
                 TextBlockParamsTableInfo.Text = "Таблица с одним столбцом. Вы уверены?";
 
-                ComboBoxEmptyLocation.ItemsSource = AllLocations;
-                ComboBoxEmptyLocation.SelectedItem = "Не требуется";
-                ComboBoxEmptyLocation.IsEnabled = false;
-
-                ColorPickerButtonELPriority.IsEnabled = false;
-                ColorPickerButtonELPriority.IsChecked = false;
-
-                ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
-                ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
-                ColorPickerButtonEL.IsEnabled = false;
-                selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
+                TextBoxRowCount.Text = "1";
+                TextBoxRowCount.IsEnabled = false;
             }
             else if (countUniqueValues <= 12)
             {
@@ -291,17 +249,9 @@ namespace KPLN_Tools.Forms
                     TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Green);
                     TextBlockParamsTableInfo.Text = "Таблица будет сформирована без дополнительных условий";
 
-                    ComboBoxEmptyLocation.ItemsSource = AllLocations;
-                    ComboBoxEmptyLocation.SelectedItem = "Не требуется";
-                    ComboBoxEmptyLocation.IsEnabled = false;
-
-                    ColorPickerButtonELPriority.IsEnabled = false;
-                    ColorPickerButtonELPriority.IsChecked = false;
-
-                    ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
-                    ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
-                    ColorPickerButtonEL.IsEnabled = false;
-                    selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
+                    TextBoxRowCount.IsEnabled = true;
+                    suggestedRowCount = (countUniqueValues % 2 == 0) ? countUniqueValues / 2 : (countUniqueValues + 1) / 2;                   
+                    TextBoxRowCount.Text = $"{suggestedRowCount}";                
                 }
                 else
                 {
@@ -310,13 +260,9 @@ namespace KPLN_Tools.Forms
                     TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Blue);
                     TextBlockParamsTableInfo.Text = $"Для формирования таблицы требуется ячейка-заглушка";
 
-                    var listWithoutDefault = AllLocations.Where(x => x != "Не требуется").ToList();
-                    ComboBoxEmptyLocation.ItemsSource = listWithoutDefault;
-                    ComboBoxEmptyLocation.IsEnabled = true;
-                    ComboBoxEmptyLocation.SelectedItem = "Снизу справа";
-
-                    ColorPickerButtonELPriority.IsEnabled = true;
-                    ColorPickerButtonEL.IsEnabled = true;
+                    TextBoxRowCount.IsEnabled = true;
+                    suggestedRowCount = (countUniqueValues % 2 == 0) ? countUniqueValues / 2 : (countUniqueValues + 1) / 2;
+                    TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
             else
@@ -328,17 +274,9 @@ namespace KPLN_Tools.Forms
                     TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.MediumVioletRed);
                     TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов, таблица может быть сформирована с ошибками";
 
-                    ComboBoxEmptyLocation.ItemsSource = AllLocations;
-                    ComboBoxEmptyLocation.SelectedItem = "Не требуется";
-                    ComboBoxEmptyLocation.IsEnabled = false;
-
-                    ColorPickerButtonELPriority.IsEnabled = false;
-                    ColorPickerButtonELPriority.IsChecked = false;
-
-                    ColorPickerButtonEL.Content = "Серый (по-умолчанию)";
-                    ColorPickerButtonEL.Background = new SolidColorBrush(Colors.LightGray);
-                    ColorPickerButtonEL.IsEnabled = false;
-                    selectedColorDummyСell = System.Windows.Media.Colors.LightGray;
+                    TextBoxRowCount.IsEnabled = true;
+                    suggestedRowCount = (countUniqueValues % 2 == 0) ? countUniqueValues / 2 : (countUniqueValues + 1) / 2;
+                    TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
                 else
                 {
@@ -347,17 +285,16 @@ namespace KPLN_Tools.Forms
                     TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.Red);
                     TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов. Для формирования таблицы требуется ячейка-заглушка";
 
-                    var listWithoutDefault = AllLocations.Where(x => x != "Не требуется").ToList();
-                    ComboBoxEmptyLocation.ItemsSource = listWithoutDefault;
-                    ComboBoxEmptyLocation.IsEnabled = true;
-                    ComboBoxEmptyLocation.SelectedItem = "Снизу справа";
-
-                    ColorPickerButtonELPriority.IsEnabled = true;
-                    ColorPickerButtonEL.IsEnabled = true;
+                    TextBoxRowCount.IsEnabled = true;
+                    suggestedRowCount = (countUniqueValues % 2 == 0) ? countUniqueValues / 2 : (countUniqueValues + 1) / 2;
+                    TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
         }
 
+        /// <summary>
+        /// XAML. Обновление данных после выбора параметра для формирования ТЭП
+        /// </summary>
         private void ComboBoxParams_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (ComboBoxParams.SelectedItem == null) return;
@@ -389,40 +326,17 @@ namespace KPLN_Tools.Forms
             UpdateComboBoxEmptyLocation(countUniqueValues);
         }
 
-        private void ColorPickerButton_ClickESC(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// XAML. Переопределение пользовательского значения кол-ва колонок
+        /// </summary>
+        private void TextBoxRowCount_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            using (var dialog = new ColorDialog())
-            {
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    var drawingColor = dialog.Color;
-                    selectedColorEmptyColorScheme = System.Windows.Media.Color.FromArgb(
-                        drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
-
-
-                    ColorPickerButtonESC.Background = new SolidColorBrush(selectedColorEmptyColorScheme);
-                    ColorPickerButtonESC.Content = selectedColorEmptyColorScheme.ToString();
-                }
-            }
+            e.Handled = !int.TryParse(e.Text, out _);
         }
 
-        private void ColorPickerButton_ClickEL(object sender, RoutedEventArgs e)
-        {
-            using (var dialog = new ColorDialog())
-            {
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                {
-                    var drawingColor = dialog.Color;
-                    selectedColorDummyСell = System.Windows.Media.Color.FromArgb(
-                        drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
-
-
-                    ColorPickerButtonEL.Background = new SolidColorBrush(selectedColorDummyСell);
-                    ColorPickerButtonEL.Content = selectedColorDummyСell.ToString();
-                }
-            }
-        }
-
+        /// <summary>
+        /// XAML. Установка нецелочисленых значений в параметры осветления
+        /// </summary>
         private void NumberOnly_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
@@ -433,7 +347,9 @@ namespace KPLN_Tools.Forms
             e.Handled = !(double.TryParse(fullText.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _) && hasDotOrComma);
         }
 
-          
+        /// <summary>
+        /// XAML. Цифровое значение в общем коэф. осветления
+        /// </summary>
         private void TextBoxLighten_LostFocus(object sender, RoutedEventArgs e)
         {
             if (double.TryParse(
@@ -451,6 +367,9 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// <summary>
+        /// XAML. Цифровое значение в коэф. осветления одной строки к другой
+        /// </summary>
         private void TextBoxLightenRow_LostFocus(object sender, RoutedEventArgs e)
         {
             if (double.TryParse(
@@ -468,6 +387,51 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// <summary>
+        /// XAML. Цвет параметров без цветовой схемы
+        /// </summary>
+        private void ColorPickerButton_ClickESC(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new ColorDialog())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    var drawingColor = dialog.Color;
+                    selectedColorEmptyColorScheme = System.Windows.Media.Color.FromArgb(
+                        drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
+
+
+                    ColorPickerButtonESC.Background = new SolidColorBrush(selectedColorEmptyColorScheme);
+                    ColorPickerButtonESC.Content = selectedColorEmptyColorScheme.ToString();
+                }
+            }
+        }
+
+        /// <summary>
+        /// XAML. Цвет ячеек-заглушек
+        /// </summary>
+        private void ColorPickerButton_ClickEL(object sender, RoutedEventArgs e)
+        {
+            using (var dialog = new ColorDialog())
+            {
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    var drawingColor = dialog.Color;
+                    selectedColorDummyСell = System.Windows.Media.Color.FromArgb(
+                        drawingColor.A, drawingColor.R, drawingColor.G, drawingColor.B);
+
+
+                    ColorPickerButtonEL.Background = new SolidColorBrush(selectedColorDummyСell);
+                    ColorPickerButtonEL.Content = selectedColorDummyСell.ToString();
+                }
+            }
+        }
+
+
+
+        /// <summary>
+        /// XAML. Кнопка OK
+        /// </summary>
         private void ButtonOk_Click(object sender, RoutedEventArgs e)
         {
             if (ComboBoxParams.SelectedItem == null)
@@ -476,17 +440,16 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            if (ComboBoxEmptyLocation.SelectedItem == null)
+            int minAllowed = (countUniqueValues % 2 == 0) ? countUniqueValues / 2 : (countUniqueValues + 1) / 2;
+            int rowCount = int.Parse(TextBoxRowCount.Text);
+            if (rowCount < minAllowed || rowCount > countUniqueValues)
             {
-                System.Windows.MessageBox.Show("Выберите месторасположение заглушки.", "Предупреждение");
+                suggestedRowCount = minAllowed;
+                System.Windows.MessageBox.Show($"Параметр 'Пользовательское переопрределение кол-ва столбцов' указан не верно. Необходимо указать значение от {minAllowed} до {countUniqueValues}","Ошибка");
+                TextBoxRowCount.Text = $"{minAllowed}";
                 return;
             }
 
-            if (ComboBoxTableSortType.SelectedItem == null)
-            {
-                System.Windows.MessageBox.Show("Выберите тип сортировки таблицы.", "Предупреждение");
-                return;
-            }
 
             if (string.IsNullOrWhiteSpace(TextBoxLighten.Text))
             {
@@ -507,6 +470,7 @@ namespace KPLN_Tools.Forms
                 System.Windows.MessageBox.Show("Выбран параметр, который не содержит значений.\nВыберите другой параметр и повторите попытку.", "Ошибка");
                 return;
             }
+
 
             SelectedParamName = ComboBoxParams.SelectedItem.ToString();
 
