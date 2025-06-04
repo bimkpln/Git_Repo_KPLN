@@ -149,9 +149,16 @@ namespace KPLN_Tools.Forms
             {
                 ComboBoxParams.SelectedItem = "Назначение";
             }
+            else
+            {
+                if (candidateParams.Any())
+                {
+                    ComboBoxParams.SelectedItem = candidateParams.First();
+                }
+            }
 
 
-            countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);
+                countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);
             UpdateComboBoxEmptyLocation(countUniqueValues);
 
 
@@ -426,8 +433,6 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
-
-
 
         /// <summary>
         /// XAML. Кнопка OK
