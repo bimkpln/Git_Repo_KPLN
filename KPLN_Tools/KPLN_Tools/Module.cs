@@ -238,7 +238,9 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
+#if Debug2023 || Revit2023
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
+#endif
             }
 
             #endregion
