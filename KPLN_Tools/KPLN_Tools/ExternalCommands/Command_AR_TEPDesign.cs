@@ -3,9 +3,10 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
+
 
 using View = Autodesk.Revit.DB.View;
 
@@ -25,6 +26,9 @@ namespace KPLN_Tools.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+#if Debug2020 || Revit2020
+            return Result.Cancelled;
+#else
             uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -111,13 +115,8 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
 
-
-
-
-
-
-
             return Result.Succeeded;
+#endif
         }
 
 
