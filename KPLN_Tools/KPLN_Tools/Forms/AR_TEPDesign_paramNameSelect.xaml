@@ -1,8 +1,8 @@
 ﻿<Window x:Class="KPLN_Tools.Forms.AR_TEPDesign_paramNameSelect"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             Title="Выбор параметров для формирования таблицы"
-            Height="300" Width="450"
+            Height="500" Width="500"
             WindowStartupLocation="CenterScreen"
             ResizeMode="NoResize"
             WindowStyle="SingleBorderWindow"
@@ -10,24 +10,76 @@
             ShowInTaskbar="False">
     <StackPanel Margin="20">
         <TextBlock Text="Параметр по которому будет формироваться оформление ТЭПа:" Margin="0 0 0 3" FontSize="11"/>
-        <ComboBox x:Name="ComboBoxParams" Margin="0 0 0 15"/>
-        <TextBlock Text="Параметры ниже опциональны и меняются только при необходимости:" FontSize="9" Foreground="Gray" Margin="0 0 0 10"/>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Высота ячейки (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
-            <TextBox x:Name="TextBoxTableHeight" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxTableHeight_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Размер шрифта (мм):" VerticalAlignment="Center" Width="105" FontSize="10"/>
-            <TextBox x:Name="TextBoxFontSize" Width="100" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxFontSize_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
-            <TextBlock Text="Коэффициент осветления:" VerticalAlignment="Center" Width="130" FontSize="10"/>
-            <TextBox x:Name="TextBoxLighten" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLighten_LostFocus"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0 0 0 15">
-            <TextBlock Text="Коэффициент затемнения:" VerticalAlignment="Center" Width="130" FontSize="10"/>
-            <TextBox x:Name="TextBoxDarken" Width="75" Height="22" FontSize="10" VerticalContentAlignment="Center" PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxDarken_LostFocus"/>
-        </StackPanel>
+        <ComboBox x:Name="ComboBoxParams" ToolTip="Параметр для формирования оформления ТЭП" Margin="0 0 0 10" SelectionChanged="ComboBoxParams_SelectionChanged"/>
+        <TextBlock x:Name="TextBlockParamsCount" Text="Найдено уникальных значений параметра:" FontSize="10"/>
+        <TextBlock x:Name="TextBlockParamsTableInfo" Text="Информация:" FontSize="10" Margin="0 5 0 15"/>
+
+        <TextBlock Text="Настройки оформления:" Margin="0 0 0 8" FontSize="11" FontWeight="Bold"/>
+
+        <GroupBox Header="Компоновка" FontSize="10">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Пользовательское переопрределение кол-ва столбцов:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <TextBox x:Name="TextBoxRowCount" ToolTip="Переопределение количества столбцов для таблицы. Стоит отметить, что количество столбцов ограничено данными, которые должны уместиться в двух строчках"
+                        MaxLength="2" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" TextAlignment="Right" Padding="2 2 3 4" PreviewTextInput="TextBoxRowCount_PreviewTextInput"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Месторасположение заглушки (при необходимости):" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxEmptyLocation" ToolTip="Место расположение пыстых ячеек/ячейки в случае непропорциональности данных в строчках таблицы"
+                             SelectedIndex="3" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center">
+                        <ComboBoxItem>Сверху слева</ComboBoxItem>
+                        <ComboBoxItem>Сверху справа</ComboBoxItem>
+                        <ComboBoxItem>Снизу слева</ComboBoxItem>
+                        <ComboBoxItem>Снизу справа</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Сортировка таблицы:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxTableSortType" ToolTip="Сортировка данных в таблице: А-Я - в алфавитном порядке; Я-А - в обратном алфавитном порядке"
+                              SelectedIndex="0" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center">
+                        <ComboBoxItem>Значение параметра. А-Я</ComboBoxItem>
+                        <ComboBoxItem>Значение параметра. Я-А</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Header="Цвет" FontSize="10" Margin="0 0 0 15">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Цвет ячеек без соответствий в цветовой схеме:" VerticalAlignment="Center" Width="265" FontSize="9"/>
+                    <Button x:Name="ColorPickerButtonESC" ToolTip="Цвет для ячеек, которые не имеют соответствий в цветовой схеме"
+                            Content="Серый (по-умолчанию)" Width="160" Height="22" FontSize="9" Background="LightGray" Click="ColorPickerButton_ClickESC"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Цвет ячейки-заглушки (при необходимости):" VerticalAlignment="Center" Width="240" FontSize="9"/>
+                    <CheckBox x:Name="ColorPickerButtonELPriority" ToolTip="Если установлена галочка - то цвет заглушки является приоритетным, т.е. если заглушки/заглушка находится в нижнем ряду - то они не осветляются по отношению к верхним ячейкам, а если заглушка находится в верхнем ряду, то наоборот - нижние ячейки осветляются"
+                              VerticalAlignment="Center" Margin="0 0 9 0"/>
+                    <Button x:Name="ColorPickerButtonEL" ToolTip="Цвет для ячеек-заглушек"
+                            Content="Серый (по-умолчанию)" Width="160" Height="22" FontSize="9" Background="LightGray" Click="ColorPickerButton_ClickEL"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Способ окрашивания ячеек:" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <ComboBox x:Name="ComboBoxColorBinding" ToolTip="Первый ряд уникальный - ячейки первого ряда имеют уникальные цвета (из цветовой схемы), а ячейки второго ряда используют осветлёные цвета ячеек над ними. Уникальные все ячейки - все ячейки имеют уникальные цвета (из цветовой схемы)"
+                              Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" HorizontalAlignment="Right" SelectedIndex="0">
+                        <ComboBoxItem>Первый ряд уникальный</ComboBoxItem>
+                        <ComboBoxItem>Уникальные все ячейки</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 0">
+                    <TextBlock Text="Коэффициент изменения цвета (общий):" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <TextBox x:Name="TextBoxLighten" ToolTip="Коэф. для осветления всех ячеек таблицы от 0.1 до 0.9, т.е. чем выше значение - тем светлее будет цвет ячеек, чем ниже значение - тем темнее цвет."
+                             Text="0.5" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" TextAlignment="Right" Padding="2 2 3 4"
+                             PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLighten_LostFocus"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5 5 0 7">
+                    <TextBlock Text="Коэффициент изменения цвета (строка к строке):" VerticalAlignment="Center" Width="265" FontSize="9" />
+                    <TextBox x:Name="TextBoxLightenRow" ToolTip="Коэф. для осветления ячеек второй строки таблицы по отношению к первой от 0.1 до 0.9, т.е. чем выше значение - тем светлее будет цвет ячеек, чем ниже значение - тем темнее цвет."
+                             Text="0.5" Width="160" Height="22" FontSize="10" VerticalContentAlignment="Center" TextAlignment="Right" Padding="2 2 3 4"
+                            PreviewTextInput="NumberOnly_PreviewTextInput" LostFocus="TextBoxLightenRow_LostFocus"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
         <Button Content="ОК" Width="100" HorizontalAlignment="Right" Click="ButtonOk_Click"/>
     </StackPanel>
 </Window>
