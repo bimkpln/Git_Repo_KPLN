@@ -272,7 +272,7 @@ namespace KPLN_Tools.Forms
                     TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
-            else
+            else if (countUniqueValues > 12 || countUniqueValues <= 16)
             {
                 if (countUniqueValues % 2 == 0)
                 {
@@ -297,6 +297,18 @@ namespace KPLN_Tools.Forms
                     TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
+            else
+            {
+                TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.MediumVioletRed);
+                TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}.";
+                TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.MediumVioletRed);
+                TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов, таблица не может быть сформирована";
+
+                TextBoxRowCount.IsEnabled = false;
+                TextBoxRowCount.Text = "0";
+            }
+
+            ButtonOk.IsEnabled = (countUniqueValues > 0) && (countUniqueValues <= 16);
         }
 
         /// <summary>
@@ -365,7 +377,7 @@ namespace KPLN_Tools.Forms
                 CultureInfo.InvariantCulture,
                 out double value))
             {
-                value = Math.Max(4.0, Math.Min(20.0, value));
+                value = Math.Max(7.0, Math.Min(20.0, value));
                 TextBoxCellHeight.Text = value.ToString("0.##", CultureInfo.InvariantCulture);
             }
             else

@@ -85,6 +85,6 @@
                 </StackPanel>
             </StackPanel>
         </GroupBox>
-        <Button Content="ОК" Width="100" HorizontalAlignment="Right" Click="ButtonOk_Click"/>
+        <Button x:Name="ButtonOk" IsEnabled="False" Content="ОК" Width="100" HorizontalAlignment="Right" Click="ButtonOk_Click"/>
     </StackPanel>
 </Window>

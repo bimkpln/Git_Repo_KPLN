@@ -98,12 +98,6 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
-
-
-
-
-
-
             // Формы перекрытия
             else if (selectedCategory == 4)
             {
@@ -365,6 +359,7 @@ namespace KPLN_Tools.ExternalCommands
                 int selectedRowCount = categoryDialog.SelectedRowCount;
                 string selectedEmptyLocation = categoryDialog.SelectedEmptyLocation;
                 string selectedTableSortType = categoryDialog.SelectedTableSortType;
+                double selectedCellHeight = categoryDialog.SelectedCellHeight ?? 9;
                 System.Windows.Media.Color selectedColorEmptyColorScheme = categoryDialog.SelectedColorEmptyColorScheme;
                 System.Windows.Media.Color selectedColorDummyСell = categoryDialog.SelectedColorDummyСell;
                 bool SelectedELPriority = categoryDialog.SelectedELPriority;
@@ -473,7 +468,7 @@ namespace KPLN_Tools.ExternalCommands
                     else
                     {
                         List<(ViewSchedule schedule, Color bgColor)> sortedSchedules = SortSchedules(createdSchedules, selectedTableSortType);
-                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedRowCount, selectedEmptyLocation, selectedColorDummyСell, SelectedELPriority, selectColorBindingType, selectedLightenFactorRow);
+                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedRowCount, selectedEmptyLocation, selectedCellHeight, selectedColorDummyСell, SelectedELPriority, selectColorBindingType, selectedLightenFactorRow);
                         
                         if (errorStatus == 1)
                         {
@@ -730,6 +725,10 @@ namespace KPLN_Tools.ExternalCommands
         /// </summary>
         public Color GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
         {
+#if Debug2020 || Revit2020
+            return null;
+#endif
+#if Debug2023 || Revit2023
             var vp = doc.GetElement(elementId) as Viewport;
             if (vp == null)
             {
@@ -779,6 +778,7 @@ namespace KPLN_Tools.ExternalCommands
             {
                 return null;
             }
+#endif          
         }
 
         /// <summary>
@@ -834,7 +834,7 @@ namespace KPLN_Tools.ExternalCommands
                         .Cast<ViewSchedule>().FirstOrDefault(vs => vs.Name.Equals(sourceScheduleName, StringComparison.OrdinalIgnoreCase));
                 if (sourceSched == null)
                 {
-                    TaskDialog.Show("Ошибка", $"Шаблон спецификации не найден");
+                    TaskDialog.Show("Ошибка", $"Шаблон спецификации '{sourceScheduleName}' не найден. Для решения проблемы обратитесь к BIM-координатору.");
                     return null;
                 }
 
@@ -967,14 +967,15 @@ namespace KPLN_Tools.ExternalCommands
         /// Лист. Добавление спецификаций на лист
         /// </summary>
         public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, List<(ViewSchedule schedule, Color bgColor)> createdSchedules,
-            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string selectColorBindingType, double selectedLightenFactorRow)
+            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, double selectedCellHeight, 
+            System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string selectColorBindingType, double selectedLightenFactorRow)
         {
             // Размеры ячеек
             const double mmToFeet = 0.00328084;
             double startX = 10 * mmToFeet;
             double startY = 30 * mmToFeet;
             double heightFrame = 400 * mmToFeet;
-            double rowStep = 9 * mmToFeet;
+            double rowStep = selectedCellHeight * mmToFeet;
 
             int count = createdSchedules.Count;
             int colCount = selectedRowCount; // Переопределение кол-ва столбцов
@@ -989,6 +990,8 @@ namespace KPLN_Tools.ExternalCommands
                 .Cast<Category>()
                 .Select(sub => sub.GetGraphicsStyle(GraphicsStyleType.Projection))
                 .FirstOrDefault(style => style != null && style.Name == "<Невидимые линии>");
+
+            ElementId invisibleStyleId = invisibleLineStyle.Id;
 
             if (invisibleLineStyle == null)
             {
@@ -1306,24 +1309,38 @@ namespace KPLN_Tools.ExternalCommands
                     newType.BackgroundPatternId = ElementId.InvalidElementId;
 
                     ElementId typeId = newType.Id;
-
                     FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
+    
                     var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
 
                     foreach (ElementId curveId in curveIds)
                     {
                         CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
+
                         if (curveElement is DetailCurve detailCurve)
                         {
-                            detailCurve.LineStyle = invisibleLineStyle;
+                            detailCurve.LineStyle = invisibleLineStyle;                    
                         }
                     }
                 }
             }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
             doc.Regenerate();
 
-            XYZ insertPoint = new XYZ(210 * mmToFeet, 21 * mmToFeet, 0); // Точка середины марки
+            XYZ insertPoint = new XYZ(210 * mmToFeet, (21 * mmToFeet) - ((9 - selectedCellHeight) * mmToFeet), 0); // Точка середины марки
             Viewport vp = Viewport.Create(doc, viewSheet.Id, draftingView.Id, insertPoint);
 
             Parameter titleOnSheetParam = vp.LookupParameter("Заголовок на листе");
@@ -1355,7 +1372,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 double offsetX = col * widthPerSchedule;
-                double offsetY = -row * rowStep;
+                double offsetY = (-row * rowStep) - (9 - selectedCellHeight) * 2* mmToFeet;
 
                 XYZ point = new XYZ(startX + offsetX, startY + offsetY, 0);
                 ScheduleSheetInstance.Create(doc, viewSheet.Id, schedule.Id, point);
