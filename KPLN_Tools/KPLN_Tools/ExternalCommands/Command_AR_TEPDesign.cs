@@ -991,8 +991,6 @@ namespace KPLN_Tools.ExternalCommands
                 .Select(sub => sub.GetGraphicsStyle(GraphicsStyleType.Projection))
                 .FirstOrDefault(style => style != null && style.Name == "<Невидимые линии>");
 
-            ElementId invisibleStyleId = invisibleLineStyle.Id;
-
             if (invisibleLineStyle == null)
             {
                 TaskDialog.Show("Ошибка", "Не найден стиль '<Невидимые линии>'");
@@ -1329,9 +1327,11 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
-
-
-
+            Category linesCat = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Lines);
+            Category invisibleSubCat = linesCat.SubCategories
+                                       .Cast<Category>()
+                                       .FirstOrDefault(c => c.Name == "<Невидимые линии>");
+            draftingView.SetCategoryHidden(invisibleSubCat.Id, true);
 
 
 
