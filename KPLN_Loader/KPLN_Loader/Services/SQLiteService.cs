@@ -268,15 +268,6 @@ namespace KPLN_Loader.Services
 
                     Thread.Sleep(timeSleep);
                 }
-                catch (Exception ex)
-                {
-                    string errorMsg = $"Ошибка с БД : {ex.Message}";
-
-                    ShowDialog("[KPLN]: Ошибка работы с БД", errorMsg);
-                    _logger.Error(errorMsg);
-
-                    throw new Exception(errorMsg);
-                }
             }
         }
 
@@ -309,14 +300,6 @@ namespace KPLN_Loader.Services
                     }
 
                     Thread.Sleep(timeSleep);
-                }
-                catch (Exception ex)
-                {
-                    string errorMsg = $"Ошибка с БД : {ex.Message}";
-
-                    ShowDialog("[KPLN]: Ошибка работы с БД", errorMsg);
-
-                    throw new Exception(errorMsg);
                 }
             }
 
