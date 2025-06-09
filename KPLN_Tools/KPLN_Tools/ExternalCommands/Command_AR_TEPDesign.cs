@@ -18,6 +18,11 @@ namespace KPLN_Tools.ExternalCommands
         static UIApplication uiapp;
         ICollection<ElementId> viewportIds;
 
+        Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = null;
+        Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict = null;
+        Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict = null;
+        Dictionary<ElementId, Dictionary<ElementId, Floor>> viewportsMassFloorsDict = null;
+
         int selectedCategory;
         int errorStatus = 0;
         ViewSchedule lastSchedule = null;
@@ -27,7 +32,6 @@ namespace KPLN_Tools.ExternalCommands
 #if Debug2020 || Revit2020
             return Result.Cancelled;
 #else
-
             uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
@@ -103,39 +107,19 @@ namespace KPLN_Tools.ExternalCommands
                 }
             }
 
-
             return Result.Succeeded;
 #endif
         }
 
-#if Debug2020 || Revit2020
-#else
-        /// <summary>
+
+/// <summary>
         /// Категория. Обработка категорий
         /// </summary>
         public void HandlingCategory(Document doc, ViewSheet viewSheet, BuiltInCategory bic)
         {
             FilteredElementCollector collector = new FilteredElementCollector(doc);
             List<ElementId> allElementIds = null;
-
-            Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = null;
-            Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict = null;
-            Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict = null;
-
-
-
-
-
-            Dictionary<ElementId, Dictionary<ElementId, Floor>> viewportsMassFloorsDict = null;
-
-
-
-
-
-
-
-
-
+         
             // Помещения
             if (bic == BuiltInCategory.OST_Rooms)
             {
@@ -257,17 +241,6 @@ namespace KPLN_Tools.ExternalCommands
                                     .ToList();
             }
 
-
-
-
-
-
-
-
-
-
-
-
             // Формы (Перекрытия)
             else if (bic == BuiltInCategory.OST_MassFloor)
             {
@@ -310,18 +283,6 @@ namespace KPLN_Tools.ExternalCommands
                                     .ToList();
             }
 
-
-
-
-
-
-
-
-
-
-
-
-
             if (allElementIds == null)
             {
                 TaskDialog.Show("Ошибка", "Возникла ошибка при обработке BuiltInCategory.");
@@ -349,6 +310,7 @@ namespace KPLN_Tools.ExternalCommands
                 int selectedRowCount = categoryDialog.SelectedRowCount;
                 string selectedEmptyLocation = categoryDialog.SelectedEmptyLocation;
                 string selectedTableSortType = categoryDialog.SelectedTableSortType;
+                double selectedCellHeight = categoryDialog.SelectedCellHeight ?? 9;
                 System.Windows.Media.Color selectedColorEmptyColorScheme = categoryDialog.SelectedColorEmptyColorScheme;
                 System.Windows.Media.Color selectedColorDummyСell = categoryDialog.SelectedColorDummyСell;
                 bool SelectedELPriority = categoryDialog.SelectedELPriority;
@@ -356,7 +318,7 @@ namespace KPLN_Tools.ExternalCommands
                 double selectedLightenFactor = categoryDialog.SelectedLightenFactor ?? 0.5;
                 double selectedLightenFactorRow = categoryDialog.SelectedLightenFactorRow ?? 0.5;
 
-                Dictionary<ElementId, Dictionary<string, Color>> parametersColor = null;
+                Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> parametersColor = null;
                 if (bic == BuiltInCategory.OST_Rooms)
                 {
                     parametersColor = GetParametersColorRoom(doc, bic, viewportsRoomsDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
@@ -369,22 +331,10 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     parametersColor = GetParametersColorDetailComponent(doc, viewportsColorRegionsDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
                 }
-
-
-
-
-
-
                 else if (bic == BuiltInCategory.OST_MassFloor)
                 {
                     parametersColor = GetParametersColorMassFloor(doc, bic, viewportsMassFloorsDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
                 }
-
-
-
-
-
-
 
                 if (parametersColor == null)
                 {
@@ -392,7 +342,7 @@ namespace KPLN_Tools.ExternalCommands
                     return;
                 }
 
-                List<(ViewSchedule schedule, Color bgColor)> createdSchedules;
+                List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> createdSchedules;
 
                 using (var txCS = new Transaction(doc, "KPLN. ТЭП. Создание спецификаций"))
                 {
@@ -456,9 +406,9 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        List<(ViewSchedule schedule, Color bgColor)> sortedSchedules = SortSchedules(createdSchedules, selectedTableSortType);
-                        addScheduleSheetInSheet(doc, viewSheet, sortedSchedules, selectedParamName, selectedRowCount, selectedEmptyLocation, selectedColorDummyСell, SelectedELPriority, selectColorBindingType, selectedLightenFactorRow);
-
+                        List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> sortedSchedules = SortSchedules(createdSchedules, selectedTableSortType);
+                        addScheduleSheetInSheet(doc, viewSheet, bic, sortedSchedules, selectedParamName, selectedRowCount, selectedEmptyLocation, selectedCellHeight, selectedColorDummyСell, SelectedELPriority, selectColorBindingType, selectedLightenFactorRow);
+                        
                         if (errorStatus == 1)
                         {
                             txAS.RollBack();
@@ -488,17 +438,22 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// "Помещения". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, Color>> GetParametersColorRoom(Document doc, BuiltInCategory bic,
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorRoom(Document doc, BuiltInCategory bic, 
             Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
-            Dictionary<ElementId, Dictionary<string, Color>> result = new Dictionary<ElementId, Dictionary<string, Color>>();
+            Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
+               .OfClass(typeof(FillPatternElement))
+               .Cast<FillPatternElement>()
+               .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
 
             foreach (var kvp in viewportsRoomsDict)
             {
                 ElementId viewportId = kvp.Key;
                 Dictionary<ElementId, Room> roomsDict = kvp.Value;
 
-                Dictionary<string, Color> valueColorMap = new Dictionary<string, Color>();
+                Dictionary<string, (Color, ElementId, ElementId)> valueColorMap = new Dictionary<string, (Color, ElementId, ElementId)>();
 
                 foreach (var roomKvp in roomsDict)
                 {
@@ -509,7 +464,7 @@ namespace KPLN_Tools.ExternalCommands
 
                     if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
                     {
-                        Color color = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
+                        (Color color, ElementId fillPatternFId, ElementId fillPatternBId) = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
 
                         if (color == null)
                         {
@@ -517,12 +472,18 @@ namespace KPLN_Tools.ExternalCommands
                             color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
                         }
 
+                        if (fillPatternFId == null || fillPatternBId == null)
+                        {
+                            fillPatternFId = solidFillPatternId;
+                            fillPatternBId = solidFillPatternId;
+                        }
+
                         if (selectedLightenFactor != 0.5)
                         {
                             color = AdjustColorBrightness(color, selectedLightenFactor);
                         }
 
-                        valueColorMap[paramValue] = color;
+                        valueColorMap[paramValue] = (color, fillPatternFId, fillPatternBId);
                     }
                 }
 
@@ -535,17 +496,22 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// "Зоны". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, Color>> GetParametersColorArea(Document doc, BuiltInCategory bic,
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorArea(Document doc, BuiltInCategory bic,
             Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
-            Dictionary<ElementId, Dictionary<string, Color>> result = new Dictionary<ElementId, Dictionary<string, Color>>();
+            Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
+               .OfClass(typeof(FillPatternElement))
+               .Cast<FillPatternElement>()
+               .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
 
             foreach (var kvp in viewportsAreasDict)
             {
                 ElementId viewportId = kvp.Key;
                 Dictionary<ElementId, Area> areasDict = kvp.Value;
 
-                Dictionary<string, Color> valueColorMap = new Dictionary<string, Color>();
+                Dictionary<string, (Color, ElementId, ElementId)> valueColorMap = new Dictionary<string, (Color, ElementId, ElementId)>();
 
                 foreach (var areaKvp in areasDict)
                 {
@@ -556,7 +522,7 @@ namespace KPLN_Tools.ExternalCommands
 
                     if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
                     {
-                        Color color = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
+                        (Color color, ElementId fillPatternFId, ElementId fillPatternBId) = GetColorFromColorScheme(doc, bic, viewportId, selectedParamName, paramValue);
 
                         if (color == null)
                         {
@@ -564,12 +530,18 @@ namespace KPLN_Tools.ExternalCommands
                             color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
                         }
 
+                        if (fillPatternFId == null || fillPatternBId == null)
+                        {
+                            fillPatternFId = solidFillPatternId;
+                            fillPatternBId = solidFillPatternId;
+                        }
+
                         if (selectedLightenFactor != 0.5)
                         {
                             color = AdjustColorBrightness(color, selectedLightenFactor);
                         }
 
-                        valueColorMap[paramValue] = color;
+                        valueColorMap[paramValue] = (color, fillPatternFId, fillPatternBId);
                     }
                 }
 
@@ -580,19 +552,85 @@ namespace KPLN_Tools.ExternalCommands
         }
 
         /// <summary>
+        /// Цвет. Получение цвета параметра из цветовой схемы
+        /// </summary>
+        public (Color, ElementId, ElementId) GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
+        {
+#if Debug2020 || Revit2020
+            return null;
+#endif
+#if Debug2023 || Revit2023
+            var vp = doc.GetElement(elementId) as Viewport;
+            if (vp == null)
+            {
+                return (null, null, null);
+            }
+
+            var view = doc.GetElement(vp.ViewId) as View;
+            if (view == null)
+            {
+                return (null, null, null);
+            }
+
+            var cat = doc.Settings.Categories.get_Item(bic);
+            if (cat == null)
+            {
+                return (null, null, null);
+            }
+
+            List<ColorFillScheme> allSchemes = new FilteredElementCollector(doc)
+                .OfClass(typeof(ColorFillScheme))
+                .Cast<ColorFillScheme>()
+                .Where(s => s.CategoryId == cat.Id)
+                .ToList();
+
+            ColorFillScheme scheme = allSchemes.FirstOrDefault(s =>
+            {
+                var pe = doc.GetElement(s.ParameterDefinition) as ParameterElement;
+                string defName = pe != null
+                    ? pe.Name
+                    : LabelUtils.GetLabelFor((BuiltInParameter)s.ParameterDefinition.IntegerValue);
+                return defName == selectedParamName;
+            });
+
+            if (scheme == null)
+            {
+                return (null, null, null);
+            }
+
+            IList<ColorFillSchemeEntry> entries = scheme.GetEntries();
+            ColorFillSchemeEntry match = entries.FirstOrDefault(e => e.GetStringValue() == paramName);
+
+            if (match != null)
+            {
+                return (match.Color, match.FillPatternId, match.FillPatternId);
+            }
+            else
+            {
+                return (null, null, null);
+            }
+#endif          
+        }
+
+        /// <summary>
         /// "Цветовые области". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, Autodesk.Revit.DB.Color>> GetParametersColorDetailComponent(Document doc,
-            Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict,
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorDetailComponent(Document doc, 
+            Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict, 
             string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
-            var result = new Dictionary<ElementId, Dictionary<string, Autodesk.Revit.DB.Color>>();
+            Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
+               .OfClass(typeof(FillPatternElement))
+               .Cast<FillPatternElement>()
+               .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
 
             foreach (var kvp in viewportsColorRegionsDict)
             {
                 ElementId viewportId = kvp.Key;
                 Dictionary<ElementId, FilledRegion> colorRegionsDict = kvp.Value;
-                Dictionary<string, Color> valueColorMap = new Dictionary<string, Autodesk.Revit.DB.Color>();
+                Dictionary<string, (Color, ElementId, ElementId)> valueColorMap = new Dictionary<string, (Color, ElementId, ElementId)>();
 
                 foreach (var colorRegionKvp in colorRegionsDict)
                 {
@@ -604,11 +642,15 @@ namespace KPLN_Tools.ExternalCommands
                         continue;
 
                     Autodesk.Revit.DB.Color color = null;
+                    ElementId fillPatternFId = null;
+                    ElementId fillPatternBId = null;
                     ElementId typeId = colorRegion.GetTypeId();
                     FilledRegionType regionType = doc.GetElement(typeId) as FilledRegionType;
                     if (regionType != null)
                     {
                         color = regionType.ForegroundPatternColor;
+                        fillPatternFId = regionType.ForegroundPatternId;
+                        fillPatternBId = regionType.BackgroundPatternId;
                     }
 
                     if (color == null)
@@ -617,12 +659,18 @@ namespace KPLN_Tools.ExternalCommands
                         color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
                     }
 
+                    if (fillPatternFId == null || fillPatternBId == null)
+                    {
+                        fillPatternFId = solidFillPatternId;
+                        fillPatternBId = solidFillPatternId;
+                    }
+
                     if (selectedLightenFactor != 0.5)
                     {
                         color = AdjustColorBrightness(color, selectedLightenFactor);
                     }
 
-                    valueColorMap[paramValue] = color;
+                    valueColorMap[paramValue] = (color, fillPatternFId, fillPatternBId);
                 }
 
                 result[viewportId] = valueColorMap;
@@ -648,53 +696,10 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// "Формы". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, Autodesk.Revit.DB.Color>> GetParametersColorMassFloor(Document doc, BuiltInCategory bic,
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorMassFloor(Document doc, BuiltInCategory bic,
             Dictionary<ElementId, Dictionary<ElementId, Floor>> viewportsMassFloorsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
-            var result = new Dictionary<ElementId, Dictionary<string, Autodesk.Revit.DB.Color>>();
-
-            foreach (var kvp in viewportsMassFloorsDict)
-            {
-                ElementId viewportId = kvp.Key;
-                Dictionary<ElementId, Floor> massFloorsDict = kvp.Value;
-
-                var valueColorMap = new Dictionary<string, Autodesk.Revit.DB.Color>();
-
-                foreach (var floorKvp in massFloorsDict)
-                {
-                    Floor massFloor = floorKvp.Value;
-                    if (massFloor == null) continue;
-
-                    string paramValue = massFloor
-                        .LookupParameter(selectedParamName)
-                        ?.AsValueString()
-                        ?? massFloor.LookupParameter(selectedParamName)
-                            ?.AsString();
-
-                    if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
-                    {
-                        Autodesk.Revit.DB.Color color = GetColorFromColorScheme(
-                            doc, bic, viewportId, selectedParamName, paramValue);
-
-                        if (color == null)
-                        {
-                            var wpfColor = selectedColorEmptyColorScheme;
-                            color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
-                        }
-
-                        if (Math.Abs(selectedLightenFactor - 0.5) > Double.Epsilon)
-                        {
-                            color = AdjustColorBrightness(color, selectedLightenFactor);
-                        }
-
-                        valueColorMap[paramValue] = color;
-                    }
-                }
-
-                result[viewportId] = valueColorMap;
-            }
-
-            return result;
+            return null;
         }
 
 
@@ -709,61 +714,7 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
-        /// <summary>
-        /// Цвет. Получение цвета параметра из цветовой схемы
-        /// </summary>
-        public Color GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
-        {
-            var vp = doc.GetElement(elementId) as Viewport;
-            if (vp == null)
-            {
-                return null;
-            }
 
-            var view = doc.GetElement(vp.ViewId) as View;
-            if (view == null)
-            {
-                return null;
-            }
-
-            var cat = doc.Settings.Categories.get_Item(bic);
-            if (cat == null)
-            {
-                return null;
-            }
-
-            List<ColorFillScheme> allSchemes = new FilteredElementCollector(doc)
-                .OfClass(typeof(ColorFillScheme))
-                .Cast<ColorFillScheme>()
-                .Where(s => s.CategoryId == cat.Id)
-                .ToList();
-
-            ColorFillScheme scheme = allSchemes.FirstOrDefault(s =>
-            {
-                var pe = doc.GetElement(s.ParameterDefinition) as ParameterElement;
-                string defName = pe != null
-                    ? pe.Name
-                    : LabelUtils.GetLabelFor((BuiltInParameter)s.ParameterDefinition.IntegerValue);
-                return defName == selectedParamName;
-            });
-
-            if (scheme == null)
-            {
-                return null;
-            }
-
-            IList<ColorFillSchemeEntry> entries = scheme.GetEntries();
-            ColorFillSchemeEntry match = entries.FirstOrDefault(e => e.GetStringValue() == paramName);
-
-            if (match != null)
-            {
-                return match.Color;
-            }
-            else
-            {
-                return null;
-            }
-        }
 
         /// <summary>
         /// Цвет. Изменения цвета ячеек
@@ -785,27 +736,27 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Словарь. Создание словаря со спецификациями и цветом
         /// <summary>
-        public static List<(ViewSchedule schedule, Color bgColor)> CreateScheduleWithParam(Document doc, ViewSheet sheet, BuiltInCategory bic,
-            string selectedParamName, Dictionary<ElementId, Dictionary<string, Color>> parametersColor)
+        public static List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> CreateScheduleWithParam(Document doc, ViewSheet sheet, BuiltInCategory bic,
+            string selectedParamName, Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> parametersColor)
         {
-            var createdSchedules = new List<(ViewSchedule, Color)>();
+            var createdSchedules = new List<(ViewSchedule, (Color, ElementId, ElementId))>();
             string sourceScheduleName = null;
 
             if (bic == BuiltInCategory.OST_Rooms)
             {
-                sourceScheduleName = "ТЭП_Оформление_Помещения";
+                sourceScheduleName = "ШАБЛОН_ТЭП_Оформление_Помещения";
             }
             else if (bic == BuiltInCategory.OST_FilledRegion)
             {
-                sourceScheduleName = "ТЭП_Оформление_Цветовые области";
+                sourceScheduleName = "ШАБЛОН_ТЭП_Оформление_Цветовые области";
             }
             else if (bic == BuiltInCategory.OST_Areas)
             {
-                sourceScheduleName = "ТЭП_Оформление_Зоны";
+                sourceScheduleName = "ШАБЛОН_ТЭП_Оформление_Зоны";
             }
             else if (bic == BuiltInCategory.OST_MassFloor)
             {
-                sourceScheduleName = "ТЭП_Оформление_Формы";
+                sourceScheduleName = "ШАБЛОН_ТЭП_Оформление_Формы";
             }
             else
             {
@@ -818,7 +769,7 @@ namespace KPLN_Tools.ExternalCommands
                         .Cast<ViewSchedule>().FirstOrDefault(vs => vs.Name.Equals(sourceScheduleName, StringComparison.OrdinalIgnoreCase));
                 if (sourceSched == null)
                 {
-                    TaskDialog.Show("Ошибка", $"Шаблон спецификации не найден");
+                    TaskDialog.Show("Ошибка", $"Шаблон спецификации '{sourceScheduleName}' не найден. Для решения проблемы обратитесь к BIM-координатору.");
                     return null;
                 }
 
@@ -869,12 +820,12 @@ namespace KPLN_Tools.ExternalCommands
                     ScheduleFieldId fieldId = def.GetFieldId(0);
                     def.AddFilter(new ScheduleFilter(fieldId, ScheduleFilterType.Equal, value));
 
-                    Color bgColor = parametersColor
+                    (Color, ElementId, ElementId) bgStyle = parametersColor
                             .SelectMany(kvp => kvp.Value)
                             .First(pair => pair.Key.Equals(value, StringComparison.OrdinalIgnoreCase))
                             .Value;
 
-                    createdSchedules.Add((sched, bgColor));
+                    createdSchedules.Add((sched, bgStyle));
                 }
 
                 doc.Regenerate();
@@ -891,8 +842,8 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Словарь. Сортировка спецификации по параметру
         /// </summary>
-        public static List<(ViewSchedule schedule, Color bgColor)> SortSchedules(
-            List<(ViewSchedule schedule, Color bgColor)> schedules,
+        public static List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> SortSchedules(
+            List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> schedules,
             string sortType)
         {
             Func<ViewSchedule, string> getFirstCellValue = schedule =>
@@ -950,23 +901,35 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Лист. Добавление спецификаций на лист
         /// </summary>
-        public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, List<(ViewSchedule schedule, Color bgColor)> createdSchedules,
-            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string selectColorBindingType, double selectedLightenFactorRow)
+        public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, BuiltInCategory bic, List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> createdSchedules,
+            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, double selectedCellHeight, 
+            System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string selectColorBindingType, double selectedLightenFactorRow)
         {
             // Размеры ячеек
             const double mmToFeet = 0.00328084;
             double startX = 10 * mmToFeet;
             double startY = 30 * mmToFeet;
             double heightFrame = 400 * mmToFeet;
-            double rowStep = 9 * mmToFeet;
+            double rowStep = selectedCellHeight * mmToFeet;
 
             int count = createdSchedules.Count;
             int colCount = selectedRowCount; // Переопределение кол-ва столбцов
             int totalSlots = colCount * 2;
             double widthPerSchedule = heightFrame / colCount;
+            List<(int row, int col, (ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))? data)> layout =
+                new List<(int row, int col, (ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))? data)>();
 
-            List<(int row, int col, (ViewSchedule schedule, Color color)? data)> layout =
-                new List<(int row, int col, (ViewSchedule schedule, Color color)? data)>();
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
+                .OfClass(typeof(FillPatternElement))
+                .Cast<FillPatternElement>()
+                .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
+
+            if (solidFillPatternId == ElementId.InvalidElementId)
+            {
+                TaskDialog.Show("Ошибка", "Не найден шаблон заливки");
+                return;
+            }
 
             Category linesCategory = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Lines);
             GraphicsStyle invisibleLineStyle = linesCategory.SubCategories
@@ -1042,15 +1005,18 @@ namespace KPLN_Tools.ExternalCommands
                         var bottomCell = layout.FirstOrDefault(x => x.row == 1 && x.col == col);
                         if (bottomCell.data != null)
                         {
-                            var copiedColor = bottomCell.data.Value.color;
-                            layout[i] = (row, col, (null, copiedColor));
+                            Color copiedColor = bottomCell.data.Value.Item2.color;
+                            var copiedFillPatternFId = bottomCell.data.Value.Item2.fillPatternFId;
+                            var copiedFillPatternBId = bottomCell.data.Value.Item2.fillPatternBId;
+
+                            layout[i] = (row, col, (null, (copiedColor, copiedFillPatternFId, copiedFillPatternBId)));
                         }
                         else
                         {
-                            layout[i] = (row, col, (null, new Autodesk.Revit.DB.Color(
+                            layout[i] = (row, col, (null, (new Autodesk.Revit.DB.Color(
                                 selectedColorDummyСell.R,
                                 selectedColorDummyСell.G,
-                                selectedColorDummyСell.B)));
+                                selectedColorDummyСell.B), ElementId.InvalidElementId, ElementId.InvalidElementId)));
                         }
                     }
                     // Заглушка в нижней строке
@@ -1058,11 +1024,19 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         var topCell = layout.FirstOrDefault(x => x.row == 0 && x.col == col);
                         System.Windows.Media.Color baseColor;
+                        ElementId copiedFillPatternFId = solidFillPatternId;
+                        ElementId copiedFillPatternBId = solidFillPatternId;
 
                         if (topCell.data != null)
                         {
-                            var c = topCell.data.Value.color;
-                            baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                            var color = topCell.data.Value.Item2.color;
+                            baseColor = System.Windows.Media.Color.FromRgb(color.Red, color.Green, color.Blue);
+
+                            if (topCell.data.Value.Item2.fillPatternFId != null || topCell.data.Value.Item2.fillPatternBId != null) 
+                            {
+                                copiedFillPatternFId = topCell.data.Value.Item2.fillPatternFId;
+                                copiedFillPatternBId = topCell.data.Value.Item2.fillPatternBId;
+                            }
                         }
                         else
                         {
@@ -1074,7 +1048,7 @@ namespace KPLN_Tools.ExternalCommands
                         byte B = (byte)Math.Min(255, baseColor.B + (255 - baseColor.B) * selectedLightenFactorRow);
                         var lightenedColor = new Autodesk.Revit.DB.Color(R, G, B);
 
-                        layout[i] = (row, col, (data.Value.schedule, lightenedColor));
+                        layout[i] = (row, col, (data.Value.schedule, (lightenedColor, copiedFillPatternFId, copiedFillPatternBId)));
                     }
                 }
             }
@@ -1085,18 +1059,7 @@ namespace KPLN_Tools.ExternalCommands
 
             draftingView.Name = viewName;
             draftingView.Scale = 1;
-
-            ElementId solidFillPatternId = new FilteredElementCollector(doc)
-                .OfClass(typeof(FillPatternElement))
-                .Cast<FillPatternElement>()
-                .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
-
-            if (solidFillPatternId == ElementId.InvalidElementId)
-            {
-                TaskDialog.Show("Ошибка", "Не найден шаблон заливки");
-                return;
-            }
-
+           
             FilledRegionType baseRegionType = new FilteredElementCollector(doc)
                 .OfClass(typeof(FilledRegionType))
                 .Cast<FilledRegionType>()
@@ -1141,8 +1104,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
 
                     FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
-                    newType.ForegroundPatternId = solidFillPatternId;
-
+                                        
                     if (SelectedELPriority)
                     {
                         newType.ForegroundPatternColor = new Autodesk.Revit.DB.Color(selectedColorDummyСell.R, selectedColorDummyСell.G, selectedColorDummyСell.B);
@@ -1150,26 +1112,34 @@ namespace KPLN_Tools.ExternalCommands
                     else
                     {
                         Autodesk.Revit.DB.Color finalColor;
+                        ElementId finalFPI;
+                        ElementId finalBPI;
                         if (row == 0 && selectColorBindingType == "Первый ряд уникальный" && data != null &&
                         (selectedEmptyLocation == "Сверху слева" || selectedEmptyLocation == "Сверху справа"))
                         {
-                            finalColor = data.Value.color;
+                            finalColor = data.Value.Item2.color;
+                            finalFPI = data.Value.Item2.fillPatternFId;
+                            finalBPI = data.Value.Item2.fillPatternBId;
                         }
                         else if (row == 1 && selectColorBindingType == "Первый ряд уникальный")
                         {
-                            (int row, int col, (ViewSchedule schedule, Color color)? data) topCell;
+                            (int row, int col, (ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))? data) topCell;
 
                             topCell = layout.FirstOrDefault(x => x.row == 0 && x.col == col);
                             System.Windows.Media.Color baseColor;
 
                             if (topCell.data != null)
                             {
-                                var c = topCell.data.Value.color;
+                                var c = topCell.data.Value.Item2.color;
                                 baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                                finalFPI = topCell.data.Value.Item2.fillPatternFId;
+                                finalBPI = topCell.data.Value.Item2.fillPatternBId;
                             }
                             else
                             {
                                 baseColor = selectedColorDummyСell;
+                                finalFPI = solidFillPatternId;
+                                finalBPI = solidFillPatternId;
                             }
 
                             byte R = (byte)Math.Min(255, baseColor.R + (255 - baseColor.R) * selectedLightenFactorRow);
@@ -1188,12 +1158,16 @@ namespace KPLN_Tools.ExternalCommands
 
                             if (bottomCell.data != null)
                             {
-                                var c = bottomCell.data.Value.color;
+                                var c = bottomCell.data.Value.Item2.color;
                                 baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                                finalFPI = bottomCell.data.Value.Item2.fillPatternFId;
+                                finalBPI = bottomCell.data.Value.Item2.fillPatternBId;
                             }
                             else
                             {
                                 baseColor = selectedColorDummyСell;
+                                finalFPI = solidFillPatternId;
+                                finalBPI = solidFillPatternId;
                             }
 
                             finalColor = new Autodesk.Revit.DB.Color(baseColor.R, baseColor.G, baseColor.B);
@@ -1202,19 +1176,23 @@ namespace KPLN_Tools.ExternalCommands
                         else if (row == 1 && selectColorBindingType == "Уникальные все ячейки" &&
                         (selectedEmptyLocation == "Снизу слева" || selectedEmptyLocation == "Снизу справа"))
                         {
-                            (int row, int col, (ViewSchedule schedule, Color color)? data) topCell;
+                            (int row, int col, (ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))? data) topCell;
 
                             topCell = layout.FirstOrDefault(x => x.row == 0 && x.col == col);
                             System.Windows.Media.Color baseColor;
 
                             if (topCell.data != null)
                             {
-                                var c = topCell.data.Value.color;
+                                var c = topCell.data.Value.Item2.color;
                                 baseColor = System.Windows.Media.Color.FromRgb(c.Red, c.Green, c.Blue);
+                                finalFPI = topCell.data.Value.Item2.fillPatternFId;
+                                finalBPI = topCell.data.Value.Item2.fillPatternBId;
                             }
                             else
                             {
                                 baseColor = selectedColorDummyСell;
+                                finalFPI = solidFillPatternId;
+                                finalBPI = solidFillPatternId;
                             }
 
                             byte R = (byte)Math.Min(255, baseColor.R + (255 - baseColor.R) * selectedLightenFactorRow);
@@ -1230,9 +1208,14 @@ namespace KPLN_Tools.ExternalCommands
                                 selectedColorDummyСell.G,
                                 selectedColorDummyСell.B
                             );
+
+                            finalFPI = solidFillPatternId;
+                            finalBPI = solidFillPatternId;
                         }
 
                         newType.ForegroundPatternColor = finalColor;
+                        newType.ForegroundPatternId = finalFPI;
+                        newType.BackgroundPatternId = finalBPI;
                     }
 
                     newType.BackgroundPatternId = ElementId.InvalidElementId;
@@ -1251,6 +1234,7 @@ namespace KPLN_Tools.ExternalCommands
                         }
                     }
                 }
+
                 // Всё остальное
                 else
                 {
@@ -1285,29 +1269,36 @@ namespace KPLN_Tools.ExternalCommands
                     }
 
                     FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
-                    newType.ForegroundPatternId = solidFillPatternId;
-                    newType.ForegroundPatternColor = color;
-                    newType.BackgroundPatternId = ElementId.InvalidElementId;
+                    newType.ForegroundPatternColor = data.Value.Item2.color;
+                    newType.ForegroundPatternId = data.Value.Item2.fillPatternFId;
+                    newType.BackgroundPatternId = data.Value.Item2.fillPatternBId;
 
                     ElementId typeId = newType.Id;
-
                     FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
+    
                     var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
 
                     foreach (ElementId curveId in curveIds)
                     {
                         CurveElement curveElement = doc.GetElement(curveId) as CurveElement;
+
                         if (curveElement is DetailCurve detailCurve)
                         {
-                            detailCurve.LineStyle = invisibleLineStyle;
+                            detailCurve.LineStyle = invisibleLineStyle;                    
                         }
                     }
                 }
             }
 
+            Category linesCat = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Lines);
+            Category invisibleSubCat = linesCat.SubCategories
+                                       .Cast<Category>()
+                                       .FirstOrDefault(c => c.Name == "<Невидимые линии>");
+            draftingView.SetCategoryHidden(invisibleSubCat.Id, true);
+
             doc.Regenerate();
 
-            XYZ insertPoint = new XYZ(210 * mmToFeet, 21 * mmToFeet, 0); // Точка середины марки
+            XYZ insertPoint = new XYZ(210 * mmToFeet, (21 * mmToFeet) - ((9 - selectedCellHeight) * mmToFeet), 0); // Точка середины марки
             Viewport vp = Viewport.Create(doc, viewSheet.Id, draftingView.Id, insertPoint);
 
             Parameter titleOnSheetParam = vp.LookupParameter("Заголовок на листе");
@@ -1339,7 +1330,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 double offsetX = col * widthPerSchedule;
-                double offsetY = -row * rowStep;
+                double offsetY = (-row * rowStep) - (9 - selectedCellHeight) * 2* mmToFeet;
 
                 XYZ point = new XYZ(startX + offsetX, startY + offsetY, 0);
                 ScheduleSheetInstance.Create(doc, viewSheet.Id, schedule.Id, point);

@@ -54,6 +54,16 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Компановка. Высота ячейки
+        public double? SelectedCellHeight
+        {
+            get
+            {
+                if (double.TryParse(TextBoxCellHeight.Text.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out double val)) return val;
+                return null;
+            }
+        }
+
         // Цвет. Значение при отсутствии цветовой схемы
         public System.Windows.Media.Color SelectedColorEmptyColorScheme
         {
@@ -157,20 +167,10 @@ namespace KPLN_Tools.Forms
                 }
             }
 
+            TextBoxCellHeight.Text = "9";
 
-                countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);
+            countUniqueValues = GetUniqueParamValuesCount(doc, elementIds, ComboBoxParams.SelectedItem as string);
             UpdateComboBoxEmptyLocation(countUniqueValues);
-
-
-
-            var fontNames = new FilteredElementCollector(_doc)
-                .OfClass(typeof(TextNoteType))
-                .Cast<TextNoteType>()
-                .Select(t => t.get_Parameter(BuiltInParameter.TEXT_FONT)?.AsString())
-                .Where(name => !string.IsNullOrEmpty(name))
-                .Distinct()
-                .OrderBy(name => name)
-                .ToList();
         }
 
 
@@ -272,7 +272,7 @@ namespace KPLN_Tools.Forms
                     TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
-            else
+            else if (countUniqueValues > 12 || countUniqueValues <= 16)
             {
                 if (countUniqueValues % 2 == 0)
                 {
@@ -297,6 +297,18 @@ namespace KPLN_Tools.Forms
                     TextBoxRowCount.Text = $"{suggestedRowCount}";
                 }
             }
+            else
+            {
+                TextBlockParamsCount.Foreground = new SolidColorBrush(Colors.MediumVioletRed);
+                TextBlockParamsCount.Text = $"Уникальные значения параметра: {countUniqueValues}.";
+                TextBlockParamsTableInfo.Foreground = new SolidColorBrush(Colors.MediumVioletRed);
+                TextBlockParamsTableInfo.Text = $"Слишком большое кол-во столбцов, таблица не может быть сформирована";
+
+                TextBoxRowCount.IsEnabled = false;
+                TextBoxRowCount.Text = "0";
+            }
+
+            ButtonOk.IsEnabled = (countUniqueValues > 0) && (countUniqueValues <= 16);
         }
 
         /// <summary>
@@ -352,6 +364,26 @@ namespace KPLN_Tools.Forms
             bool hasDotOrComma = fullText.Count(c => c == '.' || c == ',') <= 1;
 
             e.Handled = !(double.TryParse(fullText.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _) && hasDotOrComma);
+        }
+
+        /// <summary>
+        /// XAML. Цифровое значение высоты ячейки
+        /// </summary>
+        private void TextBoxCellHeight_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (double.TryParse(
+                TextBoxCellHeight.Text.Replace(',', '.'),
+                NumberStyles.Any,
+                CultureInfo.InvariantCulture,
+                out double value))
+            {
+                value = Math.Max(7.0, Math.Min(20.0, value));
+                TextBoxCellHeight.Text = value.ToString("0.##", CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                TextBoxCellHeight.Text = "9";
+            }
         }
 
         /// <summary>
@@ -454,8 +486,12 @@ namespace KPLN_Tools.Forms
                 TextBoxRowCount.Text = $"{minAllowed}";
                 return;
             }
-
-
+            if (string.IsNullOrWhiteSpace(TextBoxCellHeight.Text))
+            {
+                System.Windows.MessageBox.Show("Значение `Высота ячейки в милиметрах` не указано. Установлено значение по умолчанию 9. Если необходимо изменить — введите новое значение и повторите.", "Предупреждение");
+                TextBoxLighten.Text = "9";
+                return;
+            }
             if (string.IsNullOrWhiteSpace(TextBoxLighten.Text))
             {
                 System.Windows.MessageBox.Show("Значение `Коэффициент изменения цвета (общий)` не указано. Установлено значение по умолчанию 0.5. Если необходимо изменить — введите новое значение и повторите.", "Предупреждение");
