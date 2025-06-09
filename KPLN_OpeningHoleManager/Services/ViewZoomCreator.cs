@@ -155,11 +155,13 @@ namespace KPLN_OpeningHoleManager.Services
 
         private static void SetViewSettings(Document doc, View3D view3D)
         {
+            #region Дисциплина и уровень детализации
             view3D.Discipline = ViewDiscipline.Mechanical;
             view3D.DetailLevel = ViewDetailLevel.Fine;
+            #endregion
 
             #region Настройка фильтров по имени типа
-            string filterName = $"OHM_Стена = !*{string.Join(" ИЛИ !*", ARKRElemsWorker.ARNames_StartWith)}";
+            string filterName = $"OHM_Стена = !*{string.Join(" ИЛИ !*", ARKRElemsWorker.ARKRNames_StartWith)}";
             
             ParameterFilterElement[] docFilters = new FilteredElementCollector(doc)
                 .OfClass(typeof(ParameterFilterElement))
@@ -168,9 +170,9 @@ namespace KPLN_OpeningHoleManager.Services
 
 
             List<ElementFilter> efColl = new List<ElementFilter>();
-            for (int i = 0; i < ARKRElemsWorker.ARNames_StartWith.Count(); i++)
+            for (int i = 0; i < ARKRElemsWorker.ARKRNames_StartWith.Count(); i++)
             {
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARNames_StartWith[i], false);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRNames_StartWith[i], false);
                 ElementParameterFilter elementParameterFilter = new ElementParameterFilter(fRule);
                 efColl.Add(elementParameterFilter);
             }

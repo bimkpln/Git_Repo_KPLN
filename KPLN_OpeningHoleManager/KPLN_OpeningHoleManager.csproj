@@ -78,6 +78,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -139,18 +140,23 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Core\AROpeningHoleEntity.cs" />
+    <Compile Include="Core\ARKRElemEntity.cs" />
     <Compile Include="Core\IOSElemEntity.cs" />
     <Compile Include="Core\IOSOpeningHoleTaskEntity.cs" />
     <Compile Include="Core\MainConfig.cs" />
     <Compile Include="Core\MainEntity\OpeningHoleEntity.cs" />
     <Compile Include="ExecutableCommand\AR_OHE_MakerWithUnion.cs" />
-    <Compile Include="Forms\MVVMCore_MainMenu\IOSElemsLinkSelectionFilter.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\ProgressInfoViewModel.cs" />
+    <Compile Include="Forms\ProgressWindow.xaml.cs">
+      <DependentUpon>ProgressWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SelectionFilters\IOSElemsLinkSelectionFilter.cs" />
     <Compile Include="Forms\ParamsOpenHoleByIOSElemsForm.xaml.cs">
       <DependentUpon>ParamsOpenHoleByIOSElemsForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Services\ARKRElemsWorker.cs" />
     <Compile Include="Services\ElementComparerById.cs" />
-    <Compile Include="Services\IOSElemsCollectionCreator.cs" />
+    <Compile Include="Services\ARKRElemsCollectionCreator.cs" />
     <Compile Include="ExecutableCommand\AR_OHE_Maker.cs" />
     <Compile Include="ExternalCommands\ShowMainMenu.cs" />
     <Compile Include="Forms\MainMenu.xaml.cs">
@@ -158,10 +164,10 @@
     </Compile>
     <Compile Include="Forms\MVVMCommand\RelayCommandWithParams.cs" />
     <Compile Include="Forms\MVVMCommand\RelayCommand.cs" />
-    <Compile Include="Forms\MVVMCore_MainMenu\ARHostDocSelectionFilter.cs" />
-    <Compile Include="Forms\MVVMCore_MainMenu\MechEquipDocSelectionFilter.cs" />
-    <Compile Include="Forms\MVVMCore_MainMenu\MechEquipLinkSelectionFilter.cs" />
-    <Compile Include="Forms\MVVMCore_MainMenu\ViewModel.cs" />
+    <Compile Include="SelectionFilters\ARHostDocSelectionFilter.cs" />
+    <Compile Include="SelectionFilters\MechEquipDocSelectionFilter.cs" />
+    <Compile Include="SelectionFilters\MechEquipLinkSelectionFilter.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\MainViewModel.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -172,6 +178,7 @@
     </Compile>
     <Compile Include="Services\GeometryWorker.cs" />
     <Compile Include="Services\MainDBService.cs" />
+    <Compile Include="Services\RevitEventWorker.cs" />
     <Compile Include="Services\ViewZoomCreator.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -188,6 +195,10 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\ProgressWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\ParamsOpenHoleByIOSElemsForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

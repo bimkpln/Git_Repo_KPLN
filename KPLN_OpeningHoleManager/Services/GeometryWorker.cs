@@ -126,7 +126,7 @@ namespace KPLN_OpeningHoleManager.Services
             }
 
             if (resultSolid == null && (elem is FamilyInstance fi && fi.SuperComponent == null))
-                throw new Exception($"У элемента с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
+                throw new Exception($"У элемента с именем \"{elem.Name}\" с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
 
             // Трансформ по координатам (если нужно)
             if (resultSolid != null && transform != null)
@@ -135,7 +135,7 @@ namespace KPLN_OpeningHoleManager.Services
             return resultSolid;
         }
 
-        public static double GetMinimumDistanceBetweenSolids(Solid solid1, Solid solid2)
+        internal static double GetMinimumDistanceBetweenSolids(Solid solid1, Solid solid2)
         {
             double minDistance = double.MaxValue;
 

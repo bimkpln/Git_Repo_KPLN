@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace KPLN_OpeningHoleManager.Core
 {
+    /// <summary>
+    /// Сущность задания на отверстие от ИОС для АР/КР в модели
+    /// </summary>
     internal sealed class IOSOpeningHoleTaskEntity : OpeningHoleEntity
     {
         internal IOSOpeningHoleTaskEntity(Document doc, Element elem, XYZ point)
@@ -49,7 +52,7 @@ namespace KPLN_OpeningHoleManager.Core
         {
             if (OHE_Element != null)
             {
-                if (OHE_Shape == OpenigHoleShape.Rectangle)
+                if (OHE_Shape == OpenigHoleShape.Rectangular)
                 {
                     if (OHE_FamilyName_Rectangle.Contains("501_ЗИ_Отверстие_Прямоугольное"))
                     {
@@ -78,7 +81,7 @@ namespace KPLN_OpeningHoleManager.Core
         {
             if (OHE_Element != null)
             {
-                if (OHE_Shape == OpenigHoleShape.Rectangle)
+                if (OHE_Shape == OpenigHoleShape.Rectangular)
                 {
                     if (OHE_FamilyName_Rectangle.Contains("501_ЗИ_Отверстие_Прямоугольное"))
                     {

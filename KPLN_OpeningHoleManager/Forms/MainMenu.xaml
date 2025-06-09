@@ -48,12 +48,6 @@
             </Setter>
         </Style>
 
-        <Style x:Key="CHCBX" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="5"/>
-        </Style>
-
     </Page.Resources>
 
     <Grid>
@@ -68,32 +62,31 @@
                 LastChildFill="True">
                 <StackPanel>
                     <Button
+                        IsEnabled="{Binding CanCreateOpenHole_AllARElemsCommand}"
                         Style="{StaticResource BTN}"
-                        Command="{Binding CreateOpenHoleByIOSElemsCommand}">
+                        Command="{Binding CreateOpenHole_AllARElemsCommand}">
                         <TextBlock
-                            Text="АР: Отверстия по всем эл-там ИОС на этаже"
+                            Text="АР: Отв. по всем эл-там ИОС"
                             TextWrapping="Wrap"
-                            MaxWidth="200"
+                            MaxWidth="150"
                             TextAlignment="Center"/>
                         <Button.ToolTip>
                             <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР</TextBlock>
-                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Анализируются элементы с плана, на котором 
-                                запущен плагин</TextBlock>
+                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР</TextBlock>
                             </StackPanel>
                         </Button.ToolTip>
                     </Button>
                     <Button
                         Style="{StaticResource BTN}"
-                        Command="{Binding CreateOpenHoleByIOSElemsCommand}">
+                        Command="{Binding CreateOpenHole_SelectedARKRAndIOSElemsCommand}">
                         <TextBlock
-                            Text="КЖ: Отверстия по стене по всем эл-там ИОС"
+                            Text="АР/КЖ: Отв. по стене по всем эл-там ИОС"
                             TextWrapping="Wrap"
-                            MaxWidth="200"
+                            MaxWidth="150"
                             TextAlignment="Center"/>
                         <Button.ToolTip>
                             <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной КЖ</TextBlock>
+                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР/КЖ</TextBlock>
                                 <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
                                     где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
                                     соответсвующий данным требованиям</TextBlock>
@@ -102,18 +95,18 @@
                     </Button>
                     <Button
                         Style="{StaticResource BTN}"
-                        Command="{Binding CreateOpenHoleBySelectedIOSElemsCommand}">
+                        Command="{Binding CreateOpenHole_SelectedARKRAndSelectedIOSElemsCommand}">
                         <TextBlock
-                            Text="КЖ: Отверстия по стене по выбранным эл-там ИОС"
+                            Text="АР/КЖ: Отв. по стене по выбр. эл-там ИОС"
                             TextWrapping="Wrap"
-                            MaxWidth="200"
+                            MaxWidth="150"
                             TextAlignment="Center"/>
                         <Button.ToolTip>
                             <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной КЖ</TextBlock>
+                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР/КЖ</TextBlock>
                                 <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
                                     где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
-                                    соответсвующий данным требованиям</TextBlock>
+                                    соответствующий  данным требованиям</TextBlock>
                             </StackPanel>
                         </Button.ToolTip>
                     </Button>
@@ -124,7 +117,7 @@
                     <TextBlock
                         Text="Настройки расстановки"
                         TextWrapping="Wrap"
-                        MaxWidth="125"
+                        MaxWidth="150"
                         TextAlignment="Center"/>
                     <Button.ToolTip>
                         <StackPanel MaxWidth="400">
@@ -139,13 +132,13 @@
                 Style="{StaticResource BTN}"
                 Command="{Binding UnionOpenHolesCommand}">
                 <TextBlock
-                    Text="Объеденить отверстия"
+                    Text="Объединить отверстия"
                     TextWrapping="Wrap"
                     MaxWidth="250"
                     TextAlignment="Center"/>
                 <Button.ToolTip>
                     <StackPanel MaxWidth="400">
-                        <TextBlock TextWrapping="Wrap">Объеденить несколько отверстий в одно 
+                        <TextBlock TextWrapping="Wrap">Объединить несколько отверстий в одно 
                             (БЕЗ учёта правил на зазоры и max/min размеры отверстий, но соблюдая шаг в 50 мм)</TextBlock>
                     </StackPanel>
                 </Button.ToolTip>

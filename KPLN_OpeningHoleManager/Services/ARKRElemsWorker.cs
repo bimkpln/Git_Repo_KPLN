@@ -11,7 +11,8 @@ namespace KPLN_OpeningHoleManager.Services
     internal static class ARKRElemsWorker
     {
         private static LogicalOrFilter _elemCatLogicalOrFilter;
-        private static Func<Element, bool> _elemFilterFunc;
+        private static Func<Element, bool> _arElemFilterFunc;
+        private static Func<Element, bool> _arkrElemFilterFunc;
 
         /// <summary>
         /// Список BuiltInCategory для файлов АР, которые обрабатываются
@@ -26,6 +27,20 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
+        /// Список имен для файлов АР/КР, которые обрабатываются по правилу "начинается с"
+        /// ВАЖНО: порядок в списке влияет на приоритет при выборе основ у соед. стен в методе "ClearCollectionByJoinedHosts"
+        /// </summary>
+        public static string[] ARKRNames_StartWith
+        {
+            get =>
+                new string[]
+                {
+                    "00_",
+                    "01_",
+                };
+        }
+
+        /// <summary>
         /// Список имен для файлов АР, которые обрабатываются по правилу "начинается с"
         /// </summary>
         public static string[] ARNames_StartWith
@@ -34,7 +49,7 @@ namespace KPLN_OpeningHoleManager.Services
                 new string[]
                 {
                     "01_",
-                    "02_",
+                    // Утеплитель и фасады - можно было бы добавить, но они часто соед. с основной стеной АР, и это могут делать с ошибками в геом., что приводит к сложностям анализа
                 };
         }
 
@@ -70,22 +85,42 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
-        /// Общая функция для фильтра для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
+        /// Общая функция для фильтра АР и КЖ для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
         /// </summary>
-        internal static Func<Element, bool> ElemExtraFilterFunc
+        internal static Func<Element, bool> ARKRElemExtraFilterFunc
         {
             get
             {
-                if (_elemFilterFunc == null)
+                if (_arkrElemFilterFunc == null)
                 {
-                    _elemFilterFunc = (el) =>
+                    _arkrElemFilterFunc = (el) =>
                         el.Category != null
                         && !(el is ElementType)
-                        // Анализируем стены, кроме отделки
+                        // Анализируем стены АР и КР
+                        && ARKRNames_StartWith.Any(prefix => el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix) == true);
+                }
+
+                return _arkrElemFilterFunc;
+            }
+        }
+
+        /// <summary>
+        /// Общая функция для фильтра АР и КЖ для ДОПОЛНИЕТЛЬНОГО просеивания элементов модели (новых и отредактированных)
+        /// </summary>
+        internal static Func<Element, bool> ARElemExtraFilterFunc
+        {
+            get
+            {
+                if (_arElemFilterFunc == null)
+                {
+                    _arElemFilterFunc = (el) =>
+                        el.Category != null
+                        && !(el is ElementType)
+                        // Анализируем стены АР
                         && ARNames_StartWith.Any(prefix => el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix) == true);
                 }
 
-                return _elemFilterFunc;
+                return _arElemFilterFunc;
             }
         }
     }
