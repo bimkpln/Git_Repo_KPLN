@@ -6,11 +6,13 @@ using System.Collections.ObjectModel;
 using Microsoft.Win32;
 using Autodesk.Revit.DB;
 using System.Collections.Generic;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UIFactory;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI.Events;
-using System.Runtime.InteropServices;
-using System.Threading;
+
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
@@ -19,26 +21,37 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     /// </summary>
     public partial class ManyDocumentsSelectionWindow : Window
     {
+        private readonly int _revitVersion;
         private UIApplication _uiapp;      
         private Document _mainDocument;
 
         private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
         private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
 
+        private bool _useRevitServer;
+
         string debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool useRevitServer)
         {
             InitializeComponent();
 
+            _revitVersion = int.Parse(uiApp.Application.VersionNumber);
             _uiapp = uiApp;
             _mainDocument = mainDocument;
 
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
+            _useRevitServer = useRevitServer;
 
             ItemsList.ItemsSource = _items;
 
             debugMessage = "";
+
+            if (useRevitServer)
+            {
+                AddButton.Click -= AddButton_Click;
+                AddButton.Click += AddButton_RevitServer_Click;
+            }
         }
 
         public class FileItem
@@ -77,13 +90,35 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             foreach (FileItem item in _items)
             {
-                if (File.Exists(item.FullPath))
+                MessageBox.Show($"{item.FullPath}", "KPLN");
+                if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
                 {
                     Document doc = null;
 
                     try
                     {
-                        doc = _uiapp.Application.OpenDocumentFile(item.FullPath);
+                        if (_useRevitServer)
+                        {
+                            ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+
+                            OpenOptions options = new OpenOptions();
+                            options.DetachFromCentralOption = DetachFromCentralOption.DoNotDetach;
+                            options.Audit = false; 
+                            options.SetOpenWorksetsConfiguration(
+                                new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets));
+
+                            doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
+                        }
+                        else
+                        {
+                            ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+                            OpenOptions options = new OpenOptions();
+                            options.DetachFromCentralOption = DetachFromCentralOption.DoNotDetach;
+                            options.Audit = false;
+                            options.SetOpenWorksetsConfiguration(
+                                new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets));
+                            doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
+                        }
 
                         debugMessage += $"ИНФО. Открыт документ {doc.Title} ({item.FullPath}).\n";                        
                     }
@@ -322,6 +357,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     {
                         _items.Add(new FileItem { FullPath = fullPath });
                     }
+                }
+            }
+        }
+
+        private void AddButton_RevitServer_Click (object sender, RoutedEventArgs e)
+        {
+
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            if (rsFilesPickForm == null)
+                return;
+
+            if ((bool) rsFilesPickForm.ShowDialog())
+            {
+                foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
+                {
+                    _items.Add(new FileItem { FullPath = $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}" });
                 }
             }
         }

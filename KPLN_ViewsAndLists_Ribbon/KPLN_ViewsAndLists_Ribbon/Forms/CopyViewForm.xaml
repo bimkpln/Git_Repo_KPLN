@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="565" Width="730"
+        Height="595" Width="730"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Title="KPLN. Копирование шаблонов вида">
@@ -28,22 +28,21 @@
             </StackPanel>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="1" Height="410" Margin="0 10 0 10" Background="#FFF1F1F1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="1" Height="410" Margin="0 10 0 3" Background="#FFF1F1F1">
             <Border Padding="5" Background="#FFF1F1F1">
                 <StackPanel x:Name="SP_OtherFileSetings" Background="#FFF1F1F1"/>
             </Border>
         </ScrollViewer>
 
         <Grid Grid.Row="2">
-
-            <Button x:Name="BTN_RunManyFile"
-            HorizontalAlignment="Right"
-            IsEnabled="False"
-            Content="Выбрать документы для обработки"
-            Width="220"
-            Height="24px"
-            Margin="0 0 0 0"
-            FontSize="12" Click="BTN_RunManyFile_Click"/>
+            <GroupBox Header="Документы для обработки" Margin="5 7 0 5" FontSize="12" Width="296px" HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal" Margin="5">
+                    <Button x:Name="BTN_RunManyFile" HorizontalAlignment="Right" IsEnabled="False" Content="Локальный диск"
+                    Width="130" Height="24" FontSize="12" Margin="0 0 10 0" Click="BTN_RunManyFile_Click"/>
+                    <Button x:Name="BTN_RunManyFileRS" HorizontalAlignment="Right" IsEnabled="False" Content="Revit-сервер"
+                    Width="130" Height="24" FontSize="12" Click="BTN_RunManyFileRS_Click"/>
+                </StackPanel>
+            </GroupBox>
         </Grid>
 
     </Grid>
