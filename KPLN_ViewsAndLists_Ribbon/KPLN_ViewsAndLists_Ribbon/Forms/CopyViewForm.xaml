@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="595" Width="730"
+        Height="630" Width="730"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Title="KPLN. Копирование шаблонов вида">
@@ -35,7 +35,14 @@
         </ScrollViewer>
 
         <Grid Grid.Row="2">
-            <GroupBox Header="Документы для обработки" Margin="5 7 0 5" FontSize="12" Width="296px" HorizontalAlignment="Right">
+            <GroupBox Header="Дополнительные настройки" Margin="5,7,0,0" FontSize="12" Width="370" HorizontalAlignment="Left">
+                <StackPanel Margin="5 5 5 3">
+                    <CheckBox x:Name="CHK_CloseDocument" Content=" Закрыть документ после обработки" FontSize="12" Margin="0,0,0,4"/>
+                    <TextBlock Text="Имена рабочих наборов, которые нужно закрыть (указывать через '~'):" VerticalAlignment="Center" FontSize="10" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TB_CloseWorksets" Text="00_~01_~02_" Width="330" Height="24" Padding="4 3 0 0" FontSize="11" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Документы для обработки" Margin="5 7 0 0" FontSize="12" Width="296px" HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal" Margin="5">
                     <Button x:Name="BTN_RunManyFile" HorizontalAlignment="Right" IsEnabled="False" Content="Локальный диск"
                     Width="130" Height="24" FontSize="12" Margin="0 0 10 0" Click="BTN_RunManyFile_Click"/>
