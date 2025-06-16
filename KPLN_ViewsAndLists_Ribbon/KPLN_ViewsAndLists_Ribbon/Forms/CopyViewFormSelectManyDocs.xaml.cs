@@ -4,12 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Collections.ObjectModel;
 using Microsoft.Win32;
-using Autodesk.Revit.DB;
 using System.Collections.Generic;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI.Events;
 
@@ -28,11 +28,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
         private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
 
+        private bool _сloseDocument;
+        List<string> _worksetPrefixName;
         private bool _useRevitServer;
 
         string debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool useRevitServer)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool сloseDocument, List<string> worksetPrefixName, bool useRevitServer)
         {
             InitializeComponent();
 
@@ -41,6 +43,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _mainDocument = mainDocument;
 
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
+            _сloseDocument = сloseDocument;
+            _worksetPrefixName = worksetPrefixName;
             _useRevitServer = useRevitServer;
 
             ItemsList.ItemsSource = _items;
@@ -90,42 +94,38 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             foreach (FileItem item in _items)
             {
-                MessageBox.Show($"{item.FullPath}", "KPLN");
                 if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
                 {
                     Document doc = null;
 
                     try
                     {
-                        if (_useRevitServer)
+                        ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+                        IList<WorksetPreview> worksetPreviews = WorksharingUtils.GetUserWorksetInfo(modelPath);
+
+                        List<WorksetId> worksetsToOpen = worksetPreviews.Where(preview => !_worksetPrefixName.Any(prefix => preview.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))).Select(preview => preview.Id).ToList();
+                        WorksetConfiguration worksetConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
+                        worksetConfig.Open(worksetsToOpen);
+
+                        OpenOptions options = new OpenOptions
                         {
-                            ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+                            DetachFromCentralOption = DetachFromCentralOption.DoNotDetach,
+                            Audit = false
+                        };
+                        options.SetOpenWorksetsConfiguration(worksetConfig);
 
-                            OpenOptions options = new OpenOptions();
-                            options.DetachFromCentralOption = DetachFromCentralOption.DoNotDetach;
-                            options.Audit = false; 
-                            options.SetOpenWorksetsConfiguration(
-                                new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets));
+                        doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
 
-                            doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
-                        }
-                        else
+                        if (!_сloseDocument) 
                         {
-                            ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
-                            OpenOptions options = new OpenOptions();
-                            options.DetachFromCentralOption = DetachFromCentralOption.DoNotDetach;
-                            options.Audit = false;
-                            options.SetOpenWorksetsConfiguration(
-                                new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets));
-                            doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
+                            _uiapp.OpenAndActivateDocument(modelPath, options, false);
                         }
-
-                        debugMessage += $"ИНФО. Открыт документ {doc.Title} ({item.FullPath}).\n";                        
+                       
+                        debugMessage += $"ИНФО. Получен документ {doc.Title} ({item.FullPath}).\n";               
                     }
                     catch (Exception ex)
                     {
                         debugMessage += $"ОШИБКА. Не удалось открыть документ {item.FullPath}: {ex}.\n";
-
                         continue;
                     }
 
@@ -317,20 +317,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         }
                     }
 
-                    try
+                    if (_сloseDocument)
                     {
-                        doc.Close(false);
-
-                        debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
-                    }
-                    catch (Exception ex)
-                    {
-                        debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex}.\n";
-                        continue;
+                        try
+                        {
+                            doc.Close(false);
+                            debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                        }
+                        catch (Exception ex)
+                        {
+                            debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex}.\n";
+                            continue;
+                        }
                     }
                 }
             }
-
+           
             _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
             _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
 

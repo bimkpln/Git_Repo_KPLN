@@ -262,8 +262,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 MessageBox.Show($"Нет изменений для приминения", "KPLN. Информация");
                 return;
             }
-        
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, false);
+
+            bool сloseDocument = CHK_CloseDocument.IsChecked ?? false;
+            string inputText = TB_CloseWorksets.Text;
+            List<string> worksetPrefixName = inputText
+                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.Trim())
+                .ToList();
+
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, сloseDocument, worksetPrefixName, false);
             openManeDocsWindows.Owner = this;       
             openManeDocsWindows.ShowDialog();
         }
@@ -290,7 +297,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, true);
+            bool сloseDocument = CHK_CloseDocument.IsChecked ?? false;
+            string inputText = TB_CloseWorksets.Text;
+            List<string> worksetPrefixName = inputText
+                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.Trim())
+                .ToList();
+
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, сloseDocument, worksetPrefixName, true);
             openManeDocsWindows.Owner = this;
             openManeDocsWindows.ShowDialog();
         }
