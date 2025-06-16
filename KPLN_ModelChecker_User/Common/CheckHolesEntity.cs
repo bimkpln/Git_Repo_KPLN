@@ -76,14 +76,33 @@ namespace KPLN_ModelChecker_User.Common
                 // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
                 else if (CurrentElement is FamilyInstance famInst)
                 {
-                    FamilySymbol famSymb = famInst.Symbol;
-                    string famName = famSymb.FamilyName;
-                    string famNameLower = famName.ToLower();
-                    if (!famNameLower.Contains("ostec") 
-                        && !famNameLower.Contains("470_dkc_s5_accessories")
-                        && !famNameLower.Contains("757_опора_неподвижная_(армтр)") 
-                        && famInst.SuperComponent == null)
-                        HtmlOutput.Print($"У элемента семейства {famName} " +
+                    string elem_type_param = famInst.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.ToLower() ?? "";
+                    string elem_family_param = famInst.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString()?.ToLower() ?? "";
+
+                    if (famInst.SuperComponent == null
+                        && (
+                            // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
+                            !elem_family_param.Contains("ostec") 
+                            && !elem_family_param.Contains("470_dkc_s5_accessories")
+                            && !elem_family_param.Contains("dkc_ceiling")
+                            && !elem_family_param.Contains("757_опора_неподвижная")
+                            // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
+                            && !elem_family_param.StartsWith("501_")
+                            && !elem_family_param.StartsWith("551_")
+                            && !elem_family_param.StartsWith("556_")
+                            && !elem_family_param.StartsWith("557_")
+                            && !elem_family_param.StartsWith("560_")
+                            && !elem_family_param.StartsWith("561_")
+                            && !elem_family_param.StartsWith("565_")
+                            && !elem_family_param.StartsWith("570_")
+                            && !elem_family_param.StartsWith("582_")
+                            && !elem_family_param.StartsWith("592_")
+                            // Фильтрация типов семейств для которых опытным путём определено, что солид у них не взять (очень сложные семейства)
+                            && !elem_type_param.Contains("узел учета квартиры для гвс")
+                            && !elem_type_param.Contains("узел учета офиса для гвс")
+                            && !elem_type_param.Contains("узел учета квартиры для хвс")
+                            && !elem_type_param.Contains("узел учета офиса для хвс")))
+                            HtmlOutput.Print($"У элемента семейства {famInst.Symbol.FamilyName} " +
                             $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);
                 }
             }
