@@ -115,8 +115,8 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                                 {
                                     // Проверка одиночных на размер - если меньше допуска - удаляю
                                     AROpeningHoleEntity checkSizeEnt = kvp.Value.FirstOrDefault();
-                                    if ((checkSizeEnt.OHE_Height < minHeight && checkSizeEnt.OHE_Height != 0)
-                                        || (checkSizeEnt.OHE_Width < minWidht && checkSizeEnt.OHE_Width != 0)
+                                    if (((checkSizeEnt.OHE_Height < minHeight && checkSizeEnt.OHE_Height != 0)
+                                        && (checkSizeEnt.OHE_Width < minWidht && checkSizeEnt.OHE_Width != 0))
                                         || (checkSizeEnt.OHE_Radius < minRadius && checkSizeEnt.OHE_Radius != 0))
                                     {
                                         arEntitiesForDelete.Add(checkSizeEnt);
@@ -127,35 +127,38 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
 
                                 arEntitiesForDelete.AddRange(kvp.Value);
-                                AROpeningHoleEntity unionOHE = AROpeningHoleEntity.CreateUnionOpeningHole(doc, kvp.Value.ToArray());
-                                if (unionOHE == null)
+                                AROpeningHoleEntity[] unionOHEColl = AROpeningHoleEntity.CreateUnionOpeningHole(doc, kvp.Value.ToArray());
+                                if (unionOHEColl == null || unionOHEColl.Length == 0)
                                 {
                                     arEntitiesForUnion.AddRange(kvp.Value.ToArray());
                                     continue;
                                 }
-                                // Уточняю параметры исходя из материала основы
+                                foreach(AROpeningHoleEntity unionOHE in unionOHEColl)
+                                {
+                                    // Уточняю параметры исходя из материала основы
 #if Debug2020 || Revit2020
-                                if (unionOHE.AR_OHE_IsHostElementKR)
-                                {
-                                    minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                                    minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
-                                    minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS) / 2;
-                                }
+                                    if (unionOHE.AR_OHE_IsHostElementKR)
+                                    {
+                                        minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                                        minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS);
+                                        minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, DisplayUnitType.DUT_MILLIMETERS) / 2;
+                                    }
 #else
-                                if (unionOHE.AR_OHE_IsHostElementKR)
-                                {
-                                    minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                                    minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
-                                    minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
-                                }
+                                    if (unionOHE.AR_OHE_IsHostElementKR)
+                                    {
+                                        minHeight = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                                        minWidht = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                                        minRadius = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinHeightValue, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1")) / 2;
+                                    }
 #endif
 
-                                if (unionOHE.OHE_Height >= minHeight
-                                    || unionOHE.OHE_Width >= minWidht
-                                    || unionOHE.OHE_Radius >= minRadius)
-                                    arEntitiesForUnion.Add(unionOHE);
-                                else
-                                    creationCanceledBySize = true;
+                                    if (unionOHE.OHE_Height >= minHeight
+                                        || unionOHE.OHE_Width >= minWidht
+                                        || unionOHE.OHE_Radius >= minRadius)
+                                        arEntitiesForUnion.Add(unionOHE);
+                                    else
+                                        creationCanceledBySize = true;
+                                }
 
                                 ++_progressInfoViewModel.CurrentProgress;
                                 _progressInfoViewModel.DoEvents();

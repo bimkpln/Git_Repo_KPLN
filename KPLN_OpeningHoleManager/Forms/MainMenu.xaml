@@ -62,17 +62,19 @@
                 LastChildFill="True">
                 <StackPanel>
                     <Button
-                        IsEnabled="{Binding CanCreateOpenHole_AllARElemsCommand}"
                         Style="{StaticResource BTN}"
                         Command="{Binding CreateOpenHole_AllARElemsCommand}">
                         <TextBlock
-                            Text="АР: Отв. по всем эл-там ИОС"
+                            Text="АР: Отв. по стенам на виде по всем эл-там ИОС"
                             TextWrapping="Wrap"
                             MaxWidth="150"
                             TextAlignment="Center"/>
                         <Button.ToolTip>
                             <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР</TextBlock>
+                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР на текущем виде</TextBlock>
+                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий можно запустить на 3D-виде,
+                                    который содержит весь проект, но не забывай что он НЕ работает с группами!
+                                    Правильно будет запускать <Bold>на каждый типовой</Bold> этаж отдельно</TextBlock>
                             </StackPanel>
                         </Button.ToolTip>
                     </Button>

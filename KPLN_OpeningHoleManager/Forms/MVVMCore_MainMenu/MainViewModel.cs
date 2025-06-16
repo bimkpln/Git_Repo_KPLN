@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 using System.Windows.Input;
 
 namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
@@ -56,11 +57,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         /// Комманда: Выбрать задания и расстваить отверстия в модели
         /// </summary>
         public ICommand SetOpenHoleByTaskCommand { get; }
-
-        /// <summary>
-        /// Возможность запуска команы CreateOpenHole_AllARElemsCommand
-        /// </summary>
-        public bool CanCreateOpenHole_AllARElemsCommand { get; private set; }
 
         /// <summary>
         /// Значение расширение отверстия при расстановке
@@ -155,8 +151,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
         public MainViewModel()
         {
-            CanCreateOpenHole_AllARElemsCommand = MainDBService.CurrentDBUser.IsDebugMode;
-
             // Устанавливаю команды
             CreateOpenHole_AllARElemsCommand = new RelayCommand(CreateOpenHole_AllARElems);
             CreateOpenHole_SelectedARKRAndIOSElemsCommand = new RelayCommand(CreateOpenHole_SelectedARKRAndIOSElems);
@@ -197,14 +191,16 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 Document doc = Module.CurrentUIApplication.ActiveUIDocument.Document;
 
-                Element[] arHosts = new FilteredElementCollector(doc)
+                Autodesk.Revit.DB.View activeView = Module.CurrentUIApplication.ActiveUIDocument.ActiveView;
+
+                Element[] arHosts = new FilteredElementCollector(doc, activeView.Id)
                     .WhereElementIsNotElementType()
                     .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARElemExtraFilterFunc(e))
                     .ToArray();
 
-                if (arHosts == null)
+                if (arHosts == null || CheckWSAvailableError(doc, arHosts.Select(el => el.Id)))
                     return;
-                
+
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();
@@ -252,9 +248,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 Document doc = uidoc.Document;
 
                 Element[] selectedHosts = new Element[] { SelectARHost(uidoc, doc) };
-                if (selectedHosts.FirstOrDefault() == null)
+                if (selectedHosts.FirstOrDefault() == null || CheckWSAvailableError(doc, selectedHosts.Select(el => el.Id)))
                     return;
-                
+
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();
@@ -299,7 +295,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                 Element selectedHost = SelectARHost(uidoc, doc);
-                if (selectedHost == null)
+                if (selectedHost == null || CheckWSAvailableError(doc, new List<ElementId> { selectedHost.Id }))
                     return;
 
                 ARKRElemEntity arkrEntity = SelectAndGetARKRElemsFromLink(uidoc, doc, selectedHost);
@@ -370,6 +366,26 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             }
 
             return doc.GetElement(pickedRefs.ElementId);
+        }
+
+        /// <summary>
+        /// Проверка эл-в на занятый РН
+        /// </summary>
+        private bool CheckWSAvailableError(Document doc, IEnumerable<ElementId> elemIdsToCheck)
+        {
+            ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, elemIdsToCheck.ToArray());
+            if (availableWSElemsId.Count < elemIdsToCheck.Count())
+            {
+                new TaskDialog("Ошибка")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainInstruction = $"Возможность изменения ограничена для элементов. Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы\n",
+                }.Show();
+
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -477,7 +493,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     Solid arHostSolid = GeometryWorker.GetRevitElemSolid(arHostElem);
                     ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(arHostElem, arHostSolid);
                     
-                    ARKRElemsCollectionCreator.SetIOSEntities_ByLinks(aRKRElemEntity, onlyIOSRLinkInsts);
+                    ARKRElemsCollectionCreator.SetIOSEntities_ByIOSElemEntities(aRKRElemEntity, onlyIOSRLinkInsts);
                     if (aRKRElemEntity.IOSElemEntities.Count() > 0)
                         arkrEntities.Add(aRKRElemEntity);
                 }
@@ -581,14 +597,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                 AROpeningHoleEntity[] arOHEColl = SelectAndGetAROpenHoles(uidoc, doc);
-                if (arOHEColl == null)
+                if (arOHEColl == null || CheckWSAvailableError(doc, arOHEColl.Select(arOHE => arOHE.OHE_Element.Id)))
                     return;
                 
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();
 
-                AROpeningHoleEntity[] unionAR_OHE = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, new AROpeningHoleEntity[] { AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl) });
+                AROpeningHoleEntity[] unionAR_OHE = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl));
                 if (unionAR_OHE != null)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(unionAR_OHE, "KPLN: Объединить отверстия", this, true, progressInfoViewModel));
             }

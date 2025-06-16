@@ -66,87 +66,87 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Создать объединённое отверстие по выбранной коллекции
         /// </summary>
-        internal static AROpeningHoleEntity CreateUnionOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl)
+        internal static AROpeningHoleEntity[] CreateUnionOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl)
         {
-            // Подбираю результирующий тип для семейства
-            string resultSubDep = string.Empty;
-            IEnumerable<string> arOHESubDeps = arOHEColl.Select(ohe => ohe.AR_OHE_IOSDubDepCode);
-            if (arOHESubDeps.Distinct().Count() > 1 || arOHESubDeps.All(subDep => subDep.Equals("Несколько категорий")))
-                resultSubDep = "Несколько категорий";
-            else
-                resultSubDep = arOHESubDeps.FirstOrDefault();
-
-
-            // Анализирую на наличие нескольких основ у выборки отверстий (если основы объеденены - игнор)
+            List<AROpeningHoleEntity> resultColl = new List<AROpeningHoleEntity>();
+            
+            // Анализирую на наличие нескольких основ у выборки отверстий
             IEnumerable<int> arOHEHostId = arOHEColl.Select(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue).Distinct();
-            if (arOHEHostId.Count() > 1)
+            foreach (int hostIntId in arOHEHostId)
             {
-                HtmlOutput.Print(
-                    $"Отверстия относятся к разным основам. Можно объединять отверстия ТОЛЬКО в рамках одной стены. Проверь вручную СТЕНЫ с id: {string.Join(",", arOHEHostId)}",
-                    MessageType.Warning);
+                // Получаю основу
+                Element hostElem = doc.GetElement(new ElementId(hostIntId));
+                
+                // Фильтрую коллекцию по основе (объединяю вокруг основы)
+                AROpeningHoleEntity[] arOHECollByHost = arOHEColl.Where(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue == hostIntId).ToArray();
 
-                return null;
-            }
+                // Подбираю результирующий тип для семейства
+                string resultSubDep = string.Empty;
+                IEnumerable<string> arOHESubDeps = arOHECollByHost.Select(ohe => ohe.AR_OHE_IOSDubDepCode);
+                if (arOHESubDeps.Distinct().Count() > 1 || arOHESubDeps.All(subDep => subDep.Equals("Несколько категорий")))
+                    resultSubDep = "Несколько категорий";
+                else
+                    resultSubDep = arOHESubDeps.FirstOrDefault();
 
 
-            // Получаю единственную основу
-            Element hostElem = doc.GetElement(new ElementId(arOHEHostId.FirstOrDefault()));
-
-            // Анализирую сущности и нахожу результирующий размер
-            Solid unionSolid = null;
-            foreach (AROpeningHoleEntity arOHE in arOHEColl)
-            {
-                var a = arOHE.OHE_Element.Id;
-                try
+                // Анализирую сущности и нахожу результирующий размер
+                Solid unionSolid = null;
+                foreach (AROpeningHoleEntity arOHE in arOHECollByHost)
                 {
-                    if (unionSolid == null)
-                        unionSolid = arOHE.OHE_Solid;
-                    else
+                    var a = arOHE.OHE_Element.Id;
+                    try
                     {
-                        Solid tempUnionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, arOHE.OHE_Solid, BooleanOperationsType.Union);
-                        if (tempUnionSolid != null && tempUnionSolid.Volume > 0)
-                            unionSolid = tempUnionSolid;
+                        if (unionSolid == null)
+                            unionSolid = arOHE.OHE_Solid;
+                        else
+                        {
+                            Solid tempUnionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, arOHE.OHE_Solid, BooleanOperationsType.Union);
+                            if (tempUnionSolid != null && tempUnionSolid.Volume > 0)
+                                unionSolid = tempUnionSolid;
 
+                        }
                     }
+                    // Могут быть проблемы с тем, что нельзя выполнить операцию.
+                    // Игнорим (возможно стоит добавить отправку пользователю инфы, что такую то стену нужно проверить вручную)
+                    catch (Autodesk.Revit.Exceptions.InvalidOperationException) { continue; }
+                    catch (Exception ex) { throw ex; }
                 }
-                // Могут быть проблемы с тем, что нельзя выполнить операцию.
-                // Игнорим (возможно стоит добавить отправку пользователю инфы, что такую то стену нужно проверить вручную)
-                catch (Autodesk.Revit.Exceptions.InvalidOperationException) { continue; }
-                catch (Exception ex) { throw ex; }
+
+                // Анализирую вектор основы
+                XYZ hostDir = GeometryWorker.GetHostDirection(hostElem);
+
+                // Получаю ширину и высоту
+                double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir);
+                double resultWidth = widthAndHeight[0];
+                double resultHeight = widthAndHeight[1];
+
+
+                // Создаю точку вставки
+                XYZ unionSolidCentroid = unionSolid.ComputeCentroid();
+                BoundingBoxXYZ unionSolidBBox = unionSolid.GetBoundingBox();
+                Transform bboxTrans = unionSolidBBox.Transform;
+
+                double locPointX = (bboxTrans.OfPoint(unionSolidBBox.Min).X + bboxTrans.OfPoint(unionSolidBBox.Max).X) / 2;
+                double locPointY = (bboxTrans.OfPoint(unionSolidBBox.Min).Y + bboxTrans.OfPoint(unionSolidBBox.Max).Y) / 2;
+                double locPointZ = bboxTrans.OfPoint(unionSolidBBox.Min).Z;
+                XYZ locPoint = new XYZ(locPointX, locPointY, locPointZ);
+
+
+                // Создаю сущность для заполнения
+                AROpeningHoleEntity resultByHost = new AROpeningHoleEntity(
+                    OpenigHoleShape.Rectangular,
+                    resultSubDep,
+                    hostElem,
+                    locPoint);
+
+                resultByHost.SetFamilyPathAndName(doc);
+                resultByHost.SetGeomParams();
+                resultByHost.SetGeomParamsRoundData(resultHeight, resultWidth, 0);
+
+                resultColl.Add(resultByHost);
             }
-
-            // Анализирую вектор основы
-            XYZ hostDir = GeometryWorker.GetHostDirection(hostElem);
-
-            // Получаю ширину и высоту
-            double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir);
-            double resultWidth = widthAndHeight[0];
-            double resultHeight = widthAndHeight[1];
-
-
-            // Создаю точку вставки
-            XYZ unionSolidCentroid = unionSolid.ComputeCentroid();
-            BoundingBoxXYZ unionSolidBBox = unionSolid.GetBoundingBox();
-            Transform bboxTrans = unionSolidBBox.Transform;
-
-            double locPointX = (bboxTrans.OfPoint(unionSolidBBox.Min).X + bboxTrans.OfPoint(unionSolidBBox.Max).X) / 2;
-            double locPointY = (bboxTrans.OfPoint(unionSolidBBox.Min).Y + bboxTrans.OfPoint(unionSolidBBox.Max).Y) / 2;
-            double locPointZ = bboxTrans.OfPoint(unionSolidBBox.Min).Z;
-            XYZ locPoint = new XYZ(locPointX, locPointY, locPointZ);
-
-
-            // Создаю сущность для заполнения
-            AROpeningHoleEntity result = new AROpeningHoleEntity(
-                OpenigHoleShape.Rectangular,
-                resultSubDep,
-                hostElem,
-                locPoint);
-
-            result.SetFamilyPathAndName(doc);
-            result.SetGeomParams();
-            result.SetGeomParamsRoundData(resultHeight, resultWidth, 0);
-
-            return result;
+            
+            return resultColl.ToArray();
         }
 
         /// <summary>
@@ -259,9 +259,8 @@ namespace KPLN_OpeningHoleManager.Core
                                     : almostEqualZElev;
                             }
                         }
-
                         // Убираю дубликаты по координатам (на текущий момент подходят лучше всего)
-                        if (!clearedResult.Any(clEnt => clEnt.OHE_Point.IsAlmostEqualTo(joinedEqualAREnt.OHE_Point, 0.01)))
+                        if (joinedEqualAREnt != null && !clearedResult.Any(clEnt => clEnt.OHE_Point.IsAlmostEqualTo(joinedEqualAREnt.OHE_Point, 0.01)))
                             clearedResult.Add(joinedEqualAREnt);
                     }
                     else

@@ -13,12 +13,10 @@ namespace KPLN_OpeningHoleManager.Core
         private static LogicalOrFilter _elemCatLogicalOrFilter;
         private static Func<Element, bool> _elemFilterFunc;
 
-        internal IOSElemEntity(Document linkDoc, Transform linkTrans, Element elem, Solid elemSolid, Solid aRIOS_IntesectionSolid)
+        internal IOSElemEntity(Document linkDoc, Element elem, Solid aRIOS_IntesectionSolid)
         {
             IOS_LinkDocument = linkDoc;
-            IOS_LinkTransform = linkTrans;
             IOS_Element = elem;
-            IOS_Solid = elemSolid;
             ARKRIOS_IntesectionSolid = aRIOS_IntesectionSolid;
         }
 
@@ -28,19 +26,9 @@ namespace KPLN_OpeningHoleManager.Core
         internal Document IOS_LinkDocument { get; private set; }
 
         /// <summary>
-        /// Ссылка на Transform для линка
-        /// </summary>
-        internal Transform IOS_LinkTransform { get; private set; }
-
-        /// <summary>
         /// Ссылка на элемент модели
         /// </summary>
         internal Element IOS_Element { get; private set; }
-
-        /// <summary>
-        /// Кэширование SOLID геометрии
-        /// </summary>
-        internal Solid IOS_Solid { get; private set; }
 
         /// <summary>
         /// Кэширование SOLID геометрии ПЕРЕСЕЧЕНИЯ между АР и ИОС
@@ -76,27 +64,41 @@ namespace KPLN_OpeningHoleManager.Core
                 if (_elemFilterFunc == null)
                 {
                     _elemFilterFunc = (el) =>
-                        el.Category != null
-                        && !(el is ElementType)
-                        // Молниезащита ЭОМ
-                        && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Полоса_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Пруток_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().StartsWith("Уголок_")
+                    {
+                        if (el.Category == null || el is ElementType)
+                            return false;
+
+                        string elem_type_param = el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.ToLower() ?? "";
+                        string elem_family_param = el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString()?.ToLower() ?? "";
+
+                        return !(
+                            // Молниезащита ЭОМ
+                            elem_type_param.StartsWith("полоса_")
+                            || elem_type_param.StartsWith("пруток_")
+                            || elem_type_param.StartsWith("уголок_")
                             // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
-                            || (el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("470_dkc_s5_accessories")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().ToLower().Contains("757_опора_неподвижная")
+                            || (elem_family_param.Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
+                            || elem_family_param.Contains("470_dkc_s5_accessories")
+                            || elem_family_param.Contains("dkc_ceiling")
+                            || elem_family_param.Contains("757_опора_неподвижная")
                             // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("501_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("551_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("556_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("557_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("560_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("561_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("565_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("570_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("582_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString().StartsWith("592_"));
+                            || elem_family_param.StartsWith("501_")
+                            || elem_family_param.StartsWith("551_")
+                            || elem_family_param.StartsWith("556_")
+                            || elem_family_param.StartsWith("557_")
+                            || elem_family_param.StartsWith("560_")
+                            || elem_family_param.StartsWith("561_")
+                            || elem_family_param.StartsWith("565_")
+                            || elem_family_param.StartsWith("570_")
+                            || elem_family_param.StartsWith("582_")
+                            || elem_family_param.StartsWith("592_")
+                            // Фильтрация типов семейств для которых опытным путём определено, что солид у них не взять (очень сложные семейства)
+                            || elem_type_param.Contains("узел учета квартиры для гвс")
+                            || elem_type_param.Contains("узел учета офиса для гвс")
+                            || elem_type_param.Contains("узел учета квартиры для хвс")
+                            || elem_type_param.Contains("узел учета офиса для хвс")
+                            );
+                    };
                 }
 
                 return _elemFilterFunc;
