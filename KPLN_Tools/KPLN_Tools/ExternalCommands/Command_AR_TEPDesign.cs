@@ -556,7 +556,7 @@ namespace KPLN_Tools.ExternalCommands
         public (Color, ElementId, ElementId) GetColorFromColorScheme(Document doc, BuiltInCategory bic, ElementId elementId, string selectedParamName, string paramName)
         {
 #if Debug2020 || Revit2020
-            return null;
+            return (null, null, null);
 #endif
 #if Debug2023 || Revit2023
             var vp = doc.GetElement(elementId) as Viewport;
@@ -677,20 +677,6 @@ namespace KPLN_Tools.ExternalCommands
 
             return result;
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// <summary>
         /// "Формы". Составление словаря с параметром и сопутствующим ему цветом
@@ -1409,6 +1395,5 @@ namespace KPLN_Tools.ExternalCommands
                 lastSchedule.Name += "_temp";
             }
         }
-#endif
     }
 }
