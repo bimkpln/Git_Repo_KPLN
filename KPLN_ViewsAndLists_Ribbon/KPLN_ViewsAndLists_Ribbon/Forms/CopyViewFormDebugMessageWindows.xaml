@@ -6,9 +6,24 @@
         ResizeMode="NoResize">
 
     <DockPanel Margin="10">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Content="ОК" Width="50" Height="20" Click="OkButton_Click"/>
-        </StackPanel>
+        <Grid DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Button Content="💾 Сохранить подробный отчёт"
+            Width="180" Height="20"
+            Click="SaveMessageButton_Click"
+            HorizontalAlignment="Left"
+            Grid.Column="0" FontSize="11" />
+
+            <Button Content="ОК"
+            Width="50" Height="20"
+            Click="OkButton_Click"
+            HorizontalAlignment="Right"
+            Grid.Column="1" />
+        </Grid>
 
         <RichTextBox Name="MessageTextBox"
              IsReadOnly="True"
