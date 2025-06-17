@@ -1,16 +1,21 @@
 ﻿using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Forms;
 using System.Windows.Media;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
     public partial class DebugMessageWindow : Window
     {
-        public DebugMessageWindow(string message)
+        string _message;
+
+        public DebugMessageWindow(string smallMessage, string message)
         {
             InitializeComponent();
-            UpdateMessageTextBox(message);
+            UpdateMessageTextBox(smallMessage);
+            _message = message;
         }
 
         void UpdateMessageTextBox(string fullText)
@@ -38,9 +43,33 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        private void SaveMessageButton_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog();
+            string fileName = $"debug_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+
+            saveFileDialog.FileName = fileName;
+            saveFileDialog.DefaultExt = ".txt";
+            saveFileDialog.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    File.WriteAllText(saveFileDialog.FileName, _message);
+                    System.Windows.MessageBox.Show("Файл успешно сохранён.", "Сохранение", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
         }
+    
     }
 }

@@ -28,13 +28,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
         private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
 
-        private bool _сloseDocument;
+        private bool _openDocument;
         List<string> _worksetPrefixName;
         private bool _useRevitServer;
 
+        string smallDebugMessage;
         string debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool сloseDocument, List<string> worksetPrefixName, bool useRevitServer)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool openDocument, List<string> worksetPrefixName, bool useRevitServer)
         {
             InitializeComponent();
 
@@ -43,7 +44,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _mainDocument = mainDocument;
 
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
-            _сloseDocument = сloseDocument;
+            _openDocument = openDocument;
             _worksetPrefixName = worksetPrefixName;
             _useRevitServer = useRevitServer;
 
@@ -62,6 +63,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         {
             public string FullPath { get; set; }
         }
+
+
+
+
+
 
         private void ProcessButton_Click(object sender, RoutedEventArgs e)
         {
@@ -116,7 +122,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                         doc = _uiapp.Application.OpenDocumentFile(modelPath, options);
 
-                        if (!_сloseDocument) 
+                        if (_openDocument) 
                         {
                             _uiapp.OpenAndActivateDocument(modelPath, options, false);
                         }
@@ -126,6 +132,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     catch (Exception ex)
                     {
                         debugMessage += $"ОШИБКА. Не удалось открыть документ {item.FullPath}: {ex}.\n";
+                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                         continue;
                     }
 
@@ -172,6 +179,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                             catch (Exception ex)
                                             {
                                                 debugMessage += $"ОШИБКА. Не удалось удалить шаблон {existingTemplate.ToString()}: {ex.Message}.\n";
+                                                smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                                             }
                                         }                                        
                                                                              
@@ -198,6 +206,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                         catch (Exception ex)
                                         {
                                             debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {viewTemplateName}: {ex.Message}\n";
+                                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                                         }
 
                                         if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
@@ -213,6 +222,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 catch (Exception ex)
                                                 {
                                                     debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
+                                                    smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                                                 }
                                             }
                                         }
@@ -236,6 +246,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                             catch (Exception ex)
                                             {
                                                 debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n";
+                                                smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                                             }
                                         }
                                                                              
@@ -267,6 +278,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 catch (Exception ex)
                                                 {
                                                     debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
+                                                    smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                                                 }
                                             }
                                         }                                        
@@ -286,6 +298,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     catch (Exception ex)
                     {
                         debugMessage += $"ОШИБКА. Не удалось сохранить документ {item.FullPath}: {ex}.\n";
+                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                         continue;
                     }
 
@@ -313,11 +326,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         catch (Exception ex)
                         {
                             debugMessage += $"ОШИБКА. Не удалось синхронизировать документ {item.FullPath}: {ex}.\n";
+                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                             continue;
                         }
                     }
 
-                    if (_сloseDocument)
+                    if (!_openDocument)
                     {
                         try
                         {
@@ -327,10 +341,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         catch (Exception ex)
                         {
                             debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex}.\n";
+                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex}.\n";
                             continue;
                         }
                     }
                 }
+
+                smallDebugMessage += $"ИНФО. Документ обработан - {item.FullPath}.\n";
             }
            
             _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
@@ -338,9 +355,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             this.Close();
 
-            DebugMessageWindow debugWindow = new DebugMessageWindow(debugMessage);
+            DebugMessageWindow debugWindow = new DebugMessageWindow(smallDebugMessage, debugMessage);
             debugWindow.ShowDialog();
         }
+
+
+
+
+
+
+
+
+
 
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {

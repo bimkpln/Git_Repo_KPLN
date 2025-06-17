@@ -263,14 +263,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool сloseDocument = CHK_CloseDocument.IsChecked ?? false;
+            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
+
             string inputText = TB_CloseWorksets.Text;
             List<string> worksetPrefixName = inputText
                 .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Trim())
                 .ToList();
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, сloseDocument, worksetPrefixName, false);
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, false);
             openManeDocsWindows.Owner = this;       
             openManeDocsWindows.ShowDialog();
         }
@@ -297,14 +298,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool сloseDocument = CHK_CloseDocument.IsChecked ?? false;
+            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
             string inputText = TB_CloseWorksets.Text;
             List<string> worksetPrefixName = inputText
                 .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Trim())
                 .ToList();
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, сloseDocument, worksetPrefixName, true);
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, true);
             openManeDocsWindows.Owner = this;
             openManeDocsWindows.ShowDialog();
         }
