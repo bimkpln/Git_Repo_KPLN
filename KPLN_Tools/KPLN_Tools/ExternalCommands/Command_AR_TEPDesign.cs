@@ -2,10 +2,14 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Windows.Controls;
+using System.Windows.Forms;
 using View = Autodesk.Revit.DB.View;
 
 
@@ -21,7 +25,7 @@ namespace KPLN_Tools.ExternalCommands
         Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = null;
         Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict = null;
         Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict = null;
-        Dictionary<ElementId, Dictionary<ElementId, Floor>> viewportsMassFloorsDict = null;
+        Dictionary<ElementId, Dictionary<ElementId, Element>> viewportsMassFormDict = null;
 
         int selectedCategory;
         int errorStatus = 0;
@@ -244,7 +248,7 @@ namespace KPLN_Tools.ExternalCommands
             // Формы (Перекрытия)
             else if (bic == BuiltInCategory.OST_MassFloor)
             {
-                viewportsMassFloorsDict = new Dictionary<ElementId, Dictionary<ElementId, Floor>>();
+                viewportsMassFormDict = new Dictionary<ElementId, Dictionary<ElementId, Element>>();
 
                 foreach (ElementId vpId in viewportIds)
                 {
@@ -254,34 +258,30 @@ namespace KPLN_Tools.ExternalCommands
                     View view = doc.GetElement(vp.ViewId) as View;
                     if (view == null) continue;
 
-                    var massFloors = new FilteredElementCollector(doc, view.Id)
-                                        .OfCategory(BuiltInCategory.OST_MassFloor)
-                                        .WhereElementIsNotElementType()
-                                        .OfClass(typeof(Floor))
-                                        .Cast<Floor>();
 
-                    if (!viewportsMassFloorsDict.TryGetValue(vpId, out var massDict))
+                    FilteredElementCollector collectorMF = new FilteredElementCollector(doc, view.Id);
+                    var massFloors = collectorMF
+                        .OfCategory(BuiltInCategory.OST_MassFloor)
+                        .WhereElementIsNotElementType()
+                        .ToElements();
+
+                    if (massFloors.Count > 0)
                     {
-                        massDict = new Dictionary<ElementId, Floor>();
-                        viewportsMassFloorsDict[vpId] = massDict;
-                    }
-
-                    foreach (Floor mf in massFloors)
-                    {
-                        if (mf == null) continue;
-
-                        if (!massDict.ContainsKey(mf.Id))
+                        Dictionary<ElementId, Element> floorDict = new Dictionary<ElementId, Element>();
+                        foreach (var el in massFloors)
                         {
-                            massDict.Add(mf.Id, mf);
+                            floorDict[el.Id] = el;
                         }
+                        viewportsMassFormDict[vpId] = floorDict;
                     }
                 }
 
-                allElementIds = viewportsMassFloorsDict
+                allElementIds = viewportsMassFormDict
                                     .SelectMany(kvp => kvp.Value.Keys)
                                     .Distinct()
                                     .ToList();
             }
+
 
             if (allElementIds == null)
             {
@@ -333,9 +333,8 @@ namespace KPLN_Tools.ExternalCommands
                 }
                 else if (bic == BuiltInCategory.OST_MassFloor)
                 {
-                    parametersColor = GetParametersColorMassFloor(doc, bic, viewportsMassFloorsDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
+                    parametersColor = GetParametersColorMassFloor(doc, bic, viewportsMassFormDict, selectedParamName, selectedColorEmptyColorScheme, selectedLightenFactor);
                 }
-
                 if (parametersColor == null)
                 {
                     TaskDialog.Show("Ошибка", "Возникла ошибка при получении цветов из цветовой схемы.");
@@ -697,24 +696,87 @@ namespace KPLN_Tools.ExternalCommands
         /// "Формы". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
         public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorMassFloor(Document doc, BuiltInCategory bic,
-            Dictionary<ElementId, Dictionary<ElementId, Floor>> viewportsMassFloorsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
+            Dictionary<ElementId, Dictionary<ElementId, Element>> viewportsMassFloorsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
-            return null;
+            Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
+
+            ElementId solidFillPatternId = new FilteredElementCollector(doc)
+               .OfClass(typeof(FillPatternElement))
+               .Cast<FillPatternElement>()
+               .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
+            
+            foreach (var kvp in viewportsMassFloorsDict)
+            {
+                ElementId viewportId = kvp.Key;
+                Dictionary<ElementId, Element> massFlorDict = kvp.Value;
+
+                Dictionary<string, (Color, ElementId, ElementId)> valueColorMap = new Dictionary<string, (Color, ElementId, ElementId)>();
+
+                foreach (var massFlorKvp in massFlorDict)
+                {
+                    Element rElement = massFlorKvp.Value;
+                    if (rElement == null) continue;
+
+                    string paramValue = rElement.LookupParameter(selectedParamName)?.AsValueString() ?? rElement.LookupParameter(selectedParamName)?.AsString();
+
+                    if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
+                    {
+                        Color color = GetFillColorFromFilter(doc, viewportId, paramValue);
+                        ElementId fillPatternFId = null; 
+                        ElementId fillPatternBId = null;
+
+                        if (color == null)
+                        {
+                            System.Windows.Media.Color wpfColor = selectedColorEmptyColorScheme;
+                            color = new Autodesk.Revit.DB.Color(wpfColor.R, wpfColor.G, wpfColor.B);
+                        }
+
+                        if (fillPatternFId == null || fillPatternBId == null)
+                        {
+                            fillPatternFId = solidFillPatternId;
+                            fillPatternBId = solidFillPatternId;
+                        }
+
+                        if (selectedLightenFactor != 0.5)
+                        {
+                            color = AdjustColorBrightness(color, selectedLightenFactor);
+                        }
+
+                        valueColorMap[paramValue] = (color, fillPatternFId, fillPatternBId);
+                    }
+                }
+
+                result[viewportId] = valueColorMap;
+            }
+
+            return result;
         }
 
+        /// <summary>
+        /// Цвет. Получение цвета из переопределения видимости графики
+        /// </summary>
+        Color GetFillColorFromFilter(Document doc, ElementId viewportId, string paramValue)
+        {
+            Viewport viewport = doc.GetElement(viewportId) as Viewport;
+            View view = doc.GetElement(viewport.ViewId) as View;
 
+            ICollection<ElementId> filterIds = view.GetFilters();
 
+            foreach (ElementId filterId in filterIds)
+            {
+                ParameterFilterElement filterElement = doc.GetElement(filterId) as ParameterFilterElement;
+                if (filterElement == null)
+                    continue;
 
+                if (filterElement.Name == paramValue)
+                {
+                    OverrideGraphicSettings ogs = view.GetFilterOverrides(filterId);
+                    return ogs.CutForegroundPatternColor;
+                }
+            }
 
-
-
-
-
-
-
-
-
-
+            return new Color(0, 0, 0);
+        }
 
         /// <summary>
         /// Цвет. Изменения цвета ячеек
@@ -761,8 +823,7 @@ namespace KPLN_Tools.ExternalCommands
             else
             {
                 sourceScheduleName = null;
-            }
-
+            }           
             try
             {
                 var sourceSched = new FilteredElementCollector(doc).OfClass(typeof(ViewSchedule))
@@ -774,10 +835,13 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 string prefix = $"ТЭП_{sheet.SheetNumber} - {selectedParamName}";
+                string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";         
+                string safePrefix = new string(prefix.Where(c => !invalidChars.Contains(c)).ToArray());
+
                 var oldIds = new FilteredElementCollector(doc)
                     .OfClass(typeof(ViewSchedule))
                     .Cast<ViewSchedule>()
-                    .Where(vs => vs.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .Where(vs => vs.Name.StartsWith(safePrefix, StringComparison.OrdinalIgnoreCase))
                     .Select(vs => vs.Id)
                     .ToList();
                 foreach (var id in oldIds)
@@ -787,16 +851,16 @@ namespace KPLN_Tools.ExternalCommands
                     .Values
                     .SelectMany(inner => inner.Keys)
                     .Distinct()
-                    .ToList();
+                    .ToList();              
 
                 foreach (var value in uniqueValues)
                 {
                     ElementId newId = sourceSched.Duplicate(ViewDuplicateOption.Duplicate);
                     var sched = doc.GetElement(newId) as ViewSchedule;
 
-                    string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";
                     string safeValue = new string(value.Where(c => !invalidChars.Contains(c)).ToArray());
-                    sched.Name = $"{prefix} ({safeValue})";
+
+                    sched.Name = $"{safePrefix} ({safeValue})";
 
                     var def = sched.Definition;
 
@@ -1256,7 +1320,11 @@ namespace KPLN_Tools.ExternalCommands
                     CurveLoop loop = CurveLoop.Create(curves);
                     string valueTab00 = schedule.GetCellText(SectionType.Body, 0, 0);
 
-                    string typeName = $"ТЭП. {viewSheet.SheetNumber} ({selectedParamName} - {valueTab00})";
+                    string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";
+                    string safeSelectedParamName = new string(selectedParamName.Where(c => !invalidChars.Contains(c)).ToArray());
+                    string safeValueTab00 = new string(valueTab00.Where(c => !invalidChars.Contains(c)).ToArray());
+
+                    string typeName = $"ТЭП. {viewSheet.SheetNumber} ({safeSelectedParamName} - {safeValueTab00})";
 
                     var existing = new FilteredElementCollector(doc)
                         .OfClass(typeof(FilledRegionType))
