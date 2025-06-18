@@ -27,10 +27,27 @@ namespace KPLN_IOSClasher.Core
             CurrentUser = user;
         }
 
+        public IntersectPointEntity(
+            XYZ pnt,
+            int addedElement_Id,
+            int oldElement_Id,
+            int linkId,
+            DBUser user,
+            Solid intSolid) : this(pnt, addedElement_Id,oldElement_Id, linkId, user)
+        {
+            IntersectSolid = intSolid;
+        }
+
+
         /// <summary>
         /// Точка пересечения
         /// </summary>
         public XYZ IntersectPoint { get; }
+        
+        /// <summary>
+        /// Тело пересечения
+        /// </summary>
+        public Solid IntersectSolid { get; }
 
         /// <summary>
         /// Id нового/измененного элемента
