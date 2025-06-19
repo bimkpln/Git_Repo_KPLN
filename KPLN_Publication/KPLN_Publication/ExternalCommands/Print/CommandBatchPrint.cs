@@ -588,7 +588,7 @@ namespace KPLN_Publication.ExternalCommands.Print
         private int ExportToDWGEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MySheet>> allSheets, FormPrint form)
         {
             allSheets = form._sheetsSelected;
-            logger.Write("Выбранные для печати листы");
+            logger.Write("Выбранные для экспорта листы\\виды");
             foreach (var kvp in allSheets)
             {
                 logger.Write(" Файл " + kvp.Key);
