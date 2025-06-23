@@ -10,36 +10,45 @@ namespace KPLN_Publication
     /// <summary>
     /// Класс-"оболочка", хранящий лист Revit, сведения формате листа и параметры печати листа
     /// </summary>
-    public class MySheet : IComparable
+    public class MainEntity : IComparable
     {
-        public ViewSheet sheet;
-        public PaperSize revitPaperSize;
-        public System.Drawing.Printing.PaperSize windowsPaperSize;
-        public IPrintSetting pSetting;
-        public bool IsVertical;
-        public int SheetId;
-        public bool IsPrintable;
+        /// <summary>
+        /// Смылка на вид\лист
+        /// </summary>
+        public View MainView { get; private set; }
 
-        //параметры для печати нескольких листов на одном
-        public List<FamilyInstance> titleBlocks;
-        public double widthMm;
-        public double heigthMm;
+        public PaperSize RevitPaperSize { get; set; }
+        
+        public bool IsVertical { get; set; }
+        
+        public int ViewId { get; private set; }
+        
+        public bool IsPrintable { get; set; }
 
-        public bool ForceColored;
-        public string PdfFileName;
+        /// <summary>
+        /// Параметры для печати нескольких листов на одном
+        /// </summary>
+        public List<FamilyInstance> TitleBlocks { get; set; }
+        
+        public double WidthMm { get; set; }
+        
+        public double HeigthMm { get; set; }
+
+        public bool ForceColored { get; private set; }
+        
+        public string PdfFileName { get; set; }
         
 
         /// <summary>
         /// Инициализация класса, без объявления формата листа и параметров печати
         /// </summary>
-        /// <param name="Sheet"></param>
-        public MySheet(ViewSheet Sheet)
+        public MainEntity(View view)
         {
-            sheet = Sheet;
-            SheetId = Sheet.Id.IntegerValue;
+            MainView = view;
+            ViewId = view.Id.IntegerValue;
 
             ForceColored = false;
-            Parameter isForceColoredParam = Sheet.LookupParameter("Цветной");
+            Parameter isForceColoredParam = view.LookupParameter("Цветной");
             if(isForceColoredParam != null)
             {
                 if(isForceColoredParam.HasValue)
@@ -52,24 +61,26 @@ namespace KPLN_Publication
 
         public override string ToString()
         {
-            string name = sheet.SheetNumber + " - " + sheet.Name;
-            return name;
+            if (MainView is ViewSheet sheet)
+                return sheet.SheetNumber + " - " + sheet.Name;
+
+            return MainView.Name;
         }
 
         /// <summary>
         /// Формирует имя листа на базе строки-"конструктора", содержащего имена параметров,
         /// которые будут заменены на значения параметров из данного листа
         /// </summary>
-        /// <param name="Constructor">Строка конструктора. Имена параметров должны быть включены в треугольные скобки.</param>
+        /// <param name="constructor">Строка конструктора. Имена параметров должны быть включены в треугольные скобки.</param>
         /// <returns>Сформированное имя листа</returns>
-        public string NameByConstructor(string Constructor)
+        public string NameByConstructor(string constructor)
         {
             string name = "";
 
-            string prefix = Constructor.Split('<').First();
+            string prefix = constructor.Split('<').First();
             name = name + prefix;
 
-            string[] sa = Constructor.Split('<');
+            string[] sa = constructor.Split('<');
             for(int i = 0; i < sa.Length; i++)
             {
                 string s = sa[i];
@@ -78,7 +89,7 @@ namespace KPLN_Publication
                 string paramName = s.Split('>').First();
                 string separator = s.Split('>').Last();
 
-                string val = this.GetParameterValueBySheetOrProject(sheet, paramName);
+                string val = this.GetParameterValueBySheetOrProject(MainView, paramName);
 
                 name = name + val;
                 name = name + separator;
@@ -159,9 +170,9 @@ namespace KPLN_Publication
         /// Попытаться преобразовать текстовый номер листа в число для правильной сортировки
         /// </summary>
         /// <returns></returns>
-        public int GetSheetNumberAsInt()
+        public int GetSheetNumberAsInt(ViewSheet sheet)
         {
-            string sheetNumberString = this.sheet.SheetNumber;
+            string sheetNumberString = sheet.SheetNumber;
 
             if (sheetNumberString.Contains("-"))
             {
@@ -185,18 +196,21 @@ namespace KPLN_Publication
         //для сортировки по номеру листа
         public int CompareTo(object obj)
         {
-            MySheet ms = obj as MySheet;
-            if(ms != null)
+            MainEntity ms = obj as MainEntity;
+            if(ms != null && ms.MainView is ViewSheet sheet)
             {
-                int thisSheetNumber = this.GetSheetNumberAsInt();
-                int compareSheetNumber = ms.GetSheetNumberAsInt();
-                int resuls = thisSheetNumber.CompareTo(compareSheetNumber);
-                return resuls;
+                int thisSheetNumber = this.GetSheetNumberAsInt(sheet);
+                int compareSheetNumber = ms.GetSheetNumberAsInt(sheet);
+                return thisSheetNumber.CompareTo(compareSheetNumber);
+            }
+            else if (ms != null && ms.MainView is View view)
+            {
+                string thisName = this.MainView.Name;
+                string compareName = ms.MainView.Name;
+                return thisName.CompareTo(compareName);
             }
             else
-            {
                 throw new Exception("Невозможно сравнить два объекта");
-            }
         }
     }
 }

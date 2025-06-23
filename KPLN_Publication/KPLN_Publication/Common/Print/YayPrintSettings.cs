@@ -50,7 +50,7 @@ namespace KPLN_Publication
         public bool isDWGExport = false;
         public ExportDWGSettingsShell dwgExportSettingShell;
         public string outputDWGFolder = "C:\\DWG_Print";
-        public string dwgNameConstructor = "<Номер листа>_<Имя листа>.dwg";
+        public string dwgNameConstructor;
         #endregion
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace KPLN_Publication
         /// <summary>
         /// Получение параметров печати
         /// </summary>
-        public static YayPrintSettings GetSavedPrintSettings()
+        public static YayPrintSettings GetSavedPrintSettings(bool onlySheets)
         {
             string xmlpath = ActivateFolder();
 
@@ -80,12 +80,17 @@ namespace KPLN_Publication
                         TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
                         ps = new YayPrintSettings();
                     }
+                    // Корректировка для экспорта видов
+                    else if (ps.dwgNameConstructor.ToLower().Contains("лист") && !onlySheets)
+                        ps.dwgNameConstructor = "<Имя вида>.dwg";
                 }
             }
             else
             {
                 ps = new YayPrintSettings
                 {
+                    // Корректировка для экспорта видов или листов
+                    dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
                     excludeColors = new List<PdfColor>
                     {
                         new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),

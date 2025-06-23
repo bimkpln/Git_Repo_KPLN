@@ -45,120 +45,136 @@ namespace KPLN_Publication.ExternalCommands.Print
                 Selection sel = commandData.Application.ActiveUIDocument.Selection;
                 Document mainDoc = commandData.Application.ActiveUIDocument.Document;
 
-                string mainDocTitle = SheetSupport.GetDocTitleWithoutRvt(mainDoc.Title);
-
-                //листы из всех открытых файлов, ключ - имя файла, значение - список листов
-                Dictionary<string, List<MySheet>> allSheets = SheetSupport.GetAllSheets(commandData);
+                string mainDocTitle = EntitySupport.GetDocTitleWithoutRvt(mainDoc.Title);
 
                 //получаю выбранные листы в диспетчере проекта
-                List<ElementId> selIds = sel.GetElementIds().ToList();
-                bool sheetsIsChecked = false;
-                List<string> listErrors = new List<string>();
-                foreach (ElementId id in selIds)
+                View[] selSheets = sel
+                    .GetElementIds()
+                    .Select(id => mainDoc.GetElement(id))
+                    .OfType<ViewSheet>()
+                    .Cast<View>()
+                    .ToArray();
+
+                // получаю выбранные виды в диспетчере проекта
+                View[] selViews= sel
+                    .GetElementIds()
+                    .Select(id => mainDoc.GetElement(id))
+                    .Where(el => el is ViewPlan || el is ViewSection)
+                    .Cast<View>()
+                    .ToArray();
+
+                if (selSheets.Any() && selViews.Any())
                 {
-                    Element elem = mainDoc.GetElement(id);
-                    if (!(elem is ViewSheet sheet)) continue;
-
-                    sheetsIsChecked = true;
-
-                    MySheet sheetInBase = allSheets[mainDocTitle].Where(i => i.sheet.Id.IntegerValue == sheet.Id.IntegerValue).First();
-                    sheetInBase.IsPrintable = true;
-
-                    // Анализирую листы на наличие 2х основных надписей в одном месте, а также фильтрую пользовательские семейства категории Основная надпись
-                    List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>();
-                    FamilyInstance[] tBlocksCollHeap = new FilteredElementCollector(mainDoc, sheet.Id)
-                        .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                        .WhereElementIsNotElementType()
-                        .Cast<FamilyInstance>()
-                        .ToArray();
-
-                    FamilyInstance[] tBlocksColl = null;
-                    if (tBlocksCollHeap.Count() >= 1)
-                    {
-                        tBlocksColl = tBlocksCollHeap
-                            .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись") || fi.Symbol.FamilyName.Contains("Основные надписи"))
-                            .ToArray();
-                    }
-
-                    if (tBlocksColl == null)
-                    {
-                        listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Имеет несколько экземпляров семейства категории \"Основные надписи\", но при этом - нет ни одного экземпляра семейства штампа КПЛН");
-                        continue;
-                    }
-
-                    foreach (FamilyInstance tBlock in tBlocksColl)
-                    {
-                        if (listErrors.Contains(sheet.Name)) break;
-
-                        List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
-                        BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet) ?? throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
-
-                        // Проверяю на дубликаты
-                        if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
-                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
-
-                        // Добавляю в коллекцию проверенных элементов
-                        tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
-                    }
-
-                    // Проверяю на смещение
-                    int tBlocksCount = tBlockLocations.Count();
-                    if (tBlocksCount > 1)
-                    {
-                        int cnt = 0;
-                        int cntXShift = 0;
-                        while (cnt < tBlocksCount)
-                        {
-                            cntXShift += tBlockLocations.Where(tbl => new XYZ(tbl.Item1.X, tbl.Item2.Y, tbl.Item2.Z).IsAlmostEqualTo(tBlockLocations[cnt].Item2, 0.02)).Count();
-                            cnt++;
-                        }
-
-                        if (cntXShift != tBlocksCount - 1)
-                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Рамки выставлены со смещением. Необходимо выронять в последовательную цепь без зазоров");
-                    }
-                }
-
-                if (!sheetsIsChecked)
-                {
-                    message = "Не выбраны листы. Выберите листы в Диспетчере проекта через Shift.";
-                    logger.Write("Печать остановлена, не выбраны листы");
+                    message = "Выбраны и листы и виды. Выберите ЛИБО листы, ЛИБО виды в Диспетчере проекта через Shift.";
+                    logger.Write("Эксопорт остановлен, выбраны и листы и виды");
                     return Result.Failed;
                 }
+                else if (!selSheets.Any() && !selViews.Any())
+                {
+                    message = "Вы не выбрали виды для экспорта. Выберите ЛИБО листы, ЛИБО виды в Диспетчере проекта через Shift.";
+                    logger.Write("Эксопорт остановлен, ничего для экспорта не выбрано");
+                    return Result.Failed;
+                }
+
+                View[] resultViews = selSheets.Any() ? selSheets : selViews;
+
+                //Листы/виды из всех открытых файлов, ключ - имя файла, значение - список видов
+                List<string> listErrors = new List<string>();
+                Dictionary<string, List<MainEntity>> allEntities = EntitySupport.GetAllEntities(commandData, resultViews);
+                foreach (View view in resultViews)
+                {
+                    MainEntity entInBase = allEntities[mainDocTitle].Where(i => i.MainView.Id.IntegerValue == view.Id.IntegerValue).FirstOrDefault();
+                    entInBase.IsPrintable = true;
+
+                    if (view is ViewSheet sheet)
+                    {
+                        // Анализирую листы на наличие 2х основных надписей в одном месте, а также фильтрую пользовательские семейства категории Основная надпись
+                        List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>();
+                        FamilyInstance[] tBlocksCollHeap = new FilteredElementCollector(mainDoc, sheet.Id)
+                            .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                            .WhereElementIsNotElementType()
+                            .Cast<FamilyInstance>()
+                            .ToArray();
+
+                        FamilyInstance[] tBlocksColl = null;
+                        if (tBlocksCollHeap.Count() >= 1)
+                        {
+                            tBlocksColl = tBlocksCollHeap
+                                .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись") || fi.Symbol.FamilyName.Contains("Основные надписи"))
+                                .ToArray();
+                        }
+
+                        if (tBlocksColl == null)
+                        {
+                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Имеет несколько экземпляров семейства категории \"Основные надписи\", но при этом - нет ни одного экземпляра семейства штампа КПЛН");
+                            continue;
+                        }
+
+                        foreach (FamilyInstance tBlock in tBlocksColl)
+                        {
+                            if (listErrors.Contains(sheet.Name)) break;
+
+                            List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
+                            BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet) ?? throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
+
+                            // Проверяю на дубликаты
+                            if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
+                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
+
+                            // Добавляю в коллекцию проверенных элементов
+                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
+                        }
+
+                        // Проверяю на смещение
+                        int tBlocksCount = tBlockLocations.Count();
+                        if (tBlocksCount > 1)
+                        {
+                            int cnt = 0;
+                            int cntXShift = 0;
+                            while (cnt < tBlocksCount)
+                            {
+                                cntXShift += tBlockLocations.Where(tbl => new XYZ(tbl.Item1.X, tbl.Item2.Y, tbl.Item2.Z).IsAlmostEqualTo(tBlockLocations[cnt].Item2, 0.02)).Count();
+                                cnt++;
+                            }
+
+                            if (cntXShift != tBlocksCount - 1)
+                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Рамки выставлены со смещением. Необходимо выронять в последовательную цепь без зазоров");
+                        }
+                    }
+                }
+
 
                 if (listErrors.Count != 0)
                 {
                     foreach (string listError in listErrors)
                     {
-                        KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput.Print($"Ошибка: {listError}. Печать остановлена", MessageType.Error);
+                        HtmlOutput.Print($"Ошибка: {listError}. Экспорт остановлен", MessageType.Error);
                     }
+
                     return Result.Failed;
                 }
 
-
-                //запись статистики по файлу
-                //ProjectRating.Worker.Execute(commandData);
-
                 //очистка старых Schema при необходимости
 #if Revit2020 || Debug2020
-                try
-                {
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD4"));
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch, true);
+            try
+            {
+                Autodesk.Revit.DB.ExtensibleStorage.Schema sch = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD4"));
+                Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch, true);
 
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema sch2 = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD5"));
-                    Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch2, true);
-                    logger.Write("Schema очищены");
-                }
-                catch
-                {
-                    logger.Write("Не удалось очистить Schema");
-                }
+                Autodesk.Revit.DB.ExtensibleStorage.Schema sch2 = Autodesk.Revit.DB.ExtensibleStorage.Schema.Lookup(new Guid("414447EA-4228-4B87-A97C-612462722AD5"));
+                Autodesk.Revit.DB.ExtensibleStorage.Schema.EraseSchemaAndAllEntities(sch2, true);
+                logger.Write("Schema очищены");
+            }
+            catch
+            {
+                logger.Write("Не удалось очистить Schema");
+            }
 #endif
 
                 logger.Write($"Пользователь {CurrentDBUser.Id}-{CurrentDBUser.Name}-{CurrentDBUser.Surname}");
-                
-                YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings();
-                FormPrint form = new FormPrint(mainDoc, allSheets, printSettings, CurrentDBUser);
+
+                YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings(selSheets.Any());
+                FormPrint form = new FormPrint(mainDoc, allEntities, printSettings, CurrentDBUser);
                 form.ShowDialog();
 
                 printSettings = form.PrintSettings;
@@ -170,28 +186,28 @@ namespace KPLN_Publication.ExternalCommands.Print
                 string msg = string.Empty;
                 if (printSettings.isPDFExport && printSettings.isDWGExport)
                 {
-                    int printedSheetCount = ExportToPDFEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allSheets, form);
-                    int dwgExportedSheetCount = ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allSheets, form);
+                    int printedSheetCount = ExportToPDFEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
+                    int dwgExportedSheetCount = ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
 
                     msg = $"Напечатано листов: {printedSheetCount}.\nПереведено в dwg листов: {dwgExportedSheetCount}.";
                     logger.Write($"Экспорт успешно завершен для {printedSheetCount + dwgExportedSheetCount} листа/-ов");
                 }
                 else if (printSettings.isPDFExport)
                 {
-                    int printedSheetCount = ExportToPDFEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allSheets, form);
+                    int printedSheetCount = ExportToPDFEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
 
                     msg = $"Напечатано листов: {printedSheetCount}\n";
                     logger.Write($"Напечатано успешно для {printedSheetCount} листа/-ов");
                 }
                 else if (printSettings.isDWGExport)
                 {
-                    int dwgExportedSheetCount = ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allSheets, form);
+                    int dwgExportedSheetCount = ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
 
                     msg = $"Переведено в dwg листов: {dwgExportedSheetCount}";
                     logger.Write($"Экспорт в dwg успешно завершен для {dwgExportedSheetCount} листа/-ов");
                 }
 
-                BalloonTip.Show("Печать завершена!", msg);
+                BalloonTip.Show("Экспорт завершен!", msg);
 
                 return Result.Succeeded;
             }
@@ -203,17 +219,17 @@ namespace KPLN_Publication.ExternalCommands.Print
             }
         }
 
-        private int ExportToPDFEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MySheet>> allSheets, FormPrint form)
+        private int ExportToPDFEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MainEntity>> allSheets, FormPrint form)
         {
             string printerName = printSettings.printerName;
-            allSheets = form._sheetsSelected;
+            allSheets = form._entitiesSelected;
             logger.Write("Выбранные для печати листы");
             foreach (var kvp in allSheets)
             {
                 logger.Write(" Файл " + kvp.Key);
-                foreach (MySheet ms in kvp.Value)
+                foreach (MainEntity ms in kvp.Value)
                 {
-                    logger.Write("  Лист " + ms.sheet.Name);
+                    logger.Write("  Лист " + ms.MainView.Name);
                 }
             }
             string outputFolder = printSettings.outputPDFFolder;
@@ -271,7 +287,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     List<RevitLinkType> linkTypes = new FilteredElementCollector(mainDoc)
                         .OfClass(typeof(RevitLinkType))
                         .Cast<RevitLinkType>()
-                        .Where(i => SheetSupport.GetDocTitleWithoutRvt(i.Name) == docTitle)
+                        .Where(i => EntitySupport.GetDocTitleWithoutRvt(i.Name) == docTitle)
                         .ToList();
                     if (linkTypes.Count == 0) throw new Exception("Cant find opened link file " + docTitle);
                     rlt = linkTypes.First();
@@ -296,7 +312,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             .Cast<RevitLinkInstance>()
                             .Select(i => i.GetLinkDocument())
                             .Where(i => i != null)
-                            .Where(i => SheetSupport.GetDocTitleWithoutRvt(i.Title) == docTitle)
+                            .Where(i => EntitySupport.GetDocTitleWithoutRvt(i.Title) == docTitle)
                             .ToList();
                         if (linkDocs.Count == 0) throw new Exception("Cant find link file " + docTitle);
                         Document linkDoc = linkDocs.First();
@@ -326,7 +342,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
 
 
-                List<MySheet> mSheets = allSheets[docTitle];
+                List<MainEntity> mSheets = allSheets[docTitle];
 
                 if (docTitle != mainDocTitle)
                 {
@@ -334,14 +350,14 @@ namespace KPLN_Publication.ExternalCommands.Print
                         .OfClass(typeof(ViewSheet))
                         .Cast<ViewSheet>()
                         .ToList();
-                    List<MySheet> tempSheets = new List<MySheet>();
-                    foreach (MySheet ms in mSheets)
+                    List<MainEntity> tempSheets = new List<MainEntity>();
+                    foreach (MainEntity ms in mSheets)
                     {
                         foreach (ViewSheet vs in linkSheets)
                         {
-                            if (ms.SheetId == vs.Id.IntegerValue)
+                            if (ms.ViewId == vs.Id.IntegerValue)
                             {
-                                MySheet newMs = new MySheet(vs);
+                                MainEntity newMs = new MainEntity(vs);
                                 tempSheets.Add(newMs);
                             }
                         }
@@ -380,13 +396,13 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write("Проверка форматов листов выполнена успешно, переход к печати");
 
                 //печатаю каждый лист
-                foreach (MySheet msheet in mSheets)
+                foreach (MainEntity msheet in mSheets)
                 {
                     logger.Write(" ");
-                    logger.Write("Печатается лист: " + msheet.sheet.Name);
+                    logger.Write("Печатается лист: " + msheet.MainView.Name);
                     if (printSettings.isRefreshSchedules)
                     {
-                        SchedulesRefresh.Start(openedDoc, msheet.sheet);
+                        SchedulesRefresh.Start(openedDoc, msheet.MainView);
                         logger.Write("Спецификации обновлены успешно");
                     }
 
@@ -410,17 +426,17 @@ namespace KPLN_Publication.ExternalCommands.Print
                             }
                         }
 
-                        for (int i = 0; i < msheet.titleBlocks.Count; i++)
+                        for (int i = 0; i < msheet.TitleBlocks.Count; i++)
                         {
                             string tempFilename = "";
-                            if (msheet.titleBlocks.Count > 1)
+                            if (msheet.TitleBlocks.Count > 1)
                             {
                                 logger.Write("На листе более 1 основной надписи! Печать части №" + i.ToString());
                                 tempFilename = fileName.Replace(".pdf", "_" + i.ToString() + ".pdf");
                             }
                             else
                             {
-                                logger.Write("На листе 1 основная надпись Id " + msheet.titleBlocks.First().Id.IntegerValue.ToString());
+                                logger.Write("На листе 1 основная надпись Id " + msheet.TitleBlocks.First().Id.IntegerValue.ToString());
                                 tempFilename = fileName;
                             }
 
@@ -429,7 +445,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             logger.Write("Печать в файл " + fullFilename);
 
                             //смещаю область для печати многолистовых спецификаций
-                            double offsetX = -i * msheet.widthMm / 25.4; //смещение задается в дюймах!
+                            double offsetX = -i * msheet.WidthMm / 25.4; //смещение задается в дюймах!
                             logger.Write("Смещение печати по X: " + offsetX.ToString("F3"));
 
                             PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0);
@@ -439,7 +455,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             logger.Write("Настройки печати применены, " + ps.Name);
 
                             pManager.Apply();
-                            pManager.SubmitPrint(msheet.sheet);
+                            pManager.SubmitPrint(msheet.MainView);
                             pManager.Apply();
 
                             logger.Write("Лист успешно отправлен на принтер");
@@ -495,8 +511,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
             }
 
-            List<MySheet> printedSheets = new List<MySheet>();
-            foreach (List<MySheet> mss in allSheets.Values)
+            List<MainEntity> printedSheets = new List<MainEntity>();
+            foreach (List<MainEntity> mss in allSheets.Values)
             {
                 printedSheets.AddRange(mss);
             }
@@ -516,7 +532,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             if (printSettings.isExcludeBorders)
             {
                 logger.Write("Преобразование PDF файла со скрытием границ");
-                foreach (MySheet msheet in printedSheets)
+                foreach (MainEntity msheet in printedSheets)
                 {
                     string file = msheet.PdfFileName;
                     string outFile = file.Replace(".pdf", "_OUT_Border.pdf");
@@ -535,11 +551,11 @@ namespace KPLN_Publication.ExternalCommands.Print
             if (printSettings.colorsType == ColorType.MonochromeWithExcludes)
             {
                 logger.Write("Преобразование PDF файла в черно-белый");
-                foreach (MySheet msheet in printedSheets)
+                foreach (MainEntity msheet in printedSheets)
                 {
                     if (msheet.ForceColored)
                     {
-                        logger.Write("Лист не преобразовывается в черно-белый: " + msheet.sheet.Name);
+                        logger.Write("Лист не преобразовывается в черно-белый: " + msheet.MainView.Name);
                         continue;
                     }
 
@@ -585,16 +601,16 @@ namespace KPLN_Publication.ExternalCommands.Print
             return printedSheetCount;
         }
 
-        private int ExportToDWGEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MySheet>> allSheets, FormPrint form)
+        private int ExportToDWGEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MainEntity>> allSheets, FormPrint form)
         {
-            allSheets = form._sheetsSelected;
+            allSheets = form._entitiesSelected;
             logger.Write("Выбранные для экспорта листы\\виды");
             foreach (var kvp in allSheets)
             {
                 logger.Write(" Файл " + kvp.Key);
-                foreach (MySheet ms in kvp.Value)
+                foreach (MainEntity ms in kvp.Value)
                 {
-                    logger.Write("  Лист " + ms.sheet.Name);
+                    logger.Write("  Лист " + ms.MainView.Name);
                 }
             }
             string outputFolder = printSettings.outputDWGFolder;
@@ -626,7 +642,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     List<RevitLinkType> linkTypes = new FilteredElementCollector(mainDoc)
                         .OfClass(typeof(RevitLinkType))
                         .Cast<RevitLinkType>()
-                        .Where(i => SheetSupport.GetDocTitleWithoutRvt(i.Name) == docTitle)
+                        .Where(i => EntitySupport.GetDocTitleWithoutRvt(i.Name) == docTitle)
                         .ToList();
                     if (linkTypes.Count == 0) 
                         throw new Exception("Cant find opened link file " + docTitle);
@@ -653,7 +669,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             .Cast<RevitLinkInstance>()
                             .Select(i => i.GetLinkDocument())
                             .Where(i => i != null)
-                            .Where(i => SheetSupport.GetDocTitleWithoutRvt(i.Title) == docTitle)
+                            .Where(i => EntitySupport.GetDocTitleWithoutRvt(i.Title) == docTitle)
                             .ToList();
                         if (linkDocs.Count == 0) throw new Exception("Cant find link file " + docTitle);
                         Document linkDoc = linkDocs.First();
@@ -682,7 +698,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write("Файл-ссылка успешно открыт");
                 }
 
-                List<MySheet> mSheets = allSheets[docTitle];
+                List<MainEntity> mSheets = allSheets[docTitle];
 
                 if (docTitle != mainDocTitle)
                 {
@@ -690,14 +706,14 @@ namespace KPLN_Publication.ExternalCommands.Print
                         .OfClass(typeof(ViewSheet))
                         .Cast<ViewSheet>()
                         .ToList();
-                    List<MySheet> tempSheets = new List<MySheet>();
-                    foreach (MySheet ms in mSheets)
+                    List<MainEntity> tempSheets = new List<MainEntity>();
+                    foreach (MainEntity ms in mSheets)
                     {
                         foreach (ViewSheet vs in linkSheets)
                         {
-                            if (ms.SheetId == vs.Id.IntegerValue)
+                            if (ms.ViewId == vs.Id.IntegerValue)
                             {
-                                MySheet newMs = new MySheet(vs);
+                                MainEntity newMs = new MainEntity(vs);
                                 tempSheets.Add(newMs);
                             }
                         }
@@ -707,13 +723,13 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write("Листов для экспорта найдено в данном файле: " + mSheets.Count.ToString());
 
                 // Создаем набор для экспорта
-                ICollection<ElementId> viewsToExport = new List<ElementId>(mSheets.Select(sh => sh.sheet.Id));
+                ICollection<ElementId> viewsToExport = new List<ElementId>(mSheets.Select(sh => sh.MainView.Id));
 
                 //экспортирую каждый лист
-                foreach (MySheet msheet in mSheets)
+                foreach (MainEntity msheet in mSheets)
                 {
                     logger.Write(" ");
-                    logger.Write("Экспортируется лист: " + msheet.sheet.Name);
+                    logger.Write("Экспортируется лист: " + msheet.MainView.Name);
 
                     ExportDWGSettings exportSettings = form.PrintSettings.dwgExportSettingShell.DWGExportSetting;
 
@@ -721,14 +737,13 @@ namespace KPLN_Publication.ExternalCommands.Print
                     DWGExportOptions dwgOptions = exportSettings.GetDWGExportOptions() ?? new DWGExportOptions();
                     dwgOptions.MergedViews = true;
                     dwgOptions.FileVersion = ACADVersion.R2013;
-                    dwgOptions.SharedCoords = true;
 
                     // Экспортируем лист в DWG
                     bool exportSuccess = openedDoc.Export(
                         // Чтобы избежать формирования пути в формате "C:\\DWG_Print\\Test\\Проект1_20.02.2025 11 17 46\-КП_новая-3213719.jpg", нужно текстовый формат пропустить через Path
                         Path.GetFullPath(outputFolder),
                         msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor),
-                        new List<ElementId> { msheet.sheet.Id },
+                        new List<ElementId> { msheet.MainView.Id },
                         dwgOptions);
                     if (exportSuccess)
                         exportedSheetCount++;

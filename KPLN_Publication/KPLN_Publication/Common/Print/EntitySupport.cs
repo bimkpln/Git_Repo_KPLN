@@ -11,38 +11,34 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.ApplicationServices;
 
 namespace KPLN_Publication
 {
-    public static class SheetSupport
+    public static class EntitySupport
     {
         /// <summary>
         /// Получает листы из всех открытых документов
         /// </summary>
         /// <param name="commandData"></param>
         /// <returns></returns>
-        public static Dictionary<string, List<MySheet>> GetAllSheets(ExternalCommandData commandData)
+        public static Dictionary<string, List<MainEntity>> GetAllEntities(ExternalCommandData commandData, View[] selViews)
         {
-            Dictionary<string, List<MySheet>> data = new Dictionary<string, List<MySheet>>();
+            Dictionary<string, List<MainEntity>> data = new Dictionary<string, List<MainEntity>>();
             Document mainDoc = commandData.Application.ActiveUIDocument.Document;
             string mainDocTitle = GetDocTitleWithoutRvt(mainDoc.Title);
+
+            List<MainEntity> mainSheets = GetEntitiesFromDocument(mainDoc, selViews);
+            data.Add(mainDocTitle, mainSheets);
 
             List<RevitLinkInstance> links = new FilteredElementCollector(mainDoc)
                 .OfClass(typeof(RevitLinkInstance))
                 .Cast<RevitLinkInstance>()
                 .ToList();
-
-            List<MySheet> mainSheets = GetSheetsFromDocument(mainDoc);
-            data.Add(mainDocTitle, mainSheets);
-
             foreach (RevitLinkInstance rli in links)
             {
                 Document linkDoc = rli.GetLinkDocument();
@@ -51,8 +47,8 @@ namespace KPLN_Publication
                 if (data.ContainsKey(linkDocTitle)) continue;
 
                 RevitLinkType rlt = mainDoc.GetElement(rli.GetTypeId()) as RevitLinkType;
-                List<MySheet> curSheets = GetSheetsFromDocument(linkDoc);
-                
+                List<MainEntity> curSheets = GetEntitiesFromDocument(linkDoc, selViews);
+
                 data.Add(linkDocTitle, curSheets);
             }
 
@@ -68,17 +64,30 @@ namespace KPLN_Publication
         }
 
 
-        private static List<MySheet> GetSheetsFromDocument(Document doc)
+        private static List<MainEntity> GetEntitiesFromDocument(Document doc, View[] selViews)
         {
-            List<MySheet> sheets = new FilteredElementCollector(doc)
+            List <MainEntity> result = new List <MainEntity>();
+            if (selViews.All(sv => sv is ViewSheet))
+            {
+                result = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
                     .OfClass(typeof(ViewSheet))
                     .Cast<ViewSheet>()
-                    .Select(i => new MySheet(i))
+                    .Select(i => new MainEntity(i))
                     .ToList();
+            }
+            else
+            {
+                result = new FilteredElementCollector(doc)
+                    .WhereElementIsNotElementType()
+                    .OfClass(typeof(View))
+                    .Cast<View>()
+                    .Select(i => new MainEntity(i))
+                    .ToList();
+            }
 
-            sheets.Sort();
-            return sheets;
+            result.Sort();
+            return result;
         }
 
         public static string CheckTitleblocSizeCorrects(ViewSheet sheet, FamilyInstance titleBlock, Logger logger)
@@ -98,7 +107,7 @@ namespace KPLN_Publication
             Parameter checkWidthParam = titleBlock.LookupParameter("Ширина");
             if (checkWidthParam != null)
             {
-                
+
                 widthMmCheck = checkWidthParam.AsDouble() * 304.8;
                 widthMmCheck = Math.Round(widthMmCheck);
                 logger.Write("    Есть параметр экземпляра Ширина = " + widthMmCheck.ToString("F3"));
