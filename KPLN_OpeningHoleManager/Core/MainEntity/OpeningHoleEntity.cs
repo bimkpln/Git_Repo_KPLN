@@ -3,6 +3,7 @@ using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace KPLN_OpeningHoleManager.Core.MainEntity
 {
@@ -130,10 +131,12 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// </summary>
         public OpeningHoleEntity SetShapeByFamilyName(FamilyInstance fi)
         {
-            string fiName = fi.Symbol.FamilyName;
-            if (fiName.Equals(OHE_FamilyName_Rectangle))
+            string fiName = fi.Symbol.FamilyName.ToLower();
+            // Обрезаю из имени резеврные копии и копии семейств
+            string clearedFiName = Regex.Replace(fiName, @"(\.\d+|\d+)$", "");
+            if (clearedFiName.StartsWith(OHE_FamilyName_Rectangle.ToLower()))
                 OHE_Shape = OpenigHoleShape.Rectangular;
-            else if (fiName.Equals(OHE_FamilyName_Circle))
+            else if (clearedFiName.StartsWith(OHE_FamilyName_Circle.ToLower()))
                 OHE_Shape = OpenigHoleShape.Round;
             else
                 throw new Exception("Вы выбрали экзмеляр, который НЕ является заданием на отверстие");

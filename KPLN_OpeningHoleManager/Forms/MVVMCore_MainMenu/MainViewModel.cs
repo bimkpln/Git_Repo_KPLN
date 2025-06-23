@@ -346,7 +346,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 pickedRefs = uidoc.Selection.PickObject(
                     ObjectType.Element,
                     selectionFilter,
-                    "Выберите основание, в котором нужно добавить отверстия АР");
+                    "Выберите основание АР/КЖ, в котором нужно добавить отверстия");
             }
             // Отмена пользователем
             catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
@@ -634,7 +634,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 pickedRefs = uidoc.Selection.PickObjects(
                     ObjectType.Element,
                     selectionFilter,
-                    "Выберите отверстия АР, которые нужно объеденить в одно");
+                    "Выберите отверстия АР/КЖ, которые нужно объеденить в одно");
             }
             // Отмена пользователем
             catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
