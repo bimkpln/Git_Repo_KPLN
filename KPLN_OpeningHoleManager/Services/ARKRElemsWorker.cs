@@ -90,7 +90,8 @@ namespace KPLN_OpeningHoleManager.Services
                 if (_arkrElemFilterFunc == null)
                 {
                     _arkrElemFilterFunc = (el) =>
-                        el.Category != null
+                        el.IsValidObject
+                        && el.Category != null
                         && !(el is ElementType)
                         // Анализируем стены АР и КР
                         && ARKRNames_StartWith.Any(prefix => el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix) == true);
@@ -110,7 +111,8 @@ namespace KPLN_OpeningHoleManager.Services
                 if (_arElemFilterFunc == null)
                 {
                     _arElemFilterFunc = (el) =>
-                        el.Category != null
+                        el.IsValidObject
+                        && el.Category != null
                         && !(el is ElementType)
                         // Анализируем стены АР
                         && ARNames_StartWith.Any(prefix => el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix) == true);
