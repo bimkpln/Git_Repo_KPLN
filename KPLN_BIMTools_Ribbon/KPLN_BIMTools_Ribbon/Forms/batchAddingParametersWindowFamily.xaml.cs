@@ -432,6 +432,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void CB_dataType_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CB_dataType.SelectedItem != null) 
+            if (CB_dataType.SelectedItem != null) 
             {
                 CB_dataType.ToolTip = CB_dataType.SelectedItem.ToString();
 

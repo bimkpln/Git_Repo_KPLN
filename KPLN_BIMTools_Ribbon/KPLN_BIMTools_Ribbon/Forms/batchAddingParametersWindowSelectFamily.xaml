@@ -1,0 +1,55 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.batchAddingParametersWindowSelectFamily"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontSize="14"
+        Title="KPLN. Выбор семейств и копирование параметров" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
+        Width="1270" 
+        Height="400" 
+        ResizeMode="NoResize"
+        Background="#FF292D36">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="320px"/>
+            <RowDefinition Height="50px"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="600px"/>
+            <ColumnDefinition Width="650px"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Button x:Name="btnAddFamilies" Content="Добавить семейства" Width="150" Height="25" Margin="0,0,10,0" Click="BtnAddFamilies_Click" FontSize="12"/>
+                <Button x:Name="btnRemoveSelected" Content="Удалить из списка" Width="150" Height="25" Margin="0,0,0,0" Click="BtnRemoveSelected_Click" FontSize="12" Background="#FFDE5555"/>
+            </StackPanel>
+            <ListBox x:Name="lstFamilyFiles" Height="260" Background="#FFC7C7C7" Foreground="Black" FontSize="11"/>
+        </StackPanel>
+
+        <Grid Grid.Row="0" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock Text="Отчёт о выполнении:" Margin="10 10 10 0" Foreground="White" FontSize="12" Grid.Row="0"/>
+            <RichTextBox x:Name="debugField" Background="#FF131313" Foreground="White" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" AcceptsReturn="True"
+                IsReadOnly="True" IsTabStop="False" BorderThickness="0" FontSize="12" Height="270" Grid.Row="1" Margin="10" Padding="5" HorizontalAlignment="Stretch" VerticalAlignment="Top" FontFamily="Consolas"/>
+        </Grid>
+        
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#FF292D36" Padding="0 0 10 0" VerticalAlignment="Top">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" >
+                <CheckBox x:Name="chkOpenAfter" Content="Открыть семейства после выполнения"
+                  Foreground="White" FontSize="10" Padding="5 2 0 0" Margin="0,0,30,0" VerticalAlignment="Center"/>
+                <Button x:Name="btnStart" Content="Запуск" Width="120" Height="25" 
+                FontSize="12" Click="btnStart_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
