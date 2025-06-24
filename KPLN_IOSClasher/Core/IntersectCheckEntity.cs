@@ -59,7 +59,8 @@ namespace KPLN_IOSClasher.Core
                 if (_elemFilterFunc == null) 
                 {
                     _elemFilterFunc = (el) =>
-                        el.Category != null
+                        el.IsValidObject
+                        && el.Category != null
                         && !(el is ElementType)
                         && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
                             || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб"));
