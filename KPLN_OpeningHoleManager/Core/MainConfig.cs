@@ -12,7 +12,7 @@ namespace KPLN_OpeningHoleManager.Core
     public sealed class MainConfig : IJsonSerializable
     {
         private static readonly string _cofigName = "AR_OHEManagerConfig";
-        private static bool _isLocalConfig = true;
+        private static ConfigType _configType = ConfigType.Local;
 
         public MainConfig()
         {
@@ -62,9 +62,9 @@ namespace KPLN_OpeningHoleManager.Core
             Document doc = uidoc.Document;
 
             if (dBProject != null)
-                _isLocalConfig = false;
+                _configType = ConfigType.Shared;
 
-            object obj = ConfigService.ReadConfigFile<MainConfig>(doc, _cofigName, _isLocalConfig);
+            object obj = ConfigService.ReadConfigFile<MainConfig>(doc, _configType, _cofigName);
             if (obj is MainConfig configItem)
             {
                 return new MainConfig()
@@ -95,7 +95,7 @@ namespace KPLN_OpeningHoleManager.Core
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
             DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
             if (dBProject != null)
-                _isLocalConfig = false;
+                _configType = ConfigType.Shared;
 
             MainConfig mainConfig = new MainConfig()
             {
@@ -110,7 +110,7 @@ namespace KPLN_OpeningHoleManager.Core
                 KR_OpenHoleMinWidthValue = vm.KR_OpenHoleMinWidthValue,
             };
 
-            ConfigService.SaveConfig<MainConfig>(doc, _cofigName, mainConfig, _isLocalConfig);
+            ConfigService.SaveConfig<MainConfig>(doc, _configType, mainConfig, _cofigName);
         }
 
         public object ToJson()
