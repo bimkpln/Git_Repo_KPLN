@@ -5,6 +5,8 @@ VisualStudioVersion = 17.9.34701.34
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ExtraFilter", "KPLN_ExtraFilter.csproj", "{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_ConfigWorker", "..\01_KPLN_Library\KPLN_Library_ConfigWorker\KPLN_Library_ConfigWorker.csproj", "{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug2020|x64 = Debug2020|x64
@@ -21,6 +23,14 @@ Global
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2020|x64.Build.0 = Revit2020|x64
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{B32BFA37-CC96-4B18-8F27-DEA3D652E93E}.Revit2023|x64.Build.0 = Revit2023|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Debug2020|x64.Build.0 = Debug2020|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Debug2023|x64.Build.0 = Debug2023|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Revit2020|x64.Build.0 = Revit2020|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{BA1F5CDE-F161-4C5A-A5A4-EEF15DFF8777}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

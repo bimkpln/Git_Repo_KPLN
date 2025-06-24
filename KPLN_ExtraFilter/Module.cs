@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.IO;
@@ -24,10 +25,10 @@ namespace KPLN_ExtraFilter
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Выбор элементов");
 
             PushButtonData btnSelectByClick = new PushButtonData(
-                "По элементу",
-                "По элементу",
+                SelectionByClickExtCommand.PluginName,
+                SelectionByClickExtCommand.PluginName,
                 _assemblyPath,
-                typeof(ExternalCommands.SelectionByClickExtCommand).FullName)
+                typeof(SelectionByClickExtCommand).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.ClickLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.ClickSmall.png"),
@@ -39,10 +40,10 @@ namespace KPLN_ExtraFilter
             btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
 
             PushButtonData btnSetPramsByFrame = new PushButtonData(
-                "Задать рамкой",
-                "Задать рамкой",
+                SetParamsByFrameExtCommand.PluginName,
+                SetParamsByFrameExtCommand.PluginName,
                 _assemblyPath,
-                typeof(ExternalCommands.SetParamsByFrameExtCommand).FullName)
+                typeof(SetParamsByFrameExtCommand).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.FrameLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.FrameSmall.png"),

@@ -10,7 +10,7 @@
         SizeToContent="WidthAndHeight" 
         Topmost="True"
         FontFamily="Monaco, Consolas, 'DejaVu Sans Mono', monospace"
-        Title="KPLN: Заполнить параметры" 
+        Title="KPLN: Выбрать/заполнить рамкой" 
         Background="#FF292D36">
     <Window.Resources>
 
@@ -78,9 +78,10 @@
                                 Text="Параметр:"/>
                             <ComboBox 
                                 Name="IcParamsCBox"
-                                ItemsSource="{Binding AllParamEntities, 
+                                ItemsSource="{Binding DataContext.AllParamEntities, 
                                     RelativeSource={RelativeSource AncestorType=Window}}"
-                                SelectedItem="{Binding UserSelectedParamEntity, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedItem="{Binding UserSelectedParamEntity, 
+                                    UpdateSourceTrigger=PropertyChanged}"
                                 HorizontalAlignment="Stretch"
                                 Margin="5,5,5,5"
                                 ToolTip="Выбери параметр для заполнения">
@@ -88,7 +89,8 @@
                                     <DataTemplate>
                                         <TextBlock 
                                             Text="{Binding CurrentParamName}" 
-                                            ToolTip="{Binding CurrentToolTip, UpdateSourceTrigger=PropertyChanged}"/>
+                                            ToolTip="{Binding CurrentToolTip, 
+                                                UpdateSourceTrigger=PropertyChanged}"/>
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>

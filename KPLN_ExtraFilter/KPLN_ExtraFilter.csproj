@@ -62,6 +62,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -72,6 +76,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2023\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -86,6 +94,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -98,12 +110,20 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2023\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
   </Choose>
   <ItemGroup>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_PluginActivityWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
@@ -130,15 +150,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
-    <Compile Include="Common\IJsonSerializable.cs" />
     <Compile Include="Common\ParamWorker.cs" />
-    <Compile Include="Forms\Entities\SelectionByClickEntity.cs" />
+    <Compile Include="Forms\Entities\SelectionByClick\SelectionByClickEntity.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
     <Compile Include="ExecutableCommand\SetParamsByFrameExcCommandStart.cs" />
     <Compile Include="ExternalCommands\SetParamsByFrameExtCommand.cs" />
     <Compile Include="ExternalCommands\SelectionByClickExtCommand.cs" />
     <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
-    <Compile Include="Forms\Entities\SetParamsByFrame\ParamEntity.cs" />
+    <Compile Include="Forms\Entities\ParamEntity.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\SetParamsByFrameEntity.cs" />
     <Compile Include="Forms\SetParamsByFrameForm.xaml.cs">
       <DependentUpon>SetParamsByFrameForm.xaml</DependentUpon>
     </Compile>

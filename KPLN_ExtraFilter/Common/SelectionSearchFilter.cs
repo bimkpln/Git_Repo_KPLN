@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System;
 using System.Linq;
+using System.Windows.Controls;
 
 namespace KPLN_ExtraFilter.Common
 {
@@ -46,11 +47,14 @@ namespace KPLN_ExtraFilter.Common
             return resultFilter;
         }
 
-        internal static ElementParameterFilter SearchByParamName(Element userSelElem, string paramName)
+        internal static ElementParameterFilter SearchByParamName(Document doc, Element userSelElem, string paramName)
         {
             ElementParameterFilter resultFilter;
 
             Parameter userSelParam = userSelElem.LookupParameter(paramName);
+            if (userSelParam == null && doc.GetElement(userSelElem.GetTypeId()) is Element typeElem)
+                userSelParam = typeElem.LookupParameter(paramName);
+
             if (userSelParam != null)
             {
                 FilterRule rule = null;
@@ -78,7 +82,7 @@ namespace KPLN_ExtraFilter.Common
                 resultFilter = new ElementParameterFilter(rule);
             }
             else
-                throw new Exception($"Отправь разработчику: Не реализован поиск по параметру {paramName} для эл-та: {userSelElem.Id}");
+                throw new Exception($"Поиск по параметру {paramName} для эл-та: {userSelElem.Id} - НЕВОЗМОЖЕН. Скорее всего параметр отсутсвует у выбранного элемента");
 
             return resultFilter;
         }

@@ -1,8 +1,12 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ExtraFilter.Entities.SelectionByClick;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
+using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
+using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using Newtonsoft.Json;
 using System.Collections.Generic;
@@ -20,23 +24,22 @@ namespace KPLN_ExtraFilter.ExecutableCommand
         /// </summary>
         private Dictionary<string, List<Element>> _warningsElementColl = new Dictionary<string, List<Element>>();
 
-        public SetParamsByFrameExcCommandStart(Element[] elemsToSet, IEnumerable<MainItem> currentEntities)
+        public SetParamsByFrameExcCommandStart(SetParamsByFrameEntity formEntity)
         {
-            _elemsToSet = elemsToSet;
-            _currentParamEntities = currentEntities.ToArray();
+            _elemsToSet = formEntity.SelectedElems;
+            _currentParamEntities = formEntity.MainItems.ToArray();
         }
-
 
         public Result Execute(UIApplication app)
         {
             UIDocument uidoc = app.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Кэширую запуск
-            SetParamsByFrameExtCommand.MemoryConfigData = JsonConvert
-                .SerializeObject(
-                    _currentParamEntities.Select(ent => ent.ToJson()),
-                    Formatting.Indented);
+            // Запись конфигурации последнего запуска
+            ConfigService.SaveConfig<MainItem>(doc, ConfigType.Memory, _currentParamEntities);
+
+            // Счетчик факта запуска
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCommand.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction trans = new Transaction(doc, "KPLN: Параметризация"))
             {
@@ -57,16 +60,19 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                             continue;
                         }
 
-                        // Игнорирую параметры для чтения
-                        if (currentParam.IsReadOnly)
-                            continue;
-
                         switch (currentParam.StorageType)
                         {
                             case StorageType.Double:
                                 if (double.TryParse(newValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dValue))
                                 {
-                                    currentParam.Set(dValue);
+#if Debug2020 || Revit2020
+                                    DisplayUnitType unitType = currentParam.DisplayUnitType;
+                                    double prjData = UnitUtils.ConvertToInternalUnits(dValue, unitType);
+#else
+                                    ForgeTypeId forgeTypeId = currentParam.GetUnitTypeId();
+                                    double prjData = UnitUtils.ConvertToInternalUnits(dValue, forgeTypeId);
+#endif
+                                    currentParam.Set(prjData);
                                     break;
                                 }
                                 goto case StorageType.Integer;

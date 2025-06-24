@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_ExtraFilter.Common
 {
@@ -41,7 +39,7 @@ namespace KPLN_ExtraFilter.Common
             foreach (Element currentElement in elemsToFind)
             {
                 // Игнорирую уже добавленный эл-т
-                if (countElemsToFind > 1 
+                if (countElemsToFind > 1
                     && firstElement.Id == currentElement.Id)
                     continue;
 
@@ -78,8 +76,9 @@ namespace KPLN_ExtraFilter.Common
                 string paramNameLC = param.Definition.Name.ToLower();
 
                 // Отбрасываю лишние пара-ры
-                if (paramST == StorageType.ElementId 
+                if (paramST == StorageType.ElementId
                     || paramST == StorageType.None
+                    || param.IsReadOnly
                     || paramNameLC.Contains("ifc")
                     || paramNameLC.Contains("url"))
                     continue;
