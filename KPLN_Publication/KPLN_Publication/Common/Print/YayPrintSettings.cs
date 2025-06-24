@@ -74,15 +74,37 @@ namespace KPLN_Publication
             {
                 using (StreamReader reader = new StreamReader(xmlpath))
                 {
-                    ps = (YayPrintSettings)serializer.Deserialize(reader);
-                    if (ps == null)
+                    // try/catch - затычка от 24.06.25, которую можно удалить. Её причина - ошибка в коде, которая приводила к ошибке в файле конфига.
+                    // Часть catch - можно удалить
+                    try
                     {
-                        TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
-                        ps = new YayPrintSettings();
+                        ps = (YayPrintSettings)serializer.Deserialize(reader);
+                        if (ps == null)
+                        {
+                            TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
+                            ps = new YayPrintSettings();
+                        }
+                        // Корректировка для экспорта видов
+                        else if (ps.dwgNameConstructor.ToLower().Contains("лист") && !onlySheets)
+                            ps.dwgNameConstructor = "<Имя вида>.dwg";
+                        // Корректировка для экспорта листов
+                        else if (ps.dwgNameConstructor.ToLower().Contains("вид") && onlySheets)
+                            ps.dwgNameConstructor = "<Имя листа>.dwg";
                     }
-                    // Корректировка для экспорта видов
-                    else if (ps.dwgNameConstructor.ToLower().Contains("лист") && !onlySheets)
-                        ps.dwgNameConstructor = "<Имя вида>.dwg";
+                    catch
+                    {
+                        ps = new YayPrintSettings
+                        {
+                            // Корректировка для экспорта видов или листов
+                            dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
+                            excludeColors = new List<PdfColor>
+                            {
+                                new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
+                                new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
+                                new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
+                            }
+                        };
+                    }
                 }
             }
             else
