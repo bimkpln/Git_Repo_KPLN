@@ -2,8 +2,11 @@
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Tools.Common;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExecutableCommand;
+using System;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -15,15 +18,23 @@ namespace KPLN_Tools.Forms
         private readonly Document _doc;
         private readonly Element[] _elementsToSet;
         private readonly string _cofigName = "OV_DuctThickness";
+        private readonly ConfigType _configType = ConfigType.Local;
 
         public OV_DuctThicknessForm(Document doc, Element[] elementsToSet)
         {
             _doc = doc;
             _elementsToSet = elementsToSet;
 
+            ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
+            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+            DBProject dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+
+            if (dBProject != null)
+                _configType = ConfigType.Shared;
+
             #region Заполняю поля окна в зависимости от наличия файла конфига
             // Файл конфига присутсвует
-            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(doc, _cofigName, false) is DuctThicknessEntity ductThicknessEntity)
+            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(doc, _configType, _cofigName) is DuctThicknessEntity ductThicknessEntity)
                 CurrentDuctThicknessEntity = ductThicknessEntity;
             else
             {
@@ -73,6 +84,6 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Сериализация и сохранение файла-конфигурации
         /// </summary>
-        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(_doc, _cofigName, CurrentDuctThicknessEntity, false);
+        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(_doc, _configType, CurrentDuctThicknessEntity, _cofigName);
     }
 }

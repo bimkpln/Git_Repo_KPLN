@@ -2,14 +2,10 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Windows.Controls;
-using System.Windows.Forms;
 using View = Autodesk.Revit.DB.View;
 
 
@@ -116,14 +112,14 @@ namespace KPLN_Tools.ExternalCommands
         }
 
 
-/// <summary>
+        /// <summary>
         /// Категория. Обработка категорий
         /// </summary>
         public void HandlingCategory(Document doc, ViewSheet viewSheet, BuiltInCategory bic)
         {
             FilteredElementCollector collector = new FilteredElementCollector(doc);
             List<ElementId> allElementIds = null;
-         
+
             // Помещения
             if (bic == BuiltInCategory.OST_Rooms)
             {
@@ -407,7 +403,7 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> sortedSchedules = SortSchedules(createdSchedules, selectedTableSortType);
                         addScheduleSheetInSheet(doc, viewSheet, bic, sortedSchedules, selectedParamName, selectedRowCount, selectedEmptyLocation, selectedCellHeight, selectedColorDummyСell, SelectedELPriority, selectColorBindingType, selectedLightenFactorRow);
-                        
+
                         if (errorStatus == 1)
                         {
                             txAS.RollBack();
@@ -437,7 +433,7 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// "Помещения". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorRoom(Document doc, BuiltInCategory bic, 
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorRoom(Document doc, BuiltInCategory bic,
             Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict, string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
             Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
@@ -614,8 +610,8 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// "Цветовые области". Составление словаря с параметром и сопутствующим ему цветом
         /// </summary>
-        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorDetailComponent(Document doc, 
-            Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict, 
+        public Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> GetParametersColorDetailComponent(Document doc,
+            Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict,
             string selectedParamName, System.Windows.Media.Color selectedColorEmptyColorScheme, double selectedLightenFactor)
         {
             Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>> result = new Dictionary<ElementId, Dictionary<string, (Color, ElementId, ElementId)>>();
@@ -690,7 +686,7 @@ namespace KPLN_Tools.ExternalCommands
                .OfClass(typeof(FillPatternElement))
                .Cast<FillPatternElement>()
                .FirstOrDefault(x => x.GetFillPattern().IsSolidFill)?.Id ?? ElementId.InvalidElementId;
-            
+
             foreach (var kvp in viewportsMassFloorsDict)
             {
                 ElementId viewportId = kvp.Key;
@@ -708,7 +704,7 @@ namespace KPLN_Tools.ExternalCommands
                     if (!string.IsNullOrEmpty(paramValue) && !valueColorMap.ContainsKey(paramValue))
                     {
                         Color color = GetFillColorFromFilter(doc, viewportId, paramValue);
-                        ElementId fillPatternFId = null; 
+                        ElementId fillPatternFId = null;
                         ElementId fillPatternBId = null;
 
                         if (color == null)
@@ -809,7 +805,7 @@ namespace KPLN_Tools.ExternalCommands
             else
             {
                 sourceScheduleName = null;
-            }           
+            }
             try
             {
                 var sourceSched = new FilteredElementCollector(doc).OfClass(typeof(ViewSchedule))
@@ -821,7 +817,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 string prefix = $"ТЭП_{sheet.SheetNumber} - {selectedParamName}";
-                string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";         
+                string invalidChars = new string(Path.GetInvalidFileNameChars()) + @"/:*?""<>|;";
                 string safePrefix = new string(prefix.Where(c => !invalidChars.Contains(c)).ToArray());
 
                 var oldIds = new FilteredElementCollector(doc)
@@ -837,7 +833,7 @@ namespace KPLN_Tools.ExternalCommands
                     .Values
                     .SelectMany(inner => inner.Keys)
                     .Distinct()
-                    .ToList();              
+                    .ToList();
 
                 foreach (var value in uniqueValues)
                 {
@@ -952,7 +948,7 @@ namespace KPLN_Tools.ExternalCommands
         /// Лист. Добавление спецификаций на лист
         /// </summary>
         public void addScheduleSheetInSheet(Document doc, ViewSheet viewSheet, BuiltInCategory bic, List<(ViewSchedule schedule, (Color color, ElementId fillPatternFId, ElementId fillPatternBId))> createdSchedules,
-            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, double selectedCellHeight, 
+            string selectedParamName, int selectedRowCount, string selectedEmptyLocation, double selectedCellHeight,
             System.Windows.Media.Color selectedColorDummyСell, bool SelectedELPriority, string selectColorBindingType, double selectedLightenFactorRow)
         {
             // Размеры ячеек
@@ -1082,7 +1078,7 @@ namespace KPLN_Tools.ExternalCommands
                             var color = topCell.data.Value.Item2.color;
                             baseColor = System.Windows.Media.Color.FromRgb(color.Red, color.Green, color.Blue);
 
-                            if (topCell.data.Value.Item2.fillPatternFId != null || topCell.data.Value.Item2.fillPatternBId != null) 
+                            if (topCell.data.Value.Item2.fillPatternFId != null || topCell.data.Value.Item2.fillPatternBId != null)
                             {
                                 copiedFillPatternFId = topCell.data.Value.Item2.fillPatternFId;
                                 copiedFillPatternBId = topCell.data.Value.Item2.fillPatternBId;
@@ -1109,7 +1105,7 @@ namespace KPLN_Tools.ExternalCommands
 
             draftingView.Name = viewName;
             draftingView.Scale = 1;
-           
+
             FilledRegionType baseRegionType = new FilteredElementCollector(doc)
                 .OfClass(typeof(FilledRegionType))
                 .Cast<FilledRegionType>()
@@ -1154,7 +1150,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
 
                     FilledRegionType newType = baseRegionType.Duplicate(typeName) as FilledRegionType;
-                                        
+
                     if (SelectedELPriority)
                     {
                         newType.ForegroundPatternColor = new Autodesk.Revit.DB.Color(selectedColorDummyСell.R, selectedColorDummyСell.G, selectedColorDummyСell.B);
@@ -1329,7 +1325,7 @@ namespace KPLN_Tools.ExternalCommands
 
                     ElementId typeId = newType.Id;
                     FilledRegion region = FilledRegion.Create(doc, typeId, draftingView.Id, new List<CurveLoop> { loop });
-    
+
                     var curveIds = region.GetDependentElements(new ElementClassFilter(typeof(CurveElement)));
 
                     foreach (ElementId curveId in curveIds)
@@ -1338,7 +1334,7 @@ namespace KPLN_Tools.ExternalCommands
 
                         if (curveElement is DetailCurve detailCurve)
                         {
-                            detailCurve.LineStyle = invisibleLineStyle;                    
+                            detailCurve.LineStyle = invisibleLineStyle;
                         }
                     }
                 }
@@ -1384,7 +1380,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 double offsetX = col * widthPerSchedule;
-                double offsetY = (-row * rowStep) - (9 - selectedCellHeight) * 2* mmToFeet;
+                double offsetY = (-row * rowStep) - (9 - selectedCellHeight) * 2 * mmToFeet;
 
                 XYZ point = new XYZ(startX + offsetX, startY + offsetY, 0);
                 ScheduleSheetInstance.Create(doc, viewSheet.Id, schedule.Id, point);
