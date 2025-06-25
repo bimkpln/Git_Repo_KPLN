@@ -38,6 +38,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 btnAddParamsFromSPF.IsEnabled = false;
                 btnAddCustomParams.IsEnabled = false;
                 btnJSONForOneParameter.IsEnabled = false;
+                btnCopyFromFamily.IsEnabled = false;
             }
 
             familyName.Text = activeFamilyName;
@@ -373,6 +374,223 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 default: return SpecTypeId.String.Text;
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        static public ForgeTypeId GetParameterTypeFromStringParamType(string dataType)
+        {
+            switch (dataType)
+            {
+                // Общие
+                case "Текст": return SpecTypeId.String.Text;
+                case "Целое": return SpecTypeId.Int.Integer;
+                case "Угол": return SpecTypeId.Angle;
+                case "Площадь": return SpecTypeId.Area;
+                case "Стоимость на единицу площади": return SpecTypeId.CostPerArea;
+                case "Расстояние": return SpecTypeId.Distance;
+                case "Длина": return SpecTypeId.Length;
+                case "Массовая плотность": return SpecTypeId.MassDensity;
+                case "Число": return SpecTypeId.Number;
+                case "Угол поворота": return SpecTypeId.Angle;
+                case "Уклон (Общие)": return SpecTypeId.Slope;
+                case "Скорость (Общие)": return SpecTypeId.Speed;
+                case "Время": return SpecTypeId.Time;
+                case "Объем (Общие)": return SpecTypeId.Volume;
+                case "Денежная единица": return SpecTypeId.Currency;
+                case "URL": return SpecTypeId.String.Url;
+                case "Материал": return SpecTypeId.Reference.Material;
+                case "Образец заливки": return SpecTypeId.String.Text;
+                case "Изображение": return SpecTypeId.Reference.Image;
+                case "Да/Нет": return SpecTypeId.Boolean.YesNo;
+                case "Многострочный текст": return SpecTypeId.String.MultilineText;
+                // Электрооборудование (Электросети)
+                case "Полная установленная мощность": return SpecTypeId.ApparentPower;
+                case "Полная удельная мощность": return SpecTypeId.ApparentPowerDensity;
+                case "Размер кабельного лотка": return SpecTypeId.CableTraySize;
+                case "Цветовая температура": return SpecTypeId.ColorTemperature;
+                case "Размер короба": return SpecTypeId.ConduitSize;
+                case "Норма затрат на электроэнергию": return SpecTypeId.CostRateEnergy;
+                case "Норма затрат на энергопотребление": return SpecTypeId.CostRatePower;
+                case "Ток": return SpecTypeId.Current;
+                case "Коэффициент спроса нагрузки": return SpecTypeId.DemandFactor;
+                case "Эффективность": return SpecTypeId.Efficacy;
+                case "Частота (Электросети)": return SpecTypeId.ElectricalFrequency;
+                case "Освещенность": return SpecTypeId.Illuminance;
+                case "Яркость": return SpecTypeId.Luminance;
+                case "Световой поток": return SpecTypeId.LuminousFlux;
+                case "Сила света": return SpecTypeId.LuminousIntensity;
+                case "Электрический потенциал": return SpecTypeId.ElectricalPotential;
+                case "Мощность (Электросети)": return SpecTypeId.ElectricalPower;
+                case "Удельная мощность (Электросети)": return SpecTypeId.ElectricalPowerDensity;
+                case "Мощность на единицу длины": return SpecTypeId.PowerPerLength;
+                case "Электрическое удельное сопротивление": return SpecTypeId.ElectricalResistivity;
+                case "Температура (Электросети)": return SpecTypeId.ElectricalTemperature;
+                case "Перепад температур (Электросети)": return SpecTypeId.ElectricalTemperatureDifference;
+                case "Активная мощность": return SpecTypeId.Wattage;
+                case "Диаметр провода": return SpecTypeId.WireDiameter;
+                case "Количество полюсов": return SpecTypeId.Int.NumberOfPoles;
+                case "Классификация нагрузок": return SpecTypeId.Reference.LoadClassification;
+                // Энергия
+                case "Энергия (Энергия)": return SpecTypeId.HvacEnergy;
+                case "Нагревающая способность на единицу площади": return SpecTypeId.HeatCapacityPerArea;
+                case "Коэффициент теплопередачи": return SpecTypeId.HeatTransferCoefficient;
+                case "Изотермическая влагоемкость": return SpecTypeId.IsothermalMoistureCapacity;
+                case "Проницаемость": return SpecTypeId.Permeability;
+                case "Удельная теплоемкость": return SpecTypeId.SpecificHeat;
+                case "Удельная теплоемкость парообразования": return SpecTypeId.SpecificHeatOfVaporization;
+                case "Теплопроводность": return SpecTypeId.ThermalConductivity;
+                case "Коэффициент температурного градиента для влагоемкости": return SpecTypeId.ThermalGradientCoefficientForMoistureCapacity;
+                case "Тепловая нагрузка": return SpecTypeId.ThermalMass;
+                case "Термостойкость": return SpecTypeId.ThermalResistance;
+                // ОВК
+                case "Воздушный поток": return SpecTypeId.AirFlow;
+                case "Плотность воздушного потока": return SpecTypeId.AirFlowDensity;
+                case "Воздушный поток, разделенный на холодильную нагрузку": return SpecTypeId.AirFlowDividedByCoolingLoad;
+                case "Воздушный поток, разделенный на объем": return SpecTypeId.AirFlowDividedByVolume;
+                case "Угловая скорость": return SpecTypeId.AngularSpeed;
+                case "Площадь, отнесенная к холодильной нагрузке": return SpecTypeId.AreaDividedByCoolingLoad;
+                case "Площадь на единицу отопительной нагрузки": return SpecTypeId.AreaDividedByHeatingLoad;
+                case "Холодильная нагрузка": return SpecTypeId.CoolingLoad;
+                case "Холодильная нагрузка на единицу площади": return SpecTypeId.CoolingLoadDividedByArea;
+                case "Холодильная нагрузка, разделенная на объем": return SpecTypeId.CoolingLoadDividedByArea;
+                case "Поперечное сечение": return SpecTypeId.CrossSection;
+                case "Плотность (ОВК)": return SpecTypeId.HvacDensity;
+                case "Коэффициент температуропроводимости": return SpecTypeId.Diffusivity;
+                case "Толщина изоляции воздуховода": return SpecTypeId.DuctInsulationThickness;
+                case "Толщина внутренней изоляции воздуховода": return SpecTypeId.DuctLiningThickness;
+                case "Размер воздуховода": return SpecTypeId.DuctSize;
+                case "Коэффициент": return SpecTypeId.Factor;
+                case "Поток на единицу мощности": return SpecTypeId.FlowPerPower;
+                case "Трение (ОВК)": return SpecTypeId.HvacFriction;
+                case "Теплоприток": return SpecTypeId.HeatGain;
+                case "Отопительная нагрузка": return SpecTypeId.HeatingLoad;
+                case "Отопительная нагрузка на единицу площади": return SpecTypeId.HeatingLoadDividedByArea;
+                case "Отопительная нагрузка, разделенная на объем": return SpecTypeId.HeatingLoadDividedByVolume;
+                case "Масса на единицу времени (ОВК)": return SpecTypeId.HvacMassPerTime;
+                case "Мощность (ОВК)": return SpecTypeId.HvacPower;
+                case "Удельная мощность (ОВК)": return SpecTypeId.HvacPowerDensity;
+                case "Мощность на единицу потока": return SpecTypeId.PowerPerFlow;
+                case "Давление (ОВК)": return SpecTypeId.HvacPressure;
+                case "Шероховатость (ОВК)": return SpecTypeId.HvacRoughness;
+                case "Уклон (ОВК)": return SpecTypeId.HvacSlope;
+                case "Температура (ОВК)": return SpecTypeId.HvacTemperature;
+                case "Перепад температур (ОВК)": return SpecTypeId.HvacTemperatureDifference;
+                case "Скорость (ОВК)": return SpecTypeId.HvacVelocity;
+                case "Динамическая вязкость (ОВК)": return SpecTypeId.HvacViscosity;
+                // Инфраструктура
+                case "Пикетаж": return SpecTypeId.Stationing;
+                case "Интенрвал пикетов": return SpecTypeId.StationingInterval;
+                // Трубопровод (Трубопроводы)
+                case "Плотность (Трубопроводы)": return SpecTypeId.PipingDensity;
+                case "Расход": return SpecTypeId.Flow;
+                case "Трение (Трубопроводы)": return SpecTypeId.PipingFriction;
+                case "Масса (Трубопроводы)": return SpecTypeId.PipingMass;
+                case "Масса на единицу времени (Трубопроводы)": return SpecTypeId.PipingMassPerTime;
+                case "Величина трубы": return SpecTypeId.PipeDimension;
+                case "Толщина изоляции трубы": return SpecTypeId.PipeInsulationThickness;
+                case "Масса на единицу длины (Трубопроводы)": return SpecTypeId.PipeMassPerUnitLength;
+                case "Размер трубы": return SpecTypeId.PipeSize;
+                case "Давление (Трубопроводы)": return SpecTypeId.PipingPressure;
+                case "Шероховатость (Трубопроводы)": return SpecTypeId.PipingRoughness;
+                case "Уклон (Трубопроводы)": return SpecTypeId.PipingSlope;
+                case "Температура (Трубопровод)": return SpecTypeId.PipingTemperature;
+                case "Перепад температур (Трубопроводы)": return SpecTypeId.PipingTemperatureDifference;
+                case "Скорость (Трубопроводы)": return SpecTypeId.PipingVelocity;
+                case "Динамическая вязкость (Трубопроводы)": return SpecTypeId.PipingViscosity;
+                case "Объем (Трубопроводы)": return SpecTypeId.PipingVolume;
+                // Конструкция (Несущие конструкции)
+                case "Ускорение": return SpecTypeId.Acceleration;
+                case "Распределенная нагрузка": return SpecTypeId.AreaForce;
+                case "Коэффициент упругости среды": return SpecTypeId.AreaSpringCoefficient;
+                case "Диаметр стержня": return SpecTypeId.BarDiameter;
+                case "Ширина трещины": return SpecTypeId.CrackWidth;
+                case "Смещение/прогиб": return SpecTypeId.Displacement;
+                case "Энергия (Несущие конструкции)": return SpecTypeId.Energy;
+                case "Усилие": return SpecTypeId.Force;
+                case "Частота (Несущие конструкции)": return SpecTypeId.StructuralFrequency;
+                case "Линейный коэффициент упругости": return SpecTypeId.LineSpringCoefficient;
+                case "Распределенная нагрузка по линии": return SpecTypeId.LinearForce;
+                case "Линейный момент": return SpecTypeId.LinearMoment;
+                case "Масса (Несущие конструкции)": return SpecTypeId.Mass;
+                case "Масса на единицу площади": return SpecTypeId.MassPerUnitArea;
+                case "Масса на единицу длины (Несущие конструкции)": return SpecTypeId.MassPerUnitLength;
+                case "Момент": return SpecTypeId.Moment;
+                case "Момент инерции": return SpecTypeId.MomentOfInertia;
+                case "Период": return SpecTypeId.Period;
+                case "Сосредоточенный коэффициент упругости": return SpecTypeId.PointSpringCoefficient;
+                case "Пульсация": return SpecTypeId.Pulsation;
+                case "Площадь армирования": return SpecTypeId.ReinforcementArea;
+                case "Армирование по площади на единицу длины": return SpecTypeId.ReinforcementAreaPerUnitLength;
+                case "Защитный слой армирования": return SpecTypeId.ReinforcementCover;
+                case "Длина армирования": return SpecTypeId.ReinforcementLength;
+                case "Интервал армирования": return SpecTypeId.ReinforcementSpacing;
+                case "Объем арматуры": return SpecTypeId.ReinforcementVolume;
+                case "Поворот": return SpecTypeId.Rotation;
+                case "Линейный угловой коэффициент упругости": return SpecTypeId.RotationalLineSpringCoefficient;
+                case "Сосредоточенный угловой коэффициент упругости": return SpecTypeId.RotationalPointSpringCoefficient;
+                case "Площадь сечения": return SpecTypeId.SectionArea;
+                case "Размеры сечения": return SpecTypeId.SectionDimension;
+                case "Момент сопротивления сечения": return SpecTypeId.SectionModulus;
+                case "Свойство сечения": return SpecTypeId.SectionProperty;
+                case "Напряжение": return SpecTypeId.Stress;
+                case "Площадь поверхности на единицу длины": return SpecTypeId.SurfaceAreaPerUnitLength;
+                case "Коэффициент теплового расширения": return SpecTypeId.ThermalExpansionCoefficient;
+                case "Удельный вес": return SpecTypeId.UnitWeight;
+                case "Скорость (Несущие конструкции)": return SpecTypeId.StructuralVelocity;
+                case "Постоянная перекоса": return SpecTypeId.WarpingConstant;
+                case "Вес": return SpecTypeId.Weight;
+                case "Вес на единицу длины": return SpecTypeId.WeightPerUnitLength;
+
+                default: return SpecTypeId.String.Text;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// Функция предопределения базовых типов для ForgeTypeId при создании параметра. 
@@ -773,6 +991,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
             new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
             window.ShowDialog();         
+        }
+
+        //// XAML. Копирование параметров из семейства-донора
+        private void Button_CopyFromFamily(object sender, RoutedEventArgs e)
+        {
+            var window = new batchAddingParametersWindowCopyFromFamily(uiapp);
+            var revitHandle = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            new System.Windows.Interop.WindowInteropHelper(window).Owner = revitHandle;
+            window.ShowDialog();
         }
     }
 }
