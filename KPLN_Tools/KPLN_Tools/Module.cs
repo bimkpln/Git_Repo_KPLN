@@ -13,6 +13,7 @@ namespace KPLN_Tools
 {
     public class Module : IExternalModule
     {
+        public static string CurrentRevitVersion;
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -22,6 +23,8 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            CurrentRevitVersion = application.ControlledApplication.VersionNumber;
+            
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);

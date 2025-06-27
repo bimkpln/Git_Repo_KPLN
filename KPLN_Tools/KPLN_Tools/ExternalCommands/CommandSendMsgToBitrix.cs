@@ -26,6 +26,7 @@ namespace KPLN_Tools.ExternalCommands
             Document selectedDoc = null;
             string selectedDocTitle = string.Empty;
             string selectedDocPath = string.Empty;
+            string selectedDocActiveViewName = string.Empty;
             List<string> selectedIds = new List<string>();
 
             #region Анализ выборки пользователем
@@ -62,6 +63,8 @@ namespace KPLN_Tools.ExternalCommands
                         checkDoubleLinkElem = true;
 
                     selectedDoc = linkedDoc;
+                    selectedDocActiveViewName = "Отправлено из связи, вид не имеет значения";
+
                     Element linkId = linkedDoc.GetElement(selRefer.LinkedElementId);
                     if (linkId != null)
                         elementId = linkedDoc.GetElement(selRefer.LinkedElementId).Id;
@@ -72,6 +75,14 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     elementId = selElem.Id;
                     selectedDoc = doc;
+
+                    Autodesk.Revit.DB.View activeView = doc.ActiveView;
+                    if (activeView == null)
+                        selectedDocActiveViewName = "Не удалось определить активный вид";
+                    else if (activeView is ViewSheet vsh)
+                        selectedDocActiveViewName = $"Лист: {vsh.SheetNumber} - {vsh.Name}";
+                    else
+                        selectedDocActiveViewName = $"Вид: {doc.ActiveView.Name}";
 
                     checkDocElem = true;
                 }
@@ -141,7 +152,6 @@ namespace KPLN_Tools.ExternalCommands
                 selectedDocPath = selectedDoc.PathName;
                 selectedDocTitle = selectedDoc.Title;
             }
-
             #endregion
 
             // Обработка данных по пользователям
@@ -161,26 +171,24 @@ namespace KPLN_Tools.ExternalCommands
             #endregion
 
             #region Обработка результата
-            if (form.Status == KPLN_Library_Forms.Common.UIStatus.RunStatus.Run)
+            if ((bool)form.DialogResult)
             {
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
-                // ИСПРАВИТЬ КОГДА БУДЕТ РЕЛИЗ ПО WebWorker
-                int currentPort = 5100;
                 string elemIds = string.Join(",", selectedIds);
 
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +
-                    $"[u]Путь к проету:[/u] {selectedDocPath}\n" +
-                    $"[u]ID элемента/-ов:[/u] [URL=http://localhost:{currentPort}/select/{elemIds}]{elemIds}[/URL]";
-
-                // ДОПИЛИТЬ ВВОД КОММЕНТАРИЯ ОТ СОТРУДНИКА
+                    $"[u]Путь к файлу:[/u] {selectedDocPath}\n" +
+                    $"[u]Вид, с которого отправлено:[/u] {selectedDocActiveViewName}\n" +
+                    $"[u]ID элемента/-ов:[/u] {elemIds}";
 
                 IEnumerable<SendMsgToBitrix_UserEntity> selectedUsers = form.CurrentViewModel.SelectedElements;
                 foreach (SendMsgToBitrix_UserEntity entity in selectedUsers)
                 {
                     string msg = $"Данные от [b]{DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name}[/b] из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n\n" +
-                        $"[b]Данные по элементу:[/b]\n{form.CurrentViewModel.MessageToSend_MainData}\n\n" +
-                        $"[b]Комментарий:[/b]\n {form.CurrentViewModel.MessageToSend_UserComment}";
+                        $"[b]Данные по элементу:[/b]\n{form.CurrentViewModel.MessageToSend_MainData}\n\n";
+                    if (!string.IsNullOrEmpty(form.CurrentViewModel.MessageToSend_UserComment))
+                        msg += $"[b]Комментарий:[/b]\n {form.CurrentViewModel.MessageToSend_UserComment}";
 
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(entity.DBUser, msg);
                 }
