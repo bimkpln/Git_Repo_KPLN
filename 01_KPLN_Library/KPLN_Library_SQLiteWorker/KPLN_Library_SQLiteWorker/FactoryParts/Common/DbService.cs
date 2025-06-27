@@ -30,7 +30,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         {
             const int maxRetries = 3;
             int attempt = 0;
-            int timeSleep = 100;
+            int timeSleep = 1000;
 
             while (attempt < maxRetries)
             {
@@ -66,7 +66,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         {
             const int maxRetries = 3;
             int attempt = 0;
-            int timeSleep = 100;
+            int timeSleep = 1000;
 
             while (attempt < maxRetries)
             {
