@@ -73,6 +73,7 @@ namespace KPLN_Publication
                     .WhereElementIsNotElementType()
                     .OfClass(typeof(ViewSheet))
                     .Cast<ViewSheet>()
+                    .OrderBy(vsh => vsh.SheetNumber)
                     .Select(i => new MainEntity(i))
                     .ToList();
             }
@@ -81,12 +82,13 @@ namespace KPLN_Publication
                 result = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
                     .OfClass(typeof(View))
+                    .Where(el => el is ViewPlan || el is ViewSection)
                     .Cast<View>()
+                    .OrderBy(v => v.Name)
                     .Select(i => new MainEntity(i))
                     .ToList();
             }
 
-            result.Sort();
             return result;
         }
 
