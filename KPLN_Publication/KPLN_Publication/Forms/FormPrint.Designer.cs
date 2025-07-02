@@ -449,7 +449,6 @@
             this.comboBoxDWGExportTypes.Name = "comboBoxDWGExportTypes";
             this.comboBoxDWGExportTypes.Size = new System.Drawing.Size(150, 21);
             this.comboBoxDWGExportTypes.TabIndex = 2;
-            this.comboBoxDWGExportTypes.SelectedIndexChanged += new System.EventHandler(this.comboBoxColors_SelectedIndexChanged);
             // 
             // label1
             // 

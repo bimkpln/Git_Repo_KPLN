@@ -59,7 +59,8 @@ namespace KPLN_IOSClasher.Core
                 if (_elemFilterFunc == null) 
                 {
                     _elemFilterFunc = (el) =>
-                        el.Category != null
+                        el.IsValidObject
+                        && el.Category != null
                         && !(el is ElementType)
                         && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
                             || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб"));
@@ -158,12 +159,8 @@ namespace KPLN_IOSClasher.Core
         public static Transform GetLinkTransform(RevitLinkInstance linkInst)
         {
             Instance inst = linkInst as Instance;
-            Transform instTrans = inst.GetTransform();
-            // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
-            if (instTrans.IsTranslation)
-                return instTrans;
-            else
-                return Transform.CreateTranslation(instTrans.Origin);
+            Transform instTrans = inst.GetTotalTransform();
+            return instTrans;
         }
 
         /// <summary>
@@ -178,8 +175,7 @@ namespace KPLN_IOSClasher.Core
             if (CheckLinkInst != null && CheckLinkInst.IsValidObject)
             {
                 Document checkDoc = CheckLinkInst.GetLinkDocument();
-                // Inverse - т.к. возвращаюсь в координаты линка
-                Outline checkOutline = new Outline(LinkTransfrom.Inverse.OfPoint(addedElemOutline.MinimumPoint), LinkTransfrom.Inverse.OfPoint(addedElemOutline.MaximumPoint));
+                Outline checkOutline = TransformFilterOutline_ToLink(addedElemOutline, LinkTransfrom);
 
                 BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
                 BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);
@@ -195,12 +191,45 @@ namespace KPLN_IOSClasher.Core
             return potentialIntersectedElems.Distinct().ToArray();
         }
 
+        /// <summary>
+        /// Трансформ для аутлайна, в координаты линка. Возможно опракидывание координат (например Y у MIN будет больше Y у MAX) - это
+        /// не допустимо для создания фильтра
+        /// </summary>
+        private static Outline TransformFilterOutline_ToLink(Outline outlineToTransform, Transform linkTRansform)
+        {
+            // Inverse - т.к. возвращаюсь в координаты линка
+            Outline transformOutline = new Outline(linkTRansform.Inverse.OfPoint(outlineToTransform.MinimumPoint), linkTRansform.Inverse.OfPoint(outlineToTransform.MaximumPoint));
+
+            XYZ transOutlineMin = transformOutline.MinimumPoint;
+            XYZ transOutlineMax = transformOutline.MaximumPoint;
+
+            double minX = transOutlineMin.X;
+            double minY = transOutlineMin.Y;
+            double minZ = transOutlineMin.Z;
+
+            double maxX = transOutlineMax.X;
+            double maxY = transOutlineMax.Y;
+            double maxZ = transOutlineMax.Z;
+
+            double sminX = Math.Min(minX, maxX);
+            double sminY = Math.Min(minY, maxY);
+            double sminZ = Math.Min(minZ, maxZ);
+
+            double smaxX = Math.Max(minX, maxX);
+            double smaxY = Math.Max(minY, maxY);
+            double smaxZ = Math.Max(minZ, maxZ);
+
+            XYZ pntMin = new XYZ(sminX, sminY, sminZ);
+            XYZ pntMax = new XYZ(smaxX, smaxY, smaxZ);
+
+            return new Outline(pntMin, pntMax);
+        }
+
         private void SetCurrentDocElemsToCheck(Document currentDoc)
         {
             Outline checkOutline = CheckLinkInst == null
                 ? CheckOutline
-                // Inverse - т.к. возвращаюсь в координаты линка
-                : new Outline(LinkTransfrom.Inverse.OfPoint(CheckOutline.MinimumPoint), LinkTransfrom.Inverse.OfPoint(CheckOutline.MaximumPoint));
+                : TransformFilterOutline_ToLink(CheckOutline, LinkTransfrom);
 
             BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(checkOutline, 0.1);
             BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(checkOutline, 0.1);

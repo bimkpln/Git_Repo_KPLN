@@ -50,7 +50,7 @@ namespace KPLN_Publication
         public bool isDWGExport = false;
         public ExportDWGSettingsShell dwgExportSettingShell;
         public string outputDWGFolder = "C:\\DWG_Print";
-        public string dwgNameConstructor = "<Номер листа>_<Имя листа>.dwg";
+        public string dwgNameConstructor;
         #endregion
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace KPLN_Publication
         /// <summary>
         /// Получение параметров печати
         /// </summary>
-        public static YayPrintSettings GetSavedPrintSettings()
+        public static YayPrintSettings GetSavedPrintSettings(bool onlySheets)
         {
             string xmlpath = ActivateFolder();
 
@@ -74,11 +74,36 @@ namespace KPLN_Publication
             {
                 using (StreamReader reader = new StreamReader(xmlpath))
                 {
-                    ps = (YayPrintSettings)serializer.Deserialize(reader);
-                    if (ps == null)
+                    // try/catch - затычка от 24.06.25, которую можно удалить. Её причина - ошибка в коде, которая приводила к ошибке в файле конфига.
+                    // Часть catch - можно удалить
+                    try
                     {
-                        TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
-                        ps = new YayPrintSettings();
+                        ps = (YayPrintSettings)serializer.Deserialize(reader);
+                        if (ps == null)
+                        {
+                            TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
+                            ps = new YayPrintSettings();
+                        }
+                        // Корректировка для экспорта видов
+                        else if (ps.dwgNameConstructor.ToLower().Contains("лист") && !onlySheets)
+                            ps.dwgNameConstructor = "<Имя вида>.dwg";
+                        // Корректировка для экспорта листов
+                        else if (ps.dwgNameConstructor.ToLower().Contains("вид") && onlySheets)
+                            ps.dwgNameConstructor = "<Имя листа>.dwg";
+                    }
+                    catch
+                    {
+                        ps = new YayPrintSettings
+                        {
+                            // Корректировка для экспорта видов или листов
+                            dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
+                            excludeColors = new List<PdfColor>
+                            {
+                                new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
+                                new PdfColor(System.Drawing.Color.FromArgb(192,192,192)),
+                                new PdfColor(System.Drawing.Color.FromArgb(242,242,242))
+                            }
+                        };
                     }
                 }
             }
@@ -86,6 +111,8 @@ namespace KPLN_Publication
             {
                 ps = new YayPrintSettings
                 {
+                    // Корректировка для экспорта видов или листов
+                    dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
                     excludeColors = new List<PdfColor>
                     {
                         new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),

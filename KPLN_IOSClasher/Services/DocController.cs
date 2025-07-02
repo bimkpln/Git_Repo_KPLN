@@ -3,8 +3,10 @@ using KPLN_IOSClasher.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_IOSClasher.Services
@@ -93,7 +95,7 @@ namespace KPLN_IOSClasher.Services
 #endif
 #if Debug2020 || Debug2023
             CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-            IsDocumentAnalyzing = false;
+            IsDocumentAnalyzing = true;
 #endif
         }
 
@@ -131,6 +133,7 @@ namespace KPLN_IOSClasher.Services
                 .ToArray();
 
             DocumentSet docSet = doc.Application.Documents;
+            IEnumerable<Document> docList = docSet.Cast<Document>();
 
             // Обнуляю статусы загрузок
             CheckIf_OVLoad = false;
@@ -138,46 +141,50 @@ namespace KPLN_IOSClasher.Services
             CheckIf_EOMLoad = false;
             CheckIf_SSLoad = false;
 
-            foreach (Document openDoc in docSet)
+            ConcurrentBag<IntersectCheckEntity> resultBag = new ConcurrentBag<IntersectCheckEntity>();
+            try
             {
-                if (!openDoc.IsLinked || openDoc.Title == doc.Title)
-                    continue;
-                try
+                Parallel.ForEach(docList, openDoc =>
                 {
-                    // Анализирую модели ИОС разделов на пересечение с создаваемыми
-                    int openDocPrjDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(openDoc);
-                    switch (openDocPrjDBSubDepartmentId)
+                    if (openDoc.IsLinked || openDoc.Title != doc.Title)
                     {
-                        case 4:
-                            CheckIf_OVLoad = true;
-                            goto case 99;
-                        case 5:
-                            CheckIf_VKLoad = true;
-                            goto case 99;
-                        case 6:
-                            CheckIf_EOMLoad = true;
-                            goto case 99;
-                        case 7:
-                            CheckIf_SSLoad = true;
-                            goto case 99;
-                        case 99:
-                            RevitLinkInstance rLink = revitLinkInsts
-                                .FirstOrDefault(rl => openDoc.Title.Contains(rl.Name.Split(new string[] { ".rvt" }, StringSplitOptions.None)
-                                .FirstOrDefault()));
+                        // Анализирую модели ИОС разделов на пересечение с создаваемыми
+                        int openDocPrjDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(openDoc);
+                        switch (openDocPrjDBSubDepartmentId)
+                        {
+                            case 4:
+                                CheckIf_OVLoad = true;
+                                goto case 99;
+                            case 5:
+                                CheckIf_VKLoad = true;
+                                goto case 99;
+                            case 6:
+                                CheckIf_EOMLoad = true;
+                                goto case 99;
+                            case 7:
+                                CheckIf_SSLoad = true;
+                                goto case 99;
+                            case 99:
+                                RevitLinkInstance rLink = revitLinkInsts
+                                    .FirstOrDefault(rl => openDoc.Title.Contains(rl.Name.Split(new string[] { ".rvt" }, StringSplitOptions.None)
+                                    .FirstOrDefault()));
 
-                            // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор
-                            if (rLink != null)
-                                IntersectCheckEntity_Link.Add(new IntersectCheckEntity(doc, filterOutline, rLink));
+                                // Если открыто сразу несколько моделей одного проекта, то линки могут прилететь с другого файла. В таком случае - игнор
+                                if (rLink != null)
+                                    resultBag.Add(new IntersectCheckEntity(doc, filterOutline, rLink));
 
-                            break;
+                                break;
 
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Print($"Ошибка: {ex.Message}", MessageType.Error);
-                }
+                });
             }
+            catch (Exception ex)
+            {
+                Print($"Ошибка: {ex.Message}", MessageType.Error);
+            }
+            
+            IntersectCheckEntity_Link.AddRange(resultBag);
         }
 
         /// <summary>
@@ -221,7 +228,8 @@ namespace KPLN_IOSClasher.Services
 
                 // Анализирую элементы в линках
                 Outline addedElemOutline = CreateFilterOutline(addedElemBB, 1);
-                foreach (IntersectCheckEntity checkEnt in IntersectCheckEntity_Link)
+                ConcurrentBag<IntersectPointEntity> resultBag = new ConcurrentBag<IntersectPointEntity>();
+                Parallel.ForEach(IntersectCheckEntity_Link, checkEnt =>
                 {
                     Element[] potentialIntersectElems = checkEnt.GetPotentioalIntersectedElems_ForLink(addedElemOutline);
 
@@ -230,8 +238,12 @@ namespace KPLN_IOSClasher.Services
                         IntersectPointEntity newEntity = GetPntEntityFromElems(addedElem, addedElemSolid, elemToCheck, checkEnt);
                         if (newEntity == null) continue;
 
-                        intersectedPoints.Add(newEntity);
+                        resultBag.Add(newEntity);
                     }
+                });
+                foreach (IntersectPointEntity ent in resultBag)
+                {
+                    intersectedPoints.Add(ent);
                 }
             }
 
@@ -352,7 +364,8 @@ namespace KPLN_IOSClasher.Services
                         addedElem.Id.IntegerValue,
                         elemToCheck.Id.IntegerValue,
                         linkInstanceId,
-                        Module.ModuleDBWorkerService.CurrentDBUser);
+                        Module.ModuleDBWorkerService.CurrentDBUser,
+                        intersectionSolid);
 
                 }
             }

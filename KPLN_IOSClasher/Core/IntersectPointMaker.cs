@@ -21,6 +21,11 @@ namespace KPLN_IOSClasher.Core
         public static readonly Guid LinkInstanceId_Param = new Guid("468b7905-8f4e-4f72-86f3-3a18685a3838");
         public static readonly Guid UserData_Param = new Guid("41b103e9-3eb8-43fe-af9d-b74a13acf45b");
         public static readonly Guid CurrentData_Param = new Guid("8984f2e6-606d-4cd0-8fb7-19bb034c5059");
+        public static readonly Guid CurrentDiameter_Param = new Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff");
+
+        private static readonly Guid _famVersion_Param = new Guid("85cd0032-c9ee-4cd3-8ffa-b2f1a05328e3");
+        private static readonly string _famVersion_Data = "1.1";
+        private static FamilySymbol _clashPointFamilySymbol;
 
         protected static XYZ ParseStringToXYZ(string input)
         {
@@ -103,6 +108,7 @@ namespace KPLN_IOSClasher.Core
                 instance.get_Parameter(PointCoord_Param).Set(point.ToString());
                 instance.get_Parameter(UserData_Param).Set($"{entity.CurrentUser.Name} {entity.CurrentUser.Surname}");
                 instance.get_Parameter(CurrentData_Param).Set(DateTime.Now.ToString("g"));
+                instance.get_Parameter(CurrentDiameter_Param).Set(CreateIntersectDiameter(entity.IntersectSolid));
 
                 doc.Regenerate();
             }
@@ -113,34 +119,83 @@ namespace KPLN_IOSClasher.Core
         /// </summary>
         private static FamilySymbol GetIntersectFamilySymbol(Document doc)
         {
-            FamilySymbol[] oldFamSymbOfGM = new FilteredElementCollector(doc)
-                .OfCategory(BuiltInCategory.OST_GenericModel)
-                .Where(el => el is FamilySymbol famSymb && famSymb.FamilyName == ClashPointFamilyName)
-                .Cast<FamilySymbol>()
-                .ToArray();
+#if Debug2020 || Debug2023
+            _clashPointFamilySymbol = null;
+#endif
 
-            // Если в проекте нет - то грузим
-            if (!oldFamSymbOfGM.Any())
+            if (_clashPointFamilySymbol == null)
             {
-                string path = $@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{Module.RevitVersion}\{ClashPointFamilyName}.rfa";
-                bool result = doc.LoadFamily(path);
-                if (!result)
-                    throw new Exception("Семейство для метки не найдено! Обратись к разработчику.");
-
-                doc.Regenerate();
-
-                // Повторяем после загрузки семейства
-                oldFamSymbOfGM = new FilteredElementCollector(doc)
+                FamilySymbol[] oldFamSymbOfGM = new FilteredElementCollector(doc)
                     .OfCategory(BuiltInCategory.OST_GenericModel)
                     .Where(el => el is FamilySymbol famSymb && famSymb.FamilyName == ClashPointFamilyName)
                     .Cast<FamilySymbol>()
                     .ToArray();
+
+                bool versionVerifyError = false;
+                if (oldFamSymbOfGM.Any())
+                    versionVerifyError = FamilySymboVersionErrorCheck(oldFamSymbOfGM.FirstOrDefault());
+
+                // Если в проекте нет, или была ошибка версии - то грузим\обновляем
+                if (!oldFamSymbOfGM.Any() || versionVerifyError)
+                {
+                    string path = $@"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\Source\RevitData\{Module.RevitVersion}\{ClashPointFamilyName}.rfa";
+                    bool result = doc.LoadFamily(path, new FamilyLoadOptions(), out Family fam);
+                    if (!result)
+                        throw new Exception("Семейство для метки не найдено! Обратись к разработчику.");
+
+                    doc.Regenerate();
+
+                    _clashPointFamilySymbol = doc.GetElement(fam.GetFamilySymbolIds().FirstOrDefault()) as FamilySymbol;
+                }
+                else
+                    _clashPointFamilySymbol = oldFamSymbOfGM.FirstOrDefault();
             }
 
-            FamilySymbol searchSymbol = oldFamSymbOfGM.FirstOrDefault();
-            searchSymbol.Activate();
+            _clashPointFamilySymbol.Activate();
 
-            return searchSymbol;
+            return _clashPointFamilySymbol;
+        }
+
+        private static bool FamilySymboVersionErrorCheck(FamilySymbol checkFS)
+        {
+            Parameter famVersion = checkFS.get_Parameter(_famVersion_Param);
+            if (famVersion == null)
+                return true;
+
+            string famVersionData = famVersion.AsString();
+            if (!string.IsNullOrEmpty(famVersionData) && famVersionData != _famVersion_Data)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Создание значение диаметра для клэшпоинта
+        /// </summary>
+        /// <param name="solid"></param>
+        /// <returns></returns>
+        private static double CreateIntersectDiameter(Solid solid)
+        {
+            double resultDiam = 2;
+
+            if(solid != null)
+            {
+                double solidVolume = solid.Volume;
+                if (solidVolume <= 1)
+                    resultDiam = 0.5;
+                else if (solidVolume > 1 && solidVolume <= 3)
+                    resultDiam = 1;
+                else if (solidVolume > 3 && solidVolume <= 10)
+                    resultDiam = 2;
+                else if (solidVolume > 10 && solidVolume <= 20)
+                    resultDiam = 3;
+                else if (solidVolume > 20 && solidVolume <= 30)
+                    resultDiam = 4;
+                else
+                    resultDiam = 6;
+            }
+
+            return resultDiam;
         }
 
         /// <summary>

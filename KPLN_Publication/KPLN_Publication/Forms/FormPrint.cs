@@ -34,13 +34,13 @@ namespace KPLN_Publication
             get { return _printSettings; }
         }
 
-        private readonly Dictionary<string, List<MySheet>> _sheetsBaseToPrint = new Dictionary<string, List<MySheet>>();
+        private readonly Dictionary<string, List<MainEntity>> _entitiesBaseToPrint = new Dictionary<string, List<MainEntity>>();
 
-        public Dictionary<string, List<MySheet>> _sheetsSelected = new Dictionary<string, List<MySheet>>();
+        public Dictionary<string, List<MainEntity>> _entitiesSelected = new Dictionary<string, List<MainEntity>>();
 
         public bool printToFile = false;
 
-        public FormPrint(Document doc, Dictionary<string, List<MySheet>> SheetsBase, YayPrintSettings printSettings, DBUser currentDBUser)
+        public FormPrint(Document doc, Dictionary<string, List<MainEntity>> mainEntites, YayPrintSettings printSettings, DBUser currentDBUser)
         {
             InitializeComponent();
             this.AcceptButton = btnOk;
@@ -51,14 +51,22 @@ namespace KPLN_Publication
             if (userDepartment == 2 || userDepartment == 8)
                 this.checkBoxExcludeBorders.Enabled = true;
 
-            _sheetsBaseToPrint = SheetsBase;
+            bool onlySheets = false;
+            if (mainEntites.Values.FirstOrDefault().All(ent => ent.MainView is ViewSheet))
+            {
+                onlySheets = true;
+                this.label4.Text = "Листы для выдачи";
+            }
+            else
+                this.label4.Text = "Виды для выдачи";
 
+            _entitiesBaseToPrint = mainEntites;
             //заполняю treeView
-            foreach (var docWithSheets in _sheetsBaseToPrint)
+            foreach (var docWithSheets in _entitiesBaseToPrint)
             {
                 TreeNode docNode = new TreeNode(docWithSheets.Key);
                 bool haveChecked = false;
-                foreach (MySheet sheet in docWithSheets.Value)
+                foreach (MainEntity sheet in docWithSheets.Value)
                 {
                     string sheetTitle = sheet.ToString();
                     TreeNode sheetNode = new TreeNode(sheetTitle);
@@ -70,66 +78,96 @@ namespace KPLN_Publication
                 treeView1.Nodes.Add(docNode);
             }
 
-            #region Заполняю параметры печати PDF
+
+            #region Заполняю параметры печати PDF (ТОЛЬКО ДЛЯ ЛИСТОВ)
             _printSettings = printSettings;
-            checkBox_isPDFExport.Checked = printSettings.isPDFExport;
-            textBox_PDFNameConstructor.Text = printSettings.pdfNameConstructor;
-            textBox_PDFPath.Text = printSettings.outputPDFFolder;
-            checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
-            checkBoxOrientation.Checked = printSettings.isUseOrientation;
-
-            List<string> printers = new List<string>();
-            foreach (string printer in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+            if (!onlySheets)
             {
-                printers.Add(printer);
-            }
-
-            if (printers.Count == 0)
-                throw new Exception("Cant find any installed printers");
-
-            comboBoxPrinters.DataSource = printers;
-
-            if (printers.Contains(_printSettings.printerName))
-            {
-                comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(_printSettings.printerName)).First();
+                checkBox_isPDFExport.Enabled = false;
+                comboBoxPrinters.Enabled = false;
+                radioButtonPDF.Enabled = false;
+                radioButtonPaper.Enabled = false;
+                textBox_PDFPath.Enabled = false;
+                radioButtonRastr.Enabled = false;
+                radioButtonVector.Enabled = false;
+                checkBoxMergePdfs.Enabled = false;
+                checkBoxOrientation.Enabled = false;
+                checkBoxRefresh.Enabled = false;
+                checkBoxExcludeBorders.Enabled = false;
+                comboBoxColors.Enabled = false;
+                comboBoxRasterQuality.Enabled = false;
+                buttonExcludesColor.Enabled = false;
             }
             else
             {
-                string selectedPrinterName = PrinterUtility.GetDefaultPrinter();
-                if (!printers.Contains(selectedPrinterName)) throw new Exception("Cant find printer " + selectedPrinterName);
-                comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(selectedPrinterName)).First();
+                checkBox_isPDFExport.Checked = printSettings.isPDFExport;
+                textBox_PDFNameConstructor.Text = printSettings.pdfNameConstructor;
+                textBox_PDFPath.Text = printSettings.outputPDFFolder;
+                checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
+                checkBoxOrientation.Checked = printSettings.isUseOrientation;
             }
 
-            radioButtonPDF.Checked = comboBoxPrinters.SelectedItem.ToString().Contains("PDF");
-            radioButtonPaper.Checked = !radioButtonPDF.Checked;
-
-            if (_printSettings.hiddenLineProcessing == Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing)
+            if (checkBox_isPDFExport.Enabled)
             {
-                radioButtonVector.Checked = true;
-                radioButtonRastr.Checked = false;
-            }
-            else
-            {
-                radioButtonVector.Checked = false;
-                radioButtonRastr.Checked = true;
-            }
+                List<string> printers = new List<string>();
+                foreach (string printer in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+                {
+                    printers.Add(printer);
+                }
 
-            List<RasterQualityType> rasterTypes =
-                Enum.GetValues(typeof(RasterQualityType))
-                .Cast<RasterQualityType>()
-                .ToList();
-            comboBoxRasterQuality.DataSource = rasterTypes;
-            comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality;
+                if (printers.Count == 0)
+                    throw new Exception("Cant find any installed printers");
 
-            List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
-                .Cast<ColorType>()
-                .ToList();
-            comboBoxColors.DataSource = colorTypes;
-            comboBoxColors.SelectedItem = _printSettings.colorsType;
+                comboBoxPrinters.DataSource = printers;
+
+                if (_printSettings!= null && printers.Contains(_printSettings.printerName))
+                {
+                    comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(_printSettings.printerName)).First();
+                }
+                else
+                {
+                    string selectedPrinterName = PrinterUtility.GetDefaultPrinter();
+                    if (!printers.Contains(selectedPrinterName)) throw new Exception("Cant find printer " + selectedPrinterName);
+                    comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(selectedPrinterName)).First();
+                }
+
+                radioButtonPDF.Checked = comboBoxPrinters.SelectedItem.ToString().Contains("PDF");
+                radioButtonPaper.Checked = !radioButtonPDF.Checked;
+
+                if (_printSettings != null && _printSettings.hiddenLineProcessing == Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing)
+                {
+                    radioButtonVector.Checked = true;
+                    radioButtonRastr.Checked = false;
+                }
+                else
+                {
+                    radioButtonVector.Checked = false;
+                    radioButtonRastr.Checked = true;
+                }
+
+                List<RasterQualityType> rasterTypes =
+                    Enum.GetValues(typeof(RasterQualityType))
+                    .Cast<RasterQualityType>()
+                    .ToList();
+                comboBoxRasterQuality.DataSource = rasterTypes;
+                comboBoxRasterQuality.SelectedItem = _printSettings.rasterQuality;
+
+                List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
+                    .Cast<ColorType>()
+                    .ToList();
+                comboBoxColors.DataSource = colorTypes;
+                comboBoxColors.SelectedItem = _printSettings.colorsType;
+            }
             #endregion
 
             #region Заполняю параметры печати DWG
-            checkBox_isDWGExport.Checked = printSettings.isDWGExport;
+            if (!onlySheets)
+            {
+                checkBox_isDWGExport.Checked = true;
+                checkBox_isDWGExport.Enabled = false;
+            }
+            else
+                checkBox_isDWGExport.Checked = printSettings.isDWGExport;
             textBox_DWGNameConstructor.Text = printSettings.dwgNameConstructor;
             textBox_DWGPath.Text = printSettings.outputDWGFolder;
 
@@ -141,7 +179,7 @@ namespace KPLN_Publication
             comboBoxDWGExportTypes.DataSource = dwgSettings;
             comboBoxDWGExportTypes.DisplayMember = "Name";
 
-            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => _printSettings.dwgExportSettingShell != null && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
+            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => _printSettings!=null && _printSettings.dwgExportSettingShell != null && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
             if (dwgExpTypeFromConfigIndex != -1)
                 comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
             #endregion
@@ -166,59 +204,65 @@ namespace KPLN_Publication
             {
                 string docNodeTitle = docNode.Text;
                 //string revitDocTitle = sheetsBaseToPrint.Keys.Where(d => d == docNodeTitle).First();
-                List<MySheet> selectedSheetsInDoc = new List<MySheet>();
+                List<MainEntity> selectedSheetsInDoc = new List<MainEntity>();
                 foreach (TreeNode sheetNode in docNode.Nodes)
                 {
                     if (!sheetNode.Checked) continue;
                     string sheetTitle = sheetNode.Text;
 
-                    var tempSheets = _sheetsBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
+                    var tempSheets = _entitiesBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
                     if (tempSheets.Count == 0) throw new Exception("Cant get sheets from TreeNode");
-                    MySheet msheet = tempSheets.First();
+                    MainEntity msheet = tempSheets.First();
                     selectedSheetsInDoc.Add(msheet);
                 }
                 if (selectedSheetsInDoc.Count == 0) continue;
 
-                _sheetsSelected.Add(docNodeTitle, selectedSheetsInDoc);
+                _entitiesSelected.Add(docNodeTitle, selectedSheetsInDoc);
             }
 
             #region Обновление YayPrintSettings (изначально не реализован INotifyPrCh, продолжаю костыль)
             // Экспорт в PDF
             _printSettings.isPDFExport = checkBox_isPDFExport.Checked;
-
-            _printSettings.printerName = comboBoxPrinters.SelectedItem.ToString();
-            _printSettings.outputPDFFolder = textBox_PDFPath.Text;
-
-            bool checkConstructor = false;
-            string tempConstr = textBox_PDFNameConstructor.Text;
-            if (tempConstr.Split('<').Length > 1)
+            if (_printSettings.isPDFExport)
             {
-                if (tempConstr.Split('<')[1].Contains(">"))
-                    checkConstructor = true;
+                _printSettings.printerName = comboBoxPrinters.SelectedItem.ToString();
+                _printSettings.outputPDFFolder = textBox_PDFPath.Text;
+
+                bool checkConstructor = false;
+                string tempConstr = textBox_PDFNameConstructor.Text;
+                if (tempConstr.Split('<').Length > 1)
+                {
+                    if (tempConstr.Split('<')[1].Contains(">"))
+                        checkConstructor = true;
+                }
+                if (checkConstructor)
+                    _printSettings.pdfNameConstructor = textBox_PDFNameConstructor.Text;
+
+                if (radioButtonVector.Checked)
+                    _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing;
+                else
+                    _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing;
+
+                _printSettings.rasterQuality = (Autodesk.Revit.DB.RasterQualityType)comboBoxRasterQuality.SelectedValue;
+
+                _printSettings.isMergePdfs = checkBoxMergePdfs.Checked;
+                _printSettings.isPrintToPaper = radioButtonPaper.Checked;
+
+                _printSettings.colorsType = (ColorType)comboBoxColors.SelectedItem;
+                _printSettings.isUseOrientation = checkBoxOrientation.Checked;
+                _printSettings.isRefreshSchedules = checkBoxRefresh.Checked;
+                _printSettings.isExcludeBorders = checkBoxExcludeBorders.Checked;
             }
-            if (checkConstructor)
-                _printSettings.pdfNameConstructor = textBox_PDFNameConstructor.Text;
 
-            if (radioButtonVector.Checked)
-                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing;
-            else
-                _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.RasterProcessing;
-
-            _printSettings.rasterQuality = (Autodesk.Revit.DB.RasterQualityType)comboBoxRasterQuality.SelectedValue;
-
-            _printSettings.isMergePdfs = checkBoxMergePdfs.Checked;
-            _printSettings.isPrintToPaper = radioButtonPaper.Checked;
-
-            _printSettings.colorsType = (ColorType)comboBoxColors.SelectedItem;
-            _printSettings.isUseOrientation = checkBoxOrientation.Checked;
-            _printSettings.isRefreshSchedules = checkBoxRefresh.Checked;
-            _printSettings.isExcludeBorders = checkBoxExcludeBorders.Checked;
 
             // Экспорт в DWG
             _printSettings.isDWGExport = checkBox_isDWGExport.Checked;
-            _printSettings.dwgExportSettingShell = (ExportDWGSettingsShell)comboBoxDWGExportTypes.SelectedItem;
-            _printSettings.outputDWGFolder = textBox_DWGPath.Text;
-            _printSettings.dwgNameConstructor = textBox_DWGNameConstructor.Text;
+            if (_printSettings.isDWGExport)
+            {
+                _printSettings.dwgExportSettingShell = (ExportDWGSettingsShell)comboBoxDWGExportTypes.SelectedItem;
+                _printSettings.outputDWGFolder = textBox_DWGPath.Text;
+                _printSettings.dwgNameConstructor = textBox_DWGNameConstructor.Text;
+            }
             #endregion
 
             this.printToFile = radioButtonPDF.Checked;
@@ -283,36 +327,42 @@ namespace KPLN_Publication
 
         private void radioButtonPDF_CheckedChanged(object sender, EventArgs e)
         {
-            textBox_PDFPath.Enabled = true;
-            buttonPDFBrowse.Enabled = true;
-            textBox_PDFNameConstructor.Enabled = true;
-            btnPDFOpenNameConstructor.Enabled = true;
-            label5.Enabled = true;
-            label6.Enabled = true;
-            checkBoxMergePdfs.Enabled = true;
-            checkBoxOrientation.Enabled = true;
+            if (checkBox_isPDFExport.Enabled)
+            {
+                textBox_PDFPath.Enabled = true;
+                buttonPDFBrowse.Enabled = true;
+                textBox_PDFNameConstructor.Enabled = true;
+                btnPDFOpenNameConstructor.Enabled = true;
+                label5.Enabled = true;
+                label6.Enabled = true;
+                checkBoxMergePdfs.Enabled = true;
+                checkBoxOrientation.Enabled = true;
 
-            List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
-                .Cast<ColorType>()
-                .ToList();
-            comboBoxColors.DataSource = colorTypes;
-            comboBoxColors.SelectedItem = _printSettings.colorsType;
+                List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
+                    .Cast<ColorType>()
+                    .ToList();
+                comboBoxColors.DataSource = colorTypes;
+                comboBoxColors.SelectedItem = _printSettings.colorsType;
+            }
         }
 
         private void radioButtonPaper_CheckedChanged(object sender, EventArgs e)
         {
-            textBox_PDFPath.Enabled = false;
-            buttonPDFBrowse.Enabled = false;
-            textBox_PDFNameConstructor.Enabled = false;
-            btnPDFOpenNameConstructor.Enabled = false;
-            label5.Enabled = false;
-            label6.Enabled = false;
-            checkBoxMergePdfs.Enabled = false;
-            checkBoxOrientation.Enabled = false;
+            if (checkBox_isPDFExport.Enabled)
+            {
+                textBox_PDFPath.Enabled = false;
+                buttonPDFBrowse.Enabled = false;
+                textBox_PDFNameConstructor.Enabled = false;
+                btnPDFOpenNameConstructor.Enabled = false;
+                label5.Enabled = false;
+                label6.Enabled = false;
+                checkBoxMergePdfs.Enabled = false;
+                checkBoxOrientation.Enabled = false;
 
-            List<ColorType> colorTypes = new List<ColorType> { ColorType.Color, ColorType.GrayScale, ColorType.Monochrome };
-            comboBoxColors.DataSource = colorTypes;
-            comboBoxColors.SelectedItem = ColorType.Monochrome;
+                List<ColorType> colorTypes = new List<ColorType> { ColorType.Color, ColorType.GrayScale, ColorType.Monochrome };
+                comboBoxColors.DataSource = colorTypes;
+                comboBoxColors.SelectedItem = ColorType.Monochrome;
+            }
         }
 
         private void checkBoxMergePdfs_CheckedChanged(object sender, EventArgs e)
@@ -333,14 +383,13 @@ namespace KPLN_Publication
 
         private void comboBoxColors_SelectedIndexChanged(object sender, EventArgs e)
         {
-            ColorType curColorType = (ColorType)comboBoxColors.SelectedItem;
-            if (curColorType == ColorType.MonochromeWithExcludes)
+            if (checkBox_isPDFExport.Enabled)
             {
-                buttonExcludesColor.Enabled = true;
-            }
-            else
-            {
-                buttonExcludesColor.Enabled = false;
+                ColorType curColorType = (ColorType)comboBoxColors.SelectedItem;
+                if (curColorType == ColorType.MonochromeWithExcludes)
+                    buttonExcludesColor.Enabled = true;
+                else
+                    buttonExcludesColor.Enabled = false;
             }
         }
 

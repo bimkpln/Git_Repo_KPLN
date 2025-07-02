@@ -229,6 +229,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SP_OtherFileSetings.Children.Add(scrollViewer);
 
             BTN_RunManyFile.IsEnabled = true;
+            BTN_RunManyFileRS.IsEnabled = true;
         }
 
         private void UpdateTemplateBackupChoice(string templateName, CheckBox selectCheckBox, CheckBox replaceCheckBox, CheckBox copyCheckBox, View templateView)
@@ -261,9 +262,51 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 MessageBox.Show($"Нет изменений для приминения", "KPLN. Информация");
                 return;
             }
-        
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges);
+
+            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
+
+            string inputText = TB_CloseWorksets.Text;
+            List<string> worksetPrefixName = inputText
+                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.Trim())
+                .ToList();
+
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, false);
             openManeDocsWindows.Owner = this;       
+            openManeDocsWindows.ShowDialog();
+        }
+
+        private void BTN_RunManyFileRS_Click(object sender, RoutedEventArgs e)
+        {
+            List<Document> openedDocs = _uiapp.Application.Documents
+                .Cast<Document>()
+                .Where(doc =>
+                    doc.PathName != mainDocument.PathName &&
+                    !doc.PathName.Equals(mainDocument.PathName, StringComparison.OrdinalIgnoreCase) &&
+                    !doc.IsLinked)
+                .ToList();
+
+            if (openedDocs.Count > 0)
+            {
+                MessageBox.Show($"Открыто более одного документа. Для продолжения работы сохраните внесённые ранее изменения во всех документах и оставьте только документ, из которого будут копироваться шаблоны видов.", "KPLN. Информация");
+                return;
+            }
+
+            if (viewOnlyTemplateChanges.Count == 0)
+            {
+                MessageBox.Show($"Нет изменений для приминения", "KPLN. Информация");
+                return;
+            }
+
+            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
+            string inputText = TB_CloseWorksets.Text;
+            List<string> worksetPrefixName = inputText
+                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(word => word.Trim())
+                .ToList();
+
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, true);
+            openManeDocsWindows.Owner = this;
             openManeDocsWindows.ShowDialog();
         }
     }

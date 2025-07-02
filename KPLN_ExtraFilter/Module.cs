@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.IO;
@@ -24,10 +25,10 @@ namespace KPLN_ExtraFilter
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Выбор элементов");
 
             PushButtonData btnSelectByClick = new PushButtonData(
-                "По элементу",
-                "По элементу",
+                SelectionByClickExtCommand.PluginName,
+                SelectionByClickExtCommand.PluginName,
                 _assemblyPath,
-                typeof(ExternalCommands.SelectionByClickExtCommand).FullName)
+                typeof(SelectionByClickExtCommand).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.ClickLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.ClickSmall.png"),
@@ -38,11 +39,12 @@ namespace KPLN_ExtraFilter
             };
             btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
 
+
             PushButtonData btnSetPramsByFrame = new PushButtonData(
-                "Задать рамкой",
-                "Задать рамкой",
+                SetParamsByFrameExtCommand.PluginName,
+                SetParamsByFrameExtCommand.PluginName,
                 _assemblyPath,
-                typeof(ExternalCommands.SetParamsByFrameExtCommand).FullName)
+                typeof(SetParamsByFrameExtCommand).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.FrameLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.FrameSmall.png"),
@@ -55,6 +57,20 @@ namespace KPLN_ExtraFilter
             btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
 
             IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
+            // Скрываю текстовое название кнопок
+            foreach (RibbonItem item in stackedGroup) 
+            { 
+                var parentId = typeof(RibbonItem)
+                    .GetField("m_parentId", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(item) ?? string.Empty;
+                var generateIdMethod = typeof(RibbonItem)
+                    .GetMethod("generateId", BindingFlags.Static | BindingFlags.NonPublic);
+
+                string itemId = (string)generateIdMethod?.Invoke(item, new[] { parentId, item.Name });
+
+                var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(itemId);
+                revitRibbonItem.ShowText = false;
+            }
 
             return Result.Succeeded;
         }

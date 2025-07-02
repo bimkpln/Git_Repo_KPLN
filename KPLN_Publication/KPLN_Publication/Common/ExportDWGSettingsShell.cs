@@ -42,7 +42,10 @@ namespace KPLN_Publication.Common
         public override int GetHashCode()
         {
             // Используем простое XOR-сочетание хэш-кодов свойств
-            return Name.GetHashCode() ^ DWGExportSetting.GetHashCode();
+            if (DWGExportSetting != null)
+                return Name.GetHashCode() ^ DWGExportSetting.GetHashCode();
+            else
+                return Name.GetHashCode();
         }
     }
 }

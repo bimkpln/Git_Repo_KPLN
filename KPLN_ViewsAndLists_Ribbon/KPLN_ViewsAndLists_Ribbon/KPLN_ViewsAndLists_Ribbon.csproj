@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -27,7 +27,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -72,6 +72,9 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="RevitServerAPILib">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />

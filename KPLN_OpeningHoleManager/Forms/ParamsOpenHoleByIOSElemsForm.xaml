@@ -70,7 +70,7 @@
                     LastChildFill="True">
                     <TextBlock 
                         Text="Min высота/диаметр отверстий в АР:" 
-                        Width="200"
+                        Width="215"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
@@ -86,7 +86,7 @@
                     LastChildFill="True">
                     <TextBlock 
                         Text="Min ширина отверстий в АР:"
-                        Width="200"
+                        Width="215"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
@@ -115,7 +115,7 @@
                 </DockPanel>
 
                 <TextBlock 
-                    Text="Правила расстановки КР:" 
+                    Text="Правила расстановки КЖ:" 
                     Width="175"
                     FontWeight="Black"
                     VerticalAlignment="Center" 
@@ -125,8 +125,8 @@
                 <DockPanel 
                     LastChildFill="True">
                     <TextBlock 
-                        Text="Min высота/диаметр отверстий в КР:" 
-                        Width="200"
+                        Text="Min высота/диаметр отверстий в КЖ:" 
+                        Width="215"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
@@ -141,8 +141,8 @@
                 <DockPanel 
                     LastChildFill="True">
                     <TextBlock 
-                        Text="Min ширина отверстий в КР:"
-                        Width="200"
+                        Text="Min ширина отверстий в КЖ:"
+                        Width="215"
                         VerticalAlignment="Center" 
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
@@ -157,7 +157,7 @@
                  <DockPanel 
                      LastChildFill="True">
                      <TextBlock 
-                         Text="Min между отв. для объединения в КР:" 
+                         Text="Min между отв. для объединения в КЖ:" 
                          Width="225"
                          VerticalAlignment="Center" 
                          Margin="5"

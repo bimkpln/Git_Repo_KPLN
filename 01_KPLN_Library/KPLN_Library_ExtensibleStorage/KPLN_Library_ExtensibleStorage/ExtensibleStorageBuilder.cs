@@ -208,7 +208,7 @@ namespace KPLN_Library_ExtensibleStorage
             SchemaBuilder builder = new SchemaBuilder(Guid);
             builder.SetReadAccessLevel(AccessLevel.Public);
             
-            if (FieldNames.Length > 0)
+            if (FieldNames != null && FieldNames.Length > 0)
             {
                 foreach (string fieldName in FieldNames)
                 {

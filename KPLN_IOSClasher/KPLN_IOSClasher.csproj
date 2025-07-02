@@ -96,6 +96,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\ElementComparerById.cs" />
+    <Compile Include="Core\FamilyLoadOptions.cs" />
     <Compile Include="Core\IntersectCheckEntity.cs" />
     <Compile Include="Core\IntersectPointEntity.cs" />
     <Compile Include="Core\IntersectPointMaker.cs" />

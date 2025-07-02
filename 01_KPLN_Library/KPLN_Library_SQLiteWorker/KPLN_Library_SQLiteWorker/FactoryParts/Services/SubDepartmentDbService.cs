@@ -69,6 +69,9 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// </summary>
         public DBSubDepartment GetDBSubDepartment_ByRevitDoc(Document revitDoc)
         {
+            if (revitDoc.IsFamilyDocument)
+                return null;
+            
             string docName = revitDoc.PathName;
 
             if (docName.Contains("_КФ."))

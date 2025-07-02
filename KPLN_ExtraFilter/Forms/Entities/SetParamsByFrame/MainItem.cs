@@ -1,4 +1,4 @@
-﻿using KPLN_ExtraFilter.Common;
+﻿using KPLN_Library_ConfigWorker.Core;
 using Newtonsoft.Json;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -13,6 +13,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _userInputParamValue;
+        private ParamEntity _userSelectedParamEntity;
 
         [JsonConstructor]
         public MainItem()
@@ -27,7 +28,15 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Выбранный пользователем параметр
         /// </summary>
-        public ParamEntity UserSelectedParamEntity { get; set; }
+        public ParamEntity UserSelectedParamEntity
+        {
+            get => _userSelectedParamEntity;
+            set
+            {
+                _userSelectedParamEntity = value;
+                NotifyPropertyChanged();
+            }
+        }
 
         /// <summary>
         /// Введенное пользователем значение параметра
@@ -50,10 +59,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             this.UserInputParamValue,
         };
 
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
-        {
+        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 
 }

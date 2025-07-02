@@ -1,89 +1,32 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_ExtraFilter.ExecutableCommand;
 using KPLN_ExtraFilter.Forms.Entities;
+using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
 using KPLN_Library_Forms.UI;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
-    public partial class SetParamsByFrameForm : Window, INotifyPropertyChanged
+    public partial class SetParamsByFrameForm : Window
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        private readonly Element[] _elemsToSet;
-        private string _runButtonName;
-        private string _runButtonTooltip;
-
-        /// <summary>
-        /// Конструктор с открытием пустого окна
-        /// </summary>
-        public SetParamsByFrameForm(IEnumerable<Element> elemsToSet, IEnumerable<ParamEntity> paramsEntities)
+        public SetParamsByFrameForm(IEnumerable<Element> elemsToSet, IEnumerable<ParamEntity> paramsEntities, object lastRunConfigObj)
         {
-            _elemsToSet = elemsToSet.ToArray();
-            AllParamEntities = paramsEntities.OrderBy(ent => ent.CurrentParamName).ToArray();
-
             InitializeComponent();
-            RunButtonContext();
 
-            DataContext = this;
+            if (lastRunConfigObj != null && lastRunConfigObj is IEnumerable<MainItem> mainEntites)
+                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.CurrentParamName), mainEntites);
+            else
+                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.CurrentParamName));
+
+            DataContext = CurrentSetParamsByFrameEntity;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
-        /// <summary>
-        /// Конструктор с открытием окна с преднастройкой
-        /// </summary>
-        public SetParamsByFrameForm(
-            IEnumerable<Element> elemsToSet,
-            IEnumerable<ParamEntity> paramsEntities,
-            IEnumerable<MainItem> userMainItem) : this(elemsToSet, paramsEntities)
-        {
-            foreach (MainItem mi in userMainItem)
-            {
-                MainItems.Add(mi);
-            }
-
-            RunButtonContext();
-        }
-
-        public string RunButtonName
-        {
-            get => _runButtonName;
-            private set
-            {
-                if (_runButtonName != value)
-                {
-                    _runButtonName = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
-
-        public string RunButtonTooltip
-        {
-            get => _runButtonTooltip;
-            private set
-            {
-                if (_runButtonTooltip != value)
-                {
-                    _runButtonTooltip = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Коллекция ВСЕХ сущностей параметров, которые есть у эл-в
-        /// </summary>
-        public ParamEntity[] AllParamEntities { get; private set; }
-
-        public ObservableCollection<MainItem> MainItems { get; private set; } = new ObservableCollection<MainItem>();
+        public SetParamsByFrameEntity CurrentSetParamsByFrameEntity { get; private set; }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
@@ -93,44 +36,30 @@ namespace KPLN_ExtraFilter.Forms
                 RunBtn_Click(sender, e);
         }
 
-        /// <summary>
-        /// Установить данные по кнопке
-        /// </summary>
-        private void RunButtonContext()
-        {
-            if (MainItems.Count > 0)
-            {
-                RunButtonName = "Заполнить!";
-                RunButtonTooltip = "Заполнить указанные параметры указанными значениями для выделенных элементов";
-            }
-            else
-            {
-                RunButtonName = "Выделить!";
-                RunButtonTooltip = "Выделить все вложенности у выбранных элементов";
-            }
-        }
-
         private void RunBtn_Click(object sender, RoutedEventArgs e)
         {
+            DialogResult = true;
             KPLN_Loader.Application.OnIdling_CommandQueue
-                .Enqueue(new SetParamsByFrameExcCommandStart(_elemsToSet, MainItems));
+                .Enqueue(new SetParamsByFrameExcCommandStart(CurrentSetParamsByFrameEntity));
 
             Close();
         }
 
         private void AddBtn_Click(object sender, RoutedEventArgs e)
         {
-            MainItem defaultMI = new MainItem(AllParamEntities.FirstOrDefault());
-            MainItems.Add(defaultMI);
+            MainItem defaultMI = new MainItem(CurrentSetParamsByFrameEntity.AllParamEntities.FirstOrDefault());
+            CurrentSetParamsByFrameEntity.MainItems.Add(defaultMI);
+            CurrentSetParamsByFrameEntity.RunButtonContext();
 
-            RunButtonContext();
+            DataContext = CurrentSetParamsByFrameEntity;
         }
 
         private void ClearBtn_Click(object sender, RoutedEventArgs e)
         {
-            MainItems.Clear();
+            CurrentSetParamsByFrameEntity.MainItems.Clear();
+            CurrentSetParamsByFrameEntity.RunButtonContext();
 
-            RunButtonContext();
+            DataContext = CurrentSetParamsByFrameEntity;
         }
 
         private void MenuItem_Delete_Click(object sender, RoutedEventArgs e)
@@ -146,14 +75,12 @@ namespace KPLN_ExtraFilter.Forms
             ud.ShowDialog();
 
             if (ud.IsRun)
-                MainItems.Remove(entity);
+            {
+                CurrentSetParamsByFrameEntity.MainItems.Remove(entity);
+                CurrentSetParamsByFrameEntity.RunButtonContext();
+            }
 
-            RunButtonContext();
-        }
-
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            DataContext = CurrentSetParamsByFrameEntity;
         }
     }
 }
