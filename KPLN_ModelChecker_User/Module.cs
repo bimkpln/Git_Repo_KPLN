@@ -233,6 +233,21 @@ namespace KPLN_ModelChecker_User
                 true
                 );
 
+
+#if (Revit2023 || Debug2023)
+            AddPushButtonData(
+                "CheckMonolith",
+                CommandCheckMonolith.PluginName,
+                "Плагин предназначен для автоматического сравнения  внешних контуров перекрытий ипилонов из основной модели и связанных моделей на основе геометрических координат и объёма бетона.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckMonolith).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_monolith.png",
+                _mainContextualHelp,
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 3 || CurrentDbUser.SubDepartmentId == 8
+                );
+#endif
+
             AddPushButtonData(
                 "CheckLevels",
                 CommandCheckLevelOfInstances.PluginName,
