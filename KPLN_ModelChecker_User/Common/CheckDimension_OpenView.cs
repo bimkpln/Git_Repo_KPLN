@@ -1,11 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.ExecutableCommand;
-using KPLN_ModelChecker_User.WPFItems;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Text;
-using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -18,6 +16,14 @@ namespace KPLN_ModelChecker_User.Common
     {
         public static void OpenViewForDimensions(UIApplication app, Element elem)
         {
+            if (!elem.IsValidObject)
+            {
+                TaskDialog.Show(
+                    "Внимание", $"Элемент был удалён из проекта. Можно обновить список перезапустив плагин",
+                    TaskDialogCommonButtons.Ok);
+                return;
+            }
+            
             Element elemToSelec = null;
             if (elem is Dimension dim)
             {

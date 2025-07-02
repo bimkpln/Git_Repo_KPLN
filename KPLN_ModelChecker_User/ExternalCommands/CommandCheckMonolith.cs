@@ -12,9 +12,6 @@ using Autodesk.Revit.UI.Selection;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
-
-#if (Revit2023 || Debug2023)
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     class CommandCheckMonolith: IExternalCommand
@@ -404,5 +401,4 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             doc.Create.NewFamilyInstance(point, clashPointType, StructuralType.NonStructural);
         }       
     }
-#endif
 }
