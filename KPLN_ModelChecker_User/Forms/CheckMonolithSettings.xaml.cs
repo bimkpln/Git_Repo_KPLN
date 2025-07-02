@@ -24,6 +24,8 @@ namespace KPLN_ModelChecker_User.Forms
         public IReadOnlyList<Document> LinkedDocuments => _linkedDocs;
         public IReadOnlyList<string> SelectedCategories => _categories;
 
+        public double Tolerance { get; private set; }
+
         public CheckMonolithSettings(UIApplication uiApp, Document activeDoc)
         {
             InitializeComponent();
@@ -136,9 +138,21 @@ namespace KPLN_ModelChecker_User.Forms
                 return;
             }
 
+            if (!double.TryParse(txtTolerance.Text.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double tolerance)
+                || tolerance < 0 || tolerance > 20)
+            {
+                MessageBox.Show(
+                    "Введите допустимую погрешность от 0 до 20 (например, 0.01 или 5).",
+                    "Недопустимое значение",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             _mainDoc = mainDoc;
             _linkedDocs = linkedDocs;
             _categories = chosenCategories;
+            Tolerance = tolerance;
             DialogResult = true;
         }
     }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 
@@ -33,6 +34,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Document mainDoc = checkMonolithSettingsWindow.MainDocument;
                 List<Document> linkedDocs = checkMonolithSettingsWindow.LinkedDocuments.ToList();
                 List<string> categories = checkMonolithSettingsWindow.SelectedCategories.ToList();
+                double toleranceValue = checkMonolithSettingsWindow.Tolerance;
 
                 List<Element> allSelectedElements = new List<Element>();
                 List<(Element element, Transform transform)> allSelectedLinkElements = new List<(Element, Transform)>();
@@ -115,12 +117,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         }
                     }
 
-
-
-
-
-
-
+                    if (allSelectedElements.Count == 0 || allSelectedLinkElements.Count == 0)
+                    {
+                        TaskDialog.Show("Ошибка", "Не выбраны подходящие элементы");
+                        return Result.Failed;
+                    }
 
                     // Создание общего Solid
                     List<Element> skippedMainElements;
@@ -134,6 +135,20 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         return Result.Failed;
                     }
 
+                    string skippedMain = skippedMainElements.Any()
+                        ? string.Join("\n", skippedMainElements.Select(e => $"Main ⮕ ID: {e.Id}, Имя: {e.Name}"))
+                        : "Main ⮕ нет пропущенных элементов.";
+
+                    string skippedLink = skippedLinkElements.Any()
+                        ? string.Join("\n", skippedLinkElements.Select(e => $"Link ⮕ ID: {e.Id}, Имя: {e.Name}"))
+                        : "Link ⮕ нет пропущенных элементов.";
+
+                    if (skippedMainElements.Count != 0 || skippedLinkElements.Count != 0) 
+                    {
+                        TaskDialog.Show("Предупреждение", $"Не все элементы попали в проверку:\n{skippedMain}\n{skippedLink}"); 
+                    }
+
+                    // Вычетание геометрий
                     Solid mainMinusOther = null;
                     Solid otherMinusMain = null;
 
@@ -144,14 +159,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Exception ex)
                     {
-                        string skippedMain = skippedMainElements.Any()
-                        ? string.Join("\n", skippedMainElements.Select(e => $"Main ⮕ ID: {e.Id}, Имя: {e.Name}"))
-                        : "Main ⮕ нет пропущенных элементов.";
-
-                        string skippedLink = skippedLinkElements.Any()
-                            ? string.Join("\n", skippedLinkElements.Select(e => $"Link ⮕ ID: {e.Id}, Имя: {e.Name}"))
-                            : "Link ⮕ нет пропущенных элементов.";
-
                         string info = $"{ex.Message}\n\n" +
                                       $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
                                       $"elGrouoUnionOther: Volume={elGrouoUnionOther?.Volume:F2}, Faces={elGrouoUnionOther?.Faces?.Size}\n\n" +
@@ -162,7 +169,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         TaskDialog.Show("Ошибка Boolean Difference", info);
                         return Result.Failed;
                     }
-
                     try
                     {
                         otherMinusMain = BooleanOperationsUtils.ExecuteBooleanOperation(elGrouoUnionOther, elGrouoUnionMain,
@@ -170,14 +176,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Exception ex)
                     {
-                        string skippedMain = skippedMainElements.Any()
-                        ? string.Join("\n", skippedMainElements.Select(e => $"Main ⮕ ID: {e.Id}, Имя: {e.Name}"))
-                        : "Main ⮕ нет пропущенных элементов.";
-
-                        string skippedLink = skippedLinkElements.Any()
-                            ? string.Join("\n", skippedLinkElements.Select(e => $"Link ⮕ ID: {e.Id}, Имя: {e.Name}"))
-                            : "Link ⮕ нет пропущенных элементов.";
-
+                       
                         string info = $"{ex.Message}\n\n" +
                                       $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
                                       $"elGrouoUnionOther: Volume={elGrouoUnionOther?.Volume:F2}, Faces={elGrouoUnionOther?.Faces?.Size}\n\n" +
@@ -198,7 +197,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         TaskDialog.Show("Ошибка", "Не удалось обработать геометрию основной модели");
                         return Result.Failed;
                     }
-
                     if (otherMinusMain != null)
                     {
                         allSelectedLinkElementsSolidsDiffusion.AddRange(SolidUtils.SplitVolumes(otherMinusMain));
@@ -209,32 +207,37 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         return Result.Failed;
                     }
 
+                    allSelectedElementsSolidsDiffusion = allSelectedElementsSolidsDiffusion
+                        .Where(solid => solid != null && solid.Volume >= toleranceValue)
+                        .ToList();
 
+                    allSelectedLinkElementsSolidsDiffusion = allSelectedLinkElementsSolidsDiffusion
+                        .Where(solid => solid != null && solid.Volume >= toleranceValue)
+                        .ToList();
 
+                    using (Transaction tx = new Transaction(doc, "KPLN. Несовподения монолита"))
+                    {
+                        tx.Start();
 
+                        FamilySymbol clashPointSymbol = GetClashPointSymbol(doc);
+                        if (clashPointSymbol == null)
+                        {
+                            TaskDialog.Show("Ошибка", "Семейство 'ClashPoint' не найдено в проекте.");
+                            tx.RollBack();
+                            return Result.Failed;
+                        }
 
+                        foreach (Solid solid in allSelectedElementsSolidsDiffusion.Concat(allSelectedLinkElementsSolidsDiffusion))
+                        {
+                            if (solid == null || solid.Volume < 1e-5 || solid.Faces.IsEmpty)
+                                continue;
 
+                            XYZ center = solid.ComputeCentroid();
+                            PlaceClashPoint(doc, center, clashPointSymbol);
+                        }
 
-
-
-
-
-
-
-
-                    
-
-
-
-
-
-
-
-
-
-
-
-
+                        tx.Commit();
+                    }
 
                     return Result.Succeeded;
                 }
@@ -255,14 +258,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
         }
 
-
-
-
-
-
-
-
-
         /// <summary>
         /// Метод для поиска геометрии
         /// </summary>
@@ -273,30 +268,36 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             foreach (Element el in elements)
             {
+                bool elementSkipped = false;
+
                 GeometryElement geomElement = el.get_Geometry(new Options() { ComputeReferences = true, IncludeNonVisibleObjects = true });
                 if (geomElement == null) continue;
 
                 foreach (GeometryObject geomObj in geomElement)
                 {
-                    Solid solid = geomObj as Solid;
-                    if (solid == null || solid.Faces.IsEmpty || solid.Edges.IsEmpty || solid.Volume < 0.1) continue;
-
-                    if (unionSolid == null)
+                    IEnumerable<Solid> solids = ExtractSolidsFromGeometryObject(geomObj);
+                    foreach (Solid solid in solids)
                     {
-                        unionSolid = solid;
-                        continue;
-                    }
-
-                    try
-                    {
-                        unionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, solid, BooleanOperationsType.Union);
-                    }
-                    catch
-                    {
-                        skippedElements.Add(el);
-
+                        if (unionSolid == null)
+                        {
+                            unionSolid = solid;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                unionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, solid, BooleanOperationsType.Union);
+                            }
+                            catch
+                            {
+                                elementSkipped = true;
+                            }
+                        }
                     }
                 }
+
+                if (elementSkipped)
+                    skippedElements.Add(el);
             }
 
             return unionSolid;
@@ -308,40 +309,100 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private Solid GetUnionSolid(List<(Element element, Transform transform)> elementsWithTransform, out List<Element> skippedElements)
         {
             Solid unionSolid = null;
-            List<string> failedElements = new List<string>();
             skippedElements = new List<Element>();
 
             foreach (var (el, transform) in elementsWithTransform)
             {
+                bool elementSkipped = false;
+
                 GeometryElement geomElement = el.get_Geometry(new Options() { ComputeReferences = true, IncludeNonVisibleObjects = true });
                 if (geomElement == null) continue;
 
                 foreach (GeometryObject geomObj in geomElement)
                 {
-                    Solid solid = geomObj as Solid;
-                    if (solid == null || solid.Faces.IsEmpty || solid.Edges.IsEmpty || solid.Volume < 0.1) continue;
-
-                    Solid transformedSolid = SolidUtils.CreateTransformed(solid, transform);
-
-                    if (unionSolid == null)
+                    IEnumerable<Solid> solids = ExtractSolidsFromGeometryObject(geomObj, transform);
+                    foreach (Solid solid in solids)
                     {
-                        unionSolid = transformedSolid;
-                        continue;
-                    }
-
-                    try
-                    {
-                        unionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, transformedSolid, BooleanOperationsType.Union);  
-                    }
-                    catch
-                    {
-                        skippedElements.Add(el);
+                        if (unionSolid == null)
+                        {
+                            unionSolid = solid;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                unionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, solid, BooleanOperationsType.Union);
+                            }
+                            catch
+                            {
+                                elementSkipped = true;
+                            }
+                        }
                     }
                 }
+
+                if (elementSkipped)
+                    skippedElements.Add(el);
             }
 
             return unionSolid;
         }
+
+        /// <summary>
+        /// Вспомогательный метод извлечения Solid
+        /// </summary>
+        private IEnumerable<Solid> ExtractSolidsFromGeometryObject(GeometryObject geomObj, Transform transform = null)
+        {
+            if (geomObj is Solid solid && solid.Volume > 0.1 && !solid.Faces.IsEmpty)
+            {
+                yield return transform != null ? SolidUtils.CreateTransformed(solid, transform) : solid;
+            }
+            else if (geomObj is GeometryInstance gi)
+            {
+                GeometryElement symbolGeometry = gi.GetSymbolGeometry();
+                Transform instanceTransform = gi.Transform;
+                Transform finalTransform = transform != null ? transform.Multiply(instanceTransform) : instanceTransform;
+
+                foreach (GeometryObject obj in symbolGeometry)
+                {
+                    foreach (Solid nestedSolid in ExtractSolidsFromGeometryObject(obj, finalTransform))
+                    {
+                        yield return nestedSolid;
+                    }
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+        /// <summary>
+        /// Получение ClashPoint
+        /// </summary>
+        private FamilySymbol GetClashPointSymbol(Document doc)
+        {
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilySymbol))
+                .OfType<FamilySymbol>()
+                .FirstOrDefault(f => f.Name == "ClashPoint");
+        }
+
+        /// <summary>
+        /// Растановка ClashPoint
+        /// </summary>
+        private void PlaceClashPoint(Document doc, XYZ point, FamilySymbol clashPointType)
+        {
+            if (!clashPointType.IsActive)
+                clashPointType.Activate();
+
+            doc.Create.NewFamilyInstance(point, clashPointType, StructuralType.NonStructural);
+        }       
     }
 #endif
 }
