@@ -153,7 +153,7 @@
                                         Click="OnApproveClicked" />
                                 </Grid>
                                 <TextBlock Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" 
-                                    Text="{Binding Header}" FontWeight="Bold" FontSize="14" Margin="4,0,0,0" 
+                                    Text="{Binding FormHeader}" FontWeight="Bold" FontSize="14" Margin="4,0,0,0" 
                                     ToolTip="{Binding Description}"/>
                                 
                                 <Grid Grid.Row="1" Grid.Column="1">
