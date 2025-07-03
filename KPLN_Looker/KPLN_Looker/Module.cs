@@ -340,32 +340,34 @@ namespace KPLN_Looker
             string familyName,
             string familyPath = null)
         {
-            // Глобальный отлов по пути семейства (если оно задано).
+            #region Локальный отлов по пути семейства для проектов
             if (!string.IsNullOrEmpty(familyPath))
             {
                 // Уточнение для ЛОКАЛЬНЫХ ПРОЕКТОВ
                 bool isSMLT = doc.Title.Contains("СЕТ_1");
                 if (isSMLT)
                 {
-                    if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") || familyPath.Contains("KPLN_Loader"))
+                    if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") 
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\022_Подписи в штамп")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\023_Подписи на титул")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР\\999_Для проектов\\СЕТ")
+                        || familyPath.Contains("Y:\\Жилые здания\\Самолет Сетунь\\4.Оформление\\4.Стадия_Р")
+                        || familyPath.Contains("KPLN_Loader"))
                         return false;
-                    else 
+                    else
                         return true;
                 }
 
                 // Уточнение для ЛОКАЛЬНЫХ СЕМЕЙСТВ
-                if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") || familyPath.Contains("KPLN_Loader"))
+                if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета"))
                 {
                     if (isSMLT)
                         return false;
                     else
                         return true;
                 }
-                
-                // Остальные проекты/семейства
-                if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
-                    return false;
             }
+            #endregion
 
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
@@ -402,6 +404,10 @@ namespace KPLN_Looker
                 && bic.Equals(BuiltInCategory.OST_Truss))
                 return false;
             #endregion
+
+            // Остальные проекты/семейства
+            if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
+                return false;
 
             return true;
         }
