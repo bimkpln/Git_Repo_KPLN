@@ -156,9 +156,6 @@
     <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
       <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormListRenumber.xaml.cs">
-      <DependentUpon>FormListRenumber.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
     </Compile>
@@ -248,10 +245,6 @@
     <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FormListRenumber.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>

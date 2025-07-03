@@ -53,13 +53,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         private string _unicdoe_CountOfUnicodes = "1";
 
         private string _prefix_Text;
-        private bool _prefix_IsRenumbering;
-        private string _prefix_StartNumber = "1";
 
         private string _onlyRenumber_StartNumber = "0";
         private bool _onlyRenumber_IsParamUpdate;
-
-        private string _clearRenumber_StartNumber = "0";
 
         public ListRenumberVM(UIApplication uiapp, IEnumerable<ViewSheet> shetsToRenumber, IEnumerable<Parameter> tBlockParams)
         {
@@ -268,7 +264,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             CloseAction?.Invoke();
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
-            using (Transaction trans = new Transaction(doc, PluginName))
+            using (Transaction trans = new Transaction(doc, $"KPLN: {PluginName}"))
             {
                 trans.Start();
                 try
