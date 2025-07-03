@@ -2,7 +2,6 @@
 using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
@@ -19,12 +18,8 @@ namespace KPLN_Tools.Common.LinkManager
     {
         internal static UIControlledApplication RevitUIControlledApp { get; set; }
 
-        private static DBRevitDialog[] _dbRevitDialogs = null;
-
-        internal static void SetStaticEnvironment(UIControlledApplication application)
-        {
+        internal static void SetStaticEnvironment(UIControlledApplication application) =>
             RevitUIControlledApp = application;
-        }
 
         public static LinkManagerEntity[] CreateLMEntities(UIApplication app)
         {
@@ -33,10 +28,22 @@ namespace KPLN_Tools.Common.LinkManager
             UIDocument uidoc = app.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            ObservableCollection<LinkManagerEntity> linkManagerEntsToUpdate = new ObservableCollection<LinkManagerEntity>();
-            Element[] linkDocColl = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevitLinkType))
+
+            Element[] linkDocColl = uidoc
+                .Selection
+                .GetElementIds()
+                .Select(id => doc.GetElement(id))
+                .Where(el => el.GetType() == typeof(RevitLinkType))
+                .Cast<RevitLinkType>()
                 .ToArray();
+            
+            if (!linkDocColl.Any()) 
+                linkDocColl = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkType))
+                    .ToArray();
+
+
+            ObservableCollection<LinkManagerEntity> linkManagerEntsToUpdate = new ObservableCollection<LinkManagerEntity>();
             foreach (Element linkElem in linkDocColl)
             {
                 if (linkElem is RevitLinkType linkType)
