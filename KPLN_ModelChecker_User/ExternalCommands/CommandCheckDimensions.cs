@@ -76,7 +76,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             // Кастомно для проектов на основе моделей субчиков (например только нужную стадию)
             if (docTitle.Contains("СЕТ_1") && (docTitle.Contains("_КЖ") || docTitle.Contains("_КМ")))
                 docSheetColl = docAllList
-                    .Where(vsh => (bool)vsh.LookupParameter("Орг.КомплектЧертежей")?.AsString().ToLower().Contains("кж"))
+                    .Where(vsh => vsh.LookupParameter("Орг.КомплектЧертежей")?.AsString()?.ToLower().Contains("кж") == true)
                     .ToArray();
             // Стандартно - для всех листов
             else
