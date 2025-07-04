@@ -12,9 +12,9 @@ using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows.Forms;
 using System.Windows.Input;
 
 namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
@@ -212,7 +212,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     new TaskDialog("Внимание")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                        MainInstruction = $"У выбранного элемента нет коллизий с ИОС, для создания отверстий",
+                        MainInstruction = $"У элемента/-ов на виде нет коллизий с ИОС, для создания отверстий",
                     }.Show();
 
                     return;
@@ -301,7 +301,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 ARKRElemEntity arkrEntity = SelectAndGetARKRElemsFromLink(uidoc, doc, selectedHost);
                 if (arkrEntity == null)
                     return;
-                
+
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();
@@ -393,8 +393,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         /// </summary>
         private ARKRElemEntity SelectAndGetARKRElemsFromLink(UIDocument uidoc, Document doc, Element selectedHostElem)
         {
-            Solid selectedHostElemSolid = GeometryWorker.GetRevitElemSolid(selectedHostElem);
-            ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(selectedHostElem, selectedHostElemSolid);
+            ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(selectedHostElem);
 
             IOSElemsLinkSelectionFilter selectionFilter = new IOSElemsLinkSelectionFilter(doc);
 
@@ -490,9 +489,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             {
                 try
                 {
-                    Solid arHostSolid = GeometryWorker.GetRevitElemSolid(arHostElem);
-                    ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(arHostElem, arHostSolid);
-                    
+                    ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(arHostElem);
+
                     ARKRElemsCollectionCreator.SetIOSEntities_ByIOSElemEntities(aRKRElemEntity, onlyIOSRLinkInsts);
                     if (aRKRElemEntity.IOSElemEntities.Count() > 0)
                         arkrEntities.Add(aRKRElemEntity);
@@ -528,28 +526,22 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     // Получаю форму одиночного отверстия
                     OpenigHoleShape ohe_Shape = OpenigHoleShape.Rectangular;
-                    ConnectorSet conSet = null;
-                    if (iosElemEnt.IOS_Element is MEPCurve mc)
-                        conSet = mc.ConnectorManager.Connectors;
-                    else if (iosElemEnt.IOS_Element is FamilyInstance fi && fi.MEPModel is MEPModel mepMod)
+                    Face intersectMainFace = GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
+                    var edgeFIter = intersectMainFace.EdgeLoops.ForwardIterator();
+                    while(edgeFIter.MoveNext())
                     {
-                        // Могут быть эл-ты БЕЗ соединителей. Ничего страшного - ставим дефолт. отверстие - прямоугольное
-                        ConnectorManager conMen = mepMod.ConnectorManager;
-                        if (conMen != null)
-                            conSet = mepMod.ConnectorManager.Connectors;
-                    }
-
-                    if (conSet != null)
-                    {
-                        foreach (Connector con in conSet)
+                        EdgeArray edges = edgeFIter.Current as EdgeArray;
+                        foreach(Edge edge in edges)
                         {
-                            if (con.Shape == ConnectorProfileType.Round)
+                            Curve curve = edge.AsCurve();
+                            if (curve is Arc)
                             {
                                 ohe_Shape = OpenigHoleShape.Round;
                                 break;
                             }
                         }
                     }
+
 
                     // Получаю ширину и высоту
                     double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
@@ -599,7 +591,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 AROpeningHoleEntity[] arOHEColl = SelectAndGetAROpenHoles(uidoc, doc);
                 if (arOHEColl == null || CheckWSAvailableError(doc, arOHEColl.Select(arOHE => arOHE.OHE_Element.Id)))
                     return;
-                
+
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();
@@ -713,7 +705,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 IOSOpeningHoleTaskEntity[] iosTasks = SelectAndGetIOSTasksFromLink(uidoc, doc);
                 if (iosTasks == null || !iosTasks.Any())
                     return;
-                
+
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
                 window.Show();

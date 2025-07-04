@@ -23,7 +23,7 @@ namespace KPLN_OpeningHoleManager.Services
             Document iosLinkDoc = iosLinkInst.GetLinkDocument();
             Transform iosLinkTransfrom = GetLinkTransform(iosLinkInst);
 
-            IOSElemEntity iosEnt = GetIOSElemEntities_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransfrom);
+            IOSElemEntity iosEnt = GetIOSElemEntity_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransfrom);
             if (iosEnt != null)
                 arkrEntity.IOSElemEntities.Add(iosEnt);
 
@@ -63,7 +63,7 @@ namespace KPLN_OpeningHoleManager.Services
 
                 foreach (Element iosLinkElem in checkLinkElems)
                 {
-                    IOSElemEntity iosEnt = GetIOSElemEntities_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransform);
+                    IOSElemEntity iosEnt = GetIOSElemEntity_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransform);
                     if (iosEnt != null)
                         resultBag.Add(iosEnt);
                 }
@@ -74,8 +74,20 @@ namespace KPLN_OpeningHoleManager.Services
             return arkrEntity;
         }
 
-        private static IOSElemEntity GetIOSElemEntities_BySolidIntersect(ARKRElemEntity entity, Document iosLinkDoc, Element iosLinkElem, Transform iosLinkTransfrom)
+        private static IOSElemEntity GetIOSElemEntity_BySolidIntersect(ARKRElemEntity entity, Document iosLinkDoc, Element iosLinkElem, Transform iosLinkTransfrom)
         {
+            // Отсеиваю вертикальные, под 90° участки (они в 99% ошибки, остальное закроем Navisworks)
+            double vertTolerance = 0.1;
+            Location iosLinkElemLoc = iosLinkElem.Location;
+            if (iosLinkElemLoc != null && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve)
+            {
+                XYZ startPnt = iosLinkElemLocCurve.Curve.GetEndPoint(0);
+                XYZ endPoint = iosLinkElemLocCurve.Curve.GetEndPoint(1);
+                if (Math.Abs(startPnt.X - endPoint.X) <= vertTolerance && Math.Abs(startPnt.Y - endPoint.Y) <= vertTolerance)
+                    return null;
+            }
+            
+            // Основной анализ
             Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosLinkElem, iosLinkTransfrom);
             if (iosElemSolid != null)
             {

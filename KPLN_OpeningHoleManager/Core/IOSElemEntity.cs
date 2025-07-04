@@ -70,7 +70,7 @@ namespace KPLN_OpeningHoleManager.Core
 
                         string elem_type_param = el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.ToLower() ?? "";
                         string elem_family_param = el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString()?.ToLower() ?? "";
-
+                        
                         return !(
                             // Молниезащита ЭОМ
                             elem_type_param.StartsWith("полоса_")

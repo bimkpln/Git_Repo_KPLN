@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_OpeningHoleManager.Services;
 using System.Collections.Generic;
 
 namespace KPLN_OpeningHoleManager.Core
@@ -8,10 +9,10 @@ namespace KPLN_OpeningHoleManager.Core
     /// </summary>
     internal sealed class ARKRElemEntity
     {
-        internal ARKRElemEntity(Element aRKR_Element, Solid aRKR_Solid)
+        internal ARKRElemEntity(Element aRKR_Element)
         {
             ARKRHost_Element = aRKR_Element;
-            ARKRHost_Solid = aRKR_Solid;
+            ARKRHost_Solid = GeometryWorker.GetRevitElemSolid(aRKR_Element);
         }
 
         /// <summary>
