@@ -12,9 +12,8 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
         public CommandSelectElements(IEnumerable<Element> elemColl)
         {
-            _elementCollection = elemColl;
+            _elementCollection = elemColl.Where(el => el.IsValidObject);
         }
-
 
         public Result Execute(UIApplication app)
         {

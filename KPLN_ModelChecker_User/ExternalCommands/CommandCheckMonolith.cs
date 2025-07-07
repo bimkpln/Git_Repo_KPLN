@@ -26,6 +26,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         }
     }
 
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     class CommandCheckMonolith: IExternalCommand

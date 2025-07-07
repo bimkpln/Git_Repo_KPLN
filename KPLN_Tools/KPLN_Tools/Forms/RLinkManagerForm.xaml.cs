@@ -68,6 +68,7 @@ namespace KPLN_Tools.Forms
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape) Close();
+            DialogResult = false;
         }
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
