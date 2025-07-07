@@ -9,34 +9,35 @@ using KPLN_ModelChecker_User.ExternalCommands;
 
 namespace KPLN_ModelChecker_User.Forms
 {
-
     public partial class CheckMonolithInfo : Window
     {
+#if (Revit2023 || Debug2023)
         private readonly UIDocument _uiDoc;
 
-#if (Revit2023 || Debug2023)
         private readonly DeleteClashPointHandler _delHandler;
         private readonly ExternalEvent _delEvent;
 
         private readonly ShowClashPointHandler _showHandler;
         private readonly ExternalEvent _showEvent;
-#endif
+
 
         public ObservableCollection<FamilyInstance> MonolithClashPoints { get; }
         public ObservableCollection<SkippedElementInfo> SkippedElements { get; }
+#endif
 
         public CheckMonolithInfo(UIDocument uiDoc,
                          IList<FamilyInstance> clashPoints,
                          IList<(Element elem, string origin)> skipped)
         {
             InitializeComponent();
+#if (Revit2023 || Debug2023)
             _uiDoc = uiDoc;
 
             MonolithClashPoints = new ObservableCollection<FamilyInstance>(clashPoints);
             SkippedElements = skipped != null ? new ObservableCollection<SkippedElementInfo>( skipped.Select(pair => new SkippedElementInfo(pair.elem, pair.origin)))
                     : new ObservableCollection<SkippedElementInfo>();
             DataContext = this;
-#if (Revit2023 || Debug2023)
+
             _delHandler = new DeleteClashPointHandler();
             _delEvent = ExternalEvent.Create(_delHandler);
             _showHandler = new ShowClashPointHandler();
@@ -58,7 +59,6 @@ namespace KPLN_ModelChecker_User.Forms
         {
 #if (Revit2023 || Debug2023)
             if (!(sender is Button b && b.DataContext is FamilyInstance fi)) return;
-
             _showHandler.ElementId = fi.Id;
             var res = _showEvent.Raise();            
 
@@ -95,5 +95,4 @@ namespace KPLN_ModelChecker_User.Forms
         }
 
     }
-
 }
