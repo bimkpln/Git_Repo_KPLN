@@ -66,14 +66,31 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uidoc.Document;
 
             // Получаю коллекцию элементов для анализа
-            FamilyInstance[] holesFamInsts = new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
-                .Cast<FamilyInstance>()
-                .Where(e =>
-                    e.Symbol.FamilyName.StartsWith("199_Отверстие")
-                    && e.GetSubComponentIds().Count == 0)
-                .ToArray();
+            FamilyInstance[] holesFamInsts;
+            if (doc.Title.Contains("СЕТ_1"))
+            {
+                holesFamInsts = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_Windows)
+                    .Cast<FamilyInstance>()
+                    .Where(e =>
+                        e.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие")
+                        && e.GetSubComponentIds().Count == 0)
+                    .ToArray();
+            }
+            else
+            {
+
+                holesFamInsts = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .OfCategory(BuiltInCategory.OST_MechanicalEquipment)
+                    .Cast<FamilyInstance>()
+                    .Where(e =>
+                        (e.Symbol.FamilyName.StartsWith("199_Отверстие"))
+                        && e.GetSubComponentIds().Count == 0)
+                    .ToArray();
+            }
+
 
             #region Проверяю и обрабатываю элементы
             WPFEntity[] wpfColl = CheckCommandRunner(doc, holesFamInsts);
@@ -301,7 +318,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         hole,
                         "Отверстие не содержит элементов ИОС",
                         $"Отверстие должно быть заполнено элементами ИОС, иначе оно лишнее",
-                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
+                        $"Ошибка может быть ложной, если не все связи ИОС загружены в проект, " +
+                            $"ЛИБО отверстие выдано инженерами по отдельному заданию (например - лючок под коллектор ОВ).\nУровень размещения: {holeLevel.Name}",
                         true,
                         true);
 
