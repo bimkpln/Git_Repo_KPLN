@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,12 +59,20 @@ namespace KPLN_IOSClasher.Core
             {
                 if (_elemFilterFunc == null) 
                 {
-                    _elemFilterFunc = (el) =>
-                        el.IsValidObject
-                        && el.Category != null
-                        && !(el is ElementType)
-                        && !(el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("ASML_ОГК_")
-                            || el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString().Contains("Огнезащитный короб"));
+                    // Есть странная ошибка - нет возможности работы с Revit API
+                    try
+                    {
+                        _elemFilterFunc = (el) =>
+                            el.IsValidObject
+                            && el.Category != null
+                            && !(el is ElementType)
+                            && !((bool)el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.Contains("ASML_ОГК_")
+                                || (bool)el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.Contains("Огнезащитный короб"));
+                    }
+                    catch (Exception ex) 
+                    {
+                        HtmlOutput.Print($"Ошибка фильтрации в IOSClasher: {ex.Message}", MessageType.Error);
+                    }
                 }
 
                 return _elemFilterFunc;
