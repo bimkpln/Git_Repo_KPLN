@@ -1,13 +1,10 @@
-﻿using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
 using KPLN_OpeningHoleManager.Services;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_OpeningHoleManager.ExecutableCommand
@@ -42,7 +39,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null) return Result.Cancelled;
-            
+
             Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing += RevitEventWorker.OnFailureProcessing;
 
             try
@@ -65,14 +62,15 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();
                     }
+                    AROpeningHoleEntity.RegenerateDocAndSetSolids(doc, _arEntitiesToCreate);
                     _progressInfoViewModel.IsComplete = true;
 
                     // Работа с видом и выделением эл-в
                     view = ViewZoomCreator.SpecialViewCreator(
-                        app, 
+                        app,
                         _arEntitiesToCreate.Select(ent => ent.AR_OHE_HostElement).ToHashSet(new ElementComparerById()),
                         true);
-                
+
                     app.ActiveUIDocument.Selection.SetElementIds(
                         _arEntitiesToCreate
                         .Where(ent => doc.GetElement(ent.OHE_Element.Id).IsValidObject)

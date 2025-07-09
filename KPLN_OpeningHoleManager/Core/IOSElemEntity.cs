@@ -76,6 +76,8 @@ namespace KPLN_OpeningHoleManager.Core
                             elem_type_param.StartsWith("полоса_")
                             || elem_type_param.StartsWith("пруток_")
                             || elem_type_param.StartsWith("уголок_")
+                            || elem_type_param.StartsWith("asml_эг_пруток-катанка")
+                            || elem_type_param.StartsWith("asml_эг_полоса")
                             // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
                             || (elem_family_param.Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
                             || elem_family_param.Contains("470_dkc_s5_accessories")

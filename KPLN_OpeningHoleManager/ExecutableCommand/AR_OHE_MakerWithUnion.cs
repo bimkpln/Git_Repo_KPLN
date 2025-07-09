@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
@@ -68,6 +69,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();
                     }
+                    AROpeningHoleEntity.RegenerateDocAndSetSolids(doc, _arEntities);
 
 
                     // При простом объединении - нахожу и удаляю отверстия по пересечению
@@ -191,6 +193,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                                 ++_progressInfoViewModel.CurrentProgress;
                                 _progressInfoViewModel.DoEvents();
                             }
+                            AROpeningHoleEntity.RegenerateDocAndSetSolids(doc, arEntitiesForUnion);
                             _progressInfoViewModel.IsComplete = true;
 
                             // Работа с видом и выделением эл-в
@@ -228,6 +231,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 _progressInfoViewModel.MaintStatus = "Завершено с критической ошибкой :(";
                 _progressInfoViewModel.DoEvents();
 
+                HtmlOutput.Print(ex.Message, MessageType.Error);
                 throw ex; 
             }
             finally
@@ -266,30 +270,26 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     int id2 = ent2.OHE_Element.Id.IntegerValue;
                     if (id1 == id2) continue;
 
-                    try
+                    //bool isConnected = false;
+                    //try
+                    //{
+                    //    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(ent1.OHE_Solid, ent2.OHE_Solid, BooleanOperationsType.Intersect);
+                    //    isConnected = intersectSolid != null && intersectSolid.Volume > 0;
+                    //}
+                    //// Могут выпадать ошибки при поиске пересечений, связанные с неточностью. Считаем такие эл-ты допустимыми к анализу на дистанцию
+                    //catch (Autodesk.Revit.Exceptions.InvalidOperationException) { }
+
+                    // Анализирую на минимальное расстояние
+                    double dist = GeometryWorker.GetMinimumDistanceBetweenSolids(ent1.OHE_Solid, ent2.OHE_Solid);
+                    bool isConnected = dist <= minDistance;
+
+                    if (isConnected)
                     {
-                        Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(ent1.OHE_Solid, ent2.OHE_Solid, BooleanOperationsType.Intersect);
-                        bool isConnected = intersectSolid != null && intersectSolid.Volume > 0;
+                        if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<int>();
+                        if (!adjacency[id1].Contains(id2)) adjacency[id1].Add(id2);
 
-                        if (!isConnected)
-                        {
-                            double dist = GeometryWorker.GetMinimumDistanceBetweenSolids(ent1.OHE_Solid, ent2.OHE_Solid);
-                            isConnected = dist <= minDistance;
-                        }
-
-                        if (isConnected)
-                        {
-                            if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<int>();
-                            if (!adjacency[id1].Contains(id2)) adjacency[id1].Add(id2);
-
-                            if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<int>();
-                            if (!adjacency[id2].Contains(id1)) adjacency[id2].Add(id1);
-                        }
-                    }
-                    // Могут выпадать ошибки при поиске пересечений, связанные с неточностью. Игнорим такие эл-ты
-                    catch (Autodesk.Revit.Exceptions.InvalidOperationException)
-                    {
-                        continue;
+                        if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<int>();
+                        if (!adjacency[id2].Contains(id1)) adjacency[id2].Add(id1);
                     }
                 }
             }

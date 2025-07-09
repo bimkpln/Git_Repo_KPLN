@@ -1,10 +1,9 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_OpeningHoleManager.Core;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_OpeningHoleManager.Services
 {
@@ -39,9 +38,7 @@ namespace KPLN_OpeningHoleManager.Services
             // Генерация Outline для быстрого поиска (QuickFilter)
             Outline filterOutline = CreateFilterOutline_BySolid(arkrEntity.ARKRHost_Solid, 0.5);
 
-            ConcurrentBag<IOSElemEntity> resultBag = new ConcurrentBag<IOSElemEntity>();
-
-            Parallel.ForEach(iosLinkInsts, iosLinkInst =>
+            foreach (RevitLinkInstance iosLinkInst in iosLinkInsts)
             {
                 Document iosLinkDoc = iosLinkInst.GetLinkDocument();
                 Transform iosLinkTransform = GetLinkTransform(iosLinkInst);
@@ -65,28 +62,35 @@ namespace KPLN_OpeningHoleManager.Services
                 {
                     IOSElemEntity iosEnt = GetIOSElemEntity_BySolidIntersect(arkrEntity, iosLinkDoc, iosLinkElem, iosLinkTransform);
                     if (iosEnt != null)
-                        resultBag.Add(iosEnt);
+                        arkrEntity.IOSElemEntities.Add(iosEnt);
                 }
-            });
-
-            arkrEntity.IOSElemEntities.AddRange(resultBag);
+            }
 
             return arkrEntity;
         }
 
+        /// <summary>
+        /// Создание IOSElemEntity по пересечению (если оно есть)
+        /// </summary>
         private static IOSElemEntity GetIOSElemEntity_BySolidIntersect(ARKRElemEntity entity, Document iosLinkDoc, Element iosLinkElem, Transform iosLinkTransfrom)
         {
-            // Отсеиваю вертикальные, под 90° участки (они в 99% ошибки, остальное закроем Navisworks)
-            double vertTolerance = 0.1;
+            // Фильтрация по продольным коллизиям
             Location iosLinkElemLoc = iosLinkElem.Location;
-            if (iosLinkElemLoc != null && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve)
+            if (iosLinkElemLoc != null 
+                && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve 
+                && iosLinkElemLocCurve.Curve is Line iosLinkElemLine)
             {
-                XYZ startPnt = iosLinkElemLocCurve.Curve.GetEndPoint(0);
-                XYZ endPoint = iosLinkElemLocCurve.Curve.GetEndPoint(1);
-                if (Math.Abs(startPnt.X - endPoint.X) <= vertTolerance && Math.Abs(startPnt.Y - endPoint.Y) <= vertTolerance)
+                XYZ iosDir = iosLinkElemLine.Direction;
+                XYZ hostDir = GeometryWorker.GetHostDirection(entity.ARKRHost_Element);
+                XYZ crossProd = iosDir.CrossProduct(hostDir);
+
+                // Отсеиваю вертикальные, под 90° участки и горизонтальные, параллельные хосту (они в 99% ошибки, остальное закроем Navisworks)
+                // Могут быть ошибки, на тесте все ок, но звучит не убедительно
+                // Концепция вот какая - если CrossProduct по Z стремиться к 0, значит элементы в одно плоскости
+                if (Math.Round(crossProd.Z, 5) - 0 == 0)
                     return null;
             }
-            
+
             // Основной анализ
             Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosLinkElem, iosLinkTransfrom);
             if (iosElemSolid != null)

@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using System.Linq;
+using System.Security.Cryptography;
 
 namespace KPLN_OpeningHoleManager.Core
 {
@@ -23,8 +24,8 @@ namespace KPLN_OpeningHoleManager.Core
         {
             if (doc.Title.Contains("СЕТ_1"))
             {
-                OHE_FamilyPath_Rectangle = @"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM\501_ЗИ_Отверстие_Прямоугольное_Стена_(Об).rfa";
-                OHE_FamilyPath_Circle = @"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\BIM\501_ЗИ_Отверстие_Круглое_Стена_(Об).rfa";
+                OHE_FamilyPath_Rectangle = @"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\00_Общие семейства\2_Отверстия\ASML_О_Отверстие_Прямоугольное_В стене.rfa";
+                OHE_FamilyPath_Circle = @"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\00_Общие семейства\2_Отверстия\ASML_О_Отверстие_Круглое_В стене.rfa";
             }
             else
             {
@@ -60,12 +61,23 @@ namespace KPLN_OpeningHoleManager.Core
                         OHE_ParamNameWidth = "Ширина";
                         OHE_ParamNameExpander = "Расширение границ";
                     }
+                    else if (OHE_FamilyName_Rectangle.Contains("ASML_О_Отверстие_Прямоугольное"))
+                    {
+                        OHE_ParamNameHeight = "ASML_Размер_Высота";
+                        OHE_ParamNameWidth = "ASML_Размер_Ширина";
+                        OHE_ParamNameExpander = "Расширение границ";
+                    }
                 }
                 else
                 {
                     if (OHE_FamilyName_Circle.Contains("501_ЗИ_Отверстие_Круглое"))
                     {
                         OHE_ParamNameRadius = "КП_Р_Диаметр";
+                        OHE_ParamNameExpander = "Расширение границ";
+                    }
+                    else if (OHE_FamilyName_Circle.Contains("ASML_О_Отверстие_Круглое"))
+                    {
+                        OHE_ParamNameRadius = "ASML_Размер_Диаметр";
                         OHE_ParamNameExpander = "Расширение границ";
                     }
                 }
@@ -83,7 +95,7 @@ namespace KPLN_OpeningHoleManager.Core
             {
                 if (OHE_Shape == OpenigHoleShape.Rectangular)
                 {
-                    if (OHE_FamilyName_Rectangle.Contains("501_ЗИ_Отверстие_Прямоугольное"))
+                    if (OHE_FamilyName_Rectangle.Contains("_Прямоугольное_"))
                     {
                         if (OHE_ParamNameHeight == null || OHE_ParamNameWidth == null || OHE_ParamNameExpander == null)
                             throw new System.Exception ("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
@@ -94,7 +106,7 @@ namespace KPLN_OpeningHoleManager.Core
                 }
                 else
                 {
-                    if (OHE_FamilyName_Circle.Contains("501_ЗИ_Отверстие_Круглое"))
+                    if (OHE_FamilyName_Circle.Contains("_Круглое_"))
                     {
                         if (OHE_ParamNameRadius == null || OHE_ParamNameExpander == null)
                             throw new System.Exception("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
