@@ -73,7 +73,7 @@ namespace KPLN_Publication
                     .WhereElementIsNotElementType()
                     .OfClass(typeof(ViewSheet))
                     .Cast<ViewSheet>()
-                    .OrderBy(vsh => vsh.SheetNumber)
+                    .OrderBy(vsh => vsh.SheetNumber, new NaturalStringComparer())
                     .Select(i => new MainEntity(i))
                     .ToList();
             }
@@ -162,6 +162,37 @@ namespace KPLN_Publication
             double c = Math.Abs(d1 - d2);
             if (c <= epsilon) return true;
             return false;
+        }
+    }
+
+    public class NaturalStringComparer : IComparer<string>
+    {
+        public int Compare(string x, string y)
+        {
+            var regex = new System.Text.RegularExpressions.Regex(@"\d+|\D+");
+            var xMatches = regex.Matches(x);
+            var yMatches = regex.Matches(y);
+            int count = System.Math.Min(xMatches.Count, yMatches.Count);
+
+            for (int i = 0; i < count; i++)
+            {
+                var xPart = xMatches[i].Value;
+                var yPart = yMatches[i].Value;
+                bool xIsNum = int.TryParse(xPart, out int xNum);
+                bool yIsNum = int.TryParse(yPart, out int yNum);
+
+                if (xIsNum && yIsNum)
+                {
+                    int cmp = xNum.CompareTo(yNum);
+                    if (cmp != 0) return cmp;
+                }
+                else
+                {
+                    int cmp = string.Compare(xPart, yPart, System.StringComparison.OrdinalIgnoreCase);
+                    if (cmp != 0) return cmp;
+                }
+            }
+            return xMatches.Count.CompareTo(yMatches.Count);
         }
     }
 }
