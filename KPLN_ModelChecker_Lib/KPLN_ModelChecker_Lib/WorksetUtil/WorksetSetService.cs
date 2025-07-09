@@ -13,7 +13,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         /// <summary>
         /// Глобальный путь к папке с конфигами
         /// </summary>
-        public static string WSPatternFolderPath = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
+        public static string WSPatternFolderPath;
 
         /// <summary>
         /// Сервис по созданию рабочих наборов в проекте
@@ -28,13 +28,19 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
             bool impInstWSCreating = true, 
             bool modelElemWSCreating = true)
         {
+            // Кастомная настройка пути под проекты
+            if (doc.Title.StartsWith("СЕТ_1"))
+                WSPatternFolderPath = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns\\СЕТ";
+            else
+                WSPatternFolderPath = $"X:\\BIM\\5_Scripts\\Git_Repo_KPLN\\KPLN_ModelChecker_Debugger\\KPLN_ModelChecker_Debugger\\Workset_Patterns";
+
             #region Вывод пользовательского окна с xml-шаблонами
             System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog
-            {
-                InitialDirectory = WSPatternFolderPath,
-                Multiselect = false,
-                Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
-            };
+                {
+                    InitialDirectory = WSPatternFolderPath,
+                    Multiselect = false,
+                    Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
+                };
             if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
                 return false;
                 
@@ -105,7 +111,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 //Назначение рабочих наборов для связанных файлов
                 foreach (RevitLinkInstance linkInstance in rvtLinks)
                 {
-                    if (doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)
+                    if (linkInstance.IsValidObject && doc.GetElement(linkInstance.GetTypeId()) is RevitLinkType linkFileType)
                     {
                         if (linkFileType.IsNestedLink) continue;
 
