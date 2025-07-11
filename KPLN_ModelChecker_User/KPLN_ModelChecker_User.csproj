@@ -215,6 +215,7 @@
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
+    <Compile Include="ExternalCommands\CommandCheckWetZones.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
     <Compile Include="ExternalCommands\CommandCheckFlatsArea.cs" />
@@ -237,6 +238,12 @@
     </Compile>
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\WetZoneParameterSelect.xaml.cs">
+      <DependentUpon>WetZoneParameterSelect.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\WetZoneStartSetting.xaml.cs">
+      <DependentUpon>WetZoneStartSetting.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\WPFEntityApproveBtnVisibilityConverter.cs" />
     <Compile Include="Forms\StringToVisibilityConverter.cs" />
@@ -279,6 +286,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\WetZoneParameterSelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\WetZoneStartSetting.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -304,6 +319,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_mainLines.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checker_monolith.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
