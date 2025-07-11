@@ -233,7 +233,7 @@ namespace KPLN_ModelChecker_User
                 true
                 );
 
-#if (Revit2023)
+#if (Revit2023 || Debug2023)
             AddPushButtonData(
                 "CheckMonolith",
                 CommandCheckMonolith.PluginName,

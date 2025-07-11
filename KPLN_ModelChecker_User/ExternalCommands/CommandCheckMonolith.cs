@@ -1,20 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-
+using KPLN_ModelChecker_User.Forms;
 
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
+
+#if (Revit2023 || Debug2023)
+
+    public class SkippedElementInfo
+    {
+        public Element Element { get; }
+        public string Origin { get; }
+
+        public SkippedElementInfo(Element element, string origin)
+        {
+            Element = element;
+            Origin = origin;
+        }
+    }
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    class CommandCheckMonolith: IExternalCommand
+    class CommandCheckMonolith : IExternalCommand
     {
         internal const string PluginName = "АР/КР. Проверка на совпадение монолита";
 
@@ -26,10 +40,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             var checkMonolithSettingsWindow = new Forms.CheckMonolithSettings(uiApp, doc);
 
-            if (checkMonolithSettingsWindow.ShowDialog() == true)              
+            if (checkMonolithSettingsWindow.ShowDialog() == true)
             {
-                Document mainDoc = checkMonolithSettingsWindow.MainDocument;
-                List<Document> linkedDocs = checkMonolithSettingsWindow.LinkedDocuments.ToList();
                 List<string> categories = checkMonolithSettingsWindow.SelectedCategories.ToList();
                 double toleranceValue = checkMonolithSettingsWindow.Tolerance;
 
@@ -109,7 +121,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 {
                                     Transform transform = linkInstance.GetTransform();
                                     allSelectedLinkElements.Add((linkedElement, transform));
-                                }                                   
+                                }
                             }
                         }
                     }
@@ -123,7 +135,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     // Создание общего Solid
                     List<Element> skippedMainElements;
                     List<Element> skippedLinkElements;
-                    Solid elGrouoUnionMain = GetUnionSolid(allSelectedElements, out skippedMainElements);                   
+                    Solid elGrouoUnionMain = GetUnionSolid(allSelectedElements, out skippedMainElements);
                     Solid elGrouoUnionOther = GetUnionSolid(allSelectedLinkElements, out skippedLinkElements);
 
                     if (elGrouoUnionMain == null || elGrouoUnionOther == null)
@@ -140,9 +152,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         ? string.Join("\n", skippedLinkElements.Select(e => $"Link ⮕ ID: {e.Id}, Имя: {e.Name}"))
                         : "Link ⮕ нет пропущенных элементов.";
 
-                    if (skippedMainElements.Count != 0 || skippedLinkElements.Count != 0) 
+                    if (skippedMainElements.Count != 0 || skippedLinkElements.Count != 0)
                     {
-                        TaskDialog.Show("Предупреждение", $"Не все элементы попали в проверку:\n{skippedMain}\n{skippedLink}"); 
+                        TaskDialog.Show("Предупреждение", $"Не все элементы попали в проверку:\n{skippedMain}\n{skippedLink}");
                     }
 
                     // Вычетание геометрий
@@ -156,12 +168,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Exception ex)
                     {
-                        string info = $"{ex.Message}\n\n" +
-                                      $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
+                        string info = $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
                                       $"elGrouoUnionOther: Volume={elGrouoUnionOther?.Volume:F2}, Faces={elGrouoUnionOther?.Faces?.Size}\n\n" +
                                       "Пропущенные элементы:\n" +
-                                      $"{skippedMain}\n\n" +
-                                      $"{skippedLink}";
+                                      $"{skippedMain}\n" +
+                                      $"{skippedLink}\n\n" +
+                                      $"{ex.Message}";
 
                         TaskDialog.Show("Ошибка Boolean Difference", info);
                         return Result.Failed;
@@ -173,13 +185,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     }
                     catch (Exception ex)
                     {
-                       
-                        string info = $"{ex.Message}\n\n" +
-                                      $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
+                        string info = $"elGrouoUnionMain: Volume={elGrouoUnionMain?.Volume:F2}, Faces={elGrouoUnionMain?.Faces?.Size}\n" +
                                       $"elGrouoUnionOther: Volume={elGrouoUnionOther?.Volume:F2}, Faces={elGrouoUnionOther?.Faces?.Size}\n\n" +
                                       "Пропущенные элементы:\n" +
-                                      $"{skippedMain}\n\n" +
-                                      $"{skippedLink}";
+                                      $"{skippedMain}\n" +
+                                      $"{skippedLink}\n\n" +
+                                      $"{ex.Message}";
 
                         TaskDialog.Show("Ошибка Boolean Difference", info);
                         return Result.Failed;
@@ -234,6 +245,22 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         }
 
                         tx.Commit();
+                    }
+
+                    IList<FamilyInstance> monolithClashPoints = GetMonolithClashPoints(doc);
+                    if (monolithClashPoints.Count != 0)
+                    {
+                        List<(Element elem, string origin)> combinedSkipElementsTest =
+                            skippedMainElements.Select(e => (e, "[Основной файл]. Возникла критическая проблема при создании общего Solid-элемента для дальнейшего логического вычитания."))
+                                     .Concat(skippedLinkElements.Select(e => (e, "[Связный файл]. Возникла критическая проблема при создании общего Solid-элемента для дальнейшего логического вычитания.")))
+                                     .ToList();
+
+                        var win = new CheckMonolithInfo(uiDoc, monolithClashPoints, combinedSkipElementsTest)
+                        {
+                            Topmost = true,
+                            ShowInTaskbar = true
+                        };
+                        win.Show();
                     }
 
                     return Result.Succeeded;
@@ -370,19 +397,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
         }
 
-
-
-
-
-
-
-
-
-
         /// <summary>
         /// Получение ClashPoint
         /// </summary>
-        private FamilySymbol GetClashPointSymbol(Document doc)
+        public FamilySymbol GetClashPointSymbol(Document doc)
         {
             return new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilySymbol))
@@ -393,12 +411,170 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Растановка ClashPoint
         /// </summary>
-        private void PlaceClashPoint(Document doc, XYZ point, FamilySymbol clashPointType)
+        public void PlaceClashPoint(Document doc, XYZ point, FamilySymbol clashPointType)
         {
+            const double tol = 0.001;
+
+            bool exists = new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilyInstance))
+                .WhereElementIsNotElementType()
+                .Cast<FamilyInstance>()
+                .Any(fiOld =>
+                {
+                    if (fiOld.Symbol.Id != clashPointType.Id) return false;
+                    LocationPoint lp = fiOld.Location as LocationPoint;
+                    return lp != null && lp.Point.DistanceTo(point) < tol;
+                });
+
+            if (exists) return;
+
             if (!clashPointType.IsActive)
                 clashPointType.Activate();
 
-            doc.Create.NewFamilyInstance(point, clashPointType, StructuralType.NonStructural);
-        }       
+            FamilyInstance fi = doc.Create.NewFamilyInstance(
+                 point, clashPointType, StructuralType.NonStructural);
+
+            Parameter p = fi.LookupParameter("Комментарии");
+            if (p != null && !p.IsReadOnly)
+                p.Set("Проверка монолита");
+        }
+
+        /// <summary>
+        /// Поиск созданных ClashPoint
+        /// </summary>
+        public static IList<FamilyInstance> GetMonolithClashPoints(Document doc)
+        {
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilyInstance))
+                .WhereElementIsNotElementType()
+                .Cast<FamilyInstance>()
+                .Where(fi =>
+                {
+                    if (fi.Symbol?.Family?.Name != "ClashPoint") return false;
+
+                    string comments =
+                        fi.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)?
+                          .AsString() ?? string.Empty;
+
+                    return comments
+                        .IndexOf("Проверка монолита", StringComparison.OrdinalIgnoreCase) >= 0;
+                })
+                .ToList();
+        }
     }
+
+
+    /// //////////////////////////////////////////////////////////
+    // Внешний IExternalEventHandler. Обработчик удаления элемента
+    internal class DeleteClashPointHandler : IExternalEventHandler
+    {
+        public ElementId ElementId { get; set; }
+
+        public void Execute(UIApplication app)
+        {
+            if (ElementId == null || ElementId == ElementId.InvalidElementId) return;
+
+            Document doc = app.ActiveUIDocument.Document;
+            using (Transaction tx = new Transaction(doc, "KPLN. Удалить ClashPoint"))
+            {
+                tx.Start();
+                doc.Delete(ElementId);
+                tx.Commit();
+            }
+        }
+
+        public string GetName() => nameof(DeleteClashPointHandler);
+    }
+
+    /// //////////////////////////////////////////////////////////
+    // Внешний IExternalEventHandler. Создание обзорного 3D-вида
+    internal class ShowClashPointHandler : IExternalEventHandler
+    {
+        public ElementId ElementId { get; set; }
+
+        private static View3D RebuildPluginView(Document doc, View3D source3d)
+        {
+            const string PLUGIN_NAME = "3D. Проверка монолита (плагин)";
+
+            View3D plugin = new FilteredElementCollector(doc)
+                            .OfClass(typeof(View3D))
+                            .Cast<View3D>()
+                            .FirstOrDefault(v => !v.IsTemplate && v.Name == PLUGIN_NAME);
+
+            if (plugin != null)
+                return plugin;
+
+            using (Transaction tx = new Transaction(doc, "KPLN. Создание служебного 3D-вида"))
+            {
+                tx.Start();
+                ElementId dupId = source3d.Duplicate(ViewDuplicateOption.Duplicate);
+                plugin = (View3D)doc.GetElement(dupId);
+                plugin.Name = PLUGIN_NAME;
+                tx.Commit();
+            }
+            return plugin;
+        }
+
+        public void Execute(UIApplication app)
+        {
+            try
+            {
+                if (ElementId == null || ElementId == ElementId.InvalidElementId) return;
+
+                UIDocument uidoc = app.ActiveUIDocument;
+                Document doc = uidoc.Document;
+
+                View3D active3d = uidoc.ActiveView as View3D;
+                if (active3d == null || active3d.IsTemplate) return;
+
+                View3D v3 = RebuildPluginView(doc, active3d);
+
+                using (Transaction tx = new Transaction(doc, "KPLN. Проверка монолита (ClahPoint на 3D-виде)"))
+                {
+                    tx.Start();
+
+                    FamilyInstance fi = doc.GetElement(ElementId) as FamilyInstance;
+                    if (fi == null) { tx.RollBack(); return; }
+
+                    BoundingBoxXYZ bb = fi.get_BoundingBox(null);
+                    if (bb == null) { tx.RollBack(); return; }
+
+                    double off = UnitUtils.ConvertToInternalUnits(2.0, UnitTypeId.Meters);
+
+                    v3.SetSectionBox(new BoundingBoxXYZ
+                    {
+                        Min = bb.Min - new XYZ(off, off, off),
+                        Max = bb.Max + new XYZ(off, off, off)
+                    });
+
+                    XYZ center = fi.Location is LocationPoint lp
+                                  ? lp.Point
+                                  : (bb.Min + bb.Max) * 0.5;
+
+                    XYZ forward = new XYZ(-0.25, -1, -0.15).Normalize();
+                    XYZ right = forward.CrossProduct(XYZ.BasisZ).Normalize();
+                    if (right.IsZeroLength())
+                        right = forward.CrossProduct(XYZ.BasisX).Normalize();
+
+                    XYZ up = right.CrossProduct(forward).Normalize();
+                    XYZ eye = center - forward * off;
+
+                    v3.SetOrientation(new ViewOrientation3D(eye, up, forward));
+
+                    tx.Commit();
+                }
+
+                uidoc.ActiveView = v3;
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("ShowClashPointHandler",
+                    $"Критическая ошибка:\n{ex.Message}");
+            }
+        }
+
+        public string GetName() => nameof(ShowClashPointHandler);
+    }
+
+#endif
 }

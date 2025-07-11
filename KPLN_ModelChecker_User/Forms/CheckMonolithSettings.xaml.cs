@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_User.ExternalCommands;
 
 
 namespace KPLN_ModelChecker_User.Forms
@@ -13,58 +14,26 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class CheckMonolithSettings : Window
     {
-        Document _activeDoc; 
-        private readonly List<Document> _allModels = new List<Document>();
-
-        private Document _mainDoc;                 
-        private List<Document> _linkedDocs = new List<Document>();
+        UIApplication _uiApp;
+        Document _activeDoc;
         private List<string> _categories = new List<string>();
 
-        public Document MainDocument => _mainDoc;
-        public IReadOnlyList<Document> LinkedDocuments => _linkedDocs;
         public IReadOnlyList<string> SelectedCategories => _categories;
 
         public double Tolerance { get; private set; }
+
 
         public CheckMonolithSettings(UIApplication uiApp, Document activeDoc)
         {
             InitializeComponent();
 
+            _uiApp = uiApp;
             _activeDoc = activeDoc;
-            CollectModels(activeDoc);
-
-            BindModels();
+#if (Revit2023 || Debug2023)
             FillCategories();
-        }
-
-        /// <summary>
-        /// Собираем проект и все подгруженные в него Revit-связи.
-        /// </summary>
-        private void CollectModels(Document activeDoc)
-        {
-            _allModels.Clear();
-            _allModels.Add(activeDoc);     
-
-            var linkInstances = new FilteredElementCollector(activeDoc)
-                                .OfClass(typeof(RevitLinkInstance))
-                                .Cast<RevitLinkInstance>();
-
-            foreach (RevitLinkInstance link in linkInstances)
-            {
-                Document linkDoc = link.GetLinkDocument();
-                if (linkDoc != null && !_allModels.Contains(linkDoc))
-                    _allModels.Add(linkDoc);
-            }
-        }
-
-        /// <summary>
-        /// Заполняем ComboBox и ListBox, подписываемся на изменения.
-        /// </summary>
-        private void BindModels()
-        {
-            cmbMainModel.ItemsSource = _allModels;
-            cmbMainModel.DisplayMemberPath = "Title";
-            cmbMainModel.SelectedItem = _activeDoc;
+            IList<FamilyInstance> monolithClashPoints = CommandCheckMonolith.GetMonolithClashPoints(_activeDoc);
+            btnClashInfo.IsEnabled = monolithClashPoints.Count != 0;
+#endif
         }
 
         /// <summary>
@@ -78,52 +47,34 @@ namespace KPLN_ModelChecker_User.Forms
             "Перекрытия",
             "Лестницы"
         };
-
             lstCategories.ItemsSource = categories;
         }
 
         /// <summary>
-        /// XAML. Каждый раз, когда пользователь меняет «основную» модель, пересчитываем «связные»
+        /// XAML. Кнопка действия. Проверить текущие ClashPoint
         /// </summary>
-        private void cmbMainModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void ButtonClashInfo_Click(object sender, RoutedEventArgs e)
         {
-            Document mainDoc = cmbMainModel.SelectedItem as Document;
-            if (mainDoc == null)
-                return;
-
-            var rest = _allModels.Where(d => d != mainDoc).ToList();
-
-            lstLinkedModels.ItemsSource = rest;
-            lstLinkedModels.DisplayMemberPath = "Title";
+#if (Revit2023 || Debug2023)
+            IList<FamilyInstance> monolithClashPoints = CommandCheckMonolith.GetMonolithClashPoints(_activeDoc);
+            if (monolithClashPoints.Count != 0)
+            {
+                var win = new CheckMonolithInfo(_uiApp.ActiveUIDocument, monolithClashPoints, null)
+                {
+                    Topmost = true,
+                    ShowInTaskbar = false
+                };
+                win.Show();
+                this.Close();
+            }
+#endif
         }
 
         /// <summary>
-        /// XAML. Кнопка действия
+        /// XAML. Кнопка действия. Выбрать эллементы
         /// </summary>
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void ButtonNext_Click(object sender, RoutedEventArgs e)
         {
-            Document mainDoc = cmbMainModel.SelectedItem as Document;
-            if (mainDoc == null)
-            {
-                MessageBox.Show("Выберите основную модель", "Недостаточно данных",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var linkedDocs = lstLinkedModels.SelectedItems
-                                            .OfType<Document>()
-                                            .ToList();
-
-            if (linkedDocs.Count == 0)
-            {
-                MessageBox.Show(
-                    "Выберите хотя бы одну связную модель.",
-                    "Недостаточно данных",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
-
             var chosenCategories = lstCategories.SelectedItems
                                                 .OfType<string>()
                                                 .ToList();
@@ -149,8 +100,6 @@ namespace KPLN_ModelChecker_User.Forms
                 return;
             }
 
-            _mainDoc = mainDoc;
-            _linkedDocs = linkedDocs;
             _categories = chosenCategories;
             Tolerance = tolerance;
             DialogResult = true;
