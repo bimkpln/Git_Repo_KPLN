@@ -1,0 +1,66 @@
+﻿<Window x:Class="KPLN_ModelChecker_User.Forms.WetZoneReviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Плагин проверки мокрых зон"
+        Height="600" Width="1100"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="570" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+
+        <Grid Grid.Column="0" Margin="10" Background="AliceBlue">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <RichTextBox Name="InfoText"
+             IsReadOnly="True"
+             BorderThickness="0"
+             Background="Transparent"
+             VerticalScrollBarVisibility="Auto"
+             Margin="0,0,0,10"
+             Padding="5"/>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 0 5 5">
+                <Button Content="Отмена" Width="80" Height="22" Margin="5" Click="ButtonCancel_Click" Background="#FFFFC6C6"/>
+                <Button Name="Start1Button" Content="Запуск (Уровень)" Width="130" Height="22" Margin="5"/>
+                <Button Name="Start2Button" Content="Запуск (ПОМ_Номер этажа)" Width="180" Height="22" Margin="5"/>
+            </StackPanel>
+        </Grid>
+
+
+        <ScrollViewer Grid.Column="1" Margin="10" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="ОБРАБОТАННЫЕ КАТЕГОРИИ:" Margin="3 0 0 5" FontSize="18" FontWeight="Bold"/>
+                <Expander Header="Жилые комнаты" Name="LivingExp" IsExpanded="False">
+                    <ScrollViewer Height="230" Margin="0 2 0 5">
+                        <ListBox Name="LivingList" IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </Expander>
+
+                <Expander Header="Мокрые зоны" Name="WetExp" IsExpanded="False">
+                    <ScrollViewer Height="230" Margin="0 2 0 5">
+                        <ListBox Name="WetList" IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </Expander>
+
+                <Expander Header="Кухни" Name="KitchenExp" IsExpanded="False">
+                    <ScrollViewer Height="230" Margin="0 2 0 5">
+                        <ListBox Name="KitchenList" IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </Expander>
+
+                
+                <Expander Header="Неопределённые помещения" Name="UndefinedExp" IsExpanded="False">
+                    <ScrollViewer Height="230" Margin="0 2 0 5">
+                        <ListBox Name="UndefinedList" IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

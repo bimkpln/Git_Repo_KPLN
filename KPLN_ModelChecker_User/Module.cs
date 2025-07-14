@@ -272,6 +272,18 @@ namespace KPLN_ModelChecker_User
                 );
 
             AddPushButtonData(
+                "CheckWetZones",
+                CommandCheckWetZones.PluginName,
+                "Плагин, который позволяет находить в проектах несоответствия СП 54.13330.2022, п 7.20, 7.21.\n",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckWetZones).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_wet_zones.png",
+                _mainContextualHelp,
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
+                );
+
+            AddPushButtonData(
                 "CheckHoles",
                 CommandCheckHoles.PluginName,
                 "Плагин выполняет следующие функции:\n" +

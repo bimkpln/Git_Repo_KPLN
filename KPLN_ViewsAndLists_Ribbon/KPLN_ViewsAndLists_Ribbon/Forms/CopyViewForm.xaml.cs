@@ -265,7 +265,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             bool openDocument = CHK_OpenDocument.IsChecked ?? false;
 
-            string inputText = TB_CloseWorksets.Text;
+            string inputText = "#";
             List<string> worksetPrefixName = inputText
                 .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Trim())
@@ -299,7 +299,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             bool openDocument = CHK_OpenDocument.IsChecked ?? false;
-            string inputText = TB_CloseWorksets.Text;
+            string inputText = "#";
             List<string> worksetPrefixName = inputText
                 .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Trim())
