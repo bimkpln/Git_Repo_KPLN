@@ -40,6 +40,48 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             BuiltInCategory.OST_CableTrayFitting,
         };
 
+        private readonly Func<Element, bool> _elemExtraFilterFunc = (el) =>
+        {
+            if (el.Category == null || el is ElementType)
+                return false;
+
+            string elem_type_param = el.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.ToLower() ?? "";
+            string elem_family_param = el.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString()?.ToLower() ?? "";
+
+            return !(
+                // Молниезащита ЭОМ
+                elem_type_param.StartsWith("полоса_")
+                || elem_type_param.StartsWith("пруток_")
+                || elem_type_param.StartsWith("уголок_")
+                || elem_type_param.StartsWith("asml_эг_пруток-катанка")
+                || elem_type_param.StartsWith("asml_эг_полоса")
+                // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
+                || (elem_family_param.Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
+                || elem_family_param.Contains("470_dkc_s5_accessories")
+                || elem_family_param.Contains("470_dkc_fireproof_out")
+                || elem_family_param.Contains("dkc_ceiling")
+                || elem_family_param.Contains("757_опора_неподвижная")
+                // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
+                || elem_family_param.StartsWith("501_")
+                || elem_family_param.StartsWith("551_")
+                || elem_family_param.StartsWith("552_")
+                || elem_family_param.StartsWith("556_")
+                || elem_family_param.StartsWith("557_")
+                || elem_family_param.StartsWith("560_")
+                || elem_family_param.StartsWith("561_")
+                || elem_family_param.StartsWith("565_")
+                || elem_family_param.StartsWith("570_")
+                || elem_family_param.StartsWith("582_")
+                || elem_family_param.StartsWith("592_")
+                // Фильтрация типов семейств для которых опытным путём определено, что солид у них не взять (очень сложные семейства)
+                || elem_type_param.Contains("узел учета квартиры для гвс")
+                || elem_type_param.Contains("узел учета офиса для гвс")
+                || elem_type_param.Contains("узел учета квартиры для хвс")
+                || elem_type_param.Contains("узел учета офиса для хвс")
+                );
+        };
+
+
         public CommandCheckHoles() : base()
         {
         }
@@ -228,13 +270,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         Min = linkTransform.Inverse.OfPoint(bbox.Min),
                     };
 
-                    BoundingBoxIntersectsFilter filter = CreateFilter(transfBbox);
+                    Outline filterOutline = CreateOutlineByBBox(transfBbox);
+                    BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
+
                     foreach (BuiltInCategory bic in _builtInCategories)
                     {
                         IEnumerable<CheckHolesMEPData> trueMEPElemEntities = new FilteredElementCollector(linkDoc)
                             .OfCategory(bic)
                             .WhereElementIsNotElementType()
-                            .WherePasses(filter)
+                            .WherePasses(intersectsFilter)
+                            .Where(_elemExtraFilterFunc)
                             .Cast<Element>()
                             .Select(e => new CheckHolesMEPData(e, rvtLinkInst));
 
@@ -244,8 +289,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             #region Блок дополнительной фильтрации
                             if (mepElementEntity.CurrentElement is FamilyInstance mepFI)
                             {
-                                // Общий фильтр на вложенные семейства, и на семейства отверстий ЗИ ИОС
-                                if (mepFI.Symbol.FamilyName.StartsWith("501_") || mepFI.SuperComponent != null) continue;
+                                // Общий фильтр на вложенные семейства ИОС
+                                if (mepFI.SuperComponent != null) continue;
 
                                 // По коннектам - отсеиваю мелкие семейства соединителей, арматуры с подключением < 50 мм. Они 99% попадут по трубе/воздуховоду/лотку. Оборудование - попадает все
                                 double tolerance = 0.17;
@@ -388,7 +433,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Создание фильтра, для поиска элементов, с которыми пересекается BoundingBoxXYZ
         /// </summary>
-        private BoundingBoxIntersectsFilter CreateFilter(BoundingBoxXYZ bbox)
+        private Outline CreateOutlineByBBox(BoundingBoxXYZ bbox)
         {
             double minX = bbox.Min.X;
             double minY = bbox.Min.Y;
@@ -405,9 +450,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             XYZ pntMax = new XYZ(smaxX, smaxY, bbox.Max.Z);
             XYZ pntMin = new XYZ(sminX, sminY, bbox.Min.Z);
 
-            Outline outline = new Outline(pntMin, pntMax);
-
-            return new BoundingBoxIntersectsFilter(outline);
+            return new Outline(pntMin, pntMax);
         }
     }
 }
