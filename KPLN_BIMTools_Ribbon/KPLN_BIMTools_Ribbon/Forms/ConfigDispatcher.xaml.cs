@@ -1,73 +1,99 @@
-﻿using KPLN_BIMTools_Ribbon.Core.SQLite;
+﻿using KPLN_BIMTools_Ribbon.Common;
+using KPLN_BIMTools_Ribbon.Core.SQLite;
+using KPLN_BIMTools_Ribbon.Forms.Models;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace KPLN_BIMTools_Ribbon.Forms
 {
     public partial class ConfigDispatcher : Window
     {
+        private readonly DBModuleAutostart[] _dbModuleAutostarArrForUser;
+        private readonly ObservableCollection<DBRevitDocExchangesWrapper> _dbRevitDocExchWrappers;
+
         private readonly Logger _logger;
-        private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
-        private readonly int _revitVersion;
-
-        private readonly List<DBRevitDocExchanges> _selectedDocExchanges = new List<DBRevitDocExchanges>();
-        private readonly ObservableCollection<DBRevitDocExchanges> _nativeDBRevitDocExchanges;
+        /// <summary>
+        /// Метка режима запуска - создание конфигурации для автозапуска
+        /// </summary>
+        private readonly bool _isAutoStartConfig;
+        private readonly int _moduleId = 80;
 
         public ConfigDispatcher(
-            Logger logger, 
-            RevitDocExchangestDbService 
-            revitDocExchangestDbService,
-            DBProject project, 
+            Logger logger,
+            DBProject project,
             RevitDocExchangeEnum revitDocExchangeEnum,
-            int revitVersion)
+            bool isAutoStartConfig)
         {
             _logger = logger;
-            _revitDocExchangestDbService = revitDocExchangestDbService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
-            _revitVersion = revitVersion;
+            _isAutoStartConfig = isAutoStartConfig;
 
             InitializeComponent();
 
-            _nativeDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(
-                _revitDocExchangestDbService
-                .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
-                .OrderBy(dExc => dExc.SettingName));
-            CurrentDBRevitDocExchanges = new ObservableCollection<DBRevitDocExchanges>(_nativeDBRevitDocExchanges);
+
+            // Получаю исходную версию сущностей из БД
+            _dbRevitDocExchWrappers = new ObservableCollection<DBRevitDocExchangesWrapper>(ExchangeService.CurrentRevitDocExchangesDbService
+                    .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
+                    .OrderBy(dExc => dExc.SettingName)
+                    .Select(dExc => new DBRevitDocExchangesWrapper(dExc)));
+
+            FiltereDBRevitDocExchdWrappers = CollectionViewSource.GetDefaultView(_dbRevitDocExchWrappers);
+            FiltereDBRevitDocExchdWrappers.Filter = FilterItemsPredicate;
+
+            // Устанавливаю описание/коллекции в зависимости от алгоритма запуска
+            if (_isAutoStartConfig)
+            {
+                _dbModuleAutostarArrForUser = ExchangeService
+                    .CurrentModuleAutostartDbService
+                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(ExchangeService.CurrentDBUser.Id, Module.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
+                    .ToArray();
+
+                // Взвожу галку, если конфиг в списке
+                foreach(DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
+                {
+                    DBRevitDocExchangesWrapper selectedExchWr = _dbRevitDocExchWrappers.FirstOrDefault(dExhWr => dExhWr.Id == dBModuleAutostart.DBTableKeyId);
+                    if (selectedExchWr == null) continue;
+
+                    selectedExchWr.IsSelected = true;
+                }
+
+
+                btnRun.ToolTip = "Сохранить выбранные конфигурации в список на автозапуск";
+                btnRun.Content = "🖬";
+            }
+            else
+            {
+                btnRun.ToolTip = "Запустить выбранные конфигурации";
+                btnRun.Content = "▶";
+            }
 
             DataContext = this;
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
             FilterItems.Focus();
+            BtnEnableSwitch();
         }
 
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        public bool IsRun { get; private set; }
-
-        /// <summary>
-        /// Ссылка на коллекцию конфигов
-        /// </summary>
-        public ObservableCollection<DBRevitDocExchanges> CurrentDBRevitDocExchanges { get; private set; }
+        public ICollectionView FiltereDBRevitDocExchdWrappers { get; }
 
         /// <summary>
         /// Ссылка на выбранные конфиги
         /// </summary>
-        public List<DBRevitDocExchanges> SelectedDBExchangeEntities { get; private set; } = new List<DBRevitDocExchanges>();
+        public DBRevitDocExchangesWrapper[] SelectedDBExchWrappers => _dbRevitDocExchWrappers.Where(ent => ent.IsSelected).ToArray();
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
@@ -75,29 +101,43 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Close();
         }
 
-        private void OnConfigChecked(object sender, RoutedEventArgs e)
-        {
-            UpdateCheckedCheckBoxes();
-            BtnEnableSwitch();
-        }
-
-        private void OnConfigUnChecked(object sender, RoutedEventArgs e)
-        {
-            UpdateCheckedCheckBoxes();
-            BtnEnableSwitch();
-        }
+        private void OnConfigClicked(object sender, RoutedEventArgs e) => BtnEnableSwitch();
 
         private void OnBtnRun(object sender, RoutedEventArgs e)
         {
-            IsRun = true;
-            
-            UpdateCheckedCheckBoxes();
-            
-            foreach (DBRevitDocExchanges docExch in _selectedDocExchanges)
+            if (_isAutoStartConfig)
             {
-                SelectedDBExchangeEntities.Add(docExch);
+                // Удаляю НЕ отмеченные (их сняли)
+                foreach (DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
+                {
+                    DBRevitDocExchangesWrapper selectedExchWr = _dbRevitDocExchWrappers.FirstOrDefault(dExhWr => dExhWr.Id == dBModuleAutostart.DBTableKeyId);
+                    if (selectedExchWr == null) continue;
+
+                    if (!selectedExchWr.IsSelected)
+                        ExchangeService
+                            .CurrentModuleAutostartDbService
+                            .DeleteDBModuleAutostarts(dBModuleAutostart);
+                }
+
+
+                // Создаю и обновляю новые
+                var selectedDocExch = SelectedDBExchWrappers
+                    .Select(docExch => new DBModuleAutostart()
+                        {
+                            UserId = ExchangeService.CurrentDBUser.Id,
+                            RevitVersion = Module.RevitVersion,
+                            ProjectId = _project.Id,
+                            ModuleId = _moduleId,
+                            DBTableName = DB_Enumerator.RevitDocExchanges.ToString(),
+                            DBTableKeyId = docExch.Id,
+                        });
+
+                ExchangeService
+                    .CurrentModuleAutostartDbService
+                    .BulkCreateDBModuleAutostarts(selectedDocExch);
             }
 
+            DialogResult = true;
             this.Close();
         }
 
@@ -107,10 +147,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
             FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
             SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
 
-            ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, _revitDocExchangeEnum, _revitVersion);
-            if ((bool)configItem.ShowDialog())
+            ConfigItem configItem = new ConfigItem(_logger, sqliteService, _project, _revitDocExchangeEnum);
+            if ((bool)configItem.ShowDialog() && configItem.DBRevitDocExchWrapper is DBRevitDocExchangesWrapper dExchEnt)
             {
-                CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                _dbRevitDocExchWrappers.Add(dExchEnt);
                 SortCurrentDBRevitDocExchanges();
             }
         }
@@ -120,11 +160,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// </summary>
         private void SortCurrentDBRevitDocExchanges()
         {
-            var sortedList = CurrentDBRevitDocExchanges.OrderBy(dExc => dExc.SettingName).ToList();
-            CurrentDBRevitDocExchanges.Clear();
+            var sortedList = _dbRevitDocExchWrappers.OrderBy(dExc => dExc.SettingName).ToList();
+            _dbRevitDocExchWrappers.Clear();
             foreach (var item in sortedList)
             {
-                CurrentDBRevitDocExchanges.Add(item);
+                _dbRevitDocExchWrappers.Add(item);
             }
         }
 
@@ -135,13 +175,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             if (cd.IsRun)
             {
-                foreach (DBRevitDocExchanges docExch in _selectedDocExchanges)
-                {
-                    DeleteDBRevitDocExchange(docExch);
-                }
+                DeleteDBRevitDocExchange(SelectedDBExchWrappers);
 
-                // Блокирую старт, т.к. ничего не выбрано
-                _selectedDocExchanges.Clear();
                 BtnEnableSwitch();
             }
         }
@@ -150,21 +185,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             if ((MenuItem)e.Source is MenuItem menuItem)
             {
-                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                if (menuItem.DataContext is DBRevitDocExchangesWrapper docExchangeEnt)
                 {
-                    SQLiteService sqliteService = new SQLiteService(_logger, docExchanges.SettingDBFilePath, _revitDocExchangeEnum);
-                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, _project, 
-                        _revitDocExchangeEnum, _revitVersion, docExchanges);
-                    
+                    SQLiteService sqliteService = new SQLiteService(_logger, docExchangeEnt.SettingDBFilePath, _revitDocExchangeEnum);
+                    ConfigItem configItem = new ConfigItem(_logger, sqliteService, _project,
+                        _revitDocExchangeEnum, docExchangeEnt);
+
                     configItem.ShowDialog();
 
                     // Обновляю основную коллекцию новыми данными
-                    int index = CurrentDBRevitDocExchanges.IndexOf(docExchanges);
+                    int index = _dbRevitDocExchWrappers.IndexOf(docExchangeEnt);
                     if (index >= 0)
-                    {
                         // Уведомить об изменении элемента
-                        CurrentDBRevitDocExchanges[index] = configItem.CurrentDBRevitDocExchanges;
-                    }
+                        _dbRevitDocExchWrappers[index] = configItem.DBRevitDocExchWrapper;
                 }
             }
         }
@@ -173,19 +206,22 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             if ((MenuItem)e.Source is MenuItem menuItem)
             {
-                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                if (menuItem.DataContext is DBRevitDocExchangesWrapper docExchangeEnt)
                 {
                     // Создание конфига
                     FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
                     SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
 
-                    ConfigItem configItem = new ConfigItem(_logger, _revitDocExchangestDbService, sqliteService, 
-                        _project, _revitDocExchangeEnum, _revitVersion, docExchanges);
+                    ConfigItem configItem = new ConfigItem(_logger, sqliteService,
+                        _project, _revitDocExchangeEnum, docExchangeEnt);
                     configItem.SettingName = $"{configItem.SettingName}_new_{DateTime.Now:d}";
 
                     bool? dialogResult = configItem.ShowDialog();
                     if ((bool)dialogResult)
-                        CurrentDBRevitDocExchanges.Add(configItem.CurrentDBRevitDocExchanges);
+                    {
+                        _dbRevitDocExchWrappers.Add(configItem.DBRevitDocExchWrapper);
+                        SortCurrentDBRevitDocExchanges();
+                    }
                 }
             }
         }
@@ -194,97 +230,44 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             if ((MenuItem)e.Source is MenuItem menuItem)
             {
-                if (menuItem.DataContext is DBRevitDocExchanges docExchanges)
+                if (menuItem.DataContext is DBRevitDocExchangesWrapper docExchWrapper)
                 {
-                    if (_selectedDocExchanges.Count > 1)
+                    if (SelectedDBExchWrappers.Count() > 1)
                     {
-                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалено {_selectedDocExchanges.Count} конфигурации. Продолжить?");
+                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалено {SelectedDBExchWrappers.Count()} конфигурации. Продолжить?");
                         cd.ShowDialog();
                         if (cd.IsRun)
                         {
-                            foreach (DBRevitDocExchanges docEcxh in _selectedDocExchanges)
-                            {
-                                DeleteDBRevitDocExchange(docEcxh);
-                            }
+                            DeleteDBRevitDocExchange(SelectedDBExchWrappers);
+                            foreach (DBRevitDocExchangesWrapper docEcxhWr in SelectedDBExchWrappers)
 
                             // Блокирую старт, т.к. ничего не выбрано
-                            _selectedDocExchanges.Clear();
                             BtnEnableSwitch();
                         }
                     }
                     else
                     {
-                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchanges.SettingName}\". Продолжить?");
+                        UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchWrapper.SettingName}\". Продолжить?");
                         cd.ShowDialog();
-                    
+
                         if (cd.IsRun)
-                            DeleteDBRevitDocExchange(docExchanges);
+                            DeleteDBRevitDocExchange(new DBRevitDocExchangesWrapper[] { docExchWrapper });
                     }
                 }
             }
         }
 
-        private void DeleteDBRevitDocExchange(DBRevitDocExchanges docExchanges)
+        private void DeleteDBRevitDocExchange(IEnumerable<DBRevitDocExchangesWrapper> docExchWrappers)
         {
-            SelectedDBExchangeEntities.Remove(docExchanges);
-
-            _revitDocExchangestDbService.DeleteDBRevitDocExchange_ById(docExchanges.Id);
-            CurrentDBRevitDocExchanges.Remove(docExchanges);
-
-            FileInfo currentDB = new FileInfo(docExchanges.SettingDBFilePath);
-            currentDB.Delete();
-        }
-
-        /// <summary>
-        /// Обновить коллекцию отмеченных CheckBoxes
-        /// </summary>
-        /// <param name="isReloadDataContext">Флаг обновления основной коллекции</param>
-        private void UpdateCheckedCheckBoxes(bool isReloadDataContext = false)
-        {
-            // InvokeAsync - чтобы дать системе время на завершение отрисовки визуальных элементов перед тем, как пытаться искать чекбоксы
-            Dispatcher.InvokeAsync(() =>
+            ExchangeService.CurrentRevitDocExchangesDbService.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
+            
+            foreach(DBRevitDocExchangesWrapper docExchWrapper in docExchWrappers)
             {
-                // Перебор всех элементов в ItemsControl
-                for (int i = 0; i < this.iControllGroups.Items.Count; i++)
-                {
-                    // Получение контейнера для элемента
-                    if (this.iControllGroups.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement container)
-                    {
-                        CheckBox checkBox = FindVisualChild<CheckBox>(container);
-                        if (checkBox != null && checkBox.DataContext is DBRevitDocExchanges docExchange)
-                        {
-                            // Если основная коллекция обновляется, нужно брать данные по ранее добавленым элементам из кэша (CheckBoxы все заново строятся)
-                            if (isReloadDataContext)
-                                checkBox.IsChecked = _selectedDocExchanges.Any(docExch => docExch.Id == docExchange.Id);
-                            else if (checkBox.IsChecked == true && !_selectedDocExchanges.Any(docExch => docExch.Id == docExchange.Id))
-                                _selectedDocExchanges.Add(docExchange);
-                            else if (!isReloadDataContext && checkBox.IsChecked == false)
-                                _selectedDocExchanges.Remove(docExchange);
-                        }
-                    }
-                }
-            }, System.Windows.Threading.DispatcherPriority.Background);
-        }
+                _dbRevitDocExchWrappers.Remove(docExchWrapper);
 
-        /// <summary>
-        /// Поиск зависимых объектов 
-        /// </summary>
-        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
-                if (child != null && child is T)
-                    return (T)child;
-                else
-                {
-                    T childOfChild = FindVisualChild<T>(child);
-                    if (childOfChild != null)
-                        return childOfChild;
-                }
+                FileInfo currentDB = new FileInfo(docExchWrapper.SettingDBFilePath);
+                currentDB.Delete();
             }
-
-            return null;
         }
 
         /// <summary>
@@ -295,7 +278,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // InvokeAsync - чтобы дать системе время на завершение отрисовки визуальных элементов перед тем, как пытаться искать чекбоксы
             Dispatcher.InvokeAsync(() =>
             {
-                if (_selectedDocExchanges.Count > 0)
+                if (SelectedDBExchWrappers.Count() > 0)
                 {
                     btnRun.IsEnabled = true;
                     btnDelConf.IsEnabled = true;
@@ -305,28 +288,37 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     btnRun.IsEnabled = false;
                     btnDelConf.IsEnabled = false;
                 }
+
+                if (_isAutoStartConfig)
+                    btnRun.IsEnabled = true;
+
             }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private void FilterItems_TextChanged(object sender, TextChangedEventArgs e)
+        /// <summary>
+        /// Метод фильтрации коллекции в окне
+        /// </summary>
+        private bool FilterItemsPredicate(object item)
         {
-            TextBox tBox = sender as TextBox; 
-            string userInput = tBox.Text.ToLower();
-            CurrentDBRevitDocExchanges.Clear();
-
-            DBRevitDocExchanges[] docExchangesNotContaines = _nativeDBRevitDocExchanges.Where(de =>  !de.SettingName.ToLower().Contains(userInput)).ToArray();
-            foreach(DBRevitDocExchanges docExcOut in docExchangesNotContaines)
+            if (item is DBRevitDocExchangesWrapper docExchWrapper)
             {
-                CurrentDBRevitDocExchanges.Remove(docExcOut);
+                bool isOnlyChecked = (bool)this.OnlySelChBx.IsChecked;
+                
+                string userStringInput = this.FilterItems.Text.ToLower();
+                if (string.IsNullOrEmpty(userStringInput) || docExchWrapper.SettingName.ToLower().Contains(userStringInput))
+                {
+                    if (isOnlyChecked)
+                        return docExchWrapper.IsSelected;
+
+                    return true;
+                }
             }
 
-            DBRevitDocExchanges[] docExchangesContaines = _nativeDBRevitDocExchanges.Where(de => de.SettingName.ToLower().Contains(userInput)).ToArray();
-            foreach (DBRevitDocExchanges docExcIn in docExchangesContaines)
-            {
-                CurrentDBRevitDocExchanges.Add(docExcIn);
-            }
-
-            UpdateCheckedCheckBoxes(true);
+            return false;
         }
+
+        private void FilterItems_TextChanged(object sender, TextChangedEventArgs e) => FiltereDBRevitDocExchdWrappers?.Refresh();
+
+        private void OnlySelChBx_Checked(object sender, RoutedEventArgs e) => FiltereDBRevitDocExchdWrappers?.Refresh();
     }
 }

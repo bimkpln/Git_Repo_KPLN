@@ -12,7 +12,6 @@ using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -191,7 +190,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 Document doc = Module.CurrentUIApplication.ActiveUIDocument.Document;
 
-                Autodesk.Revit.DB.View activeView = Module.CurrentUIApplication.ActiveUIDocument.ActiveView;
+                View activeView = Module.CurrentUIApplication.ActiveUIDocument.ActiveView;
 
                 Element[] arHosts = new FilteredElementCollector(doc, activeView.Id)
                     .WhereElementIsNotElementType()
@@ -212,7 +211,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     new TaskDialog("Внимание")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                        MainInstruction = $"У элемента/-ов на виде нет коллизий с ИОС, для создания отверстий",
+                        MainInstruction = $"У элемента/-ов на виде нет коллизий с ИОС, для создания отверстий.\n" +
+                            $"ВАЖНО: анализируются только перегородки АР.",
                     }.Show();
 
                     return;
@@ -258,6 +258,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 ARKRElemEntity[] arkrEntities = GetARKRElemsFromLink(doc, selectedHosts, progressInfoViewModel);
                 if (arkrEntities.Count() == 0)
                 {
+                    window.Close();
+
                     new TaskDialog("Внимание")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
@@ -309,6 +311,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 if (arkrEntity.IOSElemEntities.Count() == 0)
                 {
+                    window.Close();
+
                     new TaskDialog("Внимание")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
@@ -526,22 +530,31 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     // Получаю форму одиночного отверстия
                     OpenigHoleShape ohe_Shape = OpenigHoleShape.Rectangular;
-                    Face intersectMainFace = GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
+
+                    Face intersectMainFace = GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir)
+                        // Такое может быть, если тело полность погружено в объём, тогда уменьшаем точность поиска
+                        ?? GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir, 5);
+
                     var edgeFIter = intersectMainFace.EdgeLoops.ForwardIterator();
-                    while(edgeFIter.MoveNext())
+                    bool moveIterator = true;
+                    while (moveIterator)
                     {
+                        moveIterator = edgeFIter.MoveNext();
+
+                        if (!moveIterator) break;
+
                         EdgeArray edges = edgeFIter.Current as EdgeArray;
-                        foreach(Edge edge in edges)
+                        foreach (Edge edge in edges)
                         {
                             Curve curve = edge.AsCurve();
                             if (curve is Arc)
                             {
                                 ohe_Shape = OpenigHoleShape.Round;
+                                moveIterator = false;
                                 break;
                             }
                         }
                     }
-
 
                     // Получаю ширину и высоту
                     double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
@@ -713,9 +726,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 AROpeningHoleEntity[] arEntities = GetAROpeningsFromIOSTask(doc, iosTasks);
 
                 if (arEntities.Any())
-                {
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(arEntities, "KPLN: Отверстия по заданию", progressInfoViewModel));
-                }
             }
             catch (Exception ex)
             {
@@ -776,8 +787,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 Element linkedElement = linkedDoc.GetElement(reference.LinkedElementId);
                 if (linkedElement != null && linkedElement is FamilyInstance fi)
                 {
-                    LocationPoint locPnt = linkedElement.Location as LocationPoint;
-                    IOSOpeningHoleTaskEntity iosTask = new IOSOpeningHoleTaskEntity(linkedDoc, linkedElement, locPnt.Point)
+                    //LocationPoint locPnt = linkedElement.Location as LocationPoint;
+                    XYZ locPnt = GeometryWorker.GetRevitElemSolid(linkedElement).ComputeCentroid();
+                    IOSOpeningHoleTaskEntity iosTask = new IOSOpeningHoleTaskEntity(linkedDoc, linkedElement, locPnt)
                         .SetFamilyPathAndName(linkedDoc)
                         .SetShapeByFamilyName(fi)
                         .SetTransform(linkInstance as Instance)

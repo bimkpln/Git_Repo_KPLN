@@ -350,6 +350,7 @@ namespace KPLN_Looker
                     if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") 
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\022_Подписи в штамп")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\023_Подписи на титул")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\1_АР")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР\\999_Для проектов\\СЕТ")
                         || familyPath.Contains("Y:\\Жилые здания\\Самолет Сетунь\\4.Оформление\\4.Стадия_Р")
                         || familyPath.Contains("KPLN_Loader"))

@@ -93,7 +93,6 @@ namespace KPLN_OpeningHoleManager.Core
                 Solid unionSolid = null;
                 foreach (AROpeningHoleEntity arOHE in arOHECollByHost)
                 {
-                    var a = arOHE.OHE_Element.Id;
                     try
                     {
                         if (unionSolid == null)
@@ -274,6 +273,21 @@ namespace KPLN_OpeningHoleManager.Core
         }
 
         /// <summary>
+        /// Обновление файла, чтобы присвоить солид
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="arEntitiesToSet"></param>
+        internal static void RegenerateDocAndSetSolids(Document doc, IEnumerable<AROpeningHoleEntity> arEntitiesToSet)
+        {
+            doc.Regenerate();
+
+            foreach (AROpeningHoleEntity ent in arEntitiesToSet)
+            {
+                ent.OHE_Solid = GeometryWorker.GetRevitElemSolid(ent.OHE_Element);
+            }
+        }
+
+        /// <summary>
         /// Установить путь к Revit семействам
         /// </summary>
         internal OpeningHoleEntity SetFamilyPathAndName(Document doc)
@@ -444,7 +458,7 @@ namespace KPLN_OpeningHoleManager.Core
 
 
             // Присваиваю параметр эл-та модели инстансу класса (далее используется)
-            doc.Regenerate();
+            //doc.Regenerate();
             OHE_Element = instance;
 
 
@@ -454,26 +468,21 @@ namespace KPLN_OpeningHoleManager.Core
             // Заполнить параметры
             if (OHE_Shape == OpenigHoleShape.Rectangular)
             {
-                instance.LookupParameter(OHE_ParamNameHeight).Set(OHE_Height);
-                instance.LookupParameter(OHE_ParamNameWidth).Set(OHE_Width);
+                OHE_Element.LookupParameter(OHE_ParamNameHeight).Set(OHE_Height);
+                OHE_Element.LookupParameter(OHE_ParamNameWidth).Set(OHE_Width);
 
-                Parameter expandParam = instance.LookupParameter(OHE_ParamNameExpander);
+                Parameter expandParam = OHE_Element.LookupParameter(OHE_ParamNameExpander);
                 if (expandParam != null && !expandParam.IsReadOnly)
-                    instance.LookupParameter(OHE_ParamNameExpander).Set(0);
+                    OHE_Element.LookupParameter(OHE_ParamNameExpander).Set(0);
             }
             else
             {
-                instance.LookupParameter(OHE_ParamNameRadius).Set(OHE_Radius);
+                OHE_Element.LookupParameter(OHE_ParamNameRadius).Set(OHE_Radius);
 
-                Parameter expandParam = instance.LookupParameter(OHE_ParamNameExpander);
+                Parameter expandParam = OHE_Element.LookupParameter(OHE_ParamNameExpander);
                 if (expandParam != null && !expandParam.IsReadOnly)
-                    instance.LookupParameter(OHE_ParamNameExpander).Set(0);
-            }
-
-
-            // Присваиваю солид ПОСЛЕ установки параметров
-            doc.Regenerate();
-            OHE_Solid = GeometryWorker.GetRevitElemSolid(instance);
+                    OHE_Element.LookupParameter(OHE_ParamNameExpander).Set(0);
+            }            
         }
 
         private double RoundGeomParam(double geomParam)

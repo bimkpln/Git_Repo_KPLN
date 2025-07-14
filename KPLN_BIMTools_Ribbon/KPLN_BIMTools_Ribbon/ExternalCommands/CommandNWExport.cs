@@ -19,7 +19,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandNWExport : ExchangeService, IExternalCommand, IExecuteByUIApp
     {
-        internal const string PluginName = "NW: Экспорт";
+        internal const string PluginName = "NWC: Экспорт";
 
         public CommandNWExport()
         {

@@ -1112,7 +1112,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                             successfulResult = true;
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             problematicParametersLog += $"Error: {generalParametersFileLink}: {parameterGroup} - {parameterName}. Группирование: {paramDetails[4]} . Экземпляр: {isInstance}. (!) ОШИБКА ДОБАВЛЕНИЯ ФОРМУЛЫ: {parameterValue}\n";
                             paramDetails[5] = "!ОШИБКА";

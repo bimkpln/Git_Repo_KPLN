@@ -8,6 +8,7 @@
         Documents,
         LoaderDescriptions,
         LoaderDescriptions_Single,
+        ModuleAutostart,
         Modules,
         PluginsActivity,
         Projects,

@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -120,8 +121,19 @@ namespace KPLN_Loader
             // Для KPLN (с копированием модулей и стартовым окном)
             if (domainName.Equals("stinproject.local"))
             {
-                LoaderStatusForm loaderStatusForm = new LoaderStatusForm(this);
-                loaderStatusForm.Show();
+                LoaderStatusForm loaderStatusForm = null;
+                ManualResetEvent formReady = new ManualResetEvent(false);
+                Thread uiThread = new Thread(() =>
+                {
+                    loaderStatusForm = new LoaderStatusForm(this);
+                    loaderStatusForm.Show();
+                    formReady.Set();
+                    System.Windows.Threading.Dispatcher.Run();
+                });
+                uiThread.SetApartmentState(ApartmentState.STA);
+                uiThread.IsBackground = true;
+                uiThread.Start();
+                formReady.WaitOne();
 
                 try
                 {
@@ -146,7 +158,7 @@ namespace KPLN_Loader
                     loaderStatusForm.SetDebugStatus(CurrentRevitUser.IsDebugMode);
                     bool isUserDataUpdated = _dbService.SetUserLastConnectionDate(CurrentRevitUser);
                     CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
-                    loaderStatusForm.UpdateLayout();
+                    loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
 
                     // Добавление пользовательской инструкции
                     LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
@@ -162,7 +174,7 @@ namespace KPLN_Loader
                     LoadStatus?.Invoke(
                         new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
                         System.Windows.Media.Brushes.OrangeRed);
-                    loaderStatusForm.UpdateLayout();
+                    loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
                     #endregion
 
                     #region Подготовка, копирование и активация модулей для пользователя
@@ -294,14 +306,14 @@ namespace KPLN_Loader
                         Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", System.Windows.Media.Brushes.Green);
                     else
                         Progress?.Invoke(MainStatus.ModulesActivation, $"С замечаниями. Смотри файл логов KPLN_Loader: {MainCashFolder}\\KPLN_Logs\\", System.Windows.Media.Brushes.Orange);
-                    loaderStatusForm.UpdateLayout();
+                    loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
                     #endregion
                 }
                 catch (Exception ex)
                 {
                     _logger.Error($"Глобальная ошибка плагина загрузки: \n{ex}");
                     _logger.Info($"Инициализация не удалась\n");
-                    loaderStatusForm.Close();
+                    loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.Close());
 
                     Exception currentEx = ex.InnerException ?? ex;
                     MessageBox.Show(

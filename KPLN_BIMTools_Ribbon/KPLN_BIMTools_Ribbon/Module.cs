@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.ExternalCommands;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using NLog;
 using System;
@@ -16,8 +17,9 @@ namespace KPLN_BIMTools_Ribbon
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private Logger _logger;
-        private string _revitVersion;
         private UIApplication _uiApp;
+
+        public static int RevitVersion { get; private set; }
 
         public Result Close()
         {
@@ -26,7 +28,7 @@ namespace KPLN_BIMTools_Ribbon
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            _revitVersion = application.ControlledApplication.VersionNumber;
+            RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             #region Получаю UIApplication из internal свойства UIControlledApplication
             // https://stackoverflow.com/questions/42382320/getting-the-current-application-and-document-from-iexternalapplication-revit
@@ -39,13 +41,14 @@ namespace KPLN_BIMTools_Ribbon
             // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
             _logger = LogManager.GetLogger("KPLN_BIMTools");
 
-            string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{_revitVersion}";
+            string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{RevitVersion}";
             string logFileName = "KPLN_BIMTools";
             LogManager.Configuration.Variables["bimtools_logdir"] = logDirPath;
             LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;
             #endregion
 
-            CommandRVTExchange.SetStaticEnvironment(application, _logger, _revitVersion);
+            CommandAutoExchangeConfig.SetStaticEnvironment(_logger);
+            CommandRVTExchange.SetStaticEnvironment(application, _logger);
 
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
 
@@ -61,6 +64,23 @@ namespace KPLN_BIMTools_Ribbon
             PulldownButton uploadPullDown = panel.AddItem(uploadPullDownData) as PulldownButton;
 
             //Добавляю кнопки в выпадающий список pullDown
+            AddPushButtonDataInPullDown(
+                CommandAutoExchangeConfig.PluginName,
+                CommandAutoExchangeConfig.PluginName,
+                "Конфигурация автозапуска обмена Revit-моделями (плагины по обмену RVT и NW файлов)",
+                string.Format(
+                    "Пакетная выгрзка моделей.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandAutoExchangeConfig).FullName,
+                uploadPullDown,
+                "KPLN_BIMTools_Ribbon.Imagens.asConfigSmall.png",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1300",
+                true
+            );
+
             AddPushButtonDataInPullDown(
                 CommandRVTExchange.PluginName,
                 CommandRVTExchange.PluginName,
@@ -144,7 +164,16 @@ namespace KPLN_BIMTools_Ribbon
             #endregion
 
             #region Выполняю автоматический запуск
-            //AutoRun(nameof(CommandRSExchange));
+            //Файл - флаг.Его наличие должно сигнализировать о автоматическом старте.
+            string[] args = Environment.GetCommandLineArgs();
+            foreach (string arg in args)
+            {
+                if (arg.Equals("AutoStart"))
+                {
+                    ExchangeService.IsAutoStart = true;
+                    AutoRun(nameof(CommandRVTExchange), RevitDocExchangeEnum.Revit);
+                }
+            }
             #endregion
 
             return Result.Succeeded;
@@ -224,7 +253,7 @@ namespace KPLN_BIMTools_Ribbon
             }
         }
 
-        private void AutoRun(string externalCommand)
+        private void AutoRun(string externalCommand, RevitDocExchangeEnum exchangeEnum)
         {
             // Создаем тип
             Type type = Type.GetType($"KPLN_BIMTools_Ribbon.ExternalCommands.{externalCommand}", true);
@@ -237,7 +266,7 @@ namespace KPLN_BIMTools_Ribbon
 
             // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
             if (executeMethod != null)
-                executeMethod.Invoke(instance, new object[] { _uiApp });
+                executeMethod.Invoke(instance, new object[] { _uiApp, exchangeEnum });
             else
                 throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
         }

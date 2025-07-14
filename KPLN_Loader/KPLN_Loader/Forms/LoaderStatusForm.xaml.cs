@@ -61,15 +61,18 @@ namespace KPLN_Loader.Forms
         /// </summary>
         internal void SetInstruction(LoaderDescription loaderDescription)
         {
-            _loaderDescription = loaderDescription;
-            tblInstruction.Text = _loaderDescription.Description;
-            
+            Dispatcher.Invoke(() =>
+            {
+                _loaderDescription = loaderDescription;
+                tblInstruction.Text = _loaderDescription.Description;
+
             string loaderDescriptionURL = _loaderDescription.InstructionURL;
             if (loaderDescriptionURL != null)
             {
                 tblInstruction.TextDecorations = TextDecorations.Underline;
                 tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
             }
+        });
         }
 
         /// <summary>
@@ -78,8 +81,11 @@ namespace KPLN_Loader.Forms
         /// <param name="isDebugMode">Указатель</param>
         internal void SetDebugStatus(bool isDebugMode)
         {
-            if (isDebugMode)
-                DebugModeTxt.Visibility = Visibility.Visible;
+            Dispatcher.Invoke(() =>
+            {
+                if (isDebugMode)
+                    DebugModeTxt.Visibility = Visibility.Visible;
+            });
         }
 
         /// <summary>
@@ -99,16 +105,23 @@ namespace KPLN_Loader.Forms
         internal void Start_WindowClose()
         {
             // Запускаем таймер при загрузке формы, чтобы окно провисело гарантировано 15 сек.
-            _closeTimer.Interval = 25000;
-            _closeTimer.Start();
+            Dispatcher.Invoke(() =>
+            {
+                // Запускаем таймер при загрузке формы, чтобы окно провисело гарантировано 15 сек.
+                _closeTimer.Interval = 25000;
+                _closeTimer.Start();
+            });
         }
 
         private void Application_ModuleStatus(LoaderEvantEntity lModule, Brush brush)
         {
-            lModule.LoadColor = brush;
-            _loadModules.Add(lModule);
+            Dispatcher.Invoke(() =>
+            {
+                lModule.LoadColor = brush;
+                _loadModules.Add(lModule);
 
-            modulesListBox.ItemsSource = _loadModules;
+                modulesListBox.ItemsSource = _loadModules;
+            });
         }
 
         /// <summary>
@@ -116,13 +129,17 @@ namespace KPLN_Loader.Forms
         /// </summary>
         private void Application_Progress(MainStatus mainStatus, string toolTip, Brush brush)
         {
-            LoaderStatusEntity stEntity = _loaderStatusEntitys.Where(x => x.CurrentMainStatus == mainStatus).FirstOrDefault();
-            if (stEntity != null)
+            Dispatcher.Invoke(() =>
             {
-                stEntity.StrStatus = _statusDone;
-                stEntity.CurrentToolTip = toolTip;
-                stEntity.CurrentStrStatusColor = brush;
-            };
+                
+                LoaderStatusEntity stEntity = _loaderStatusEntitys.Where(x => x.CurrentMainStatus == mainStatus).FirstOrDefault();
+                if (stEntity != null)
+                {
+                    stEntity.StrStatus = _statusDone;
+                    stEntity.CurrentToolTip = toolTip;
+                    stEntity.CurrentStrStatusColor = brush;
+                };
+            });
         }
 
         private void CloseTimer_Tick(object sender, EventArgs e)

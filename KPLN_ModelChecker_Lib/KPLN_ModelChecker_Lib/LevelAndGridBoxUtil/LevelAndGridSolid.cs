@@ -60,11 +60,6 @@ namespace KPLN_ModelChecker_Lib.LevelAndGridBoxUtil
             List<LevelAndGridSolid> preResult = new List<LevelAndGridSolid>();
             foreach (LevelData currentLevel in levelDatas)
             {
-                if (currentLevel.CurrentLevelNumber == "20" && currentLevel.CurrentSectionNumber == "2")
-                {
-                    var a = 1;
-                }
-
                 foreach (GridData gData in gridDatas)
                 {
                     if (currentLevel.CurrentSectionNumber.Equals(gData.CurrentSection))

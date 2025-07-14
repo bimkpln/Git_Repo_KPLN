@@ -29,7 +29,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            return ExecuteByUIApp(commandData.Application, RevitDocExchangeEnum.RevitServer);
+            return ExecuteByUIApp(commandData.Application, RevitDocExchangeEnum.Revit);
         }
 
         public Result ExecuteByUIApp(UIApplication uiapp, RevitDocExchangeEnum revitDocExchangeEnum)

@@ -74,9 +74,6 @@
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-    </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
       <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
       <Private>False</Private>
@@ -137,6 +134,15 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug2020' ">
       <ItemGroup>
+        <Reference Include="KPLN_Library_Forms, Version=1.3.5.0, Culture=neutral, processorArchitecture=AMD64">
+          <SpecificVersion>False</SpecificVersion>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -221,6 +227,7 @@
     <Compile Include="Core\SQLite\SQLiteService.cs" />
     <Compile Include="ExternalCommands\batchAddingParameters.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
+    <Compile Include="ExternalCommands\CommandAutoExchangeConfig.cs" />
     <Compile Include="ExternalCommands\CommandNWExport.cs" />
     <Compile Include="ExternalCommands\CommandRVTExchange.cs" />
     <Compile Include="Forms\batchAddingParametersWindowCopyFromFamily.xaml.cs">
@@ -244,6 +251,7 @@
     <Compile Include="Forms\ConfigItem.xaml.cs">
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\DBRevitDocExchangesWrapper.cs" />
     <Compile Include="Forms\IntValidationRule.cs" />
     <Compile Include="Forms\DoubleValidationRule.cs" />
     <Compile Include="Forms\FileEntity.cs" />
@@ -347,6 +355,10 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\batchAddingParameters.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\asConfigBig.png" />
+    <EmbeddedResource Include="Imagens\asConfigSmall.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
