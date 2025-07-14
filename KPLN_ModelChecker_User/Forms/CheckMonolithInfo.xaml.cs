@@ -34,7 +34,7 @@ namespace KPLN_ModelChecker_User.Forms
             _uiDoc = uiDoc;
 
             MonolithClashPoints = new ObservableCollection<FamilyInstance>(clashPoints);
-            SkippedElements = skipped != null ? new ObservableCollection<SkippedElementInfo>( skipped.Select(pair => new SkippedElementInfo(pair.elem, pair.origin)))
+            SkippedElements = skipped != null ? new ObservableCollection<SkippedElementInfo>(skipped.Select(pair => new SkippedElementInfo(pair.elem, pair.origin)))
                     : new ObservableCollection<SkippedElementInfo>();
             DataContext = this;
 
@@ -60,7 +60,7 @@ namespace KPLN_ModelChecker_User.Forms
 #if (Revit2023 || Debug2023)
             if (!(sender is Button b && b.DataContext is FamilyInstance fi)) return;
             _showHandler.ElementId = fi.Id;
-            var res = _showEvent.Raise();            
+            var res = _showEvent.Raise();
 
             if (res == ExternalEventRequest.Denied)
                 TaskDialog.Show("Ошибка", $"При выполнении опперации произошла ошибка");
@@ -74,10 +74,10 @@ namespace KPLN_ModelChecker_User.Forms
             if (!(sender is Button b && b.DataContext is FamilyInstance fi)) return;
 
             _delHandler.ElementId = fi.Id;
-            var result = _delEvent.Raise();             
+            var result = _delEvent.Raise();
 
-            if (result == ExternalEventRequest.Accepted)  
-                MonolithClashPoints.Remove(fi);       
+            if (result == ExternalEventRequest.Accepted)
+                MonolithClashPoints.Remove(fi);
             else
                 TaskDialog.Show("Ошибка", $"При попытке удаления элемента произошла ошибка");
 #endif

@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User.Forms
     public partial class CheckMonolithSettings : Window
     {
         UIApplication _uiApp;
-        Document _activeDoc; 
+        Document _activeDoc;
         private List<string> _categories = new List<string>();
 
         public IReadOnlyList<string> SelectedCategories => _categories;
@@ -74,7 +74,7 @@ namespace KPLN_ModelChecker_User.Forms
         /// XAML. Кнопка действия. Выбрать эллементы
         /// </summary>
         private void ButtonNext_Click(object sender, RoutedEventArgs e)
-        {          
+        {
             var chosenCategories = lstCategories.SelectedItems
                                                 .OfType<string>()
                                                 .ToList();

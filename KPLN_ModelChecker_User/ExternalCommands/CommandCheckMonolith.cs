@@ -29,7 +29,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    class CommandCheckMonolith: IExternalCommand
+    class CommandCheckMonolith : IExternalCommand
     {
         internal const string PluginName = "АР/КР. Проверка на совпадение монолита";
 
@@ -41,7 +41,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             var checkMonolithSettingsWindow = new Forms.CheckMonolithSettings(uiApp, doc);
 
-            if (checkMonolithSettingsWindow.ShowDialog() == true)              
+            if (checkMonolithSettingsWindow.ShowDialog() == true)
             {
                 List<string> categories = checkMonolithSettingsWindow.SelectedCategories.ToList();
                 double toleranceValue = checkMonolithSettingsWindow.Tolerance;
@@ -122,7 +122,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 {
                                     Transform transform = linkInstance.GetTransform();
                                     allSelectedLinkElements.Add((linkedElement, transform));
-                                }                                   
+                                }
                             }
                         }
                     }
@@ -136,7 +136,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     // Создание общего Solid
                     List<Element> skippedMainElements;
                     List<Element> skippedLinkElements;
-                    Solid elGrouoUnionMain = GetUnionSolid(allSelectedElements, out skippedMainElements);                   
+                    Solid elGrouoUnionMain = GetUnionSolid(allSelectedElements, out skippedMainElements);
                     Solid elGrouoUnionOther = GetUnionSolid(allSelectedLinkElements, out skippedLinkElements);
 
                     if (elGrouoUnionMain == null || elGrouoUnionOther == null)
@@ -153,9 +153,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         ? string.Join("\n", skippedLinkElements.Select(e => $"Link ⮕ ID: {e.Id}, Имя: {e.Name}"))
                         : "Link ⮕ нет пропущенных элементов.";
 
-                    if (skippedMainElements.Count != 0 || skippedLinkElements.Count != 0) 
+                    if (skippedMainElements.Count != 0 || skippedLinkElements.Count != 0)
                     {
-                        TaskDialog.Show("Предупреждение", $"Не все элементы попали в проверку:\n{skippedMain}\n{skippedLink}"); 
+                        TaskDialog.Show("Предупреждение", $"Не все элементы попали в проверку:\n{skippedMain}\n{skippedLink}");
                     }
 
                     // Вычетание геометрий
@@ -173,7 +173,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                       $"elGrouoUnionOther: Volume={elGrouoUnionOther?.Volume:F2}, Faces={elGrouoUnionOther?.Faces?.Size}\n\n" +
                                       "Пропущенные элементы:\n" +
                                       $"{skippedMain}\n" +
-                                      $"{skippedLink}\n\n"+
+                                      $"{skippedLink}\n\n" +
                                       $"{ex.Message}";
 
                         TaskDialog.Show("Ошибка Boolean Difference", info);
@@ -248,9 +248,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         tx.Commit();
                     }
 
-                    IList<FamilyInstance> monolithClashPoints = GetMonolithClashPoints(doc);                   
+                    IList<FamilyInstance> monolithClashPoints = GetMonolithClashPoints(doc);
                     if (monolithClashPoints.Count != 0)
-                    {                     
+                    {
                         List<(Element elem, string origin)> combinedSkipElementsTest =
                             skippedMainElements.Select(e => (e, "[Основной файл]. Возникла критическая проблема при создании общего Solid-элемента для дальнейшего логического вычитания."))
                                      .Concat(skippedLinkElements.Select(e => (e, "[Связный файл]. Возникла критическая проблема при создании общего Solid-элемента для дальнейшего логического вычитания.")))
@@ -414,7 +414,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         public void PlaceClashPoint(Document doc, XYZ point, FamilySymbol clashPointType)
         {
-            const double tol = 0.001;     
+            const double tol = 0.001;
 
             bool exists = new FilteredElementCollector(doc)
                 .OfClass(typeof(FamilyInstance))
@@ -460,7 +460,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     return comments
                         .IndexOf("Проверка монолита", StringComparison.OrdinalIgnoreCase) >= 0;
                 })
-                .ToList();  
+                .ToList();
         }
     }
 
@@ -503,14 +503,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             .FirstOrDefault(v => !v.IsTemplate && v.Name == PLUGIN_NAME);
 
             if (plugin != null)
-                return plugin;       
+                return plugin;
 
             using (Transaction tx = new Transaction(doc, "KPLN. Создание служебного 3D-вида"))
             {
                 tx.Start();
                 ElementId dupId = source3d.Duplicate(ViewDuplicateOption.Duplicate);
                 plugin = (View3D)doc.GetElement(dupId);
-                plugin.Name = PLUGIN_NAME;       
+                plugin.Name = PLUGIN_NAME;
                 tx.Commit();
             }
             return plugin;
@@ -552,9 +552,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                   ? lp.Point
                                   : (bb.Min + bb.Max) * 0.5;
 
-                    XYZ forward = new XYZ(-0.25, -1, -0.15).Normalize(); 
+                    XYZ forward = new XYZ(-0.25, -1, -0.15).Normalize();
                     XYZ right = forward.CrossProduct(XYZ.BasisZ).Normalize();
-                    if (right.IsZeroLength())                          
+                    if (right.IsZeroLength())
                         right = forward.CrossProduct(XYZ.BasisX).Normalize();
 
                     XYZ up = right.CrossProduct(forward).Normalize();
