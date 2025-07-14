@@ -23,17 +23,36 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Получить коллекцию ВСЕХ проектов
         /// </summary>
+        [Obsolete]
         public IEnumerable<DBProject> GetDBProjects() =>
             ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName};");
 
         /// <summary>
+        /// Получить коллекцию ВСЕХ проектов для нужной версии Revit
+        /// </summary>
+        public IEnumerable<DBProject> GetDBProjects_ByRVersion(int rVersion) =>
+            ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBProject.RevitVersion)}={rVersion};");
+
+        /// <summary>
         /// Получить коллекцию ВСЕХ открытых проектов
         /// </summary>
+        [Obsolete]
         public IEnumerable<DBProject> GetDBProjects_Opened() =>
             ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBProject.IsClosed)}='False';");
+
+        /// <summary>
+        /// Получить коллекцию ВСЕХ открытых проектов для нужной версии Revit
+        /// </summary>
+        public IEnumerable<DBProject> GetDBProjects_ByRVersionANDOpened(int rVersion) =>
+            ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBProject.RevitVersion)}={rVersion} " +
+                $"AND {nameof(DBProject.IsClosed)}='False';");
 
         /// <summary>
         /// Получить проект по Id
@@ -47,7 +66,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Получить активный проект из БД по открытому проекту Ревит
         /// </summary>
-        /// <param name="fileName">Имя открытого файла Ревит</param>
+        [Obsolete]
         public DBProject GetDBProject_ByRevitDocFileName(string fileName)
         {
             IEnumerable<DBProject> filteredPrjs = GetDBProjects()
@@ -58,6 +77,25 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                     || fileName.Contains(p.RevitServerPath3)
                     || fileName.Contains(p.RevitServerPath4));
             
+            // Осуществяляю поиск по наиболее подходящему варианту
+            return filteredPrjs
+                .OrderByDescending(prj => GetMatchingSegmentsCount(fileName, prj.MainPath))
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Получить активный проект из БД по открытому проекту Ревит
+        /// </summary>
+        public DBProject GetDBProject_ByRevitDocFileNameANDRVersion(string fileName, int rVersion)
+        {
+            IEnumerable<DBProject> filteredPrjs = GetDBProjects_ByRVersion(rVersion)
+                .Where(p =>
+                    fileName.Contains(p.MainPath)
+                    || fileName.Contains(p.RevitServerPath)
+                    || fileName.Contains(p.RevitServerPath2)
+                    || fileName.Contains(p.RevitServerPath3)
+                    || fileName.Contains(p.RevitServerPath4));
+
             // Осуществяляю поиск по наиболее подходящему варианту
             return filteredPrjs
                 .OrderByDescending(prj => GetMatchingSegmentsCount(fileName, prj.MainPath))

@@ -87,6 +87,7 @@
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\obj\Revit2023\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -132,6 +133,7 @@
     <Compile Include="Core\SQLiteData\Abstractions\IDBEntity.cs" />
     <Compile Include="Core\SQLiteData\DBPluginActivity.cs" />
     <Compile Include="Core\SQLiteData\DBProjectsIOSClashMatrix.cs" />
+    <Compile Include="Core\SQLiteData\DBModuleAutostart.cs" />
     <Compile Include="Core\SQLiteData\DBRevitDocExchanges.cs" />
     <Compile Include="Core\SQLiteData\DBRevitDialog.cs" />
     <Compile Include="Core\SQLiteData\DBSubDepartmentCodeMatrix.cs" />
@@ -148,6 +150,7 @@
     <Compile Include="FactoryParts\Creators\CreatorModuleDbService.cs" />
     <Compile Include="FactoryParts\Creators\CreatorProjectIOSClashMatrixDbService.cs" />
     <Compile Include="FactoryParts\Creators\CreatorProjectAccessMatrixDbService.cs" />
+    <Compile Include="FactoryParts\Creators\CreatorModuleAutostartDbService.cs" />
     <Compile Include="FactoryParts\Creators\CreatorRevitDocExchangesDbService.cs" />
     <Compile Include="FactoryParts\Creators\CreatorRevitDialogtDbService.cs" />
     <Compile Include="FactoryParts\Creators\CreatorSubDepartmentCodeMatrixDbService.cs" />
@@ -157,7 +160,8 @@
     <Compile Include="FactoryParts\Creators\CreatorUserDbService.cs" />
     <Compile Include="FactoryParts\Services\PluginActivityDbService.cs" />
     <Compile Include="FactoryParts\Services\ProjectsIOSClashMatrixDbService.cs" />
-    <Compile Include="FactoryParts\Services\RevitDocExchangestDbService.cs" />
+    <Compile Include="FactoryParts\Services\ModuleAutostartDbService.cs" />
+    <Compile Include="FactoryParts\Services\RevitDocExchangesDbService.cs" />
     <Compile Include="FactoryParts\Services\RevitDialogDbService.cs" />
     <Compile Include="FactoryParts\Services\DocumentDbService.cs" />
     <Compile Include="FactoryParts\Services\ProjectDbService.cs" />

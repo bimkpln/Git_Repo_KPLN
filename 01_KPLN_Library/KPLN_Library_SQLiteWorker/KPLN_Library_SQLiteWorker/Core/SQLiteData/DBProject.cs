@@ -28,6 +28,11 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public string Stage { get; set; }
 
         /// <summary>
+        /// Версия используемого Revit
+        /// </summary>
+        public int RevitVersion { get; set; }
+
+        /// <summary>
         /// Путь к корневой папке
         /// </summary>
         public string MainPath { get; set; }

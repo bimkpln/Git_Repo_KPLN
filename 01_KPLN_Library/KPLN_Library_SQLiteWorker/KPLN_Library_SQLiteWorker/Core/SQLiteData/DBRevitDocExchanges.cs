@@ -45,10 +45,10 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
         public string SettingDBFilePath { get; set; }
 
         /// <summary>
+        /// (УДАЛИТЬ!!! в том числе из БД - оставил архивом, чтобы плагин не падал)
         /// Режим блокировки файла под действия по обмену (True/False). В БД тип данных текст, преобразование происходит в Dapper
         /// </summary>
         public bool IsActive { get; set; }
-
         #endregion
 
         /// <summary>
@@ -60,6 +60,6 @@ namespace KPLN_Library_SQLiteWorker.Core.SQLiteData
     public enum RevitDocExchangeEnum
     {
         Navisworks,
-        RevitServer
+        Revit
     }
 }

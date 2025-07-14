@@ -8,9 +8,9 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     /// <summary>
     /// Класс для работы с листом RevitDocExchanges в БД
     /// </summary>
-    public class RevitDocExchangestDbService : DbService
+    public class RevitDocExchangesDbService : DbService
     {
-        internal RevitDocExchangestDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
+        internal RevitDocExchangesDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
 
@@ -31,7 +31,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
 
         #region Read
         /// <summary>
-        /// Получить конфигурации по id
+        /// Получить конфигурацию по id
         /// </summary>
         public DBRevitDocExchanges GetDBRevitDocExchanges_ById(int id) =>
             ExecuteQuery<DBRevitDocExchanges>(
@@ -40,11 +40,20 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             .FirstOrDefault();
 
         /// <summary>
+        /// Получить конфигурации по КОЛЛЕКЦИИ id
+        /// </summary>
+        public IEnumerable<DBRevitDocExchanges> GetDBRevitDocExchanges_ByIdCol(IEnumerable<int> ids) =>
+            ExecuteQuery<DBRevitDocExchanges>(
+                $"SELECT * FROM {_dbTableName} " +
+                $"WHERE {nameof(DBRevitDocExchanges.Id)} IN @Ids;",
+                new { Ids = ids });
+
+        /// <summary>
         /// Получить коллекцию ВСЕХ активных файлов-конфигураций для обмена
         /// </summary>
         public IEnumerable<DBRevitDocExchanges> GetDBRevitActiveDocExchanges() =>
             ExecuteQuery<DBRevitDocExchanges>(
-                $"SELECT * FROM {_dbTableName} WHERE {nameof(DBRevitDocExchanges.IsActive)}='True';");
+                $"SELECT * FROM {_dbTableName};");
 
         /// <summary>
         /// Получить конфигурации по типу обмена и по проекту
@@ -52,19 +61,15 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         public IEnumerable<DBRevitDocExchanges> GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(RevitDocExchangeEnum revitDocExchangeEnum, DBProject dbProject) =>
             ExecuteQuery<DBRevitDocExchanges>(
                 $"SELECT * FROM {_dbTableName} " +
-                $"WHERE {nameof(DBRevitDocExchanges.IsActive)}='True' " +
-                $"AND {nameof(DBRevitDocExchanges.RevitDocExchangeType)}='{revitDocExchangeEnum}' " +
+                $"WHERE {nameof(DBRevitDocExchanges.RevitDocExchangeType)}='{revitDocExchangeEnum}' " +
                 $"AND {nameof(DBRevitDocExchanges.ProjectId)}='{dbProject.Id}';");
         #endregion
 
         #region Update
         /// <summary>
-        /// Обновить статус IsActive документа по статусу проекта
+        /// Обновить сущность по значениям из указанной
         /// </summary>
-        public void UpdateDBRevitDocExchanges_IsClosedByProject(DBProject dbProject) =>
-            ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                $"SET {nameof(DBRevitDocExchanges.IsActive)}='{dbProject.IsClosed}' WHERE {nameof(DBRevitDocExchanges.ProjectId)}='{dbProject.Id}';");
-        
+        /// <param name="currentDocExc"></param>
         public void UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchanges currentDocExc) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                 $"SET {nameof(DBRevitDocExchanges.SettingName)}='{currentDocExc.SettingName}', " +
@@ -75,12 +80,19 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
 
         #region Delete
         /// <summary>
-        /// Удалить файл-конфигурацию для обмена
+        /// Удалить файл-конфигурацию для обмена по id
         /// </summary>
         public void DeleteDBRevitDocExchange_ById(int id) =>
             ExecuteNonQuery($"DELETE FROM {_dbTableName} " +
                 $"WHERE {nameof(DBRevitDocExchanges.Id)} = {id}");
-        #endregion
 
+        /// <summary>
+        /// Удалить файл-конфигурацию для обмена по КОЛЛЕКЦИИ id
+        /// </summary>
+        public void DeleteDBRevitDocExchange_ByIdColl(IEnumerable<int> ids) =>
+            ExecuteNonQuery($"DELETE FROM {_dbTableName} " +
+                $"WHERE {nameof(DBRevitDocExchanges.Id)} IN @Ids;",
+                new { Ids = ids });
+        #endregion
     }
 }

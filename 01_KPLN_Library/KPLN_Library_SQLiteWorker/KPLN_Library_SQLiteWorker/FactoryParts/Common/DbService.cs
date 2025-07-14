@@ -17,6 +17,9 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         private protected DB_Enumerator _dBEnumerator;
         private protected string _dbTableName;
 
+        /// <summary>
+        /// Конструктор только для наследников
+        /// </summary>
         /// <param name="connectionString">Строка подключения</param>
         /// <param name="dbEnumerator">Таблица в БД</param>
         private protected DbService(string connectionString, DB_Enumerator dbEnumerator)
@@ -30,7 +33,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         {
             const int maxRetries = 3;
             int attempt = 0;
-            int timeSleep = 1000;
+            int timeSleep = 2000;
 
             while (attempt < maxRetries)
             {
@@ -39,7 +42,11 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
                     using (IDbConnection connection = new SQLiteConnection(_connectionString))
                     {
                         connection.Open();
-                        connection.Execute(query, parameters);
+                        using (IDbTransaction trans = connection.BeginTransaction())
+                        {
+                            connection.Execute(query, parameters);
+                            trans.Commit();
+                        }
                         return;
                     }
                 }
@@ -97,6 +104,57 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Обработка запроса на несколько элементов сразу
+        /// ВАЖНО1: Таблица в БД ОБЯЗАНА иметь UNIQUE INDEX, иначе нет точки выхода, и данные будут писаться БЕЗКОНЕЧНО
+        /// ВАЖНО2: SQLite запрос должен содержать блок игнорирования, иначе упадёт ошибкой
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="query"></param>
+        /// <param name="items"></param>
+        private protected void ExecuteBulkInsert<T>(string query, IEnumerable<T> items)
+        {
+            const int maxRetries = 3;
+            int attempt = 0;
+            int timeSleep = 1000;
+
+            while (attempt < maxRetries)
+            {
+                try
+                {
+                    using (IDbConnection connection = new SQLiteConnection(_connectionString))
+                    {
+                        connection.Open();
+                        // Открываю транзакцию, чтобы не записывать в БД строка за строкой
+                        using (var transaction = connection.BeginTransaction())
+                        {
+                            connection.Execute(query, items, transaction);
+                            transaction.Commit();
+                        }
+                        return;
+                    }
+                }
+                catch (SQLiteException ex) when (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
+                {
+                    attempt++;
+                    if (attempt >= maxRetries)
+                    {
+                        ShowDialog("[KPLN]: Ошибка работы с БД", $"База данных занята. Попытки выполнить запрос ({maxRetries} раза по {timeSleep / 1000.0} с) исчерпаны.");
+                        return;
+                    }
+
+                    Thread.Sleep(timeSleep);
+                }
+                catch (Exception ex)
+                {
+                    ShowDialog("[KPLN]: Ошибка работы с БД", ex.Message);
+                    return;
+                }
+            }
+
+            return;
         }
 
         /// <summary>
