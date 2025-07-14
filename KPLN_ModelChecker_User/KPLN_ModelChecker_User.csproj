@@ -2,7 +2,7 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
-    <OutputPath>bin\Debug\2020\</OutputPath>
+    <OutputPath>..\..\..\..\..\KPLN_Debug\KPLN_ModelChecker_User\Debug\2020\</OutputPath>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
@@ -13,7 +13,7 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>..\..\..\..\..\KPLN_Debug\KPLN_ModelChecker_User\Debug\2023\</OutputPath>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
@@ -56,17 +56,20 @@
     <RootNamespace>KPLN_ModelChecker_User</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_ExtensibleStorage">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2020\KPLN_Library_ExtensibleStorage.dll</HintPath>
+    </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
@@ -104,17 +107,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="KPLN_Library_Forms">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_ExtensibleStorage">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Debug\2020\KPLN_Library_ExtensibleStorage.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -337,6 +331,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_monolith.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checker_wet_zones.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
