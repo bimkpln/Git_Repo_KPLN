@@ -47,7 +47,7 @@ namespace KPLN_ModelChecker_User.Common
             foreach (Face face in faces)
             {
                 PlanarFace planarFace = face as PlanarFace;
-                if (planarFace != null && planarFace.XVector.Z == 1) return face;
+                if (planarFace != null && (planarFace.XVector.Z == 1 || planarFace.XVector.Z == -1)) return face;
             }
             
             throw new Exception($"Ошибка с получением основной поверхности отверстия или результата пересечений у отверстия с id: {this.CurrentElement.Id}. Отправь разработчику!");

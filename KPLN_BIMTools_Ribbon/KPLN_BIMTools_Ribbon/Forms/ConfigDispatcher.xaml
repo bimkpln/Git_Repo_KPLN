@@ -20,6 +20,17 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style 
+            x:Key="ChBx"
+            TargetType="CheckBox">
+            <Setter Property="Padding" Value="5,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="IsEnabled" Value="False"/>
+        </Style>
+        
+        <Style 
             x:Key="UserActionBtns"
             TargetType="Button">
             <Setter Property="Padding" Value="5,5"/>
@@ -38,11 +49,12 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" MinHeight="20"/>
             <RowDefinition Height="Auto" MinHeight="20"/>
+            <RowDefinition Height="Auto" MinHeight="20"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!--Фильтр-->
+        <!--Фильтр текстовый-->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.2*"/>
@@ -63,11 +75,28 @@
                 TextAlignment="Left"
                 TextChanged="FilterItems_TextChanged"/>
         </Grid>
-        <!--Фильтр-->
-        
+        <!--Фильтр текстовый-->
+
+        <!--Фильтры логические-->
+        <Grid
+            Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.2*"/>
+                <ColumnDefinition Width="0.7*"/>
+            </Grid.ColumnDefinitions>
+            <CheckBox
+                x:Name="OnlySelChBx"
+                Content="Оставить только выбранные"
+                IsEnabled="True"
+                Style="{StaticResource ChBx}"
+                Checked="OnlySelChBx_Checked"
+                Unchecked="OnlySelChBx_Checked"/>
+        </Grid>
+        <!--Фильтры логические-->
+
         <!--Заголовок-->
         <TextBlock 
-            Grid.Row="1"
+            Grid.Row="2"
             Text="Доступные конфигурации:" 
             TextWrapping="Wrap"
             Margin="0,0,0,5" 
@@ -79,13 +108,13 @@
         <!--Блок с набором конфигов-->
         <ScrollViewer 
             Padding="0,0,5,0" 
-            Grid.Row="2" 
+            Grid.Row="3" 
             HorizontalScrollBarVisibility="Disabled" 
             VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" x:Name="sp">
                 <ItemsControl 
                     x:Name="iControllGroups" 
-                    ItemsSource="{Binding CurrentDBRevitDocExchanges}">
+                    ItemsSource="{Binding FiltereDBRevitDocExchdWrappers, UpdateSourceTrigger=PropertyChanged}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="10">
@@ -104,9 +133,8 @@
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <CheckBox
                                         x:Name="DocExchangeChBx"
-                                        IsChecked="False"
-                                        Checked="OnConfigChecked"
-                                        Unchecked="OnConfigUnChecked"/>
+                                        IsChecked="{Binding IsSelected}"
+                                        Click="OnConfigClicked"/>
                                     <TextBlock 
                                         TextWrapping="Wrap">
                                         <TextBlock.ToolTip>
@@ -164,7 +192,7 @@
         <!--Блок с набором конфигов-->
 
         <!--Нижний блок кнопок-->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.2*"/>
                 <ColumnDefinition Width="0.8*"/>
@@ -173,13 +201,12 @@
                 Grid.Column="0"
                 Orientation="Horizontal"
                 HorizontalAlignment="Left">
+                <!--Content и Tooltip - заполняется через конструктор, в зависимости от режима-->
                 <Button 
                     x:Name="btnRun"
-                    Content="▶"
                     Style="{StaticResource UserActionBtns}"
                     Foreground="Green"
                     IsEnabled="False"
-                    ToolTip="Запустить выбранные конфигурации"
                     Click="OnBtnRun"/>
             </StackPanel>
             <StackPanel 

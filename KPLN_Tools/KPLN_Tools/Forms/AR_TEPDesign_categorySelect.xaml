@@ -16,7 +16,7 @@
             Padding="10,0,0,0" Margin="0 0 0 5" HorizontalContentAlignment="Left" Click="CategoryButton_Click"/>
             <Button Content="Цветовые области (элементы узлов)" Tag="2" Width="240" Height="30"
             Padding="10,0,0,0" Margin="0 0 0 5" HorizontalContentAlignment="Left" Click="CategoryButton_Click"/>
-            <Button Content="Формы (перекрытия)" IsEnabled="False" Tag="4" Width="240" Height="30"
+            <Button Content="Формы (перекрытия)" Tag="4" Width="240" Height="30"
             Padding="10,0,0,0" HorizontalContentAlignment="Left" Click="CategoryButton_Click"/>
 
             <Button Content="⚠️ Принудительное обновление стиля таблицы" Tag="4" Width="240" Height="30" Margin="0 20 0 0"

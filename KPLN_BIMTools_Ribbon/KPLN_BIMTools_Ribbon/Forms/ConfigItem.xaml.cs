@@ -1,14 +1,13 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_BIMTools_Ribbon.Forms.Models;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using Microsoft.Win32;
-using NLog;
 using RevitServerAPILib;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -32,11 +31,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
 
         private readonly NLog.Logger _logger;
-        private readonly RevitDocExchangestDbService _revitDocExchangestDbService;
         private readonly SQLiteService _sqliteService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
-        private readonly int _revitVersion;
 
         private string _settingName;
         private string _sharedPathTo;
@@ -51,23 +48,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <param name="sqliteService">Текущий сервис работы с БД по отчетам из текущего окна</param>
         /// <param name="project">Ссылка на проект</param>
         /// <param name="revitDocExchangeEnum">Тип обмена</param>
-        /// <param name="currentDBRevitDocExchanges">Ссылка на существующий конфиг</param>
+        /// <param name="dbRevitDocExchangesEntities">Ссылка на существующий конфиг</param>
         public ConfigItem(
             NLog.Logger logger,
-            RevitDocExchangestDbService revitDocExchangestDbService,
             SQLiteService sqliteService,
             DBProject project,
             RevitDocExchangeEnum revitDocExchangeEnum,
-            int revitVersion,
-            DBRevitDocExchanges currentDBRevitDocExchanges = null)
+            DBRevitDocExchangesWrapper dbRevitDocExchangesEntities = null)
         {
             _logger = logger;
-            _revitDocExchangestDbService = revitDocExchangestDbService;
             _sqliteService = sqliteService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
-            _revitVersion = revitVersion;
-            CurrentDBRevitDocExchanges = currentDBRevitDocExchanges;
+            DBRevitDocExchWrapper = dbRevitDocExchangesEntities;
 
             string mainProjectPath = _project.MainPath;
             if (!string.IsNullOrEmpty(mainProjectPath) && Directory.Exists(mainProjectPath))
@@ -76,18 +69,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
             InitializeComponent();
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
 
-            if (CurrentDBRevitDocExchanges == null)
+            if (DBRevitDocExchWrapper == null)
                 SetExtraSettings();
             else
             {
                 // Добавляю общее имя конфига
-                CurrentDBRevitDocExchanges = _revitDocExchangestDbService.GetDBRevitDocExchanges_ById(CurrentDBRevitDocExchanges.Id);
-                SettingName = CurrentDBRevitDocExchanges.SettingName;
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(ExchangeService.CurrentRevitDocExchangesDbService.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
+                SettingName = DBRevitDocExchWrapper.SettingName;
 
                 // Проверяю на триггер копирования - базы данных не будут совпадать
                 SQLiteService tempSqliteService = null;
-                if (_sqliteService.CurrentDBFullPath != CurrentDBRevitDocExchanges.SettingDBFilePath)
-                    tempSqliteService = new SQLiteService(_logger, CurrentDBRevitDocExchanges.SettingDBFilePath, _revitDocExchangeEnum);
+                if (_sqliteService.CurrentDBFullPath != DBRevitDocExchWrapper.SettingDBFilePath)
+                    tempSqliteService = new SQLiteService(_logger, DBRevitDocExchWrapper.SettingDBFilePath, _revitDocExchangeEnum);
                 else
                     tempSqliteService = _sqliteService;
 
@@ -98,7 +91,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 else
                     SetExtraSettings();
 
-                SharedPathTo = CurrentDBRevitDocExchanges.SettingResultPath;
+                SharedPathTo = DBRevitDocExchWrapper.SettingResultPath;
 
                 // Добавляю список файлов
                 FileEntitiesList = new ObservableCollection<FileEntity>(dBConfigEntities.Select(ent => new FileEntity(ent.Name, ent.PathFrom)));
@@ -153,7 +146,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                     BtnEnableSwitch();
 
-                    if(Directory.Exists(_sharedPathTo))
+                    if (Directory.Exists(_sharedPathTo))
                         _initialDirectoryForOpenFileDialog = _sharedPathTo;
                 }
             }
@@ -162,7 +155,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <summary>
         /// Ссылка на текущий конфиг
         /// </summary>
-        public DBRevitDocExchanges CurrentDBRevitDocExchanges { get; private set; }
+        public DBRevitDocExchangesWrapper DBRevitDocExchWrapper { get; private set; }
 
         /// <summary>
         /// Ссылка на коллекцию путей к файлам в конфиге
@@ -172,10 +165,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <summary>
         /// Доп. настройки - UserControl
         /// </summary>
-        public UserControl SelectedConfig 
-        { 
-            get; 
-            private set; 
+        public UserControl SelectedConfig
+        {
+            get;
+            private set;
         }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -205,7 +198,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         NavisDocPostfix = string.Empty,
                     });
                     break;
-                case (RevitDocExchangeEnum.RevitServer):
+                case (RevitDocExchangeEnum.Revit):
                     SelectedConfig = new RVTExtraSettings(new DBRVTConfigData()
                     {
                         MaxBackup = 10,
@@ -226,7 +219,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (dBConfigEntity is DBNWConfigData dbNWConfigData)
                         SelectedConfig = new NWExtraSettings(dbNWConfigData);
                     break;
-                case (RevitDocExchangeEnum.RevitServer):
+                case (RevitDocExchangeEnum.Revit):
                     if (dBConfigEntity is DBRVTConfigData dbRVTConfigData)
                         SelectedConfig = new RVTExtraSettings(dbRVTConfigData);
                     break;
@@ -288,8 +281,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     openFolderDialog.SelectedPath = _initialDirectoryForOpenFileDialog;
                 else
                     openFolderDialog.SelectedPath = oldSelectedPath;
-                
-                if (openFolderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK 
+
+                if (openFolderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
                     && !string.IsNullOrWhiteSpace(openFolderDialog.SelectedPath))
                 {
                     SharedPathTo = openFolderDialog.SelectedPath;
@@ -299,14 +292,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(_revitVersion);
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(Module.RevitVersion);
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
                 string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
                 string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
 
-                RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
+                RevitServer revitServer = new RevitServer(selectedRSHostName, Module.RevitVersion);
 
                 IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
                 List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
@@ -344,7 +337,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnAddNewRevitServerLink(object sender, RoutedEventArgs e)
         {
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(Module.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 
@@ -452,9 +445,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void OnBtnOkClick(object sender, RoutedEventArgs e)
         {
             // Настройка CurrentDBRevitDocExchanges. Если её нет, то создаём с нуля, иначе - делаем уточнение по параметрам
-            if (CurrentDBRevitDocExchanges == null)
+            if (DBRevitDocExchWrapper == null)
             {
-                CurrentDBRevitDocExchanges = new DBRevitDocExchanges
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(new DBRevitDocExchanges
                 {
                     ProjectId = _project.Id,
                     RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
@@ -462,28 +455,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     SettingResultPath = SharedPathTo,
                     SettingCountItem = FileEntitiesList.Count,
                     SettingDBFilePath = _sqliteService.CurrentDBFullPath,
-                };
+                });
             }
             else
             {
-                CurrentDBRevitDocExchanges = new DBRevitDocExchanges
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(new DBRevitDocExchanges
                 {
-                    Id = CurrentDBRevitDocExchanges.Id,
+                    Id = DBRevitDocExchWrapper.Id,
                     ProjectId = _project.Id,
                     RevitDocExchangeType = _revitDocExchangeEnum.ToString(),
                     SettingName = SettingName,
                     SettingResultPath = SharedPathTo,
                     SettingCountItem = FileEntitiesList.Count,
                     SettingDBFilePath = _sqliteService.CurrentDBFullPath,
-                };
+                });
             }
 
             // Создаю БД для записи Items, а также вношу запись в основную БД диспетчера. Если база ранее была создана - то данный этап игнорирую
             if (!System.IO.File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
-                int idFromDB = _revitDocExchangestDbService.CreateDBRevitDocExchanges(CurrentDBRevitDocExchanges);
-                CurrentDBRevitDocExchanges.Id = idFromDB;
+                int idFromDB = ExchangeService.CurrentRevitDocExchangesDbService.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                DBRevitDocExchWrapper.Id = idFromDB;
             }
 
             //Создание экземпляра класса на основе введенных данных
@@ -501,11 +494,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        _revitDocExchangestDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(CurrentDBRevitDocExchanges);
+                        ExchangeService.CurrentRevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
                     }
                     break;
-                case RevitDocExchangeEnum.RevitServer:
+                case RevitDocExchangeEnum.Revit:
                     RVTExtraSettings extraRVTSettings = (RVTExtraSettings)SelectedConfig;
                     DBRVTConfigData dbRVTConfigData = extraRVTSettings.CurrentDBRSConfigData;
 
@@ -517,7 +510,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        _revitDocExchangestDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(CurrentDBRevitDocExchanges);
+                        ExchangeService.CurrentRevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     }
                     break;

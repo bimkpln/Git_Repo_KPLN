@@ -230,7 +230,7 @@
     </Compile>
     <Compile Include="Logger.cs" />
     <Compile Include="Common\Print\MyDimension.cs" />
-    <Compile Include="Common\Print\MySheet.cs" />
+    <Compile Include="Common\Print\MainEntity.cs" />
     <Compile Include="Common\PdfWorker\PdfColor.cs" />
     <Compile Include="Common\PdfWorker\PdfContentModifier.cs" />
     <Compile Include="Common\PdfWorker\PdfContentOperatorHandler.cs" />
@@ -250,7 +250,7 @@
     <Compile Include="Common\Print\SaveCoordinates.cs" />
     <Compile Include="Common\SchedulesRefresh.cs" />
     <Compile Include="ModuleData.cs" />
-    <Compile Include="Common\Print\SheetSupport.cs" />
+    <Compile Include="Common\Print\EntitySupport.cs" />
     <Compile Include="Common\PaperSIze\WinApi.cs" />
     <Compile Include="Common\Print\YayPrintSettings.cs" />
     <Compile Include="Common\Print\SupportRegistry.cs" />

@@ -74,7 +74,7 @@ namespace KPLN_Publication
             {
                 LargeImage = PngImageSource("KPLN_Publication.Resources.UpdateBig.png"),
                 Image = PngImageSource("KPLN_Publication.Resources.UpdateSmall.png"),
-                ToolTip = "...",
+                ToolTip = "Обновляет спецификации на листах",
                 LongDescription = "Обновляет спецификации на листах"
             };
 

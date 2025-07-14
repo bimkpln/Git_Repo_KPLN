@@ -14,6 +14,7 @@ namespace KPLN_OpeningHoleManager.Services
         private static ProjectDbService _projectDbService;
         private static DocumentDbService _docDbService;
         private static SubDepartmentDbService _subDepartmentDbService;
+        private static RevitDialogDbService _dialogDbService;
 
         private static DBUser _dBUser;
         private static DBSubDepartment _currentDBSubDepartment;
@@ -63,6 +64,17 @@ namespace KPLN_OpeningHoleManager.Services
             }
         }
 
+        internal static RevitDialogDbService RevitDialogDbService
+        {
+            get
+            {
+                if (_dialogDbService == null)
+                    _dialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
+                
+                return _dialogDbService;
+            }
+        }
+
         /// <summary>
         /// Ссылка на текущего пользователя из БД
         /// </summary>
@@ -106,14 +118,18 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
+        /// Список диалогов из БД
+        /// </summary>
+        internal static DBRevitDialog[] DBRevitDialogs
+        {
+            get => RevitDialogDbService.GetDBRevitDialogs().ToArray();
+        }
+
+        /// <summary>
         /// Получить отдел, которому принадлежит файл
         /// </summary>
         /// <returns></returns>
-#if Debug2020
-        internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => new DBSubDepartment() { Code = "ОВиК" };
-#else
         internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
-#endif
 
     }
 }

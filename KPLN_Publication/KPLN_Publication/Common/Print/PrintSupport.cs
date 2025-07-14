@@ -25,31 +25,32 @@ namespace KPLN_Publication
         /// </summary>
         /// <param name="doc"></param>
         /// <param name="titleBlocks"></param>
-        /// <param name="mSheets"></param>
+        /// <param name="mEntities"></param>
         /// <returns></returns>
-        public static string PrintFormatsCheckIn(Document doc, string printerName, List<FamilyInstance> titleBlocks, ref List<MySheet> mSheets, Logger logger)
+        public static string PrintFormatsCheckIn(Document doc, string printerName, List<FamilyInstance> titleBlocks, ref List<MainEntity> mEntities, Logger logger)
         {
             PrintManager pManager = doc.PrintManager;
-            foreach (MySheet msheet in mSheets)
+            foreach (MainEntity ent in mEntities)
             {
+                if (!(ent.MainView is ViewSheet sheet))
+                    return $" В коллекцию с листами попал вид Ревит {ent}";
+
                 logger.Write(" ");
-                logger.Write(" Проверяется лист " + msheet.sheet.Name);
+                logger.Write(" Проверяется лист " + ent.MainView.Name);
                 double widthMm = 0;
                 double heigthMm = 0;
 
                 List<FamilyInstance> tempTitleBlocks = titleBlocks
-                    .Where(i => i.get_Parameter(BuiltInParameter.SHEET_NUMBER).AsString() == msheet.sheet.SheetNumber)
+                    .Where(i => i.get_Parameter(BuiltInParameter.SHEET_NUMBER).AsString() == sheet.SheetNumber)
                     .ToList();
 
                 logger.Write(" На листе найдено основных надписей: " + tempTitleBlocks.Count.ToString());
                 if (tempTitleBlocks.Count == 0)
-                {
-                    return " Нет основной надписи на листе " + msheet.sheet.Name;
-                }
+                    return $" Нет основной надписи на листе {ent}";
 
 
 
-                msheet.titleBlocks = tempTitleBlocks;
+                ent.TitleBlocks = tempTitleBlocks;
                 FamilyInstance titleBlock = tempTitleBlocks.First();
                 logger.Write(" На листе использована основная надпись Id " + titleBlock.Id.IntegerValue.ToString());
 
@@ -60,7 +61,7 @@ namespace KPLN_Publication
                 logger.Write(" BuiltInParameter.SHEET_HEIGHT = " + heigthMm.ToString("F3"));
 
                 logger.Write(" Проверяю корректность семейства основной надписи");
-                string sizeCheckMessage = SheetSupport.CheckTitleblocSizeCorrects(msheet.sheet, titleBlock, logger);
+                string sizeCheckMessage = EntitySupport.CheckTitleblocSizeCorrects(sheet, titleBlock, logger);
                 if (sizeCheckMessage != "")
                 {
                     return sizeCheckMessage;
@@ -68,9 +69,9 @@ namespace KPLN_Publication
 
 
                 widthMm = Math.Round(widthMm);
-                msheet.widthMm = widthMm;
+                ent.WidthMm = widthMm;
                 heigthMm = Math.Round(heigthMm);
-                msheet.heigthMm = heigthMm;
+                ent.HeigthMm = heigthMm;
 
 
 
@@ -78,12 +79,12 @@ namespace KPLN_Publication
                 if (widthMm > heigthMm)
                 {
                     logger.Write(" Это лист вертикальной ориентации");
-                    msheet.IsVertical = false;
+                    ent.IsVertical = false;
                 }
                 else
                 {
                     logger.Write(" Это лист горизонтальной ориентации");
-                    msheet.IsVertical = true;
+                    ent.IsVertical = true;
                 }
 
                 System.Drawing.Printing.PaperSize winPaperSize = PrinterUtility.GetPaperSize(printerName, widthMm, heigthMm, logger);
@@ -100,19 +101,19 @@ namespace KPLN_Publication
                     if (revitPaperSize == null)
                     {
                         string message = "Не удалось применить формат листа Revit. Попробуйте запустить печать еще раз. Лист: ";
-                        message += msheet.sheet.SheetNumber + " : " + msheet.sheet.Name + ". Формат " + paperSizeName;
+                        message += ent.ToString() + ". Формат " + paperSizeName;
                         logger.Write("  " + message);
                         return message;
                     }
 
                     logger.Write(" Найден формат листа Revit: " + revitPaperSize.Name);
-                    msheet.revitPaperSize = revitPaperSize;
+                    ent.RevitPaperSize = revitPaperSize;
                 }
                 else //нет такого формата, нужно добавить в Сервер печати
                 {
                     string paperSizeName = widthMm.ToString("F0") + "x" + heigthMm.ToString("F0");
                     logger.Write("Формат бумаги в Windows не найден! " + paperSizeName);
-                    FormCreateCustomFormat formccf = new FormCreateCustomFormat(msheet.sheet.Title, paperSizeName);
+                    FormCreateCustomFormat formccf = new FormCreateCustomFormat(ent.MainView.Title, paperSizeName);
                     formccf.ShowDialog();
                     if (formccf.DialogResult != System.Windows.Forms.DialogResult.OK) return "cancel";
 
@@ -142,13 +143,13 @@ namespace KPLN_Publication
                     if (revitPaperSize == null)
                     {
                         string message = "Обнаружен лист нестандартного формата. Попробуйте запустить печать еще раз. Лист: ";
-                        message += msheet.sheet.SheetNumber + " : " + msheet.sheet.Name + ". Формат " + paperSizeName;
+                        message += ent.ToString() + ". Формат " + paperSizeName;
                         logger.Write("  " + message);
                         return message;
                     }
 
                     logger.Write(" Формат найден и успешно применен: " + revitPaperSize.Name);
-                    msheet.revitPaperSize = revitPaperSize;
+                    ent.RevitPaperSize = revitPaperSize;
                 }
             }
 
@@ -174,7 +175,7 @@ namespace KPLN_Publication
         }
 
 
-        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MySheet mSheet, YayPrintSettings printSettings, double offsetX, double offsetY)
+        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MainEntity mEntity, YayPrintSettings printSettings, double offsetX, double offsetY)
         {
             PrintSetup pSetup = pManager.PrintSetup;
 
@@ -208,10 +209,10 @@ namespace KPLN_Publication
 
 
 
-            if (mSheet.revitPaperSize == null)
+            if (mEntity.RevitPaperSize == null)
             {
                 string msg = "Не найден размер формата для листа "
-                    + mSheet.sheet.SheetNumber + " : " + mSheet.sheet.Name + ". Назначен формат по умолчанию.";
+                    + mEntity.ToString() + ". Назначен формат по умолчанию.";
                 Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
 
                 foreach (PaperSize curPsize in pManager.PaperSizes)
@@ -219,7 +220,7 @@ namespace KPLN_Publication
                     if (curPsize.Name.Equals("A4"))
                     {
                         ps.PrintParameters.PaperSize = curPsize;
-                        mSheet.IsVertical = true;
+                        mEntity.IsVertical = true;
                     }
                 }
             }
@@ -227,18 +228,18 @@ namespace KPLN_Publication
             {
                 try
                 {
-                    ps.PrintParameters.PaperSize = mSheet.revitPaperSize;
+                    ps.PrintParameters.PaperSize = mEntity.RevitPaperSize;
                 }
                 catch (Exception ex)
                 {
-                    string msg = "Не удалось назначить формат бумаги " + mSheet.revitPaperSize.Name
+                    string msg = "Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name
                         + "\nНазначен формат по умолчанию. Попробуйте запустить печать еще раз."
                         + "\nИнформация об ошибке: " + ex.Message;
                     Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
                 }
             }
 
-            if (mSheet.IsVertical)
+            if (mEntity.IsVertical)
                 pps.PageOrientation = PageOrientationType.Portrait;
             else
                 pps.PageOrientation = PageOrientationType.Landscape;

@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -27,7 +27,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -156,9 +156,6 @@
     <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
       <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormListRenumber.xaml.cs">
-      <DependentUpon>FormListRenumber.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
     </Compile>
@@ -248,10 +245,6 @@
     <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FormListRenumber.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>

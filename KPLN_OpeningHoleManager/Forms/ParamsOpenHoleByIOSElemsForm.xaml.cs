@@ -12,7 +12,7 @@ namespace KPLN_OpeningHoleManager.Forms
     {
         private static readonly Regex _regex = new Regex(@"[^0-9.,]+");
 
-        public ParamsOpenHoleByIOSElemsForm(MVVMCore_MainMenu.ViewModel currentVM)
+        public ParamsOpenHoleByIOSElemsForm(MVVMCore_MainMenu.MainViewModel currentVM)
         {
             ParamsOpenHoleByIOSElemsForm_VM = currentVM;
             
@@ -25,7 +25,7 @@ namespace KPLN_OpeningHoleManager.Forms
         /// <summary>
         /// Ссылка на ViewModel
         /// </summary>
-        public MVVMCore_MainMenu.ViewModel ParamsOpenHoleByIOSElemsForm_VM { get; private set; }
+        public MVVMCore_MainMenu.MainViewModel ParamsOpenHoleByIOSElemsForm_VM { get; private set; }
 
         private void HandleKeyboardPush(object sender, KeyEventArgs e)
         {

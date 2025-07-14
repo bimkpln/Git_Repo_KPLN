@@ -1,19 +1,35 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ExtraFilter.Entities;
+using KPLN_ExtraFilter.Entities.SelectionByClick;
 using System.Windows;
+using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
     public partial class SelectionByClickForm : Window
     {
-        public SelectionByClickForm(Document doc, Element userSelElem)
+        private readonly Document _doc;
+        private readonly Element _userSelElem;
+        
+        public SelectionByClickForm(Document doc, Element userSelElem, object lastRunConfigObj)
         {
+            _doc = doc;
+            _userSelElem = userSelElem;
             InitializeComponent();
 
-            CurrentSelectionEntity = new SelectionByClickEntity(doc, userSelElem) { Where_Model = true };
+            if (lastRunConfigObj != null && lastRunConfigObj is SelectionByClickEntity entity)
+            {
+                entity.UpdateParams(_doc, _userSelElem);
+                
+                CurrentSelectionEntity = entity;
+                CleareConfigBtn.IsEnabled = true;
+            }
+            else
+                SetDefaultEntity();
 
             this.CHB_SameWorkset.IsEnabled = doc.IsWorkshared;
             this.DataContext = CurrentSelectionEntity;
+
+            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
         /// <summary>
@@ -21,15 +37,12 @@ namespace KPLN_ExtraFilter.Forms
         /// </summary>
         public SelectionByClickEntity CurrentSelectionEntity { get; private set; }
 
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        public bool IsRun { get; private set; } = false;
-
-        private void RunBtn_Click(object sender, RoutedEventArgs e)
+        private void HandlePressBtn(object sender, KeyEventArgs e)
         {
-            IsRun = true;
-            Close();
+            if (e.Key == Key.Escape)
+                Close();
+            else if (e.Key == Key.Enter)
+                RunBtn_Click(sender, e);
         }
 
         private void CheckBox_Checked(object sender, RoutedEventArgs e)
@@ -41,12 +54,29 @@ namespace KPLN_ExtraFilter.Forms
                 || CurrentSelectionEntity.What_ParameterData)
             {
                 RunBtn.IsEnabled = true;
+                CleareConfigBtn.IsEnabled = true;
             }
             else
             {
                 RunBtn.IsEnabled = false;
+                CleareConfigBtn.IsEnabled = false;
             }
 
         }
+
+        private void RunBtn_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = true;
+            Close();
+        }
+
+        private void CleareConfigBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SetDefaultEntity();
+            this.DataContext = CurrentSelectionEntity;
+        }
+
+        private void SetDefaultEntity() => 
+            CurrentSelectionEntity = new SelectionByClickEntity(_doc, _userSelElem);
     }
 }

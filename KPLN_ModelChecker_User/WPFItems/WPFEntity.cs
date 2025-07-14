@@ -22,6 +22,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Комментарий, указанный при подтверждении
         /// </summary>
         private string _approveComment;
+        private string _errorDescription;
         /// <summary>
         /// Заголовок элемента
         /// </summary>
@@ -141,6 +142,31 @@ namespace KPLN_ModelChecker_User.WPFItems
         public string ApproveIcon { get; } = "✔️";
 
         /// <summary>
+        /// Заголовок в окне
+        /// </summary>
+        public string FormHeader
+        {
+            get => $"{ErrorDescription}: {Header}";
+        }
+
+        /// <summary>
+        /// Описание ошибки
+        /// </summary>
+        public string ErrorDescription
+        {
+            get => _errorDescription;
+            set
+            {
+                if (value != _errorDescription)
+                {
+                    _errorDescription = value;
+                    OnPropertyChanged(nameof(ErrorDescription));
+                    OnPropertyChanged(nameof(FormHeader));
+                }
+            }
+        }
+
+        /// <summary>
         /// Заголовок элемента
         /// </summary>
         public string Header
@@ -248,19 +274,19 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 case CheckStatus.LittleWarning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 240, 90));
-                    Header = "Обрати внимание: " + Header;
+                    ErrorDescription = "Обрати внимание";
                     break;
                 case CheckStatus.Warning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 180, 90));
-                    Header = "Предупреждение: " + Header;
+                    ErrorDescription = "Предупреждение";
                     break;
                 case CheckStatus.Error:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 125, 125));
-                    Header = "Ошибка: " + Header;
+                    ErrorDescription = "Ошибка";
                     break;
                 case CheckStatus.Approve:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 125, 105, 240));
-                    Header = "Допустимое: " + Header;
+                    ErrorDescription = "Допустимое";
                     break;
             }
         }
@@ -276,19 +302,19 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 case CheckStatus.LittleWarning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 240, 90));
-                    Header = "Обрати внимание: " + Header;
+                    ErrorDescription = "Обрати внимание";
                     break;
                 case CheckStatus.Warning:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 180, 90));
-                    Header = "Предупреждение: " + Header;
+                    ErrorDescription = "Предупреждение";
                     break;
                 case CheckStatus.Error:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 125, 125));
-                    Header = "Ошибка: " + Header;
+                    ErrorDescription = "Ошибка";
                     break;
                 case CheckStatus.Approve:
                     Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 125, 105, 240));
-                    Header = "Допустимое: " + Header;
+                    ErrorDescription = "Допустимое";
                     break;
             }
         }

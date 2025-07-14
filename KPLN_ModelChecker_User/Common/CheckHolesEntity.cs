@@ -73,18 +73,12 @@ namespace KPLN_ModelChecker_User.Common
 
                 if (resultSolid != null)
                     CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
+                
                 // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
-                else if (CurrentElement is FamilyInstance famInst)
+                else if (resultSolid == null && (CurrentElement is FamilyInstance fi && fi.SuperComponent == null))
                 {
-                    FamilySymbol famSymb = famInst.Symbol;
-                    string famName = famSymb.FamilyName;
-                    string famNameLower = famName.ToLower();
-                    if (!famNameLower.Contains("ostec") 
-                        && !famNameLower.Contains("470_dkc_s5_accessories")
-                        && !famNameLower.Contains("757_опора_неподвижная_(армтр)") 
-                        && famInst.SuperComponent == null)
-                        HtmlOutput.Print($"У элемента семейства {famName} " +
-                            $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);
+                    HtmlOutput.Print($"У элемента семейства {fi.Symbol.FamilyName} " +
+                    $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);
                 }
             }
             #endregion
@@ -97,6 +91,7 @@ namespace KPLN_ModelChecker_User.Common
                     BoundingBoxXYZ bbox = CurrentSolid.GetBoundingBox();
                     if (bbox == null)
                         throw new Exception($"Элементу {CurrentElement.Id} - невозможно создать BoundingBoxXYZ. Отправь сообщение разработчику");
+                    
                     Transform transform = bbox.Transform;
                     Transform resultTransform = CurrentLinkInstance == null ? transform : transform * CurrentLinkTransform;
 

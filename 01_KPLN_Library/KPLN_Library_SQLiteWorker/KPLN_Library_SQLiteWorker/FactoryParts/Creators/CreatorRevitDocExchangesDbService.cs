@@ -13,7 +13,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             SQLFilesExistChecker();
             string connectionString = CreateConnectionString("KPLN_Loader_MainDB");
 
-            return new RevitDocExchangestDbService(connectionString, DBRevitDocExchanges.CurrentDB);
+            return new RevitDocExchangesDbService(connectionString, DBRevitDocExchanges.CurrentDB);
         }
     }
 }

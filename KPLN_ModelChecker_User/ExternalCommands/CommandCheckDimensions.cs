@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.ExtensibleStorage;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +12,14 @@ using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
+    internal class DimTypeCompare : IEqualityComparer<DimensionType>
+    {
+        public bool Equals(DimensionType x, DimensionType y) => x.Id.Equals(y.Id);
+
+        public int GetHashCode(DimensionType obj) => obj.Id.GetHashCode();
+    }
+
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandCheckDimensions : AbstrCheckCommand<CommandCheckDimensions>, IExternalCommand
@@ -58,12 +64,50 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
+            string docTitle = doc.Title;
 
-            // Получаю коллекцию элементов для анализа
-            Element[] docDimensions = new FilteredElementCollector(doc).OfClass(typeof(Dimension)).WhereElementIsNotElementType().ToArray();
+
+            // Собираю листы модели
+            ViewSheet[] docSheetColl;
+            IEnumerable<ViewSheet> docAllList = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Sheets)
+                .WhereElementIsNotElementType()
+                .Cast<ViewSheet>();
+            // Кастомно для проектов на основе моделей субчиков (например только нужную стадию)
+            if (docTitle.Contains("СЕТ_1") && (docTitle.Contains("_КЖ") || docTitle.Contains("_КМ")))
+                docSheetColl = docAllList
+                    .Where(vsh => vsh.LookupParameter("Орг.КомплектЧертежей")?.AsString()?.ToLower().Contains("кж") == true)
+                    .ToArray();
+            // Стандартно - для всех листов
+            else
+                docSheetColl = docAllList.ToArray();
+
+
+            // Собираю размеры с видов на листах
+            List<Element> dimToCheck = new List<Element>();
+            List<Element> docDimensions = new FilteredElementCollector(doc)
+                .OfClass(typeof(Dimension))
+                .WhereElementIsNotElementType()
+                .ToList();
+            foreach (Element elem in docDimensions)
+            {
+                Dimension dim = (Dimension)elem;
+                View dimView = dim.View;
+                // Такое может быть, т.к. этого же класса зависимости (сам размер может быть удален)
+                if (dimView == null)
+                    continue;
+
+                // Если листа нет, то анализировать нечего. Коллекция листов готовиться заранее (по нужному парамтеру)
+                string sheetName = dimView.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NAME)?.AsString();
+                if (string.IsNullOrEmpty(sheetName))
+                    continue;
+
+                dimToCheck.Add(elem);
+            }
+
 
             #region Проверяю и обрабатываю элементы
-            WPFEntity[] wpfColl = CheckCommandRunner(doc, docDimensions);
+            WPFEntity[] wpfColl = CheckCommandRunner(doc, dimToCheck.ToArray());
             OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
             if (form != null) form.Show();
             else return Result.Cancelled;
@@ -79,7 +123,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<WPFEntity> result = new List<WPFEntity>();
 
             result.AddRange(CheckOverride(elemColl));
-            result.AddRange(CheckAccuracy(doc));
+            result.AddRange(CheckAccuracy(doc, elemColl));
 
             return result;
         }
@@ -233,12 +277,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Определяю размеры, которые не соответствуют необходимой точности
         /// </summary>
-        private IEnumerable<WPFEntity> CheckAccuracy(Document doc)
+        private IEnumerable<WPFEntity> CheckAccuracy(Document doc, Element[] elemColl)
         {
             List<WPFEntity> result = new List<WPFEntity>();
 
-            FilteredElementCollector docDimensionTypes = new FilteredElementCollector(doc).OfClass(typeof(DimensionType)).WhereElementIsElementType();
-            foreach (DimensionType dimType in docDimensionTypes)
+            HashSet<DimensionType> elemCollDimTypes = new HashSet<DimensionType>(
+                elemColl.Select(elem => doc.GetElement(elem.GetTypeId())).Cast<DimensionType>(),
+                new DimTypeCompare());
+
+            foreach (DimensionType dimType in elemCollDimTypes)
             {
                 DimensionStyleType dimStyleType = dimType.StyleType;
                 if (dimStyleType == DimensionStyleType.Linear

@@ -7,9 +7,7 @@ using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 
 namespace KPLN_IOSClasher.ExecutableCommand
 {
@@ -52,13 +50,13 @@ namespace KPLN_IOSClasher.ExecutableCommand
 
                 Element[] oldPointElems = GetOldIntersectionPointsEntities(doc);
                 IntersectPointEntity[] clearedPointEntities = null;
-                
+
                 // Удаляю не актуальные
                 if (oldPointElems.Length != 0)
                 {
                     // Удаляю не актуальные (если можно их удалить). Проблема с занятами клэшпоинтами приводит к ложным клэшам. В пределах погрешности ок, ведь когда 
                     // юзер зайдет в модель - он свои клэши почистит (для него эти эл-ты уже не заняты)
-                    List<Element> oldElemsToDel = GetOldToDelete_ByOldPointsAndChackedElems(doc, oldPointElems, _checkedElems.Select(el => el.Id.IntegerValue));
+                    List<Element> oldElemsToDel = GetOldToDelete_ByOldPointsAndChackedElems(doc, oldPointElems, _checkedElems.Where(el => el.IsValidObject).Select(el => el.Id.IntegerValue));
                     ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, oldElemsToDel.Select(el => el.Id).ToArray());
                     doc.Delete(availableWSElemsId);
 
@@ -145,7 +143,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
                                 oldElemInModel = linkDoc.GetElement(new ElementId(oldElemIdInModel));
                                 linkTrans = IntersectCheckEntity.GetLinkTransform(linkInst);
                             }
-                            
+
                         }
                         else
                             throw new FormatException($"Отправь разработчику: Не удалось конвертировать данные из id-связи для эл-та с id:{pointElem.Id}");

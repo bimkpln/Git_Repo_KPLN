@@ -51,13 +51,13 @@ namespace KPLN_Revit_Starter
             };
 
             process.Start();
-            Thread.Sleep(30000);
+            Thread.Sleep(15000);
 
             IntPtr handle = WindowHandleSearch.GetMainWindow(process.Id);
             if (SetForegroundWindow(handle))
             {
                 SendKeys.SendWait(sendKeysPair[0]);
-                Console.WriteLine($"sended to: {handle}");
+                Console.WriteLine($"sended {sendKeysPair[0]} to: {handle}");
             }
         }
     }

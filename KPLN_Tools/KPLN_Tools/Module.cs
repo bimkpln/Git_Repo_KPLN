@@ -13,6 +13,7 @@ namespace KPLN_Tools
 {
     public class Module : IExternalModule
     {
+        public static string CurrentRevitVersion;
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -22,6 +23,8 @@ namespace KPLN_Tools
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            CurrentRevitVersion = application.ControlledApplication.VersionNumber;
+            
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
@@ -139,7 +142,7 @@ namespace KPLN_Tools
                         "1. Запускаем проект с выгруженной связью и записываем размеры, которые имели к этой связи отношения;\n" +
                         "2. Подгружаем связь, по которой были расставлены размеры. При этом размеры - удаляются (это нормально);\n" +
                         "3. Запускаем плагин и пытаемся восстановить размеры, записанные ранее.\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -152,9 +155,15 @@ namespace KPLN_Tools
             PushButtonData changeRLinks = CreateBtnData(
                 CommandRLinkManager.PluginName,
                 CommandRLinkManager.PluginName,
-                "Загрузить/обновлят связи внутри проекта",
+                "Загрузить/обновить связи внутри проекта",
                 string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Варианты запуска:\n" +
+                        "1. Загрузить связь по указанному пути с сервера KPLN;\n" +
+                        "2. Загрузить связь по указанному пути с Revit-Server KPLN;\n" +
+                        "3. Обновить связи проекта:\n" +
+                        "3.1 Предварительно выделить в диспетчере проекта нужные связи на замену; \n" +
+                        "3.2 Просто запустить, тогда все связи появятся в списке на замену. \n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName

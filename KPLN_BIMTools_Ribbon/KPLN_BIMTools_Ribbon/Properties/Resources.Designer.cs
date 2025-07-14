@@ -63,6 +63,26 @@ namespace KPLN_BIMTools_Ribbon.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap asConfigBig {
+            get {
+                object obj = ResourceManager.GetObject("asConfigBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap asConfigSmall {
+            get {
+                object obj = ResourceManager.GetObject("asConfigSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap loadBig {
             get {
                 object obj = ResourceManager.GetObject("loadBig", resourceCulture);

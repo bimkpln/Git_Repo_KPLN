@@ -340,18 +340,35 @@ namespace KPLN_Looker
             string familyName,
             string familyPath = null)
         {
-            // Глобальный отлов по пути семейства (если оно задано).
+            #region Локальный отлов по пути семейства для проектов
             if (!string.IsNullOrEmpty(familyPath))
             {
-                // Уточнение для ЛОКАЛЬНЫХ проектов
-                if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader")
-                    || (doc.Title.Contains("СЕТ_1") && familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-                    return false;
-                // Игнор локальных проектов. Для СЕТ плохой пример, на будущее - лучше библиотеку под проект выносить в другой корень, иначе это усложняет анализ
-                else if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader")
-                    || (!doc.Title.Contains("СЕТ_1") && !familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")))
-                    return false;
+                // Уточнение для ЛОКАЛЬНЫХ ПРОЕКТОВ
+                bool isSMLT = doc.Title.Contains("СЕТ_1");
+                if (isSMLT)
+                {
+                    if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") 
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\022_Подписи в штамп")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\023_Подписи на титул")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\1_АР")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР\\999_Для проектов\\СЕТ")
+                        || familyPath.Contains("Y:\\Жилые здания\\Самолет Сетунь\\4.Оформление\\4.Стадия_Р")
+                        || familyPath.Contains("KPLN_Loader"))
+                        return false;
+                    else
+                        return true;
+                }
+
+                // Уточнение для ЛОКАЛЬНЫХ СЕМЕЙСТВ
+                if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета"))
+                {
+                    if (isSMLT)
+                        return false;
+                    else
+                        return true;
+                }
             }
+            #endregion
 
 
             #region Игнорирую семейства, которые могут редактировать проектировщики
@@ -388,6 +405,10 @@ namespace KPLN_Looker
                 && bic.Equals(BuiltInCategory.OST_Truss))
                 return false;
             #endregion
+
+            // Остальные проекты/семейства
+            if (familyPath.StartsWith("X:\\BIM\\3_Семейства") || familyPath.Contains("KPLN_Loader"))
+                return false;
 
             return true;
         }
@@ -914,8 +935,6 @@ namespace KPLN_Looker
             #region Бэкап версий с RS на наш сервак по проектам
             if (args.Status == RevitAPIEventStatus.Succeeded && dBProject.RevitServerPath != null)
             {
-
-
                 bool isSET = doc.PathName.Contains("СЕТ_1");
                 // Проект Сетунь
                 if (isSET)
@@ -940,20 +959,12 @@ namespace KPLN_Looker
                 bool isMTRS = doc.PathName.Contains("МТРС_");
                 if (isMTRS)
                 {
-                    if (doc.PathName.Contains("_АР_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_КР_"))
+                    if (doc.PathName.Contains("_КР_") && doc.PathName.Contains("МТРС_С2."))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ЭОМ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ВК_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ПТ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_СС_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ОВ_ТМ_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ОВ_АТМ_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
                 }
 
                 // Проект Матросская тишина

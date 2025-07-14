@@ -10,6 +10,16 @@ using System.Linq;
 
 namespace KPLN_Library_ConfigWorker
 {
+    public enum ConfigType
+    {
+        // Храниться в памяти
+        Memory,
+        // Хранится на диске C:\\
+        Local,
+        // Хранится на диске Z:\\
+        Shared,
+    }
+
     /// <summary>
     /// Сервис, обсулживающий процесс сохранения файлов-конфигураций
     /// </summary>
@@ -19,35 +29,45 @@ namespace KPLN_Library_ConfigWorker
         private static readonly string _localConfigFolder = $"{Path.GetPathRoot(Environment.SystemDirectory)}KPLN_Temp";
 
         /// <summary>
+        /// Кэш сущности в память
+        /// </summary>
+        public static object MemoryConfigData { get; private set; }
+
+        /// <summary>
         /// Запись данных в файл конфига
         /// </summary>
         /// <param name="doc">Ревит-файл</param>
-        /// <param name="configName">Имя конфигурации</param>
         /// <param name="data">Данные для записи (один объект или коллекция объектов)</param>
-        /// <param name="isLocalConfig">Локальный конфиг? Если да, то сохраняется в системной папке пользователя</param>
-        public static void SaveConfig<T>(Document doc, string configName, object data, bool isLocalConfig) where T : IJsonSerializable
+        /// <param name="configType">Тип конфигурации для сохранения</param>
+        /// <param name="configName">Имя конфигурации</param>
+        public static void SaveConfig<T>(Document doc, ConfigType configType, object data, string configName = "") where T : IJsonSerializable
         {
-            string configPath = CreateConfigPath(doc, configName, isLocalConfig);
+            string jsonEntity;
 
-            if (!new FileInfo(configPath).Exists)
+            if (data is IEnumerable<T> collection)
+                jsonEntity = JsonConvert.SerializeObject(collection.Select(ent => ent.ToJson()), Formatting.Indented);
+            else if (data is T singleEntity)
+                jsonEntity = JsonConvert.SerializeObject(singleEntity.ToJson(), Formatting.Indented);
+            else
+                throw new ArgumentException("Ошибка передаваемой сущности. Должна быть: IJsonSerializable.");
+
+            if (configType == ConfigType.Memory)
+                MemoryConfigData = data;
+            else
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(configPath));
-                FileStream fileStream = File.Create(configPath);
-                fileStream.Dispose();
-            }
+                string configPath = CreateConfigPath(doc, configName, configType);
 
-            using (StreamWriter streamWriter = new StreamWriter(configPath))
-            {
-                string jsonEntity;
+                if (!new FileInfo(configPath).Exists)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(configPath));
+                    FileStream fileStream = File.Create(configPath);
+                    fileStream.Dispose();
+                }
 
-                if (data is IEnumerable<T> collection)
-                    jsonEntity = JsonConvert.SerializeObject(collection.Select(ent => ent.ToJson()), Formatting.Indented);
-                else if (data is T singleEntity)
-                    jsonEntity = JsonConvert.SerializeObject(singleEntity.ToJson(), Formatting.Indented);
-                else
-                    throw new ArgumentException("Ошибка передаваемой сущности. Должна быть: IJsonSerializable.");
-
-                streamWriter.Write(jsonEntity);
+                using (StreamWriter streamWriter = new StreamWriter(configPath))
+                {
+                    streamWriter.Write(jsonEntity);
+                }
             }
         }
 
@@ -55,17 +75,27 @@ namespace KPLN_Library_ConfigWorker
         /// Десереилизация конфига с получением результата
         /// </summary>
         /// <param name="doc">Ревит-файл</param>
+        /// <param name="configType">Тип конфигурации для сохранения</param>
         /// <param name="configName">Имя конфигурации</param>
-        /// <param name="isLocalConfig">Локальный конфиг? Если да, то сохраняется в системной папке пользователя</param>
-        public static object ReadConfigFile<T>(Document doc, string configName, bool isLocalConfig)
+        public static object ReadConfigFile<T>(Document doc, ConfigType configType, string configName="")
         {
-            string configPath = CreateConfigPath(doc, configName, isLocalConfig);
-            if (new FileInfo(configPath).Exists)
-            {
-                using (StreamReader streamReader = new StreamReader(configPath))
-                {
-                    string json = streamReader.ReadToEnd();
+            string json = string.Empty;
 
+            switch (configType)
+            {
+                case ConfigType.Memory:
+                    return MemoryConfigData;
+                case ConfigType.Local:
+                    goto case ConfigType.Shared;
+                case ConfigType.Shared:
+                    string configPath = CreateConfigPath(doc, configName, configType);
+                    if (new FileInfo(configPath).Exists)
+                    {
+                        using (StreamReader streamReader = new StreamReader(configPath))
+                        {
+                            json = streamReader.ReadToEnd();
+                        }
+                    }
                     try
                     {
                         if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IEnumerable<>))
@@ -77,10 +107,9 @@ namespace KPLN_Library_ConfigWorker
                     {
                         throw new InvalidOperationException($"Failed to deserialize config file: {ex.Message}", ex);
                     }
-                }
             }
 
-            return default;
+            return null;
         }
 
         /// <summary>
@@ -88,28 +117,38 @@ namespace KPLN_Library_ConfigWorker
         /// </summary>
         /// <param name="doc">Ревит-файл</param>
         /// <param name="configName">Имя конфигурации</param>
-        /// <param name="isLocalConfig">Локальный конфиг? Если да, то сохраняется в системной папке пользователя</param>
-        private static string CreateConfigPath(Document doc, string configName, bool isLocalConfig)
+        /// <param name="configType">Тип конфигурации для сохранения</param>
+        private static string CreateConfigPath(Document doc, string configName, ConfigType configType)
         {
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
 
-            if (isLocalConfig)
-                return $"{_localConfigFolder}\\KPLN_Config\\{configName}.json";
+            if (string.IsNullOrEmpty(configName))
+                throw new Exception("Системная ошибка имени конфигурации. Обратись к разработчику!");
 
-            string resultPath;
-            if (strDocModelPath.Contains("RSN:"))
+            switch (configType)
             {
-                DBProject dBProject = _projectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
-                resultPath = $"Z:\\KPLN_Temp\\KPLN_Config\\{dBProject.Code}\\{configName}.json";
-            }
-            else
-            {
-                string trimmedPath = strDocModelPath.Trim($"{doc.Title}.rvt".ToArray());
-                resultPath = trimmedPath + $"KPLN_Config\\{configName}.json";
+                // Сохраняется в системной папке пользователя
+                case ConfigType.Local:
+                    return $"{_localConfigFolder}\\KPLN_Config\\{configName}.json";
+                // Сохраняется в папке на диске Z
+                case ConfigType.Shared:
+                    string resultPath;
+                    if (strDocModelPath.Contains("RSN:"))
+                    {
+                        DBProject dBProject = _projectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+                        resultPath = $"Z:\\KPLN_Temp\\KPLN_Config\\{dBProject.Code}\\{configName}.json";
+                    }
+                    else
+                    {
+                        string trimmedPath = strDocModelPath.Trim($"{doc.Title}.rvt".ToArray());
+                        resultPath = trimmedPath + $"KPLN_Config\\{configName}.json";
+                    }
+
+                    return resultPath;
             }
 
-            return resultPath;
+            throw new Exception("Системная ошибка выбора типа хранения конфигурации. Обратись к разработчику!");
         }
     }
 }

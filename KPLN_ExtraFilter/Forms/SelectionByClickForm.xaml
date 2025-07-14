@@ -28,7 +28,7 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="White"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="15,2,15,2"/>
+            <Setter Property="Margin" Value="5,2,5,2"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
         
@@ -84,7 +84,7 @@
                 Margin="5,5,5,5"/>
             <CheckBox 
                 Style="{StaticResource CHB}"
-                IsChecked="{Binding What_SameCategory, UpdateSourceTrigger=PropertyChanged}"
+                IsChecked="{Binding What_SameCategory, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                 Checked="CheckBox_Checked"
                 Unchecked="CheckBox_Checked"
                 Content="Одинаковой категории"/>
@@ -181,13 +181,23 @@
                 Content="Эл-ты групп"/>
             </StackPanel>
 
-        <Button
-            x:Name="RunBtn"
-            Grid.Row="4"
-            Style="{StaticResource BTN}"
-            Content="Выбрать!"
-            IsEnabled="False"
-            Click="RunBtn_Click"/>
-
+        <DockPanel
+            Grid.Row="4">
+            <Button
+                x:Name="RunBtn"
+                Width="150"
+                Style="{StaticResource BTN}"
+                Content="Выбрать!"
+                IsEnabled="False"
+                Click="RunBtn_Click"
+                ToolTip="Выбрать элементы согласно конфигурации"/>
+            <Button
+                x:Name="CleareConfigBtn"
+                Style="{StaticResource BTN}"
+                Content="Сбросить!"
+                IsEnabled="False"
+                Click="CleareConfigBtn_Click"
+                ToolTip="Сбросить конфигурацию последнего запука"/>
+        </DockPanel>
     </Grid>
 </Window>

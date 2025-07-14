@@ -40,7 +40,7 @@ namespace KPLN_Library_PluginActivityWorker
             // Для режима дебага и пользователей из вне - игнор
             if (_dBUser.IsDebugMode || _dBUser.IsExtraNet) return;
 
-            string currentDate = DateTime.Now.ToString("yyyy-mm-dd HH:mm");
+            string currentDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             // Обработка плагина по отделу и имени
             DBPluginActivity currentPluginActivity = _pluginActivityDbService.GetDBPluginActivity_ByModuleNameAndSubDep(pluginName, _dBUser.SubDepartmentId);
             if (currentPluginActivity == null)

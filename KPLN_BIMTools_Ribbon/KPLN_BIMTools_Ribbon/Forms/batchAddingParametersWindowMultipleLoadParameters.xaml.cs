@@ -493,7 +493,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                                 statusOperation = true;
                             }
-                            catch (Exception ex)
+                            catch (Exception)
                             {
                                 logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ.\n";
                                 statusOperation = false;
@@ -624,7 +624,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             statusOperation = true;
 
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ.\n";
                             statusOperation = false;

@@ -26,11 +26,6 @@ namespace KPLN_Tools.Forms
         /// </summary>
         public SendMsgToBitrix_ViewModel CurrentViewModel { get; set; }
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; } = RunStatus.Close;
-
         private static T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
@@ -52,12 +47,8 @@ namespace KPLN_Tools.Forms
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
-            {
-                Status = RunStatus.Close;
                 Close();
-            }
-
-            if (e.Key == Key.Enter)
+            else if (e.Key == Key.Enter)
                 RunBtn_Click(sender, e);
         }
 
@@ -75,7 +66,7 @@ namespace KPLN_Tools.Forms
         {
             if (CurrentViewModel.SelectedElements.Any())
             {
-                Status = RunStatus.Run;
+                DialogResult = true;
                 this.Close();
             }
             else

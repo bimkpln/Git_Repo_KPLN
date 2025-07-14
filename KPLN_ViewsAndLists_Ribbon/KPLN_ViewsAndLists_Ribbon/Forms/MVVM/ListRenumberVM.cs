@@ -53,13 +53,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         private string _unicdoe_CountOfUnicodes = "1";
 
         private string _prefix_Text;
-        private bool _prefix_IsRenumbering;
-        private string _prefix_StartNumber = "1";
 
         private string _onlyRenumber_StartNumber = "0";
         private bool _onlyRenumber_IsParamUpdate;
-
-        private string _clearRenumber_StartNumber = "0";
 
         public ListRenumberVM(UIApplication uiapp, IEnumerable<ViewSheet> shetsToRenumber, IEnumerable<Parameter> tBlockParams)
         {
@@ -268,7 +264,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             CloseAction?.Invoke();
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
-            using (Transaction trans = new Transaction(doc, PluginName))
+            using (Transaction trans = new Transaction(doc, $"KPLN: {PluginName}"))
             {
                 trans.Start();
                 try
@@ -528,9 +524,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             int startVSheetNumber = OnlyNumber(sortedSheets[0].SheetNumber);
             int deltaNumber = startNumber - startVSheetNumber;
 
-            sortedSheets.Reverse();
+            ViewSheet[] reversedSheets = sortedSheets.Reverse().ToArray();
             // Задаю нумерацию с учетом стартовой разницы
-            foreach (ViewSheet curVSheet in sortedSheets)
+            foreach (ViewSheet curVSheet in reversedSheets)
             {
                 string uniCode = string.Empty;
                 string textPrefix = string.Empty;
@@ -540,11 +536,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
                 string sheetNumber = curVSheet.SheetNumber;
                 var matchNumberByPrefix = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)/");
+                var matchNumberByPrefixWithNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)\d/");
                 var matchByZeroPrefix = Regex.Match(sheetNumber, @"(/[0]?)");
                 var matchBySubNumber = Regex.Match(sheetNumber, @"(\d?)\.(\d?)");
 
                 if (matchNumberByPrefix.Success)
                     textPrefix = matchNumberByPrefix.Value;
+
+                if (matchNumberByPrefixWithNumb.Success)
+                    textPrefix = matchNumberByPrefixWithNumb.Value;
 
                 if (matchByZeroPrefix.Success)
                 {

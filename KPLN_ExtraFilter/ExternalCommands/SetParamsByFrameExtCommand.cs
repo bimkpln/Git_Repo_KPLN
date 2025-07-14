@@ -3,8 +3,11 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.Entities.SelectionByClick;
 using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
+using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
+using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using Newtonsoft.Json;
 using System;
@@ -50,10 +53,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class SetParamsByFrameExtCommand : IExternalCommand
     {
-        /// <summary>
-        /// Кэширование конфига предыдущего запуска
-        /// </summary>
-        public static string MemoryConfigData;
+        internal const string PluginName = "Выбрать/заполнить рамкой";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -105,30 +105,11 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 }
                 #endregion
 
+                // Чтение конфигурации последнего запуска
+                object lastRunConfigObj = ConfigService.ReadConfigFile<List<MainItem>>(doc, ConfigType.Memory);
+
                 // Подготовка ViewModel для старта окна
-                SetParamsByFrameForm form = null;
-                if (string.IsNullOrEmpty(MemoryConfigData))
-                    form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities);
-                else
-                {
-                    var jsonEnts = new ObservableCollection<MainItem>(
-                        JsonConvert.DeserializeObject<List<MainItem>>(MemoryConfigData));
-
-                    // Если такой пар-р есть в общей коллекции, значит добавляю его в форму. Иначе - нет
-                    IEnumerable<MainItem> userSelectedViewModels = jsonEnts
-                        .Where(entity => allParamsEntities.Count(ent => ent.CurrentParamIntId == entity.UserSelectedParamEntity.CurrentParamIntId) == 1)
-                        .Select(entity =>
-                        {
-                            entity.UserSelectedParamEntity.CurrentParamName = allParamsEntities
-                            .First(ent => ent.CurrentParamIntId == entity.UserSelectedParamEntity.CurrentParamIntId)
-                            .CurrentParamName;
-
-                            return entity;
-                        });
-
-                    form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities, userSelectedViewModels);
-                }
-
+                SetParamsByFrameForm form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities, lastRunConfigObj);
                 form.ShowDialog();
 
                 return Result.Succeeded;

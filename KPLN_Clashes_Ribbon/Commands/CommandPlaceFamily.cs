@@ -90,7 +90,18 @@ namespace KPLN_Clashes_Ribbon.Commands
                         doc.Delete(availableWSOldElemsId);
 
                         // Создание новых
-                        XYZ transformed_location = doc.ActiveProjectLocation.GetTotalTransform().OfPoint(_point);
+                        var docBP = new FilteredElementCollector(doc)
+                            .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                            .FirstOrDefault();
+                        var docBPBBox = docBP.get_BoundingBox(null);
+                        Transform docTRans = doc.ActiveProjectLocation.GetTotalTransform();
+                        // Уточняю трансофрм, если БТП была смещена
+                        if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
+                            docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
+
+                        XYZ transformed_location = docTRans.OfPoint(_point);
+                        
+                        
                         FamilyInstance createdinstance = CreateFamilyInstance(doc, transformed_location);
 
                         // Выделяю элементы пересечения в модели

@@ -3,15 +3,19 @@ using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace KPLN_OpeningHoleManager.Core.MainEntity
 {
     public enum OpenigHoleShape
     {
-        Rectangle,
-        Circle
+        Rectangular,
+        Round
     }
 
+    /// <summary>
+    /// Обобщение отверстия в модели
+    /// </summary>
     public class OpeningHoleEntity
     {
         private Solid _ohe_Solid;
@@ -27,7 +31,7 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         public Transform OHE_LinkTransform { get; private protected set; }
 
         /// <summary>
-        /// Ссылка на элемент модели
+        /// Ссылка на элемент модели (ЗИ или отверстия)
         /// </summary>
         public Element OHE_Element { get; set; }
 
@@ -127,11 +131,13 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// </summary>
         public OpeningHoleEntity SetShapeByFamilyName(FamilyInstance fi)
         {
-            string fiName = fi.Symbol.FamilyName;
-            if (fiName.Equals(OHE_FamilyName_Rectangle))
-                OHE_Shape = OpenigHoleShape.Rectangle;
-            else if (fiName.Equals(OHE_FamilyName_Circle))
-                OHE_Shape = OpenigHoleShape.Circle;
+            string fiName = fi.Symbol.FamilyName.ToLower();
+            // Обрезаю из имени резеврные копии и копии семейств
+            string clearedFiName = Regex.Replace(fiName, @"(\.\d+|\d+)$", "");
+            if (clearedFiName.StartsWith(OHE_FamilyName_Rectangle.ToLower()))
+                OHE_Shape = OpenigHoleShape.Rectangular;
+            else if (clearedFiName.StartsWith(OHE_FamilyName_Circle.ToLower()))
+                OHE_Shape = OpenigHoleShape.Round;
             else
                 throw new Exception("Вы выбрали экзмеляр, который НЕ является заданием на отверстие");
 

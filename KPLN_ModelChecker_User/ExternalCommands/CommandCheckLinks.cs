@@ -9,6 +9,7 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -90,8 +91,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<WPFEntity> result = new List<WPFEntity>();
 
             result.AddRange(CheckLocation(doc, elemColl));
+            
             if (CheckPin(elemColl) is WPFEntity checkPin)
                 result.Add(checkPin);
+
+            result.AddRange(CheckPath(elemColl));
 
             return result;
         }
@@ -201,7 +205,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private WPFEntity CheckPin(IEnumerable<Element> rvtLinks)
         {
             List<Element> errorElems = new List<Element>();
-            foreach (RevitLinkInstance link in rvtLinks)
+            foreach (RevitLinkInstance link in rvtLinks.Cast<RevitLinkInstance>())
             {
                 if (!link.Pinned) errorElems.Add(link);
             }
@@ -218,6 +222,41 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Проверка пути линка (откуда загружен)
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="rvtLinks"></param>
+        /// <returns></returns>
+        private IEnumerable<WPFEntity> CheckPath(IEnumerable<Element> rvtLinks)
+        {
+            List<WPFEntity> result = new List<WPFEntity>();
+            foreach (RevitLinkInstance link in rvtLinks.Cast<RevitLinkInstance>())
+            {
+                string lDocPath;
+                Document linkDoc = link.GetLinkDocument();
+                if (linkDoc.IsWorkshared)
+                {
+                    ModelPath lDocMPath = linkDoc.GetWorksharingCentralModelPath();
+                    lDocPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(lDocMPath);
+                }
+                else
+                    lDocPath = linkDoc.PathName;
+
+                if (lDocPath.ToLower().Contains("архив"))
+                    result.Add(new WPFEntity(
+                        ESEntity,
+                        link,
+                        "Подозрительный путь",
+                        $"Большая вероятность, что связь случайно выбрана из архива, т.к. путь: {lDocPath}",
+                        $"Ошибка может быть ложной, если на данном проекте принято такое решение. Перед заменой - ПРОКОНСУЛЬТИРУЙСЯ в BIM-отделе",
+                        false,
+                        CheckStatus.Warning));
+            }
+
+            return result;
         }
     }
 }

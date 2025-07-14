@@ -2,8 +2,9 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
+using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
 using KPLN_OpeningHoleManager.Services;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 
 namespace KPLN_OpeningHoleManager.ExecutableCommand
@@ -16,14 +17,18 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private readonly string _transName;
         private readonly AROpeningHoleEntity[] _arEntitiesToCreate;
 
+        private readonly ProgressInfoViewModel _progressInfoViewModel;
+
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
         /// </summary>
         /// <param name="arEntitiesToCreate">Коллекция для создания</param>
-        public AR_OHE_Maker(AROpeningHoleEntity[] arEntitiesToCreate, string transName)
+        public AR_OHE_Maker(AROpeningHoleEntity[] arEntitiesToCreate, string transName, ProgressInfoViewModel progressInfoViewModel)
         {
             _arEntitiesToCreate = arEntitiesToCreate;
             _transName = transName;
+
+            _progressInfoViewModel = progressInfoViewModel;
         }
 
         public Result Execute(UIApplication app)
@@ -35,35 +40,53 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null) return Result.Cancelled;
 
+            Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing += RevitEventWorker.OnFailureProcessing;
 
-            // 3d- вид для изоляция основы для отверстий
-            View3D view = null;
-            using (Transaction trans = new Transaction(doc, _transName))
+            try
             {
-                trans.Start();
-
-                // Работа с элемнтами
-                foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)
+                // 3d- вид для изоляция основы для отверстий
+                View3D view = null;
+                using (Transaction trans = new Transaction(doc, _transName))
                 {
-                    arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, arEntity.AR_OHE_HostElement);
+                    trans.Start();
+
+                    _progressInfoViewModel.ProcessTitle = "Создание одиночных отверстий...";
+                    _progressInfoViewModel.CurrentProgress = 0;
+                    _progressInfoViewModel.MaxProgress = _arEntitiesToCreate.Length;
+
+                    // Работа с элемнтами
+                    foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)
+                    {
+                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc);
+
+                        ++_progressInfoViewModel.CurrentProgress;
+                        _progressInfoViewModel.DoEvents();
+                    }
+                    AROpeningHoleEntity.RegenerateDocAndSetSolids(doc, _arEntitiesToCreate);
+                    _progressInfoViewModel.IsComplete = true;
+
+                    // Работа с видом и выделением эл-в
+                    view = ViewZoomCreator.SpecialViewCreator(
+                        app,
+                        _arEntitiesToCreate.Select(ent => ent.AR_OHE_HostElement).ToHashSet(new ElementComparerById()),
+                        true);
+
+                    app.ActiveUIDocument.Selection.SetElementIds(
+                        _arEntitiesToCreate
+                        .Where(ent => doc.GetElement(ent.OHE_Element.Id).IsValidObject)
+                        .Select(ent => ent.OHE_Element.Id)
+                        .ToArray());
+
+                    trans.Commit();
                 }
 
-                // Работа с видом и выделением эл-в
-                view = ViewZoomCreator.SpecialViewCreator(
-                    app, 
-                    _arEntitiesToCreate.Select(ent => ent.AR_OHE_HostElement).ToHashSet(new ElementComparerById()),
-                    true);
-                
-                app.ActiveUIDocument.Selection.SetElementIds(
-                    _arEntitiesToCreate
-                    .Where(ent => doc.GetElement(ent.OHE_Element.Id).IsValidObject)
-                    .Select(ent => ent.OHE_Element.Id)
-                    .ToArray());
-
-                trans.Commit();
+                ViewZoomCreator.SpecialViewOpener(app, view);
             }
-
-            ViewZoomCreator.SpecialViewOpener(app, view);
+            catch (Exception ex) { throw ex; }
+            finally
+            {
+                Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing -= RevitEventWorker.OnFailureProcessing;
+            }
 
             return Result.Succeeded;
         }

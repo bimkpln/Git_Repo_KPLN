@@ -152,7 +152,7 @@ namespace KPLN_Loader.Services
                 td.Show();
 
                 _logger.Error(userErrorMsg);
-                _loaderStatusForm.Close();
+                _loaderStatusForm.Dispatcher.Invoke(() => _loaderStatusForm.Close());
                 throw new Exception(userErrorMsg);
             }
         }

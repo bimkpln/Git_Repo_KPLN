@@ -126,7 +126,7 @@ namespace KPLN_OpeningHoleManager.Services
             }
 
             if (resultSolid == null && (elem is FamilyInstance fi && fi.SuperComponent == null))
-                throw new Exception($"У элемента с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
+                throw new Exception($"У элемента с именем \"{elem.Name}\" с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
 
             // Трансформ по координатам (если нужно)
             if (resultSolid != null && transform != null)
@@ -135,7 +135,7 @@ namespace KPLN_OpeningHoleManager.Services
             return resultSolid;
         }
 
-        public static double GetMinimumDistanceBetweenSolids(Solid solid1, Solid solid2)
+        internal static double GetMinimumDistanceBetweenSolids(Solid solid1, Solid solid2)
         {
             double minDistance = double.MaxValue;
 
@@ -294,7 +294,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Получить плоскость у солида с определенным углом к указанному вектору 
         /// </summary>
-        internal static Face GetFace_ByAngleToDirection(Solid checkSolid, XYZ hostDirection, double checkAngle = 90)
+        internal static Face GetFace_ByAngleToDirection(Solid checkSolid, XYZ hostDirection, double tolerance = 0)
         {
             Face result = null;
 
@@ -311,7 +311,8 @@ namespace KPLN_OpeningHoleManager.Services
 #else
                     double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), new ForgeTypeId("autodesk.unit.unit:degrees-1.0.1"));
 #endif
-                    if (Math.Round(angle, 5) == checkAngle && tempArea < face.Area)
+                    if ((Math.Round(angle, 5) - 90 <= tolerance || Math.Round(angle, 5) - 180 <= tolerance) 
+                        && tempArea < face.Area)
                     {
                         result = face;
                         tempArea = face.Area;

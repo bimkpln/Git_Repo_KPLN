@@ -28,6 +28,7 @@ namespace KPLN_OpeningHoleManager
         internal static DBProject CurrentDBProject { get; private set; }
         internal static Document CurrentDoc { get; private set; }
         internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
+        internal static int RevitVersion { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
@@ -39,6 +40,7 @@ namespace KPLN_OpeningHoleManager
         public Result Execute(UIControlledApplication application, string tabName)
         {
             CurrentUIContrApp = application;
+            RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             //Ищу или создаю панель инструменты
             string panelName = "Междисциплинарный анализ";
@@ -89,7 +91,7 @@ namespace KPLN_OpeningHoleManager
             CurrentUIApplication = new UIApplication(args.Document.Application);
 
             CurrentFileName = openViewFileName;
-            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
+            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (openViewDBProject == null)
                 return;
 
