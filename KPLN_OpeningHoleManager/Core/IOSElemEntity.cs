@@ -81,11 +81,13 @@ namespace KPLN_OpeningHoleManager.Core
                             // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК
                             || (elem_family_param.Contains("ostec") && (el is FamilyInstance fi && fi.SuperComponent != null))
                             || elem_family_param.Contains("470_dkc_s5_accessories")
+                            || elem_family_param.Contains("470_dkc_fireproof_out")
                             || elem_family_param.Contains("dkc_ceiling")
                             || elem_family_param.Contains("757_опора_неподвижная")
                             // Фильтрация семейств под которое НИКОГДА не должно быть отверстий
                             || elem_family_param.StartsWith("501_")
                             || elem_family_param.StartsWith("551_")
+                            || elem_family_param.StartsWith("552_")
                             || elem_family_param.StartsWith("556_")
                             || elem_family_param.StartsWith("557_")
                             || elem_family_param.StartsWith("560_")

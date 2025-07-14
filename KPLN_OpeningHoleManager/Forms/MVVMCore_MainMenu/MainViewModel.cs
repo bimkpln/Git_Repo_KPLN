@@ -10,12 +10,10 @@ using KPLN_OpeningHoleManager.Forms.MVVMCommand;
 using KPLN_OpeningHoleManager.Forms.SelectionFilters;
 using KPLN_OpeningHoleManager.Services;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
@@ -261,7 +259,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 if (arkrEntities.Count() == 0)
                 {
                     window.Close();
-                    
+
                     new TaskDialog("Внимание")
                     {
                         MainIcon = TaskDialogIcon.TaskDialogIconWarning,
@@ -539,14 +537,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                     var edgeFIter = intersectMainFace.EdgeLoops.ForwardIterator();
                     bool moveIterator = true;
-                    while(moveIterator)
+                    while (moveIterator)
                     {
                         moveIterator = edgeFIter.MoveNext();
 
                         if (!moveIterator) break;
-                        
+
                         EdgeArray edges = edgeFIter.Current as EdgeArray;
-                        foreach(Edge edge in edges)
+                        foreach (Edge edge in edges)
                         {
                             Curve curve = edge.AsCurve();
                             if (curve is Arc)

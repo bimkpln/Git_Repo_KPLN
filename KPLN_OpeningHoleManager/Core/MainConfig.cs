@@ -93,7 +93,7 @@ namespace KPLN_OpeningHoleManager.Core
 
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+            DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, Module.RevitVersion);
             if (dBProject != null)
                 _configType = ConfigType.Shared;
 
