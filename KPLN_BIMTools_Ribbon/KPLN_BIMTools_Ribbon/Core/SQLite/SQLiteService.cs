@@ -58,7 +58,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                         $"{nameof(DBNWConfigData.WorksetToCloseNamesStartWith)} TEXT, " +
                         $"{nameof(DBNWConfigData.NavisDocPostfix)} TEXT)");
                     break;
-                case RevitDocExchangeEnum.RevitServer:
+                case RevitDocExchangeEnum.Revit:
                     ExecuteNonQuery(
                     $"CREATE TABLE {_dbTableName} " +
                         $"({nameof(DBRVTConfigData.Id)} INTEGER PRIMARY KEY, " +
@@ -134,7 +134,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                     rsConfigs);
             }
             // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
-            catch (Exception ex)
+            catch (Exception)
             {
                 HtmlOutput.Print(
                     "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
@@ -165,7 +165,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
             {
                 case RevitDocExchangeEnum.Navisworks:
                     return ExecuteQuery<DBNWConfigData>($"SELECT * FROM {_dbTableName};");
-                case RevitDocExchangeEnum.RevitServer:
+                case RevitDocExchangeEnum.Revit:
                     return ExecuteQuery<DBRVTConfigData>($"SELECT * FROM {_dbTableName};");
             }
 
@@ -204,7 +204,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                             .FirstOrDefault();
                     }
                     return null;
-                case RevitDocExchangeEnum.RevitServer:
+                case RevitDocExchangeEnum.Revit:
                     if (dBConfig is DBRVTConfigData rsConfig)
                     {
                         try
@@ -223,7 +223,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                                 .FirstOrDefault();
                         }
                         // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
-                        catch (Exception ex)
+                        catch (Exception)
                         {
                             HtmlOutput.Print(
                                 "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
