@@ -113,6 +113,16 @@ namespace KPLN_ModelChecker_User.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap checker_monolith {
+            get {
+                object obj = ResourceManager.GetObject("checker_monolith", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap checker_pull {
             get {
                 object obj = ResourceManager.GetObject("checker_pull", resourceCulture);
@@ -126,6 +136,16 @@ namespace KPLN_ModelChecker_User.Properties {
         internal static System.Drawing.Bitmap checker_push {
             get {
                 object obj = ResourceManager.GetObject("checker_push", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap checker_wet_zones {
+            get {
+                object obj = ResourceManager.GetObject("checker_wet_zones", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

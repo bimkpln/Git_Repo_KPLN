@@ -338,5 +338,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_monolith.png" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checker_wet_zones.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
