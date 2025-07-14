@@ -215,6 +215,7 @@
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMonolith.cs" />
     <Compile Include="ExternalCommands\CommandCheckWetZones.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckElementWorksets.cs" />
@@ -229,6 +230,12 @@
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
+    <Compile Include="Forms\CheckMonolithInfo.xaml.cs">
+      <DependentUpon>CheckMonolithInfo.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CheckMonolithSettings.xaml.cs">
+      <DependentUpon>CheckMonolithSettings.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputFormLaunchDate.xaml.cs">
       <DependentUpon>OutputFormLaunchDate.xaml</DependentUpon>
@@ -274,6 +281,14 @@
     <EmbeddedResource Include="Source\surch_list_annotation.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\CheckMonolithInfo.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\CheckMonolithSettings.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\OutputFormLaunchDate.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
