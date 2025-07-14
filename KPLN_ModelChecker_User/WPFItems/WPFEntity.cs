@@ -22,7 +22,6 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// Комментарий, указанный при подтверждении
         /// </summary>
         private string _approveComment;
-        private string _formHeader;
         private string _errorDescription;
         /// <summary>
         /// Заголовок элемента
