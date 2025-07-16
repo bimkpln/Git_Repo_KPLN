@@ -179,7 +179,11 @@ namespace KPLN_Publication
             comboBoxDWGExportTypes.DataSource = dwgSettings;
             comboBoxDWGExportTypes.DisplayMember = "Name";
 
-            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => _printSettings!=null && _printSettings.dwgExportSettingShell != null && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
+            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => 
+                _printSettings!=null 
+                && _printSettings.dwgExportSettingShell != null 
+                && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
+            
             if (dwgExpTypeFromConfigIndex != -1)
                 comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
             #endregion

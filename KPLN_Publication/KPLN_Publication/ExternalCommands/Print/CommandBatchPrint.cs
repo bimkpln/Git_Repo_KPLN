@@ -731,10 +731,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write(" ");
                     logger.Write("Экспортируется лист: " + msheet.MainView.Name);
 
-                    ExportDWGSettings exportSettings = form.PrintSettings.dwgExportSettingShell.DWGExportSetting;
-
                     // Настраиваем параметры экспорта
-                    DWGExportOptions dwgOptions = exportSettings.GetDWGExportOptions() ?? new DWGExportOptions();
+                    DWGExportOptions dwgOptions = form.PrintSettings.dwgExportSettingShell?.DWGExportSetting?.GetDWGExportOptions() ?? new DWGExportOptions();
                     dwgOptions.MergedViews = true;
                     dwgOptions.FileVersion = ACADVersion.R2013;
 

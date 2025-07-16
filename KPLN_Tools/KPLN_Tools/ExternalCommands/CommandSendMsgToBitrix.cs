@@ -179,7 +179,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +
                     $"[u]Путь к файлу:[/u] {selectedDocPath}\n" +
-                    $"[u]Вид, с которого отправлено:[/u] {selectedDocActiveViewName}\n" +
+                    $"[u]Вид, с которого отправлено:[/u] \"{selectedDocActiveViewName}\"\n" +
                     $"[u]ID элемента/-ов:[/u] {elemIds}";
 
                 IEnumerable<SendMsgToBitrix_UserEntity> selectedUsers = form.CurrentViewModel.SelectedElements;
