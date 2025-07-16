@@ -1,10 +1,9 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -68,27 +67,28 @@ namespace KPLN_Library_Bitrix24Worker
         public static async void SendMsg_ToUser_ByDBUser(DBUser dBUser, string msg)
         {
             int bitrixUserId = await GetDBUserBitrixId_ByDBUser(dBUser);
-            if (bitrixUserId != -1)
+            if (bitrixUserId == -1) return;
+
+
+            try
             {
-                try
+                using (HttpClient client = new HttpClient())
                 {
-                    using (HttpClient client = new HttpClient())
+                    // Выполнение GET - запроса к странице
+                    string encodedMsg = WebUtility.UrlEncode(msg);
+                    HttpResponseMessage response = await client
+                        .GetAsync($"{_webHookUrl}/im.message.add.json?MESSAGE={encodedMsg}&DIALOG_ID={bitrixUserId}");
+                    if (response.IsSuccessStatusCode)
                     {
-                        // Выполнение GET - запроса к странице
-                        HttpResponseMessage response = await client
-                            .GetAsync($"{_webHookUrl}/im.message.add.json?MESSAGE={msg}&DIALOG_ID={bitrixUserId}");
-                        if (response.IsSuccessStatusCode)
-                        {
-                            string content = await response.Content.ReadAsStringAsync();
-                            if (string.IsNullOrEmpty(content))
-                                throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
-                        }
+                        string content = await response.Content.ReadAsStringAsync();
+                        if (string.IsNullOrEmpty(content))
+                            throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
                     }
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -276,7 +276,7 @@ namespace KPLN_Library_Bitrix24Worker
                         { "taskId", taskId.ToString() },
                         { "fileId", imgBitrId.ToString() }
                     };
-                    
+
                     var content = new FormUrlEncodedContent(requestData);
                     var response = await client.PostAsync($"{_webHookUrl}/tasks.task.files.attach", content);
                     return response.IsSuccessStatusCode;
@@ -325,10 +325,10 @@ namespace KPLN_Library_Bitrix24Worker
                         }
                     }
                     catch { }
-                        
-                    }
 
-                    return result;
+                }
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -351,7 +351,7 @@ namespace KPLN_Library_Bitrix24Worker
 
             try
             {
-                using(HttpClient client = new HttpClient())
+                using (HttpClient client = new HttpClient())
                 {
                     // 1. Атрымліваем uploadUrl
                     HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/disk.folder.uploadfile?id={rootObjId}");
@@ -364,8 +364,8 @@ namespace KPLN_Library_Bitrix24Worker
                     {
                         MessageBox.Show(
                             "Ошибка: не удалось получить URL для загрузки файла.",
-                            "Ошибка", 
-                            MessageBoxButtons.OK, 
+                            "Ошибка",
+                            MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                         return null;
                     }
@@ -540,7 +540,7 @@ namespace KPLN_Library_Bitrix24Worker
 
             return headPersanId;
         }
-        
+
         /// <summary>
         /// Получить Id пользователя-руководителя отдела
         /// </summary>
