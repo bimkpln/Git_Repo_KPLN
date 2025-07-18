@@ -9,6 +9,7 @@ using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using RevitServerAPILib;
@@ -34,61 +35,16 @@ namespace KPLN_BIMTools_Ribbon.Common
         private protected SaveAsOptions _saveAsOptions;
 
         private static RevitDocExchangesDbService _revitDocExchangesDbService;
-        private static ModuleAutostartDbService _moduleAutostartDbService;
-        private static UserDbService _userDbService;
-        private static RevitDialogDbService _dialogDbService;
-        private static ProjectDbService _projectDbService;
 
-        private static DBUser _dBUser;
         private string _currentDocName;
 
-        internal static RevitDocExchangesDbService CurrentRevitDocExchangesDbService
+        internal static RevitDocExchangesDbService RevitDocExchangesDbService
         {
             get
             {
                 if (_revitDocExchangesDbService == null)
                     _revitDocExchangesDbService = (RevitDocExchangesDbService)new CreatorRevitDocExchangesDbService().CreateService();
                 return _revitDocExchangesDbService;
-            }
-        }
-
-        internal static ModuleAutostartDbService CurrentModuleAutostartDbService
-        {
-            get
-            {
-                if (_moduleAutostartDbService == null)
-                    _moduleAutostartDbService = (ModuleAutostartDbService)new CreatorModuleAutostartDbService().CreateService();
-                return _moduleAutostartDbService;
-            }
-        }
-
-        internal static UserDbService CurrentUserDbService
-        {
-            get
-            {
-                if (_userDbService == null)
-                    _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-                return _userDbService;
-            }
-        }
-
-        internal static RevitDialogDbService CurrentRevitDialogDbService
-        {
-            get
-            {
-                if (_dialogDbService == null)
-                    _dialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
-                return _dialogDbService;
-            }
-        }
-
-        internal static ProjectDbService CurrentProjectDbService
-        {
-            get
-            {
-                if (_projectDbService == null)
-                    _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
-                return _projectDbService;
             }
         }
 
@@ -100,28 +56,6 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// Метка сервиса о том, что он запускается автоматически
         /// </summary>
         internal static bool IsAutoStart { get; set; } = false;
-
-        /// <summary>
-        /// Ссылка на текущего пользователя из БД
-        /// </summary>
-        internal static DBUser CurrentDBUser
-        {
-            get
-            {
-                if (_dBUser == null)
-                    _dBUser = CurrentUserDbService.GetCurrentDBUser();
-
-                return _dBUser;
-            }
-        }
-
-        /// <summary>
-        /// Список диалогов из БД
-        /// </summary>
-        internal static DBRevitDialog[] DBRevitDialogs
-        {
-            get => CurrentRevitDialogDbService.GetDBRevitDialogs().ToArray();
-        }
 
         /// <summary>
         /// Счтетчик успешно отработанных процессов
@@ -172,13 +106,13 @@ namespace KPLN_BIMTools_Ribbon.Common
             {
                 docExchangeModuleName = $"Автостарт: {revitDocExchangeEnum}";
 
-                IEnumerable<int> docExchIdsFromModuleAS = CurrentModuleAutostartDbService
-                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(CurrentDBUser.Id, Module.RevitVersion, DB_Enumerator.RevitDocExchanges.ToString())
+                IEnumerable<int> docExchIdsFromModuleAS = DBMainService.ModuleAutostartDbService
+                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(DBMainService.CurrentDBUser.Id, Module.RevitVersion, DB_Enumerator.RevitDocExchanges.ToString())
                     .Select(mas => mas.DBTableKeyId);
                 if (docExchIdsFromModuleAS.Count() == 0)
                     return;
 
-                IEnumerable<DBRevitDocExchanges> docExcs = CurrentRevitDocExchangesDbService
+                IEnumerable<DBRevitDocExchanges> docExcs = RevitDocExchangesDbService
                     .GetDBRevitDocExchanges_ByIdCol(docExchIdsFromModuleAS);
                 if (docExcs.Count() == 0)
                     return;
@@ -188,7 +122,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     .ToArray();
 
                 int prjId = docExcs.FirstOrDefault().ProjectId;
-                DBProject dBProject = CurrentProjectDbService.GetDBProject_ByProjectId(prjId);
+                DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByProjectId(prjId);
                 _sourceProjectName = dBProject.Name;
 
                 configNames = $"Автостарт: {string.Join("; ", dbRevitDocExchanges.Select(de => de.SettingName))}";
@@ -220,7 +154,7 @@ namespace KPLN_BIMTools_Ribbon.Common
             if (dbRevitDocExchanges == null)
                 return;
 
-            RevitEventWorker revitEventWorker = new RevitEventWorker(this, Logger, DBRevitDialogs);
+            RevitEventWorker revitEventWorker = new RevitEventWorker(this, Logger, DBMainService.DBRevitDialogColl);
 
             // Подписка на события
             RevitUIControlledApp.DialogBoxShowing += revitEventWorker.OnDialogBoxShowing;
@@ -366,18 +300,18 @@ namespace KPLN_BIMTools_Ribbon.Common
             if (CountProcessedDocs < CountSourceDocs || CountProcessedDocs == 0)
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    CurrentDBUser,
+                    DBMainService.CurrentDBUser,
                     $"Модуль: [b]{moduleName}\n[/b]" +
                     $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
-                    $"Ошибки: См. файл логов у пользователя {CurrentDBUser.Surname} {CurrentDBUser.Name}.\n" +
+                    $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
                     $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{Module.RevitVersion}");
             }
             else
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    CurrentDBUser,
+                    DBMainService.CurrentDBUser,
                     $"Модуль: [b]{moduleName}\n[/b]" +
                     $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано без ошибок.\n" +

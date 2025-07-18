@@ -2,6 +2,7 @@
 using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Forms.Models;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
 using System;
@@ -46,7 +47,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
 
             // Получаю исходную версию сущностей из БД
-            _dbRevitDocExchWrappers = new ObservableCollection<DBRevitDocExchangesWrapper>(ExchangeService.CurrentRevitDocExchangesDbService
+            _dbRevitDocExchWrappers = new ObservableCollection<DBRevitDocExchangesWrapper>(ExchangeService.RevitDocExchangesDbService
                     .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
                     .OrderBy(dExc => dExc.SettingName)
                     .Select(dExc => new DBRevitDocExchangesWrapper(dExc)));
@@ -57,9 +58,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // Устанавливаю описание/коллекции в зависимости от алгоритма запуска
             if (_isAutoStartConfig)
             {
-                _dbModuleAutostarArrForUser = ExchangeService
-                    .CurrentModuleAutostartDbService
-                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(ExchangeService.CurrentDBUser.Id, Module.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
+                _dbModuleAutostarArrForUser = DBMainService
+                    .ModuleAutostartDbService
+                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(DBMainService.CurrentDBUser.Id, Module.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
                     .ToArray();
 
                 // Взвожу галку, если конфиг в списке
@@ -114,8 +115,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (selectedExchWr == null) continue;
 
                     if (!selectedExchWr.IsSelected)
-                        ExchangeService
-                            .CurrentModuleAutostartDbService
+                        DBMainService
+                            .ModuleAutostartDbService
                             .DeleteDBModuleAutostarts(dBModuleAutostart);
                 }
 
@@ -124,7 +125,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 var selectedDocExch = SelectedDBExchWrappers
                     .Select(docExch => new DBModuleAutostart()
                         {
-                            UserId = ExchangeService.CurrentDBUser.Id,
+                            UserId = DBMainService.CurrentDBUser.Id,
                             RevitVersion = Module.RevitVersion,
                             ProjectId = _project.Id,
                             ModuleId = _moduleId,
@@ -132,8 +133,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             DBTableKeyId = docExch.Id,
                         });
 
-                ExchangeService
-                    .CurrentModuleAutostartDbService
+                DBMainService
+                    .ModuleAutostartDbService
                     .BulkCreateDBModuleAutostarts(selectedDocExch);
             }
 
@@ -259,7 +260,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void DeleteDBRevitDocExchange(IEnumerable<DBRevitDocExchangesWrapper> docExchWrappers)
         {
-            ExchangeService.CurrentRevitDocExchangesDbService.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
+            ExchangeService.RevitDocExchangesDbService.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
             
             foreach(DBRevitDocExchangesWrapper docExchWrapper in docExchWrappers)
             {

@@ -7,6 +7,7 @@ using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using RevitServerAPILib;
 using System;
+using System.Threading;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_BIMTools_Ribbon.ExternalCommands
@@ -64,6 +65,9 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 // Открываем документ по указанному пути
                 try
                 {
+                    // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
+                    Thread.Sleep(2000);
+                    
                     doc = app.OpenDocumentFile(
                         modelPathFrom,
                         _openOptions);

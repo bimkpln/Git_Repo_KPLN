@@ -74,7 +74,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             else
             {
                 // Добавляю общее имя конфига
-                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(ExchangeService.CurrentRevitDocExchangesDbService.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(ExchangeService.RevitDocExchangesDbService.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
                 SettingName = DBRevitDocExchWrapper.SettingName;
 
                 // Проверяю на триггер копирования - базы данных не будут совпадать
@@ -475,7 +475,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (!System.IO.File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
-                int idFromDB = ExchangeService.CurrentRevitDocExchangesDbService.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                int idFromDB = ExchangeService.RevitDocExchangesDbService.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                 DBRevitDocExchWrapper.Id = idFromDB;
             }
 
@@ -494,7 +494,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        ExchangeService.CurrentRevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                        ExchangeService.RevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
                     }
                     break;
@@ -510,7 +510,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        ExchangeService.CurrentRevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                        ExchangeService.RevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     }
                     break;
