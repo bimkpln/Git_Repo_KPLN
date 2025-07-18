@@ -1,0 +1,30 @@
+﻿<Window x:Class="KPLN_ModelChecker_User.Forms.WetZoneResult"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_ModelChecker_User.Forms"
+             Title="KPLN. Результат проверки мокрых зон"
+             Height="600" Width="810"
+             ResizeMode="NoResize"
+             WindowStartupLocation="CenterScreen">
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ViolationsPanel" Margin="10"/>
+        </ScrollViewer>
+
+        <Button x:Name="TopSaveInfoButton"
+                Content="💾"
+                Width="22" Height="22"
+                FontSize="12"
+                Background="White"
+                BorderBrush="Gray"
+                Foreground="Black"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="25 10"
+                ToolTip="Сохранить полученнный отчёт"
+                Panel.ZIndex="100" Click="TopSaveInfoButton_Click"
+                />
+    </Grid>
+</Window>

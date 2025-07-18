@@ -27,8 +27,8 @@
              Padding="5"/>
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 0 5 5">
                 <Button Content="Отмена" Width="80" Height="22" Margin="5" Click="ButtonCancel_Click" Background="#FFFFC6C6"/>
-                <Button Name="Start1Button" Content="Запуск (Уровень)" Width="130" Height="22" Margin="5"/>
-                <Button Name="Start2Button" Content="Запуск (ПОМ_Номер этажа)" Width="180" Height="22" Margin="5"/>
+                <Button Name="Start1Button" Content="Запуск (Уровень)" Width="130" Height="22" Margin="5" Click="Start1Button_Click"/>
+                <Button Name="Start2Button" Content="Запуск (ПОМ_Номер этажа)" Width="180" Height="22" Margin="5" Click="Start2Button_Click"/>
             </StackPanel>
         </Grid>
 

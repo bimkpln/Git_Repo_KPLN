@@ -1,11 +1,9 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Forms;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -60,7 +58,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 var allAssigned = new HashSet<Element>(livingRooms.Concat(kitchenRooms).Concat(wetRooms));
                 var undefinedRooms = roomParamValues.Keys.Where(r => !allAssigned.Contains(r)).ToList();
 
-                WetZoneReviewWindow reviewWindow = new WetZoneReviewWindow(doc, livingRooms,kitchenRooms,wetRooms,undefinedRooms);
+                WetZoneReviewWindow reviewWindow = new WetZoneReviewWindow(uiDoc, doc, selectedParam, livingRooms, kitchenRooms,wetRooms,undefinedRooms);
                 reviewWindow.ShowDialog();
             }
             else
