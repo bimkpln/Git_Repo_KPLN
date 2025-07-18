@@ -243,6 +243,9 @@
     <Compile Include="Forms\WetZoneParameterSelect.xaml.cs">
       <DependentUpon>WetZoneParameterSelect.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\WetZoneResult.xaml.cs">
+      <DependentUpon>WetZoneResult.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\WetZoneStartSetting.xaml.cs">
       <DependentUpon>WetZoneStartSetting.xaml</DependentUpon>
     </Compile>
@@ -296,6 +299,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\WetZoneParameterSelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\WetZoneResult.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

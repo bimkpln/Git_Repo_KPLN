@@ -1,19 +1,13 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
-using System;
+using KPLN_ModelChecker_User.ExternalCommands;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+
 
 namespace KPLN_ModelChecker_User.Forms
 {
@@ -22,9 +16,15 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class WetZoneReviewWindow : Window
     {
-        public WetZoneReviewWindow(Document doc, List<Element> livingRooms, List<Element> kitchenRooms, List<Element> wetRooms, List<Element> undefinedRooms)
+        public static UIDocument _uiDoc;
+        public List<Element> allRooms;
+        public string _selectedParam;
+
+        public WetZoneReviewWindow(UIDocument uiDoc, Document doc, string selectedParam, List<Element> livingRooms, List<Element> kitchenRooms, List<Element> wetRooms, List<Element> undefinedRooms)
         {
             InitializeComponent();
+            _uiDoc = uiDoc;
+            _selectedParam = selectedParam;
 
             LivingExp.Header = $"Жилые комнаты ({livingRooms.Count})";
             WetExp.Header = $"Мокрые зоны ({wetRooms.Count})";
@@ -38,16 +38,6 @@ namespace KPLN_ModelChecker_User.Forms
 
             BuildInfoReport(doc, livingRooms, kitchenRooms, wetRooms, undefinedRooms);
         }
-
-
-
-
-
-
-
-
-
-
 
         /// <summary>
         /// Анализ документа на наличие необходимых условий + вывод отчёта
@@ -66,11 +56,9 @@ namespace KPLN_ModelChecker_User.Forms
 
             bool hasCriticalLevelError = false;
             bool hasCriticalParamError = false;
-            bool hasNotCriticallError = false;
-
 
             // Проверка помещений
-            List<Element> allRooms = livingRooms.Concat(kitchenRooms).Concat(wetRooms).ToList();
+            allRooms = livingRooms.Concat(kitchenRooms).Concat(wetRooms).ToList();
             if (allRooms.Count == 0)
             {
                 report.Inlines.Add(new Run("❎ Нет доступных элементов в категориях 'Жилые комнаты', 'Мокрые зоны', 'Кухни'.\n")
@@ -78,7 +66,9 @@ namespace KPLN_ModelChecker_User.Forms
                     FontWeight = FontWeights.Bold,
                     Foreground = Brushes.Red
                 });
-                //hasCriticalError = true;
+
+                hasCriticalLevelError = true;
+                hasCriticalParamError = true;
             }
             else
             {
@@ -134,7 +124,7 @@ namespace KPLN_ModelChecker_User.Forms
                     else
                     {
                         results[levelName] = "ОШИБКА";
-                        //hasCriticalError = true;
+                        hasCriticalLevelError = true;
                     }
                 }
 
@@ -142,12 +132,28 @@ namespace KPLN_ModelChecker_User.Forms
 
                 output.Add(new Run("🔎 Результаты преобразования названия уровней в этажи:\n") { FontWeight = FontWeights.SemiBold });
 
+                int maxToShow = 10;
+                int count = 0;
+
                 foreach (var pair in results)
                 {
+                    if (count >= maxToShow) break;
+
                     bool isError = pair.Value == "ОШИБКА";
                     output.Add(new Run($"       • {pair.Key} → {pair.Value}\n")
                     {
-                        Foreground = isError ? Brushes.Red : Brushes.DarkGreen
+                        Foreground = isError ? Brushes.IndianRed : Brushes.DarkGreen
+                    });
+
+                    count++;
+                }
+
+                if (results.Count > maxToShow)
+                {
+                    int hiddenCount = results.Count - maxToShow;
+                    output.Add(new Run($"       А также другие уровни ({hiddenCount}), которые не удалось обработать.\n")
+                    {
+                        Foreground = Brushes.IndianRed
                     });
                 }
 
@@ -168,15 +174,31 @@ namespace KPLN_ModelChecker_User.Forms
                 outputInvalidLevelElements.Add(new Run("⚠️ Помещения без привязки к уровню:\n")
                 {
                     FontWeight = FontWeights.Bold,
-                    Foreground = Brushes.BlueViolet
+                    Foreground = Brushes.Red
                 });
+
+                int maxToShow = 10;
+                int count = 0;
 
                 foreach (var pair in invalidLevelElements)
                 {
+                    if (count >= maxToShow) break;
+
                     string display = $"       • {pair.Value} [ID {pair.Key.Id.IntegerValue}]\n";
                     outputInvalidLevelElements.Add(new Run(display)
                     {
-                        Foreground = Brushes.BlueViolet
+                        Foreground = Brushes.IndianRed
+                    });
+
+                    count++;
+                }
+
+                if (invalidLevelElements.Count > maxToShow)
+                {
+                    int remaining = invalidLevelElements.Count - maxToShow;
+                    outputInvalidLevelElements.Add(new Run($"       А также другие помещения ({remaining}), которые не привязаны к уровню.\n")
+                    {
+                        Foreground = Brushes.IndianRed
                     });
                 }
 
@@ -184,20 +206,74 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     report.Inlines.Add(inline);
                 }
-                
-                //hasOtherlError = true;
+
+                hasCriticalLevelError = true;
+            }
+
+            report.Inlines.Add(new LineBreak());
+
+            // Заполненость параметра ПОМ_Номер этажа
+            List<Element> missingPNE = allRooms.Where(el =>
+            {
+                var param = el.LookupParameter("ПОМ_Номер этажа");
+                return param == null || string.IsNullOrWhiteSpace(param.AsString());
+            }).ToList();
+
+            if (missingPNE.Count > 0)
+            {
+                report.Inlines.Add(new Run("⚠️ Внимание: у следующих помещений не заполнен параметр 'ПОМ_Номер этажа':\n")
+                {
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.Red
+                });
+
+                int maxToShow = 10;
+                int count = 0;
+
+                foreach (Element el in missingPNE)
+                {
+                    if (count >= maxToShow) break;
+
+                    string name = el.Name ?? "<без имени>";
+                    string id = el.Id.IntegerValue.ToString();
+
+                    report.Inlines.Add(new Run($"       • {name} [ID {id}]\n")
+                    {
+                        Foreground = Brushes.IndianRed
+                    });
+
+                    count++;
+                }
+
+                if (missingPNE.Count > maxToShow)
+                {
+                    int remaining = missingPNE.Count - maxToShow;
+                    report.Inlines.Add(new Run($"       А также ещё {remaining} помещений не содержат параметр 'ПОМ_Номер этажа'\n")
+                    {
+                        Foreground = Brushes.IndianRed
+                    });
+                }
+                hasCriticalParamError = true;
+            }
+            else
+            {
+                report.Inlines.Add(new Run("✅ Все помещения содержат параметр 'ПОМ_Номер этажа'.\n")
+                {
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.DarkGreen
+                });
             }
 
             report.Inlines.Add(new LineBreak());
 
             // Заполненость параметра КВ_Номер
-            List<Element> missingKv = allRooms.Where(el =>
+            List<Element> missingKVN = allRooms.Where(el =>
             {
                 var param = el.LookupParameter("КВ_Номер");
                 return param == null || string.IsNullOrWhiteSpace(param.AsString());
             }).ToList();
-
-            if (missingKv.Count > 0)
+         
+            if (missingKVN.Count > 0)
             {
                 report.Inlines.Add(new Run("⚠️ Внимание: у следующих помещений не заполнен параметр 'КВ_Номер':\n")
                 {
@@ -205,18 +281,35 @@ namespace KPLN_ModelChecker_User.Forms
                     Foreground = Brushes.Red
                 });
 
-                foreach (Element el in missingKv)
+                int maxToShow = 10;
+                int count = 0;
+
+                foreach (Element el in missingKVN)
                 {
+                    if (count >= maxToShow) break;
+
                     string name = el.Name ?? "<без имени>";
                     string id = el.Id.IntegerValue.ToString();
 
                     report.Inlines.Add(new Run($"       • {name} [ID {id}]\n")
                     {
-                        Foreground = Brushes.Red
+                        Foreground = Brushes.IndianRed
+                    });
+
+                    count++;
+                }
+
+                if (missingKVN.Count > maxToShow)
+                {
+                    int remaining = missingKVN.Count - maxToShow;
+                    report.Inlines.Add(new Run($"       А также ещё {remaining} помещений не содержат параметр 'КВ_Номер'\n")
+                    {
+                        Foreground = Brushes.IndianRed
                     });
                 }
 
-                //hasOtherlError = true;
+                hasCriticalLevelError = true;
+                hasCriticalParamError = true;
             }
             else
             {
@@ -228,57 +321,50 @@ namespace KPLN_ModelChecker_User.Forms
             }
 
             report.Inlines.Add(new LineBreak());
+       
+            if (hasCriticalLevelError)
+            {
+               report.Inlines.Add(new Run("⛔ Плагин не может продолжить работу в режиме 'Уровень'.\n")
+                {
+                    Foreground = Brushes.Red,
+                    FontWeight = FontWeights.Bold
+                });
+               Start1Button.IsEnabled = false;
+           }
 
+            if (hasCriticalParamError)
+            {
+                report.Inlines.Add(new Run("⛔ Плагин не может продолжить работу в режиме 'ПОМ_Номер этажа'.\n")
+                {
+                    Foreground = Brushes.Red,
+                    FontWeight = FontWeights.Bold
+                });
+                Start2Button.IsEnabled = false;
+            }
+     
+            if (!hasCriticalLevelError && !hasCriticalParamError)
+            {
+                report.Inlines.Add(new Run("✅ Все проверки пройдены. Готово к запуску.")
+                {
+                    Foreground = Brushes.DarkGreen,
+                    FontWeight = FontWeights.Bold
+                });
+                Start1Button.IsEnabled = true;
+                Start2Button.IsEnabled = true;
+            }
+            else if ((!hasCriticalLevelError && hasCriticalParamError) || (hasCriticalLevelError && !hasCriticalParamError))
+            {
+                report.Inlines.Add(new Run("⚠️ Работа плагина будет произведена в ограниченном режиме.")
+                {
+                    Foreground = Brushes.DarkGoldenrod,
+                    FontWeight = FontWeights.Bold
+                });
+            }
 
-
-
-
-            //if (hasCriticalError)
-            //{
-            //   report.Inlines.Add(new Run("⛔ Плагин не может продолжить работу.")
-            //    {
-            //        Foreground = Brushes.Red,
-            //        FontWeight = FontWeights.Bold
-            //    });
-           //     Start1Button.IsEnabled = false;
-           // }
-           // else if (hasOtherlError)
-           // {
-           //     report.Inlines.Add(new Run("⚠ Есть ошибки, но запуск плагина возможен.")
-           //     {
-          //          Foreground = Brushes.DarkOrange,
-           //         FontWeight = FontWeights.Bold
-           //     });
-          //      Start1Button.IsEnabled = true;
-         //   }
-         //   else
-         //   {
-          //      report.Inlines.Add(new Run("✅ Все проверки пройдены. Готово к запуску.")
-          //      {
-          //          Foreground = Brushes.DarkGreen,
-        //            FontWeight = FontWeights.Bold
-          //      });
-        //        Start1Button.IsEnabled = true;
-        //    }
-        //
             InfoText.Document.Blocks.Clear();
             InfoText.Document.Blocks.Add(report);
         }
-
         
-
-
-
-
-
-
-
-
-
-
-
-
-
         // Формирование списка помещений внутри категорий
         private List<string> FormatRooms(List<Element> rooms)
         {
@@ -298,5 +384,208 @@ namespace KPLN_ModelChecker_User.Forms
         {
             this.Close();
         }
+
+        // XAML. Уровень
+        private void Start1Button_Click(object sender, RoutedEventArgs e)
+        {
+            Dictionary<int, List<Element>> roomsByLevel = allRooms.Where(r => r.LevelId != ElementId.InvalidElementId).Select(r =>
+            {
+                Level level = r.Document.GetElement(r.LevelId) as Level;
+                return new { Room = r, Level = level };
+            }).Where(x => x.Level != null).Select(x => {
+                    string[] parts = x.Level.Name.Split('_');
+                    if (parts.Length >= 1 && int.TryParse(parts[0], out int first))
+                        return new { x.Room, LevelNumber = first };
+                    else if (parts.Length >= 2 && int.TryParse(parts[1], out int second))
+                        return new { x.Room, LevelNumber = second };
+                    else
+                        return null; 
+            }).Where(x => x != null).GroupBy(x => x.LevelNumber).ToDictionary(g => g.Key, g => g.Select(x => x.Room).ToList());
+
+            CheckWetZoneViolations(roomsByLevel, _selectedParam);
+            this.Close();
+        }
+
+        // XAML. ПОМ_Номер этажа
+        private void Start2Button_Click(object sender, RoutedEventArgs e)
+        {
+            Dictionary<int, List<Element>> roomsByFloorParam = allRooms.Select(r =>
+            {
+                Parameter param = r.LookupParameter("ПОМ_Номер этажа");
+                if (param == null || !param.HasValue) return null;
+
+                string val = param.AsString();
+                if (string.IsNullOrWhiteSpace(val)) return null;
+
+                if (int.TryParse(val, out int floorNumber))
+                    return new { Room = r, Floor = floorNumber };
+                else
+                    return null;
+            }).Where(x => x != null).GroupBy(x => x.Floor).ToDictionary(g => g.Key, g => g.Select(x => x.Room).ToList());
+
+            CheckWetZoneViolations(roomsByFloorParam, _selectedParam);
+            this.Close();
+        }
+
+        // Метод поиска помещений согласно условиям
+        public static void CheckWetZoneViolations(Dictionary<int, List<Element>> roomsByFloorParam, string _selectedParam)
+        {
+            List<List<Element>> KitchenOverLiving_Illegal = new List<List<Element>>();
+            List<List<Element>> WetOverLiving_Illegal = new List<List<Element>>();           
+            List<List<Element>> KitchenUnderWet_Illegal = new List<List<Element>>();
+            List<List<Element>> KitchenUnderWet_Accepted = new List<List<Element>>();
+
+            List<int> orderedFloors = roomsByFloorParam.Keys.OrderBy(f => f).ToList();
+            foreach (int floor in orderedFloors)
+            {
+                int upperFloor = floor + 1;
+                if (!roomsByFloorParam.ContainsKey(upperFloor)) continue;
+
+                List<Room> lowerRooms = roomsByFloorParam[floor].OfType<Room>().ToList();
+                List<Room> upperRooms = roomsByFloorParam[upperFloor].OfType<Room>().ToList();
+
+                foreach (var lower in lowerRooms)
+                {
+                    string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
+                    string lowerKvNum = lower.LookupParameter("КВ_Номер")?.AsString() ?? string.Empty;
+
+                    bool isLivingLower = WetZoneCategories.LivingRooms.Contains(lowerType);
+                    bool isKitchenLower = WetZoneCategories.KitchenRooms.Contains(lowerType);
+                    if (!isLivingLower && !isKitchenLower) continue;
+
+                    var lowerPoly = GetRoom2DOutline(lower);
+                    List<Room> overlapping = upperRooms
+                        .Where(upper =>
+                        {
+                            var upperPoly = GetRoom2DOutline(upper);
+                            return DoPolygonsIntersect(lowerPoly, upperPoly);
+                        })
+                        .ToList();
+
+                    foreach (var upper in overlapping)
+                    {
+                        string upperType = upper.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
+                        string upperKvNum = upper.LookupParameter("КВ_Номер")?.AsString() ?? string.Empty;
+
+                        bool isWetUpper = WetZoneCategories.WetRooms.Contains(upperType);
+                        bool isKitchenUpper = WetZoneCategories.KitchenRooms.Contains(upperType);
+
+                        // НЕЛЬЗЯ: Кухни над жилыми
+                        if (isLivingLower && isKitchenUpper)
+                            KitchenOverLiving_Illegal.Add(new List<Element> { lower, upper });
+
+                        // НЕЛЬЗЯ: Мокрые над жилыми
+                        if (isLivingLower && isWetUpper)
+                            WetOverLiving_Illegal.Add(new List<Element> { lower, upper });
+
+                        // МОЖНО/НЕЛЬЗЯ: Мокрые над кухнями
+                        if (isKitchenLower && isWetUpper)
+                        {
+                            if (lowerKvNum == upperKvNum)
+                                KitchenUnderWet_Accepted.Add(new List<Element> { lower, upper });
+                            else
+                                KitchenUnderWet_Illegal.Add(new List<Element> { lower, upper });
+                        }
+                    }
+                }
+            }
+
+            var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, _selectedParam);
+            windowResult.Show();            
+        }
+
+        /////////////////// Расчёт пересечения
+        ///////////////////
+        // Вспомогательный метод. Получение 2D-контуров
+        private static List<XYZ> GetRoom2DOutline(Room room)
+        {
+            var options = new SpatialElementBoundaryOptions
+            {
+                SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
+            };
+
+            var boundaries = room.GetBoundarySegments(options);
+            if (boundaries == null || boundaries.Count == 0)
+                return null;
+
+            var outline = new List<XYZ>();
+            var plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ.Zero);
+
+            foreach (var seg in boundaries[0])
+            {
+                var pt = seg.GetCurve().GetEndPoint(0);
+
+                double z = plane.Normal.DotProduct(pt - plane.Origin); 
+                XYZ projected = pt - z * plane.Normal; 
+
+                outline.Add(projected);
+            }
+
+            return outline;
+        }
+
+        // Вспомогательный метод. Функция пересечения 2D-многоугольников
+        private static bool DoPolygonsIntersect(List<XYZ> poly1, List<XYZ> poly2)
+        {
+            if (poly1 == null || poly2 == null || poly1.Count < 2 || poly2.Count < 2)
+                return false;
+
+            for (int i = 0; i < poly1.Count; i++)
+            {
+                XYZ a1 = poly1[i];
+                XYZ a2 = poly1[(i + 1) % poly1.Count];
+
+                for (int j = 0; j < poly2.Count; j++)
+                {
+                    XYZ b1 = poly2[j];
+                    XYZ b2 = poly2[(j + 1) % poly2.Count];
+
+                    if (LinesIntersect(a1, a2, b1, b2))
+                        return true;
+                }
+            }
+
+            if (IsPointInsidePolygon(poly1[0], poly2) || IsPointInsidePolygon(poly2[0], poly1))
+                return true;
+
+            return false;
+        }
+
+        // Вспомогательный метод. Проверка пересечения отрезков
+        private static bool LinesIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
+        {
+            double o1 = Orientation(p1, p2, q1);
+            double o2 = Orientation(p1, p2, q2);
+            double o3 = Orientation(q1, q2, p1);
+            double o4 = Orientation(q1, q2, p2);
+
+            return o1 * o2 < 0 && o3 * o4 < 0;
+        }
+
+        // Вспомогательный метод. Векторное произведение: (b - a) × (c - a)
+        private static double Orientation(XYZ a, XYZ b, XYZ c)
+        {
+            return (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+        }
+
+        private static bool IsPointInsidePolygon(XYZ point, List<XYZ> polygon)
+        {
+            bool inside = false;
+            int count = polygon.Count;
+
+            for (int i = 0, j = count - 1; i < count; j = i++)
+            {
+                if (((polygon[i].Y > point.Y) != (polygon[j].Y > point.Y)) &&
+                    (point.X < (polygon[j].X - polygon[i].X) * (point.Y - polygon[i].Y) /
+                     (polygon[j].Y - polygon[i].Y) + polygon[i].X))
+                {
+                    inside = !inside;
+                }
+            }
+
+            return inside;
+        }
+        /////////////////// 
+        ///////////////////
     }
 }
