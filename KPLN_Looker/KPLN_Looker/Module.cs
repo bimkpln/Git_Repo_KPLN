@@ -5,6 +5,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
@@ -27,7 +28,7 @@ namespace KPLN_Looker
         /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
         /// </summary>
         private static DBUser[] _arKonFileSubscribersFromBIM;
-        
+
         /// <summary>
         /// Общий фильтр (для анализа на копирование эл-в)
         /// </summary>
@@ -50,16 +51,19 @@ namespace KPLN_Looker
 
         public Module()
         {
-            ModuleDBWorkerService = new DBWorkerService();
-            _arKonFileSubscribersFromBIM = ModuleDBWorkerService.GetDBUser_SubscribersFromBIMForARKon();
-        }
+            List<DBUser> bimManager = DBMainService.UserDbService.GetDBUsers_BIMManager().ToList();
+            List<DBUser> arBimCoord = DBMainService.UserDbService.GetDBUsers_BIMARCoord().ToList();
+            arBimCoord.AddRange(bimManager);
 
-        public static DBWorkerService ModuleDBWorkerService { get; private set; }
+            _arKonFileSubscribersFromBIM = arBimCoord.ToArray();
+        }
 
         /// <summary>
         /// Указатель на окно ревит
         /// </summary>
         public static IntPtr MainWindowHandle { get; private set; }
+
+        public static int RevitVersion { get; private set; }
 
         public Result Close()
         {
@@ -69,11 +73,12 @@ namespace KPLN_Looker
         public Result Execute(UIControlledApplication application, string tabName)
         {
             MainWindowHandle = application.MainWindowHandle;
+            RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             try
             {
                 // Перезапись ini-файла
-                INIFileService iNIFileService = new INIFileService(ModuleDBWorkerService.CurrentDBUser, application.ControlledApplication.VersionNumber);
+                INIFileService iNIFileService = new INIFileService(DBMainService.CurrentDBUser, RevitVersion);
                 if (!iNIFileService.OverwriteINIFile())
                 {
                     throw new Exception($"Ошибка при перезаписи ini-файла");
@@ -161,7 +166,7 @@ namespace KPLN_Looker
         /// <param name="e"></param>
         private static void OnApplicationInitialized(object sender, ApplicationInitializedEventArgs e)
         {
-            if (ModuleDBWorkerService.CurrentDBUser.IsUserRestricted)
+            if (DBMainService.CurrentDBUser.IsUserRestricted)
             {
                 MessageBox.Show(
                     $"Ваша работа ограничена работой в тестовых файлах. " +
@@ -194,7 +199,7 @@ namespace KPLN_Looker
                     && !activeView.Title.ToUpper().Contains("GSTATION")
                     && !activeView.Title.ToUpper().Contains("NWC")
                     && !activeView.Title.ToUpper().Contains("NWD"))
-                || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
+                || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
                 return;
 
             IList<UIView> openViews = uidoc.GetOpenUIViews();
@@ -347,11 +352,11 @@ namespace KPLN_Looker
                 bool isSMLT = doc.Title.Contains("СЕТ_1");
                 if (isSMLT)
                 {
-                    if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета") 
+                    if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\022_Подписи в штамп")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\023_Подписи на титул")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\1_АР")
-                        || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР\\999_Для проектов\\СЕТ")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР")
                         || familyPath.Contains("Y:\\Жилые здания\\Самолет Сетунь\\4.Оформление\\4.Стадия_Р")
                         || familyPath.Contains("KPLN_Loader"))
                         return false;
@@ -400,8 +405,8 @@ namespace KPLN_Looker
                 return false;
 
             // Отлов семейств ферм, которые по форме зависят от проектов (могут разрабатывать КР)
-            if ((ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM")
-                 || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР"))
+            if ((DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM")
+                 || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("КР"))
                 && bic.Equals(BuiltInCategory.OST_Truss))
                 return false;
             #endregion
@@ -430,20 +435,20 @@ namespace KPLN_Looker
                 return;
 
             // Игнор хардкодом определенных сотрудников, которые внушают доверие
-            if (ModuleDBWorkerService.CurrentDBUser.Surname.Equals("Тамарин")
-                && ModuleDBWorkerService.CurrentDBUser.Surname.Equals("Егор"))
+            if (DBMainService.CurrentDBUser.Surname.Equals("Тамарин")
+                && DBMainService.CurrentDBUser.Surname.Equals("Егор"))
                 return;
-            
+
             DateTime temp = DateTime.Now;
             if (_delayAlarm < (temp - _lastAlarm))
             {
                 _lastAlarm = temp;
 
                 // Отправка уведомления пользователю в Битрикс
-                if (ModuleDBWorkerService.CurrentDBUser != null)
+                if (DBMainService.CurrentDBUser != null)
                 {
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                        ModuleDBWorkerService.CurrentDBUser,
+                        DBMainService.CurrentDBUser,
                         "[b][ЗАМЕЧАНИЕ][/b]: Ручное переопределение на виде приводит к сложностям при внесении изменений в модели (новые элементы - уже не соответсвуют ручным правилам).\n" +
                         "[b][ЧТО ДЕЛАТЬ][/b]: В 99% нужно использовать фильтры. Если у тебя есть с этим сложности - напиши BIM-координатору, он поможет.\n");
                 }
@@ -482,7 +487,7 @@ namespace KPLN_Looker
                 return;
 
             string docCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            DBProject docDBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(docCentralPath);
+            DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(docCentralPath, RevitVersion);
             if (docDBProject == null)
                 return;
 
@@ -502,7 +507,7 @@ namespace KPLN_Looker
                 if (openDoc.IsWorkshared)
                 {
                     string openDocCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(openDoc.GetWorksharingCentralModelPath());
-                    DBProject openDocDBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(openDocCentralPath);
+                    DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocCentralPath, RevitVersion);
                     // Если проекты из БД отличаются - блокирую
                     if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
                         continue;
@@ -580,11 +585,11 @@ namespace KPLN_Looker
                 const int archFilesLimit = 10;
                 string[] namePrepareArr = doc
                     .Title
-                    .Split(new[] { $"_{ModuleDBWorkerService.CurrentDBUser.SystemName}" }, StringSplitOptions.None);
+                    .Split(new[] { $"_{DBMainService.CurrentDBUser.SystemName}" }, StringSplitOptions.None);
 
                 if (namePrepareArr.Length == 0)
                     clearTaskMsg = $"Не удалось определить имя модели из хранилища " +
-                                   $"для пользователя {ModuleDBWorkerService.CurrentDBUser.SystemName}. Обратись в BIM-отдел!";
+                                   $"для пользователя {DBMainService.CurrentDBUser.SystemName}. Обратись в BIM-отдел!";
                 else
                 {
                     string centralFileName = namePrepareArr[0];
@@ -636,16 +641,16 @@ namespace KPLN_Looker
             else
                 centralPath = doc.PathName;
 
-            DBProject dBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
             if (dBProject == null)
             {
-                foreach(DBUser dbUser in _arKonFileSubscribersFromBIM)
+                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
                 {
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                         dbUser,
-                        $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                        $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{centralPath}[/b].");
@@ -655,31 +660,45 @@ namespace KPLN_Looker
             }
 
             // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
-            int prjDBSubDepartmentId = ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-            DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
             {
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
                 {
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                         dbUser,
-                        $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                        $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{centralPath}[/b].");
                 }
-                
-                // Создаю, если не нашел
-                ModuleDBWorkerService.Create_DBDocument(
-                    centralPath,
-                    dBProject.Id,
-                    prjDBSubDepartmentId,
-                    ModuleDBWorkerService.CurrentDBUser.Id,
-                    ModuleDBWorkerService.CurrentTimeForDB(),
-                    false);
 
+                // Создаю, если не нашел
+                dBDocument = new DBDocument()
+                {
+                    CentralPath = centralPath,
+                    ProjectId = dBProject.Id,
+                    SubDepartmentId = prjDBSubDepartment.Id,
+                    LastChangedUserId = DBMainService.CurrentDBUser.Id,
+                    LastChangedData = DBMainService.CurrentTimeForDB(),
+                    IsClosed = false,
+                };
+
+                DBMainService.DocDbService.CreateDBDocument(dBDocument);
             }
+        }
+
+        /// <summary>
+        /// Получить DBDocument по пути, проекту и id отдела
+        /// </summary>
+        private static DBDocument DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject, DBSubDepartment dBSubDepartment)
+        {
+            int dBSubDepartmentId = dBSubDepartment == null ? -1 : dBSubDepartment.Id;
+            IEnumerable<DBDocument> docColl = DBMainService.DocDbService.GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId);
+
+            return docColl.FirstOrDefault(d => d.CentralPath.Equals(centralPath));
         }
 
         /// <summary>
@@ -693,13 +712,13 @@ namespace KPLN_Looker
 
             string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-            if (ModuleDBWorkerService.CurrentDBUser.IsUserRestricted)
+            if (DBMainService.CurrentDBUser.IsUserRestricted)
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                     $"Статус допуска: Ограничен в работе с реальными проектами " +
-                    $"(IsUserRestricted={ModuleDBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
+                    $"(IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
                     $"Действие: Открыл файл {doc.Title}.");
 
                 MessageBox.Show(
@@ -712,115 +731,109 @@ namespace KPLN_Looker
             #endregion
 
             #region Обработка проектов КПЛН
-            DBProject dBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
             if (dBProject != null)
             {
                 // Ищу документ
-                int prjDBSubDepartmentId = ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-                DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId)
-                    ?? ModuleDBWorkerService
-                        .Create_DBDocument(
-                            centralPath,
-                            dBProject.Id,
-                            prjDBSubDepartmentId,
-                            ModuleDBWorkerService.CurrentDBUser.Id,
-                            ModuleDBWorkerService.CurrentTimeForDB(),
-                            false);
-
-                //Обрабатываю документ
+                DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
                 if (dBDocument == null)
                 {
-                    // Вывожу окно, если документ не связан с проектом из БД
-                    TaskDialog td = new TaskDialog("ОШИБКА")
+                    dBDocument = new DBDocument()
                     {
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                        MainInstruction = "Не удалось определить документ в БД. Скинь скрин в BIM-отдел",
-                        FooterText = $"Специалисту BIM-отдела: файл - {centralPath}",
-                        CommonButtons = TaskDialogCommonButtons.Ok,
+                        CentralPath = centralPath,
+                        ProjectId = dBProject.Id,
+                        SubDepartmentId = prjDBSubDepartment.Id,
+                        LastChangedUserId = DBMainService.CurrentDBUser.Id,
+                        LastChangedData = DBMainService.CurrentTimeForDB(),
+                        IsClosed = false,
                     };
-                    td.Show();
+
+                    DBMainService.DocDbService.CreateDBDocument(dBDocument);
                 }
-                else
+
+                //Обрабатываю документ
+                DBMainService.DocDbService.UpdateDBDocument_IsClosedByProject(dBProject);
+
+                // Вывожу окно, если документ ЗАКРЫТ к редактированию
+                if (dBProject.IsClosed)
                 {
-                    ModuleDBWorkerService.Update_DBDocumentIsClosedStatus(dBProject);
+                    MessageBox.Show(
+                        "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на " +
+                        "внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
+                        "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
+                        "\nИНФО: Сейчас файл закроется",
+                        "KPLN: Закрытый проект",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
 
-                    // Вывожу окно, если документ ЗАКРЫТ к редактированию
-                    if (dBProject.IsClosed)
+                    #region Извещение в чат bim-отдела
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
+                        $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{centralPath}[/b].");
+                    #endregion
+
+
+                    #region Извещение пользователю как делать правильно
+                    int currentUserBitrixId = DBMainService.CurrentDBUser.BitrixUserID;
+                    if (currentUserBitrixId != -1)
                     {
-                        MessageBox.Show(
-                            "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на " +
-                            "внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
-                            "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
-                            "\nИНФО: Сейчас файл закроется",
-                            "KPLN: Закрытый проект",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
-
-                        #region Извещение в чат bim-отдела
-                        BitrixMessageSender.SendMsg_ToBIMChat(
-                            $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                            $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
-                            $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                            $"Путь к модели: [b]{centralPath}[/b].");
-                        #endregion
-
-
-                        #region Извещение пользователю как делать правильно
-                        int currentUserBitrixId = ModuleDBWorkerService.CurrentDBUser.BitrixUserID;
-                        if (currentUserBitrixId != -1)
-                        {
-                            string jsonRequestToUser = $@"{{
-                                        ""DIALOG_ID"": ""{currentUserBitrixId}"",
-                                        ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
-                                        ""ATTACH"": [
-                                            {{
-                                                ""IMAGE"": {{
-                                                    ""NAME"": ""KPLN_Looker_CentralFile_Open.jpg"",
-                                                    ""LINK"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
-                                                    ""PREVIEW"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
-                                                    ""WIDTH"": ""1000"",
-                                                    ""HEIGHT"": ""1000""
-                                                }}
+                        string jsonRequestToUser = $@"{{
+                                    ""DIALOG_ID"": ""{currentUserBitrixId}"",
+                                    ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
+                                    ""ATTACH"": [
+                                        {{
+                                            ""IMAGE"": {{
+                                                ""NAME"": ""KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""LINK"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""PREVIEW"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""WIDTH"": ""1000"",
+                                                ""HEIGHT"": ""1000""
                                             }}
-                                        ]
-                                    }}";
+                                        }}
+                                    ]
+                                }}";
 
-                            BitrixMessageSender.SendMsg_ToUser_ByWebhookKeyANDJSONRequest(
-                                $"{_webHookUrl}/im.message.add.json",
-                                jsonRequestToUser);
-                        }
-                        #endregion
-
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
-
-                        return;
+                        BitrixMessageSender.SendMsg_ToUser_ByWebhookKeyANDJSONRequest(
+                            $"{_webHookUrl}/im.message.add.json",
+                            jsonRequestToUser);
                     }
+                    #endregion
+
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+
+                    return;
+                }
 
 
-                    // Отлов пользователей с ограничением допуска к работе в текущем проекте
-                    DBProjectsAccessMatrix[] currentPrjMatrixColl = ModuleDBWorkerService.CurrentDBProjectMatrixColl.Where(prj => dBProject.Id == prj.ProjectId).ToArray();
-                    if (currentPrjMatrixColl.Length > 0
-                             && currentPrjMatrixColl.All(prj => prj.UserId != ModuleDBWorkerService.CurrentDBUser.Id))
-                    {
-                        _isProjectCloseToUser = true;
-                        MessageBox.Show(
-                            $"Вы открыли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика," +
-                            $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
-                            "\nИНФО: Сейчас файл закроется",
-                            "KPLN: Ограниченный проект",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
+                // Отлов пользователей с ограничением допуска к работе в текущем проекте
+                DBProjectsAccessMatrix[] currentPrjMatrixColl = DBMainService
+                    .PrjAccessMatrixDbService
+                    .GetDBProjectMatrix_ByProject(dBProject)
+                    .ToArray();
+                if (currentPrjMatrixColl.Length > 0
+                            && currentPrjMatrixColl.All(prj => prj.UserId != DBMainService.CurrentDBUser.Id))
+                {
+                    _isProjectCloseToUser = true;
+                    MessageBox.Show(
+                        $"Вы открыли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика," +
+                        $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
+                        "\nИНФО: Сейчас файл закроется",
+                        "KPLN: Ограниченный проект",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
 
-                        BitrixMessageSender.SendMsg_ToBIMChat(
-                            $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                            $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                            $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
-                            $"Действие: Открыл проект {doc.Title}.");
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
+                        $"Действие: Открыл проект {doc.Title}.");
 
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
 
-                        return;
-                    }
+                    return;
                 }
             }
             else
@@ -859,16 +872,13 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 
-            ModuleDBWorkerService.DropMainCash();
-
-
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-            if (ModuleDBWorkerService.CurrentDBUser.IsUserRestricted)
+            if (DBMainService.CurrentDBUser.IsUserRestricted)
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} " +
-                    $"из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
-                    $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={ModuleDBWorkerService.CurrentDBUser.IsUserRestricted})\n" +
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
                     $"Действие: Произвел синхронизацию файла {doc.Title}.");
 
                 MessageBox.Show(
@@ -878,29 +888,31 @@ namespace KPLN_Looker
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
             }
             #endregion
 
             #region Работа с проектами КПЛН
             // Получаю проект из БД КПЛН
             string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            DBProject dBProject = ModuleDBWorkerService.Get_DBProjectByRevitDocFile(centralPath);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
             if (dBProject == null)
                 return;
 
-            int prjDBSubDepartmentId = ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-            DBDocument dBDocument = ModuleDBWorkerService.Get_DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartmentId);
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
                 return;
 
-            ModuleDBWorkerService.Update_DBDocumentLastChangedData(dBDocument);
+            DBMainService
+                .DocDbService
+                .UpdateDBDocument_LastChangedData(dBDocument, DBMainService.CurrentDBUser, DBMainService.CurrentTimeForDB());
 
             // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
             if (dBDocument.IsClosed)
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                     $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (проект все же НЕ удалось закрыть)\n" +
                     $"Действие: Произвел синхронизацию в {doc.Title}.");
 
@@ -910,13 +922,13 @@ namespace KPLN_Looker
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
             }
             // Отлов пользователей с ограничением допуска к работе в текущем проекте
             else if (_isProjectCloseToUser)
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {ModuleDBWorkerService.CurrentDBUser.Surname} {ModuleDBWorkerService.CurrentDBUser.Name} из отдела {ModuleDBWorkerService.CurrentDBUserSubDepartment.Code}\n" +
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                     $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
                     $"Действие: Произвел синхронизацию в {doc.Title}.");
 
@@ -928,7 +940,7 @@ namespace KPLN_Looker
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(ModuleDBWorkerService.CurrentDBUser, doc));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
             }
             #endregion
 

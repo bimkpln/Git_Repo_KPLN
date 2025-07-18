@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using System;
@@ -114,8 +115,7 @@ namespace KPLN_Looker.ExecutableCommand
                 }
                 else
                 {
-                    DBRevitDialog[] dbRevitDialogs = Module.ModuleDBWorkerService.DBRevitDialogs;
-                    DBRevitDialog currentDBDialog = dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
+                    DBRevitDialog currentDBDialog = DBMainService.DBRevitDialogColl.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
                     if (currentDBDialog != null)
                     {
                         if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))

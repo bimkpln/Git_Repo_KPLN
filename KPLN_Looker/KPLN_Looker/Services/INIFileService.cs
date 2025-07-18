@@ -15,10 +15,10 @@ namespace KPLN_Looker.Services
     {
         private const int SIZE = 1024; //Максимальный размер (для чтения значения из файла)
         private readonly string _path;
-        private readonly string _revitVersion;
+        private readonly int _revitVersion;
         private readonly DBUser _user;
 
-        public INIFileService(DBUser user, string revitVersion)
+        public INIFileService(DBUser user, int revitVersion)
         {
             _user = user;
             _revitVersion = revitVersion;
