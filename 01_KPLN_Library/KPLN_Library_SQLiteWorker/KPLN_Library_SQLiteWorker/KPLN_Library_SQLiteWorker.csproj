@@ -172,6 +172,7 @@
     <Compile Include="FactoryParts\Services\UserDbService.cs" />
     <Compile Include="Core\Worker_Error.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DBMainService.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

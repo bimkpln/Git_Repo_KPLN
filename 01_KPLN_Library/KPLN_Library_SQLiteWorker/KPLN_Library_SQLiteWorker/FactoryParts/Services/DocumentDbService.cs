@@ -2,6 +2,7 @@
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
@@ -18,13 +19,16 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Создать новый документ в БД
         /// </summary>
-        public void CreateDBDocument(DBDocument dBDocument)
+        public Task CreateDBDocument(DBDocument dBDocument)
         {
-            ExecuteNonQuery(
-                $"INSERT INTO {_dbTableName} " +
-                $"({nameof(DBDocument.CentralPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}, {nameof(DBDocument.LastChangedUserId)}, {nameof(DBDocument.LastChangedData)}) " +
-                $"VALUES (@{nameof(DBDocument.CentralPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
-            dBDocument);
+            return Task.Run(() =>
+            {
+                ExecuteNonQuery(
+                    $"INSERT INTO {_dbTableName} " +
+                    $"({nameof(DBDocument.CentralPath)}, {nameof(DBDocument.ProjectId)}, {nameof(DBDocument.SubDepartmentId)}, {nameof(DBDocument.LastChangedUserId)}, {nameof(DBDocument.LastChangedData)}) " +
+                    $"VALUES (@{nameof(DBDocument.CentralPath)}, @{nameof(DBDocument.ProjectId)}, @{nameof(DBDocument.SubDepartmentId)}, @{nameof(DBDocument.LastChangedUserId)}, @{nameof(DBDocument.LastChangedData)});",
+                dBDocument);
+            });
         }
         #endregion
 
@@ -59,17 +63,27 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         /// <summary>
         /// Обновить статус IsClosed документа по статусу проекта
         /// </summary>
-        public void UpdateDBDocument_IsClosedByProject(DBProject dbProject) =>
-            ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                  $"SET {nameof(DBDocument.IsClosed)}='{dbProject.IsClosed}' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
+        public Task UpdateDBDocument_IsClosedByProject(DBProject dbProject)
+        {
+            return Task.Run(() =>
+            {
+                ExecuteNonQuery($"UPDATE {_dbTableName} " +
+                    $"SET {nameof(DBDocument.IsClosed)}='{dbProject.IsClosed}' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
+            });
+        }
 
         /// <summary>
         /// Обновить данные по последнему изменению документа (LastChangedUserId, LastChangedData)
         /// </summary>
-        public void UpdateDBDocument_LastChangedData(DBDocument dBDocument, DBUser dBUser, string data) =>
-            ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                $"SET {nameof(DBDocument.LastChangedUserId)}='{dBUser.Id}', {nameof(DBDocument.LastChangedData)}='{data}' " +
-                $"WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
+        public Task UpdateDBDocument_LastChangedData(DBDocument dBDocument, DBUser dBUser, string data)
+        {
+            return Task.Run(() =>
+            {
+                ExecuteNonQuery($"UPDATE {_dbTableName} " +
+                    $"SET {nameof(DBDocument.LastChangedUserId)}='{dBUser.Id}', {nameof(DBDocument.LastChangedData)}='{data}' " +
+                    $"WHERE {nameof(DBDocument.Id)}='{dBDocument.Id}';");
+            });
+        }
         #endregion
     }
 }
