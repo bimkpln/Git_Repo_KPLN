@@ -151,7 +151,7 @@ namespace KPLN_Library_SQLiteWorker
             get
             {
                 if (_dBRevitDialogColl == null)
-                    _dBRevitDialogColl = _revitDialogDbService.GetDBRevitDialogs().ToArray();
+                    _dBRevitDialogColl = RevitDialogDbService.GetDBRevitDialogs().ToArray();
 
                 return _dBRevitDialogColl;
             }

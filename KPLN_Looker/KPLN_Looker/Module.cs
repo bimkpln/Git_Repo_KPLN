@@ -95,10 +95,10 @@ namespace KPLN_Looker
                 application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
                 application.ControlledApplication.DocumentSaved += OnDocumentSaved;
 #else
-                if (ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("АР"))
+                if (DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("АР"))
                     application.ControlledApplication.DocumentSaved += OnDocumentSaved;
 
-                if (!ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
+                if (!DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
                     application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
 #endif
 

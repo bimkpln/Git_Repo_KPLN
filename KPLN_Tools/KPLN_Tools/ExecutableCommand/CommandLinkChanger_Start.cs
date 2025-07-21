@@ -111,9 +111,8 @@ namespace KPLN_Tools.ExecutableCommand
                     currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
 
                 if (currentDBDialog == null)
-                    HtmlOutput.Print($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека", MessageType.Error);
-
-                if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
+                    HtmlOutput.Print($"Окно \"{args.DialogId}\" не удалось обработать. Необходим контроль со стороны человека", MessageType.Error);
+                else if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
                 {
                     bool isOverride = args.OverrideResult((int)taskDialogResult);
                     if (!isOverride)
