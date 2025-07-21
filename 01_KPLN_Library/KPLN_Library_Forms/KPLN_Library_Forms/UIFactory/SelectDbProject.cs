@@ -1,7 +1,7 @@
 ﻿using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,27 +14,11 @@ namespace KPLN_Library_Forms.UIFactory
     /// </summary>
     public static class SelectDbProject
     {
-        private static ProjectDbService _projectDbService;
-
-        internal static ProjectDbService CurrentProjectDbService
-        {
-            get 
-            { 
-                if (_projectDbService == null)
-                {
-                    CreatorProjectDbService creatorProjectDbService = new CreatorProjectDbService();
-                    _projectDbService = (ProjectDbService)creatorProjectDbService.CreateService();
-                }
-                
-                return _projectDbService; 
-            }
-        }
-
         /// <summary>
         /// Запуск окна выбора проекта
         /// </summary>
         /// <returns>Возвращает выбранный проект</returns>
-        public static ElementSinglePick CreateForm(bool showClosedProjects=false)
+        public static ElementSinglePick CreateForm(int rVersion, bool showClosedProjects = false)
         {
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
 
@@ -42,10 +26,10 @@ namespace KPLN_Library_Forms.UIFactory
             switch (showClosedProjects)
             {
                 case true:
-                    projectsColl = CurrentProjectDbService.GetDBProjects();
-                    break;  
+                    projectsColl = DBMainService.ProjectDbService.GetDBProjects_ByRVersion(rVersion);
+                    break;
                 case false:
-                    projectsColl = CurrentProjectDbService.GetDBProjects_Opened();
+                    projectsColl = DBMainService.ProjectDbService.GetDBProjects_ByRVersionANDOpened(rVersion);
                     break;
             }
 
