@@ -18,7 +18,7 @@ namespace KPLN_Clashes_Ribbon
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            ModuleData.RevitVersion = application.ControlledApplication.VersionNumber;
+            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Междисциплинарный анализ");

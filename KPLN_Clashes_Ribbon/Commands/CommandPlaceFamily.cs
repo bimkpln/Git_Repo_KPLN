@@ -15,7 +15,6 @@ namespace KPLN_Clashes_Ribbon.Commands
     public class CommandPlaceFamily : IExecutableCommand
     {
         private static readonly string _familyName = "ClashPoint";
-        private static FamilySymbol _intersectFamSymb;
 
         private readonly ReportForm _reportWindow;
 

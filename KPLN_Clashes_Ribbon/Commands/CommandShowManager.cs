@@ -22,7 +22,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                 // Для пользователей бим-отдела - показываю все проекты, включая архивные
                 bool isBIMUser = ClashesMainCollection.CurrentDBUser.SubDepartmentId == 8;
                 
-                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(isBIMUser);
+                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, isBIMUser);
                 if ((bool)selectedProjectForm.ShowDialog())
                 {
                     DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
