@@ -46,7 +46,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             RevitDocExchangeEnum selectedEnum = (RevitDocExchangeEnum)System.Enum.Parse(typeof(RevitDocExchangeEnum), elementSinglePick.SelectedElement.Name);
 
 
-            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(true);
+            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, true);
             if (!(bool)selectedProjectForm.ShowDialog())
                 return Result.Cancelled;
 

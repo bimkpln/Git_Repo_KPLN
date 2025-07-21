@@ -292,14 +292,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(Module.RevitVersion);
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(ModuleData.RevitVersion);
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
                 string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
                 string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
 
-                RevitServer revitServer = new RevitServer(selectedRSHostName, Module.RevitVersion);
+                RevitServer revitServer = new RevitServer(selectedRSHostName, ModuleData.RevitVersion);
 
                 IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
                 List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
@@ -337,7 +337,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnAddNewRevitServerLink(object sender, RoutedEventArgs e)
         {
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(Module.RevitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 

@@ -19,8 +19,6 @@ namespace KPLN_BIMTools_Ribbon
         private Logger _logger;
         private UIApplication _uiApp;
 
-        public static int RevitVersion { get; private set; }
-
         public Result Close()
         {
             return Result.Succeeded;
@@ -28,7 +26,7 @@ namespace KPLN_BIMTools_Ribbon
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             #region Получаю UIApplication из internal свойства UIControlledApplication
             // https://stackoverflow.com/questions/42382320/getting-the-current-application-and-document-from-iexternalapplication-revit
@@ -41,7 +39,7 @@ namespace KPLN_BIMTools_Ribbon
             // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
             _logger = LogManager.GetLogger("KPLN_BIMTools");
 
-            string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{RevitVersion}";
+            string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}";
             string logFileName = "KPLN_BIMTools";
             LogManager.Configuration.Variables["bimtools_logdir"] = logDirPath;
             LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;

@@ -60,7 +60,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 _dbModuleAutostarArrForUser = DBMainService
                     .ModuleAutostartDbService
-                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(DBMainService.CurrentDBUser.Id, Module.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
+                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(DBMainService.CurrentDBUser.Id, ModuleData.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
                     .ToArray();
 
                 // Взвожу галку, если конфиг в списке
@@ -126,7 +126,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     .Select(docExch => new DBModuleAutostart()
                         {
                             UserId = DBMainService.CurrentDBUser.Id,
-                            RevitVersion = Module.RevitVersion,
+                            RevitVersion = ModuleData.RevitVersion,
                             ProjectId = _project.Id,
                             ModuleId = _moduleId,
                             DBTableName = DB_Enumerator.RevitDocExchanges.ToString(),

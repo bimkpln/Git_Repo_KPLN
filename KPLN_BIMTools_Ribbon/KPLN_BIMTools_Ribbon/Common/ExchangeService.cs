@@ -107,7 +107,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 docExchangeModuleName = $"Автостарт: {revitDocExchangeEnum}";
 
                 IEnumerable<int> docExchIdsFromModuleAS = DBMainService.ModuleAutostartDbService
-                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(DBMainService.CurrentDBUser.Id, Module.RevitVersion, DB_Enumerator.RevitDocExchanges.ToString())
+                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(DBMainService.CurrentDBUser.Id, ModuleData.RevitVersion, DB_Enumerator.RevitDocExchanges.ToString())
                     .Select(mas => mas.DBTableKeyId);
                 if (docExchIdsFromModuleAS.Count() == 0)
                     return;
@@ -133,7 +133,7 @@ namespace KPLN_BIMTools_Ribbon.Common
             {
                 docExchangeModuleName = $"{revitDocExchangeEnum}";
 
-                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(true);
+                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, true);
                 if (!(bool)selectedProjectForm.ShowDialog())
                     return;
 
@@ -306,7 +306,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
                     $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
-                    $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{Module.RevitVersion}");
+                    $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}");
             }
             else
             {
@@ -349,7 +349,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 }
                 try
                 {
-                    RevitServer server = new RevitServer(rsHostName, Module.RevitVersion);
+                    RevitServer server = new RevitServer(rsHostName, ModuleData.RevitVersion);
                     // Проверяю ссылку на конечный файл. Добавляю файл
                     if (pathFrom.ToLower().Contains("rvt"))
                     {
@@ -398,7 +398,7 @@ namespace KPLN_BIMTools_Ribbon.Common
             string[] pathParts = pathTo.Split('\\');
             string rsHostName = pathParts[2];
             int pathPartsLenght = pathParts.Length;
-            RevitServer server = new RevitServer(rsHostName, Module.RevitVersion);
+            RevitServer server = new RevitServer(rsHostName, ModuleData.RevitVersion);
             if (server != null)
             {
                 try

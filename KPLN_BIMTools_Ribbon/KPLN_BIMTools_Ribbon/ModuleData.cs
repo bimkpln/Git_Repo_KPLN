@@ -19,6 +19,11 @@ namespace KPLN_BIMTools_Ribbon
         public static string Date = GetModuleFileCreationDate();
 
         /// <summary>
+        /// Версия Revit, в которой запускается плагин
+        /// </summary>
+        public static int RevitVersion { get; set; }
+
+        /// <summary>
         /// Имя модуля
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
