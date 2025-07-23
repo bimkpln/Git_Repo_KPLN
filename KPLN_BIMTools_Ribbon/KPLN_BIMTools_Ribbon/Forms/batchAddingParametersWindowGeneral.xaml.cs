@@ -924,7 +924,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             string paramType = GetParamTypeName(def, paramTypeId);
 #endif
 
+
+
                             cbParamsName.Tag = paramType;
+
+
+
                             tbParamValue.IsEnabled = true;
                             tbParamValue.Tag = "nonestatus";
 
