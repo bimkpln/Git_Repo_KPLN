@@ -3,6 +3,7 @@ using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
@@ -16,7 +17,36 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         }
 
         #region Create
-        // Создается вручную напрямую в БД
+        /// <summary>
+        /// Создать новый проект
+        /// </summary>
+        public Task<int> CreateDBDocument(DBProject dBProject)
+        {
+            // Дефолтное значение для пустых полей (для РС - это вполне нормально)
+            if (string.IsNullOrWhiteSpace(dBProject.RevitServerPath))
+                dBProject.RevitServerPath = "Empty";
+            if (string.IsNullOrWhiteSpace(dBProject.RevitServerPath2))
+                dBProject.RevitServerPath2 = "Empty";
+            if (string.IsNullOrWhiteSpace(dBProject.RevitServerPath3))
+                dBProject.RevitServerPath3 = "Empty";
+            if (string.IsNullOrWhiteSpace(dBProject.RevitServerPath4))
+                dBProject.RevitServerPath4 = "Empty";
+
+            return Task<int>.Run(() =>
+            {
+                int createdPrjId = ExecuteQuery<int>(
+                    $"INSERT INTO {_dbTableName} " +
+                    $"({nameof(DBProject.Name)}, {nameof(DBProject.Code)}, {nameof(DBProject.Stage)}, {nameof(DBProject.RevitVersion)}, {nameof(DBProject.MainPath)}, " +
+                        $"{nameof(DBProject.RevitServerPath)}, {nameof(DBProject.RevitServerPath2)}, {nameof(DBProject.RevitServerPath3)}, {nameof(DBProject.RevitServerPath4)}) " +
+                    $"VALUES (@{nameof(DBProject.Name)}, @{nameof(DBProject.Code)}, @{nameof(DBProject.Stage)}, @{nameof(DBProject.RevitVersion)}, @{nameof(DBProject.MainPath)}, " +
+                        $"@{nameof(DBProject.RevitServerPath)}, @{nameof(DBProject.RevitServerPath2)}, @{nameof(DBProject.RevitServerPath3)}, @{nameof(DBProject.RevitServerPath4)}) " +
+                    $"RETURNING Id;",
+                    dBProject)
+                .FirstOrDefault();
+
+                return createdPrjId;
+            });
+        }
         #endregion
 
         #region Read
