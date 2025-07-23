@@ -616,8 +616,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return "Image";
             if (value == SpecTypeId.Reference.LoadClassification)
                 return "LoadClassification";
-
-            return value.ToString();
+            else
+                return "Double";
         }
 #endif
 
