@@ -1,0 +1,222 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.DBManager"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        FontSize="14"
+        ResizeMode="CanResizeWithGrip" 
+        Title="KPLN_DB: Создание нового проекта" 
+        WindowStyle="ToolWindow" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen" 
+        SizeToContent="WidthAndHeight"
+        MinHeight="200" 
+        MinWidth="500" 
+        MaxWidth="1000" 
+        Background="#FF292D36">
+
+    <Window.Resources>
+
+        <Style x:Key="TXTBL" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="TXTBXWithPathToolTip" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="ToolTipService.IsEnabled" Value="True"/>
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="ToolTip"
+                        Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}"/>
+                    <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
+                    <Setter Property="ToolTipService.InitialShowDelay" Value="0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="СBX" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+        <Style x:Key="BTN" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="Background" Value="#19FFFFFF"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="0.45*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+
+        <TextBlock 
+            Text="Имя проекта"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Column="1"
+            Style="{StaticResource TXTBX}"
+            Text="{Binding DBPrjWrapper.WrName, 
+                UpdateSourceTrigger=PropertyChanged}"/>
+
+
+        <TextBlock 
+            Grid.Row="1"
+            Text="Код проекта"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="1"
+            Grid.Column="1"
+            Style="{StaticResource TXTBX}"
+            Text="{Binding DBPrjWrapper.WrCode, 
+                UpdateSourceTrigger=PropertyChanged}"/>
+
+
+        <TextBlock 
+            Grid.Row="2"
+            Text="Стадия проекта"
+            Style="{StaticResource TXTBL}"/>
+        <ComboBox 
+            Grid.Row="2"
+            Grid.Column="1"
+            Style="{StaticResource СBX}"
+            ItemsSource="{Binding DBPrjWrapper.WrStageColl}"
+            SelectedItem="{Binding DBPrjWrapper.WrStage}"/>
+
+
+        <TextBlock 
+            Grid.Row="3"
+            Text="Версия Revit"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="3"
+            Grid.Column="1"
+            Style="{StaticResource TXTBX}"
+            Text="{Binding DBPrjWrapper.WrRevitVersion, 
+                UpdateSourceTrigger=PropertyChanged}"/>
+
+
+        <TextBlock 
+            Grid.Row="4"
+            Text="Путь: папка на сервере"
+            Style="{StaticResource TXTBL}"/>
+        <Grid
+            Grid.Row="4"
+            Grid.Column="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="0.1*"/>
+            </Grid.ColumnDefinitions>
+            <TextBox 
+                Style="{StaticResource TXTBXWithPathToolTip}"
+                Text="{Binding DBPrjWrapper.WrServerPath, 
+                    UpdateSourceTrigger=PropertyChanged, 
+                    ValidatesOnDataErrors=True, 
+                    NotifyOnValidationError=True}"/>
+            <Button
+                Grid.Column="1"
+                Style="{StaticResource BTN}"
+                Margin="0,5,5,5"
+                Content="🔍"
+                Command="{Binding SetServerPathCommand}"/>
+        </Grid>
+
+
+        <TextBlock 
+            Grid.Row="5"
+            Text="Путь: Revit-Server #1"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="5"
+            Grid.Column="1"
+            Style="{StaticResource TXTBXWithPathToolTip}"
+            Text="{Binding DBPrjWrapper.WrRevitServerPath, 
+                UpdateSourceTrigger=PropertyChanged, 
+                ValidatesOnDataErrors=True, 
+                NotifyOnValidationError=True}"/>
+
+
+        <TextBlock 
+            Grid.Row="6"
+            Text="Путь: Revit-Server #2"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="6"
+            Grid.Column="1"
+            Style="{StaticResource TXTBXWithPathToolTip}"
+            Text="{Binding DBPrjWrapper.WrRevitServerPath2, 
+                UpdateSourceTrigger=PropertyChanged, 
+                ValidatesOnDataErrors=True, 
+                NotifyOnValidationError=True}"/>
+
+
+        <TextBlock 
+            Grid.Row="7"
+            Text="Путь: Revit-Server #3"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="7"
+            Grid.Column="1"
+            Style="{StaticResource TXTBXWithPathToolTip}"
+            Text="{Binding DBPrjWrapper.WrRevitServerPath3,
+                UpdateSourceTrigger=PropertyChanged, 
+                ValidatesOnDataErrors=True, 
+                NotifyOnValidationError=True}"
+            ToolTip="{Binding (Validation.Errors)[0].ErrorContent, 
+                RelativeSource={RelativeSource Self}}"/>
+
+
+        <TextBlock 
+            Grid.Row="8"
+            Text="Путь: Revit-Server #4"
+            Style="{StaticResource TXTBL}"/>
+        <TextBox 
+            Grid.Row="8"
+            Grid.Column="1"
+            Style="{StaticResource TXTBXWithPathToolTip}"
+            Text="{Binding DBPrjWrapper.WrRevitServerPath4, 
+                UpdateSourceTrigger=PropertyChanged, 
+                ValidatesOnDataErrors=True, 
+                NotifyOnValidationError=True}"
+            ToolTip="{Binding (Validation.Errors)[0].ErrorContent, 
+                RelativeSource={RelativeSource Self}}"/>
+
+        <Button
+            Grid.ColumnSpan="2"
+            Grid.Row="9"
+            Style="{StaticResource BTN}"
+            Content="Создать" 
+            Command="{Binding CreateDBProjectCommand}"/>
+    </Grid>
+</Window>
