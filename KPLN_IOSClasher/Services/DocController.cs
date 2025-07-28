@@ -95,7 +95,7 @@ namespace KPLN_IOSClasher.Services
 #endif
 #if Debug2020 || Debug2023
             CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
-            IsDocumentAnalyzing = true;
+            IsDocumentAnalyzing = false;
 #endif
         }
 
