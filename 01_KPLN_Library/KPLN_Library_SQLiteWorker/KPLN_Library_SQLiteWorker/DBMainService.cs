@@ -23,6 +23,7 @@ namespace KPLN_Library_SQLiteWorker
 
         private static DBUser _dBUser;
         private static DBSubDepartment _currentDBUserSubDepartment;
+        private static DBSubDepartment[] _dBSubDepartmentColl;
         private static DBRevitDialog[] _dBRevitDialogColl;
 
 
@@ -140,6 +141,20 @@ namespace KPLN_Library_SQLiteWorker
                     _currentDBUserSubDepartment = SubDepartmentDbService.GetDBSubDepartment_ByDBUser(CurrentDBUser);
 
                 return _currentDBUserSubDepartment;
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на коллецию отделов КПЛН
+        /// </summary>
+        public static DBSubDepartment[] DBSubDepartmentColl
+        {
+            get
+            {
+                if (_dBSubDepartmentColl == null)
+                    _dBSubDepartmentColl = SubDepartmentDbService.GetDBSubDepartments().Where(dep => dep.Id != 1).ToArray();
+
+                return _dBSubDepartmentColl;
             }
         }
 

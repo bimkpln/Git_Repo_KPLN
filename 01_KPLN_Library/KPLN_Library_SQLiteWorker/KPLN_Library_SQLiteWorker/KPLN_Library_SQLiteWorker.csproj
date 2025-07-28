@@ -85,20 +85,8 @@
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Loader">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\obj\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitServerAPILib, Version=0.1.10.34061, Culture=neutral, processorArchitecture=MSIL">
@@ -128,6 +116,72 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug2020' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Debug2023' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2020' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2023' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
   <ItemGroup>
     <Compile Include="Core\DatabasePaths.cs" />
     <Compile Include="Core\SQLiteData\Abstractions\IDBEntity.cs" />
