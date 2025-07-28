@@ -645,6 +645,7 @@ namespace KPLN_Looker
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
             if (dBProject == null)
             {
+                string centralPathForUser = centralPath.Replace("\\\\stinproject.local\\project", "Y:");
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
                 {
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(
@@ -653,7 +654,7 @@ namespace KPLN_Looker
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPath}[/b].");
+                        $"Путь к модели: [b]{centralPathForUser}[/b].");
                 }
 
                 return;
@@ -710,7 +711,6 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 
-            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
             if (DBMainService.CurrentDBUser.IsUserRestricted)
             {
@@ -727,6 +727,28 @@ namespace KPLN_Looker
                     "KPLN: Ошибка",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
+            }
+            #endregion
+
+            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            
+            #region Обработка работы в архивных копиях
+            if (centralPath.ToLower().Contains("архив"))
+            {
+                MessageBox.Show(
+                    "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
+                    "\nИНФО: Если попытаетесь что-то синхронизировать - проект закроется",
+                    "KPLN: Архивный проект",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                #region Извещение в чат bim-отдела
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
+                    $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                    $"Путь к модели: [b]{centralPath}[/b].");
+                #endregion
             }
             #endregion
 
@@ -892,9 +914,28 @@ namespace KPLN_Looker
             }
             #endregion
 
+            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
+            
+            #region Обработка работы в архивных копиях
+            if (centralPath.ToLower().Contains("архив"))
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Сотрудник засинхронизировал АРХИВНЫЙ проект\n" +
+                    $"Действие: Произвел синхронизацию в {doc.Title}.");
+
+                MessageBox.Show(
+                    $"Вы произвели синхронизацию АРХИВНОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                    "KPLN: Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+            }
+            #endregion
+
             #region Работа с проектами КПЛН
             // Получаю проект из БД КПЛН
-            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
             DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
             if (dBProject == null)
                 return;

@@ -57,19 +57,6 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Loader, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -103,6 +90,18 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -117,6 +116,18 @@
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2023\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -135,6 +146,18 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -149,6 +172,18 @@
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
