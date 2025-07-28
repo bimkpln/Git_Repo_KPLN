@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.Services;
 using System.Collections.Generic;
@@ -16,7 +16,6 @@ namespace KPLN_TaskManager.Forms
         public event PropertyChangedEventHandler PropertyChanged;
 
         private ObservableCollection<TaskItemEntity> _collection;
-        private DBProject _dBProject;
 
         private string _searchHeader;
         private string _selectedOpenStausTasks = "Open";
@@ -99,8 +98,6 @@ namespace KPLN_TaskManager.Forms
             if (Module.CurrentDBProject == null)
                 return null;
 
-            _dBProject = Module.CurrentDBProject;
-
             _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
@@ -129,9 +126,9 @@ namespace KPLN_TaskManager.Forms
                     return matchesTitle && matchesStatus;
 
                 bool userProp = GetUserPropValue(task);
-                
-                bool isInputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.DelegatedDepartmentId ? true : false;
-                bool isOutputSubDepTask = MainDBService.CurrentDBUserSubDepartment.Id == task.CreatedTaskDepartmentId ? true : false;
+
+                bool isInputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.DelegatedDepartmentId;
+                bool isOutputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.CreatedTaskDepartmentId;
 
                 if (SubDepDependence == "AllSuDepTask")
                     return matchesTitle && matchesStatus && userProp && (isInputSubDepTask || isOutputSubDepTask);
@@ -173,14 +170,21 @@ namespace KPLN_TaskManager.Forms
             System.Windows.Controls.Button btn = sender as System.Windows.Controls.Button;
             if (btn.DataContext is TaskItemEntity taskItemEntity)
             {
-                // Обновляю сущность с БД, чтобы получить АКТУАЛЬНУЮ инфу (если кто-то исправил, а я открыл после записи в БД)
-                TaskItemEntity updatedTaskItemEntity = TaskManagerDBService.GetEntity_ByEntityId(taskItemEntity.Id);
-
                 // Открываю окно
-                TaskItemView taskItemView = new TaskItemView(updatedTaskItemEntity);
-                taskItemView.ShowDialog();
+                TaskItemView taskItemView = new TaskItemView(taskItemEntity);
+                WindowHandleSearch.MainWindowHandle.SetAsOwner(taskItemView);
 
-                LoadTaskData();
+                // Слежу за изменением статуса сущности в открываемом окне
+                taskItemView.CurrentTaskItemEntity.PropertyChanged += (s, args) =>
+                {
+                    if (args.PropertyName == nameof(TaskItemEntity.TaskStatus))
+                        FilteredTasks?.Refresh();
+                };
+
+                // Слежу за закрытием окна
+                taskItemView.Closed += (s, args) => LoadTaskData();
+
+                taskItemView.Show();
             }
         }
 
@@ -197,16 +201,14 @@ namespace KPLN_TaskManager.Forms
                 return;
             }
 
-            TaskItemEntity taskItemEntity = new TaskItemEntity(Module.CurrentDBProject.Id, MainDBService.CurrentDBUser.Id, MainDBService.CurrentDBUserSubDepartment.Id);
-            TaskItemView taskItemView = new TaskItemView(taskItemEntity);
-            bool? ceateViewResult = taskItemView.ShowDialog();
-            if ((bool)ceateViewResult)
-            {
-                _collection.Add(taskItemView.CurrentTaskItemEntity);
+            TaskItemEntity taskItemEntity = new TaskItemEntity(Module.CurrentDBProject.Id, DBMainService.CurrentDBUser.Id, DBMainService.CurrentUserDBSubDepartment.Id);
 
-                FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
-                FilteredTasks?.Refresh();
-            }
+            // Открываю окно
+            TaskItemView taskItemView = new TaskItemView(taskItemEntity);
+
+            WindowHandleSearch.MainWindowHandle.SetAsOwner(taskItemView);
+            taskItemView.Closed += (s, args) => LoadTaskData();
+            taskItemView.Show();
         }
 
         private void ExportExcel_Click(object sender, RoutedEventArgs e)
@@ -220,7 +222,7 @@ namespace KPLN_TaskManager.Forms
                     filteredTasks.Add(task);
                 }
 
-                ExportToExcelService.Run(path, _dBProject.Name, filteredTasks);
+                ExportToExcelService.Run(path, Module.CurrentDBProject.Name, filteredTasks);
             }
         }
 
@@ -256,9 +258,9 @@ namespace KPLN_TaskManager.Forms
         private bool GetUserPropValue(TaskItemEntity task)
         {
             //Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
-            if (MainDBService.CurrentDBUserSubDepartment.Id == 8)
+            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
             {
-                switch (MainDBService.CurrentDBUser.Surname)
+                switch (DBMainService.CurrentDBUser.Surname)
                 {
                     case "Куцко":
                         return true;
@@ -282,19 +284,19 @@ namespace KPLN_TaskManager.Forms
                 }
             }
             //Для руководителей - верстка на лету под их отделы, чтобы они видели замечания по своим отделам
-            if (MainDBService.CurrentDBUser.Surname == "Кудрова")
+            if (DBMainService.CurrentDBUser.Surname == "Кудрова")
                 return task.DelegatedDepartmentId == 4 || task.CreatedTaskDepartmentId == 4
                     || task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
                     || task.DelegatedDepartmentId == 20 || task.CreatedTaskDepartmentId == 20
                     || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21;
-            else if (MainDBService.CurrentDBUser.Surname == "Тамарин")
+            else if (DBMainService.CurrentDBUser.Surname == "Тамарин")
                 return task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
                     || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21;
-            else if (MainDBService.CurrentDBUser.Surname == "Колодий")
+            else if (DBMainService.CurrentDBUser.Surname == "Колодий")
                 return task.DelegatedDepartmentId == 6 || task.CreatedTaskDepartmentId == 6
                     || task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
                     || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22;
-            else if (MainDBService.CurrentDBUser.Surname == "Алиев")
+            else if (DBMainService.CurrentDBUser.Surname == "Алиев")
                 return task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
                     || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22;
 

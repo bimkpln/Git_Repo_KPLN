@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_SQLiteWorker;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.ExecutableCommand;
 using KPLN_TaskManager.Services;
@@ -49,6 +50,9 @@ namespace KPLN_TaskManager.Forms
 
             // Настройка уровня доступа в зависимости от пользователя
             SetUserAccessLevel();
+
+            // Подписка на обновление из БД при открытии
+            this.Loaded += (s, e) => RefreshFromDatabase();
         }
 
         public TaskItemEntity CurrentTaskItemEntity { get; set; }
@@ -63,19 +67,45 @@ namespace KPLN_TaskManager.Forms
         }
 
         /// <summary>
+        /// Обновление динамичных данных сущности на данные из БД
+        /// </summary>
+        private void RefreshFromDatabase()
+        {
+            TaskItemEntity freshTIE = TaskManagerDBService.GetEntity_ByEntityId(CurrentTaskItemEntity.Id);
+
+            if (freshTIE == null)
+                return;
+
+            CurrentTaskItemEntity.TaskHeader = freshTIE.TaskHeader;
+            CurrentTaskItemEntity.DelegatedDepartmentId = freshTIE.DelegatedDepartmentId;
+            CurrentTaskItemEntity.BitrixTaskId = freshTIE.BitrixTaskId;
+            CurrentTaskItemEntity.TaskBody = freshTIE.TaskBody;
+            CurrentTaskItemEntity.ImageBuffer = freshTIE.ImageBuffer;
+            CurrentTaskItemEntity.ModelName = freshTIE.ModelName;
+            CurrentTaskItemEntity.ModelViewId = freshTIE.ModelViewId;
+            CurrentTaskItemEntity.ElementIds = freshTIE.ElementIds;
+            CurrentTaskItemEntity.TaskStatus = freshTIE.TaskStatus;
+            CurrentTaskItemEntity.LastChangeData = freshTIE.LastChangeData;
+
+            CurrentTaskComments?.Clear();
+            foreach (var c in TaskManagerDBService.GetComments_ByTaskItem(CurrentTaskItemEntity))
+                CurrentTaskComments.Add(c);
+        }
+
+        /// <summary>
         /// Настройка уровня доступа в зависимости от пользователя
         /// </summary>
         private void SetUserAccessLevel()
         {
-            bool isDepSubDep = MainDBService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id);
+            bool isDepSubDep = DBMainService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id);
             
             // Настройка выбора отдела ОТ в завиисмости от наличия подчиненных подотделов
             CreateDepCBox.IsEnabled = isDepSubDep;
 
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
-            bool isCreatorEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
-            bool isFullEditable = MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
-                || MainDBService.CurrentDBUserSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
+            bool isCreatorEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
+            bool isFullEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
+                || DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
                 || isDepSubDep;
 
             HeaderTBox.IsEnabled = isCreatorEditable;
@@ -155,7 +185,7 @@ namespace KPLN_TaskManager.Forms
         /// <param name="e"></param>
         private void SelectRevitElems_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ModelName))
+            if (string.IsNullOrEmpty(CurrentTaskItemEntity.ModelName) || CurrentTaskItemEntity.ElementIdsCount <= 0)
             {
                 MessageBox.Show(
                     "Элементы к задаче НЕ прикреплены",
@@ -196,7 +226,6 @@ namespace KPLN_TaskManager.Forms
                 uidoc.ActiveView = viewFromTask;
 
             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(CurrentTaskItemEntity));
-            this.Close();
         }
 
         /// <summary>
@@ -240,12 +269,11 @@ namespace KPLN_TaskManager.Forms
 
         private void ToggleStatusBtn_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Controls.Button taskBtn = sender as System.Windows.Controls.Button;
-            if (taskBtn.DataContext is TaskItemEntity tiEnt)
+            if (CurrentTaskItemEntity != null)
             {
                 string inputFormTitle = string.Empty;
                 string commetnStatus = string.Empty;
-                switch (tiEnt.TaskStatus)
+                switch (CurrentTaskItemEntity.TaskStatus)
                 {
                     case TaskStatusEnum.Open:
                         inputFormTitle = "Комментарий к закрытию";
@@ -261,21 +289,20 @@ namespace KPLN_TaskManager.Forms
                 bool? createNewComment = userTextInput.ShowDialog();
                 if ((bool)createNewComment)
                 {
-                    switch (tiEnt.TaskStatus)
+                    switch (CurrentTaskItemEntity.TaskStatus)
                     {
                         case TaskStatusEnum.Open:
-                            tiEnt.TaskStatus = TaskStatusEnum.Close;
+                            CurrentTaskItemEntity.TaskStatus = TaskStatusEnum.Close;
                             break;
                         case TaskStatusEnum.Close:
-                            tiEnt.TaskStatus = TaskStatusEnum.Open;
+                            CurrentTaskItemEntity.TaskStatus = TaskStatusEnum.Open;
                             break;
                     }
-                    tiEnt.LastChangeData = GetCurrentData();
-                    TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(tiEnt);
+
+                    CurrentTaskItemEntity.LastChangeData = GetCurrentData();
+                    TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
 
                     LogToCommentSender($"{commetnStatus}: {userTextInput.UserInput}");
-
-                    this.Close();
                 }
             }
         }
@@ -288,7 +315,7 @@ namespace KPLN_TaskManager.Forms
 
             TaskItemEntity_Comment logComment = new TaskItemEntity_Comment(
                 CurrentTaskItemEntity.Id,
-                MainDBService.CurrentDBUser.Id,
+                DBMainService.CurrentDBUser.Id,
                 logMsg,
                 GetCurrentData());
 
@@ -404,8 +431,8 @@ namespace KPLN_TaskManager.Forms
                         taskBodyWithElems,
                         CurrentTaskItemEntity.BitrixParentTaskId,
                         "BIM_Менеджер задач",
-                        MainDBService.CurrentDBUser.BitrixUserID,
-                        MainDBService.UserDbService.GetDBUser_ById(CurrentTaskItemEntity.DelegatedTaskUserId).BitrixUserID);
+                        DBMainService.CurrentDBUser.BitrixUserID,
+                        DBMainService.UserDbService.GetDBUser_ById(CurrentTaskItemEntity.DelegatedTaskUserId).BitrixUserID);
             });
 
             string newTaskIDResult = newTaskID.Result;
@@ -490,7 +517,7 @@ namespace KPLN_TaskManager.Forms
             System.Windows.Controls.Button taskBtn = sender as System.Windows.Controls.Button;
             if (taskBtn.DataContext is TaskItemEntity tiEnt)
             {
-                if (MainDBService.CurrentDBUser.BitrixUserID == -1 || MainDBService.CurrentDBUser.BitrixUserID == 0)
+                if (DBMainService.CurrentDBUser.BitrixUserID == -1 || DBMainService.CurrentDBUser.BitrixUserID == 0)
                 {
                     MessageBox.Show(
                         $"Не удалось получить ID-пользователя из Bitrix. Обратись к разработчику",
@@ -501,7 +528,7 @@ namespace KPLN_TaskManager.Forms
                     return;
                 }
 
-                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{MainDBService.CurrentDBUser.BitrixUserID}/tasks/task/view/{tiEnt.BitrixTaskId}/");
+                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{DBMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{tiEnt.BitrixTaskId}/");
             }
         }
 
@@ -546,14 +573,20 @@ namespace KPLN_TaskManager.Forms
         }
 
         /// <summary>
-        /// Настройка заголовка и "сворнутости" Expander с изображением
+        /// Настройка заголовка и "свёрнутости" Expander с изображением
         /// </summary>
         private void SetImgExpander()
         {
             if (CurrentTaskItemEntity.ImageSource != null)
+            {
+                ImgExpander.IsEnabled = true;
                 ImgExpander.IsExpanded = true;
+            }
             else
+            {
+                ImgExpander.IsEnabled= false;
                 ImgExpander.IsExpanded = false;
+            }
         }
     }
 }

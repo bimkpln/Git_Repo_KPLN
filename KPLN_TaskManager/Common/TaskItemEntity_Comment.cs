@@ -1,5 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_TaskManager.Services;
+﻿using KPLN_Library_SQLiteWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -38,7 +38,7 @@ namespace KPLN_TaskManager.Common
 
         public int DBUserId { get; set; }
 
-        public string Message 
+        public string Message
         {
             get => _message;
             set
@@ -84,11 +84,11 @@ namespace KPLN_TaskManager.Common
 
         #region Дополнительные данные
         /// <summary>
-        /// Коллекция отделов КПЛН
+        /// Ссылка на выбранного пользователя из БД
         /// </summary>
         private DBUser CurrentDBUser
         {
-            get => MainDBService.UserDbService.GetDBUser_ById(DBUserId);
+            get => DBMainService.UserDbService.GetDBUser_ById(DBUserId);
         }
         #endregion
 

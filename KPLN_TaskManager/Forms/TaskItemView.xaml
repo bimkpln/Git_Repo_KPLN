@@ -6,9 +6,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
     xmlns:local="clr-namespace:KPLN_TaskManager.Forms"
     mc:Ignorable="d" 
-    Width="500"
+    MinWidth="400"
+    MaxWidth="700"
     Height="Auto"
+    MaxHeight="1000"
     SizeToContent="Height"
+    Topmost="True"
     ResizeMode="CanResizeWithGrip"
     Background="White">
 
@@ -29,7 +32,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border 
-                            CornerRadius="5" 
+                            CornerRadius="3" 
                             Background="{TemplateBinding Background}">
                             <Grid>
                                 <ContentPresenter 
@@ -61,7 +64,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*" MinHeight="50" MaxHeight="150"/>
             <RowDefinition Height="20"/>
-            <RowDefinition Height="50" MaxHeight="100"/>
+            <RowDefinition MinHeight="50"/>
             <RowDefinition Height="*" MinHeight="50" MaxHeight="100"/>
         </Grid.RowDefinitions>
 
@@ -269,60 +272,76 @@
                 VerticalAlignment="Center" 
                 FontStretch="ExtraExpanded"/>
 
-            <DockPanel
-                LastChildFill="True">
-                <TextBlock 
-                    Text="Кол-во эл-в: "
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
-                    FontWeight="Bold" 
-                    Margin="5,0,5,0"
-                    Visibility="{Binding ElementName=ModelElemsContTBl, Path=Visibility}"/>
-                <TextBlock 
-                    Name="ModelElemsContTBl"
-                    Text="{Binding ElementIdsCount, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left"
-                    Margin="0,0,5,0"/>
+            <DockPanel 
+                LastChildFill="False">
+                <DockPanel
+                    LastChildFill="True"
+                    DockPanel.Dock="Left">
+                    <TextBlock 
+                        Text="Кол-во эл-в: "
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left"
+                        FontWeight="Bold" 
+                        Margin="5,0,5,0"
+                        Visibility="{Binding ElementName=ModelElemsContTBl, Path=Visibility}"/>
+                    <TextBlock 
+                        Name="ModelElemsContTBl"
+                        Text="{Binding ElementIdsCount, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
+                        VerticalAlignment="Center" 
+                        HorizontalAlignment="Left"
+                        Margin="0,0,5,0"/>
+                </DockPanel>
+
+                <DockPanel
+                    LastChildFill="True"
+                    DockPanel.Dock="Right">
+                    <TextBlock 
+                        Text="Id вида: "
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left"
+                        FontWeight="Bold" 
+                        Margin="5,0,5,0"
+                        Visibility="{Binding ElementName=ModelViewIdTBl, Path=Visibility}"/>
+                    <TextBlock 
+                        Name="ModelViewIdTBl"
+                        Text="{Binding ModelViewId, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
+                        VerticalAlignment="Center" 
+                        HorizontalAlignment="Left"
+                        Margin="0,0,5,0"/>
+                </DockPanel>
             </DockPanel>
 
-            <DockPanel
-                LastChildFill="True">
-                <TextBlock 
-                    Text="Id вида: "
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Left"
-                    FontWeight="Bold" 
-                    Margin="5,0,5,0"
-                    Visibility="{Binding ElementName=ModelViewIdTBl, Path=Visibility}"/>
-                <TextBlock 
-                    Name="ModelViewIdTBl"
-                    Text="{Binding ModelViewId, UpdateSourceTrigger=PropertyChanged, Mode=OneWay}"
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left"
-                    Margin="0,0,5,0"/>
-            </DockPanel>
 
             <DockPanel 
                 LastChildFill="False">
                 <Button
                     Name="AddElementIdsBtn"
-                    Content="Добавить эл-ты модели к задаче"
                     Style="{StaticResource RunBTN}" 
                     Background="{Binding TaskBackground}"
                     DockPanel.Dock="Left"
                     IsEnabled="False"
                     ToolTip="Нажми, чтобы добавить выбранные элементы к задаче"
-                    Click="AddElementIdsBtn_Click"/>
+                    Click="AddElementIdsBtn_Click">
+                    <ContentControl>
+                        <TextBlock 
+                            Text="Добавить эл-ты модели к задаче"
+                            Margin="5,0,5,0"/>
+                    </ContentControl>
+                </Button>
                 <Button
                     Name="RemoveElementIdsBtn"
-                    Content="Удалить эл-ты модели из задачи"
                     Style="{StaticResource RunBTN}" 
                     Background="{Binding TaskBackground}"
                     DockPanel.Dock="Right"
                     IsEnabled="False"
                     ToolTip="Нажми, чтобы удалить привязку к элементам модели"
-                    Click="RemoveElementIdsBtn_Click"/>
+                    Click="RemoveElementIdsBtn_Click">
+                    <ContentControl>
+                        <TextBlock 
+                            Text="Удалить эл-ты модели из задачи"
+                            Margin="5,0,5,0"/>
+                    </ContentControl>
+                </Button>
             </DockPanel>
 
         </StackPanel>
@@ -332,6 +351,7 @@
             Grid.Row="1"
             Header="Изображение"
             FontWeight="Bold"
+            IsEnabled="False"
             IsExpanded="False">
             <Grid>
                 <Image 
@@ -370,7 +390,7 @@
                         <TextBlock
                             Text="{Binding CommentFullData, UpdateSourceTrigger=PropertyChanged}"
                             HorizontalAlignment="Left"
-                            MaxWidth="375"
+                            MaxWidth="675"
                             Margin="2,1,2,1"
                             TextWrapping="Wrap"/>
                     </DataTemplate>

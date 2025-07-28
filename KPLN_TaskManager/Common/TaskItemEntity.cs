@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_TaskManager.Services;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -40,7 +40,7 @@ namespace KPLN_TaskManager.Common
         private string _createdTaskData;
         private string _lastChangeData;
 
-        private SolidColorBrush _fill;
+        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 190, 104));
         private ImageSource _imageSource;
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace KPLN_TaskManager.Common
                     OnPropertyChanged(nameof(TaskTitle));
                     OnPropertyChanged(nameof(DBUserColl));
                     OnPropertyChanged(nameof(ModelNamesColl));
-                    
+
                     if (Id == 0)
                         FindModelByDlgSubDep();
                 }
@@ -264,7 +264,7 @@ namespace KPLN_TaskManager.Common
         /// Коллекция ID элементов ревит-модели, в формате, пригодном для обработки ревитом (11111,11112,11113....)
         /// </summary>
         public string ElementIds
-        { 
+        {
             get => _elementIds;
             set
             {
@@ -354,7 +354,7 @@ namespace KPLN_TaskManager.Common
             get
             {
                 string crDepCode = string.Empty;
-                DBSubDepartment dBSubDepartment = MainDBService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == CreatedTaskDepartmentId);
+                DBSubDepartment dBSubDepartment = DBMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == CreatedTaskDepartmentId);
                 if (dBSubDepartment != null)
                     crDepCode = dBSubDepartment.Code;
 
@@ -370,17 +370,21 @@ namespace KPLN_TaskManager.Common
             get
             {
                 string delegDepCode = string.Empty;
-                DBSubDepartment dBSubDepartment = MainDBService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == DelegatedDepartmentId);
+                DBSubDepartment dBSubDepartment = DBMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == DelegatedDepartmentId);
                 if (dBSubDepartment != null)
                     delegDepCode = dBSubDepartment.Code;
-                
+
                 return delegDepCode;
             }
         }
 
         public string CreatedTaskUserFullName
         {
-            get => $"{MainDBService.UserDbService.GetDBUser_ById(CreatedTaskUserId).Surname} {MainDBService.UserDbService.GetDBUser_ById(CreatedTaskUserId).Name}";
+            get
+            {
+                DBUser user = DBMainService.UserDbService.GetDBUser_ById(CreatedTaskUserId);
+                return $"{user.Surname} {user.Name}";
+            }
         }
 
         /// <summary>
@@ -388,7 +392,7 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         public SolidColorBrush TaskBackground
         {
-            get { return _fill; }
+            get => _fill;
             set
             {
                 _fill = value;
@@ -438,14 +442,14 @@ namespace KPLN_TaskManager.Common
                 if (Id == 0)
                 {
                     // Отделы, которые имеют подчинения
-                    if (MainDBService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id))
-                        return MainDBService.DBSubDepartmentColl.Where(sd => sd.Id == MainDBService.CurrentDBUserSubDepartment.Id || sd.DependentSubDepId == MainDBService.CurrentDBUserSubDepartment.Id).ToArray();
+                    if (DBMainService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id))
+                        return DBMainService.DBSubDepartmentColl.Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id).ToArray();
                     // Остальные
                     else
-                        return MainDBService.DBSubDepartmentColl.Where(sd => sd.Id == MainDBService.CurrentDBUserSubDepartment.Id).ToArray();
+                        return DBMainService.DBSubDepartmentColl.Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id).ToArray();
                 }
 
-                return MainDBService.DBSubDepartmentColl;
+                return DBMainService.DBSubDepartmentColl;
             }
         }
 
@@ -454,7 +458,7 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         public DBSubDepartment[] DBSubDepartmentColl_Input
         {
-            get => MainDBService.DBSubDepartmentColl;
+            get => DBMainService.DBSubDepartmentColl;
         }
 
         /// <summary>
@@ -462,7 +466,21 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         public List<DBUser> DBUserColl
         {
-            get => MainDBService.GetDBUsers_BySubDepId(DelegatedDepartmentId);
+            get
+            {
+                if (DelegatedDepartmentId == 0 || DelegatedDepartmentId == -1)
+                    return new List<DBUser>(1) { new DBUser() { Id = -2, Surname = "<Сначала выбери отдел>" } };
+
+                List<DBUser> delSubDepUserColl = DBMainService
+                    .UserDbService
+                    .GetDBUsers_BySubDepID(DelegatedDepartmentId)
+                    .OrderBy(x => x.Surname)
+                    .ToList();
+
+                delSubDepUserColl.Insert(0, new DBUser() { Id = -2, Surname = "<Если задачу в Bitrix не отправляешь, оставь выбранным это поле>" });
+
+                return delSubDepUserColl;
+            }
         }
 
         /// <summary>

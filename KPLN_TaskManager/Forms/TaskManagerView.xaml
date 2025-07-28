@@ -213,7 +213,7 @@
                 <Grid>
                     <ItemsControl 
                         x:Name="TaskItems"
-                        ItemsSource="{Binding FilteredTasks, UpdateSourceTrigger=PropertyChanged}">
+                        ItemsSource="{Binding FilteredTasks, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button 

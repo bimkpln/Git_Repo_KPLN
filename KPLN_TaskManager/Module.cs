@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_TaskManager.ExternalCommands;
@@ -28,7 +29,8 @@ namespace KPLN_TaskManager
         internal static DBProject CurrentDBProject { get; private set; }
         internal static Document CurrentDoc { get; private set; }
         internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
-        
+        internal static int RevitVersion { get; private set; }
+
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close()
@@ -39,6 +41,7 @@ namespace KPLN_TaskManager
         public Result Execute(UIControlledApplication application, string tabName)
         {
             _uiContrApp = application;
+            RevitVersion = int.Parse(_uiContrApp.ControlledApplication.VersionNumber);
 
             //Ищу или создаю панель инструменты
             string panelName = "Инструменты";
@@ -88,9 +91,9 @@ namespace KPLN_TaskManager
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
                 : CurrentDoc.PathName;
             
-            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
+            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
 
-            CurrentDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
+            CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (CurrentDBProject == null)
                 return;
 
@@ -117,13 +120,13 @@ namespace KPLN_TaskManager
             CurrentUIApplication = new UIApplication(CurrentDoc.Application);
 
             CurrentFileName = openViewFileName;
-            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileName(CurrentFileName);
+            DBProject openViewDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (openViewDBProject == null)
                 return;
 
             CurrentDBProject = openViewDBProject;
             
-            CurrnetDocSubDep = MainDBService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
+            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
 
             // Возможно стоит заблочить, нужен дальнейший анализ. Оно конечно удобно, но при переключениях между видами, когда будет много тасок - будет лишний оверхед. Достаточно обновить список вручную,
             // и плюсом - они обновятся, если открыть отдельно таску.  
