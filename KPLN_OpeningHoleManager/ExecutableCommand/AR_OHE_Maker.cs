@@ -50,9 +50,9 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 {
                     trans.Start();
 
-                    _progressInfoViewModel.ProcessTitle = "Создание одиночных отверстий...";
                     _progressInfoViewModel.CurrentProgress = 0;
                     _progressInfoViewModel.MaxProgress = _arEntitiesToCreate.Length;
+                    _progressInfoViewModel.ProcessTitle = $"Создание одиночных отверстий...";
 
                     // Работа с элемнтами
                     foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)

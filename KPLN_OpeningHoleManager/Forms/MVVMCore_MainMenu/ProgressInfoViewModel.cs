@@ -11,6 +11,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         
         public event PropertyChangedEventHandler PropertyChanged;
 
+        public string ProgressCount => $"{CurrentProgress}/{MaxProgress}";
+
         private string _processTitle = "<Имя процесса установится по ходу анализа>";
         private int _currentProgress;
         private int _maxProgress = 1;
@@ -31,13 +33,23 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         public int CurrentProgress
         {
             get => _currentProgress;
-            set { _currentProgress = value; OnPropertyChanged(); }
+            set
+            {
+                _currentProgress = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ProgressCount));
+            }
         }
 
         public int MaxProgress
         {
             get => _maxProgress;
-            set { _maxProgress = value; OnPropertyChanged(); }
+            set
+            {
+                _maxProgress = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ProgressCount));
+            }
         }
 
         public string MaintStatus

@@ -167,43 +167,64 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
-        /// Получить общий BoundingBoxXYZ на основе всех заданий от ИОС с УЧЁТОМ вшитого Transform
+        /// Получить общий BoundingBoxXYZ на основе коллекции либо элементов Revit, либо IOSOpeningHoleTaskEntity
         /// </summary>
-        /// <returns></returns>
-        internal static BoundingBoxXYZ CreateOverallBBox(IOSOpeningHoleTaskEntity[] iosTasks)
+        internal static BoundingBoxXYZ CreateOverallBBox(object[] objColl)
         {
             BoundingBoxXYZ resultBBox = null;
 
-            foreach (IOSOpeningHoleTaskEntity iosTask in iosTasks)
+            foreach (object objElem in objColl)
             {
-                BoundingBoxXYZ elementBox = iosTask.OHE_Element.get_BoundingBox(null);
-                if (elementBox == null)
+                BoundingBoxXYZ elemBox;
+                Transform trans;
+                if (objElem is Element elem)
                 {
-                    HtmlOutput.Print($"Ошибка анализа, могут быть не предвиденные результат (проверь отдельно)." +
-                        $" У элемента с id:{iosTask.OHE_Element.Id} из связи {iosTask.OHE_LinkDocument.Title} - нет BoundingBoxXYZ",
-                        MessageType.Error);
-                    continue;
+                    elemBox = elem.get_BoundingBox(null);
+                    trans = elemBox.Transform;
+
+                    if (elemBox == null)
+                    {
+                        HtmlOutput.Print($"Ошибка анализа, могут быть не предвиденные результат (проверь отдельно)." +
+                            $" У элемента с id:{elem.Id} из вашей модели - нет BoundingBoxXYZ",
+                            MessageType.Error);
+                        continue;
+                    }
                 }
+                else if (objElem is IOSOpeningHoleTaskEntity iosTask)
+                {
+                    elemBox = iosTask.OHE_Element.get_BoundingBox(null);
+                    trans = iosTask.OHE_LinkTransform;
+
+                    if (elemBox == null)
+                    {
+                        HtmlOutput.Print($"Ошибка анализа, могут быть не предвиденные результат (проверь отдельно)." +
+                            $" У элемента с id:{iosTask.OHE_Element.Id} из связи {iosTask.OHE_LinkDocument.Title} - нет BoundingBoxXYZ",
+                            MessageType.Error);
+                        continue;
+                    }
+                }
+                else
+                    throw new Exception($"Ошибка - в метод 'CreateOverallBBox' подан тип, который не подвергается анализу");
 
                 if (resultBBox == null)
                 {
                     resultBBox = new BoundingBoxXYZ
                     {
-                        Min = iosTask.OHE_LinkTransform.OfPoint(elementBox.Min),
-                        Max = iosTask.OHE_LinkTransform.OfPoint(elementBox.Max)
+                        Min = trans.OfPoint(elemBox.Min),
+                        Max = trans.OfPoint(elemBox.Max)
                     };
                 }
                 else
                 {
-                    resultBBox.Min = iosTask.OHE_LinkTransform.OfPoint(new XYZ(
-                        Math.Min(resultBBox.Min.X, elementBox.Min.X),
-                        Math.Min(resultBBox.Min.Y, elementBox.Min.Y),
-                        Math.Min(resultBBox.Min.Z, elementBox.Min.Z)));
+                    resultBBox.Min = trans.OfPoint(new XYZ(
+                        Math.Min(resultBBox.Min.X, elemBox.Min.X),
+                        Math.Min(resultBBox.Min.Y, elemBox.Min.Y),
+                        Math.Min(resultBBox.Min.Z, elemBox.Min.Z)));
 
-                    resultBBox.Max = iosTask.OHE_LinkTransform.OfPoint(new XYZ(
-                        Math.Max(resultBBox.Max.X, elementBox.Max.X),
-                        Math.Max(resultBBox.Max.Y, elementBox.Max.Y),
-                        Math.Max(resultBBox.Max.Z, elementBox.Max.Z)));
+                    resultBBox.Max = trans.OfPoint(new XYZ(
+                        Math.Max(resultBBox.Max.X, elemBox.Max.X),
+                        Math.Max(resultBBox.Max.Y, elemBox.Max.Y),
+                        Math.Max(resultBBox.Max.Z, elemBox.Max.Z)));
                 }
             }
 
@@ -213,12 +234,14 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Создать Outline по указанному BoundingBoxXYZ и расширению
         /// </summary>
-        internal static Outline CreateFilterOutline(BoundingBoxXYZ bbox, double expandValue)
+        internal static Outline CreateOutline_ByBBoxANDExpand(BoundingBoxXYZ bbox, double expandValue)
         {
             Outline resultOutlie;
 
-            XYZ bboxMin = bbox.Min;
-            XYZ bboxMax = bbox.Max;
+            Transform bboxTrans = bbox.Transform;
+
+            XYZ bboxMin = bboxTrans.OfPoint(bbox.Min);
+            XYZ bboxMax = bboxTrans.OfPoint(bbox.Max);
 
             // Подготовка расширенного BoundingBoxXYZ, чтобы не упустить эл-ты
             BoundingBoxXYZ expandedCropBB = new BoundingBoxXYZ()
@@ -259,8 +282,7 @@ namespace KPLN_OpeningHoleManager.Services
             if (!resultOutlie.IsEmpty && resultOutlie.IsValidObject)
                 return resultOutlie;
 
-            HtmlOutput.Print($"Отправь разработчику - не удалось создать Outline для фильтрации", MessageType.Error);
-            return null;
+            throw new Exception($"Отправь разработчику - не удалось создать Outline для фильтрации");
         }
 
         /// <summary>
@@ -301,22 +323,30 @@ namespace KPLN_OpeningHoleManager.Services
             double tempArea = 0;
             foreach (Face face in checkSolid.Faces)
             {
+                XYZ checkOrigin;
                 if (face is PlanarFace planarFace)
                 {
                     XYZ faceNormal = planarFace.FaceNormal;
-                    XYZ checkOrigin = new XYZ(faceNormal.X, faceNormal.Y, hostDirection.Z);
+                    checkOrigin = new XYZ(faceNormal.X, faceNormal.Y, hostDirection.Z);
 
+                }
+                else if (face is RevolvedFace revFace)
+                {
+                    XYZ faceNormal = revFace.Axis;
+                    checkOrigin = new XYZ(faceNormal.X, faceNormal.Y, hostDirection.Z);
+                }
+                else continue;
 #if Debug2020 || Revit2020
-                    double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), DisplayUnitType.DUT_DEGREES_AND_MINUTES);
+                double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), DisplayUnitType.DUT_DEGREES_AND_MINUTES);
 #else
-                    double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), new ForgeTypeId("autodesk.unit.unit:degrees-1.0.1"));
+                double angle = UnitUtils.ConvertFromInternalUnits(hostDirection.AngleTo(checkOrigin), new ForgeTypeId("autodesk.unit.unit:degrees-1.0.1"));
 #endif
-                    if ((Math.Round(angle, 5) - 90 <= tolerance || Math.Round(angle, 5) - 180 <= tolerance) 
-                        && tempArea < face.Area)
-                    {
-                        result = face;
-                        tempArea = face.Area;
-                    }
+                // По непонятной причине - площадь может быть отрицательной...
+                if ((Math.Round(angle, 2) - 90 <= tolerance || Math.Round(angle, 2) - 180 <= tolerance) 
+                    && tempArea < Math.Abs(face.Area))
+                {
+                    result = face;
+                    tempArea = face.Area;
                 }
             }
 

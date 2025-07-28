@@ -62,11 +62,17 @@
             <TextBlock 
                 Text="{Binding ProcessTitle}"
                 Style="{StaticResource TXTBL}"/>
-            <ProgressBar 
-                Minimum="0" 
-                Maximum="{Binding MaxProgress}" 
-                Value="{Binding CurrentProgress}"
-                Style="{StaticResource PRBR}"/>
+            <Grid>
+                <ProgressBar
+                    Minimum="0"
+                    Maximum="{Binding MaxProgress}"
+                    Value="{Binding CurrentProgress}"
+                    Style="{StaticResource PRBR}"/>
+                <TextBlock
+                    Text="{Binding ProgressCount}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"/>
+            </Grid>
         </StackPanel>
 
         <DockPanel

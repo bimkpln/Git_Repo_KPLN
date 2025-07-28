@@ -205,7 +205,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 window.Show();
 
                 ARKRElemEntity[] arkrEntities = GetARKRElemsFromLink(doc, arHosts, progressInfoViewModel);
-
                 if (arkrEntities.Count() == 0)
                 {
                     new TaskDialog("Внимание")
@@ -486,8 +485,60 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 }
             }
 
+
+            // Кэширую Transform для каждой найденной связи, чтобы не запрашивать его при обработке каждого элемента
+            Dictionary<RevitLinkInstance, Transform> linkTransforms = new Dictionary<RevitLinkInstance, Transform>();
+            foreach (RevitLinkInstance linkInst in onlyIOSRLinkInsts)
+            {
+                linkTransforms[linkInst] = ARKRElemsCollectionCreator.GetLinkTransform(linkInst);
+            }
+
+
+            // Подготовка Outline для глобальной фильтрации элементов линков
+            BoundingBoxXYZ filterBBox = GeometryWorker.CreateOverallBBox(arHostElems);
+            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 2);
+
+            
+            // Фильтры
+            BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
+            BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);
+
+
+            // Подготавливаю коллекцию элементов из каждого линк-файла один раз, чтобы не создавать FilteredElementCollector для каждого элемента хоста
+            progressInfoViewModel.CurrentProgress = 0;
+            progressInfoViewModel.ProcessTitle = "Анализ и подготовка элементов из связей...";
+            progressInfoViewModel.MaxProgress = onlyIOSRLinkInsts.Count();
+            Dictionary<RevitLinkInstance, ICollection<Element>> linkElems = new Dictionary<RevitLinkInstance, ICollection<Element>>();
+            foreach (RevitLinkInstance linkInst in onlyIOSRLinkInsts)
+            {
+                Document linkDoc = linkInst.GetLinkDocument();
+                if (linkDoc != null)
+                {
+                    HashSet<Element> linkElems_FromSection = new HashSet<Element>(new ElementComparerById());
+
+                    // Элементы линка, В РАМКАХ выбранных хостов АР (по пересечению)
+                    linkElems_FromSection
+                        .UnionWith(new FilteredElementCollector(linkDoc)
+                        .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, intersectsFilter))
+                        .Where(IOSElemEntity.ElemExtraFilterFunc));
+
+                    // Элементы линка, В РАМКАХ выбранных хостов АР (по вхождению)
+                    linkElems_FromSection
+                        .UnionWith(new FilteredElementCollector(linkDoc)
+                        .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, insideFilter))
+                        .Where(IOSElemEntity.ElemExtraFilterFunc));
+
+                    linkElems[linkInst] = linkElems_FromSection;
+                }
+
+                ++progressInfoViewModel.CurrentProgress;
+                progressInfoViewModel.DoEvents();
+            }
+
+
             // Генерирую коллекцию ARKRIOSElemEntity относительно основ АР/КР
-            progressInfoViewModel.ProcessTitle = "Подготовка оснований...";
+            progressInfoViewModel.CurrentProgress = 0;
+            progressInfoViewModel.ProcessTitle = "Анализ и подготовка оснований...";
             progressInfoViewModel.MaxProgress = arHostElems.Length;
             foreach (Element arHostElem in arHostElems)
             {
@@ -495,7 +546,12 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     ARKRElemEntity aRKRElemEntity = new ARKRElemEntity(arHostElem);
 
-                    ARKRElemsCollectionCreator.SetIOSEntities_ByIOSElemEntities(aRKRElemEntity, onlyIOSRLinkInsts);
+                    ARKRElemsCollectionCreator.SetIOSEntities_ByIOSElemEntities(
+                       aRKRElemEntity,
+                       onlyIOSRLinkInsts,
+                       linkTransforms,
+                       linkElems);
+
                     if (aRKRElemEntity.IOSElemEntities.Count() > 0)
                         arkrEntities.Add(aRKRElemEntity);
                 }
@@ -847,7 +903,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             List<Element> result = new List<Element>();
 
             BoundingBoxXYZ filterBBox = GeometryWorker.CreateOverallBBox(iosTasks);
-            Outline filterOutline = GeometryWorker.CreateFilterOutline(filterBBox, 3);
+            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 3);
 
             BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
             BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);

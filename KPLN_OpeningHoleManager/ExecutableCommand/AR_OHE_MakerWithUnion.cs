@@ -59,9 +59,9 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     trans.Start();
 
                     // Создаю новые элементы
-                    _progressInfoViewModel.ProcessTitle = "Создание одиночных отверстий...";
                     _progressInfoViewModel.CurrentProgress = 0;
                     _progressInfoViewModel.MaxProgress = _arEntities.Length;
+                    _progressInfoViewModel.ProcessTitle = $"Создание одиночных отверстий...";
                     foreach (AROpeningHoleEntity arEntity in _arEntities)
                     {
                         arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc);
@@ -182,7 +182,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                             }
 
 
-                            _progressInfoViewModel.ProcessTitle = "Создание итоговых отверстий...";
+                            _progressInfoViewModel.ProcessTitle = "Создание объединенных отверстий...";
                             _progressInfoViewModel.CurrentProgress = 0;
                             _progressInfoViewModel.MaxProgress = arEntitiesForUnion.Count();
                             // Затем создаю новые элементы

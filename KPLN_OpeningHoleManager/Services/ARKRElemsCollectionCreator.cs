@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_OpeningHoleManager.Core;
 using System;
 using System.Collections.Generic;
@@ -33,15 +32,20 @@ namespace KPLN_OpeningHoleManager.Services
         /// Установить коллекцию IOSElemEntities для ARKRElemEntity ПО ВСЕМ ФАЙЛАМ
         /// </summary>
         /// <returns></returns>
-        internal static ARKRElemEntity SetIOSEntities_ByIOSElemEntities(ARKRElemEntity arkrEntity, List<RevitLinkInstance> iosLinkInsts)
+        internal static ARKRElemEntity SetIOSEntities_ByIOSElemEntities(
+            ARKRElemEntity arkrEntity,
+            List<RevitLinkInstance> iosLinkInsts,
+            IDictionary<RevitLinkInstance, Transform> linkTransforms,
+            IDictionary<RevitLinkInstance, ICollection<Element>> prefilteredLinkElems = null)
         {
             // Генерация Outline для быстрого поиска (QuickFilter)
-            Outline filterOutline = CreateFilterOutline_BySolid(arkrEntity.ARKRHost_Solid, 0.5);
+            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(arkrEntity.ARKRHost_Solid.GetBoundingBox(), 0.5);
 
             foreach (RevitLinkInstance iosLinkInst in iosLinkInsts)
             {
                 Document iosLinkDoc = iosLinkInst.GetLinkDocument();
-                Transform iosLinkTransform = GetLinkTransform(iosLinkInst);
+                if (!linkTransforms.TryGetValue(iosLinkInst, out Transform iosLinkTransform))
+                    throw new Exception($"Не предустановлен Transform для связи {iosLinkInst.Name}");
 
                 Outline checkOutline = TransformFilterOutline_ToLink(filterOutline, iosLinkTransform);
 
@@ -50,13 +54,13 @@ namespace KPLN_OpeningHoleManager.Services
 
                 HashSet<Element> checkLinkElems = new HashSet<Element>(new ElementComparerById());
 
-                checkLinkElems.UnionWith(new FilteredElementCollector(iosLinkDoc)
-                    .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, intersectsFilter))
-                    .Where(IOSElemEntity.ElemExtraFilterFunc));
-
-                checkLinkElems.UnionWith(new FilteredElementCollector(iosLinkDoc)
-                    .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, insideFilter))
-                    .Where(IOSElemEntity.ElemExtraFilterFunc));
+                if (prefilteredLinkElems.TryGetValue(iosLinkInst, out ICollection<Element> preElems))
+                {
+                    checkLinkElems.UnionWith(preElems.Where(e => intersectsFilter.PassesFilter(iosLinkDoc, e.Id)));
+                    checkLinkElems.UnionWith(preElems.Where(e => insideFilter.PassesFilter(iosLinkDoc, e.Id)));
+                }
+                else
+                    throw new Exception($"Не предустановлены элементы для связи {iosLinkInst.Name}");
 
                 foreach (Element iosLinkElem in checkLinkElems)
                 {
@@ -70,14 +74,26 @@ namespace KPLN_OpeningHoleManager.Services
         }
 
         /// <summary>
+        /// Задать Transform для линка
+        /// </summary>
+        /// <param name="linkInst">Instance связи</param>
+        /// <returns></returns>
+        internal static Transform GetLinkTransform(RevitLinkInstance linkInst)
+        {
+            Instance inst = linkInst as Instance;
+            Transform instTrans = inst.GetTotalTransform();
+            return instTrans;
+        }
+
+        /// <summary>
         /// Создание IOSElemEntity по пересечению (если оно есть)
         /// </summary>
         private static IOSElemEntity GetIOSElemEntity_BySolidIntersect(ARKRElemEntity entity, Document iosLinkDoc, Element iosLinkElem, Transform iosLinkTransfrom)
         {
             // Фильтрация по продольным коллизиям
             Location iosLinkElemLoc = iosLinkElem.Location;
-            if (iosLinkElemLoc != null 
-                && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve 
+            if (iosLinkElemLoc != null
+                && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve
                 && iosLinkElemLocCurve.Curve is Line iosLinkElemLine)
             {
                 XYZ iosDir = iosLinkElemLine.Direction;
@@ -113,73 +129,6 @@ namespace KPLN_OpeningHoleManager.Services
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Создать Outline по элементу АР и расширению
-        /// </summary>
-        private static Outline CreateFilterOutline_BySolid(Solid arHostSolid, double expandValue)
-        {
-            Outline resultOutlie;
-
-            BoundingBoxXYZ bbox = arHostSolid.GetBoundingBox();
-            Transform bboxTrans = bbox.Transform;
-
-            XYZ bboxMin = bboxTrans.OfPoint(bbox.Min);
-            XYZ bboxMax = bboxTrans.OfPoint(bbox.Max);
-
-            // Подготовка расширенного BoundingBoxXYZ, чтобы не упустить эл-ты
-            BoundingBoxXYZ expandedCropBB = new BoundingBoxXYZ()
-            {
-                Max = bboxMax + new XYZ(expandValue, expandValue, expandValue),
-                Min = bboxMin - new XYZ(expandValue, expandValue, expandValue),
-            };
-
-            resultOutlie = new Outline(expandedCropBB.Min, expandedCropBB.Max);
-
-            if (resultOutlie.IsEmpty)
-            {
-                XYZ transExpandedElemBBMin = resultOutlie.MinimumPoint;
-                XYZ transExpandedElemBBMax = resultOutlie.MaximumPoint;
-
-                double minX = transExpandedElemBBMin.X;
-                double minY = transExpandedElemBBMin.Y;
-                double minZ = transExpandedElemBBMin.Z;
-
-                double maxX = transExpandedElemBBMax.X;
-                double maxY = transExpandedElemBBMax.Y;
-                double maxZ = transExpandedElemBBMax.Z;
-
-                double sminX = Math.Min(minX, maxX);
-                double sminY = Math.Min(minY, maxY);
-                double sminZ = Math.Min(minZ, maxZ);
-
-                double smaxX = Math.Max(minX, maxX);
-                double smaxY = Math.Max(minY, maxY);
-                double smaxZ = Math.Max(minZ, maxZ);
-
-                XYZ pntMin = new XYZ(sminX, sminY, sminZ);
-                XYZ pntMax = new XYZ(smaxX, smaxY, smaxZ);
-
-                resultOutlie = new Outline(pntMin, pntMax);
-            }
-
-            if (!resultOutlie.IsEmpty && resultOutlie.IsValidObject)
-                return resultOutlie;
-
-            throw new Exception($"Отправь разработчику - не удалось создать Outline для фильтрации");
-        }
-
-        /// <summary>
-        /// Задать Transform для линка
-        /// </summary>
-        /// <param name="linkInst">Instance связи</param>
-        /// <returns></returns>
-        private static Transform GetLinkTransform(RevitLinkInstance linkInst)
-        {
-            Instance inst = linkInst as Instance;
-            Transform instTrans = inst.GetTotalTransform();
-            return instTrans;
         }
 
         /// <summary>
