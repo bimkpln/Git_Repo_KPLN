@@ -123,7 +123,7 @@ namespace KPLN_ModelChecker_User.Forms
                     }
                     else
                     {
-                        results[levelName] = "ОШИБКА";
+                        results[levelName] = "ОШИБКА. Имя не соответствует BEP.";
                         hasCriticalLevelError = true;
                     }
                 }
@@ -139,7 +139,7 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     if (count >= maxToShow) break;
 
-                    bool isError = pair.Value == "ОШИБКА";
+                    bool isError = pair.Value == "ОШИБКА. Имя не соответствует BEP.";
                     output.Add(new Run($"       • {pair.Key} → {pair.Value}\n")
                     {
                         Foreground = isError ? Brushes.IndianRed : Brushes.DarkGreen
