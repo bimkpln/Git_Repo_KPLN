@@ -42,15 +42,17 @@ namespace KPLN_Library_Bitrix24Worker
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client
-                        .GetAsync($"{_webHookUrl}/im.message.add.json?MESSAGE={msg}&DIALOG_ID=chat99642");
-                    if (response.IsSuccessStatusCode)
+                    var requestData = new Dictionary<string, object>
                     {
-                        string content = await response.Content.ReadAsStringAsync();
-                        if (string.IsNullOrEmpty(content))
-                            throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
-                    }
+                        { "MESSAGE",  msg},
+                        { "DIALOG_ID", "chat99642"},
+                    };
+
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync($"{_webHookUrl}/im.message.add", jsonContent);
+                    string responseContent = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                        throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
                 }
             }
             catch (Exception ex)
@@ -64,7 +66,8 @@ namespace KPLN_Library_Bitrix24Worker
         /// </summary>
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
         /// <param name="msg">Сообщение, которое будет отправлено</param>
-        public static async void SendMsg_ToUser_ByDBUser(DBUser dBUser, string msg)
+        /// <param name="system">Отображать сообщения в виде системного сообщения или нет ("Y" или "N")</param>
+        public static async void SendMsg_ToUser_ByDBUser(DBUser dBUser, string msg, string system = "N")
         {
             int bitrixUserId = await GetDBUserBitrixId_ByDBUser(dBUser);
             if (bitrixUserId == -1) return;
@@ -74,16 +77,18 @@ namespace KPLN_Library_Bitrix24Worker
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    // Выполнение GET - запроса к странице
-                    string encodedMsg = WebUtility.UrlEncode(msg);
-                    HttpResponseMessage response = await client
-                        .GetAsync($"{_webHookUrl}/im.message.add.json?MESSAGE={encodedMsg}&DIALOG_ID={bitrixUserId}");
-                    if (response.IsSuccessStatusCode)
+                    var requestData = new Dictionary<string, object>
                     {
-                        string content = await response.Content.ReadAsStringAsync();
-                        if (string.IsNullOrEmpty(content))
-                            throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
-                    }
+                        { "MESSAGE",  msg},
+                        { "DIALOG_ID", bitrixUserId},
+                        { "SYSTEM", system},
+                    };
+
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync($"{_webHookUrl}/im.message.add", jsonContent);
+                    string responseContent = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                        throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
                 }
             }
             catch (Exception ex)
