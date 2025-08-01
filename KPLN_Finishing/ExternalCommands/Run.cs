@@ -115,7 +115,10 @@ namespace KPLN_Finishing.ExternalCommands
                             foreach (Element element in new FilteredElementCollector(doc).OfCategory(category).WhereElementIsNotElementType().WherePasses(levelFilter).ToElements())
                             {
                                 pf.Increment();
-                                
+
+                                Element elemType = GetTypeElement(element);
+                                if (elemType == null) continue;
+
                                 string elemGroupModelParamData = GetTypeElement(element).get_Parameter(BuiltInParameter.ALL_MODEL_MODEL).AsString();
                                 if (string.IsNullOrEmpty(elemGroupModelParamData)) continue;
                                 

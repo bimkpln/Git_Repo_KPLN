@@ -34,20 +34,29 @@ namespace KPLN_Finishing
                 case -2000011://Walls
                     try
                     {
-                        Wall wall = element as Wall;
-                        WallType type = wall.WallType;
-                        if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
-                        else { return type; }
+                        if (element is Wall wall)
+                        {
+                            WallType type = wall.WallType;
+                            if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
+                            else { return type; }
+                        }
+
+                        return null;
+
                     }
                     catch (Exception) { }
                     break;
                 case -2000032://Floors
                     try
                     {
-                        Floor floor = element as Floor;
-                        FloorType type = floor.FloorType;
-                        if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
-                        else { return type; }
+                        if (element is Floor floor)
+                        {
+                            FloorType type = floor.FloorType;
+                            if (type == null || type.Id.IntegerValue == -1) { throw new Exception(); }
+                            else { return type; }
+                        }
+
+                        return null;
                     }
                     catch (Exception) { }
                     break;
