@@ -130,9 +130,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             ApplyMergedCategories(baseData, overrideData);
         }
 
-
-
-
         private static void ApplyMergedCategories(RoomCategoryData baseData, RoomCategoryData overrideData)
         {
             Dictionary<string, string> termToCategory = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
