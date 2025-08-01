@@ -2,8 +2,11 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Forms;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
+using System.IO;
 
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -51,12 +54,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             if (roomParamValues.Count > 0)
             {
+                WetZoneCategories.LoadForDocument(doc);
+
                 var livingRooms = roomParamValues.Where(r => WetZoneCategories.LivingRooms.Contains(r.Value.Trim(), System.StringComparer.InvariantCultureIgnoreCase)).Select(r => r.Key).ToList();
                 var kitchenRooms = roomParamValues.Where(r => WetZoneCategories.KitchenRooms.Contains(r.Value.Trim(), System.StringComparer.InvariantCultureIgnoreCase)).Select(r => r.Key).ToList();
                 var wetRooms = roomParamValues.Where(r => WetZoneCategories.WetRooms.Contains(r.Value.Trim(), System.StringComparer.InvariantCultureIgnoreCase)).Select(r => r.Key).ToList();
 
                 var allAssigned = new HashSet<Element>(livingRooms.Concat(kitchenRooms).Concat(wetRooms));
-                var undefinedRooms = roomParamValues.Keys.Where(r => !allAssigned.Contains(r)).ToList();
+                var undefinedRooms =  roomParamValues.Where(r => !allAssigned.Contains(r.Key) && !WetZoneCategories.NonProcessedRooms.Contains(r.Value.Trim(), 
+                    StringComparer.InvariantCultureIgnoreCase)).Select(r => r.Key).ToList();
 
                 WetZoneReviewWindow reviewWindow = new WetZoneReviewWindow(uiDoc, doc, selectedParam, livingRooms, kitchenRooms,wetRooms,undefinedRooms);
                 reviewWindow.ShowDialog();
@@ -77,40 +83,136 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     /// </summary>
     static class WetZoneCategories
     {
-        /// Название помещения "Жилые комнаты"
-        public static readonly List<string> LivingRooms = new List<string>
-        {
-            "Жилая комната",
-            "Спальня",
-            "Гостевая",
-            "Гостинная",
-            "Гостиная",
-            "Детская",
-            "Игровая",
-            "Кабинет"
-        };
+        public static List<string> LivingRooms { get; private set; } = new List<string>();
+        public static List<string> KitchenRooms { get; private set; } = new List<string>();
+        public static List<string> WetRooms { get; private set; } = new List<string>();
+        public static List<string> NonProcessedRooms { get; private set; } = new List<string>();
 
-        /// Название помещения "Кухни"
-        public static readonly List<string> KitchenRooms = new List<string>
-        {
-            "Кухня",
-            "Кухня-ниша",
-            "Кухня-столовая",
-            "Кухня столовая",
-            "Кухонная зона кухни-столовой"
-        };
+        private static readonly string BasePath = @"X:\BIM\6_Инструменты\Плагин мокрые зоны\";
+        private const string MainFileName = "_categoriesMain.json";
 
-        /// Название помещения "Мокрая зона"
-        public static readonly List<string> WetRooms = new List<string>
+        public static void LoadForDocument(Document doc)
         {
-            "Санузел",
-            "С/У",
-            "Туалет",
-            "Ванная",
-            "Ванная комната",
-            "Душевая",
-            "Постирочная",
-            "Прачечная",
-        };
+            string fileName = Path.GetFileNameWithoutExtension(doc.PathName);
+            if (string.IsNullOrEmpty(fileName)) throw new Exception("Файл не сохранён, невозможно определить имя модели.");
+            string prefix = fileName.Split('_').FirstOrDefault();
+            if (string.IsNullOrEmpty(prefix)) throw new Exception("Не удалось извлечь префикс из имени файла.");
+
+            // Загружаем основную базу
+            RoomCategoryData baseData = null;
+            try
+            {
+                var mainPath = Path.Combine(BasePath, MainFileName);
+                if (!File.Exists(mainPath))
+                {
+                    TaskDialog.Show("Ошибка", $"Не найден основной JSON-файл определения категорий помещений");
+                    return;
+                }
+
+                baseData = LoadFromJson(mainPath);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка", $"Не удалось загрузить основной JSON-файл определения категорий помещений:\n{ex.Message}");
+                return;
+            }
+
+            // Загружаем оверрайд, если он есть
+            RoomCategoryData overrideData = null;
+            try
+            {
+                var overridePath = Path.Combine(BasePath, $"{prefix}.json");
+                if (File.Exists(overridePath))
+                    overrideData = LoadFromJson(overridePath);
+            }
+            catch{}
+
+            ApplyMergedCategories(baseData, overrideData);
+        }
+
+        private static void ApplyMergedCategories(RoomCategoryData baseData, RoomCategoryData overrideData)
+        {
+            Dictionary<string, string> termToCategory = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+
+            void RegisterTerms(IEnumerable<string> terms, string category)
+            {
+                if (terms == null) return;
+
+                foreach (var raw in terms)
+                {
+                    var term = raw?.Trim();
+                    if (string.IsNullOrEmpty(term)) continue;
+
+                    if (!termToCategory.ContainsKey(term))
+                    {
+                        termToCategory[term] = category;
+                    }
+                }
+            }
+
+            RegisterTerms(baseData.LivingRooms, "LivingRooms");
+            RegisterTerms(baseData.KitchenRooms, "KitchenRooms");
+            RegisterTerms(baseData.WetRooms, "WetRooms");
+            RegisterTerms(baseData.NonProcessedRooms, "NonProcessedRooms");
+
+            if (overrideData != null)
+            {
+                void OverrideTerms(IEnumerable<string> terms, string category)
+                {
+                    if (terms == null) return;
+
+                    foreach (var raw in terms)
+                    {
+                        var term = raw?.Trim();
+                        if (string.IsNullOrEmpty(term)) continue;
+
+                        if (termToCategory.TryGetValue(term, out string currentCategory))
+                        {
+                            if (currentCategory == category)
+                                continue; 
+                        }
+
+                        termToCategory[term] = category;
+                    }
+                }
+
+                OverrideTerms(overrideData.LivingRooms, "LivingRooms");
+                OverrideTerms(overrideData.KitchenRooms, "KitchenRooms");
+                OverrideTerms(overrideData.WetRooms, "WetRooms");
+                OverrideTerms(overrideData.NonProcessedRooms, "NonProcessedRooms");
+            }
+
+            LivingRooms = new List<string>();
+            KitchenRooms = new List<string>();
+            WetRooms = new List<string>();
+            NonProcessedRooms = new List<string>();
+
+            foreach (var kv in termToCategory)
+            {
+                switch (kv.Value)
+                {
+                    case "LivingRooms": LivingRooms.Add(kv.Key); break;
+                    case "KitchenRooms": KitchenRooms.Add(kv.Key); break;
+                    case "WetRooms": WetRooms.Add(kv.Key); break;
+                    case "NonProcessedRooms": NonProcessedRooms.Add(kv.Key); break;
+                }
+            }
+        }
+
+        // загрузка JSON
+        private static RoomCategoryData LoadFromJson(string path)
+        {
+            string json = File.ReadAllText(path);
+            return JsonConvert.DeserializeObject<RoomCategoryData>(json);
+        }
+
+        // Класс только для JSON сериализации
+        private class RoomCategoryData
+        {
+            public List<string> LivingRooms { get; set; }
+            public List<string> KitchenRooms { get; set; }
+            public List<string> WetRooms { get; set; }
+            public List<string> NonProcessedRooms { get; set; }
+        }
     }
 }
