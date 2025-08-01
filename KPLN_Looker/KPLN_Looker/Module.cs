@@ -112,6 +112,16 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Получить полное имя открытого файла
+        /// </summary>
+        /// <param name="doc">Документ Ревит для анализа</param>
+        /// <returns></returns>
+        public static string GetFileFullName(Document doc) =>
+            doc.IsWorkshared && !doc.IsDetached
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
+                : doc.PathName;
+
+        /// <summary>
         /// Выдача имени файла с проверкой на необходимость в контроле действий. 
         /// Исключения: модели НЕ с основных серверов КПЛН (диск Y:\\ и любые RS-ы); НЕ шаблоны проектов; не офис КПЛН; НЕ концепции АР
         /// </summary>
@@ -145,16 +155,14 @@ namespace KPLN_Looker
             if (doc == null)
                 return null;
 
-            string fileName = doc.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
+            string fileFullName = GetFileFullName(doc);
 
             if (!doc.IsFamilyDocument
-                && (fileName.ToLower().Contains("stinproject.local\\project\\") || fileName.ToLower().Contains("rsn"))
-                && !fileName.EndsWith("rte")
+                && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
+                && !fileFullName.EndsWith("rte")
                 // Офис КПЛН
-                && !fileName.ToLower().Contains("16с13"))
-                return fileName;
+                && !fileFullName.ToLower().Contains("16с13"))
+                return fileFullName;
 
             return null;
         }
@@ -486,8 +494,8 @@ namespace KPLN_Looker
             if (monitoredFamInsts.All(fi => fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks))
                 return;
 
-            string docCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(docCentralPath, RevitVersion);
+            string fileFullName = GetFileFullName(doc);
+            DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             if (docDBProject == null)
                 return;
 
@@ -496,6 +504,10 @@ namespace KPLN_Looker
             DocumentSet docSet = doc.Application.Documents;
             foreach (Document openDoc in docSet)
             {
+                // Семейство в игнор (там нечего копировать)
+                if (openDoc.IsFamilyDocument)
+                    continue;
+                
                 // Если это тот же файл - игнор
                 if (openDoc.Title.Equals(docTitle))
                     continue;
@@ -504,14 +516,11 @@ namespace KPLN_Looker
                 if (openDoc.IsLinked)
                     continue;
 
-                if (openDoc.IsWorkshared)
-                {
-                    string openDocCentralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(openDoc.GetWorksharingCentralModelPath());
-                    DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocCentralPath, RevitVersion);
-                    // Если проекты из БД отличаются - блокирую
-                    if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
-                        continue;
-                }
+                // Если проекты из БД отличаются - блокирую
+                string openDocFileFullName = GetFileFullName(openDoc);
+                DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocFileFullName, RevitVersion);
+                if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
+                    continue;
 
                 countDifferenceProjects++;
             }
@@ -635,17 +644,13 @@ namespace KPLN_Looker
                 return;
 
             // Получаю проект из БД КПЛН
-            string centralPath;
-            if (doc.IsWorkshared && !doc.IsDetached)
-                centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            else
-                centralPath = doc.PathName;
+            string fileFullName = GetFileFullName(doc);
 
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
             if (dBProject == null)
             {
-                string centralPathForUser = centralPath.Replace("\\\\stinproject.local\\project", "Y:");
+                string centralPathForUser = fileFullName.Replace("\\\\stinproject.local\\project", "Y:");
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
                 {
                     BitrixMessageSender.SendMsg_ToUser_ByDBUser(
@@ -654,7 +659,8 @@ namespace KPLN_Looker
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPathForUser}[/b].");
+                        $"Путь к модели: [b]{centralPathForUser}[/b].",
+                        "Y");
                 }
 
                 return;
@@ -662,7 +668,7 @@ namespace KPLN_Looker
 
             // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
             {
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
@@ -673,13 +679,14 @@ namespace KPLN_Looker
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPath}[/b].");
+                        $"Путь к модели: [b]{fileFullName}[/b].",
+                        "Y");
                 }
 
                 // Создаю, если не нашел
                 dBDocument = new DBDocument()
                 {
-                    CentralPath = centralPath,
+                    CentralPath = fileFullName,
                     ProjectId = dBProject.Id,
                     SubDepartmentId = prjDBSubDepartment.Id,
                     LastChangedUserId = DBMainService.CurrentDBUser.Id,
@@ -730,10 +737,10 @@ namespace KPLN_Looker
             }
             #endregion
 
-            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            
+            string fileFullName = GetFileFullName(doc);
+
             #region Обработка работы в архивных копиях
-            if (centralPath.ToLower().Contains("архив"))
+            if (fileFullName.ToLower().Contains("архив"))
             {
                 MessageBox.Show(
                     "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
@@ -747,23 +754,23 @@ namespace KPLN_Looker
                     $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                     $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
                     $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                    $"Путь к модели: [b]{centralPath}[/b].");
+                    $"Путь к модели: [b]{fileFullName}[/b].");
                 #endregion
             }
             #endregion
 
             #region Обработка проектов КПЛН
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             if (dBProject != null)
             {
                 // Ищу документ
                 DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
-                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
                 if (dBDocument == null)
                 {
                     dBDocument = new DBDocument()
                     {
-                        CentralPath = centralPath,
+                        CentralPath = fileFullName,
                         ProjectId = dBProject.Id,
                         SubDepartmentId = prjDBSubDepartment.Id,
                         LastChangedUserId = DBMainService.CurrentDBUser.Id,
@@ -794,7 +801,7 @@ namespace KPLN_Looker
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                         $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
                         $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPath}[/b].");
+                        $"Путь к модели: [b]{fileFullName}[/b].");
                     #endregion
 
 
@@ -864,7 +871,7 @@ namespace KPLN_Looker
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconInformation,
                     MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
-                    FooterText = $"Специалисту BIM-отдела: файл - {centralPath}",
+                    FooterText = $"Специалисту BIM-отдела: файл - {fileFullName}",
                     CommonButtons = TaskDialogCommonButtons.Ok,
                 };
                 td.Show();
@@ -914,10 +921,10 @@ namespace KPLN_Looker
             }
             #endregion
 
-            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath());
-            
+            string fileFullName = GetFileFullName(doc);
+
             #region Обработка работы в архивных копиях
-            if (centralPath.ToLower().Contains("архив"))
+            if (fileFullName.ToLower().Contains("архив"))
             {
                 BitrixMessageSender.SendMsg_ToBIMChat(
                     $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
@@ -936,12 +943,12 @@ namespace KPLN_Looker
 
             #region Работа с проектами КПЛН
             // Получаю проект из БД КПЛН
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(centralPath, RevitVersion);
+            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             if (dBProject == null)
                 return;
 
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(centralPath, dBProject, prjDBSubDepartment);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
                 return;
 
@@ -1028,7 +1035,7 @@ namespace KPLN_Looker
                         RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
                 }
             }
-            #endregion
+            #endregion            
         }
     }
 }
