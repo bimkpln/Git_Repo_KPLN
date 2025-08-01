@@ -54,8 +54,8 @@
                     </ScrollViewer>
                 </Expander>
 
-                
-                <Expander Header="Неопределённые помещения" Name="UndefinedExp" IsExpanded="False">
+
+                <Expander Header="Необработанные помещения" Name="UndefinedExp" IsExpanded="False" Foreground="Black">
                     <ScrollViewer Height="230" Margin="0 2 0 5">
                         <ListBox Name="UndefinedList" IsHitTestVisible="False" Focusable="False"/>
                     </ScrollViewer>
