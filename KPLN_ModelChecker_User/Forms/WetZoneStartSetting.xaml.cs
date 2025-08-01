@@ -132,7 +132,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                 output.Add(new Run("🔎 Результаты преобразования названия уровней в этажи:\n") { FontWeight = FontWeights.SemiBold });
 
-                int maxToShow = 10;
+                int maxToShow = 5;
                 int count = 0;
 
                 foreach (var pair in results)
@@ -177,7 +177,7 @@ namespace KPLN_ModelChecker_User.Forms
                     Foreground = Brushes.Red
                 });
 
-                int maxToShow = 10;
+                int maxToShow = 5;
                 int count = 0;
 
                 foreach (var pair in invalidLevelElements)
@@ -227,7 +227,7 @@ namespace KPLN_ModelChecker_User.Forms
                     Foreground = Brushes.Red
                 });
 
-                int maxToShow = 10;
+                int maxToShow = 5;
                 int count = 0;
 
                 foreach (Element el in missingPNE)
@@ -341,10 +341,22 @@ namespace KPLN_ModelChecker_User.Forms
                 });
                 Start2Button.IsEnabled = false;
             }
-     
-            if (!hasCriticalLevelError && !hasCriticalParamError)
+             
+            if (undefinedRooms.Count > 0)
             {
-                report.Inlines.Add(new Run("✅ Все проверки пройдены. Готово к запуску.")
+                report.Inlines.Add(new Run("⛔ Плагин не может продолжить работу. Имеются необработанные помещения.")
+                {
+                    Foreground = Brushes.Red,
+                    FontWeight = FontWeights.Bold
+                });
+
+                Start1Button.IsEnabled = false;
+                Start2Button.IsEnabled = false;
+            }
+
+            if (!hasCriticalLevelError && !hasCriticalParamError && undefinedRooms.Count == 0)
+            {
+                report.Inlines.Add(new Run("✅ Все проверки пройдены.")
                 {
                     Foreground = Brushes.DarkGreen,
                     FontWeight = FontWeights.Bold
@@ -352,13 +364,25 @@ namespace KPLN_ModelChecker_User.Forms
                 Start1Button.IsEnabled = true;
                 Start2Button.IsEnabled = true;
             }
-            else if ((!hasCriticalLevelError && hasCriticalParamError) || (hasCriticalLevelError && !hasCriticalParamError))
+            else if (hasCriticalLevelError && !hasCriticalParamError && undefinedRooms.Count == 0)
             {
-                report.Inlines.Add(new Run("⚠️ Работа плагина будет произведена в ограниченном режиме.")
+                report.Inlines.Add(new Run("⚠️ Плагин продолжит работу в режиме `Запуск (ПОМНомер этажа)`.")
                 {
-                    Foreground = Brushes.DarkGoldenrod,
+                    Foreground = Brushes.BlueViolet,
                     FontWeight = FontWeights.Bold
                 });
+                Start1Button.IsEnabled = false;
+                Start2Button.IsEnabled = true;
+            }
+            else if (!hasCriticalLevelError && hasCriticalParamError && undefinedRooms.Count == 0)
+            {
+                report.Inlines.Add(new Run("⚠️ Плагин продолжит работу в режиме `Запуск (Уровень)`.")
+                {
+                    Foreground = Brushes.BlueViolet,
+                    FontWeight = FontWeights.Bold
+                });
+                Start1Button.IsEnabled = true;
+                Start2Button.IsEnabled = false;
             }
 
             InfoText.Document.Blocks.Clear();
@@ -377,12 +401,6 @@ namespace KPLN_ModelChecker_User.Forms
                     string kv = room.LookupParameter("КВ_Номер")?.AsString() ?? "-";
                     return $"КВ_Номер: {kv} - {name} ({id})";
                 }).ToList();
-        }
-
-        // XAML. Отмена
-        private void ButtonCancel_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
         }
 
         // XAML. Уровень
@@ -427,11 +445,28 @@ namespace KPLN_ModelChecker_User.Forms
             this.Close();
         }
 
+        // XAML. Отмена
+        private void ButtonCancel_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
+
+
+
+
+
+
+
+
+
+
         // Метод поиска помещений согласно условиям
         public static void CheckWetZoneViolations(Dictionary<int, List<Element>> roomsByFloorParam, string _selectedParam)
         {
             List<List<Element>> KitchenOverLiving_Illegal = new List<List<Element>>();
-            List<List<Element>> WetOverLiving_Illegal = new List<List<Element>>();           
+            List<List<Element>> WetOverLiving_Illegal = new List<List<Element>>();    
+            
             List<List<Element>> KitchenUnderWet_Illegal = new List<List<Element>>();
             List<List<Element>> KitchenUnderWet_Accepted = new List<List<Element>>();
 
@@ -493,6 +528,16 @@ namespace KPLN_ModelChecker_User.Forms
             var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, _selectedParam);
             windowResult.Show();            
         }
+
+
+
+
+
+
+
+
+
+
 
         /////////////////// Расчёт пересечения
         ///////////////////
