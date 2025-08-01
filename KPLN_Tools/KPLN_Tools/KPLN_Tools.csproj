@@ -134,8 +134,8 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_WebWorker">
-          <HintPath>C:\KPLN_Debug\KPLN_WebWorker\Debug\2020\KPLN_WebWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -166,8 +166,8 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_WebWorker">
-          <HintPath>C:\KPLN_Debug\KPLN_WebWorker\Debug\2023\KPLN_WebWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -198,8 +198,8 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_WebWorker">
-          <HintPath>C:\KPLN_Debug\KPLN_WebWorker\2020\KPLN_WebWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -230,8 +230,8 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_WebWorker">
-          <HintPath>C:\KPLN_Debug\KPLN_WebWorker\2023\KPLN_WebWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
