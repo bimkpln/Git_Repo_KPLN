@@ -24,6 +24,7 @@
             TargetType="TextBox">
             <Setter Property="MinWidth" Value="50"/>
             <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="2"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -51,8 +52,8 @@
     <Grid ShowGridLines="True">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="0"/>
-            <ColumnDefinition Width="0.7*"/>
-            <ColumnDefinition Width="0.3*"/>
+            <ColumnDefinition Width="400*"/>
+            <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="0"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>

@@ -111,7 +111,10 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
                 var viewElemsColl = new FilteredElementCollector(doc, viewId)
                     .WhereElementIsNotElementType()
-                    .Where(e => e.Category != null && e.Category.IsVisibleInUI)
+                    .Where(e => 
+                        e.Category != null 
+                        && e.Category.CategoryType == CategoryType.Model 
+                        && (e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
                     .ToArray();
                     
                 if (viewElemsColl.Length == 0)

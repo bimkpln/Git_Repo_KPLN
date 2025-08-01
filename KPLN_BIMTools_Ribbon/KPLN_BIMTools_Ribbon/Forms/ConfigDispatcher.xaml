@@ -156,6 +156,9 @@
                                                 <MenuItem 
                                                     Header="Удалить" 
                                                     Click="MenuItem_Delete_Click"/>
+                                                <MenuItem 
+                                                    Header="Открыть папку с результатом на сервере KPLN" 
+                                                    Click="MenuItem_OpenFolder_Click"/>
                                             </ContextMenu>
                                         </TextBlock.ContextMenu>
                                         <TextBlock.Inlines>

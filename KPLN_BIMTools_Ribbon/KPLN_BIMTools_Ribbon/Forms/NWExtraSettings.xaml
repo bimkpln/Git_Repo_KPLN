@@ -16,14 +16,15 @@
             <Setter Property="Padding" Value="7"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
         <Style 
             x:Key="TBox"
             TargetType="TextBox">
-            <Setter Property="MinWidth" Value="50"/>
             <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="2"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -51,8 +52,8 @@
     <Grid ShowGridLines="True">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="0"/>
-            <ColumnDefinition Width="0.7*"/>
-            <ColumnDefinition Width="0.3*"/>
+            <ColumnDefinition Width="400*"/>
+            <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="0"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -79,6 +80,7 @@
             Grid.Row="1"
             Grid.Column="2"
             Style="{StaticResource TBox}"
+            Width="50"
             TextChanged="FacTBox_TextChanged">
             <TextBox.Text>
                 <Binding 
@@ -100,7 +102,8 @@
             Grid.Row="2"
             Grid.Column="2"
             Style="{StaticResource CBox}"
-            IsChecked="{Binding ConvertElementProperties, UpdateSourceTrigger=PropertyChanged}"/>
+            IsChecked="{Binding ConvertElementProperties, 
+                UpdateSourceTrigger=PropertyChanged}"/>
         
         <TextBlock
             Grid.Row="3"
@@ -111,7 +114,8 @@
             Grid.Row="3"
             Grid.Column="2"
             Style="{StaticResource CBox}"
-            IsChecked="{Binding ExportLinks, UpdateSourceTrigger=PropertyChanged}"/>
+            IsChecked="{Binding ExportLinks, 
+                UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
             Grid.Row="4"
@@ -122,7 +126,8 @@
             Grid.Row="4"
             Grid.Column="2"
             Style="{StaticResource CBox}"
-            IsChecked="{Binding FindMissingMaterials, UpdateSourceTrigger=PropertyChanged}"/>
+            IsChecked="{Binding FindMissingMaterials, 
+                UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
             Grid.Row="5"
@@ -133,7 +138,8 @@
             Grid.Row="5"
             Grid.Column="2"
             Style="{StaticResource CBox}"
-            IsChecked="{Binding DivideFileIntoLevels, UpdateSourceTrigger=PropertyChanged}"/>
+            IsChecked="{Binding DivideFileIntoLevels, 
+                UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
             Grid.Row="6"
@@ -156,7 +162,8 @@
             Grid.Row="7"
             Grid.Column="2"
             Style="{StaticResource CBox}"
-            IsChecked="{Binding ExportRoomGeometry, UpdateSourceTrigger=PropertyChanged}"/>
+            IsChecked="{Binding ExportRoomGeometry, 
+                UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
             Grid.Row="8"
@@ -167,8 +174,9 @@
             Grid.Row="8"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            MinWidth="150"
-            Text="{Binding ViewName, UpdateSourceTrigger=PropertyChanged}"/>
+            Width="140"
+            Text="{Binding ViewName, 
+                UpdateSourceTrigger=PropertyChanged}"/>
 
         <TextBlock
             Grid.Row="9"
@@ -179,7 +187,7 @@
             Grid.Row="9"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            MinWidth="150"
+            Width="140"
             ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
             Text="{Binding WorksetToCloseNamesStartWith, 
                 UpdateSourceTrigger=PropertyChanged}"/>
@@ -193,7 +201,7 @@
             Grid.Row="10"
             Grid.Column="2"
             Style="{StaticResource TBox}"
-            MinWidth="150"
+            Width="140"
             ToolTip="Добавляется в конце имени получаемого файла nwc. Разделить нужно указывать самостоятельно"
             Text="{Binding NavisDocPostfix, 
                 UpdateSourceTrigger=PropertyChanged}"/>

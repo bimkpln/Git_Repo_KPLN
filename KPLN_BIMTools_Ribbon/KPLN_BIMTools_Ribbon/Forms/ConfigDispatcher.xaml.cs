@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -253,6 +254,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                         if (cd.IsRun)
                             DeleteDBRevitDocExchange(new DBRevitDocExchangesWrapper[] { docExchWrapper });
+                    }
+                }
+            }
+        }
+
+        private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if ((MenuItem)e.Source is MenuItem menuItem)
+            {
+                if (menuItem.DataContext is DBRevitDocExchangesWrapper docExchWrapper)
+                {
+                    DirectoryInfo resultPathDI = new DirectoryInfo(docExchWrapper.SettingResultPath);
+                    if (resultPathDI.Exists)
+                        Process.Start(resultPathDI.FullName);
+                    else
+                    {
+                        UserDialog cd = new UserDialog("ОШИБКА", $"Данного пути либо не существует, либо это путь на Revit-Server:\n\"{resultPathDI.FullName}\"");
+                        cd.ShowDialog();
                     }
                 }
             }
