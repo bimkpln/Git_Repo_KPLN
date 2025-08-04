@@ -59,9 +59,9 @@ namespace KPLN_IOSClasher.Services
         /// Получить ID отдела, которому принадлежит файл
         /// </summary>
         /// <returns></returns>
-        internal int Get_DBDocumentSubDepartmentId(Document doc)
+        internal int Get_DBDocumentSubDepartmentId(string docName)
         {
-            DBSubDepartment subDep = _subDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            DBSubDepartment subDep = _subDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(docName);
             if (subDep != null)
                 return subDep.Id;
 

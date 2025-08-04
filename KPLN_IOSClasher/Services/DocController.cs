@@ -90,11 +90,11 @@ namespace KPLN_IOSClasher.Services
                 }
 
                 if (IsDocumentAnalyzing)
-                    CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+                    CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc.Title);
             }
 #endif
 #if Debug2020 || Debug2023
-            CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc);
+            CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc.Title);
             IsDocumentAnalyzing = false;
 #endif
         }
@@ -149,7 +149,7 @@ namespace KPLN_IOSClasher.Services
                     if (openDoc.IsLinked || openDoc.Title != doc.Title)
                     {
                         // Анализирую модели ИОС разделов на пересечение с создаваемыми
-                        int openDocPrjDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(openDoc);
+                        int openDocPrjDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(openDoc.Title);
                         switch (openDocPrjDBSubDepartmentId)
                         {
                             case 4:

@@ -667,7 +667,7 @@ namespace KPLN_Looker
             }
 
             // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
             DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
             {
@@ -764,7 +764,7 @@ namespace KPLN_Looker
             if (dBProject != null)
             {
                 // Ищу документ
-                DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+                DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
                 DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
                 if (dBDocument == null)
                 {
@@ -947,7 +947,7 @@ namespace KPLN_Looker
             if (dBProject == null)
                 return;
 
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
             DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
                 return;
