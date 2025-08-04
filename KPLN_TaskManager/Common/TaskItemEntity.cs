@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -477,8 +478,6 @@ namespace KPLN_TaskManager.Common
                     .OrderBy(x => x.Surname)
                     .ToList();
 
-                delSubDepUserColl.Insert(0, new DBUser() { Id = -2, Surname = "<Если задачу в Bitrix не отправляешь, оставь выбранным это поле>" });
-
                 return delSubDepUserColl;
             }
         }
@@ -486,17 +485,28 @@ namespace KPLN_TaskManager.Common
         /// <summary>
         /// Коллекция моделей в открытом документе
         /// </summary>
-        public List<string> ModelNamesColl
+        public HashSet<string> ModelNamesColl
         {
             get
             {
-                List<string> result = new List<string>() { "<Весь проект>" };
+                HashSet<string> result = new HashSet<string>() { "<Весь проект>" };
 
-                // Если НЕ новое замечание
-                if (Id != 0 && !string.IsNullOrEmpty(ModelName) && !result.Contains(ModelName))
+                // Если НЕ новое замечание - добавляю имя
+                if (Id > 0 && !string.IsNullOrEmpty(ModelName))
                     result.Add(ModelName);
-                else if (Module.CurrentDoc != null && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
+
+                // Если отдел делегирования совпадает с отделом открытой модели - добавляю в списк эту же модель
+                if (Module.CurrentDoc != null && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
                     result.Add(CurrentModelName(Module.CurrentDoc));
+
+                // Заполняю список линками в зависимости от выбранного отдела делегирования
+                if (Module.CurrentDoc != null && DelegatedDepartmentId > 0)
+                {
+                    foreach (string docName in GetDocRLinkNamesByDelegatedDep(DelegatedDepartmentId))
+                    {
+                        result.Add(docName);
+                    }
+                }
 
                 return result;
             }
@@ -523,7 +533,7 @@ namespace KPLN_TaskManager.Common
         /// <returns></returns>
         internal static string CurrentModelName(Document doc)
         {
-            string openViewFileName = doc.IsWorkshared
+            string openViewFileName = doc.IsWorkshared && !doc.IsDetached
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
                 : doc.PathName;
 
@@ -542,7 +552,37 @@ namespace KPLN_TaskManager.Common
             if (Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
                 ModelName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDoc)));
             else
-                ModelName = ModelNamesColl[0];
+                ModelName = ModelNamesColl.FirstOrDefault();
+        }
+
+        private static string[] GetDocRLinkNamesByDelegatedDep(int depId)
+        {
+            if (Module.CurrentDoc == null)
+                return null;
+
+            RevitLinkInstance[] rlInsts = new FilteredElementCollector(Module.CurrentDoc)
+                .OfClass(typeof(RevitLinkInstance))
+                .WhereElementIsNotElementType()
+                .Cast<RevitLinkInstance>()
+                .ToArray();
+
+            HashSet<string> rlNames = new HashSet<string>(rlInsts.Length);
+            foreach (RevitLinkInstance inst in rlInsts)
+            {
+                string instName = inst.Name;
+                DBSubDepartment rlSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(instName);
+                if (rlSubDep.Id == depId)
+                {
+                    // Чистка от доп. параметров в имени линка
+                    string instAttrSepar = " : ";
+                    if (instName.Contains(instAttrSepar))
+                        rlNames.Add(instName.Split(new string[] { instAttrSepar }, StringSplitOptions.None)[0]);
+                    else
+                        rlNames.Add(instName);
+                }
+            }
+
+            return rlNames.ToArray();
         }
 
         private void OnPropertyChanged([CallerMemberName] string name = null) =>

@@ -193,7 +193,7 @@
                 Margin="0,5,0,0">
                 <StackPanel>
                     <TextBlock 
-                        Text="Исполнитель (обязательно при постановке задачи в Bitrix)" 
+                        Text="Исполнитель" 
                         VerticalAlignment="Center" 
                         FontWeight="Bold" 
                         Margin="5,0,5,0"/>
@@ -218,7 +218,7 @@
                     </ComboBox>
 
                     <TextBlock 
-                        Text="ID базовой задачи в Bitrix (обязательно при постановке задачи в Bitrix)" 
+                        Text="ID базовой задачи в Bitrix" 
                         VerticalAlignment="Center" 
                         IsEnabled="False"
                         FontWeight="Bold" 
@@ -235,16 +235,15 @@
                         <TextBox.ToolTip>
                             <StackPanel>
                                 <TextBlock 
-                                    Text="Укажи ID базавой задачи из Bitrix. Это важно для соблюдения структуры хранения задач в Bitrix"
-                                    TextWrapping="Wrap"/>
-                                <TextBlock 
-                                    TextWrapping="Wrap">
-                                    Чтобы аннулировать привязку к задаче укажи <Bold>-1</Bold>
-                                </TextBlock>
+                                    Text="Укажи ID базавой задачи из Bitrix. Это важно для соблюдения структуры хранения задач в Bitrix. Как получить данные по задаче - см. скрин ниже:"
+                                    TextWrapping="Wrap"
+                                    Width="600"
+                                    FontSize="14"
+                                    FontWeight="Bold"/>
                                 <Image 
                                     Source="pack://application:,,,/KPLN_TaskManager;component/Imagens/parentTaskInBitrix.png"
-                                    Width="500" 
-                                    Height="250"/>
+                                    Width="600" 
+                                    Height="575"/>
                             </StackPanel>
                         </TextBox.ToolTip>
                     </TextBox>

@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
@@ -14,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
@@ -121,7 +123,7 @@ namespace KPLN_TaskManager.Forms
             BitrixParentTaskIdTBox.IsEnabled = isFullEditable;
 
             BitrixExpander.IsEnabled = isFullEditable && !isNewTask;
-            SendToBitrix.IsEnabled = isFullEditable && !isNewTask;
+            SendToBitrix.IsEnabled = (isFullEditable && !isNewTask) && CurrentTaskItemEntity.BitrixTaskId == -1;
             ToggleStatusBtn.IsEnabled = isFullEditable && !isNewTask;
             CommentBtn.IsEnabled = isFullEditable && !isNewTask;
         }
@@ -146,7 +148,33 @@ namespace KPLN_TaskManager.Forms
         {
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
 
-            ICollection<ElementId> selectedIds = uidoc.Selection.GetElementIds();
+            List<ElementId> selectedIds = new List<ElementId>();
+            bool isElemFromDoc = true;
+            Selection selection = uidoc.Selection;
+#if Revit2020 || Debug2020
+            // Для 2020 - нет возможности получить элементы из связи. Это исправили в более поздних версиях
+            selectedIds = uidoc.Selection.GetElementIds().ToList();
+#else
+            IList<Reference> selRefers = selection.GetReferences();
+            foreach (Reference selRefer in selRefers)
+            {
+                Element selElem = uidoc.Document.GetElement(selRefer);
+                if (selElem is RevitLinkInstance rli)
+                {
+                    Document linkedDoc = rli.GetLinkDocument();
+                    Element linkElem = linkedDoc.GetElement(selRefer.LinkedElementId);
+                    if (linkElem != null)
+                    {
+                        selectedIds.Add(linkElem.Id);
+                        isElemFromDoc = false;
+                    }
+                }
+                else
+                    selectedIds.Add(selElem.Id);
+            }
+#endif
+
+
             if (selectedIds.Count == 0)
             {
                 MessageBox.Show(
@@ -165,7 +193,8 @@ namespace KPLN_TaskManager.Forms
                 SelectRevitElems.IsEnabled = true;
 
             CurrentTaskItemEntity.ElementIds = string.Join(",", selectedIds);
-            CurrentTaskItemEntity.ModelViewId = uidoc.ActiveView.Id.IntegerValue;
+            if (isElemFromDoc)
+                CurrentTaskItemEntity.ModelViewId = uidoc.ActiveView.Id.IntegerValue;
         }
 
         private void RemoveElementIdsBtn_Click(object sender, RoutedEventArgs e)

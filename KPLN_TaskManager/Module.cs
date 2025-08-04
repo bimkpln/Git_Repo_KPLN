@@ -25,10 +25,15 @@ namespace KPLN_TaskManager
         private static UIControlledApplication _uiContrApp;
 
         internal static UIApplication CurrentUIApplication { get; private set; }
+        
         internal static string CurrentFileName {  get; private set; }
+        
         internal static DBProject CurrentDBProject { get; private set; }
+        
         internal static Document CurrentDoc { get; private set; }
+        
         internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
+        
         internal static int RevitVersion { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -91,7 +96,7 @@ namespace KPLN_TaskManager
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
                 : CurrentDoc.PathName;
             
-            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
+            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
             CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (CurrentDBProject == null)
@@ -126,7 +131,7 @@ namespace KPLN_TaskManager
 
             CurrentDBProject = openViewDBProject;
             
-            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(CurrentDoc);
+            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
             // Возможно стоит заблочить, нужен дальнейший анализ. Оно конечно удобно, но при переключениях между видами, когда будет много тасок - будет лишний оверхед. Достаточно обновить список вручную,
             // и плюсом - они обновятся, если открыть отдельно таску.  
