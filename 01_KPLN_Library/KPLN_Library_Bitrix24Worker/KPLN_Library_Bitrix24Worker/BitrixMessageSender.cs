@@ -239,7 +239,8 @@ namespace KPLN_Library_Bitrix24Worker
                             $"&FIELDS[GROUP_ID]={groupId}" +
                             $"&FIELDS[PARENT_ID]={parentTaskId}" +
                             $"&FIELDS[TAGS]={tag}" +
-                            $"&FIELDS[CREATED_BY]={createdUserId}" +
+                            // Можно только если учётка админа. Пока тестирую формат постановки задач от робота
+                            //$"&FIELDS[CREATED_BY]={createdUserId}" +
                             $"&FIELDS[RESPONSIBLE_ID]={respUserId}" +
                             $"&FIELDS[AUDITORS][]={firstAuditorId}" +
                             $"&FIELDS[AUDITORS][]={secondAuditorId}");
