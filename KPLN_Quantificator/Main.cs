@@ -4,6 +4,10 @@ using Autodesk.Navisworks.Api.Plugins;
 using KPLN_Quantificator.Forms;
 using KPLN_Quantificator.Services;
 using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 
 
 namespace KPLN_Quantificator
@@ -141,13 +145,65 @@ namespace KPLN_Quantificator
 
 
 namespace KPLN_Quantificator_inputPlugin
-{
+{    
     [Plugin("KPLN Extention_inputPlugin", "KPLN")]
     public class Main : InputPlugin
     {
+        private delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumChildWindows(IntPtr hwndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowTextLength(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        public static bool IsClashDetectiveVisible()
+        {
+            Process[] processes = Process.GetProcessesByName("roamer");
+            if (processes.Length == 0)
+                return false;
+
+            IntPtr mainHandle = processes[0].MainWindowHandle;
+            if (mainHandle == IntPtr.Zero)
+                return false;
+
+            bool found = false;
+
+            EnumChildWindows(mainHandle, (hWnd, lParam) =>
+            {
+                if (!IsWindowVisible(hWnd))
+                    return true; // Пропускаем невидимые окна
+
+                int length = GetWindowTextLength(hWnd);
+                if (length == 0)
+                    return true;
+
+                var builder = new StringBuilder(length + 1);
+                GetWindowText(hWnd, builder, builder.Capacity);
+                string text = builder.ToString();
+
+                if (text.Contains("Clash Detective"))
+                {
+                    found = true;
+                    return false;
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            return found;
+        }
+
         public override bool KeyUp(Autodesk.Navisworks.Api.View view, KeyModifiers modifier, ushort key, double timeOffset)
         {
-            if (modifier == KeyModifiers.Shift && key == 71)
+            if (IsClashDetectiveVisible() && key == 13)
             {
                 ClashGroupsForm clashGroupsForm = new ClashGroupsForm();
                 try
@@ -160,7 +216,8 @@ namespace KPLN_Quantificator_inputPlugin
                 return true;
             }
 
-            if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count >= 1 && Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count <= 20 && key == 69)
+            if (Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count >= 1
+                && Autodesk.Navisworks.Api.Application.ActiveDocument.CurrentSelection.SelectedItems.Count <= 20 && key == 69)
             {
                 AddComment.GettingDataForAComment();
                 AddComment.CreateViewpoint();

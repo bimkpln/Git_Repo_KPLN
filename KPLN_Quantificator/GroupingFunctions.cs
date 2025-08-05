@@ -2,43 +2,218 @@
 using Autodesk.Navisworks.Api.Clash;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using static KPLN_Quantificator.Common.Collections;
+using Application = Autodesk.Navisworks.Api.Application;
 
 namespace KPLN_Quantificator
 {
     public class GroupingFunctions
     {
-        public static void GroupClashes(ClashTest selectedClashTest, GroupingMode groupingMode, GroupingMode subgroupingMode, bool keepExistingGroups)
+        public static void GroupClashes(ClashTest selectedClashTest, GroupingMode groupingMode, GroupingMode subgroupingMode, bool keepExistingGroups, string clashStatus)
         {
-            //Get existing clash result
-            List<ClashResult> clashResults = GetIndividualClashResults(selectedClashTest, keepExistingGroups).ToList();
-            List<ClashResultGroup> clashResultGroups = new List<ClashResultGroup>();
-
-            //Create groups according to the first grouping mode
-            CreateGroup(ref clashResultGroups, groupingMode, clashResults, "");
-
-            //Optionnaly, create subgroups
-            if (subgroupingMode != GroupingMode.None)
+            try
             {
-                CreateSubGroups(ref clashResultGroups, subgroupingMode);
+                // Шаг 1: Получаем все конфликты (включая те, что в группах)
+                List<ClashResult> allClashResults = GetIndividualClashResults(selectedClashTest, true).ToList();
+
+                // Шаг 2: Фильтрация по статусу
+                List<ClashResult> filteredClashResults = allClashResults.Where(cr =>
+                {
+                    string status = cr.Status.ToString();
+
+                    switch (clashStatus)
+                    {
+                        case "NewClash":
+                            return status == "New";
+                        case "ActiveClash":
+                            return status == "Active";
+                        case "NewActiveClash":
+                            return status == "New" || status == "Active";
+                        case "AllClash":
+                            return true;
+                        default:
+                            return true;
+                    }
+                }).ToList();
+
+                var filteredGuids = filteredClashResults.Select(cr => cr.Guid).ToHashSet();
+
+                // Шаг 3: Группировка только отфильтрованных
+                List<ClashResultGroup> clashResultGroups = new List<ClashResultGroup>();
+                CreateGroup(ref clashResultGroups, groupingMode, filteredClashResults, "");
+
+                if (subgroupingMode != GroupingMode.None)
+                    CreateSubGroups(ref clashResultGroups, subgroupingMode);
+
+                // Шаг 4: Удаление групп с 1 конфликтом
+                List<ClashResult> ungroupedClashResults = RemoveOneClashGroup(ref clashResultGroups);
+
+                // Шаг 5: Конфликты вне фильтра
+                List<ClashResult> untouchedClashResults = allClashResults
+                    .Where(cr => !filteredGuids.Contains(cr.Guid))
+                    .ToList();
+
+                // Шаг 6: Группы вне фильтра и внутри фильтра (если нужно)
+                List<ClashResultGroup> allExistingGroups = BackupExistingClashGroups(selectedClashTest).ToList();
+
+                List<ClashResultGroup> untouchedGroups = allExistingGroups
+                    .Where(gr => gr.Children.OfType<ClashResult>().All(cr => !filteredGuids.Contains(cr.Guid)))
+                    .ToList();
+
+                List<ClashResultGroup> oldGroupsToPreserve = allExistingGroups
+                    .Where(gr => gr.Children.OfType<ClashResult>().Any(cr => filteredGuids.Contains(cr.Guid)))
+                    .ToList();
+
+                if (keepExistingGroups)
+                    clashResultGroups.AddRange(oldGroupsToPreserve);
+
+                // ❗ Шаг 7: Создаём копии всех элементов ДО замены теста
+                var clashGroupsCopy = clashResultGroups
+                    .Select(gr => (ClashResultGroup)gr.CreateCopy())
+                    .ToList();
+
+                var ungroupedResultsCopy = ungroupedClashResults
+                    .Select(cr => (ClashResult)cr.CreateCopy())
+                    .ToList();
+
+                var untouchedGroupsCopy = untouchedGroups
+                    .Select(gr => (ClashResultGroup)gr.CreateCopy())
+                    .ToList();
+
+                var untouchedResultsCopy = untouchedClashResults
+                    .Select(cr => (ClashResult)cr.CreateCopy())
+                    .ToList();
+
+                // Шаг 8: Записываем в новый тест
+                ProcessClashGroupPreservingOthers(
+                    clashGroupsCopy,
+                    ungroupedResultsCopy,
+                    untouchedGroupsCopy,
+                    untouchedResultsCopy,
+                    selectedClashTest
+                );
+            }
+            catch (Exception ex)
+            {
+                // Показываем ошибку в окне
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+
+
+        private static void ProcessClashGroupPreservingOthers(List<ClashResultGroup> clashGroups,List<ClashResult> ungroupedClashResults,List<ClashResultGroup> untouchedGroups,
+            List<ClashResult> untouchedClashResults, ClashTest selectedClashTest)
+        {
+            try
+            {
+                using (Transaction tx = Application.MainDocument.BeginTransaction("Group clashes"))
+                {
+                    ClashTest copiedClashTest = (ClashTest)selectedClashTest.CreateCopyWithoutChildren();
+                    ClashTest backupTest = (ClashTest)selectedClashTest.CreateCopy();
+
+                    DocumentClash documentClash = Application.MainDocument.GetClash();
+                    int indexOfClashTest = documentClash.TestsData.Tests.IndexOf(selectedClashTest);
+
+                    // Заменяем тест на копию без детей
+                    documentClash.TestsData.TestsReplaceWithCopy(indexOfClashTest, copiedClashTest);
+
+                    int totalItems = clashGroups.Count + ungroupedClashResults.Count + untouchedGroups.Count + untouchedClashResults.Count;
+                    int currentProgress = 0;
+
+                    Progress progressBar = Application.BeginProgress(
+                        "Copying Results",
+                        $"Copying results from {selectedClashTest.DisplayName} to the Group Clashes pane...");
+
+                    GroupItem groupItem = (GroupItem)documentClash.TestsData.Tests[indexOfClashTest];
+
+                    // Новые группы
+                    foreach (var clashGroup in clashGroups)
+                    {
+                        if (progressBar.IsCanceled) break;
+
+                        var copy = (SavedItem)clashGroup.CreateCopy();
+                        documentClash.TestsData.TestsAddCopy(groupItem, copy);
+
+                        currentProgress++;
+                        progressBar.Update((double)currentProgress / totalItems);
+                    }
+
+                    // Отдельные конфликты из фильтра
+                    foreach (var clash in ungroupedClashResults)
+                    {
+                        if (progressBar.IsCanceled) break;
+
+                        var copy = (SavedItem)clash.CreateCopy();
+                        documentClash.TestsData.TestsAddCopy(groupItem, copy);
+
+                        currentProgress++;
+                        progressBar.Update((double)currentProgress / totalItems);
+                    }
+
+                    // СТАРЫЕ ГРУППЫ вне фильтра
+                    foreach (var group in untouchedGroups)
+                    {
+                        if (progressBar.IsCanceled) break;
+
+                        var copy = (SavedItem)group.CreateCopy();
+                        documentClash.TestsData.TestsAddCopy(groupItem, copy);
+
+                        currentProgress++;
+                        progressBar.Update((double)currentProgress / totalItems);
+                    }
+
+                    // СТАРЫЕ отдельные конфликты вне фильтра
+                    foreach (var clash in untouchedClashResults)
+                    {
+                        if (progressBar.IsCanceled) break;
+
+                        var copy = (SavedItem)clash.CreateCopy();
+                        documentClash.TestsData.TestsAddCopy(groupItem, copy);
+
+                        currentProgress++;
+                        progressBar.Update((double)currentProgress / totalItems);
+                    }
+
+                    // Если отменили — откатываем
+                    if (progressBar.IsCanceled)
+                    {
+                        documentClash.TestsData.TestsReplaceWithCopy(indexOfClashTest, backupTest);
+                    }
+
+                    tx.Commit();
+                    Application.EndProgress();
+                }
+            }
+            catch (Exception ex) 
+            {
+                System.Windows.Forms.MessageBox.Show(ex.ToString(), "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            //Remove groups with only one clash
-            List<ClashResult> ungroupedClashResults = RemoveOneClashGroup(ref clashResultGroups);
-
-            //Backup the existing group, if necessary
-            if (keepExistingGroups) clashResultGroups.AddRange(BackupExistingClashGroups(selectedClashTest));
-
-            //Process these groups and clashes into the clash test
-            ProcessClashGroup(clashResultGroups, ungroupedClashResults, selectedClashTest);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private static void CreateGroup(ref List<ClashResultGroup> clashResultGroups, GroupingMode groupingMode, List<ClashResult> clashResults, string initialName)
         {
-            //group all clashes
             switch (groupingMode)
             {
                 case GroupingMode.None:
@@ -99,7 +274,6 @@ namespace KPLN_Quantificator
                 copiedResult.Add((ClashResult)result.CreateCopy());
             }
 
-            //Process this empty group list and clashes into the clash test
             ProcessClashGroup(groups, copiedResult, selectedClashTest);
 
         }
@@ -413,6 +587,12 @@ namespace KPLN_Quantificator
 
 
         #region helpers
+
+
+
+
+
+
         private static void ProcessClashGroup(List<ClashResultGroup> clashGroups, List<ClashResult> ungroupedClashResults, ClashTest selectedClashTest)
         {
             using (Transaction tx = Application.MainDocument.BeginTransaction("Group clashes"))
@@ -447,6 +627,36 @@ namespace KPLN_Quantificator
             }
         }
 
+
+
+
+
+
+
+
+        private static void AddUngroupedClashes(List<ClashResult> unfilteredClashResults, ClashTest selectedClashTest)
+{
+    using (Transaction tx = Application.MainDocument.BeginTransaction("Add unfiltered clashes"))
+    {
+        DocumentClash documentClash = Application.MainDocument.GetClash();
+        int indexOfClashTest = documentClash.TestsData.Tests.IndexOf(selectedClashTest);
+        GroupItem targetGroup = documentClash.TestsData.Tests[indexOfClashTest] as GroupItem;
+
+        if (targetGroup == null)
+        {
+            throw new InvalidOperationException("GroupItem not found for the selected ClashTest.");
+        }
+
+        foreach (ClashResult clashResult in unfilteredClashResults)
+        {
+            documentClash.TestsData.TestsAddCopy(targetGroup, clashResult);
+        }
+
+        tx.Commit();
+    }
+}
+
+
         private static List<ClashResult> RemoveOneClashGroup(ref List<ClashResultGroup> clashResultGroups)
         {
             List<ClashResult> ungroupedClashResults = new List<ClashResult>();
@@ -458,7 +668,6 @@ namespace KPLN_Quantificator
                 if (group.Children.Count == 1)
                 {
                     ClashResult result = (ClashResult)group.Children.FirstOrDefault();
-                    //result.DisplayName = group.DisplayName;
                     ungroupedClashResults.Add(result);
                     clashResultGroups.Remove(group);
                 }

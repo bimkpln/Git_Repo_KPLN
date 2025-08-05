@@ -1,5 +1,8 @@
-﻿using Autodesk.Navisworks.Api.Clash;
-using Autodesk.Navisworks.Api;
+﻿using Autodesk.Navisworks.Api;
+using Autodesk.Navisworks.Api.Clash;
+using Autodesk.Navisworks.Api.DocumentParts;
+using Autodesk.Navisworks.Api.Interop;
+using KPLN_Quantificator.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,10 +18,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Application = Autodesk.Navisworks.Api.Application;
-using KPLN_Quantificator.Common;
 using static KPLN_Quantificator.Common.Collections;
-using Autodesk.Navisworks.Api.DocumentParts;
+using Application = Autodesk.Navisworks.Api.Application;
 
 namespace KPLN_Quantificator.Forms
 {
@@ -33,6 +34,62 @@ namespace KPLN_Quantificator.Forms
             RegisterChanges();
             
             DataContext = this;
+
+            this.PreviewKeyDown += ClashGroupsForm_PreviewKeyDown;
+
+            string currentDisplayName = ClashCurrentIssue.CurrentTest?.DisplayName;
+
+            if (!string.IsNullOrEmpty(currentDisplayName))
+            {
+                SearchText.Text = currentDisplayName;
+                this.Dispatcher.InvokeAsync(() =>
+                {
+                    var list = ClashTestListBox.ItemsSource as IEnumerable<CustomClashTest>;
+                    if (list != null)
+                    {
+                        var match = list.FirstOrDefault(x => x.DisplayName == currentDisplayName);
+                        if (match != null)
+                        {
+                            ClashTestListBox.SelectedItem = match;
+                            ClashTestListBox.ScrollIntoView(match);
+                        }
+                    }
+
+                    // Ключевые слова для SelectionA
+                    string[] selectionAKeys = {
+                        "Стены", "Витражные системы", "Окна", "Двери", "Ворота", "Перемычки",
+                        "Колонны", "Каркас", "Воздуховоды", "Трубы", "Лотки", "Оборудование",
+                        "Электрооборудование", "Шахты"
+                    };
+
+                    string name = currentDisplayName?.Trim() ?? "";
+
+                    // Получаем количество конфликтов
+                    int clashCount = ClashCurrentIssue.CurrentTest?.Children
+                        .OfType<ClashResult>()
+                        .Count() ?? 0;
+
+                    // Определяем режим группировки
+                    GroupingMode mode;
+
+                    if (clashCount < 100)
+                    {
+                        mode = GroupingMode.Host;
+                    }
+                    else if (selectionAKeys.Any(key => name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        mode = GroupingMode.SelectionA;
+                    }
+                    else
+                    {
+                        mode = GroupingMode.GridIntersection;
+                    }
+
+                    // Устанавливаем выбранный режим
+                    comboBoxGroupBy.SelectedItem = mode;
+
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
+            }
         }
 
         public ObservableCollection<GroupingMode> GroupByList { get; set; } = new ObservableCollection<GroupingMode>();
@@ -55,47 +112,101 @@ namespace KPLN_Quantificator.Forms
             }
         }
         
+
+
+
+
+
+
+
+
+
         private void Group_Button_Click(object sender, System.Windows.RoutedEventArgs e)
         {
+
+            string clashStatus;
+            if (checkBoxOnlyCreate.IsChecked == true && checkBoxOnlyActive.IsChecked == true)
+                clashStatus = "NewActiveClash";
+            else if (checkBoxOnlyCreate.IsChecked == true)
+                clashStatus = "NewClash";
+            else if (checkBoxOnlyActive.IsChecked == true)
+                clashStatus = "ActiveClash";
+            else
+                clashStatus = "AllClash";
+
+
             if (ClashTestListBox.SelectedItems.Count != 0)
             {
                 foreach (object selectedItem in ClashTestListBox.SelectedItems)
                 {
                     CustomClashTest selectedClashTest = (CustomClashTest)selectedItem;
-                    ClashTest clashTest = selectedClashTest.ClashTest;
-                    if (clashTest.Children.Count != 0)
-                    {
-                        if (comboBoxGroupBy.SelectedItem == null) comboBoxGroupBy.SelectedItem = GroupingMode.None;
-                        if (comboBoxThenBy.SelectedItem == null) comboBoxThenBy.SelectedItem = GroupingMode.None;
-                        if ((GroupingMode)comboBoxThenBy.SelectedItem != GroupingMode.None || (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
+
+                    ClashTest clashTestOriginal = selectedClashTest.ClashTest;
+
+                    try
+                    {                      
+                        if (clashTestOriginal.Children.Count != 0)
                         {
 
-                            if ((GroupingMode)comboBoxThenBy.SelectedItem == GroupingMode.None && (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
+                            if (comboBoxGroupBy.SelectedItem == null) comboBoxGroupBy.SelectedItem = GroupingMode.None;
+                            if (comboBoxThenBy.SelectedItem == null) comboBoxThenBy.SelectedItem = GroupingMode.None;
+
+                            if ((GroupingMode)comboBoxThenBy.SelectedItem != GroupingMode.None || (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
                             {
-                                GroupingMode mode = (GroupingMode)comboBoxGroupBy.SelectedItem;
-                                GroupingFunctions.GroupClashes(clashTest, mode, GroupingMode.None, (bool)keepExistingGroupsCheckBox.IsChecked);
-                            }
-                            else if ((GroupingMode)comboBoxGroupBy.SelectedItem == GroupingMode.None && (GroupingMode)comboBoxThenBy.SelectedItem != GroupingMode.None)
-                            {
-                                GroupingMode mode = (GroupingMode)comboBoxThenBy.SelectedItem;
-                                GroupingFunctions.GroupClashes(clashTest, mode, GroupingMode.None, (bool)keepExistingGroupsCheckBox.IsChecked);
-                            }
-                            else
-                            {
-                                GroupingMode byMode = (GroupingMode)comboBoxGroupBy.SelectedItem;
-                                GroupingMode thenByMode = (GroupingMode)comboBoxThenBy.SelectedItem;
-                                GroupingFunctions.GroupClashes(clashTest, byMode, thenByMode, (bool)keepExistingGroupsCheckBox.IsChecked);
+
+
+
+
+                                if ((GroupingMode)comboBoxThenBy.SelectedItem == GroupingMode.None && (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
+                                {
+                                    GroupingMode mode = (GroupingMode)comboBoxGroupBy.SelectedItem;
+                                    GroupingFunctions.GroupClashes(clashTestOriginal, mode, GroupingMode.None, (bool)keepExistingGroupsCheckBox.IsChecked, clashStatus);
+                                }
+                                else if ((GroupingMode)comboBoxGroupBy.SelectedItem == GroupingMode.None && (GroupingMode)comboBoxThenBy.SelectedItem != GroupingMode.None)
+                                {
+                                    GroupingMode mode = (GroupingMode)comboBoxThenBy.SelectedItem;
+                                    GroupingFunctions.GroupClashes(clashTestOriginal, mode, GroupingMode.None, (bool)keepExistingGroupsCheckBox.IsChecked, clashStatus);
+                                }
+                                else
+                                {
+                                    GroupingMode byMode = (GroupingMode)comboBoxGroupBy.SelectedItem;
+                                    GroupingMode thenByMode = (GroupingMode)comboBoxThenBy.SelectedItem;
+                                    GroupingFunctions.GroupClashes(clashTestOriginal, byMode, thenByMode, (bool)keepExistingGroupsCheckBox.IsChecked, clashStatus);
+                                }
                             }
                         }
                     }
+                    catch { }
+
+
+
                 }
                 RegisterChanges();
-            }
+
+                this.Close();
+            }          
         }
+
+
+
+
+
+
+
+
+
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             Keyboard.Focus(SearchText);
+        }
+
+        private void ClashGroupsForm_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                this.Close();
+            }
         }
 
         /// <summary>
@@ -128,12 +239,18 @@ namespace KPLN_Quantificator.Forms
                     CustomClashTest selectedClashTest = (CustomClashTest)selectedItem;
                     ClashTest clashTest = selectedClashTest.ClashTest;
 
-                    if (clashTest.Children.Count != 0)
+                    try
                     {
-                        GroupingFunctions.UnGroupClashes(clashTest);
+                        if (clashTest.Children.Count != 0)
+                        {
+                            GroupingFunctions.UnGroupClashes(clashTest);
+                        }
                     }
+                    catch { }
                 }
                 RegisterChanges();
+
+                this.Close();
             }
         }
         
