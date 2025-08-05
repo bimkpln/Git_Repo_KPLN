@@ -1,54 +1,51 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
     public class CommandRemoveInstance : IExecutableCommand
     {
-        private Document Document { get; }
-        private FamilyInstance Instance { get; }
-        public CommandRemoveInstance(Document document, FamilyInstance instance)
-        {
-            Document = document;
-            Instance = instance;
-        }
+        public CommandRemoveInstance() {}
+
         public Result Execute(UIApplication app)
         {
+            UIDocument uiDoc = app.ActiveUIDocument;
+            if (uiDoc == null)
+                return Result.Cancelled;
+            
             try
             {
-                if (Document != null)
+                Document doc = uiDoc.Document;
+                
+                if (doc != null)
                 {
-                    Transaction t = new Transaction(Document, "Указатель");
+                    Transaction t = new Transaction(doc, "KPLN_Указатель очистить");
                     t.Start();
-                    try
-                    {
-                        if (Instance.Symbol.FamilyName == "ClashPoint")
-                        {
-                            Document.Delete(Instance.Id);
-                            t.Commit();
-                            return Result.Succeeded;
-                        }  
-                    }
-                    catch (Exception)
-                    {
-                        t.RollBack();
-                        return Result.Failed;
-                    }
                     
+                    // Чистка от старых экз.
+                    FamilyInstance[] oldFamInsOfGM = new FilteredElementCollector(doc)
+                        .OfCategory(BuiltInCategory.OST_GenericModel)
+                        .Where(el => el is FamilyInstance famInst && famInst.Symbol.FamilyName == CommandPlaceFamily.FamilyName)
+                        .Cast<FamilyInstance>()
+                        .ToArray();
+                        
+                    ICollection<ElementId> availableWSOldElemsId = WorksharingUtils.CheckoutElements(doc, oldFamInsOfGM.Select(el => el.Id).ToArray());
+                        
+                    doc.Delete(availableWSOldElemsId);
+
+                    t.Commit();
                 }
-                return Result.Failed;
             }
             catch (Exception)
             {
                 return Result.Failed;
             }
+
+            return Result.Succeeded;
         }
     }
 }

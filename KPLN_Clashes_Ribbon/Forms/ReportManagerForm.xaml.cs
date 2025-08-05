@@ -2,6 +2,7 @@
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
@@ -14,13 +15,11 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 using static KPLN_Clashes_Ribbon.Tools.HTMLTools;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using Image = System.Windows.Controls.Image;
 using Path = System.IO.Path;
-using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
-using static System.Net.Mime.MediaTypeNames;
-using System.Text.RegularExpressions;
 
 namespace KPLN_Clashes_Ribbon.Forms
 {
@@ -39,7 +38,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             InitializeComponent();
             UpdateGroups();
 
-            if (CurrentDBUser.SubDepartmentId == 8)
+            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 btnAddGroup.Visibility = Visibility.Visible;
             else
                 btnAddGroup.Visibility = Visibility.Collapsed;
@@ -47,13 +46,19 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         public void UpdateGroups()
         {
-            ObservableCollection<ReportGroup> groups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project);
+            ObservableCollection<ReportGroup> groups;
+            if ((bool)this.ShowClosedReportGroups.IsChecked)
+                groups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project);
+            else
+                groups = _sqliteService_MainDB.GetReportGroups_ByDBProjectANDNotClosed(_project);
+
+
             if (groups != null)
             {
                 foreach (ReportGroup group in groups)
                 {
                     ObservableCollection<Report> reports = _sqliteService_MainDB.GetReports_ByReportGroupId(group.Id);
-                    
+
                     // Настройка визуализации ReportGroup если по отчетам Report была активность
                     if (group.Status == Core.ClashesMainCollection.KPItemStatus.New)
                     {
@@ -64,7 +69,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Core.ClashesMainCollection.KPItemStatus.Opened, MainDB_Enumerator.ReportGroups, group.Id);
                         }
                     }
-                    
+
                     foreach (Report report in reports)
                     {
                         // Настройка визуализации Report если отчеты закрыты (смена картинки)
@@ -72,7 +77,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             report.IsGroupEnabled = Visibility.Visible;
                         else
                             report.IsGroupEnabled = Visibility.Collapsed;
-                        
+
                         group.Reports.Add(report);
                     }
                 }
@@ -84,18 +89,18 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnBtnRemoveReport(object sender, RoutedEventArgs args)
         {
             KPTaskDialog dialog = new KPTaskDialog(
-                this, 
-                "Удалить отчет", 
-                "Необходимо подтверждение", 
-                "Вы уверены, что хотите удалить данный отчет?", 
-                Core.ClashesMainCollection.KPTaskDialogIcon.Question, 
-                true, 
+                this,
+                "Удалить отчет",
+                "Необходимо подтверждение",
+                "Вы уверены, что хотите удалить данный отчет?",
+                Core.ClashesMainCollection.KPTaskDialogIcon.Question,
+                true,
                 "После удаления данные о статусе и комментарии будут безвозвратно потеряны!");
             dialog.ShowDialog();
-            
+
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (CurrentDBUser.SubDepartmentId == 8)
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
                     _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
@@ -104,11 +109,11 @@ namespace KPLN_Clashes_Ribbon.Forms
                 else
                 {
                     KPTaskDialog dialogError = new KPTaskDialog(
-                        this, 
-                        "Удалить отчет", 
-                        "Ошибка удаления", 
-                        "Удалить может только сотрудник BIM-отдела", 
-                        Core.ClashesMainCollection.KPTaskDialogIcon.Question, 
+                        this,
+                        "Удалить отчет",
+                        "Ошибка удаления",
+                        "Удалить может только сотрудник BIM-отдела",
+                        Core.ClashesMainCollection.KPTaskDialogIcon.Question,
                         true);
                     dialogError.ShowDialog();
                 }
@@ -117,7 +122,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
-            if (CurrentDBUser.SubDepartmentId == 8)
+            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                 int repInstIndex = 0;
@@ -141,11 +146,11 @@ namespace KPLN_Clashes_Ribbon.Forms
                         {
                             FileInfo file = new FileInfo(file_name);
                             string reportInstanceName = file.Name.Replace(".html", "");
-                            
+
                             // Публикую запись о новом репорте
                             FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
                             int newReportId = _sqliteService_MainDB.PostReport_NewReport_ByNameAndReportGroup(reportInstanceName, group, db_FI);
-                            
+
                             ObservableCollection<ReportItem> reportInstances = ParseHtmlToRepInstColelction(file, group, newReportId);
                             if (reportInstances != null)
                             {
@@ -243,7 +248,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     }
                     if (headers.Count == 0)
                         continue;
-                    
+
                     if (class_name == "clashGroupRow")
                     {
                         isGroupInstance = true;
@@ -259,7 +264,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         parentGroupId = num_id;
                         addInstance = true;
                     }
-                    
+
                     if (class_name == "childRow")
                     {
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
@@ -273,7 +278,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         num_id++;
                         addInstance = true;
                     }
-                    
+
                     if (class_name == "childRowLast")
                     {
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
@@ -288,7 +293,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         resetgroupid = true;
                         addInstance = true;
                     }
-                    
+
                     if (class_name == "contentRow")
                     {
                         name = HTMLTools.GetValue(node, GetRowId(headers, "Наименование конфликта"), decode);
@@ -303,9 +308,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                         addInstance = true;
                     }
 
-                    if (name == string.Empty) 
+                    if (name == string.Empty)
                         continue;
-                    
+
                     try
                     {
                         FileInfo img = new FileInfo(image);
@@ -330,16 +335,10 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 repGroup.Id,
                                 reportId,
                                 name,
-                                id1,
-                                id2,
-                                name1,
-                                name2,
                                 image,
-                                point,
                                 KPItemStatus.Opened,
                                 reportParentGroupComments,
-                                reportItemComments,
-                                -1));
+                                reportItemComments));
                         }
                         else
                         {
@@ -348,16 +347,16 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 repGroup.Id,
                                 reportId,
                                 name,
+                                image,
+                                KPItemStatus.Opened,
+                                reportParentGroupComments,
+                                reportItemComments,
+                                parentGroupId,
                                 id1,
                                 id2,
                                 name1,
                                 name2,
-                                image,
-                                point,
-                                KPItemStatus.Opened,
-                                reportParentGroupComments,
-                                reportItemComments,
-                                parentGroupId));
+                                point));
                         }
                     }
 
@@ -376,18 +375,18 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnButtonCloseReportGroup(object sender, RoutedEventArgs args)
         {
             KPTaskDialog dialog = new KPTaskDialog(
-                this, 
-                "Закрыть группу", 
-                "Необходимо подтверждение", 
-                "Вы уверены, что хотите закрыть данную группу отчетов?", 
-                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo, 
-                true, 
+                this,
+                "Закрыть группу",
+                "Необходимо подтверждение",
+                "Вы уверены, что хотите закрыть данную группу отчетов?",
+                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo,
+                true,
                 "После закрытия все действия с отчетами будут заморожены!");
             dialog.ShowDialog();
-            
+
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (CurrentDBUser.SubDepartmentId == 8)
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     group.Status = Core.ClashesMainCollection.KPItemStatus.Closed;
@@ -410,7 +409,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
-            if (CurrentDBUser.SubDepartmentId != 8) { return; }
+            if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
 
             ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm();
             if ((bool)groupCreateForm.ShowDialog())
@@ -420,10 +419,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
         }
 
-        private void OnBtnUpdate(object sender, RoutedEventArgs args)
-        {
-            UpdateGroups();
-        }
+        private void OnBtnUpdate(object sender, RoutedEventArgs args) => UpdateGroups();
 
         private void RecEnter(object sender, System.Windows.Input.MouseEventArgs args)
         {
@@ -479,13 +475,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                     Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
                     report.GetProgress();
                 }
-                
+
                 if (sender.GetType() == typeof(TextBlock))
                 {
                     Report report = (sender as TextBlock).DataContext as Report;
                     report.GetProgress();
                 }
-                
+
                 if (sender.GetType() == typeof(Image))
                 {
                     Report report = (sender as Image).DataContext as Report;
@@ -499,19 +495,19 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
                         form.Show();
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId), this);
+                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
                         form.Show();
                     }
                 }
@@ -526,18 +522,18 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnRemoveGroup(object sender, RoutedEventArgs e)
         {
             KPTaskDialog dialog = new KPTaskDialog(
-                this, 
-                "Удалить группу", 
-                "Необходимо подтверждение", 
-                "Вы уверены, что хотите удалить данную группу отчетов?", 
-                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo, 
-                true, 
+                this,
+                "Удалить группу",
+                "Необходимо подтверждение",
+                "Вы уверены, что хотите удалить данную группу отчетов?",
+                Core.ClashesMainCollection.KPTaskDialogIcon.Ooo,
+                true,
                 "После удаления данные будут безвозвратно потеряны!");
             dialog.ShowDialog();
-            
+
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (CurrentDBUser.SubDepartmentId == 8)
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     _sqliteService_MainDB.DeleteReportGroupAndReportsAndReportItems_ByReportGroupId(group.Id);
@@ -576,5 +572,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
 
         }
+
+        private void ShowClosedReportGroups_Checked(object sender, RoutedEventArgs e) => UpdateGroups();
     }
 }

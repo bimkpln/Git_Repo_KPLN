@@ -1,4 +1,5 @@
 ﻿using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -12,8 +13,6 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
     /// </summary>
     public sealed class SQLiteService_MainDB : AbsSQLiteService
     {
-        private static readonly string _userSystemName = CurrentDBUser.SystemName;
-
         public SQLiteService_MainDB()
         {
             _dbConnectionPath = @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Clashes_MainDB.db;Version=3;";
@@ -49,9 +48,9 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"'{rGroup.Name}', " +
                     $"'{KPItemStatus.New}', " +
                     $"'{CurrentTime}', " +
-                    $"'{_userSystemName}', " +
+                    $"'{DBMainService.CurrentDBUser.SystemName}', " +
                     $"'{CurrentTime}', " +
-                    $"'{_userSystemName}', " +
+                    $"'{DBMainService.CurrentDBUser.SystemName}', " +
                     $"'{rGroup.BitrixTaskIdAR}', " +
                     $"'{rGroup.BitrixTaskIdKR}', " +
                     $"'{rGroup.BitrixTaskIdOV}', " +
@@ -94,9 +93,9 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 Status = KPItemStatus.New.ToString(),
                 Path = groupDbFi.FullName,
                 DateCreated = CurrentTime,
-                UserCreated = _userSystemName,
+                UserCreated = DBMainService.CurrentDBUser.SystemName,
                 DateLast = CurrentTime,
-                UserLast = _userSystemName
+                UserLast = DBMainService.CurrentDBUser.SystemName
             };
 
             return ExecuteInsertWithId(query, parameters);
@@ -115,18 +114,15 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"WHERE {nameof(ReportGroup.ProjectId)} = {project.Id}"));
 
         /// <summary>
-        /// Получить коллекцию открытых Report для текущей группы отчетов
+        /// Получить коллекцию ТОЛЬКО открытых ReportGroup для текущего проекта
         /// </summary>
         /// <param name="project">Проект для поиска</param>
-        public ObservableCollection<Report> GetReports_OpenedByProject(DBProject project) =>
-            new ObservableCollection<Report>(
-                ExecuteQuery<Report>(
-                    $"SELECT * FROM {MainDB_Enumerator.Reports} " +
-                    $"WHERE {nameof(Report.ReportGroupId)} " +
-                    $"IN (" +
-                        $"SELECT {nameof(Report.ReportGroupId)} FROM {MainDB_Enumerator.ReportGroups} " +
-                        $"WHERE {nameof(ReportGroup.ProjectId)} = {project.Id}) " +
-                    $"AND {nameof(Report.Status)} = '{Core.ClashesMainCollection.KPItemStatus.Opened}'"));
+        public ObservableCollection<ReportGroup> GetReportGroups_ByDBProjectANDNotClosed(DBProject project) =>
+            new ObservableCollection<ReportGroup>(
+                ExecuteQuery<ReportGroup>(
+                    $"SELECT * FROM {MainDB_Enumerator.ReportGroups} " +
+                    $"WHERE {nameof(ReportGroup.ProjectId)} = {project.Id} " +
+                    $"AND {nameof(ReportGroup.Status)} != '{KPItemStatus.Closed}'"));
 
         /// <summary>
         /// Получить коллекция Report для текущей группы отчетов (ReportGroup)
@@ -159,7 +155,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         public void UpdateReportGroup_MarksLastChange_ByGroupId(int groupId) =>
             ExecuteNonQuery(
                 $"UPDATE {MainDB_Enumerator.ReportGroups} " +
-                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{_userSystemName}' " +
+                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{DBMainService.CurrentDBUser.SystemName}' " +
                 $"WHERE Id={groupId}");
 
         /// <summary>
@@ -171,7 +167,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
             ExecuteNonQuery(
                 $"UPDATE {MainDB_Enumerator.Reports} " +
                 $"SET {nameof(Report.DateLast)}='{CurrentTime}', " +
-                    $"{nameof(Report.UserLast)}='{_userSystemName}', " +
+                    $"{nameof(Report.UserLast)}='{DBMainService.CurrentDBUser.SystemName}', " +
                     $"{nameof(Report.Status)}='{mainStatus}' " +
                 $"WHERE Id={reportId}");
         #endregion
@@ -180,7 +176,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// <summary>
         /// Удалить отчет (Report) и БД с единицами отчета (ReportItem) по Report
         /// </summary>
-        /// <param name="id">Id отчета для удаления</param>
+        /// <param name="report">Отчет для удаления</param>
         public void DeleteReportAndReportItems_ByReportId(Report report)
         {
             // Удаляю строку из БД (Report).
@@ -224,7 +220,6 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
             ExecuteNonQuery(
                 $"DELETE FROM {MainDB_Enumerator.Reports} " +
                 $"WHERE {nameof(Report.ReportGroupId)} = {id}");
-
         }
         #endregion
     }

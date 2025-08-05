@@ -11,7 +11,6 @@ namespace KPLN_Clashes_Ribbon.Commands
     public class CommandZoomSelectElement : IExecutableCommand
     {
         private readonly int _id;
-
         private readonly string _elInfo;
 
         public CommandZoomSelectElement(int id, string elInfo)
@@ -27,18 +26,22 @@ namespace KPLN_Clashes_Ribbon.Commands
             {
                 Document doc = app.ActiveUIDocument.Document;
                 Element element = doc.GetElement(new ElementId(_id));
-                Transaction t = new Transaction(doc, "Zoom");
+                Transaction t = new Transaction(doc, "KPLN_Приблизить");
 
                 if (!ElementCheckErrorFromInfoParse(doc, element))
                 {
                     t.Start();
                     if (element != null)
                     {
-                        ZoomTools.ZoomElement(element.get_BoundingBox(null), app.ActiveUIDocument);
+                        if (app.ActiveUIDocument.ActiveView is View3D activeView)
+                            ZoomTools.ZoomElement(element.get_BoundingBox(null), app.ActiveUIDocument, activeView);
+
                         app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId> { element.Id });
                     }
                     else
-                        TaskDialog.Show("Внимание!", "Данный элемент не найден! Либо это элемент из связи, либо элемент был удален/замоделирован заново, что привело к удалению/замене id.");
+                        TaskDialog.Show("Внимание!", 
+                            "Данный элемент не найден! Либо это элемент из связи, либо элемент был удален/замоделирован заново, что привело к удалению/замене id.\n\n" +
+                            "ВАЖНО: Метку пересечения всё равно можно поставить, но ТОЛЬКО если она относится к открытому файлу и ТОЛЬКО на месте коллизии из отчёта");
                     t.Commit();
 
                     return Result.Succeeded;

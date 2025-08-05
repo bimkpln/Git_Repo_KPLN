@@ -1,4 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_SQLiteWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using System;
 using System.Collections.ObjectModel;
@@ -280,7 +281,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                DBUser dBUser = ClashesMainCollection.GetDBUser_ByUserName(UserCreated);
+                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserCreated);
                 if (dBUser == null)
                     return "Не установлено :(";
                 
@@ -295,7 +296,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                DBUser dBUser = ClashesMainCollection.GetDBUser_ByUserName(UserLast);
+                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserLast);
                 if (dBUser == null)
                     return "Не установлено :(";
 
@@ -371,7 +372,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (CurrentDBUser.SubDepartmentId == 8)
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     return System.Windows.Visibility.Visible;
                 }
@@ -384,7 +385,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (IsEnabled)
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                     return System.Windows.Visibility.Visible;
                 else
                     return System.Windows.Visibility.Collapsed;

@@ -5,6 +5,7 @@ using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -19,18 +20,30 @@ namespace KPLN_Clashes_Ribbon.Commands
         {
             try
             {
-                // Для пользователей бим-отдела - показываю все проекты, включая архивные
-                bool isBIMUser = ClashesMainCollection.CurrentDBUser.SubDepartmentId == 8;
-                
-                ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, isBIMUser);
-                if ((bool)selectedProjectForm.ShowDialog())
+                DBProject dBProject = null;
+                UIDocument uidoc = commandData.Application.ActiveUIDocument;
+
+                if (uidoc != null)
                 {
-                    DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
-                    ReportManagerForm mainForm = new ReportManagerForm(dBProject);
-                    mainForm.Show();
+                    Document doc = uidoc.Document;
+                    string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
+                    dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
                 }
-                else
-                    return Result.Cancelled;
+                
+                if (uidoc == null || dBProject == null)
+                {
+                    // Для пользователей бим-отдела - показываю все проекты, включая архивные
+                    bool isBIMUser = DBMainService.CurrentUserDBSubDepartment.Id == 8;
+
+                    ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, isBIMUser);
+                    if ((bool)selectedProjectForm.ShowDialog())
+                        dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
+                    else
+                        return Result.Cancelled;
+                }
+
+                ReportManagerForm mainForm = new ReportManagerForm(dBProject);
+                mainForm.Show();
 
                 return Result.Succeeded;
             }

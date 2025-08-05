@@ -1,4 +1,5 @@
 ﻿using KPLN_Clashes_Ribbon.Services;
+using KPLN_Library_SQLiteWorker;
 using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -219,10 +220,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (CurrentDBUser.SubDepartmentId == 8)
-                {
+                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                     return IsGroupEnabled;
-                }
 
                 return System.Windows.Visibility.Collapsed;
             }

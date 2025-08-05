@@ -1,5 +1,6 @@
 ﻿using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_SQLiteWorker;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -41,7 +42,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void LoadByParentBtn_Click(object sender, RoutedEventArgs args)
         {
-            if (CurrentDBUser.SubDepartmentId != 8) { return; }
+            if (DBMainService.CurrentDBUser.SubDepartmentId != 8) { return; }
 
             TextInputForm textInputForm = new TextInputForm(this, "Введите ID базавой задачи Bitrix:");
             if ((bool)textInputForm.ShowDialog())

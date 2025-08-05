@@ -5,14 +5,76 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Clashes_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="600" Width="800"
+        Height="600"
+        MaxHeight="1000"
+        Width="825"
+        MaxWidth="1000"
+        SizeToContent="WidthAndHeight"
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
         ResizeMode="CanResizeWithGrip" 
         Title="KPLN: Отчет Navisworks" 
         WindowStyle="ToolWindow" 
         Topmost="False" 
-        WindowStartupLocation="CenterOwner" 
+        WindowStartupLocation="CenterScreen" 
         Background="#FF292D36">
+
+    <Window.Resources>
+        <Style
+            x:Key="ItemTBL"
+            TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style
+            x:Key="ItemLocalHeaderTBL"
+            TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextDecorations" Value="Underline"/>
+            <Setter Property="Margin" Value="5,0,0,5"/>
+        </Style>
+
+        <Style
+            x:Key="ItemBTN"
+            TargetType="Button">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="BorderBrush" Value="{x:Null}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style
+            x:Key="FilterTBL"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style
+            x:Key="FilterTBX"
+            TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontStretch" Value="ExtraExpanded"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+    </Window.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -24,17 +86,30 @@
             <ColumnDefinition Width="0.95*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <Rectangle Grid.RowSpan="2" Grid.ColumnSpan="2" Fill="#FFFFD100"/>
+        <Rectangle 
+            Grid.RowSpan="2" 
+            Grid.ColumnSpan="2" 
+            Fill="#FFFFD100"/>
 
         <!--Фильтрование по статусу замечания-->
-        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical">
-            <TextBlock Margin="5,5,0,0" Text="(И) Фильтр по статусу:" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"/>
+        <StackPanel 
+            Grid.Row="0" 
+            Grid.Column="0" 
+            Orientation="Vertical">
+            <TextBlock 
+                Text="(И) Фильтр по статусу:" 
+                Style="{StaticResource FilterTBL}"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <ComboBox Grid.Column="0" SelectedIndex="1" Margin="5,0,5,5" x:Name="cbxFilter" SelectionChanged="OnSelectionChanged">
+                <ComboBox 
+                    x:Name="StatusFilterCBX" 
+                    Grid.Column="0" 
+                    SelectedIndex="1" 
+                    Margin="5,0,5,5" 
+                    SelectionChanged="StatusFilterCBX_SelectionChanged">
                     <ComboBoxItem Content="Все коллизии"/>
                     <ComboBoxItem Content="Открытые и делегированные"/>
                     <ComboBoxItem Content="Исправленные"/>
@@ -45,13 +120,34 @@
         </StackPanel>
         
         <!--Экспорт в txt-->
-        <Button Margin="5,5,5,5" Grid.Row="0" Grid.Column="1" Content="🖬" Padding="5,1" Background="White" BorderBrush="#FFAA8B00" Foreground="#FFFFD100" Click="OnExport">
+        <Button 
+            Grid.Row="0" 
+            Grid.Column="1" 
+            Margin="5,5,5,5" 
+            Content="🖬" 
+            Padding="5,1" 
+            Background="White" 
+            BorderBrush="#FFAA8B00" 
+            Foreground="#FFFFD100" 
+            Click="OnExport">
             <Button.ToolTip>
                 <StackPanel>
-                    <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Экспорт"/>
-                    <TextBlock TextWrapping="Wrap" Text="Сохранение отчета в формате .txt"/>
-                    <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                    <TextBlock TextWrapping="Wrap" Text="Подсказка: Для импорта в таблицы Excell (Разделитель - «Табуляция»)" FontStyle="Italic"/>
+                    <TextBlock 
+                        TextWrapping="Wrap" 
+                        FontWeight="Bold"
+                        Margin="0,0,0,5" 
+                        Text="Экспорт"/>
+                    <TextBlock 
+                        TextWrapping="Wrap" 
+                        Text="Сохранение отчета в формате .txt"/>
+                    <Border 
+                        BorderBrush="Silver" 
+                        BorderThickness="0,1,0,0" 
+                        Margin="0,8" />
+                    <TextBlock 
+                        TextWrapping="Wrap" 
+                        Text="Подсказка: Для импорта в таблицы Excel (Разделитель - «Табуляция»)" 
+                        FontStyle="Italic"/>
                 </StackPanel>
             </Button.ToolTip>
         </Button>
@@ -63,53 +159,32 @@
             <DockPanel>
                 <TextBlock 
                     Text="(ИЛИ) Фильтр по имени конфликта/группы:" 
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontWeight="Bold"/>
+                    Style="{StaticResource FilterTBL}"/>
                 <TextBox 
                     x:Name="ConflictDataTBx"
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontStretch="ExtraExpanded" 
-                    TextAlignment="Left" 
+                    Style="{StaticResource FilterTBX}"
                     MinHeight="20" 
                     MinWidth="180" 
                     DockPanel.Dock="Left"
                     TextChanged="ConflictDataTBx_TextChanged"/>
                 <TextBlock 
                     Text="(ИЛИ) Фильтр по ID-элемента:" 
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontWeight="Bold"/>
+                    Style="{StaticResource FilterTBL}"/>
                 <TextBox 
                     x:Name="IDDataTBx"
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontStretch="ExtraExpanded" 
-                    TextAlignment="Left" 
+                    Style="{StaticResource FilterTBX}"
                     MinHeight="20" 
-                    MinWidth="195" 
+                    MinWidth="135" 
                     DockPanel.Dock="Left"
                     TextChanged="IDDataTBx_TextChanged"/>
             </DockPanel>
             <DockPanel>
                 <TextBlock 
                     Text="(ИЛИ) Фильтр по данным об эл-тах:" 
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontWeight="Bold"/>
+                    Style="{StaticResource FilterTBL}"/>
                 <TextBox 
                     x:Name="ConflictMetaDataTBx"
-                    Margin="5" 
-                    VerticalAlignment="Center" 
-                    HorizontalAlignment="Left" 
-                    FontStretch="ExtraExpanded" 
-                    TextAlignment="Left" 
+                    Style="{StaticResource FilterTBX}"
                     MinHeight="20" 
                     Width="580" 
                     DockPanel.Dock="Left"
@@ -117,274 +192,527 @@
             </DockPanel>
         </StackPanel>
 
-        <ScrollViewer 
-            Margin="0,0,0,17" 
-            Grid.Row="2" 
-            Grid.ColumnSpan="2" 
-            HorizontalScrollBarVisibility="Disabled" 
-            VerticalScrollBarVisibility="Auto">
-            <StackPanel Orientation="Vertical">
-                <ItemsControl 
-                    x:Name="ReportControll"
-                    ItemsSource="{Binding FilteredInstancesColl}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="7.5,10,7.5,5">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="0.5*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <!--Информация по группе-->
-                                <Rectangle Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Margin="-3" RadiusX="3" RadiusY="3" Grid.ColumnSpan="2" Grid.RowSpan="6"/>
-                                <TextBlock Margin="3,2,0,5"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Name}" Foreground="White" FontWeight="Bold"/>
-                                <Button Grid.Column="0" Grid.Row="1"  Width="200" Height="200" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
-                                <Image VerticalAlignment="Top" Grid.Column="0" Width="200" Height="200" Grid.Row="1" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
-                                <Rectangle VerticalAlignment="Top" Grid.Column="0" Margin="3,-3,3,3" Width="206" Height="206" RadiusX="3" RadiusY="3" Grid.Row="1" Stroke="White" StrokeThickness="3"/>
-                                <Grid Grid.Row="1" Grid.Column="1">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
+        <ListBox
+            x:Name="ReportControll"
+            Grid.Row="2"
+            Grid.ColumnSpan="2"
+            Margin="0,0,0,17"
+            ItemsSource="{Binding FilteredInstancesColl}"
+            SelectionMode="Extended"
+            HorizontalContentAlignment="Stretch"
+            ScrollViewer.CanContentScroll="True"
+            VirtualizingPanel.IsVirtualizing="True"
+            VirtualizingPanel.ScrollUnit="Pixel">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="-5"/>
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="3,5,3,5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.5*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                                    <!--Информация по элементу группы №1-->
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Элемент 1" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="5,0,0,5" Text="Данные об эл-те: " Foreground="White" FontSize="12"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Element_1_Info}"  TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="2" Grid.Column="0" Margin="5,0,0,5" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="12"/>
-                                    <Button Grid.Row="2" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1"/>
+                        <!--Информация по группе-->
+                        <Rectangle 
+                            x:Name="BackgroundRect"
+                            Grid.ColumnSpan="2" 
+                            Grid.RowSpan="6"
+                            Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" 
+                            Margin="-3" 
+                            RadiusX="3" 
+                            RadiusY="3"/>
+                        <TextBlock 
+                            Grid.Row="0" 
+                            Grid.Column="0" 
+                            Grid.ColumnSpan="2" 
+                            Text="{Binding Name}" 
+                            Style="{StaticResource ItemTBL}"
+                            Margin="3,2,0,5"/>
+                        <Button 
+                            Grid.Column="0" 
+                            Grid.Row="1"  
+                            Width="200" 
+                            Height="200" 
+                            Content="↻" 
+                            Style="{StaticResource ItemBTN}"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Center"
+                            Opacity="0.5" 
+                            FontSize="16" 
+                            Click="OnLoadImage"/>
+                        <Image 
+                            Grid.Row="1" 
+                            Grid.Column="0" 
+                            Width="200" 
+                            Height="200" 
+                            VerticalAlignment="Top"
+                            Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+                        <Rectangle 
+                            Grid.Row="1"
+                            Grid.Column="0" 
+                            VerticalAlignment="Top"
+                            Margin="3,-3,3,3" 
+                            Width="206" 
+                            Height="206" 
+                            RadiusX="3" 
+                            RadiusY="3" 
+                            Stroke="White" 
+                            StrokeThickness="3"/>
+                        <Grid Grid.Row="1" Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
 
-                                    <!--Информация по элементу группы №2-->
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Элемент 2" Foreground="White" FontWeight="Bold" TextDecorations="Underline" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="4" Grid.Column="0" Text=" Данные об эл-те: " Foreground="White" FontSize="12"/>
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Element_2_Info}" TextWrapping="Wrap" Foreground="White" FontSize="12"/>
-                                    <TextBlock HorizontalAlignment="Right" Grid.Row="5" Grid.Column="0" Margin="5,0,0,5" Text="ID объекта: " VerticalAlignment="Center" Foreground="White" FontSize="12"/>
-                                    <Button Grid.Row="5" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2"/>
+                            <!--Комменты от координатора-->
+                            <TextBlock 
+                                Grid.Row="0" 
+                                Grid.Column="0" 
+                                Text="Комментарий BIM: " 
+                                Visibility="{Binding ReportParentGroupCommentsVisibility}" 
+                                Style="{StaticResource ItemLocalHeaderTBL}" 
+                                FontWeight="Bold"
+                                Foreground="Black"/>
+                            <TextBlock 
+                                Grid.Row="0" 
+                                Grid.Column="1"
+                                Text="{Binding ReportParentGroupComments}"  
+                                Visibility="{Binding ReportParentGroupCommentsVisibility}" 
+                                Style="{StaticResource ItemTBL}"
+                                Foreground="Black"/>
 
-                                    <!--Комменты от координатора-->
-                                    <TextBlock Visibility="{Binding ReportParentGroupCommentsVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0" Margin="5,0,0,5" Text="Комментарий BIM: " Foreground="White" FontSize="12" TextDecorations="Underline"/>
-                                    <TextBlock Visibility="{Binding ReportParentGroupCommentsVisibility}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="6" Grid.Column="1" Margin="5,0,0,5" Text="{Binding ReportParentGroupComments}"  Foreground="Bisque" FontSize="12" TextWrapping="Wrap"/>
-                                    
-                                    <!--Метка-->
-                                    <TextBlock Visibility="{Binding PlacePointVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0" Margin="5,0,0,0" Text="Найти: " Foreground="White" FontSize="12"/>
-                                    <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="7" VerticalAlignment="Top" VerticalContentAlignment="Top" Grid.Column="1" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontSize="12" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2"/>
+                            <!--Список файлов-->
+                            <TextBlock 
+                                Grid.Row="1" 
+                                Grid.Column="0" 
+                                Text="Файлы в отчётах: " 
+                                Style="{StaticResource ItemLocalHeaderTBL}"/>
+                            <TextBlock 
+                                Grid.Row="1" 
+                                Grid.Column="1"
+                                Text="{Binding DocumentsHashSet}"  
+                                Style="{StaticResource ItemTBL}"/>
 
-                                    <!--Информация по субэлементам группы-->
-                                    <TextBlock Visibility="{Binding IsGroup}" HorizontalAlignment="Right" Grid.Row="8" Grid.Column="0" Margin="5,0,0,0" Text="Субэлементы: " Foreground="White" FontSize="12"/>
-                                    <ItemsControl Visibility="{Binding IsGroup}" Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding SubElements}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="5">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
-                                                    <Rectangle Margin="-3"  Fill="#3FFFFFFF" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="3" Grid.RowSpan="5" RadiusX="3" RadiusY="3"/>
-                                                    <Button Grid.Column="0" Grid.Row="0" Grid.RowSpan="5"  Width="80" Height="80" Content="↻" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="5" Background="{x:Null}" Opacity="0.5" Click="OnLoadImage" FontSize="16" FontWeight="Bold" BorderBrush="{x:Null}" Foreground="White"/>
-                                                    <Image VerticalAlignment="Top" Grid.Column="0" Margin="5" Grid.Row="0" Width="80" Grid.RowSpan="5" Height="80" Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
-                                                    
-                                                    <!--Элемент 1-->
-                                                    <TextBlock Margin="0,0,0,5" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="0" Text="{Binding Name}" Foreground="White"  FontSize="12" FontWeight="Bold" TextDecorations="Underline"/>
-                                                    <TextBlock Grid.Column="1" Grid.Row="1" Text="Элемент 1 Id:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                                    <Button Grid.Column="2" Grid.Row="1" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_1_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_1" FontSize="10">
-                                                        <Button.ToolTip>
-                                                            <StackPanel MaxWidth="300">
-                                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Элемент #1"/>
-                                                                <TextBlock TextWrapping="Wrap" Text="{Binding Element_1_Info}"/>
-                                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Нажмите для выбора элемента в проекте" FontStyle="Italic"/>
-                                                            </StackPanel>
-                                                        </Button.ToolTip>
-                                                    </Button>
+                            <!--Метка-->
+                            <TextBlock 
+                                Grid.Row="2" 
+                                Grid.Column="0" 
+                                Text="Найти: " 
+                                Visibility="{Binding PlacePointVisibility}" 
+                                Style="{StaticResource ItemLocalHeaderTBL}"/>
+                            <Button 
+                                Grid.Row="2" 
+                                Grid.Column="1" 
+                                Click="PlacePoint" 
+                                Content="፠ Метка/-и пересечения" 
+                                Visibility="{Binding PlacePointVisibility}" 
+                                Style="{StaticResource ItemBTN}"
+                                Background="{x:Null}" 
+                                BorderBrush="White" 
+                                BorderThickness="2"/>
 
-                                                    <!--Элемент 2-->
-                                                    <TextBlock Grid.Column="1" Grid.Row="2" Text="Элемент 2 Id:" Foreground="White" Margin="0,3,0,0"  FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                                    <Button Grid.Column="2" Grid.Row="2" VerticalAlignment="Top" Margin="0,3,0,0" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="{Binding Element_2_Id}" Foreground="White" Background="{x:Null}" BorderBrush="{x:Null}" Click="SelectIdElement_2" FontSize="10">
-                                                        <Button.ToolTip>
-                                                            <StackPanel MaxWidth="300">
-                                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Элемент #2"/>
-                                                                <TextBlock TextWrapping="Wrap" Text="{Binding Element_2_Info}"/>
-                                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Нажмите для выбора элемента в проекте" FontStyle="Italic"/>
-                                                            </StackPanel>
-                                                        </Button.ToolTip>
-                                                    </Button>
+                            <!--Информация по субэлементам группы-->
+                            <TextBlock 
+                                Grid.Row="3" 
+                                Grid.Column="0" 
+                                Text="Субэлементы: " 
+                                Visibility="{Binding IsGroup}" 
+                                Style="{StaticResource ItemLocalHeaderTBL}"/>
+                            <ItemsControl 
+                                Grid.Row="4" 
+                                Grid.Column="0" 
+                                Grid.ColumnSpan="2" 
+                                Visibility="{Binding IsGroup}" 
+                                ItemsSource="{Binding SubElements}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Rectangle 
+                                                Grid.Row="0" 
+                                                Grid.Column="0" 
+                                                Grid.ColumnSpan="3" 
+                                                Grid.RowSpan="10" 
+                                                Margin="-3"  
+                                                Fill="#3FFFFFFF" 
+                                                RadiusX="3" 
+                                                RadiusY="3"/>
+                                            <Button 
+                                                Grid.Row="1"  
+                                                Grid.Column="0" 
+                                                Grid.RowSpan="5"  
+                                                Width="80" 
+                                                Height="80" 
+                                                Content="↻" 
+                                                Style="{StaticResource ItemBTN}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Top"
+                                                Opacity="0.5" 
+                                                FontSize="16" 
+                                                Click="OnLoadImage"/>
+                                            <Image 
+                                                Grid.Row="1" 
+                                                Grid.Column="0" 
+                                                Grid.RowSpan="5" 
+                                                VerticalAlignment="Top" 
+                                                Margin="5" 
+                                                Width="80" 
+                                                Height="80" 
+                                                Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
 
-                                                    <!--Комменты от координатора-->
-                                                    <TextBlock Visibility="{Binding ReportItemCommentsVisibility}" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Margin="5,0,0,5" Text="Комментарий BIM: " Foreground="White" FontSize="10" TextDecorations="Underline"/>
-                                                    <TextBlock Visibility="{Binding ReportItemCommentsVisibility}" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Margin="5,0,0,5" Text="{Binding ReportItemComments}"  Foreground="Bisque" FontSize="10" TextWrapping="Wrap"/>
+                                            <!--Элемент 1-->
+                                            <TextBlock 
+                                                Grid.Row="0" 
+                                                Grid.Column="0" 
+                                                Grid.ColumnSpan="2"
+                                                Text="{Binding Name}" 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12" 
+                                                HorizontalAlignment="Left"/>
+                                            <TextBlock 
+                                                Grid.Row="1" 
+                                                Grid.Column="1" 
+                                                Text="Файл 1: "
+                                                Style="{StaticResource ItemLocalHeaderTBL}"/>
+                                            <TextBlock 
+                                                Grid.Row="1" 
+                                                Grid.Column="2" 
+                                                Text="{Binding Element_1_DocName}"
+                                                Style="{StaticResource ItemTBL}"/>
+                                            <TextBlock 
+                                                Grid.Row="2" 
+                                                Grid.Column="1" 
+                                                Text="Id 1: " 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12"/>
+                                            <Button 
+                                                Grid.Row="2" 
+                                                Grid.Column="2" 
+                                                Content="{Binding Element_1_Id}" 
+                                                Style="{StaticResource ItemBTN}"
+                                                VerticalContentAlignment="Top" 
+                                                Click="SelectIdElement_1"
+                                                FontSize="10"/>
+                                            <TextBlock 
+                                                Grid.Row="3" 
+                                                Grid.Column="1" 
+                                                Text="Данные 1: " 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12"/>
+                                            <Expander
+                                                Grid.Row="3" 
+                                                Grid.Column="2"
+                                                IsExpanded="False">
+                                                <TextBlock 
+                                                    Text="{Binding Element_2_Info}"
+                                                    Style="{StaticResource ItemTBL}"
+                                                    MaxWidth="300"/>
+                                            </Expander>
 
-                                                    <!--Метка коллизий-->
-                                                    <Button Visibility="{Binding PlacePointVisibility}" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="5,0,0,5" VerticalAlignment="Top" VerticalContentAlignment="Top" HorizontalAlignment="Left" Content="፠ Метка пересечения" Foreground="White" FontWeight="Bold" Background="{x:Null}" Click="PlacePoint" BorderBrush="White" Padding="1" BorderThickness="2" FontSize="10"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Grid>
+                                            <!--Элемент 2-->
+                                            <TextBlock 
+                                                Grid.Row="4" 
+                                                Grid.Column="1" 
+                                                Text="Файл 1: "
+                                                Style="{StaticResource ItemLocalHeaderTBL}"/>
+                                            <TextBlock 
+                                                Grid.Row="4" 
+                                                Grid.Column="2" 
+                                                Text="{Binding Element_2_DocName}"
+                                                Style="{StaticResource ItemTBL}"/>
+                                            <TextBlock 
+                                                Grid.Row="5" 
+                                                Grid.Column="1" 
+                                                Text="Id 2: " 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12"/>
+                                            <Button 
+                                                Grid.Row="5" 
+                                                Grid.Column="2" 
+                                                Content="{Binding Element_2_Id}" 
+                                                Style="{StaticResource ItemBTN}"
+                                                VerticalContentAlignment="Top" 
+                                                Click="SelectIdElement_2"
+                                                FontSize="10"/>
+                                            <TextBlock 
+                                                Grid.Row="6" 
+                                                Grid.Column="1" 
+                                                Text="Данные 2: " 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12"/>
+                                            <Expander
+                                                Grid.Row="6" 
+                                                Grid.Column="2"
+                                                IsExpanded="False">
+                                                <TextBlock 
+                                                    Text="{Binding Element_2_Info}"
+                                                    Style="{StaticResource ItemTBL}"
+                                                    MaxWidth="300"/>
+                                            </Expander>
 
-                                <!--Кнопки устранения-->
-                                <TextBlock Margin="4,3,0,0" Grid.Row="2" Grid.Column="0" Text="Статус конфликта:" Foreground="White"/>
-                                <StackPanel Margin="0,0,0,4" Orientation="Horizontal" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Visibility="{Binding IsControllsVisible, UpdateSourceTrigger=PropertyChanged}">
-                                    <Button Height="25" Padding="5,0,5,0" x:Name="btn_corrected" Margin="3,10,0,0" Content="✔ Устранено" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnCorrected">
-                                        <Button.ToolTip>
-                                            <StackPanel MaxWidth="300">
-                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Устранено"/>
-                                                <TextBlock TextWrapping="Wrap" Text="Пометить пересечение как «Устранено»"/>
-                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
+                                            <!--Комменты от координатора-->
+                                            <TextBlock 
+                                                Grid.Row="7" 
+                                                Grid.Column="1" 
+                                                Text="Комментарий BIM: " 
+                                                Visibility="{Binding ReportItemCommentsVisibility}" 
+                                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                                FontSize="12"
+                                                Foreground="Black"
+                                                TextDecorations="Underline"/>
+                                            <TextBlock 
+                                                Grid.Row="7" 
+                                                Grid.Column="2"
+                                                Text="{Binding ReportItemComments}"  
+                                                Visibility="{Binding ReportItemCommentsVisibility}" 
+                                                Style="{StaticResource ItemTBL}"
+                                                Foreground="Black"
+                                                FontWeight="Bold"
+                                                FontSize="12"/>
+
+                                            <!--Метка коллизий-->
+                                            <Button 
+                                                Grid.Row="6" 
+                                                Grid.Column="0" 
+                                                Click="PlacePoint" 
+                                                Content="፠ Метка" 
+                                                Visibility="{Binding PlacePointVisibility}" 
+                                                Style="{StaticResource ItemBTN}"
+                                                HorizontalAlignment="Center"
+                                                Background="{x:Null}" 
+                                                BorderBrush="White" 
+                                                BorderThickness="2"
+                                                FontSize="10"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+
+                        <!--Кнопки устранения-->
+                        <TextBlock Margin="4,3,0,0" Grid.Row="2" Grid.Column="0" Text="Статус конфликта:" Foreground="White"/>
+                        <StackPanel Margin="0,0,0,4" Orientation="Horizontal" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Visibility="{Binding IsControllsVisible, UpdateSourceTrigger=PropertyChanged}">
+                            <Button Height="25" Padding="5,0,5,0" x:Name="btn_corrected" Margin="3,10,0,0" Content="✔ Устранено" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnCorrected">
+                                <Button.ToolTip>
+                                    <StackPanel MaxWidth="300">
+                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Устранено"/>
+                                        <TextBlock TextWrapping="Wrap" Text="Пометить пересечение как «Устранено»"/>
+                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Height="25" Padding="5,0,5,0" x:Name="btn_approved" Margin="3,10,0,0" Content="Допустимое" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnApproved">
+                                <Button.ToolTip>
+                                    <StackPanel MaxWidth="300">
+                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Допустимое"/>
+                                        <TextBlock TextWrapping="Wrap" Text="Пометить пересечение как «Допустимое»"/>
+                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Height="25" Width="25" x:Name="btn_reset" Margin="3,10,0,0" Content="✖" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnReset">
+                                <Button.ToolTip>
+                                    <StackPanel MaxWidth="300">
+                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Сбросить"/>
+                                        <TextBlock TextWrapping="Wrap" Text="Сбросить статус пересечения на «Открытое»"/>
+                                        <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                        <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                        </StackPanel>
+
+                        <!--Кнопки делегирования-->
+                        <TextBlock 
+                            Grid.Row="2" 
+                            Grid.Column="1"  
+                            Text="Делегировать отделу:" 
+                            Margin="4,3,0,0" 
+                            Foreground="White"/>
+                        <ItemsControl 
+                            Grid.Row="3" 
+                            Grid.Column="1" 
+                            Margin="30,3,0,0" 
+                            ItemsSource="{Binding SubDepartmentBtns}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                                        <Button 
+                                            x:Name="btn_delegate" 
+                                            Height="25" 
+                                            Width="50" 
+                                            Padding="5,0,5,0" 
+                                            Margin="3,10,0,0" 
+                                            Content="{Binding Name}" 
+                                            Background="{Binding DelegateBtnBackground, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                            BorderBrush="White" 
+                                            Foreground="White" 
+                                            FontWeight="Bold" 
+                                            BorderThickness="2" 
+                                            Click="OnDelegate">
+                                            <Button.ToolTip>
+                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Description}"/>
+                                            </Button.ToolTip>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!--Блок комментирования-->
+                        <TextBlock 
+                            Margin="4,3,0,0"  
+                            Grid.Row="4" 
+                            Grid.Column="0" 
+                            Text="Комментарии:" 
+                            Foreground="White"/>
+                        <StackPanel 
+                            Grid.Row="4" 
+                            Grid.Column="0" 
+                            Grid.ColumnSpan="2" 
+                            Margin="0,20,4,0" 
+                            Orientation="Vertical">
+                            <ItemsControl 
+                                ItemsSource="{Binding CommentCollection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid 
+                                            Margin="6, 5, 5, 5" 
+                                            HorizontalAlignment="Left">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            
+                                            <Rectangle 
+                                                Grid.RowSpan="3" 
+                                                Margin="-3" 
+                                                RadiusX="3" 
+                                                RadiusY="3" 
+                                                Stroke="White" 
+                                                StrokeThickness="2" Fill="#19FFFFFF"/>
+                                            <StackPanel 
+                                                Grid.Row="0" 
+                                                Orientation="Horizontal">
+                                                <TextBlock 
+                                                    Text="От: " 
+                                                    Foreground="White"/>
+                                                <TextBlock 
+                                                    Text="{Binding UserFullName}" 
+                                                    Foreground="White"/>
+                                                <TextBlock 
+                                                    Text=" - " 
+                                                    Foreground="White"/>
+                                                <TextBlock 
+                                                    Text="{Binding Time}" 
+                                                    Foreground="White" 
+                                                    Margin="0,0,25,0"/>
                                             </StackPanel>
-                                        </Button.ToolTip>
-                                    </Button>
-                                    <Button Height="25" Padding="5,0,5,0" x:Name="btn_approved" Margin="3,10,0,0" Content="Допустимое" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnApproved">
-                                        <Button.ToolTip>
-                                            <StackPanel MaxWidth="300">
-                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Допустимое"/>
-                                                <TextBlock TextWrapping="Wrap" Text="Пометить пересечение как «Допустимое»"/>
-                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
-                                            </StackPanel>
-                                        </Button.ToolTip>
-                                    </Button>
-                                    <Button Height="25" Width="25" x:Name="btn_reset" Margin="3,10,0,0" Content="✖" Background="{x:Null}" BorderBrush="White" Foreground="White" FontWeight="Bold" BorderThickness="2" Click="OnReset">
-                                        <Button.ToolTip>
-                                            <StackPanel MaxWidth="300">
-                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Сбросить"/>
-                                                <TextBlock TextWrapping="Wrap" Text="Сбросить статус пересечения на «Открытое»"/>
-                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: Действие необходимо подтверждать развернутым комментарием (что фактически сделано/не сделано)" FontStyle="Italic"/>
-                                            </StackPanel>
-                                        </Button.ToolTip>
-                                    </Button>
-                                </StackPanel>
-
-                                <!--Кнопки делегирования-->
-                                <TextBlock 
-                                    Grid.Row="2" 
-                                    Grid.Column="1"  
-                                    Text="Делегировать отделу:" 
-                                    Margin="4,3,0,0" 
-                                    Foreground="White"/>
-                                <ItemsControl 
-                                    Grid.Row="3" 
-                                    Grid.Column="1" 
-                                    Margin="30,3,0,0" 
-                                    ItemsSource="{Binding SubDepartmentBtns}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                                <Button x:Name="btn_delegate" 
-                                                        Height="25" 
-                                                        Width="50" 
-                                                        Padding="5,0,5,0" 
-                                                        Margin="3,10,0,0" 
-                                                        Content="{Binding Name}" 
-                                                        Background="{Binding DelegateBtnBackground, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                        BorderBrush="White" 
-                                                        Foreground="White" 
-                                                        FontWeight="Bold" 
-                                                        BorderThickness="2" 
-                                                        Click="OnDelegate">
-                                                    <Button.ToolTip>
-                                                        <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="{Binding Description}"/>
-                                                    </Button.ToolTip>
-                                                </Button>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <!--Блок комментирования-->
-                                <TextBlock Margin="4,3,0,0"  Grid.Row="4" Grid.Column="0" Text="Комментарии:" Foreground="White"/>
-                                <StackPanel Margin="0,20,4,0" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Vertical">
-                                    <ItemsControl ItemsSource="{Binding CommentCollection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="6, 5, 5, 5" HorizontalAlignment="Left">
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition/>
-                                                        <RowDefinition/>
-                                                        <RowDefinition/>
-                                                    </Grid.RowDefinitions>
-                                                    <Rectangle Grid.RowSpan="3" Margin="-3" RadiusX="3" RadiusY="3" Stroke="White" StrokeThickness="2" Fill="#19FFFFFF"/>
-                                                    <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                        <TextBlock Text="От: " Foreground="White"/>
-                                                        <TextBlock Text="{Binding UserFullName}" Foreground="White"/>
-                                                        <TextBlock Text=" - " Foreground="White"/>
-                                                        <TextBlock Text="{Binding Time}" Foreground="White" Margin="0,0,25,0"/>
-                                                    </StackPanel>
-                                                    <Separator Grid.Row="1" Background="White" Foreground="White"/>
-                                                    <TextBlock TextWrapping="Wrap" Grid.Row="2"  Text="{Binding Message}" Foreground="White"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                                <Button 
-                                    Grid.Row="5" 
-                                    Width="200"
-                                    HorizontalAlignment="Left"
-                                    Content="Комментировать" 
-                                    IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                    VerticalAlignment="Top" 
-                                    Margin="4,3,0,0" 
-                                    Background="{x:Null}" 
-                                    BorderBrush="White" 
-                                    Foreground="White" 
-                                    BorderThickness="2" 
-                                    Click="OnAddComment"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
+                                            <Separator 
+                                                Grid.Row="1" 
+                                                Background="White" 
+                                                Foreground="White"/>
+                                            <TextBlock 
+                                                Grid.Row="2"  
+                                                Text="{Binding Message}" 
+                                                TextWrapping="Wrap" 
+                                                Foreground="White"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        <Button 
+                            Grid.Row="5" 
+                            Width="200"
+                            Content="Комментировать" 
+                            IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                            Style="{StaticResource ItemBTN}"
+                            VerticalAlignment="Top" 
+                            Margin="5" 
+                            BorderBrush="White" 
+                            BorderThickness="2"
+                            Click="OnAddComment"/>
+                    </Grid>
+                    <DataTemplate.Triggers>
+                        <DataTrigger 
+                            Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" 
+                            Value="True">
+                            <Setter 
+                                TargetName="BackgroundRect" 
+                                Property="Stroke" 
+                                Value="Black"/>
+                            <Setter 
+                                TargetName="BackgroundRect" 
+                                Property="StrokeThickness" 
+                                Value="5"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         
         <!--Блок обновления-->
         <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.ColumnSpan="2">
             <Button 
                 x:Name="btnUpdate" 
-                Margin="5,5,5,5" 
-                Content="Обновить отчеты" 
-                Background="#19FFFFFF" 
-                BorderBrush="White" 
-                Click="OnBtnUpdate" 
-                Foreground="White">
+                Content="Обновить отчеты"
+                Click="OnBtnUpdate"
+                Style="{StaticResource ItemBTN}"
+                Margin="5"
+                BorderBrush="White">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
                         <TextBlock 

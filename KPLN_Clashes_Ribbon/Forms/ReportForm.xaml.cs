@@ -1,20 +1,21 @@
-﻿using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -28,7 +29,6 @@ namespace KPLN_Clashes_Ribbon.Forms
     {
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
-        private readonly ReportManagerForm _reportManager;
         private readonly ReportGroup _repourtGroup;
         private readonly Report _currentReport;
         private readonly Services.SQLite.SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
@@ -38,15 +38,17 @@ namespace KPLN_Clashes_Ribbon.Forms
         private string _idDataTBx = string.Empty;
         private string _conflictMetaDataTBx = string.Empty;
 
-        public ReportForm(Report report, ReportGroup reportGroup, ReportManagerForm reportManager)
+        public ReportForm(Report report, ReportGroup reportGroup)
         {
-            _reportManager = reportManager;
             _repourtGroup = reportGroup;
             _currentReport = report;
 
             _sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+            FilteredInstancesColl = CollectionViewSource.GetDefaultView(ReportInstancesColl);
+            FilteredInstancesColl.Filter += FilterForRepItems;
+            
             if (_repourtGroup.IsEnabled)
             {
                 foreach (ReportItem instance in ReportInstancesColl)
@@ -69,18 +71,88 @@ namespace KPLN_Clashes_Ribbon.Forms
             Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
             DataContext = this;
 
+            OnClosingActions.Add(new CommandRemoveInstance());
             Closing += RemoveOnClose;
+        }
+
+        private bool FilterForRepItems(object obj)
+        {
+            if (obj is ReportItem item)
+            {
+                System.Windows.Controls.ComboBox sfCBX = this.StatusFilterCBX;
+                if (sfCBX == null)
+                    return true;
+
+                int mainStatusFilterIndex = this.StatusFilterCBX.SelectedIndex;
+                // Фильтрация по статусу
+                switch (mainStatusFilterIndex)
+                {
+                    case 0:
+                        return CheckParamData(item);
+                    case 1:
+                        if (item.Status == KPItemStatus.Opened || item.Status == KPItemStatus.Delegated)
+                            return CheckParamData(item);
+
+                        return false;
+                    case 2:
+                        if (item.Status == KPItemStatus.Closed)
+                            return CheckParamData(item);
+
+                        return false;
+                    case 3:
+                        if (item.Status == KPItemStatus.Approved)
+                            return CheckParamData(item);
+
+                        return false;
+                    case 4:
+                        if (item.Status == KPItemStatus.Delegated)
+                            return CheckParamData(item);
+
+                        return false;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Фильтрация элемента по атрибутам
+        /// </summary>
+        private bool CheckParamData(ReportItem item)
+        {
+            // Фильтрация по атрибутам
+            bool isEmptyConflData = string.IsNullOrEmpty(_conflictDataTBx);
+            bool isEmptyConflictMetaData = string.IsNullOrEmpty(_conflictMetaDataTBx);
+            bool isEmptyIDData = string.IsNullOrEmpty(_idDataTBx);
+
+            if (isEmptyConflData && isEmptyConflictMetaData && isEmptyIDData)
+                return true;
+            else
+            {
+                bool checkConflData = item.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
+                    || item.SubElements.Any(sub => sub.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0 
+                        || sub.Element_2_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                bool checkIDData = item.GroupElementIds.Contains(_idDataTBx);
+                    
+                if (checkConflData && checkConflictMetaData && checkIDData)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
         /// Исходная коллекция элементов
         /// </summary>
-        public ObservableCollection<ReportItem> ReportInstancesColl { get; private set; }
+        public ReportItem[] ReportInstancesColl { get; private set; }
 
         /// <summary>
         /// Отфильтрованная коллекция элементов, которая является контекстом для окна
         /// </summary>
-        public ObservableCollection<ReportItem> FilteredInstancesColl { get; private set; } = new ObservableCollection<ReportItem>();
+        public ICollectionView FilteredInstancesColl { get; private set; }
 
         /// <summary>
         /// Получить приоритетный статус из инстансов внутри одного отчета
@@ -140,179 +212,48 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void SelectId(object sender, string elInfo)
         {
             if (int.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
-            {
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
-            }
             else
                 throw new Exception("Проблемы с отчетом: параметр id не парсится");
         }
 
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
-            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-
-            string pt = report.Point;
-            pt = pt.Replace("X:", "");
-            pt = pt.Replace("Y:", "");
-            pt = pt.Replace("Z:", "");
-
-            string pts = string.Empty;
-            foreach (char c in pt)
-            {
-                if ("-0123456789.,".Contains(c))
-                {
-                    pts += c;
-                }
-            }
-
-            string[] parts = pts.Split(',');
-            //var temp = double.Parse(parts[0].Replace(".", ","), NumberStyles.Float);
-            if (
-                double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointX)
-                && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointY)
-                && double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out double pointZ)
-                )
-            {
-                XYZ point = new XYZ(pointX, pointY, pointZ);
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandPlaceFamily(point, report.Element_1_Id, report.Element_1_Info, report.Element_2_Id, report.Element_2_Info, this));
-            }
-            else
-                throw new Exception("Проблемы с CultureInfo");
+            if ((sender as System.Windows.Controls.Button).DataContext is ReportItem report)
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandPlaceFamily(report));
         }
 
-        private void UpdateCollection()
-        {
-            foreach (ReportItem report in ReportInstancesColl)
-            {
-                AddToFilteredInstancesColl_ByUserFilterData(report);
-            }
-        }
-
-        private void UpdateCollection_ByStatys(KPItemStatus status)
-        {
-            foreach (ReportItem report in ReportInstancesColl)
-            {
-                if (report.Status == status)
-                    AddToFilteredInstancesColl_ByUserFilterData(report);
-                else
-                    FilteredInstancesColl.Remove(report);
-            }
-        }
-
-        private void UpdateCollection_ByStatuses(KPItemStatus status1, KPItemStatus status2)
-        {
-            foreach (ReportItem report in ReportInstancesColl)
-            {
-                if (report.Status == status1 || report.Status == status2)
-                    AddToFilteredInstancesColl_ByUserFilterData(report);
-                else
-                    FilteredInstancesColl.Remove(report);
-            }
-        }
-
-        /// <summary>
-        /// Главный метод фильтарции отчетов по статусу и пользовательским полям
-        /// </summary>
-        /// <param name="report"></param>
-        private void AddToFilteredInstancesColl_ByUserFilterData(ReportItem report)
-        {
-            bool isEmptyConflData = string.IsNullOrEmpty(_conflictDataTBx);
-            bool isEmptyConflictMetaData = string.IsNullOrEmpty(_conflictMetaDataTBx);
-            bool isEmptyIDData = string.IsNullOrEmpty(_idDataTBx);
-
-            if (isEmptyConflData && isEmptyConflictMetaData && isEmptyIDData)
-            {
-                if (!FilteredInstancesColl.Any(ri => ri.Id == report.Id))
-                    FilteredInstancesColl.Add(report);
-            }
-            else
-            {
-                bool checkConflData = !isEmptyConflData && report.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0;
-                bool checkConflictMetaData = !isEmptyConflictMetaData
-                    && (report.Element_1_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
-                        || report.Element_2_Info.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
-                bool checkIDData = !isEmptyIDData
-                    && (report.Element_1_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
-                        || report.Element_2_Id.ToString().IndexOf(_idDataTBx, StringComparison.OrdinalIgnoreCase) >= 0)
-                    || (report.SubElements.Select(se => se.Element_1_Id.ToString()).Contains(_idDataTBx)
-                        || report.SubElements.Select(se => se.Element_2_Id.ToString()).Contains(_idDataTBx));
-
-                if (checkConflData || checkConflictMetaData || checkIDData)
-                {
-                    if (!FilteredInstancesColl.Any(ri => ri.Id == report.Id))
-                        FilteredInstancesColl.Add(report);
-                }
-                else
-                    FilteredInstancesColl.Remove(report);
-            }
-        }
-
-        private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            int i = this.cbxFilter.SelectedIndex;
-            switch (i)
-            {
-                case 0:
-                    UpdateCollection();
-                    break;
-                case 1:
-                    UpdateCollection_ByStatuses(KPItemStatus.Opened, KPItemStatus.Delegated);
-                    break;
-                case 2:
-                    UpdateCollection_ByStatys(KPItemStatus.Closed);
-                    break;
-                case 3:
-                    UpdateCollection_ByStatys(KPItemStatus.Approved);
-                    break;
-                case 4:
-                    UpdateCollection_ByStatys(KPItemStatus.Delegated);
-                    break;
-            }
-        }
-
-        private void OnBtnUpdate(object sender, RoutedEventArgs args)
-        {
-            FilteredInstancesColl.Clear();
-            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
-            UpdateCollection();
-
-            OnSelectionChanged(null, null);
-        }
+        private void StatusFilterCBX_SelectionChanged(object sender, SelectionChangedEventArgs e) => FilteredInstancesColl?.Refresh();
 
         private void ConflictDataTBx_TextChanged(object sender, TextChangedEventArgs e)
         {
-            OnSelectionChanged(null, null);
-
             System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
             _conflictDataTBx = textBox.Text;
 
-            UpdateCollection();
-
-            OnSelectionChanged(null, null);
+            FilteredInstancesColl?.Refresh();
         }
 
         private void IDDataTBx_TextChanged(object sender, TextChangedEventArgs e)
         {
-            OnSelectionChanged(null, null);
-
             System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
             _idDataTBx = textBox.Text;
 
-            UpdateCollection();
-
-            OnSelectionChanged(null, null);
+            FilteredInstancesColl?.Refresh();
         }
 
         private void ConflictMetaDataTBx_TextChanged(object sender, TextChangedEventArgs e)
         {
-            OnSelectionChanged(null, null);
-
             System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
             _conflictMetaDataTBx = textBox.Text;
 
-            UpdateCollection();
+            FilteredInstancesColl?.Refresh();
+        }
 
-            OnSelectionChanged(null, null);
+        private void OnBtnUpdate(object sender, RoutedEventArgs args)
+        {
+            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
+
+            FilteredInstancesColl?.Refresh();
         }
 
         /// <summary>
@@ -348,27 +289,75 @@ namespace KPLN_Clashes_Ribbon.Forms
             item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
         }
 
+        /// <summary>
+        /// Метод получения выделенных элементов
+        /// </summary>
+        private List<ReportItem> GetTargetItems(ReportItem clicked)
+        {
+            List<ReportItem> items = new List<ReportItem>();
+            if (ReportControll.SelectedItems != null && ReportControll.SelectedItems.Count > 1)
+            {
+                foreach (object selected in ReportControll.SelectedItems)
+                {
+                    if (selected is ReportItem ri)
+                        items.Add(ri);
+                }
+            }
+
+            if (!items.Any(i => i.Id == clicked.Id))
+                items.Add(clicked);
+
+            if (items.Count > 1)
+            {
+                TaskDialog td = new TaskDialog("Внимание!")
+                {
+                    MainContent = $"Вы сейчас произведёте дейтсвия сразу с {items.Count} элементами. Продолжить?",
+                    CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
+                    MainIcon = TaskDialogIcon.TaskDialogIconWarning
+                };
+
+                TaskDialogResult tdResult = td.Show();
+                if (tdResult == TaskDialogResult.No)
+                    return new List<ReportItem>();
+            }
+
+            return items;
+        }
+
         private void OnCorrected(object sender, RoutedEventArgs e)
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            ItemMessageWorker(item, KPItemStatus.Closed, "Статус изменен: <Устранено>\n");
+            foreach (ReportItem ri in GetTargetItems(item))
+            {
+                ItemMessageWorker(ri, KPItemStatus.Closed, "Статус изменен: <Устранено>\\n");
+            }
         }
 
         private void OnApproved(object sender, RoutedEventArgs e)
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
 
+            List<ReportItem> items = GetTargetItems(item);
+
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
             string msg = textInputForm.UserComment;
-            if (msg != null)
-                ItemMessageWorker(item, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
+            if (msg == null)
+                return;
+
+            foreach (ReportItem ri in items)
+            {
+                ItemMessageWorker(ri, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
+            }
         }
 
         private void OnReset(object sender, RoutedEventArgs e)
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\n");
+            foreach (ReportItem ri in GetTargetItems(item))
+            {
+                ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\\n");
+            }
         }
 
         private void OnAddComment(object sender, RoutedEventArgs e)
@@ -378,8 +367,13 @@ namespace KPLN_Clashes_Ribbon.Forms
             TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
             textInputForm.ShowDialog();
             string msg = textInputForm.UserComment;
-            if (msg != null)
-                ItemMessageWorker(item, $"{msg}");
+            if (msg == null)
+                return;
+
+            foreach (ReportItem ri in GetTargetItems(item))
+            {
+                ItemMessageWorker(ri, $"{msg}");
+            }
         }
 
         /// <summary>
@@ -389,88 +383,100 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             SubDepartmentBtn subDepartmentBtn = button.DataContext as SubDepartmentBtn;
-            if (!(FindParent<ItemsControl>(button).DataContext is ReportItem item))
+            if (!(FindParent<ItemsControl>(button).DataContext is ReportItem currentItem))
                 return;
+
+            List<ReportItem> items = GetTargetItems(currentItem);
 
             // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
             if (subDepartmentBtn.Id == 99)
             {
-                ResetDelegateBtnBrush(item);
-                ItemMessageWorker(item, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
-            }
-            // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
-            else
-            {
-                int delegBitrixTaskId = 0;
-                switch (subDepartmentBtn.Id)
+                foreach (ReportItem ri in items)
                 {
-                    case 2:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAR;
-                        break;
-                    case 3:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdKR;
-                        break;
-                    case 4:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdOV;
-                        break;
-                    case 5:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdVK;
-                        break;
-                    case 6:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdEOM;
-                        break;
-                    case 7:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdSS;
-                        break;
-                    case 20:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdITP;
-                        break;
-                    case 21:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAUPT;
-                        break;
-                    case 22:
-                        delegBitrixTaskId = _repourtGroup.BitrixTaskIdAV;
-                        break;
-                }
-                
-                // Анализ задачи в Bitrix (если есть)
-                if (delegBitrixTaskId > 0)
-                {
-                    Task<bool> isTaskOpenTask = Task<bool>.Run(() =>
+                    ResetDelegateBtnBrush(ri);
+                    ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
+                    foreach (ReportItem r in ReportInstancesColl)
                     {
-                        return BitrixMessageSender.CheckTaskOpens_ByTaskId(delegBitrixTaskId);
-                    });
-
-                    // Спам ТОЛЬКО в закрытые задачи
-                    if (!isTaskOpenTask.Result)
-                    {
-                        Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
-                        {
-                            return BitrixMessageSender
-                                .SendMsgToTask_ByTaskId(
-                                delegBitrixTaskId,
-                                $"Пользователь <{CurrentDBUser.Name} {CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\"");
-                        });
-
-                        if (sendMsgToTaskTask.Result)
-                            System.Windows.MessageBox.Show(
-                                $"ВНИМАНИЕ! Отдел, которому вы делегируете замечание - уже отработал свою задачу. Свяжитесь с исполнителем лично" +
-                                $"\nИНФО: Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}",
-                                "Bitrix",
-                                (MessageBoxButton)MessageBoxButtons.OK,
-                                (MessageBoxImage)MessageBoxIcon.Asterisk);
+                        if (r.Id == ri.Id)
+                            r.SubDepartmentBtns = ri.SubDepartmentBtns;
                     }
                 }
 
-                SetDelegateBtnBrush(item, subDepartmentBtn);
-                ItemMessageWorker(item, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
+                return;
             }
 
-            // Обновление коллекции по делегировнным кнопкам
-            foreach (ReportItem ri in ReportInstancesColl)
+            // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
+            int delegBitrixTaskId = 0;
+            switch (subDepartmentBtn.Id)
             {
-                if (ri.Id == item.Id)
-                    ri.SubDepartmentBtns = item.SubDepartmentBtns;
+                case 2:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdAR;
+                    break;
+                case 3:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdKR;
+                    break;
+                case 4:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdOV;
+                    break;
+                case 5:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdVK;
+                    break;
+                case 6:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdEOM;
+                    break;
+                case 7:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdSS;
+                    break;
+                case 20:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdITP;
+                    break;
+                case 21:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdAUPT;
+                    break;
+                case 22:
+                    delegBitrixTaskId = _repourtGroup.BitrixTaskIdAV;
+                    break;
+            }
+
+            // Анализ задачи в Bitrix (если есть)
+            if (delegBitrixTaskId > 0)
+            {
+                Task<bool> isTaskOpenTask = Task<bool>.Run(() =>
+                    BitrixMessageSender.CheckTaskOpens_ByTaskId(delegBitrixTaskId));
+
+                // Спам ТОЛЬКО в закрытые задачи
+                if (!isTaskOpenTask.Result)
+                {
+                    Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
+                        BitrixMessageSender
+                            .SendMsgToTask_ByTaskId(
+                            delegBitrixTaskId,
+                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\""));
+
+                    if (sendMsgToTaskTask.Result)
+                        System.Windows.MessageBox.Show(
+                            $"ВНИМАНИЕ! Отдел, которому вы делегируете замечание - уже отработал свою задачу. Свяжитесь с исполнителем лично" +
+                            $"\nИНФО: Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}",
+                            "Bitrix",
+                            (MessageBoxButton)MessageBoxButtons.OK,
+                            (MessageBoxImage)MessageBoxIcon.Asterisk);
+                }
+            }
+
+            foreach (ReportItem ri in items)
+            {
+                SubDepartmentBtn targetBtn = ri.SubDepartmentBtns.FirstOrDefault(b => b.Id == subDepartmentBtn.Id);
+                if (targetBtn != null)
+                    SetDelegateBtnBrush(ri, targetBtn);
+
+                ItemMessageWorker(ri, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
+
+                // Обновление коллекции по делегировнным кнопкам
+                foreach (ReportItem r in ReportInstancesColl)
+                {
+                    if (r.Id == ri.Id)
+                        r.SubDepartmentBtns = ri.SubDepartmentBtns;
+                }
             }
         }
 
@@ -627,6 +633,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
 
             return parentObject as T;
-        }
+        }        
     }
 }

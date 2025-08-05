@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -38,13 +39,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             new SubDepartmentBtn(99, "✖", "Сбросить делегирование и вернуть статус пересечения «Открытое»"),
         };
 
+        private string _element_1_DocName;
+        private string _element_2_DocName;
         private int _statusId;
         private string _comments;
         private KPItemStatus _status;
         private int _delegatedDepartmentId;
         private System.Windows.Visibility _isControllsVisible = System.Windows.Visibility.Visible;
         private bool _isControllsEnabled = true;
-        private SolidColorBrush _fill = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
+        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 255, 255));
         private ImageSource _imageSource;
         private Stream _imageStream;
         private BitmapImage _bitmapImage;
@@ -57,43 +60,24 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
         }
 
+
         /// <summary>
-        /// Конструктор для генерации отчетов из html-отчетов
+        /// Конструктор для генерации отчетов из html-отчетов (ГРУППА)
         /// </summary>
         public ReportItem(
             int id,
             int repGroupId,
             int repId,
             string name,
-            string element_1_id,
-            string element_2_id,
-            string element_1_info,
-            string element_2_info,
             string image,
-            string point,
             KPItemStatus status,
             string reportParentGroupComments,
-            string reportItemComments,
-            int parentGroupId)
+            string reportItemComments)
         {
             Id = id;
             ReportGroupId = repGroupId;
             ReportId = repId;
             Name = name;
-            ParentGroupId = parentGroupId;
-
-            if (int.TryParse(element_1_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_1))
-                Element_1_Id = id_1;
-            else
-                Element_1_Id = -1;
-
-            if (int.TryParse(element_2_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_2))
-                Element_2_Id = id_2;
-            else
-                Element_2_Id = -1;
-            
-            Element_1_Info = element_1_info;
-            Element_2_Info = element_2_info;
 
             using (Stream image_stream = File.Open(image, FileMode.Open))
             {
@@ -110,10 +94,49 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 ImageSource = imageSource;
             }
 
-            Point = point;
             Status = status;
             ReportParentGroupComments = reportParentGroupComments;
             ReportItemComments = reportItemComments;
+        }
+
+        /// <summary>
+        /// Конструктор для генерации отчетов из html-отчетов (ВЛОЖЕННЫЙ В ГРУППУ)
+        /// </summary>
+        public ReportItem(
+            int id,
+            int repGroupId,
+            int repId,
+            string name,
+            string image,
+            KPItemStatus status,
+            string reportParentGroupComments,
+            string reportItemComments,
+            int parentGroupId,
+            string element_1_id,
+            string element_2_id,
+            string element_1_info,
+            string element_2_info,
+            string point) : this (id, repGroupId, repId, name, image, status, reportParentGroupComments, reportItemComments)
+        {
+            ParentGroupId = parentGroupId;
+
+            if (int.TryParse(element_1_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_1))
+                Element_1_Id = id_1;
+            else
+                Element_1_Id = -1;
+
+            if (int.TryParse(element_2_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id_2))
+                Element_2_Id = id_2;
+            else
+                Element_2_Id = -1;
+
+            Element_1_Info = element_1_info;
+            Element_2_Info = element_2_info;
+
+            Element_1_DocName = GetFileNameFromInfo(Element_1_Info);
+            Element_2_DocName = GetFileNameFromInfo(Element_2_Info);
+
+            Point = point;
         }
 
         #region Данные из БД
@@ -128,13 +151,45 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
         public byte[] Image { get; set; }
 
-        public int Element_1_Id { get; set; }
+        public int Element_1_Id { get; set; } = -1;
 
-        public int Element_2_Id { get; set; }
-
+        public int Element_2_Id { get; set; } = -1;
+        
         public string Element_1_Info { get; set; }
 
         public string Element_2_Info { get; set; }
+
+        /// <summary>
+        /// Имя файла элемента №1
+        /// </summary>
+        public string Element_1_DocName
+        {
+            get
+            {
+                // Для старых отчётов - верстаем на лету
+                if (_element_1_DocName == null)
+                    _element_1_DocName = GetFileNameFromInfo(Element_1_Info);
+
+                return _element_1_DocName;
+            }
+            set => _element_1_DocName = value;
+        }
+
+        /// <summary>
+        /// Имя файла элемента №2
+        /// </summary>
+        public string Element_2_DocName
+        {
+            get
+            {
+                // Для старых отчётов - верстаем на лету
+                if (_element_2_DocName == null)
+                    _element_2_DocName = GetFileNameFromInfo(Element_2_Info);
+
+                return _element_2_DocName;
+            }
+            set => _element_2_DocName = value;
+        }
 
         public string Point { get; set; }
 
@@ -156,14 +211,14 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
 
         public string ReportParentGroupComments { get; set; }
-        
-        public System.Windows.Visibility ReportParentGroupCommentsVisibility 
+
+        public System.Windows.Visibility ReportParentGroupCommentsVisibility
         {
             get
             {
                 if (string.IsNullOrEmpty(ReportParentGroupComments))
                     return System.Windows.Visibility.Collapsed;
-                
+
                 return System.Windows.Visibility.Visible;
             }
         }
@@ -184,13 +239,13 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// <summary>
         /// Если коллизия в группе - ссылка на id данной группы, иначе значение -1 (приходит из настроек БД)
         /// </summary>
-        public int ParentGroupId { get; set; }
+        public int ParentGroupId { get; set; } = -1;
 
         public int DelegatedDepartmentId
         {
             get => _delegatedDepartmentId;
-            set 
-            { 
+            set
+            {
                 _delegatedDepartmentId = value;
                 NotifyPropertyChanged();
 
@@ -217,6 +272,49 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         #endregion
 
         #region Дополнительная визуализация
+        /// <summary>
+        /// Список файлов участвующих в формировании коллизий
+        /// </summary>
+        public string DocumentsHashSet
+        {
+            get
+            {
+                HashSet<string> doc1Names = new HashSet<string>(SubElements.Select(se => se.Element_1_DocName));
+                HashSet<string> doc2Names = new HashSet<string>(SubElements.Select(se => se.Element_2_DocName));
+                var resultDocNames = doc1Names.Union<string>(doc2Names);
+
+                return string.Join(", ", resultDocNames);
+            }
+        }
+
+        /// <summary>
+        /// Спец. строка Id элементов из группы в формате, пригодном для выделения в ревит: '1111, 1112, 2222'
+        /// </summary>
+        public string GroupElementIds
+        {
+            get
+            {
+                if (SubElements.Count != 0)
+                    return string.Join(",", SubElements.Select(se => se.Element_1_Id));
+
+                return Element_1_Id.ToString();
+            }
+        }
+
+        /// <summary>
+        /// Массив точек из БД для группы
+        /// </summary>
+        public string[] GroupElementPoints
+        {
+            get
+            {
+                if (SubElements.Count != 0)
+                    return SubElements.Select(se => se.Point).ToArray();
+
+                return new string[] { Point };
+            }
+        }
+
         public KPItemStatus Status
         {
             get => _status;
@@ -225,16 +323,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 switch (value)
                 {
                     case KPItemStatus.Closed:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 0, 190, 104));
+                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 190, 104));
                         break;
                     case KPItemStatus.Approved:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
+                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 78, 97, 112));
                         break;
                     case KPItemStatus.Delegated:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 75, 0, 130));
+                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 135, 0, 255));
                         break;
                     case KPItemStatus.Opened:
-                        Fill = new SolidColorBrush(Color.FromArgb(255, 255, 84, 42));
+                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 84, 42));
                         break;
                 }
 
@@ -250,7 +348,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             {
                 if (SubElements.Count != 0)
                     return System.Windows.Visibility.Visible;
-                
+
                 return System.Windows.Visibility.Collapsed;
             }
         }
@@ -315,7 +413,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// <summary>
         /// Коллекция кастомных отделов КПЛН (только внутри данного плагина)
         /// </summary>
-        public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns 
+        public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns
         {
             get => _subDepartmentBtns;
             set
@@ -323,10 +421,10 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 _subDepartmentBtns = value;
                 NotifyPropertyChanged();
             }
-        } 
+        }
 
         /// <summary>
-        /// Коллекция субэлементов, если коллизия в группе
+        /// Коллекция субэлементов группы
         /// </summary>
         public ObservableCollection<ReportItem> SubElements { get; set; } = new ObservableCollection<ReportItem>();
 
@@ -340,6 +438,37 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
         #endregion
+
+        /// <summary>
+        /// Получить имя файла из данных
+        /// </summary>
+        /// <returns></returns>
+        private static string GetFileNameFromInfo(string fileInfo)
+        {
+            if (string.IsNullOrEmpty(fileInfo))
+                return string.Empty;
+
+            // Разбіваем радок па раздзяляльніку
+            string[] splittedFI = fileInfo.Split('➜');
+
+            // Функцыя для выдзялення імя файла
+            string ExtractFileName(string extension)
+            {
+                string fileName1 = splittedFI
+                    .Where(i => i.Contains(extension))
+                    .LastOrDefault()?
+                    .Trim();
+                if (!string.IsNullOrEmpty(fileName1))
+                    fileName1 = fileName1.Split(new[] { extension }, StringSplitOptions.None).FirstOrDefault()?.Trim();
+                
+                return fileName1;
+            }
+
+            // Спрабуем знайсці файл з пашырэннем .rvt, калі не знайшлося, то шукаем .nwc
+            string fileName = ExtractFileName(".rvt") ?? ExtractFileName(".nwc");
+
+            return fileName ?? string.Empty;
+        }
 
         public static string GetCommentsString(ObservableCollection<ReportItemComment> comments)
         {

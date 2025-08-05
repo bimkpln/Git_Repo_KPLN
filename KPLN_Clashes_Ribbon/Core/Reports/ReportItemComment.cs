@@ -1,4 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_SQLiteWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,7 +12,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
     {
         public ReportItemComment(string message)
         {
-            UserSystemName = CurrentDBUser.SystemName;
+            UserSystemName = DBMainService.CurrentDBUser.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
         }
@@ -44,7 +45,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                DBUser dBUser = ClashUserDbService.GetDBUser_ByUserName(UserSystemName);
+                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserSystemName);
                 return $"{dBUser.Surname} {dBUser.Name}";
             } 
         }

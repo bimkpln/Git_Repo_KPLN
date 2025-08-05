@@ -76,6 +76,18 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="MaxWidth" Value="400"/>
         </Style>
+
+        <Style
+            x:Key="MainBTN"
+            TargetType="Button">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{x:Null}"/>
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
     </Window.Resources>
     
     <Grid Margin="10">
@@ -246,7 +258,10 @@
                                     </Button.ToolTip>
                                 </Button>
                                 
-                                <StackPanel Margin="0,10,0,0" Grid.Row="2" Orientation="Horizontal">
+                                <StackPanel 
+                                    Margin="0,10,0,0" 
+                                    Grid.Row="2" 
+                                    Orientation="Horizontal">
                                     <Button 
                                         Visibility="{Binding AdminControllsVisibilityAdd}" 
                                         IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
@@ -265,7 +280,16 @@
                                             </StackPanel>
                                         </Button.ToolTip>
                                     </Button>
-                                    <Button Visibility="{Binding AdminControllsVisibilityAdd}" IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Margin="5,0,0,0" Content="Закрыть"  Background="{x:Null}" BorderBrush="White" Click="OnButtonCloseReportGroup" Opacity="0.2" Foreground="White">
+                                    <Button 
+                                        Visibility="{Binding AdminControllsVisibilityAdd}" 
+                                        IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
+                                        Margin="5,0,0,0" 
+                                        Content="Закрыть"  
+                                        Background="{x:Null}" 
+                                        BorderBrush="White" 
+                                        Click="OnButtonCloseReportGroup" 
+                                        Opacity="0.2" 
+                                        Foreground="White">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="300">
                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Закрыть"/>
@@ -300,24 +324,21 @@
             </StackPanel>
         </ScrollViewer>
         
-        <StackPanel Orientation="Horizontal" Grid.Row="2">
+        <DockPanel 
+            Grid.Row="2"
+            LastChildFill="False" >
             <Button 
                 x:Name="btnAddGroup" 
-                Margin="5,5,5,5" 
+                Style="{StaticResource MainBTN}"
+                Visibility="{Binding AdminControllsVisibilityAdd}"
                 Content="Добавить новую группу" 
-                Background="#19FFFFFF" 
-                BorderBrush="White" 
-                Click="OnBtnAddGroup" 
-                Foreground="White"/>
+                Click="OnBtnAddGroup"/>
             
             <Button 
                 x:Name="btnUpdate" 
-                Margin="5,5,5,5" 
+                Style="{StaticResource MainBTN}"
                 Content="Обновить отчеты" 
-                Background="#19FFFFFF" 
-                BorderBrush="White" 
-                Click="OnBtnUpdate" 
-                Foreground="White">
+                Click="OnBtnUpdate">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
                         <TextBlock 
@@ -327,7 +348,22 @@
                     </StackPanel>
                 </Button.ToolTip>
             </Button>
-        </StackPanel>
+
+            <CheckBox
+                x:Name="ShowClosedReportGroups"
+                IsChecked="False"
+                Foreground="White"
+                Margin="5"
+                Checked="ShowClosedReportGroups_Checked"
+                Unchecked="ShowClosedReportGroups_Checked">
+                <CheckBox.Content>
+                    <TextBlock
+                        Text="Показать закрытые отчеты?"
+                        Padding="2"/>
+                </CheckBox.Content>
+            </CheckBox>
+
+        </DockPanel>
     
     </Grid>
 </Window>
