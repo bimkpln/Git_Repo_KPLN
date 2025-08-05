@@ -14,7 +14,7 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Navisworks2018|AnyCPU'">
-    <OutputPath>bin\2018\</OutputPath>
+    <OutputPath>..\..\SetupFiles\Navisworks\KPLN_Quantificator\2018\</OutputPath>
     <DefineConstants>Navisworks2018</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
@@ -23,7 +23,7 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Navisworks2020|AnyCPU'">
-    <OutputPath>bin\2020\</OutputPath>
+    <OutputPath>..\..\SetupFiles\Navisworks\KPLN_Quantificator\2020\</OutputPath>
     <DefineConstants>Navisworks2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
