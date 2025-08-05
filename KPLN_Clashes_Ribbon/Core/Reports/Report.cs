@@ -7,7 +7,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Media;
-using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -20,6 +19,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
         private int _progress = 0;
         private int _delegationProgress = 0;
+        private int _approvedProgress = 0;
         private System.Windows.Visibility _pbEnabled = System.Windows.Visibility.Collapsed;
         private System.Windows.Visibility _isGroupEnabled = System.Windows.Visibility.Visible;
         private bool _isReportVisible = true;
@@ -86,6 +86,9 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                         break;
                     case ClashesMainCollection.KPItemStatus.Delegated:
                         Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Delegated);
+                        break;
+                    case ClashesMainCollection.KPItemStatus.Approved:
+                        Source = new Source.Source(ClashesMainCollection.KPIcon.Instance_Approved);
                         break;
                     default:
                         Source = new Source.Source(ClashesMainCollection.KPIcon.Instance);
@@ -167,6 +170,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             set
             {
                 _delegationProgress = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public int ApprovedProgress
+        {
+            get => _approvedProgress;
+            set
+            {
+                _approvedProgress = value;
                 NotifyPropertyChanged();
             }
         }
@@ -288,28 +301,31 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             int max = 0;
             int done = 0;
             int delegated = 0;
+            int approved = 0;
             Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(PathToReportInstance);
             foreach (ReportItem ri in sqliteService_ReportInstanceDB.GetAllReporItems())
             {
                 max++;
 
-                if (ri.Status != ClashesMainCollection.KPItemStatus.Opened && ri.Status != ClashesMainCollection.KPItemStatus.Delegated)
+                if (ri.Status == ClashesMainCollection.KPItemStatus.Closed)
                     done++;
                 else if (ri.Status == ClashesMainCollection.KPItemStatus.Delegated)
                     delegated++;
+                else if (ri.Status == ClashesMainCollection.KPItemStatus.Approved)
+                    approved++;
             }
 
-            int doneCount = (int)Math.Round((double)(done * 100 / max));
-            Progress = doneCount;
-
-            int delegatedCount = (int)Math.Round((double)(delegated * 100 / max));
-            DelegationProgress = delegatedCount;
+            Progress = (int)Math.Round((double)(done * 100 / max));
+            DelegationProgress = (int)Math.Round((double)(delegated * 100 / max));
+            ApprovedProgress = (int)Math.Round((double)(approved * 100 / max));
 
             // Устанавливаю статус для смены пиктограммы при условии что все коллизии просмотрены (делегированы, либо устранены, либо открыты)
             if (done == max)
                 Status = ClashesMainCollection.KPItemStatus.Closed;
-            else if (done + delegated == max && delegated > 0)
+            else if (done + delegated == max && delegated > 0 || (done + delegated + approved == max && delegated > 0 && approved > 0))
                 Status = ClashesMainCollection.KPItemStatus.Delegated;
+            else if (done + approved == max && approved > 0)
+                Status = ClashesMainCollection.KPItemStatus.Approved;
             else
                 Status = ClashesMainCollection.KPItemStatus.Opened;
             

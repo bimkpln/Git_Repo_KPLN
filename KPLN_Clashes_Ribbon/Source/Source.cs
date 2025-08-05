@@ -35,6 +35,9 @@ namespace KPLN_Clashes_Ribbon.Source
                 case KPIcon.Instance_Delegated:
                     Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_delegated.png");
                     break;
+                case KPIcon.Instance_Approved:
+                    Value = Path.Combine(AssemblyPath, @"Source\ImageData\report_instance_approved.png");
+                    break;
             }
         }
 

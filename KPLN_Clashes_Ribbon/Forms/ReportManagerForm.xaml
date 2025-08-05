@@ -141,12 +141,13 @@
                                                     <Grid.RowDefinitions>
                                                         <RowDefinition Height="6"/>
                                                         <RowDefinition Height="6"/>
+                                                        <RowDefinition Height="6"/>
                                                         <RowDefinition/>
                                                     </Grid.RowDefinitions>
                                                     <!--Прямоугольник с отчетом-->
                                                     <Rectangle 
                                                         Grid.Row="0" 
-                                                        Grid.RowSpan="3" 
+                                                        Grid.RowSpan="4" 
                                                         Grid.Column="0" 
                                                         Grid.ColumnSpan="3" 
                                                         Margin="-4" 
@@ -157,11 +158,42 @@
                                                         Fill="{Binding Fill, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                                         MouseUp="OnUp"
                                                         Visibility="{Binding IsReportVisible, Converter={StaticResource BoolToVis}}"/>
+                                                    
                                                     <!--Прогерссбар по отработке-->
-                                                    <ProgressBar Margin="0,0,0,2" Height="3" Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Value="{Binding Progress, UpdateSourceTrigger=PropertyChanged}" Foreground="Green" Maximum="100"/>
+                                                    <ProgressBar 
+                                                        Grid.Row="0" 
+                                                        Grid.Column="0" 
+                                                        Grid.ColumnSpan="3"
+                                                        Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  
+                                                        Value="{Binding Progress, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Margin="0,0,0,2" 
+                                                        Height="3" 
+                                                        Foreground="#00be68" 
+                                                        Maximum="100"/>
                                                     <!--Прогерссбар по делегированию-->
-                                                    <ProgressBar Margin="0,0,0,2" Height="3" Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Value="{Binding DelegationProgress, UpdateSourceTrigger=PropertyChanged}" Foreground="Orange" Maximum="100"/>
-                                                    <Image Grid.Row="2" Visibility="{Binding IsGroupNotEnabled, UpdateSourceTrigger=PropertyChanged}" Source="{Binding Source.Value}" Grid.Column="0" Width="25" Height="25"  MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp" Opacity="0.5">
+                                                    <ProgressBar 
+                                                        Grid.Row="1" 
+                                                        Grid.Column="0" 
+                                                        Grid.ColumnSpan="3" 
+                                                        Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  
+                                                        Value="{Binding DelegationProgress, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Margin="0,0,0,2" 
+                                                        Height="3" 
+                                                        Foreground="#8800ff" 
+                                                        Maximum="100"/>
+                                                    <!--Прогерссбар по допустимым-->
+                                                    <ProgressBar 
+                                                        Grid.Row="2" 
+                                                        Grid.Column="0" 
+                                                        Grid.ColumnSpan="3" 
+                                                        Visibility="{Binding PbEnabled, UpdateSourceTrigger=PropertyChanged}"  
+                                                        Value="{Binding ApprovedProgress, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Margin="0,0,0,2" 
+                                                        Height="3" 
+                                                        Foreground="#4e617a" 
+                                                        Maximum="100"/>
+                                                    
+                                                    <Image Grid.Row="3" Visibility="{Binding IsGroupNotEnabled, UpdateSourceTrigger=PropertyChanged}" Source="{Binding Source.Value}" Grid.Column="0" Width="25" Height="25"  MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp" Opacity="0.5">
                                                         <Image.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Отчет (неактивно)"/>
@@ -191,8 +223,10 @@
                                                             </StackPanel>
                                                         </Image.ToolTip>
                                                     </Image>
-                                                    <Image Grid.Row="2" VerticalAlignment="Top" Visibility="{Binding IsGroupEnabled, UpdateSourceTrigger=PropertyChanged}" Source="{Binding Source.Value}" Grid.Column="0" Width="25" Height="25"  MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp"/>
-                                                    <TextBlock Foreground="Black" Grid.Row="2" Visibility="{Binding IsGroupEnabled, UpdateSourceTrigger=PropertyChanged}" Margin="3,0,3,0" Grid.Column="1" MaxWidth="100" TextWrapping="Wrap" Text="{Binding Name}" MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp" FontSize="10">
+                                                    
+                                                    <Image Grid.Row="3" VerticalAlignment="Top" Visibility="{Binding IsGroupEnabled, UpdateSourceTrigger=PropertyChanged}" Source="{Binding Source.Value}" Grid.Column="0" Width="25" Height="25"  MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp"/>
+                                                    
+                                                    <TextBlock Foreground="Black" Grid.Row="3" Visibility="{Binding IsGroupEnabled, UpdateSourceTrigger=PropertyChanged}" Margin="3,0,3,0" Grid.Column="1" MaxWidth="100" TextWrapping="Wrap" Text="{Binding Name}" MouseEnter="RecEnter" MouseLeave="RecLeave" MouseUp="OnUp" FontSize="10">
                                                         <TextBlock.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Отчет"/>
@@ -214,19 +248,22 @@
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="6"/>
                                                                         <RowDefinition Height="6"/>
+                                                                        <RowDefinition Height="6"/>
                                                                         <RowDefinition/>
                                                                     </Grid.RowDefinitions>
                                                                     <Rectangle Grid.Row="0" Fill="White" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" Margin="-4" RadiusX="3" RadiusY="3"/>
                                                                     <!--Прогерссбар по отработке-->
-                                                                    <ProgressBar Margin="0,0,0,2" Height="4"  Grid.Row="0" Value="50" Maximum="100" Foreground="Green"/>
+                                                                    <ProgressBar Margin="0,0,0,2" Height="4"  Grid.Row="0" Value="50" Maximum="100" Foreground="#00be68"/>
                                                                     <!--Прогерссбар по делегированию-->
-                                                                    <ProgressBar Margin="0,0,0,2" Height="4"  Grid.Row="1" Value="50" Maximum="100" Foreground="Orange"/>
+                                                                    <ProgressBar Margin="0,0,0,2" Height="4"  Grid.Row="1" Value="50" Maximum="100" Foreground="#8800ff"/>
+                                                                    <!--Прогерссбар по допустимым-->
+                                                                    <ProgressBar Margin="0,0,0,2" Height="4"  Grid.Row="2" Value="50" Maximum="100" Foreground="#4e617a"/>
                                                                     <Image Grid.Row="2" Source="{Binding Source.Value}" Width="25" Height="25"/>
                                                                 </Grid>
                                                             </StackPanel>
                                                         </TextBlock.ToolTip>
                                                     </TextBlock>
-                                                    <Button Grid.Row="2" Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" Width="20" Height="20" Grid.Column="2" Content="✖" VerticalAlignment="Top" Background="{x:Null}" Foreground="#4C000000" BorderBrush="#7F707070" Click="OnBtnRemoveReport">
+                                                    <Button Grid.Row="3" Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" Width="20" Height="20" Grid.Column="2" Content="✖" VerticalAlignment="Top" Background="{x:Null}" Foreground="#4C000000" BorderBrush="#7F707070" Click="OnBtnRemoveReport">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>

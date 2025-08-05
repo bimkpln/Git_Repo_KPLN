@@ -328,6 +328,9 @@
     <Content Include="Source\ImageData\report_instance.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="Source\ImageData\report_instance_approved.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Source\ImageData\report_instance_closed.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

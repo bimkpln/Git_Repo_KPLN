@@ -2,7 +2,7 @@
 {
     public static class ClashesMainCollection
     {
-        public enum KPIcon { Default, Report, Report_New, Report_Closed, Instance, Instance_Closed, Instance_Delegated }
+        public enum KPIcon { Default, Report, Report_New, Report_Closed, Instance, Instance_Closed, Instance_Delegated, Instance_Approved }
 
         public enum KPItemStatus { New, Opened, Closed, Approved, Delegated }
 
