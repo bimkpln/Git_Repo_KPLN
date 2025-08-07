@@ -1,6 +1,4 @@
-﻿using KPLN_Loader.Common;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 
 namespace KPLN_ModelChecker_User
@@ -28,7 +26,7 @@ namespace KPLN_ModelChecker_User
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
-                return fileInfo.CreationTime.ToString("yyyy/MM/dd");
+                return fileInfo.LastWriteTime.ToString("yyyy/MM/dd");
             }
 
             return "Дата не определена";

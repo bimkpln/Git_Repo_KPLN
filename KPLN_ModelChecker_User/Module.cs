@@ -326,18 +326,6 @@ namespace KPLN_ModelChecker_User
                 CurrentDbUser.SubDepartmentId == 8
                 );
 
-            AddPushButtonData(
-                "CheckPatitionalFile",
-                "BIM: Проверка разб.файла",
-                "Проверка положения и заполненности параметров секции",
-                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckPartitionFile).FullName,
-                pullDown,
-                "KPLN_ModelChecker_User.Source.checkPatitionalFile.png",
-                _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 8
-                );
-
             return Result.Succeeded;
         }
 

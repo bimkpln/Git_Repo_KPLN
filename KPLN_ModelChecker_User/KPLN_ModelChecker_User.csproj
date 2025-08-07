@@ -223,7 +223,6 @@
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
-    <Compile Include="ExternalCommands\CommandCheckPartitionFile.cs" />
     <Compile Include="Forms\CheckMonolithInfo.xaml.cs">
       <DependentUpon>CheckMonolithInfo.xaml</DependentUpon>
     </Compile>
