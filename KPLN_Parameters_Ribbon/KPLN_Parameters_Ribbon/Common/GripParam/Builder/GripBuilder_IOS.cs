@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +7,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_IOS : AbstrGripBuilder
     {
-        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, floorScreedHeight, downAndTopExtra)
+        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, string sectionParamName) : base(doc, docMainTitle, levelParamName, sectionParamName)
         {
         }
 
@@ -17,8 +16,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName,
-                    FloorScreedHeight, DownAndTopExtra);
+                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, SectionParamName, LevelParamName);
             });
 
             List<BuiltInCategory> userCat = null;
@@ -105,7 +103,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfCategory(bic)
                     .WhereElementIsNotElementType()
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
             }
             Task.WaitAll(elemsByHostPrepareTask);
 
@@ -119,12 +117,11 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         !x.Symbol.FamilyName.StartsWith("ClashPoint")
                         && !x.Symbol.FamilyName.StartsWith("500_")
                         && !x.Symbol.FamilyName.StartsWith("501_")
-                        && !x.Symbol.FamilyName.StartsWith("502_")
                         && !x.Symbol.FamilyName.StartsWith("503_"));
 
                 ElemsOnLevel.AddRange(famInst
                     .Where(x => x.SuperComponent == null)
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
                 ElemsByHost.AddRange(famInst
                     .Where(x => x.SuperComponent != null)
                     .Select(e => new InstanceElemData(e)));

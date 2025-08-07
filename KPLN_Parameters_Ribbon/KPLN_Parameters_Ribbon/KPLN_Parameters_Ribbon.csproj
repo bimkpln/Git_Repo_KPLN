@@ -175,6 +175,7 @@
     <Compile Include="Common\GripParam\GripParamExection.cs" />
     <Compile Include="Common\GripParam\InstanceElemData.cs" />
     <Compile Include="Common\GripParam\InstanceGeomData.cs" />
+    <Compile Include="Common\GripParam\LevelAndSectionSolid.cs" />
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
     <Compile Include="ExternalCommands\CommandGripParam.cs" />
@@ -198,6 +199,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\GeometryWorker.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

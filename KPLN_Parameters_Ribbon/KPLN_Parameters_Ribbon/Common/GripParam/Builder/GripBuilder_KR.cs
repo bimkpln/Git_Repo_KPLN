@@ -1,6 +1,5 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_ModelChecker_Lib.LevelAndGridBoxUtil;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,7 +8,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
     internal class GripBuilder_KR : AbstrGripBuilder
     {
-        public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, int levelNumberIndex, string sectionParamName, double floorScreedHeight, double downAndTopExtra) : base(doc, docMainTitle, levelParamName, levelNumberIndex, sectionParamName, floorScreedHeight, downAndTopExtra)
+        public GripBuilder_KR(Document doc, string docMainTitle, string levelParamName, string sectionParamName) : base(doc, docMainTitle, levelParamName, sectionParamName)
         {
         }
 
@@ -18,8 +17,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndGridSolid.PrepareSolids(Doc, SectionParamName, LevelParamName,
-                    FloorScreedHeight, DownAndTopExtra);
+                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, SectionParamName, LevelParamName);
             });
 
             // Таска на подготовку элементов на основе (ByHost)
@@ -56,7 +54,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .Where(x =>
                         x.Name.StartsWith("00_")
                         && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
 
                 // Категория "Перекрытия" монолит под уровнем
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
@@ -65,7 +63,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .Where(x =>
                         x.Name.StartsWith("00_")
                         && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
 
                 // Семейства "Колоны" под уровнем
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
@@ -73,13 +71,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .OfCategory(BuiltInCategory.OST_StructuralFraming)
                     .Cast<FamilyInstance>()
                     .Where(x => x.SuperComponent == null)
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
 
                 // Категория "Кровля" под уровнем
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(RoofBase))
                     .Cast<RoofBase>()
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
 
                 // Семейства "Обобщенная модель" под уровнем
                 ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
@@ -88,7 +86,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .Cast<FamilyInstance>()
                     .Where(x => x.SuperComponent == null
                             && !x.Symbol.FamilyName.StartsWith("ClashPoint"))
-                    .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    .Select(e => new InstanceGeomData(e)));
             });
 
             // Категория "Стены" над уровнем
@@ -96,24 +94,24 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x =>
-                    ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != x.Id.IntegerValue))
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != x.Id.IntegerValue))
+                .Select(e => new InstanceGeomData(e)));
 
             // Категория "Перекрытия" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x =>
-                    ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != x.Id.IntegerValue))
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                    ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != x.Id.IntegerValue))
+                .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(i => ElemsUnderLevel.Any(ent => ent.CurrentElem.Id.IntegerValue != i.Id.IntegerValue))
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                .Where(i => ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != i.Id.IntegerValue))
+                .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Окна" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -121,21 +119,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_Windows)
                 .Cast<FamilyInstance>()
                 .Where(i => i.Symbol.FamilyName.StartsWith("23") && i.SuperComponent == null)
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                .Select(e => new InstanceGeomData(e)));
 
             // Категория "Лестницы" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(Stairs))
                .Cast<Stairs>()
-               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+               .Select(e => new InstanceGeomData(e)));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsRun))
                .Cast<StairsRun>()
-               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+               .Select(e => new InstanceGeomData(e)));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                .OfClass(typeof(StairsLanding))
                .Cast<StairsLanding>()
-               .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+               .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Колоны" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -143,13 +141,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfCategory(BuiltInCategory.OST_StructuralColumns)
                 .Cast<FamilyInstance>()
                 .Where(x => x.SuperComponent == null)
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                .Select(e => new InstanceGeomData(e)));
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_StructuralFoundation)
                 .Cast<FamilyInstance>()
                 .Where(x => x.SuperComponent == null)
-                .Select(e => new InstanceGeomData(e).SetCurrentSolidColl().SetCurrentBBoxColl()));
+                .Select(e => new InstanceGeomData(e)));
 
             Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask, elemsUnderLevelPrepareTask);
         }

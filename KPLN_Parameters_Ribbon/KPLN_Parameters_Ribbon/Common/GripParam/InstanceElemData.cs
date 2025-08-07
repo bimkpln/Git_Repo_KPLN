@@ -9,13 +9,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam
     {
         public InstanceElemData(Element elem)
         {
-            CurrentElem = elem;
+            IEDElem = elem;
         }
 
         /// <summary>
         /// Элемент ревит
         /// </summary>
-        public Element CurrentElem { get; }
+        public Element IEDElem { get; }
 
         /// <summary>
         /// Метка, указывающая статус анализа элемента. По умолчанию - true, т.е. данные не заполнялись
