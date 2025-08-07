@@ -57,9 +57,15 @@ namespace KPLN_Quantificator.Forms
 
                     // Ключевые слова для SelectionA
                     string[] selectionAKeys = {
-                        "Стены", "Витражные системы", "Окна", "Двери", "Ворота", "Перемычки",
-                        "Колонны", "Каркас", "Воздуховоды", "Трубы", "Лотки", "Оборудование",
-                        "Электрооборудование", "Шахты"
+                        "Стены", "Витраж", "Фасад", "Окна", "Двери", "Ворота", "Перемычки", "Колонны", "Каркас"
+                    };
+                    // Ключевые слова для GridIntersection
+                    string[] selectionGrindKeys = {
+                        "Потолки", "Кровля", "Фасад", "Эвакуац", "Объёмы", "Перекрытия", "Фундамент"
+                    };
+                    // Ключевые слова для Main
+                    string[] selectionMainKeys = {
+                        "Воздуховолы", "Трубы", "Лотки", "Оборудование", "Электрооборудование", "Шахты"
                     };
 
                     string name = currentDisplayName?.Trim() ?? "";
@@ -72,22 +78,42 @@ namespace KPLN_Quantificator.Forms
                     // Определяем режим группировки
                     GroupingMode mode;
 
-                    if (clashCount < 100)
+                    if (selectionMainKeys.Any(key => name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0))
                     {
-                        mode = GroupingMode.Host;
-                    }
-                    else if (selectionAKeys.Any(key => name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0))
-                    {
-                        mode = GroupingMode.SelectionA;
+                        if (selectionAKeys.Any(key => name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0))
+                        {
+                            mode = GroupingMode.SelectionA;
+                        }
+                        else if (selectionGrindKeys.Any(key => name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0))
+                        {
+                            mode = GroupingMode.GridIntersection;
+                        }
+                        else
+                        {
+                            if (clashCount < 100)
+                            {
+                                mode = GroupingMode.Host;
+                            }
+                            else
+                            {
+                                mode = GroupingMode.GridIntersection;
+                            }
+                        }
                     }
                     else
                     {
-                        mode = GroupingMode.GridIntersection;
+                        if (clashCount < 100)
+                        {
+                            mode = GroupingMode.Host;
+                        }
+                        else
+                        {
+                            mode = GroupingMode.GridIntersection;
+                        }
                     }
 
                     // Устанавливаем выбранный режим
                     comboBoxGroupBy.SelectedItem = mode;
-
                 }, System.Windows.Threading.DispatcherPriority.Loaded);
             }
         }
@@ -123,17 +149,7 @@ namespace KPLN_Quantificator.Forms
 
         private void Group_Button_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-
-            string clashStatus;
-            if (checkBoxOnlyCreate.IsChecked == true && checkBoxOnlyActive.IsChecked == true)
-                clashStatus = "NewActiveClash";
-            else if (checkBoxOnlyCreate.IsChecked == true)
-                clashStatus = "NewClash";
-            else if (checkBoxOnlyActive.IsChecked == true)
-                clashStatus = "ActiveClash";
-            else
-                clashStatus = "AllClash";
-
+            string clashStatus = radioNewActive.IsChecked == true ? "NewActiveClash" : "AllClash";
 
             if (ClashTestListBox.SelectedItems.Count != 0)
             {
