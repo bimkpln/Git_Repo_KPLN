@@ -5,7 +5,6 @@ using KPLN_Quantificator.Forms;
 using KPLN_Quantificator.Services;
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
