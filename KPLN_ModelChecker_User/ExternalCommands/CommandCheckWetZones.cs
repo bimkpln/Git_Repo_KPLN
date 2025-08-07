@@ -1,12 +1,13 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.Forms;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Newtonsoft.Json;
 using System.IO;
+using System.Linq;
 
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -24,9 +25,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = uiDoc.Document;
 
 
-            FilteredElementCollector collectorRooms = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType();
 
-            var windowSPM = new WetZoneParameterWindow(collectorRooms);
+            var rooms = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Rooms)
+                .WhereElementIsNotElementType()
+                .Cast<Room>()
+                .Where(r =>
+                {
+                    var param = r.LookupParameter("Назначение");
+                    return param != null && param.AsString() == "Квартира";
+                })
+                .ToList();
+
+            var windowSPM = new WetZoneParameterWindow(rooms);
             var resultWSPM = windowSPM.ShowDialog();
             string selectedParam = null;
 
@@ -42,7 +53,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
             Dictionary<Element, string> roomParamValues = new Dictionary<Element, string>();
 
-            foreach (Element room in collectorRooms)
+            foreach (Element room in rooms)
             {
                 Parameter param = room.LookupParameter(selectedParam);
                 if (param != null && param.StorageType == StorageType.String)
@@ -87,6 +98,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public static List<string> KitchenRooms { get; private set; } = new List<string>();
         public static List<string> WetRooms { get; private set; } = new List<string>();
         public static List<string> NonProcessedRooms { get; private set; } = new List<string>();
+        public static List<string> InvalidEquipment { get; private set; } = new List<string>();
 
         private static readonly string BasePath = @"X:\BIM\6_Инструменты\Плагин мокрые зоны\";
         private const string MainFileName = "_categoriesMain.json";
@@ -154,6 +166,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             RegisterTerms(baseData.KitchenRooms, "KitchenRooms");
             RegisterTerms(baseData.WetRooms, "WetRooms");
             RegisterTerms(baseData.NonProcessedRooms, "NonProcessedRooms");
+            RegisterTerms(baseData.InvalidEquipment, "InvalidEquipment");
 
             if (overrideData != null)
             {
@@ -180,12 +193,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 OverrideTerms(overrideData.KitchenRooms, "KitchenRooms");
                 OverrideTerms(overrideData.WetRooms, "WetRooms");
                 OverrideTerms(overrideData.NonProcessedRooms, "NonProcessedRooms");
+                OverrideTerms(baseData.InvalidEquipment, "InvalidEquipment");
             }
 
             LivingRooms = new List<string>();
             KitchenRooms = new List<string>();
             WetRooms = new List<string>();
             NonProcessedRooms = new List<string>();
+            InvalidEquipment = new List<string>();
 
             foreach (var kv in termToCategory)
             {
@@ -195,6 +210,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     case "KitchenRooms": KitchenRooms.Add(kv.Key); break;
                     case "WetRooms": WetRooms.Add(kv.Key); break;
                     case "NonProcessedRooms": NonProcessedRooms.Add(kv.Key); break;
+                    case "InvalidEquipment": InvalidEquipment.Add(kv.Key); break;
                 }
             }
         }
@@ -213,6 +229,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             public List<string> KitchenRooms { get; set; }
             public List<string> WetRooms { get; set; }
             public List<string> NonProcessedRooms { get; set; }
+            public List<string> InvalidEquipment { get; set; }
         }
     }
 }

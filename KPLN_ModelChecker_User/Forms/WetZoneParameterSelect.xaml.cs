@@ -9,11 +9,11 @@ namespace KPLN_ModelChecker_User.Forms
     {
         public string SelectedParameter { get; private set; }
 
-        public WetZoneParameterWindow(FilteredElementCollector collectorRooms)
+        public WetZoneParameterWindow(IEnumerable<Element> rooms)
         {
             InitializeComponent();
 
-            RunRoomCount.Text = collectorRooms.Count().ToString();
+            RunRoomCount.Text = rooms.Count().ToString();
             List<string> fixedParameterNames = new List<string>
             {
                 "Имя",

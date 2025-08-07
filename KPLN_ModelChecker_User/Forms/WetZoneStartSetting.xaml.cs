@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -18,6 +19,7 @@ namespace KPLN_ModelChecker_User.Forms
     {
         public static UIDocument _uiDoc;
         public List<Element> allRooms;
+        public List<string> _invalidEquipment;
         public string _selectedParam;
 
         public WetZoneReviewWindow(UIDocument uiDoc, Document doc, string selectedParam, List<Element> livingRooms, List<Element> kitchenRooms, List<Element> wetRooms, List<Element> undefinedRooms)
@@ -36,7 +38,9 @@ namespace KPLN_ModelChecker_User.Forms
             KitchenList.ItemsSource = FormatRooms(kitchenRooms);           
             UndefinedList.ItemsSource = FormatRooms(undefinedRooms);
 
-            BuildInfoReport(doc, livingRooms, kitchenRooms, wetRooms, undefinedRooms);
+            _invalidEquipment = WetZoneCategories.InvalidEquipment.Any() ? WetZoneCategories.InvalidEquipment : null;
+
+            BuildInfoReport(doc, livingRooms, kitchenRooms, wetRooms, undefinedRooms);        
         }
 
         /// <summary>
@@ -132,7 +136,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                 output.Add(new Run("🔎 Результаты преобразования названия уровней в этажи:\n") { FontWeight = FontWeights.SemiBold });
 
-                int maxToShow = 5;
+                int maxToShow = 30;
                 int count = 0;
 
                 foreach (var pair in results)
@@ -420,6 +424,7 @@ namespace KPLN_ModelChecker_User.Forms
                         return null; 
             }).Where(x => x != null).GroupBy(x => x.LevelNumber).ToDictionary(g => g.Key, g => g.Select(x => x.Room).ToList());
 
+
             CheckWetZoneViolations(roomsByLevel, _selectedParam);
             this.Close();
         }
@@ -427,6 +432,9 @@ namespace KPLN_ModelChecker_User.Forms
         // XAML. ПОМ_Номер этажа
         private void Start2Button_Click(object sender, RoutedEventArgs e)
         {
+            TaskDialog.Show("Предупреждение", 
+                "В данном режиме стиральные машины и другое оборудование, требующее подключения к водопроводным сетям или являющегося источником шума, вибраций, не учитывается.");
+
             Dictionary<int, List<Element>> roomsByFloorParam = allRooms.Select(r =>
             {
                 Parameter param = r.LookupParameter("ПОМ_Номер этажа");
@@ -469,6 +477,8 @@ namespace KPLN_ModelChecker_User.Forms
             
             List<List<Element>> KitchenUnderWet_Illegal = new List<List<Element>>();
             List<List<Element>> KitchenUnderWet_Accepted = new List<List<Element>>();
+
+            List<List<Element>> InvalidEquipmentOverLiving_Illegal = new List<List<Element>>();
 
             List<int> orderedFloors = roomsByFloorParam.Keys.OrderBy(f => f).ToList();
             foreach (int floor in orderedFloors)
@@ -520,8 +530,12 @@ namespace KPLN_ModelChecker_User.Forms
                                 KitchenUnderWet_Accepted.Add(new List<Element> { lower, upper });
                             else
                                 KitchenUnderWet_Illegal.Add(new List<Element> { lower, upper });
-                        }
+                        }                    
                     }
+
+
+
+                    // НЕЛЬЗЯ: Семейства из InvalidEquipment над жилыми
                 }
             }
 
