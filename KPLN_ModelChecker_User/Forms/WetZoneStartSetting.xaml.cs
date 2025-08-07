@@ -407,6 +407,11 @@ namespace KPLN_ModelChecker_User.Forms
                 }).ToList();
         }
 
+
+
+
+
+
         // XAML. Уровень
         private void Start1Button_Click(object sender, RoutedEventArgs e)
         {
@@ -424,8 +429,38 @@ namespace KPLN_ModelChecker_User.Forms
                         return null; 
             }).Where(x => x != null).GroupBy(x => x.LevelNumber).ToDictionary(g => g.Key, g => g.Select(x => x.Room).ToList());
 
+            Dictionary<int, List<FamilyInstance>> familyInstancesByLevel = new Dictionary<int, List<FamilyInstance>>();
+            IList<Element> allElements = new FilteredElementCollector(_uiDoc.Document).WhereElementIsNotElementType().ToElements();
+            foreach (var element in allElements)
+            {
+                if (element is FamilyInstance familyInstance)
+                {
+                    string familyName = familyInstance.Symbol.Family.Name;
 
-            CheckWetZoneViolations(roomsByLevel, _selectedParam);
+
+                    if (WetZoneCategories.InvalidEquipment.Contains(familyName))
+                    {
+                        Level level = _uiDoc.Document.GetElement(familyInstance.LevelId) as Level;
+                        if (level != null)
+                        {
+                            string[] parts = level.Name.Split('_');
+                            int levelNumber = 999;
+
+                            if (parts.Length >= 1 && int.TryParse(parts[0], out levelNumber)) { }   
+                            else if (parts.Length >= 2 && int.TryParse(parts[1], out levelNumber)) { }
+
+                            if (!familyInstancesByLevel.ContainsKey(levelNumber))
+                            {
+                                familyInstancesByLevel[levelNumber] = new List<FamilyInstance>();
+                            }
+                            familyInstancesByLevel[levelNumber].Add(familyInstance);
+                        }
+                    }
+                }
+            }
+            Dictionary<int, List<FamilyInstance>> sortedFamilyInstancesByLevel = familyInstancesByLevel.OrderBy(kvp => kvp.Key).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            CheckWetZoneViolations(roomsByLevel, sortedFamilyInstancesByLevel, _selectedParam);
             this.Close();
         }
 
@@ -449,7 +484,7 @@ namespace KPLN_ModelChecker_User.Forms
                     return null;
             }).Where(x => x != null).GroupBy(x => x.Floor).ToDictionary(g => g.Key, g => g.Select(x => x.Room).ToList());
 
-            CheckWetZoneViolations(roomsByFloorParam, _selectedParam);
+           CheckWetZoneViolations(roomsByFloorParam, null, _selectedParam);
             this.Close();
         }
 
@@ -470,7 +505,7 @@ namespace KPLN_ModelChecker_User.Forms
 
 
         // Метод поиска помещений согласно условиям
-        public static void CheckWetZoneViolations(Dictionary<int, List<Element>> roomsByFloorParam, string _selectedParam)
+        public static void CheckWetZoneViolations(Dictionary<int, List<Element>> roomsByFloorParam, Dictionary<int, List<FamilyInstance>> familyInstancesByLevel, string _selectedParam)
         {
             List<List<Element>> KitchenOverLiving_Illegal = new List<List<Element>>();
             List<List<Element>> WetOverLiving_Illegal = new List<List<Element>>();    
@@ -530,16 +565,52 @@ namespace KPLN_ModelChecker_User.Forms
                                 KitchenUnderWet_Accepted.Add(new List<Element> { lower, upper });
                             else
                                 KitchenUnderWet_Illegal.Add(new List<Element> { lower, upper });
-                        }                    
+                        }
                     }
-
-
-
-                    // НЕЛЬЗЯ: Семейства из InvalidEquipment над жилыми
                 }
             }
 
-            var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, _selectedParam);
+            // НЕЛЬЗЯ: InvalidEquipment над жилыми
+            foreach (var upperFloor in familyInstancesByLevel.Keys)
+            {
+                foreach (var familyInstance in familyInstancesByLevel[upperFloor])
+                {
+                    int lowerFloor = upperFloor - 1;
+                    if (!roomsByFloorParam.ContainsKey(lowerFloor))
+                        continue;
+
+                    List<Room> lowerRooms = roomsByFloorParam[lowerFloor].OfType<Room>().ToList();
+
+                    foreach (var lower in lowerRooms)
+                    {
+                        string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
+                        bool isLivingLower = WetZoneCategories.LivingRooms.Contains(lowerType);
+                        if (!isLivingLower)
+                            continue;
+
+                        var lowerPoly = GetRoom2DOutline(lower);
+                        var familyInstancePoly = GetFamilyInstance2DOutline(familyInstance);
+
+                        if (DoPolygonsIntersect(familyInstancePoly, lowerPoly))
+                        {
+                            InvalidEquipmentOverLiving_Illegal.Add(new List<Element> { lower, familyInstance });
+                        }
+                    }
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+            var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, InvalidEquipmentOverLiving_Illegal, _selectedParam);
             windowResult.Show();            
         }
 
@@ -555,7 +626,7 @@ namespace KPLN_ModelChecker_User.Forms
 
         /////////////////// Расчёт пересечения
         ///////////////////
-        // Вспомогательный метод. Получение 2D-контуров
+        // Вспомогательный метод. Получение 2D-контуров. Помещение
         private static List<XYZ> GetRoom2DOutline(Room room)
         {
             var options = new SpatialElementBoundaryOptions
@@ -579,6 +650,24 @@ namespace KPLN_ModelChecker_User.Forms
 
                 outline.Add(projected);
             }
+
+            return outline;
+        }
+
+        // Вспомогательный метод. Получение 2D-контуров. Семейство
+        private static List<XYZ> GetFamilyInstance2DOutline(FamilyInstance familyInstance)
+        {
+            var boundingBox = familyInstance.get_BoundingBox(null);
+            if (boundingBox == null)
+                return new List<XYZ>();
+
+            var outline = new List<XYZ>
+            {
+                new XYZ(boundingBox.Min.X, boundingBox.Min.Y, 0),
+                new XYZ(boundingBox.Max.X, boundingBox.Min.Y, 0),
+                new XYZ(boundingBox.Max.X, boundingBox.Max.Y, 0),
+                new XYZ(boundingBox.Min.X, boundingBox.Max.Y, 0)
+            };
 
             return outline;
         }

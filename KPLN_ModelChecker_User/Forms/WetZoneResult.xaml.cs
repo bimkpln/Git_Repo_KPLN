@@ -1,11 +1,12 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using System;
 using System.Collections.Generic;
-using System.Windows;
 using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System;
 
 namespace KPLN_ModelChecker_User.Forms
 {
@@ -18,9 +19,10 @@ namespace KPLN_ModelChecker_User.Forms
         List<List<Element>> _kitchenOverLiving;
         List<List<Element>> _wetOverLiving;
         List<List<Element>> _kitchenUnderWet;
+        List<List<Element>> _invalidEquipmentOverLiving;
 
         public WetZoneResult(UIDocument uidoc, Dictionary<int, List<Element>> roomsByFloorParam,
-            List<List<Element>> kitchenOverLiving, List<List<Element>> wetOverLiving, List<List<Element>> kitchenUnderWet, string selectedParam)
+            List<List<Element>> kitchenOverLiving, List<List<Element>> wetOverLiving, List<List<Element>> kitchenUnderWet, List<List<Element>> InvalidEquipmentOverLiving, string selectedParam)
         {
             InitializeComponent();
             _uidoc = uidoc;
@@ -30,13 +32,15 @@ namespace KPLN_ModelChecker_User.Forms
             _kitchenOverLiving = kitchenOverLiving;
             _wetOverLiving = wetOverLiving;
             _kitchenUnderWet = kitchenUnderWet;
+            _invalidEquipmentOverLiving = InvalidEquipmentOverLiving;
 
             AddViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над жилыми помещениями", wetOverLiving);
             AddViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над кухнями", kitchenUnderWet);
             AddViolationBlocks("СП 54.13330.2022 (7.21): Недопустимо размещать кухни над жилыми помещениями", kitchenOverLiving);
+            AddInvalidEquipmentViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины над жилыми помещениями", InvalidEquipmentOverLiving);
         }
 
-        // Заполнение интерфейса информацией
+        // Заполнение интерфейса информацией. Квартиры
         private void AddViolationBlocks(string title, List<List<Element>> rawGroups)
         {
             if (rawGroups.Count == 0)
@@ -84,7 +88,6 @@ namespace KPLN_ModelChecker_User.Forms
                     container.Children.Add(titleExplanationText);
                 }
 
-
                 var buttonsPanel = new WrapPanel
                 {
                     Orientation = Orientation.Horizontal,  
@@ -124,6 +127,95 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
+        // Заполнение интерфейса информацией. Экземпляр семейства
+        private void AddInvalidEquipmentViolationBlocks(string title, List<List<Element>> rawGroups)
+        {
+            if (rawGroups.Count == 0)
+            {
+                return;
+            }
+
+            var grouped = rawGroups.Select(g =>
+            {
+                var lower = g.FirstOrDefault(e => e is Room) as Room;  
+                var familyInstance = g.FirstOrDefault(e => e is FamilyInstance) as FamilyInstance; 
+
+                if (lower != null && familyInstance != null)
+                {
+                    var key = $"{lower.Id.IntegerValue}_{familyInstance.Id.IntegerValue}";
+                    return new { Lower = lower, FamilyInstance = familyInstance, Key = key };
+                }
+
+                return null;
+            }).Where(x => x != null).GroupBy(x => x.Key).Select(g => g.First()).ToList();
+
+            foreach (var group in grouped)
+            {
+                var lower = group.Lower;
+                var familyInstance = group.FamilyInstance;
+
+                var container = new StackPanel();
+
+                string[] parts = title.Split(new[] { ':' }, 2);
+                string mainPart = parts.Length > 0 ? parts[0].Trim() : title;
+                string explanation = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+
+                var titleMainText = new TextBlock
+                {
+                    Text = mainPart,
+                    FontSize = 12,
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(0, 0, 0, 0)
+                };
+                container.Children.Add(titleMainText);
+
+                if (!string.IsNullOrWhiteSpace(explanation))
+                {
+                    var titleExplanationText = new TextBlock
+                    {
+                        Text = explanation,
+                        FontStyle = FontStyles.Italic,
+                        FontSize = 11,
+                        Margin = new Thickness(0, 0, 0, 4)
+                    };
+                    container.Children.Add(titleExplanationText);
+                }
+
+                var buttonsPanel = new WrapPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, 2, 0, 2)
+                };
+
+                int lowerFloor = FindFloor(lower);
+                string lowerType = GetString(lower, _selectedParam);
+                string lowerKv = GetString(lower, "КВ_Номер");
+                var lowerBtn = CreateElementButton(lower, lowerFloor, lowerType, lowerKv);
+                buttonsPanel.Children.Add(lowerBtn);
+
+                int upperFloor = FindFloor(familyInstance);
+                string familyName = familyInstance.Symbol.Family.Name;
+                string familyKv = GetString(familyInstance, "КВ_Номер");
+                var familyBtn = CreateElementFIButton(familyInstance, familyName);
+                buttonsPanel.Children.Add(familyBtn);
+
+                container.Children.Add(buttonsPanel);
+
+                var border = new Border
+                {
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = System.Windows.Media.Brushes.Gray,
+                    Background = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFFFE0E0")),
+                    Margin = new Thickness(0, 6, 0, 6),
+                    Padding = new Thickness(6),
+                    CornerRadius = new CornerRadius(6),
+                    Child = container
+                };
+
+                ViolationsPanel.Children.Add(border);
+            }
+        }
+
         // Вспомогательная функция. Поиск номера этажа из общего словаря
         private int FindFloor(Element el)
         {
@@ -141,7 +233,7 @@ namespace KPLN_ModelChecker_User.Forms
             return el.LookupParameter(paramName)?.AsString() ?? "?";
         }
 
-        // Добавление кнопок
+        // Добавление кнопок. Квартира
         private Button CreateElementButton(Element el, int florNumber, string type, string kvNum)
         {
             var dock = new DockPanel
@@ -183,6 +275,38 @@ namespace KPLN_ModelChecker_User.Forms
             return btn;
         }
 
+        // Добавление кнопок. Экземпляр семейства
+        private Button CreateElementFIButton(Element el, string type)
+        {
+            var dock = new DockPanel
+            {
+                LastChildFill = true
+            };
+
+            var labelBlock = new TextBlock
+            {
+                Text = $"{el.Id.IntegerValue} ({type}) ",
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            dock.Children.Add(labelBlock);
+
+            var btn = new Button
+            {
+                Content = dock,
+                Tag = el,
+                Height = 23,
+                Margin = new Thickness(3),
+                Padding = new Thickness(3),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                HorizontalContentAlignment = HorizontalAlignment.Center
+            };
+
+            btn.Click += ElementButton_Click;
+            return btn;
+        }
+
         private void ElementButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is Element el)
@@ -192,6 +316,11 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
+
+
+
+
+
         // Сохранение отчёта о влажных зонах
         private void TopSaveInfoButton_Click(object sender, RoutedEventArgs e)
         {
@@ -200,6 +329,7 @@ namespace KPLN_ModelChecker_User.Forms
             report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над жилыми помещениями", _wetOverLiving);
             report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над кухнями", _kitchenUnderWet);
             report += BuildViolationReport("СП 54.13330.2022 (7.21): Недопустимо размещать кухни над жилыми помещениями", _kitchenOverLiving);
+            report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины над жилыми помещениями", _invalidEquipmentOverLiving);
 
             // Показываем диалог для сохранения файла
             var saveDialog = new Microsoft.Win32.SaveFileDialog
@@ -229,7 +359,7 @@ namespace KPLN_ModelChecker_User.Forms
             var result = $"\n{title}:\n";
             if (groups == null || groups.Count == 0)
             {
-                result += "В данной категории нарушений не найдено.\n\n";
+                result += "В данной категории нарушений не найдено.\n";
                 return result;
             }
 
@@ -255,7 +385,15 @@ namespace KPLN_ModelChecker_User.Forms
                     int floor = FindFloor(el);
                     string type = GetString(el, _selectedParam);
                     string kv = GetString(el, "КВ_Номер");
-                    result += $"    ID {el.Id.IntegerValue} ({type}) [Этаж {floor}. Квартира {kv}]\n";
+
+                    if (el is FamilyInstance familyInstance)
+                    {
+                        result += $"    ID {el.Id.IntegerValue} ({familyInstance.Symbol.Family.Name})\n";
+                    }
+                    else
+                    {
+                        result += $"    ID {el.Id.IntegerValue} ({type}) [Этаж {floor}. Квартира {kv}]\n";
+                    }
                 }
             }
 
