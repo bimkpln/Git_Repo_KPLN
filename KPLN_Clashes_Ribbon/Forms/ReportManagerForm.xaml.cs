@@ -7,11 +7,13 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -30,13 +32,19 @@ namespace KPLN_Clashes_Ribbon.Forms
     {
         private readonly DBProject _project;
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
+        private string _reportNameTBxData = string.Empty;
+        private string _reportBitrixIdTBxData = string.Empty;
 
         public ReportManagerForm(DBProject project)
         {
             _project = project ?? throw new ArgumentNullException("\n[KPLN]: Попытка передачи пустого проекта\n");
 
             InitializeComponent();
+            DataContext = this;
+
             UpdateGroups();
+
+            FilteredRepGroupColl.Filter += FilterRepGroups;
 
             if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 btnAddGroup.Visibility = Visibility.Visible;
@@ -44,15 +52,21 @@ namespace KPLN_Clashes_Ribbon.Forms
                 btnAddGroup.Visibility = Visibility.Collapsed;
         }
 
+        /// <summary>
+        /// Отфильтрованная коллекция элементов, которая является контекстом для окна
+        /// </summary>
+        public ICollectionView FilteredRepGroupColl { get; private set; }
+
+        /// <summary>
+        /// Обновить коллекцию групп
+        /// </summary>
         public void UpdateGroups()
         {
-            ObservableCollection<ReportGroup> groups;
-            if ((bool)this.ShowClosedReportGroups.IsChecked)
-                groups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project);
-            else
-                groups = _sqliteService_MainDB.GetReportGroups_ByDBProjectANDNotClosed(_project);
-
-
+            ObservableCollection<ReportGroup> groups = new ObservableCollection<ReportGroup>(_sqliteService_MainDB
+                .GetReportGroups_ByDBProject(_project)
+                .OrderBy(gr => gr.Status != KPItemStatus.Closed)
+                .ThenBy(gr => gr.Id));
+            
             if (groups != null)
             {
                 foreach (ReportGroup group in groups)
@@ -82,8 +96,59 @@ namespace KPLN_Clashes_Ribbon.Forms
                     }
                 }
 
-                this.iControllGroups.ItemsSource = groups;
+                FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups);
             }
+        }
+
+        private bool FilterRepGroups(object obj)
+        {
+            if (obj is ReportGroup rGroup)
+            {
+                if ((bool)this.ShowClosedReportGroups.IsChecked)
+                    return CheckParamData(rGroup);
+                else if (!(bool)this.ShowClosedReportGroups.IsChecked && rGroup.Status != KPItemStatus.Closed)
+                    return CheckParamData(rGroup);
+            }
+            
+            return false;
+        }
+
+        private bool CheckParamData(ReportGroup rGroup)
+        {
+            if (string.IsNullOrEmpty(_reportNameTBxData)
+                    && string.IsNullOrEmpty(_reportBitrixIdTBxData))
+                return true;
+
+            string rGrName = rGroup.Name;
+
+            string rGrBitrId_AR = rGroup.BitrixTaskIdAR.ToString();
+            string rGrBitrId_KR = rGroup.BitrixTaskIdKR.ToString();
+            string rGrBitrId_OV = rGroup.BitrixTaskIdOV.ToString();
+            string rGrBitrId_ITP = rGroup.BitrixTaskIdITP.ToString();
+            string rGrBitrId_VK = rGroup.BitrixTaskIdVK.ToString();
+            string rGrBitrId_AUPT = rGroup.BitrixTaskIdAUPT.ToString();
+            string rGrBitrId_EOM = rGroup.BitrixTaskIdEOM.ToString();
+            string rGrBitrId_SS = rGroup.BitrixTaskIdSS.ToString();
+            string rGrBitrId_AV = rGroup.BitrixTaskIdAV.ToString();
+
+            if (!string.IsNullOrEmpty(_reportNameTBxData)
+                && rGrName.ToLower().Contains(_reportNameTBxData))
+                return true;
+            
+            if (!string.IsNullOrEmpty(_reportBitrixIdTBxData)
+                && (rGrBitrId_AR.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_KR.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_OV.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_ITP.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_VK.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_AUPT.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_EOM.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_EOM.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_SS.Contains(_reportBitrixIdTBxData)
+                    || rGrBitrId_AV.Contains(_reportBitrixIdTBxData)))
+                return true;
+
+            return false;
         }
 
         private void OnBtnRemoveReport(object sender, RoutedEventArgs args)
@@ -456,13 +521,13 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private ReportGroup GetGroupById(int groupid)
         {
-            foreach (ReportGroup group in this.iControllGroups.ItemsSource as ObservableCollection<ReportGroup>)
+            object obj = FilteredRepGroupColl.CurrentItem;
+            if (obj is ReportGroup group)
             {
                 if (group.Id == groupid)
-                {
                     return group;
-                }
             }
+
             return null;
         }
 
@@ -573,6 +638,24 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         }
 
-        private void ShowClosedReportGroups_Checked(object sender, RoutedEventArgs e) => UpdateGroups();
+        private void ShowClosedReportGroups_Checked(object sender, RoutedEventArgs e) =>
+            FilteredRepGroupColl?.Refresh();
+
+
+        private void ReportNameTBx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _reportNameTBxData = textBox.Text.ToLower();
+
+            FilteredRepGroupColl?.Refresh();
+        }
+
+        private void ReportBitrixIdTBx_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
+            _reportBitrixIdTBxData = textBox.Text.ToLower();
+
+            FilteredRepGroupColl?.Refresh();
+        }
     }
 }

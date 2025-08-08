@@ -12,7 +12,7 @@
         Topmost="False"
         WindowStartupLocation="CenterScreen" 
         Width="600" 
-        Height="500" 
+        Height="600" 
         Background="#FF292D36">
     <Window.Resources>
         
@@ -70,11 +70,20 @@
             </Setter>
         </Style>
 
+        <Style
+            x:Key="MainTBL"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
         <Style x:Key="TXTBX" TargetType="TextBox">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
         </Style>
 
         <Style
@@ -93,14 +102,69 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+
+
+        <StackPanel>
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) Поиск по имени проверки:" 
+                    MinWidth="200"
+                    Style="{StaticResource MainTBL}"/>
+                <TextBox 
+                    x:Name="ReportNameTBx"
+                    Style="{StaticResource TXTBX}"
+                    MinHeight="20" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ReportNameTBx_TextChanged"/>
+            </DockPanel>
+            
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) ID задачи в Bitrix:" 
+                    MinWidth="200"
+                    Style="{StaticResource MainTBL}"/>
+                <TextBox 
+                    x:Name="ReportBitrixIdTBx"
+                    Style="{StaticResource TXTBX}"
+                    MinHeight="20" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ReportBitrixIdTBx_TextChanged">
+                    <TextBox.ToolTip>
+                        <StackPanel>
+                            <TextBlock 
+                                Text="Укажи ID задачи из Bitrix. Как получить данные по задаче - см. скрин ниже:"
+                                TextWrapping="Wrap"
+                                Width="600"
+                                FontSize="14"
+                                FontWeight="Bold"/>
+                            <Image 
+                                Source="pack://application:,,,/KPLN_Clashes_Ribbon;component/Source/ImageData/bitrixTaskID.png"
+                                Width="600" 
+                                Height="475"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
+            </DockPanel>
+        </StackPanel>
         
-        <TextBlock Text="Группы отчетов:" Margin="0,0,0,5" FontWeight="Bold" Foreground="White"/>
-        <ScrollViewer Padding="0,0,5,0" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <TextBlock 
+            Grid.Row="1" 
+            Text="Группы отчетов:" 
+            FontSize="14"
+            Style="{StaticResource MainTBL}"/>
+        <ScrollViewer 
+            Padding="0,0,5,0"
+            Grid.Row="2" 
+            HorizontalScrollBarVisibility="Disabled" 
+            VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" x:Name="sp">
-                <ItemsControl x:Name="iControllGroups">
+                <ItemsControl 
+                    x:Name="iControllGroups"
+                    ItemsSource="{Binding FilteredRepGroupColl}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="5,5,5,10">
@@ -362,7 +426,7 @@
         </ScrollViewer>
         
         <DockPanel 
-            Grid.Row="2"
+            Grid.Row="3"
             LastChildFill="False" >
             <Button 
                 x:Name="btnAddGroup" 

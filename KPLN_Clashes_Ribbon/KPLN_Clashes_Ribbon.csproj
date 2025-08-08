@@ -316,6 +316,7 @@
     <Compile Include="Tools\ZoomTools.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Source\ImageData\bitrixTaskID.png" />
     <Content Include="Source\ImageData\icon_default.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

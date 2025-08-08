@@ -179,6 +179,8 @@ namespace KPLN_Clashes_Ribbon.Commands
                 docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
 
             // Создание новых
+            // Метка, что хотя бы один элемент был удален
+            bool elemsDeleted = false;
             foreach (ReportItem subRI in riArr)
             {
                 // Проверка на наличие элемента в файле
@@ -187,9 +189,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (elem1 == null && elem2 == null)
                 {
                     if (doc.Title.Contains(subRI.Element_1_DocName) || doc.Title.Contains(subRI.Element_2_DocName))
-                        TaskDialog.Show("Внимание!",
-                            "Элементы отсутсвует в открытом проекте - скорее всего они удалены.\n" +
-                            "ВАЖНО: Точка пересечения всё равно появится, чтобы избежать пропуска перемоделированных элементов");
+                        elemsDeleted = true;
                     else
                     {
                         TaskDialog.Show("Внимание!",
@@ -205,6 +205,11 @@ namespace KPLN_Clashes_Ribbon.Commands
 
                 xyzToCreate.Add(transLoc);
             }
+
+            if (elemsDeleted)
+                TaskDialog.Show("Внимание!",
+                    "Элемент или группа элементов - отсутсвуют в открытом проекте, т.к. скорее всего они были удалены.\n" +
+                    "ВАЖНО: Точка пересечения всё равно появится, чтобы избежать пропуска перемоделированных элементов");
 
             FamilyInstance[] result = new FamilyInstance[xyzToCreate.Count];
             for (int i = 0; i < xyzToCreate.Count; i++) 

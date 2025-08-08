@@ -448,7 +448,7 @@
                                                 Grid.Column="2"
                                                 IsExpanded="False">
                                                 <TextBlock 
-                                                    Text="{Binding Element_2_Info}"
+                                                    Text="{Binding Element_1_Info}"
                                                     Style="{StaticResource ItemTBL}"
                                                     MaxWidth="300"/>
                                             </Expander>
