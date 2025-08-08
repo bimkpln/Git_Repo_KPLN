@@ -65,7 +65,7 @@ namespace KPLN_Quantificator.Forms
                     };
                     // Ключевые слова для Main
                     string[] selectionMainKeys = {
-                        "Воздуховолы", "Трубы", "Лотки", "Оборудование", "Электрооборудование", "Шахты"
+                        "Воздуховоды", "Трубы", "Лотки", "Оборудование", "Электрооборудование", "Шахты"
                     };
 
                     string name = currentDisplayName?.Trim() ?? "";
