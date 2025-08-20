@@ -1,7 +1,4 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-
-namespace KPLN_Library_Forms.Common
+﻿namespace KPLN_Library_Forms.Common
 {
     public class ButtonToRunEntity
     {
