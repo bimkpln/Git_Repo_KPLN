@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Core.Reports;
-using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Clashes_Ribbon.Tools;
 using KPLN_Loader.Common;
 using System;
@@ -118,12 +117,13 @@ namespace KPLN_Clashes_Ribbon.Commands
 
                     t.Commit();
                 }
+
                 return Result.Succeeded;
             }
             catch (Exception e)
             {
                 PrintError(e);
-                return Result.Failed;
+                return Result.Cancelled;
             }
         }
         /// <summary>
@@ -212,7 +212,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                     "ВАЖНО: Точка пересечения всё равно появится, чтобы избежать пропуска перемоделированных элементов");
 
             FamilyInstance[] result = new FamilyInstance[xyzToCreate.Count];
-            for (int i = 0; i < xyzToCreate.Count; i++) 
+            for (int i = 0; i < xyzToCreate.Count; i++)
             {
                 result[i] = CreateFamilyInstance(doc, xyzToCreate.ElementAt(i));
             }

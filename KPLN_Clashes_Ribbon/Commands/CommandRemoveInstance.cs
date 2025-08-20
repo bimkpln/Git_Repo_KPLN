@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -40,9 +41,10 @@ namespace KPLN_Clashes_Ribbon.Commands
                     t.Commit();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return Result.Failed;
+                HtmlOutput.PrintError(ex);
+                return Result.Cancelled;
             }
 
             return Result.Succeeded;

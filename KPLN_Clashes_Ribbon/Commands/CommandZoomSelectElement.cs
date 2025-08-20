@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Tools;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,11 @@ namespace KPLN_Clashes_Ribbon.Commands
 
         public Result Execute(UIApplication app)
         {
-            if (app.ActiveUIDocument != null)
+            UIDocument uiDoc = app.ActiveUIDocument;
+            if (uiDoc == null)
+                return Result.Cancelled;
+
+            try
             {
                 Document doc = app.ActiveUIDocument.Document;
                 Element element = doc.GetElement(new ElementId(_id));
@@ -46,11 +51,14 @@ namespace KPLN_Clashes_Ribbon.Commands
 
                     return Result.Succeeded;
                 }
-
-                return Result.Failed;
+            }
+            catch (Exception ex)
+            {
+                HtmlOutput.PrintError(ex);
+                return Result.Cancelled;
             }
 
-            return Result.Failed;
+            return Result.Cancelled;
         }
 
         /// <summary>

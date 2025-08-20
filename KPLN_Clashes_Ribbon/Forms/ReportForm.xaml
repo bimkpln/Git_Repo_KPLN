@@ -79,6 +79,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -87,13 +88,39 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <Rectangle 
-            Grid.RowSpan="2" 
+            Grid.RowSpan="3" 
             Grid.ColumnSpan="2" 
             Fill="#FFFFD100"/>
 
+        <!--Фильтрование по имени файла-->
+        <StackPanel>
+            <TextBlock 
+                Text="(И) Фильтр по открытому файлу:" 
+                Style="{StaticResource FilterTBL}"/>
+            <DockPanel>
+                <RadioButton
+                    x:Name="AllItemsRB"
+                    GroupName="FileNameFilterGroup"
+                    IsChecked="True"
+                    Content="Все замечания"
+                    Margin="5"
+                    FontWeight="Bold"
+                    Checked="FileNameFilterGroup_Checked">
+                </RadioButton>
+                <RadioButton
+                    x:Name="OnlyForFileItemsRB"
+                    GroupName="FileNameFilterGroup"
+                    Content="Замечания для открытого файла"
+                    Margin="5"
+                    FontWeight="Bold"
+                    Checked="FileNameFilterGroup_Checked">
+                </RadioButton>
+            </DockPanel>
+        </StackPanel>
+        
         <!--Фильтрование по статусу замечания-->
         <StackPanel 
-            Grid.Row="0" 
+            Grid.Row="1" 
             Grid.Column="0" 
             Orientation="Vertical">
             <TextBlock 
@@ -112,16 +139,17 @@
                     SelectionChanged="StatusFilterCBX_SelectionChanged">
                     <ComboBoxItem Content="Все коллизии"/>
                     <ComboBoxItem Content="Открытые и делегированные"/>
-                    <ComboBoxItem Content="Исправленные"/>
-                    <ComboBoxItem Content="Допустимые"/>
+                    <ComboBoxItem Content="Открытые"/>
                     <ComboBoxItem Content="Делегированные"/>
+                    <ComboBoxItem Content="Допустимые"/>
+                    <ComboBoxItem Content="Исправленные"/>
                 </ComboBox>
             </Grid>
         </StackPanel>
         
         <!--Экспорт в txt-->
         <Button 
-            Grid.Row="0" 
+            Grid.Row="1" 
             Grid.Column="1" 
             Margin="5,5,5,5" 
             Content="🖬" 
@@ -154,7 +182,7 @@
         
         <!--Фильтрование по атрибутам отчетов-->
         <StackPanel 
-            Grid.Row="1" 
+            Grid.Row="2" 
             Grid.ColumnSpan="2">
             <DockPanel>
                 <TextBlock 
@@ -194,7 +222,7 @@
 
         <ListBox
             x:Name="ReportControll"
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.ColumnSpan="2"
             Margin="0,0,0,17"
             ItemsSource="{Binding FilteredInstancesColl}"
@@ -668,6 +696,7 @@
                                                 Grid.Row="2"  
                                                 Text="{Binding Message}" 
                                                 TextWrapping="Wrap" 
+                                                MaxWidth="700"
                                                 Foreground="White"/>
                                         </Grid>
                                     </DataTemplate>
@@ -705,13 +734,15 @@
         </ListBox>
         
         <!--Блок обновления-->
-        <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.ColumnSpan="2">
+        <DockPanel 
+            Grid.Row="4" 
+            Grid.ColumnSpan="2">
             <Button 
                 x:Name="btnUpdate" 
                 Content="Обновить отчеты"
                 Click="OnBtnUpdate"
                 Style="{StaticResource ItemBTN}"
-                Margin="5"
+                Margin="5,0,5,5"
                 BorderBrush="White">
                 <Button.ToolTip>
                     <StackPanel MaxWidth="300">
@@ -722,7 +753,7 @@
                     </StackPanel>
                 </Button.ToolTip>
             </Button>
-        </StackPanel>
+        </DockPanel>
         
     </Grid>
 </Window>

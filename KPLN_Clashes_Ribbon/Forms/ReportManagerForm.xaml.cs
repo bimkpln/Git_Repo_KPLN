@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
@@ -8,6 +9,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -42,9 +45,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             InitializeComponent();
             DataContext = this;
 
-            UpdateGroups();
-
-            FilteredRepGroupColl.Filter += FilterRepGroups;
+            UpdateReportGroups();
 
             if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
                 btnAddGroup.Visibility = Visibility.Visible;
@@ -58,46 +59,80 @@ namespace KPLN_Clashes_Ribbon.Forms
         public ICollectionView FilteredRepGroupColl { get; private set; }
 
         /// <summary>
+        /// Обновить выбранную группу
+        /// </summary>
+        public void UpdateSelectedReportGroup(ReportGroup repGroup)
+        {
+            if (!(FilteredRepGroupColl.SourceCollection is ReportGroup[] groups)) return;
+
+            for (int i = 0; i < groups.Length; i++)
+            {
+                if (groups[i].Id == repGroup.Id)
+                {
+                    ReportGroup tempRG = _sqliteService_MainDB.GetReportGroup_ById(groups[i].Id);
+                    if (tempRG.DateLast != groups[i].DateLast)
+                    {
+                        groups[i] = tempRG;
+                        groups[i].IsExpandedItem = true;
+
+                        FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups.Select(gr => SetReportsToReportGroup(gr)).ToArray());
+                        FilteredRepGroupColl.Filter += FilterRepGroups;
+
+                        iControllGroups.ItemsSource = FilteredRepGroupColl;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
         /// Обновить коллекцию групп
         /// </summary>
-        public void UpdateGroups()
+        public void UpdateReportGroups()
         {
-            ObservableCollection<ReportGroup> groups = new ObservableCollection<ReportGroup>(_sqliteService_MainDB
+            ReportGroup[] groups = _sqliteService_MainDB
                 .GetReportGroups_ByDBProject(_project)
                 .OrderBy(gr => gr.Status != KPItemStatus.Closed)
-                .ThenBy(gr => gr.Id));
-            
+                .ThenBy(gr => gr.Id)
+                .ToArray();
+
             if (groups != null)
             {
-                foreach (ReportGroup group in groups)
-                {
-                    ObservableCollection<Report> reports = _sqliteService_MainDB.GetReports_ByReportGroupId(group.Id);
+                FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups.Select(gr => SetReportsToReportGroup(gr)).ToArray());
+                FilteredRepGroupColl.Filter += FilterRepGroups;
 
-                    // Настройка визуализации ReportGroup если по отчетам Report была активность
-                    if (group.Status == Core.ClashesMainCollection.KPItemStatus.New)
-                    {
-                        IEnumerable<Report> notNewReports = reports.Where(r => r.Status != Core.ClashesMainCollection.KPItemStatus.New);
-                        if (notNewReports.Any())
-                        {
-                            group.Status = Core.ClashesMainCollection.KPItemStatus.Opened;
-                            _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Core.ClashesMainCollection.KPItemStatus.Opened, MainDB_Enumerator.ReportGroups, group.Id);
-                        }
-                    }
-
-                    foreach (Report report in reports)
-                    {
-                        // Настройка визуализации Report если отчеты закрыты (смена картинки)
-                        if (group.Status != Core.ClashesMainCollection.KPItemStatus.Closed)
-                            report.IsGroupEnabled = Visibility.Visible;
-                        else
-                            report.IsGroupEnabled = Visibility.Collapsed;
-
-                        group.Reports.Add(report);
-                    }
-                }
-
-                FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups);
+                iControllGroups.ItemsSource = FilteredRepGroupColl;
             }
+        }
+
+        private ReportGroup SetReportsToReportGroup(ReportGroup group)
+        {
+            ObservableCollection<Report> reports = _sqliteService_MainDB.GetReports_ByReportGroupId(group.Id);
+
+            // Настройка визуализации ReportGroup если по отчетам Report была активность
+            if (group.Status == Core.ClashesMainCollection.KPItemStatus.New)
+            {
+                IEnumerable<Report> notNewReports = reports.Where(r => r.Status != Core.ClashesMainCollection.KPItemStatus.New);
+                if (notNewReports.Any())
+                {
+                    group.Status = Core.ClashesMainCollection.KPItemStatus.Opened;
+                    _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Core.ClashesMainCollection.KPItemStatus.Opened, MainDB_Enumerator.ReportGroups, group.Id);
+                }
+            }
+
+            foreach (Report report in reports)
+            {
+                // Настройка визуализации Report если отчеты закрыты (смена картинки)
+                if (group.Status != Core.ClashesMainCollection.KPItemStatus.Closed)
+                    report.IsGroupEnabled = Visibility.Visible;
+                else
+                    report.IsGroupEnabled = Visibility.Collapsed;
+
+                group.Reports.Add(report);
+            }
+
+            return group;
         }
 
         private bool FilterRepGroups(object obj)
@@ -109,7 +144,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 else if (!(bool)this.ShowClosedReportGroups.IsChecked && rGroup.Status != KPItemStatus.Closed)
                     return CheckParamData(rGroup);
             }
-            
+
             return false;
         }
 
@@ -121,6 +156,11 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             string rGrName = rGroup.Name;
 
+
+            if (!string.IsNullOrEmpty(_reportNameTBxData)
+                && rGrName.ToLower().Contains(_reportNameTBxData))
+                return true;
+
             string rGrBitrId_AR = rGroup.BitrixTaskIdAR.ToString();
             string rGrBitrId_KR = rGroup.BitrixTaskIdKR.ToString();
             string rGrBitrId_OV = rGroup.BitrixTaskIdOV.ToString();
@@ -131,10 +171,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             string rGrBitrId_SS = rGroup.BitrixTaskIdSS.ToString();
             string rGrBitrId_AV = rGroup.BitrixTaskIdAV.ToString();
 
-            if (!string.IsNullOrEmpty(_reportNameTBxData)
-                && rGrName.ToLower().Contains(_reportNameTBxData))
-                return true;
-            
             if (!string.IsNullOrEmpty(_reportBitrixIdTBxData)
                 && (rGrBitrId_AR.Contains(_reportBitrixIdTBxData)
                     || rGrBitrId_KR.Contains(_reportBitrixIdTBxData)
@@ -169,7 +205,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 {
                     Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
                     _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
-                    UpdateGroups();
+                    UpdateReportGroups();
                 }
                 else
                 {
@@ -246,7 +282,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             }
                         }
                         Task.WaitAll(riWorkerTasks);
-                        UpdateGroups();
+                        UpdateReportGroups();
                     }
                 }
                 catch (Exception e)
@@ -456,7 +492,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     group.Status = Core.ClashesMainCollection.KPItemStatus.Closed;
                     _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(group.Status, MainDB_Enumerator.ReportGroups, group.Id);
-                    UpdateGroups();
+                    UpdateReportGroups();
                 }
                 else
                 {
@@ -477,14 +513,15 @@ namespace KPLN_Clashes_Ribbon.Forms
             if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
 
             ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm();
+
             if ((bool)groupCreateForm.ShowDialog())
             {
                 _sqliteService_MainDB.PostReportGroups_NewGroupByProjectAndName(_project, groupCreateForm.CurrentReportGroup);
-                UpdateGroups();
+                UpdateReportGroups();
             }
         }
 
-        private void OnBtnUpdate(object sender, RoutedEventArgs args) => UpdateGroups();
+        private void OnBtnUpdate(object sender, RoutedEventArgs args) => UpdateReportGroups();
 
         private void RecEnter(object sender, System.Windows.Input.MouseEventArgs args)
         {
@@ -521,10 +558,9 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private ReportGroup GetGroupById(int groupid)
         {
-            object obj = FilteredRepGroupColl.CurrentItem;
-            if (obj is ReportGroup group)
+            foreach (object obj in FilteredRepGroupColl)
             {
-                if (group.Id == groupid)
+                if (obj is ReportGroup group && group.Id == groupid)
                     return group;
             }
 
@@ -560,19 +596,20 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
+
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
                         form.Show();
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportForm form = new ReportForm(report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
                         form.Show();
                     }
                 }
@@ -602,7 +639,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     _sqliteService_MainDB.DeleteReportGroupAndReportsAndReportItems_ByReportGroupId(group.Id);
-                    UpdateGroups();
+                    UpdateReportGroups();
                 }
                 else
                 {
@@ -656,6 +693,26 @@ namespace KPLN_Clashes_Ribbon.Forms
             _reportBitrixIdTBxData = textBox.Text.ToLower();
 
             FilteredRepGroupColl?.Refresh();
+        }
+
+        private void BitrixTaskBtn_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
+            if (button.DataContext is SubDepartmentBtn subDepartmentBtn)
+            {
+                if (subDepartmentBtn.Id == -1 || subDepartmentBtn.Id == 0)
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Не удалось получить ID-задачи из Bitrix. Скорее всего задачу не привязали",
+                        "Открытие задачи в Bitrix",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+
+                    return;
+                }
+
+                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{DBMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{subDepartmentBtn.Id}/");
+            }
         }
     }
 }

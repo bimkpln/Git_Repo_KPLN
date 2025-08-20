@@ -16,8 +16,15 @@ namespace KPLN_Clashes_Ribbon.Commands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandShowManager : IExternalCommand
     {
+        public static GetActiveDocumentHandler ActiveDocHandler { get; private set; }
+        public static ExternalEvent ExtEvent { get; private set; }
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            ActiveDocHandler = new GetActiveDocumentHandler();
+            ExtEvent = ExternalEvent.Create(ActiveDocHandler);
+            ExtEvent.Raise();
+
             try
             {
                 DBProject dBProject = null;
@@ -50,8 +57,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             catch (Exception ex)
             {
                 PrintError(ex);
-
-                return Result.Failed;
+                return Result.Cancelled;
             }
         }
     }

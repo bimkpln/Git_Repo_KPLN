@@ -280,6 +280,7 @@
     <Compile Include="Commands\CommandRemoveInstance.cs" />
     <Compile Include="Commands\CommandShowManager.cs" />
     <Compile Include="Commands\CommandZoomSelectElement.cs" />
+    <Compile Include="Commands\GetActiveDocumentHandler.cs" />
     <Compile Include="Core\ClashesMainCollection.cs" />
     <Compile Include="Core\SubDepartmentBtn.cs" />
     <Compile Include="Core\Reports\Report.cs" />
@@ -298,9 +299,6 @@
     </Compile>
     <Compile Include="Forms\ReportForm.xaml.cs">
       <DependentUpon>ReportForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\TextInputForm.xaml.cs">
-      <DependentUpon>TextInputForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -356,10 +354,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ReportForm.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\TextInputForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

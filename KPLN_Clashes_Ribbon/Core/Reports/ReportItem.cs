@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -323,16 +322,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 switch (value)
                 {
                     case KPItemStatus.Closed:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 190, 104));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 0, 190, 104));
                         break;
                     case KPItemStatus.Approved:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 78, 97, 112));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
                         break;
                     case KPItemStatus.Delegated:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 135, 0, 255));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 135, 0, 255));
                         break;
                     case KPItemStatus.Opened:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 84, 42));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 255, 84, 42));
                         break;
                 }
 

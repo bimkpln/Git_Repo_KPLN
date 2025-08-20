@@ -1,6 +1,7 @@
 ﻿using KPLN_Clashes_Ribbon.Services;
 using KPLN_Library_SQLiteWorker;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -35,7 +36,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private Source.Source _source;
         private SolidColorBrush _fill = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
-
+        
         #region Данные из БД
         [Key]
         public int Id
@@ -202,6 +203,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
+                
                 _fill = Fill_Default;
             }
         }
@@ -245,13 +247,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get
             {
                 if (_isGroupEnabled == System.Windows.Visibility.Visible)
-                { return System.Windows.Visibility.Collapsed; }
+                    return System.Windows.Visibility.Collapsed;
+
                 return System.Windows.Visibility.Visible;
             }
             set
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
+                
                 _fill = Fill_Default;
             }
         }
