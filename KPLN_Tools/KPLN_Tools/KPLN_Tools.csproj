@@ -270,7 +270,6 @@
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
-    <Compile Include="Common\EnvironmentService.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
     <Compile Include="Common\SS_System\GraphicsStyleWrapper.cs" />
@@ -378,7 +377,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\autonumberSmall.png" />
