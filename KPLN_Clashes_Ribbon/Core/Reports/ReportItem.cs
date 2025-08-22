@@ -78,17 +78,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             ReportId = repId;
             Name = name;
 
-            using (Stream image_stream = File.Open(image, FileMode.Open))
+            byte[] imageBytes = File.ReadAllBytes(image);
+            using (MemoryStream imageStream = new MemoryStream(imageBytes))
             {
-                Image = SystemTools.ReadFully(image_stream);
-            }
+                Image = imageStream.ToArray();
+                imageStream.Position = 0;
 
-            using (Stream image_stream = File.Open(image, FileMode.Open))
-            {
                 var imageSource = new BitmapImage();
                 imageSource.BeginInit();
-                imageSource.StreamSource = image_stream;
-                imageSource.CacheOption = BitmapCacheOption.Default;
+                imageSource.StreamSource = imageStream;
+                imageSource.CacheOption = BitmapCacheOption.OnLoad;
                 imageSource.EndInit();
                 ImageSource = imageSource;
             }

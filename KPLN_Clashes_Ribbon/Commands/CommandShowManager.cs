@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
@@ -36,7 +35,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                     string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
                     dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
                 }
-                
+
                 if (uidoc == null || dBProject == null)
                 {
                     // Для пользователей бим-отдела - показываю все проекты, включая архивные

@@ -70,16 +70,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                 if (groups[i].Id == repGroup.Id)
                 {
                     ReportGroup tempRG = _sqliteService_MainDB.GetReportGroup_ById(groups[i].Id);
-                    if (tempRG.DateLast != groups[i].DateLast)
-                    {
-                        groups[i] = tempRG;
-                        groups[i].IsExpandedItem = true;
+                    groups[i] = tempRG;
+                    groups[i].IsExpandedItem = true;
 
-                        FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups.Select(gr => SetReportsToReportGroup(gr)).ToArray());
-                        FilteredRepGroupColl.Filter += FilterRepGroups;
+                    FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups.Select(gr => SetReportsToReportGroup(gr)).ToArray());
+                    FilteredRepGroupColl.Filter += FilterRepGroups;
 
-                        iControllGroups.ItemsSource = FilteredRepGroupColl;
-                    }
+                    iControllGroups.ItemsSource = FilteredRepGroupColl;
 
                     break;
                 }
@@ -205,7 +202,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 {
                     Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
                     _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
-                    UpdateReportGroups();
+                    UpdateSelectedReportGroup(report.ReportGroup);
                 }
                 else
                 {
@@ -282,7 +279,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                             }
                         }
                         Task.WaitAll(riWorkerTasks);
-                        UpdateReportGroups();
+                        
+                        UpdateSelectedReportGroup(group);
                     }
                 }
                 catch (Exception e)

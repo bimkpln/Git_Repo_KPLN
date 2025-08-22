@@ -407,7 +407,18 @@
                                                             </StackPanel>
                                                         </TextBlock.ToolTip>
                                                     </TextBlock>
-                                                    <Button Grid.Row="3" Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" Width="20" Height="20" Grid.Column="2" Content="✖" VerticalAlignment="Top" Background="{x:Null}" Foreground="#4C000000" BorderBrush="#7F707070" Click="OnBtnRemoveReport">
+                                                    <Button 
+                                                        Grid.Row="3" 
+                                                        Grid.Column="2"
+                                                        Content="✖" 
+                                                        Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Width="20" 
+                                                        Height="20" 
+                                                        VerticalAlignment="Top" 
+                                                        Background="{x:Null}" 
+                                                        Foreground="#4C000000" 
+                                                        BorderBrush="#7F707070" 
+                                                        Click="OnBtnRemoveReport">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>

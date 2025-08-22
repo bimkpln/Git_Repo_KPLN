@@ -309,6 +309,7 @@
     <Compile Include="Services\SQLite\SQLiteService_ReportItemsDB.cs" />
     <Compile Include="Services\SQLite\SQLiteService_MainDB.cs" />
     <Compile Include="Source\Source.cs" />
+    <Compile Include="Tools\HtmlReportParser.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
     <Compile Include="Tools\SystemTools.cs" />
     <Compile Include="Tools\ZoomTools.cs" />

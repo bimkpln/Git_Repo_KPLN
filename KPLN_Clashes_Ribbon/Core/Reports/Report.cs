@@ -26,6 +26,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private bool _isReportVisible = true;
         private int _id;
         private int _reportGroupId;
+        private ReportGroup _reportGroup;
         private string _name;
         private ClashesMainCollection.KPItemStatus _status;
         private string _path;
@@ -153,6 +154,17 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
         #endregion
+
+        public ReportGroup ReportGroup
+        {
+            get
+            {
+                if (_reportGroup == null)
+                    _reportGroup = _sqliteService_MainDB.GetReportGroup_ById(ReportGroupId);
+
+                return _reportGroup;
+            }
+        }
 
         #region Дополнительная визуализация
         public int Progress

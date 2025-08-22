@@ -1,10 +1,7 @@
 ﻿using HtmlAgilityPack;
-using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
 using System.Web;
 
 namespace KPLN_Clashes_Ribbon.Tools
@@ -107,7 +104,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             {
                 if (decode)
                 {
-                    return Decode(node.ChildNodes[element].InnerText);
+                    return HtmlReportParser.Decode(node.ChildNodes[element].InnerText);
                 }
                 else
                 {
@@ -126,7 +123,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             {
                 if (decode)
                 {
-                    headers.Add(Decode(sub_node.InnerText));
+                    headers.Add(HtmlReportParser.Decode(sub_node.InnerText));
                 }
                 else
                 {
@@ -141,7 +138,7 @@ namespace KPLN_Clashes_Ribbon.Tools
             List<string> headers = new List<string>();
             foreach (HtmlNode sub_node in node.ChildNodes)
             {
-                string value = Decode(sub_node.InnerText);
+                string value = HtmlReportParser.Decode(sub_node.InnerText);
                 if (value.Length > 0)
                 {
                     headers.Add(value);
@@ -190,66 +187,25 @@ namespace KPLN_Clashes_Ribbon.Tools
         {
             return value.Split(':').Last();
         }
-        //
-        private static string Decode(string value)
-        {
-            string myString = value;
-            byte[] bytes = Encoding.Default.GetBytes(myString);
-            myString = Encoding.UTF8.GetString(bytes);
-            return myString;
-        }
 
         public static string GetFullName(HtmlNode node, int num)
         {
             foreach (HtmlNode sub_node in node.ChildNodes)
             {
-                if (Decode(sub_node.GetAttributeValue("class", "NONE")) == string.Format("элемент{0}Содержимое", num.ToString()))
+                if (HtmlReportParser.Decode(
+                    sub_node.GetAttributeValue("class", "NONE")) == string.Format("элемент{0}Содержимое",
+                    num.ToString()))
                 {
-                    if (Decode(sub_node.InnerText).ToLower().Contains(".rvt") || Decode(sub_node.InnerText).ToLower().Contains(".nwc") || Decode(sub_node.InnerText).ToLower().Contains(".nwd"))
-                    {
-                        return OptimizeV(Decode(sub_node.InnerText));
-                    }
+                    string decoded = HtmlReportParser.Decode(sub_node.InnerText);
+                    if (decoded.ToLower().Contains(".rvt")
+                        || decoded.ToLower().Contains(".nwc")
+                        || decoded.ToLower().Contains(".nwd"))
+                        return OptimizeV(decoded);
                 }
             }
             return null;
         }
-        public static string Optimize(string value)
-        {
-            try
-            {
-                List<char> final_chars = new List<char>();
-                List<char> chars = new List<char>();
-                foreach (char c in value)
-                {
-                    if (char.IsWhiteSpace(c) && chars.Count == 0)
-                    {
-                        continue;
-                    }
-                    chars.Add(c);
-                }
-                chars.Reverse();
-                foreach (char c in chars)
-                {
-                    if (char.IsWhiteSpace(c) && final_chars.Count == 0)
-                    {
-                        continue;
-                    }
-                    final_chars.Add(c);
-                }
-                final_chars.Reverse();
-                string result = string.Empty;
-                foreach (char c in final_chars)
-                {
-                    result += c;
-                }
-                return result;
-            }
-            catch (Exception)
-            {
-                return "NONE";
-            }
 
-        }
         public static string OptimizeV(string value)
         {
             try
@@ -286,7 +242,6 @@ namespace KPLN_Clashes_Ribbon.Tools
             {
                 return "NONE";
             }
-
         }
     }
 }
