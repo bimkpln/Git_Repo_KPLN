@@ -90,7 +90,7 @@ namespace KPLN_Quantificator.Forms
                         }
                         else
                         {
-                            if (clashCount < 100)
+                            if (clashCount < 50)
                             {
                                 mode = GroupingMode.Host;
                             }
@@ -102,7 +102,7 @@ namespace KPLN_Quantificator.Forms
                     }
                     else
                     {
-                        if (clashCount < 100)
+                        if (clashCount < 50)
                         {
                             mode = GroupingMode.Host;
                         }
