@@ -11,9 +11,6 @@ using KPLN_ModelChecker_User.Forms;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
-
-#if (Revit2023 || Debug2023)
-
     public class SkippedElementInfo
     {
         public Element Element { get; }
@@ -25,7 +22,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Origin = origin;
         }
     }
-
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
@@ -540,7 +536,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     BoundingBoxXYZ bb = fi.get_BoundingBox(null);
                     if (bb == null) { tx.RollBack(); return; }
 
+
+
+#if (Debug2020 || Revit2020)
+                    double off = UnitUtils.ConvertToInternalUnits(2.0, DisplayUnitType.DUT_METERS);
+#endif
+#if (Debug2023 || Revit2023)
                     double off = UnitUtils.ConvertToInternalUnits(2.0, UnitTypeId.Meters);
+#endif
+
 
                     v3.SetSectionBox(new BoundingBoxXYZ
                     {
@@ -577,5 +581,4 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public string GetName() => nameof(ShowClashPointHandler);
     }
 
-#endif
 }

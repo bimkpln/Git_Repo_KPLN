@@ -233,7 +233,6 @@ namespace KPLN_ModelChecker_User
                 true
                 );
 
-#if (Revit2023 || Debug2023)
             AddPushButtonData(
                 "CheckMonolith",
                 CommandCheckMonolith.PluginName,
@@ -245,7 +244,6 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 CurrentDbUser.SubDepartmentId == 8
                 );
-#endif
 
             AddPushButtonData(
                 "CheckLevels",
