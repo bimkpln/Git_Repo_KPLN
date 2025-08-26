@@ -252,6 +252,7 @@
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\DBWorkerService.cs" />
+    <Compile Include="Common\FamilyManagerDock.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
     <Compile Include="Common\LinkManager\EntityStatus.cs" />
     <Compile Include="Common\LinkManager\LinkManagerUpdateEntity.cs" />
@@ -290,6 +291,7 @@
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
+    <Compile Include="ExternalCommands\CommandFamilyManager.cs" />
     <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
     <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
@@ -320,6 +322,9 @@
     </Compile>
     <Compile Include="Forms\Converters\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
+    <Compile Include="Forms\FamilyManager.xaml.cs">
+      <DependentUpon>FamilyManager.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
     </Compile>
@@ -428,6 +433,7 @@
     <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
     <EmbeddedResource Include="Imagens\TEPDesignBig.png" />
     <EmbeddedResource Include="Imagens\TEPDesignSmall.png" />
+    <EmbeddedResource Include="Imagens\familyManagerBig.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -446,6 +452,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\AR_TEPDesign_paramNameSelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\FamilyManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

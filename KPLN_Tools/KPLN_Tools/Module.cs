@@ -1,11 +1,15 @@
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
+using KPLN_Tools.Docking;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.ExternalCommands;
+using System;
 using System.IO;
 using System.Reflection;
+using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -24,7 +28,8 @@ namespace KPLN_Tools
         public Result Execute(UIControlledApplication application, string tabName)
         {
             CurrentRevitVersion = application.ControlledApplication.VersionNumber;
-            
+
+            FamilyManagerDock.Register(application);
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
@@ -555,8 +560,26 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.sendMsgBig.png",
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
-
+            
+            PushButtonData familyManagerPanel = CreateBtnData(
+                CommandFamilyManager.PluginName,
+                CommandFamilyManager.PluginName,
+                "Каталог семейств KPLN",
+                string.Format(
+                    "Каталог семейств KPLN.\n" +
+                    "\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandFamilyManager).FullName,
+                "KPLN_Tools.Imagens.familyManagerBig.png",
+                "KPLN_Tools.Imagens.familyManagerBig.png",
+                "http://moodle");
+         
             panel.AddItem(sendMsgToBitrix);
+            panel.AddItem(familyManagerPanel);
             #endregion
 
 
