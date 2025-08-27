@@ -335,6 +335,7 @@
                                 Text="{Binding ReportParentGroupComments}"  
                                 Visibility="{Binding ReportParentGroupCommentsVisibility}" 
                                 Style="{StaticResource ItemTBL}"
+                                MaxWidth="500"
                                 Foreground="Black"/>
 
                             <!--Список файлов-->
@@ -347,7 +348,8 @@
                                 Grid.Row="1" 
                                 Grid.Column="1"
                                 Text="{Binding DocumentsHashSet}"  
-                                Style="{StaticResource ItemTBL}"/>
+                                Style="{StaticResource ItemTBL}"
+                                MaxWidth="500"/>
 
                             <!--Метка-->
                             <TextBlock 
@@ -538,6 +540,7 @@
                                                 Text="{Binding ReportItemComments}"  
                                                 Visibility="{Binding ReportItemCommentsVisibility}" 
                                                 Style="{StaticResource ItemTBL}"
+                                                MaxWidth="300"
                                                 Foreground="Black"
                                                 FontWeight="Bold"
                                                 FontSize="12"/>

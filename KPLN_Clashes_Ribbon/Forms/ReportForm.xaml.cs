@@ -1,5 +1,4 @@
-﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
@@ -14,7 +13,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -53,7 +51,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             FilteredInstancesColl = CollectionViewSource.GetDefaultView(ReportInstancesColl);
             FilteredInstancesColl.Filter += FilterForRepItems;
-            
+
             if (_repourtGroup.IsEnabled)
             {
                 foreach (ReportItem instance in ReportInstancesColl)
@@ -117,7 +115,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     case 1:
                         if (item.Status == KPItemStatus.Opened || item.Status == KPItemStatus.Delegated)
                             statusCheck = true;
-                        
+
                         break;
                     case 2:
                         if (item.Status == KPItemStatus.Opened)
@@ -164,11 +162,11 @@ namespace KPLN_Clashes_Ribbon.Forms
                 bool checkConflData = item.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                     || item.SubElements.Any(sub => sub.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
 
-                bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0 
+                bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                         || sub.Element_2_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
 
                 bool checkIDData = item.GroupElementIds.Contains(_idDataTBx);
-                    
+
                 if (checkConflData && checkConflictMetaData && checkIDData)
                     return true;
             }

@@ -33,6 +33,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private bool _isEnabled = true;
         private bool _isExpandedItem = false;
         private static ProjectDbService _libProjectDbService;
+        private string _searchText = string.Empty;
 
         private int _bitrixTaskIdAR;
         private int _bitrixTaskIdKR;
@@ -275,6 +276,19 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         #endregion
 
         #region Дополнительная визуализация
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (_searchText != value)
+                {
+                    _searchText = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
         public DBProject DBProject
         {
             get

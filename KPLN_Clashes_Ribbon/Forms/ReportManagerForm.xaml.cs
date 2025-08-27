@@ -69,14 +69,19 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 if (groups[i].Id == repGroup.Id)
                 {
+                    string searchText = groups[i].SearchText;
                     ReportGroup tempRG = _sqliteService_MainDB.GetReportGroup_ById(groups[i].Id);
+
                     groups[i] = tempRG;
                     groups[i].IsExpandedItem = true;
+                    tempRG.SearchText = searchText;
 
                     FilteredRepGroupColl = CollectionViewSource.GetDefaultView(groups.Select(gr => SetReportsToReportGroup(gr)).ToArray());
                     FilteredRepGroupColl.Filter += FilterRepGroups;
 
                     iControllGroups.ItemsSource = FilteredRepGroupColl;
+
+                    ApplySearchToReportGroup(groups[i]);
 
                     break;
                 }
@@ -595,7 +600,6 @@ namespace KPLN_Clashes_Ribbon.Forms
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
                         ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
-
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
@@ -655,22 +659,18 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void SearchText_Changed(object sender, RoutedEventArgs e)
         {
-            System.Windows.Controls.TextBox textBox = sender as System.Windows.Controls.TextBox;
-            string _searchName = textBox.Text.ToLower();
+            if (e.OriginalSource is System.Windows.Controls.TextBox tb && tb.DataContext is ReportGroup reportGroup)
+                ApplySearchToReportGroup(reportGroup);
+        }
 
-            System.Windows.Controls.TextBox tbOriginal = (System.Windows.Controls.TextBox)e.OriginalSource;
+        private void ApplySearchToReportGroup(ReportGroup reportGroup)
+        {
+            string search = reportGroup.SearchText?.ToLower() ?? string.Empty;
 
-            if (tbOriginal.DataContext is ReportGroup reportGroup)
+            foreach (Report report in reportGroup.Reports)
             {
-                foreach (Report report in reportGroup.Reports)
-                {
-                    if (!report.Name.ToLower().Contains(_searchName))
-                        report.IsReportVisible = false;
-                    else
-                        report.IsReportVisible = true;
-                }
+                report.IsReportVisible = string.IsNullOrEmpty(search) || report.Name.ToLower().Contains(search);
             }
-
         }
 
         private void ShowClosedReportGroups_Checked(object sender, RoutedEventArgs e) =>

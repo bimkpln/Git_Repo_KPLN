@@ -37,7 +37,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private Source.Source _source;
         private SolidColorBrush _fill = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
-        
+
         #region Данные из БД
         [Key]
         public int Id

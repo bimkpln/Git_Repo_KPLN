@@ -258,9 +258,10 @@
                                                 x:Name="SearchText" 
                                                 DockPanel.Dock="Right" 
                                                 Style="{StaticResource TXTBX}" 
+                                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                                 TextChanged="SearchText_Changed"
-                                                TextAlignment="Left" 
-                                                VerticalAlignment="Center" 
+                                                TextAlignment="Left"
+                                                VerticalAlignment="Center"
                                                 FontStretch="ExtraExpanded"/>
                                         </DockPanel>
                                     </StackPanel>
