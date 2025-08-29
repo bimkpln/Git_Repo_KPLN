@@ -10,6 +10,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
+using KPLN_ModelChecker_User.ExternalCommands;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -507,7 +508,7 @@ namespace KPLN_Looker
                 // Семейство в игнор (там нечего копировать)
                 if (openDoc.IsFamilyDocument)
                     continue;
-                
+
                 // Если это тот же файл - игнор
                 if (openDoc.Title.Equals(docTitle))
                     continue;
@@ -704,9 +705,13 @@ namespace KPLN_Looker
         private static DBDocument DBDocumentByRevitDocPathAndDBProject(string centralPath, DBProject dBProject, DBSubDepartment dBSubDepartment)
         {
             int dBSubDepartmentId = dBSubDepartment == null ? -1 : dBSubDepartment.Id;
-            IEnumerable<DBDocument> docColl = DBMainService.DocDbService.GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId);
+            if (dBProject != null)
+            {
+                IEnumerable<DBDocument> docColl = DBMainService.DocDbService.GetDBDocuments_ByPrjIdAndSubDepId(dBProject.Id, dBSubDepartmentId);
+                return docColl.FirstOrDefault(d => d.CentralPath.Equals(centralPath));
+            }
 
-            return docColl.FirstOrDefault(d => d.CentralPath.Equals(centralPath));
+            return null;
         }
 
         /// <summary>
@@ -898,8 +903,10 @@ namespace KPLN_Looker
 
             ARKonFileSendMsg(doc);
 
+#if Revit2020 || Revit2023
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
+#endif
 
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
             if (DBMainService.CurrentDBUser.IsUserRestricted)
@@ -919,6 +926,11 @@ namespace KPLN_Looker
 
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
             }
+            #endregion
+
+            #region Автопроверки
+            UIApplication uiApp = new UIApplication(doc.Application);
+            CheckBatchRunner.RunAll(uiApp);
             #endregion
 
             string fileFullName = GetFileFullName(doc);
@@ -944,7 +956,7 @@ namespace KPLN_Looker
             #region Работа с проектами КПЛН
             // Получаю проект из БД КПЛН
             DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
-            if (dBProject == null)
+            if (dBProject != null)
                 return;
 
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
