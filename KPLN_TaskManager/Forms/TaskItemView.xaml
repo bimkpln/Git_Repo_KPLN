@@ -264,12 +264,13 @@
                 Style="{StaticResource TXTBX}" 
                 Text="{Binding TaskBody}"
                 MinHeight="30"
-                MaxHeight="100"
+                MaxHeight="150"
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Center" 
-                FontStretch="ExtraExpanded"/>
+                FontStretch="ExtraExpanded"
+                VerticalScrollBarVisibility="Auto"/>
 
             <DockPanel 
                 LastChildFill="False">

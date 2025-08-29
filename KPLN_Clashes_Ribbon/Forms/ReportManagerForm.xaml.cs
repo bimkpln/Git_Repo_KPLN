@@ -131,7 +131,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                 else
                     report.IsGroupEnabled = Visibility.Collapsed;
 
-                group.Reports.Add(report);
+                if (group.Reports.All(rep => rep.Id != report.Id))
+                    group.Reports.Add(report);
             }
 
             return group;
@@ -284,7 +285,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                             }
                         }
                         Task.WaitAll(riWorkerTasks);
-                        
+
                         UpdateSelectedReportGroup(group);
                     }
                 }
