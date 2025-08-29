@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -15,7 +16,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckLevelOfInstances : AbstrCheckCommand<CommandCheckLevelOfInstances>, IExternalCommand
+    internal class CommandCheckLevelOfInstances : AbstrCheckCommandOld<CommandCheckLevelOfInstances>, IExternalCommand
     {
         internal const string PluginName = "АР/КР: Проверка привязки к уровням";
 

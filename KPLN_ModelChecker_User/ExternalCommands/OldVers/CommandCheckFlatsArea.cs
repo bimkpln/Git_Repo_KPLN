@@ -16,7 +16,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckFlatsArea : AbstrCheckCommand<CommandCheckFlatsArea>, IExternalCommand
+    internal class CommandCheckFlatsArea : AbstrCheckCommandOld<CommandCheckFlatsArea>, IExternalCommand
     {
         #region Инициализация полей
         internal const string PluginName = "АР_Р: Проверка помещений";

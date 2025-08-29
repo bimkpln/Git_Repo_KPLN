@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
@@ -15,7 +16,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckListAnnotations : AbstrCheckCommand<CommandCheckListAnnotations>, IExternalCommand
+    internal class CommandCheckListAnnotations : AbstrCheckCommandOld<CommandCheckListAnnotations>, IExternalCommand
     {
         internal const string PluginName = "Проверка на аннотации";
 

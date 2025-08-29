@@ -20,7 +20,7 @@ using System.Windows.Data;
 
 namespace KPLN_ModelChecker_User.Forms
 {
-    public partial class OutputMainForm : Window
+    public partial class CheckMainForm : Window
     {
         /// <summary>
         /// Extensible Storage: данные по последнему запуску
@@ -49,7 +49,7 @@ namespace KPLN_ModelChecker_User.Forms
         private readonly WPFReportCreator _creator;
         private CollectionViewSource _entityViewSource;
 
-        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
         {
             _application = uiapp;
             _externalCommand = externalCommand;
@@ -73,11 +73,12 @@ namespace KPLN_ModelChecker_User.Forms
             UpdateEntityList();
 
             // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
-            if (_externalCommand == nameof(CommandCheckLinks) || _externalCommand == nameof(CommandCheckFamilies)) 
+            if (_externalCommand == nameof(CommandCheckLinks) 
+                || _externalCommand == nameof(CommandCheckFamilies)) 
                 this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 
-        public OutputMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
         {
             _esBuilderRun = esBuilderRun;
             _esBuilderUserText = esBuilderUserText;
@@ -222,7 +223,7 @@ namespace KPLN_ModelChecker_User.Forms
 
             // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
             if (executeMethod != null)
-                executeMethod.Invoke(instance, new object[] { _application });
+                executeMethod.Invoke(instance, new object[] { _application, true, true, true });
             else
                 throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
                 

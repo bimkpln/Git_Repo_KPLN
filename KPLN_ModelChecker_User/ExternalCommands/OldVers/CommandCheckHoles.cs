@@ -9,13 +9,12 @@ using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckHoles : AbstrCheckCommand<CommandCheckHoles>, IExternalCommand
+    internal class CommandCheckHoles : AbstrCheckCommandOld<CommandCheckHoles>, IExternalCommand
     {
         internal const string PluginName = "АР: Проверка отверстий";
 
@@ -383,7 +382,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие без труб, и заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
                         true,
-                        CheckStatus.Warning,
+                        ErrorStatus.Warning,
                         true);
 
                     errorNoPipeAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
@@ -399,7 +398,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Большая вероятность, что необходимо пересмотреть размеры, т.к. отверстие заполнено 1 элементом ИОС на {Math.Round(intersectPersent, 3) * 100}%.",
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
                         true,
-                        CheckStatus.Warning,
+                        ErrorStatus.Warning,
                         true);
 
                     errorOneElemAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);
@@ -415,7 +414,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         $"Возможно стоит пересмотреть размеры, т.к. отверстие заполнено элементами ИОС только на {Math.Round(intersectPersent, 3) * 100}%.",
                         $"Ошибка может быть ложной, если не все связи ИОС загружены в проект.\nУровень размещения: {holeLevel.Name}",
                         true,
-                        CheckStatus.Warning,
+                        ErrorStatus.Warning,
                         true);
 
                     warnAreaElem.ResetZoomGeometryExtension(holeData.CurrentBBox);

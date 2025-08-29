@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Loader.Common;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.WPFItems;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
@@ -36,7 +37,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                     }
 
                 //Обновление данных на wpf-элементе
-                _wpfEntity.UpdateMainFieldByStatus(Common.CheckCommandCollections.CheckStatus.Approve);
+                _wpfEntity.UpdateMainFieldByStatus(ErrorStatus.Approve);
                 _wpfEntity.ApproveComment = _description;
 
                 t.Commit();

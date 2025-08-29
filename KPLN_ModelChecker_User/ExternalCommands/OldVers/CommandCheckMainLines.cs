@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -26,7 +27,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
     
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMainLines : AbstrCheckCommand<CommandCheckMainLines>, IExternalCommand
+    internal class CommandCheckMainLines : AbstrCheckCommandOld<CommandCheckMainLines>, IExternalCommand
     {
         internal const string PluginName = "Проверка осей/уровней";
 

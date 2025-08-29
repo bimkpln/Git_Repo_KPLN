@@ -43,8 +43,8 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckDimensions",
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
-            CommandCheckElementWorksets commandCheckElementWorksets = new CommandCheckElementWorksets(new ExtensibleStorageEntity(
-                CommandCheckElementWorksets.PluginName,
+            CommandCheckWorksets commandCheckWorksets = new CommandCheckWorksets(new ExtensibleStorageEntity(
+                CommandCheckWorksets.PluginName,
                 "KPLN_CheckElementWorksets",
                 new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7"),
                 new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8")));
@@ -97,7 +97,7 @@ namespace KPLN_ModelChecker_User
             {
                 // Проверки из этой сборки
                 CommandCheckDimensions.ESEntity,
-                CommandCheckElementWorksets.ESEntity,
+                CommandCheckWorksets.ESEntity,
                 CommandCheckFamilies.ESEntity,
                 CommandCheckMainLines.ESEntity,
                 CommandCheckFlatsArea.ESEntity,
@@ -189,13 +189,13 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckWorksets",
-                CommandCheckElementWorksets.PluginName,
+                CommandCheckWorksets.PluginName,
                 "Проверка элементов на корректность следующих рабочих наборов:"+
                     "\n1. РН для связей;" +
                     "\n2. РН для осей и уровней;" +
                     "\n3. РН для скопированных и замониторенных элементов из других моделей.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckElementWorksets).FullName,
+                typeof(CommandCheckWorksets).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_worksets.png",
                 _mainContextualHelp,

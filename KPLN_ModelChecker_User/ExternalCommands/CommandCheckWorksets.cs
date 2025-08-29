@@ -1,48 +1,61 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.WPFItems;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public sealed class CommandCheckLinks : AbstrCommand<CommandCheckLinks>, IExternalCommand
+    public sealed class CommandCheckWorksets : AbstrCommand<CommandCheckWorksets>, IExternalCommand
     {
-        internal const string PluginName = "Проверка связей";
+        internal const string PluginName = "Проверка рабочих наборов";
 
-        private CheckLinks _checkLinks;
+        private CheckWorksets _checkWorksets;
         private Element[] _elemsToCheck;
 
-        public CommandCheckLinks() : base() {}
+        public CommandCheckWorksets() : base() { }
 
-        internal CommandCheckLinks(ExtensibleStorageEntity esEntity) : base(esEntity) {}
+        internal CommandCheckWorksets(ExtensibleStorageEntity esEntity) : base(esEntity) { }
 
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            _checkLinks = new CheckLinks(commandData.Application);
-            _elemsToCheck = _checkLinks.GetElemsToCheck();
+            _checkWorksets = new CheckWorksets(commandData.Application);
+            _elemsToCheck = _checkWorksets.GetElemsToCheck();
 
-            // Блокирую проверку части линков ПРИ РУЧНОМ ЗАПУСКЕ
+            Document doc = commandData.Application.ActiveUIDocument.Document;
+
+            // Блокирую проверку части РН ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.
-            // Даже если это перезапуск - изначально всё равно нужно вручную запустить и подгрузить линки
-            foreach (RevitLinkInstance rli in _elemsToCheck.Cast<RevitLinkInstance>())
+            // Даже если это перезапуск - изначально всё равно нужно вручную запустить и открыть РН
+            if (!doc.IsWorkshared)
             {
-                Document linkDoc = rli.GetLinkDocument();
-                if (linkDoc == null)
+                TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                {
+                    MainContent = $"Проверка рабочих наборов может выполняться ТОЛЬКО с моделями для совместной работы",
+                };
+                taskDialog.Show();
+
+                return Result.Cancelled;
+            }
+
+            Workset[] worksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToArray();
+            foreach (Workset ws in worksets)
+            {
+                if (!ws.IsOpen)
                 {
                     TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
                     {
-                        MainContent = $"Необходимо загрузить ВСЕ связи. Проверь диспетчер Revit-связей",
+                        MainContent = $"Необходимо загрузить ВСЕ рабочие наборы",
                     };
                     taskDialog.Show();
 
@@ -58,13 +71,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             if (setPluginActivity)
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
-            if (_checkLinks == null || _elemsToCheck == null)
+            if (_checkWorksets == null || _elemsToCheck == null)
             {
-                _checkLinks = new CheckLinks(uiapp);
-                _elemsToCheck = _checkLinks.GetElemsToCheck();
+                _checkWorksets = new CheckWorksets(uiapp);
+                _elemsToCheck = _checkWorksets.GetElemsToCheck();
             }
-           
-            CheckerEntities = _checkLinks.ExecuteCheck(_elemsToCheck);
+
+            CheckerEntities = _checkWorksets.ExecuteCheck(_elemsToCheck);
             if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
                 ReportCreatorAndDemonstrator(uiapp);
             else if (showSuccsessText)

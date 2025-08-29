@@ -5,9 +5,9 @@ namespace KPLN_ModelChecker_User.Common
     /// <summary>
     /// Обертка для элементов, используется при выявлении ошибок в работе скриптов
     /// </summary>
-    internal class CheckCommandError
+    internal class CheckCommandErrorOld
     {
-        public CheckCommandError(Element errorElement, string errorMessage)
+        public CheckCommandErrorOld(Element errorElement, string errorMessage)
         {
             ErrorElement = errorElement;
             ErrorMessage = errorMessage;

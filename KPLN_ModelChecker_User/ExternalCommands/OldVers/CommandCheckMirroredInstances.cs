@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -9,13 +10,12 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMirroredInstances : AbstrCheckCommand<CommandCheckMirroredInstances>, IExternalCommand
+    internal class CommandCheckMirroredInstances : AbstrCheckCommandOld<CommandCheckMirroredInstances>, IExternalCommand
     {
         internal const string PluginName = "Проверка зеркальных эл-в";
 
@@ -124,7 +124,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 string.Empty,
                                 true,
-                                SetApproveStatusByUserComment(element, CheckStatus.Error),
+                                SetApproveStatusByUserComment(element, ErrorStatus.Error),
                                 true);
 
                             result.Add(hostEntity);
@@ -142,7 +142,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                             string.Empty,
                             true,
-                            SetApproveStatusByUserComment(element, CheckStatus.Error),
+                            SetApproveStatusByUserComment(element, ErrorStatus.Error),
                             true);
 
                         result.Add(elemEntity);

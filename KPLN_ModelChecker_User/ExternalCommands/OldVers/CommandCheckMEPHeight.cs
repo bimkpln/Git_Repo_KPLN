@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckMEPHeight : AbstrCheckCommand<CommandCheckMEPHeight>, IExternalCommand
+    internal class CommandCheckMEPHeight : AbstrCheckCommandOld<CommandCheckMEPHeight>, IExternalCommand
     {
         internal const string PluginName = "ИОС: Проверка высоты эл-в";
 
