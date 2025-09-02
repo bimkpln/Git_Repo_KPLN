@@ -109,7 +109,7 @@
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
           <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Forms">
@@ -130,7 +130,7 @@
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
           <SpecificVersion>False</SpecificVersion>
-          <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Forms">

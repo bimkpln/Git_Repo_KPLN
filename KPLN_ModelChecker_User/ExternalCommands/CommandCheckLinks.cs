@@ -6,7 +6,9 @@ using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.WPFItems;
+using System;
 using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -50,10 +52,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            return ExecuteByUIApp(commandData.Application, true, true, true);
+            return ExecuteByUIApp(commandData.Application, true, true, true, true);
         }
 
-        public override Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity, bool showMainForm, bool showSuccsessText)
+        public override Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity, bool showMainForm, bool setLastRun, bool showSuccsessText)
         {
             if (setPluginActivity)
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
@@ -66,9 +68,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
            
             CheckerEntities = _checkLinks.ExecuteCheck(_elemsToCheck);
             if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
-                ReportCreatorAndDemonstrator(uiapp);
+                ReportCreatorAndDemonstrator(uiapp, setLastRun);
             else if (showSuccsessText)
+            {
+                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
+                
                 HtmlOutput.Print($"[{ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
+            }
 
             return Result.Succeeded;
         }

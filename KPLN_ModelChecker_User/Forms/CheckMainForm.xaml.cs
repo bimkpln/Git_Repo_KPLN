@@ -23,6 +23,10 @@ namespace KPLN_ModelChecker_User.Forms
     public partial class CheckMainForm : Window
     {
         /// <summary>
+        /// Записывать данные по последнему запуску?
+        /// </summary>
+        private readonly bool _setLastRun;
+        /// <summary>
         /// Extensible Storage: данные по последнему запуску
         /// </summary>
         private readonly ExtensibleStorageBuilder _esBuilderRun;
@@ -49,11 +53,12 @@ namespace KPLN_ModelChecker_User.Forms
         private readonly WPFReportCreator _creator;
         private CollectionViewSource _entityViewSource;
 
-        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, bool setLastRun)
         {
             _application = uiapp;
             _externalCommand = externalCommand;
             _creator = creator;
+            _setLastRun = setLastRun;
             _entities = _creator.WPFEntityCollection;
 
             InitializeComponent();
@@ -78,7 +83,7 @@ namespace KPLN_ModelChecker_User.Forms
                 this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 
-        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, bool setLastRun, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator, setLastRun)
         {
             _esBuilderRun = esBuilderRun;
             _esBuilderUserText = esBuilderUserText;
@@ -139,8 +144,11 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) =>
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_setLastRun)
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+        }
 
         private void OnSelectClicked(object sender, RoutedEventArgs e)
         {
@@ -212,21 +220,27 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
-            // Создаем тип
-            Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
+            try
+            {
+                // Создаем тип
+                Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
 
-            // Создаем экземпляр типа
-            object instance = Activator.CreateInstance(type);
-            
-            // Определяем метод ExecuteByUIApp
-            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+                // Создаем экземпляр типа
+                object instance = Activator.CreateInstance(type);
 
-            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
-            if (executeMethod != null)
-                executeMethod.Invoke(instance, new object[] { _application, true, true, true });
-            else
-                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
-                
+                // Определяем метод ExecuteByUIApp
+                MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+                // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+                if (executeMethod != null)
+                    executeMethod.Invoke(instance, new object[] { _application, true, true, true, true });
+                else
+                    throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
+            }
+            catch (Exception)
+            {
+                TaskDialog.Show("KPLN: Ошибка", "Не удалось перезапустить. Запусти плагин заново, из меню KPLN");
+            }
 
             this.Close();
         }

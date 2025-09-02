@@ -48,21 +48,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        public abstract Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity = false, bool showMainForm = false, bool showSuccsessText = false);
+        public abstract Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false);
 
         /// <summary>
         /// Подготовка окна результата проверки для пользователя
         /// </summary>
         /// <param name="uiapp">Revit-UIApplication</param>
-        /// <param name="isElemZoom">Можно ли зумировать по элементу?</param>
+        /// <param name="setLastRun">Нужно ли записывать последний запуск?</param>
         /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
         /// <returns>Окно для вывода пользователю</returns>
-        public void ReportCreatorAndDemonstrator(UIApplication uiapp, bool isMarkered = false)
+        public void ReportCreatorAndDemonstrator(UIApplication uiapp, bool setLastRun = false, bool isMarkered = false)
         {
             WPFReportCreator repCreator = CreateReport(uiapp.ActiveUIDocument.Document, isMarkered);
             SetWPFEntityFiltration(repCreator);
 
-            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, repCreator, ESEntity.ESBuilderRun, ESEntity.ESBuilderUserText, ESEntity.ESBuildergMarker);
+            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, repCreator, setLastRun, ESEntity.ESBuilderRun, ESEntity.ESBuilderUserText, ESEntity.ESBuildergMarker);
             form.Show();
         }
 
@@ -110,9 +110,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         break;
                 }
             }
-
-            // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
 
             return result;
         }

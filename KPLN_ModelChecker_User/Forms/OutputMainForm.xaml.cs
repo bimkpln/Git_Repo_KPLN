@@ -211,21 +211,27 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
-            // Создаем тип
-            Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
+            try
+            {
+                // Создаем тип
+                Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
 
-            // Создаем экземпляр типа
-            object instance = Activator.CreateInstance(type);
-            
-            // Определяем метод ExecuteByUIApp
-            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+                // Создаем экземпляр типа
+                object instance = Activator.CreateInstance(type);
 
-            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
-            if (executeMethod != null)
-                executeMethod.Invoke(instance, new object[] { _application });
-            else
-                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
-                
+                // Определяем метод ExecuteByUIApp
+                MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+                // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+                if (executeMethod != null)
+                    executeMethod.Invoke(instance, new object[] { _application });
+                else
+                    throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
+            }
+            catch (Exception) 
+            {
+                TaskDialog.Show("KPLN: Ошибка", "Не удалось перезапустить. Запусти плагин заново, из меню KPLN");
+            }
 
             this.Close();
         }
