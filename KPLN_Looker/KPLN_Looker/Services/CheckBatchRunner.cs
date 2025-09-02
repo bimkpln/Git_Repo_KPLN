@@ -41,6 +41,7 @@ namespace KPLN_Looker.Services
             cmd.ExecuteByUIApp(
                 uiapp: uiApp,
                 setPluginActivity: false,
+                setLastRun: false,
                 showMainForm: false,
                 showSuccsessText: false);
 

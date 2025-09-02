@@ -480,7 +480,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                         BitrixMessageSender
                             .SendMsgToTask_ByTaskId(
                             delegBitrixTaskId,
-                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\""));
+                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> " +
+                                $"делегировал вам коллизию из отчета: \"{_currentReport.Name}\" " +
+                                $"с именем: \"{currentItem.Name}\""));
 
                     if (sendMsgToTaskTask.Result)
                         System.Windows.MessageBox.Show(
