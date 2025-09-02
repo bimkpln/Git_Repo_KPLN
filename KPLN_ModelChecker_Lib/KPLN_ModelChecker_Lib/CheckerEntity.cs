@@ -155,8 +155,8 @@ namespace KPLN_ModelChecker_Lib
                             (ZoomBBox.Min.Z + ZoomBBox.Max.Z) / 2);
                     else
                     {
-                        LocationPoint locationPoint = Element.Location as LocationPoint;
-                        _zoomCentroid = locationPoint.Point;
+                        if (Element.Location is LocationPoint locationPoint)
+                            _zoomCentroid = locationPoint.Point;
                     }
                 }
 

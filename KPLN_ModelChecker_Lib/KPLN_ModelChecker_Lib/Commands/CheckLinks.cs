@@ -55,8 +55,16 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             foreach (RevitLinkInstance link in rliColl)
             {
-                if (IsLinkWithSharedCoordByName(link))
-                    continue;
+                if (IsLinkWithSharedCoordByNameError(link))
+                {
+                    result.Add(new CheckerEntity(
+                        link,
+                        "Ошибка общей площадки",
+                        "У связи не выбрана общая площадка",
+                        "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи. " +
+                            "Если не знаешь как исправить - обратись в BIM-отдел",
+                        false));
+                }
 
                 // Анализ наличия нескольких экземпляров связей
                 if (rvtLinkDocTitles.Count(title => title == link.GetLinkDocument().Title) > 1)
@@ -70,50 +78,50 @@ namespace KPLN_ModelChecker_Lib.Commands
                         false));
                 }
 
-                // Анализ ОП в линках
-                using (Transaction transaction = new Transaction(CheckDoc))
-                {
-                    try
-                    {
-                        transaction.Start("KPLN_CheckLink");
-                        // Попытка получения координат из связи. Если общ. площадка отсутсвует - попытка будет успешной (т.е. ошибка, которая должна уйти в отчет),
-                        // иначе - InvalidOperationException 
-                        CheckDoc.AcquireCoordinates(link.Id);
-                        result.Add(new CheckerEntity(
-                            link,
-                            "Ошибка размещения",
-                            "У связи и проекта - разные системы координат",
-                            "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи",
-                            false));
-                    }
-                    catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
-                    {
-                        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model"))
-                        {
-                            result.Add(new CheckerEntity(
-                                link,
-                                "Ошибка размещения",
-                                "У связи не выбрана общая площадка",
-                                "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи",
-                                false));
-                        }
-                        else if (ioe.Message.Contains("Failed to acquire coordinates from the link instance"))
-                        {
-                            result.Add(new CheckerEntity(
-                                link,
-                                "Ошибка размещения",
-                                "У связи не удалось получить координаты",
-                                "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\"",
-                                false));
-                        }
-                        else
-                            throw new Exception($"Ошибка проверки связей: {ioe.Message} для файла {link.Name}");
-                    }
-                    finally
-                    {
-                        transaction.RollBack();
-                    }
-                }
+                // Анализ ОП в линках (выкинул в архив, т.к. для автопроверок постоянно занимается РН, плюс юзеру важен факт - дальше сам разберёться)
+                //using (Transaction transaction = new Transaction(CheckDoc))
+                //{
+                //    try
+                //    {
+                //        transaction.Start("KPLN_CheckLink");
+                //        // Попытка получения координат из связи. Если общ. площадка отсутсвует - попытка будет успешной (т.е. ошибка, которая должна уйти в отчет),
+                //        // иначе - InvalidOperationException 
+                //        CheckDoc.AcquireCoordinates(link.Id);
+                //        result.Add(new CheckerEntity(
+                //            link,
+                //            "Ошибка размещения",
+                //            "У связи и проекта - разные системы координат",
+                //            "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи",
+                //            false));
+                //    }
+                //    catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
+                //    {
+                //        if (ioe.Message.Contains("The coordinate system of the selected model are the same as the host model"))
+                //        {
+                //            result.Add(new CheckerEntity(
+                //                link,
+                //                "Ошибка размещения",
+                //                "У связи не выбрана общая площадка",
+                //                "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи",
+                //                false));
+                //        }
+                //        else if (ioe.Message.Contains("Failed to acquire coordinates from the link instance"))
+                //        {
+                //            result.Add(new CheckerEntity(
+                //                link,
+                //                "Ошибка размещения",
+                //                "У связи не удалось получить координаты",
+                //                "Может быть связано с внутренними проблемами, например - занят рабочий набор \"Сведения о проекте\"",
+                //                false));
+                //        }
+                //        else
+                //            throw new Exception($"Ошибка проверки связей: {ioe.Message} для файла {link.Name}");
+                //    }
+                //    finally
+                //    {
+                //        transaction.RollBack();
+                //    }
+                //}
             }
             return result;
         }
@@ -121,7 +129,7 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// <summary>
         /// Проверка экз. связи на наличие общей площадки из имени
         /// </summary>
-        private bool IsLinkWithSharedCoordByName(RevitLinkInstance rli) => !(rli.Name.ToLower().Contains("<not shared>") || rli.Name.ToLower().Contains("не общедоступное"));
+        private bool IsLinkWithSharedCoordByNameError(RevitLinkInstance rli) => rli.Name.ToLower().Contains("<not shared>") || rli.Name.ToLower().Contains("не общедоступное");
 
         /// <summary>
         /// Проверка закрепление (PIN)

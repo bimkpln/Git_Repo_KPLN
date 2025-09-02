@@ -10,7 +10,10 @@ namespace KPLN_ModelChecker_Lib.Commands
     {
         public CheckWorksets(UIApplication uiapp) : base(uiapp) { }
 
-        public override Element[] GetElemsToCheck() => new FilteredElementCollector(CheckDoc).WhereElementIsNotElementType().ToArray();
+        public override Element[] GetElemsToCheck() => 
+            new FilteredElementCollector(CheckDoc)
+            .WhereElementIsNotElementType()
+            .ToArray();
 
         private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
@@ -25,9 +28,9 @@ namespace KPLN_ModelChecker_Lib.Commands
                 foreach (Element element in elemColl)
                 {
                     // Игнор безкатегорийных эл-в
-                    if (element.Category == null) { continue; }
+                    if (element.Category == null) continue;
 
-                    // Анализ связей
+                    // Анализ Revit-связей
                     if (element is RevitLinkInstance link)
                     {
                         string[] separators = { ".rvt : " };
@@ -35,24 +38,59 @@ namespace KPLN_ModelChecker_Lib.Commands
                         if (nameSubs.Length > 3) continue;
 
                         string wsName = link.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
-                        if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
+                        if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                         {
                             result.Add(new CheckerEntity(
                                 link,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
-                                "Для связей необходимо использовать именные рабочие наборы, которые начинаются с '00_' (если иное не указано в ВЕР для проекта)",
+                                "Для RVT-связей необходимо использовать именные рабочие наборы, которые начинаются с '00_' (если иное не указано в ВЕР для проекта)",
                                 false));
                         }
                         continue;
                     }
+                    // Анализ координационных моделей
+                    else if (element is DirectShape dirShape)
+                    {
+                        if (string.IsNullOrEmpty(dirShape.Name) || !dirShape.Name.Contains(".nw")) continue;
+
+                        string wsName = dirShape.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
+                        if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
+                        {
+                            result.Add(new CheckerEntity(
+                                dirShape,
+                                "Ошибка рабочего набора",
+                                "Связь находится в некорректном рабочем наборе",
+                                "Для координационных моделей (NWC, NWD) необходимо использовать именные рабочие наборы, которые начинаются с '00_' (если иное не указано в ВЕР для проекта)",
+                                false));
+                        }
+                        continue;
+                    }
+                    // Анализ облака точек
+                    else if (element is PointCloudInstance pcInstance)
+                    {
+                        if (string.IsNullOrEmpty(pcInstance.Name) || !pcInstance.Name.Contains(".rcs")) continue;
+
+                        string wsName = pcInstance.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
+                        if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
+                        {
+                            result.Add(new CheckerEntity(
+                                pcInstance,
+                                "Ошибка рабочего набора",
+                                "Связь находится в некорректном рабочем наборе",
+                                "Для облаков точек необходимо использовать именные рабочие наборы, которые начинаются с '00_' (если иное не указано в ВЕР для проекта)",
+                                false));
+                        }
+                        continue;
+                    }
+                    // Анализ DWG
                     else if (element is ImportInstance impInstance)
                     {
                         // DWG может по разному импортировать связью. Те, что прикрепляются к уровню - могут иметь разный рабочий набор
                         if (impInstance.IsLinked && !impInstance.ViewSpecific)
                         {
                             string wsName = impInstance.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
-                            if (!wsName.StartsWith("00") && !wsName.StartsWith("#"))
+                            if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                             {
                                 result.Add(new CheckerEntity(
                                     impInstance,
@@ -66,7 +104,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     }
 
                     //Анализ уровней и осей
-                    if ((element.Category.CategoryType == CategoryType.Annotation) & (element.GetType() == typeof(Autodesk.Revit.DB.Grid) | element.GetType() == typeof(Level)))
+                    if (element.GetType() == typeof(Grid) | element.GetType() == typeof(Level))
                     {
                         string wsName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         if (!wsName.ToLower().Contains("оси и уровни") & !wsName.ToLower().Contains("общие уровни и сетки"))
@@ -78,10 +116,11 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 "Имя рабочего набора для осей и уровней - <..._Оси и уровни>",
                                 false));
                         }
+                        continue;
                     }
 
                     //Анализ моделируемых элементов
-                    if (element.Category.CategoryType == CategoryType.Model
+                    if (element.Category.CategoryType == CategoryType.Model                        
                         // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
                         && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_PreviewLegendComponents
                         // Игнор зон ОВК
@@ -91,29 +130,13 @@ namespace KPLN_ModelChecker_Lib.Commands
                         // Игнор эскизов
                         && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_SketchLines)
                     {
+                        // Игнор элементов с РН не из списка пользовательских
                         string elemWSName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         Workset elemWS = worksets.Where(w => w.Name.Equals(elemWSName)).FirstOrDefault();
-                        if (elemWS == null) { continue; }
+                        if (elemWS == null) continue;
 
-                        // Проверка замонитренных моделируемых элементов
-                        if (element.GetMonitoredLinkElementIds().Count() > 0)
-                        {
-                            if (!elemWSName.StartsWith("02"))
-                            {
-                                CheckerEntity entity = new CheckerEntity(
-                                    element,
-                                    "Ошибка мониторинговых элементов",
-                                    $"Элементс с ID: {element.Id} находится не в специальном рабочем наборе",
-                                    "Элементы с мониторингом (т.е. скопированные из других файлов) должны находится в рабочих наборах с приставкой '02'",
-                                    true);
-
-                                result.Add(entity);
-                                continue;
-                            }
-                        }
-
-                        // Проверка остальных моделируемых элементов на рабочий набор связей 
-                        else if (elemWSName.StartsWith("00")
+                        // Проверка моделируемых элементов на рабочий набор связей 
+                        if (elemWSName.StartsWith("00")
                             | elemWSName.StartsWith("#")
                             && !elemWSName.ToLower().Contains("dwg"))
                         {
@@ -127,8 +150,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                             result.Add(entity);
                             continue;
                         }
-
-                        // Проверка остальных моделируемых элементов на рабочий набор для сеток
+                        
+                        // Проверка моделируемых элементов на рабочий набор для сеток
                         else if (elemWSName.ToLower().Contains("оси и уровни")
                             | elemWSName.ToLower().Contains("общие уровни и сетки"))
                         {
@@ -136,20 +159,6 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 element,
                                 "Ошибка элементов",
                                 $"Элементс с ID: {element.Id} находится в рабочем наборе для осей и уровней",
-                                string.Empty,
-                                true);
-
-                            result.Add(entity);
-                            continue;
-                        }
-
-                        // Проверка остальных моделируемых элементов на рабочий набор для связей
-                        else if (elemWSName.StartsWith("02"))
-                        {
-                            CheckerEntity entity = new CheckerEntity(
-                                element,
-                                "Ошибка элементов",
-                                $"Элементс с ID: {element.Id} находится в рабочем наборе для элементов с монитирнгом",
                                 string.Empty,
                                 true);
 
