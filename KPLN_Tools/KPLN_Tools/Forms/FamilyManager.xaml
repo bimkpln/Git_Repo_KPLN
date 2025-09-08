@@ -1,7 +1,8 @@
 ﻿<UserControl x:Class="KPLN_Tools.Forms.FamilyManager"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="240" MinHeight="120" FontFamily="Century Gothic">
+             MinWidth="240" MinHeight="120" FontFamily="Century Gothic"
+             Loaded="UserControl_Loaded">
     <Grid Background="AliceBlue">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -12,21 +13,28 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" TextWrapping="Wrap" VerticalAlignment="Center">
-                <Run Text="Текущий отдел:" FontWeight="Bold"/>
-                <Run x:Name="RunCurrentValue" Text="загрузка..."/>
-            </TextBlock>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Текущий отдел:  " FontWeight="Bold" VerticalAlignment="Center"/>
+                <ComboBox x:Name="CmbDepartment"
+              Width="120"
+              IsEditable="False"
+              IsTextSearchEnabled="True"
+              VerticalAlignment="Center"
+              SelectionChanged="CmbDepartment_SelectionChanged"/>
+            </StackPanel>
 
-            <Button x:Name="BtnSettings" Grid.Column="1" Width="30" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="Настройки" Click="BtnSettings_Click">
-                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+            <Button x:Name="BtnReload" Grid.Column="1" Width="22" Height="22" Margin="0 0 5 0" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="Загрузить данные" Click="BtnReload_Click">
+                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+
+            <Button x:Name="BtnSettings" Grid.Column="2" Width="22" Height="22" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="Настройки" Click="BtnSettings_Click">
+                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Button>
         </Grid>
-      
-        
-        
-        
         <Border x:Name="MainArea"
                 Grid.Row="1"
                 Margin="6"
@@ -34,11 +42,6 @@
                 BorderThickness="1"
                 CornerRadius="6"
                 Background="{x:Null}">
-            <!-- сюда потом подставляешь контент: MainArea.Child = ... -->
         </Border>
-        
-        
-        
-        
     </Grid>
 </UserControl>

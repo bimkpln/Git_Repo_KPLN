@@ -232,7 +232,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             // Создание отдельного РН, если нужно.
             if (instForWS.Count() > 0)
-                WorksetSetService.ExecuteFromService(doc, instForWS, null, false, false);
+                WorksetSetService.ExecuteFromService(doc, instForWS, null, null, null);
         }
 
         /// <summary>
