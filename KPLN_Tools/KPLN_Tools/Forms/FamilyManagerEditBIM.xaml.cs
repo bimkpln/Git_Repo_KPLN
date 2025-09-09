@@ -16,6 +16,9 @@ namespace KPLN_Tools.Forms
     public partial class FamilyManagerEditBIM : Window
     {
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
+        private static readonly string[] ALL_DEPARTMENTS = { "АР", "КР", "ОВиК", "ВК", "ЭОМ", "СС", "BIM" };
+
+        private const string DEPT_ALL = "NOTASSIGNED";
 
         private const int TARGET_MAX_SIDE = 512;   
         private const long JPEG_QUALITY = 85L; 
@@ -36,6 +39,7 @@ namespace KPLN_Tools.Forms
             public string FULLPATH { get; set; }
             public string LM_DATE { get; set; }
             public int CATEGORY { get; set; }
+            public int SUB_CATEGORY { get; set; }
             public int PROJECT { get; set; }
             public int STAGE { get; set; }
             public string DEPARTAMENT { get; set; }
@@ -52,6 +56,16 @@ namespace KPLN_Tools.Forms
             public string DEPARTAMENT { get; set; }
             public string NAME { get; set; }
             public string NC_NAME { get; set; }
+        }
+
+        // Класс JSON. Подкатегории
+        private class SubCategoryItem
+        {
+            [Newtonsoft.Json.JsonProperty("id")]
+            public int Id { get; set; }
+
+            [Newtonsoft.Json.JsonProperty("name")]
+            public string Name { get; set; }
         }
 
         // Класс БД. Проекты
@@ -88,6 +102,7 @@ namespace KPLN_Tools.Forms
             }
 
             DataContext = record;
+            BuildDepartmentUI(record);
 
             if (!string.IsNullOrEmpty(record.FULLPATH))
             {
@@ -112,15 +127,6 @@ namespace KPLN_Tools.Forms
             _originalStatus = record.STATUS?.Trim();
             SetupStatusCombo(_originalStatus); // Статусы
 
-            CategoryCombo.ItemsSource = _categories;
-            CategoryCombo.DisplayMemberPath = "NAME";
-            CategoryCombo.SelectedValuePath = "ID";
-            CategoryCombo.SelectedValue = record.CATEGORY;
-            CategoryNcCombo.ItemsSource = _categories;
-            CategoryNcCombo.DisplayMemberPath = "NC_NAME";
-            CategoryNcCombo.SelectedValuePath = "ID";
-            CategoryNcCombo.SelectedValue = record.CATEGORY;
-
             ProjectCombo.ItemsSource = _projects;
             ProjectCombo.DisplayMemberPath = "NAME";
             ProjectCombo.SelectedValuePath = "ID";
@@ -130,6 +136,9 @@ namespace KPLN_Tools.Forms
             StageCombo.DisplayMemberPath = "NAME";
             StageCombo.SelectedValuePath = "ID";
             StageCombo.SelectedValue = record.STAGE;
+
+            RefreshCategoryCombos(); // record.DEPARTAMENT внутри
+            CategoryCombo.SelectionChanged += CategoryCombo_SelectionChanged;
         }
 
         // БД. Category, Project, Stage
@@ -211,7 +220,7 @@ namespace KPLN_Tools.Forms
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText =
-                        @"SELECT ID, STATUS, FULLPATH, LM_DATE, CATEGORY, PROJECT, STAGE,
+                        @"SELECT ID, STATUS, FULLPATH, LM_DATE, CATEGORY, SUB_CATEGORY, PROJECT, STAGE,
                                  DEPARTAMENT, IMPORT_INFO, CUSTOM_INFO, INSTRUCTION_LINK, IMAGE
                           FROM FamilyManager
                           WHERE ID = @id
@@ -229,13 +238,14 @@ namespace KPLN_Tools.Forms
                             FULLPATH = reader.IsDBNull(2) ? "" : reader.GetString(2),
                             LM_DATE = reader.IsDBNull(3) ? "" : reader.GetString(3),
                             CATEGORY = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
-                            PROJECT = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
-                            STAGE = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
-                            DEPARTAMENT = reader.IsDBNull(7) ? "" : reader.GetString(7),
-                            IMPORT_INFO = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            CUSTOM_INFO = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                            INSTRUCTION_LINK = reader.IsDBNull(10) ? "" : reader.GetString(10),
-                            IMAGE = reader.IsDBNull(11) ? null : (byte[])reader[11]
+                            SUB_CATEGORY = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                            PROJECT = reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+                            STAGE = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+                            DEPARTAMENT = reader.IsDBNull(8) ? "" : reader.GetString(8),
+                            IMPORT_INFO = reader.IsDBNull(9) ? "" : reader.GetString(9),
+                            CUSTOM_INFO = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            INSTRUCTION_LINK = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            IMAGE = reader.IsDBNull(12) ? null : (byte[])reader[12]
                         };
                     }
                 }
@@ -297,6 +307,166 @@ namespace KPLN_Tools.Forms
                     break;
             }
         }
+
+
+        // Парсинг строки "Отдел"
+        private static HashSet<string> ParseDepartments(string s)
+        {
+            return (s ?? string.Empty)
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrEmpty(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        // Сборка строки "Отдел" обратно в фиксированном порядке
+        private static string JoinDepartments(IEnumerable<string> selected)
+        {
+            var set = new HashSet<string>(selected ?? Array.Empty<string>(), StringComparer.Ordinal);
+            var ordered = ALL_DEPARTMENTS.Where(set.Contains);
+            return string.Join(", ", ordered);
+        }
+
+        // Построение UI чекбоксов "Отдел"
+        private void BuildDepartmentUI(FamilyManagerRecord rec)
+        {
+            DeptPanel.Children.Clear();
+
+            var selected = ParseDepartments(rec?.DEPARTAMENT);
+            foreach (var dep in ALL_DEPARTMENTS)
+            {
+                var cb = new System.Windows.Controls.CheckBox
+                {
+                    Content = dep,
+                    IsChecked = selected.Contains(dep),
+                };
+                cb.Style = (Style)FindResource("DeptCheckStyle");
+                cb.Checked += DepartmentCheckChanged;
+                cb.Unchecked += DepartmentCheckChanged;
+
+                DeptPanel.Children.Add(cb);
+            }
+        }
+
+
+        // Категории, прошедшие фильтр по отделам
+        private static List<CategoryItem> FilterCategoriesByDepartments(
+            IEnumerable<CategoryItem> all, string selectedDepartments)
+        {
+            var sel = ParseDepartments(selectedDepartments);
+            bool hasSelection = sel.Count > 0;
+
+            return all.Where(c =>
+            {
+                var cdeps = ParseDepartments(c.DEPARTAMENT);
+
+                if (cdeps.Contains(DEPT_ALL)) return true;
+
+                if (!hasSelection)
+                {
+                    return cdeps.Count == 0 || cdeps.Contains(DEPT_ALL);
+                }
+
+                return cdeps.Any(sel.Contains);
+            })
+            .OrderBy(c => c.NAME)
+            .ToList();
+        }
+
+        // Перерасчёт категорий из отделов
+        private void RefreshCategoryCombos()
+        {
+            var record = DataContext as FamilyManagerRecord;
+            if (record == null) return;
+
+            var filtered = FilterCategoriesByDepartments(_categories, record.DEPARTAMENT);
+
+            if (filtered.Count == 0)
+            {
+                var def = _categories.FirstOrDefault(c => c.ID == 1) ?? _categories.OrderBy(c => c.ID).FirstOrDefault();
+                if (def != null)
+                {
+                    filtered = new List<CategoryItem> { def };
+                    record.CATEGORY = def.ID;
+                }
+            }
+
+            int? prevId = CategoryCombo.SelectedValue as int?;
+            bool keepPrev = prevId.HasValue && filtered.Any(c => c.ID == prevId.Value);
+
+            CategoryCombo.ItemsSource = filtered;
+            CategoryCombo.DisplayMemberPath = "NAME";
+            CategoryCombo.SelectedValuePath = "ID";
+            CategoryCombo.SelectedValue = keepPrev ? prevId.Value : (object)record.CATEGORY;
+
+            if (!(CategoryCombo.SelectedValue is int))
+            {
+                var def = _categories.FirstOrDefault(c => c.ID == 1) ?? _categories.OrderBy(c => c.ID).FirstOrDefault();
+                if (def != null)
+                {
+                    record.CATEGORY = def.ID;
+                    CategoryCombo.SelectedValue = def.ID;
+                }
+            }
+            else
+            {
+                record.CATEGORY = (int)CategoryCombo.SelectedValue;
+            }
+
+            var currentCat = filtered.FirstOrDefault(c => c.ID == record.CATEGORY)
+                          ?? filtered.FirstOrDefault()
+                          ?? (_categories.FirstOrDefault(c => c.ID == 1) ?? _categories.OrderBy(c => c.ID).FirstOrDefault());
+
+            var subcats = ParseSubcategories(currentCat?.NC_NAME);
+
+            if (!subcats.Any(sc => sc.Id == record.SUB_CATEGORY))
+            {
+                record.SUB_CATEGORY = subcats.FirstOrDefault()?.Id ?? 0;
+            }
+
+            CategoryNcCombo.ItemsSource = subcats;
+            CategoryNcCombo.DisplayMemberPath = "Name";
+            CategoryNcCombo.SelectedValuePath = "Id";
+            CategoryNcCombo.SelectedValue = record.SUB_CATEGORY;
+        }
+
+        // Парсинг Category.NC_NAME (JSON) → List<SubCategoryItem>
+        private static List<SubCategoryItem> ParseSubcategories(string json)
+        {
+            var fallback = new List<SubCategoryItem>
+            {
+                new SubCategoryItem { Id = 0, Name = "Корневая дирректория" }
+            };
+
+            if (string.IsNullOrWhiteSpace(json))
+                return fallback;
+
+            try
+            {
+                var items = Newtonsoft.Json.JsonConvert
+                    .DeserializeObject<List<SubCategoryItem>>(json);
+
+                if (items == null || items.Count == 0)
+                    return fallback;
+
+                return items
+                    .Where(i => i != null)
+                    .GroupBy(i => i.Id)
+                    .Select(g => g.First())
+                    .OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
+
+
+
+
+
 
 
 
@@ -615,6 +785,7 @@ namespace KPLN_Tools.Forms
                             FULLPATH = @fullpath,
                             LM_DATE = @lmdate,
                             CATEGORY = @category,
+                            SUB_CATEGORY = @subcat,  
                             PROJECT = @project,
                             STAGE = @stage,
                             DEPARTAMENT = @dept,
@@ -629,6 +800,7 @@ namespace KPLN_Tools.Forms
                     cmd.Parameters.AddWithValue("@fullpath", (object)(rec.FULLPATH ?? string.Empty));
                     cmd.Parameters.AddWithValue("@lmdate", (object)(rec.LM_DATE ?? string.Empty));
                     cmd.Parameters.AddWithValue("@category", rec.CATEGORY);
+                    cmd.Parameters.AddWithValue("@subcat", rec.SUB_CATEGORY);
                     cmd.Parameters.AddWithValue("@project", rec.PROJECT);
                     cmd.Parameters.AddWithValue("@stage", rec.STAGE);
                     cmd.Parameters.AddWithValue("@dept", (object)(rec.DEPARTAMENT ?? string.Empty));
@@ -648,7 +820,43 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // XAML. Чек-боксы "Отдел"
+        private void DepartmentCheckChanged(object sender, RoutedEventArgs e)
+        {
+            var record = DataContext as FamilyManagerRecord;
+            if (record == null) return;
 
+            var selected = DeptPanel.Children
+                .OfType<System.Windows.Controls.CheckBox>()
+                .Where(c => c.IsChecked == true)
+                .Select(c => c.Content?.ToString())
+                .Where(s => !string.IsNullOrWhiteSpace(s));
+
+            record.DEPARTAMENT = JoinDepartments(selected);
+            RefreshCategoryCombos();
+        }
+
+
+
+
+        private void CategoryCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var record = DataContext as FamilyManagerRecord;
+            if (record == null) return;
+
+            if (CategoryCombo.SelectedValue is int catId)
+                record.CATEGORY = catId;
+
+            var filtered = CategoryCombo.ItemsSource as IEnumerable<CategoryItem> ?? Enumerable.Empty<CategoryItem>();
+            var currentCat = filtered.FirstOrDefault(c => c.ID == record.CATEGORY);
+            var subcats = ParseSubcategories(currentCat?.NC_NAME);
+
+            if (!subcats.Any(sc => sc.Id == record.SUB_CATEGORY))
+                record.SUB_CATEGORY = subcats.FirstOrDefault()?.Id ?? 0;
+
+            CategoryNcCombo.ItemsSource = subcats;
+            CategoryNcCombo.SelectedValue = record.SUB_CATEGORY;
+        }
 
 
 
@@ -773,6 +981,18 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
+                // DEPARTAMENT
+                {
+                    var selected = DeptPanel.Children
+                        .OfType<System.Windows.Controls.CheckBox>()
+                        .Where(c => c.IsChecked == true)
+                        .Select(c => c.Content?.ToString())
+                        .Where(s => !string.IsNullOrWhiteSpace(s));
+
+                    // JoinDepartments — утилита из кода, который я дал выше
+                    record.DEPARTAMENT = JoinDepartments(selected);
+                }
+
                 // STATUS
                 var selectedUiStatus = StatusCombo.SelectedItem as string ?? "";
                 var finalStatus = MapStatusForSave(_originalStatus, selectedUiStatus);
@@ -798,7 +1018,8 @@ namespace KPLN_Tools.Forms
                     STATUS = finalStatus,
                     FULLPATH = record.FULLPATH,
                     LM_DATE = record.LM_DATE,
-                    CATEGORY = selectedCategoryId, 
+                    CATEGORY = selectedCategoryId,
+                    SUB_CATEGORY = record.SUB_CATEGORY,
                     PROJECT = selectedProjectId, 
                     STAGE = selectedStageId,   
                     DEPARTAMENT = record.DEPARTAMENT,
@@ -818,6 +1039,14 @@ namespace KPLN_Tools.Forms
                 MessageBox.Show("Ошибка при сборе данных: " + ex.Message, "Family Manager",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+
+        // XAML. Удаление из БД
+        private void ButtonDeleteDB_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = true;
+            Close();
         }
     }
 }

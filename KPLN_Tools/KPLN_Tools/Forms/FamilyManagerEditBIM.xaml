@@ -7,6 +7,51 @@
         ResizeMode="NoResize"
         ShowInTaskbar="False" FontFamily="Century Gothic">
 
+    <Window.Resources>
+        <Style x:Key="DeptCheckStyle" TargetType="CheckBox">
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4,0,0,0"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="Box"
+                                Width="16" Height="16"
+                                BorderBrush="Gray"
+                                BorderThickness="1"
+                                Background="Transparent"
+                                VerticalAlignment="Center"
+                                Margin="0,0,4,0"/>
+                            <ContentPresenter VerticalAlignment="Center" Margin="0,0.7,0,0"/>
+                        </StackPanel>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="LightGreen"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="Green"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="Green"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter TargetName="Box" Property="Background" Value="Transparent"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="Gray"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="DarkGray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,14 +59,12 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 1-я строка -->
         <Grid Grid.Row="0" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Слева: картинка -->
             <StackPanel Grid.Column="0">
                 <Border BorderBrush="#DDD" BorderThickness="1" Padding="8" HorizontalAlignment="Left">
                     <Grid Width="200" Height="200">
@@ -34,7 +77,6 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Справа: блок полей -->
             <StackPanel Grid.Column="1" Margin="16,0,0,20" VerticalAlignment="Top">
 
                 <TextBlock x:Name="FamilyName" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,4" MaxWidth="800" FontSize="15" FontWeight="Bold"/>
@@ -46,22 +88,28 @@
                 </StackPanel>
 
                 
-                
-                <!-- STATUS -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                     <TextBlock Text="Статус:" FontWeight="Bold" Width="90"/>
                     <ComboBox x:Name="StatusCombo" MinWidth="225" IsReadOnly="True"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="Отдел:" FontWeight="Bold" Width="90"/>
-                    <TextBox Text="{Binding DEPARTAMENT}" />
+
+
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,7" Height="23">
+                    <TextBlock Text="Отдел:" FontWeight="Bold" Width="90" VerticalAlignment="Center" Margin="0 0 0 3"/>
+                    <WrapPanel x:Name="DeptPanel" VerticalAlignment="Center"/>
                 </StackPanel>
+
+
+
+
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Категория:" FontWeight="Bold" Width="90"/>
                     <ComboBox x:Name="CategoryCombo" MinWidth="225" />
-                    <ComboBox x:Name="CategoryNcCombo" MinWidth="225" Margin="8,0,0,0" IsHitTestVisible="False" IsTabStop="False" />
+                    <ComboBox x:Name="CategoryNcCombo" MinWidth="225" Margin="8,0,0,0" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SUB_CATEGORY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -79,7 +127,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- ====== 2-я строка: IMPORT_INFO | CUSTOM_INFO ====== -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -102,7 +149,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- ====== 3-я строка: кнопки ====== -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="270"/>
@@ -120,7 +166,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="ButtonDeleteDB" Content="Удалить из БД" IsEnabled="False" Width="140" Height="22" Margin="0,0,8,0" Background="#FFF39D9D"/>
+                <Button x:Name="ButtonDeleteDB" Content="Удалить из БД" IsEnabled="False" Width="140" Height="22" Margin="0,0,8,0" Background="#FFF39D9D" Click="ButtonDeleteDB_Click"/>
                 <Button x:Name="ButtonSaveDB" Content="Сохранить в БД" IsEnabled="False" Width="140" Height="22" Background="#FFA9FD99" Click="ButtonSaveDB_Click" />
             </StackPanel>
         </Grid>

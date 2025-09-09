@@ -82,7 +82,7 @@ namespace KPLN_Tools.Forms
                     "SELECT DISTINCT TRIM(NAME) " +
                     "FROM Departament " +
                     "WHERE NAME IS NOT NULL AND TRIM(NAME) <> '' " +
-                    "ORDER BY NAME;", conn))
+                    "ORDER BY ID;", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -362,22 +362,6 @@ namespace KPLN_Tools.Forms
                 RebuildBimContent(); 
                 return scroll;
             }
-
-
-
-
-
-
-            else if (string.Equals(dep, "АР", StringComparison.OrdinalIgnoreCase) || string.Equals(dep, "AR", StringComparison.OrdinalIgnoreCase))
-            {
-                return new StackPanel
-                {
-                    Children =
-            {
-                new TextBlock { Text = "АР — сюда придёт UI", Opacity = 0.7 }
-            }
-                };
-            }
             else
             {
                 return new StackPanel
@@ -586,16 +570,69 @@ namespace KPLN_Tools.Forms
 
 
 
+
+
+
+
             if (win.ShowDialog() == true)
             {
-                FamilyManagerEditBIM.FamilyManagerRecord rec = win.ResultRecord;
-                FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                var rec = win.ResultRecord;
+                if (rec == null) return;
+
+                if (string.Equals(rec.STATUS, "ERROR", StringComparison.OrdinalIgnoreCase) || string.Equals(rec.STATUS, "ABSENT", StringComparison.OrdinalIgnoreCase))
+                {
+                   
+                    try
+                    {
+                        DeleteRecordFromDatabase(rec.ID);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Не удалось удалить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Не удалось сохранить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+
                 ReloadFromDbAndRefreshUI();
             }
+        }
 
 
 
 
+
+
+        // Удаление записи из БД
+        public static void DeleteRecordFromDatabase(int id)
+        {
+            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+
+            var cs = $"Data Source={DB_PATH};Version=3;Read Only=False;Foreign Keys=True;";
+
+            using (var conn = new SQLiteConnection(cs))
+            {
+                conn.Open();
+                using (var tr = conn.BeginTransaction())
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = tr;
+                    cmd.CommandText = "DELETE FROM FamilyManager WHERE ID = @id;";
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    var affected = cmd.ExecuteNonQuery();
+                    tr.Commit();
+                }
+            }
         }
 
         // Интерфейс для BIM-отдела. Сохраняем стейт
