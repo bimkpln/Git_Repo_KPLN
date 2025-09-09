@@ -453,6 +453,8 @@
     <EmbeddedResource Include="Imagens\FamilyManager\bim_error.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\bim_new.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\bim_update.png" />
+    <EmbeddedResource Include="Imagens\FamilyManager\bim_ignore.png" />
+    <EmbeddedResource Include="Imagens\FamilyManager\bim_ok.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

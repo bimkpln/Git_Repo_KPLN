@@ -29,18 +29,18 @@
                     </Grid>
                 </Border>
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Пользоватльское" Margin="0,4,8,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11"/>
-                    <Button Content="Загрузить из RFA" Margin="0,4,0,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11"/>
+                    <Button Content="Пользоватльское" Margin="0,4,8,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonUserPic_Click"/>
+                    <Button Content="Загрузить из RFA" Margin="0,4,0,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonRFAPic_Click"/>
                 </StackPanel>
             </StackPanel>
 
             <!-- Справа: блок полей -->
             <StackPanel Grid.Column="1" Margin="16,0,0,20" VerticalAlignment="Top">
 
-                <TextBlock x:Name="FamilyName" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,8" MaxWidth="800" FontSize="15" FontWeight="Bold"/>
-                <TextBlock Text="{Binding FULLPATH}" ToolTip ="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,25" MaxWidth="800"/>
+                <TextBlock x:Name="FamilyName" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,4" MaxWidth="800" FontSize="15" FontWeight="Bold"/>
+                <TextBlock Text="{Binding FULLPATH}" ToolTip ="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,3" MaxWidth="800"/>
           
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
                     <TextBlock Text="Последнее обновление файла:" FontWeight="Bold" Width="200"/>
                     <TextBlock Text="{Binding LM_DATE}"/>
                 </StackPanel>
@@ -60,21 +60,22 @@
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Категория:" FontWeight="Bold" Width="90"/>
-                    <TextBox Text="{Binding CATEGORY}" />
+                    <ComboBox x:Name="CategoryCombo" MinWidth="225" />
+                    <ComboBox x:Name="CategoryNcCombo" MinWidth="225" Margin="8,0,0,0" IsHitTestVisible="False" IsTabStop="False" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Проект:" FontWeight="Bold" Width="90"/>
-                    <TextBox Text="{Binding PROJECT}" />
+                    <ComboBox x:Name="ProjectCombo" MinWidth="225" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Стадия:" FontWeight="Bold" Width="90"/>
-                    <TextBox Text="{Binding STAGE}" />
+                    <ComboBox x:Name="StageCombo" MinWidth="225" />
                 </StackPanel>
-                
-                
-                
+
+
+
             </StackPanel>
         </Grid>
 

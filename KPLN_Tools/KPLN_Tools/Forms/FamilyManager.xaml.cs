@@ -461,6 +461,11 @@ namespace KPLN_Tools.Forms
                 (r.CustomInfo == null)
             ).ToList();
 
+            var catIgnored = all.Where(r => norm(r.Status) == "IGNORE").ToList();
+
+            var catOkProcessed = all.Where(r => norm(r.Status) == "OK" &&
+                r.Departament != null && r.Category != 1 && r.Project != 1 && r.Stage != 1 && r.ImportInfo != null).ToList();
+
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОБНОВЛЕНЫ (ФАЙЛ)", "bim_update.png", catUpdate, "Семейства, которые были изменены, а также восстановленые после удаления семейства.\nДанные семейства не отображаются в списке у пользователей до изменения статуса на «OK» у семейства BIM-координатором.", key: "update"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НОВЫЕ СЕМЕЙСТВА", "bim_new.png", catNew, "Семейства, которые ранее были добавлены на диск и не были обработаны.\nДанные семейства не отображаются в списке у пользователей до изменения статуса на «OK» у семейства BIM-координатором.", key: "new"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОШИБКИ / НЕ НАЙДЕН", "bim_error.png", catAbsentError, "Семейства, которые были удалены, или семейства, в которые параметры были экспортированы с ошибками.\nДанные семейства не отображаются в списке у пользователей до исправления ошибок BIM-координатором.", key: "errorabsent"));
@@ -468,6 +473,8 @@ namespace KPLN_Tools.Forms
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОСНОВНОГО ИНФО", "bim_caution.png", catOkWithBadMeta, "Семейства, в которых не указан один из параметров - КАТЕГОРИЯ, СТАДИЯ или ПРОЕКТ.\nБез указания данных параметров семейство группируется в директории по-умолчанию.", key: "badmeta"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ СВОЙСТВ СЕМЕЙСТВА", "bim_caution.png", catOkMissingImportOrImage, "Семейства, в которых не указаны экспортируемые свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (из файла).", key: "missingimport"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ПОЛЬЗОВАТ. ИНФО", "bim_caution.png", catOkMissingCustomInfo, "Семейства, в которых не указаны пользовательские свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (добавленное BIM-координатором).", key: "missingcustom"));
+            _bimRootPanel.Children.Add(CreateCategoryExpander("ИГНОРИРУЮТСЯ", "bim_ignore.png", catIgnored, "Семейства, помеченные к игнорированию. Не отображаются у пользователей.", key: "ignored"));
+            _bimRootPanel.Children.Add(CreateCategoryExpander("ОБРАБОТАННЫЕ СЕМЕЙСТВА", "bim_ok.png", catOkProcessed, "Полностью обработанные семейства со статусом «OK». Отдел указан, базовые поля заполнены, свойства из файла присутствуют.", key: "ok"));
 
             _bimRootPanel.UpdateLayout();
             RestoreBimUiStateAfterLayout();
@@ -575,10 +582,23 @@ namespace KPLN_Tools.Forms
             {
                 Owner = Application.Current?.MainWindow 
             };
-            win.ShowDialog(); 
+
+
+
+
+            if (win.ShowDialog() == true)
+            {
+                FamilyManagerEditBIM.FamilyManagerRecord rec = win.ResultRecord;
+                FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                ReloadFromDbAndRefreshUI();
+            }
+
+
+
+
         }
 
-        // Интерфейс для BIM-отдела. Сохроняем стейт
+        // Интерфейс для BIM-отдела. Сохраняем стейт
         private void CaptureBimUiState()
         {
             if (_bimRootPanel == null) return;
@@ -597,7 +617,6 @@ namespace KPLN_Tools.Forms
         // Интерфейс для BIM-отдела. Сбрасываем стейт
         private void RestoreBimUiStateAfterLayout()
         {
-            // Восстановим скролл после разметки
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_bimScrollViewer != null)
@@ -605,7 +624,19 @@ namespace KPLN_Tools.Forms
             }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
-
+        // Интерфейс для BIM-отдела. Обновляем стейт
+        private void ReloadFromDbAndRefreshUI()
+        {
+            try
+            {
+                _records = LoadFamilyManagerRecords(DB_PATH); 
+                RefreshScenario();                             
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка чтения БД", $"{ex}");
+            }
+        }
 
 
 
