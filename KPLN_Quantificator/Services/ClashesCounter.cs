@@ -24,9 +24,26 @@ namespace KPLN_Quantificator.Services
             "ССАВ",      
         };
 
+        private static List<string> _detailedNames = new List<string>
+        {
+            "ОВ",
+            "ИТП",
+            "ВК",
+            "ПТ",
+            "ЭОМ",
+            "СС",
+            "АВ",
+        };
+
         private static Dictionary<string, int> _counterResult = new Dictionary<string, int>();
         private static Dictionary<string, int> _counterGroups = new Dictionary<string, int>();
-        private static Dictionary<string, int> _counterNonGroups = new Dictionary<string, int>(); 
+        private static Dictionary<string, int> _counterNonGroups = new Dictionary<string, int>();
+
+        private static Dictionary<string, int> _counterIosOnIos = new Dictionary<string, int>();
+        private static Dictionary<string, int> _counterIosOnIosGroups = new Dictionary<string, int>();
+        private static Dictionary<string, int> _counterIosOnIosNonGroups = new Dictionary<string, int>();
+
+
 
         private static List<string> _errorTestNames = new List<string>();
 
@@ -36,6 +53,10 @@ namespace KPLN_Quantificator.Services
             _counterGroups.Clear();
             _counterNonGroups.Clear();
             _errorTestNames.Clear();
+
+            _counterIosOnIos.Clear();
+            _counterIosOnIosGroups.Clear();
+            _counterIosOnIosNonGroups.Clear();
         }
 
         /// <summary>
@@ -48,107 +69,115 @@ namespace KPLN_Quantificator.Services
             foreach (SavedItem savedItem in docClashTests.Tests)
             {
                 bool isExsist = false;
+                string testName = savedItem.DisplayName ?? string.Empty;
                 bool isSSAV = savedItem.DisplayName.Contains("СС") && savedItem.DisplayName.Contains("АВ");
+
+                HashSet<string> detailedCodesInName = new HashSet<string>();
+                foreach (var d in _detailedNames)
+                    if (testName.Contains(d))
+                        detailedCodesInName.Add(d);
+
+                bool nameHasDupOrSelf = testName.Contains("(Дублирование)") || testName.Contains("(Самопересечение)");
 
                 foreach (string namePart in _testNames)
                 {
-                    if (savedItem.DisplayName.Contains(namePart))
+                    if (!testName.Contains(namePart))
+                        continue;
+
+                    if (namePart == "СС" && isSSAV)
+                        continue;
+
+                    isExsist = true;
+
+                    int counterAll = 0;
+                    int groupCounter = 0;
+                    int nonGroupCounter = 0;
+
+                    ClashTest currentClashTest = savedItem as ClashTest;
+                    if (currentClashTest == null)
                     {
-                        if (namePart == "СС" && isSSAV)
-                            continue;
+                        Output.PrintAlert($"Проблемы при определении отчета {testName}");
+                        continue;
+                    }
 
-                        isExsist = true;
-
-                        int counterAll = 0;
-                        int groupCounter = 0;
-                        int nonGroupCounter = 0;
-
-                        ClashTest currentClashTest = savedItem as ClashTest;
-
-                        if (currentClashTest != null)
+                    SavedItemCollection savedItemsColl = currentClashTest.Children;
+                    foreach (SavedItem child in savedItemsColl)
+                    {
+                        if (child is ClashResult cr)
                         {
-                            SavedItemCollection savedItemsColl = currentClashTest.Children;
-
-                            foreach (SavedItem savedItemInClashTest in savedItemsColl)
+                            if (cr.Status == ClashResultStatus.Active || cr.Status == ClashResultStatus.New)
                             {
-                                ClashResult clashResult = savedItemInClashTest as ClashResult;
-
-                                if (clashResult != null)
-                                {
-                                    if (clashResult.Status == ClashResultStatus.Active || clashResult.Status == ClashResultStatus.New)
-                                    {
-                                        if (savedItemInClashTest.IsGroup)
-                                        {
-                                            groupCounter++;
-                                        }
-                                        else
-                                        {
-                                            nonGroupCounter++;
-                                        }
-
-                                        counterAll++;
-                                    }
-                                }
-                                else if (savedItemInClashTest.IsGroup)
-                                {
-                                    GroupItem groupItem = savedItemInClashTest as GroupItem;
-
-                                    if (groupItem != null)
-                                    {
-                                        bool hasRelevantClash = false;
-
-                                        foreach (SavedItem savedItemInClashTestInGroup in groupItem.Children)
-                                        {
-                                            ClashResult clashResultInGroup = savedItemInClashTestInGroup as ClashResult;
-
-                                            if (clashResultInGroup != null)
-                                            {
-                                                if (clashResultInGroup.Status == ClashResultStatus.Active || clashResultInGroup.Status == ClashResultStatus.New)
-                                                {
-                                                    hasRelevantClash = true;
-                                                    counterAll++;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                Output.PrintAlert($"Проблемы при определении отчета {savedItemInClashTestInGroup.DisplayName}");
-                                            }
-                                        }
-
-                                        if (hasRelevantClash)
-                                        {
-                                            groupCounter++;
-                                        }
-                                    }
-                                }
+                                if (child.IsGroup)
+                                    groupCounter++;
+                                else
+                                    nonGroupCounter++;
+                                counterAll++;
                             }
-
-                            if (_counterResult.ContainsKey(namePart))
-                                _counterResult[namePart] += counterAll;
-                            else
-                                _counterResult.Add(namePart, counterAll);
-
-                            if (_counterGroups.ContainsKey(namePart))
-                                _counterGroups[namePart] += groupCounter;
-                            else
-                                _counterGroups.Add(namePart, groupCounter);
-
-                            if (_counterNonGroups.ContainsKey(namePart))
-                                _counterNonGroups[namePart] += nonGroupCounter;
-                            else
-                                _counterNonGroups.Add(namePart, nonGroupCounter);
                         }
-                        else
+                        else if (child.IsGroup)
                         {
-                            Output.PrintAlert($"Проблемы при определении отчета {savedItem.DisplayName}");
+                            if (child is GroupItem gi)
+                            {
+                                bool hasRelevantClash = false;
+                                foreach (SavedItem giChild in gi.Children)
+                                {
+                                    if (giChild is ClashResult crg)
+                                    {
+                                        if (crg.Status == ClashResultStatus.Active || crg.Status == ClashResultStatus.New)
+                                        {
+                                            hasRelevantClash = true;
+                                            counterAll++;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Output.PrintAlert($"Проблемы при определении отчета {giChild.DisplayName}");
+                                    }
+                                }
+                                if (hasRelevantClash)
+                                    groupCounter++;
+                            }
+                        }
+                    }
+
+                    if (_counterResult.ContainsKey(namePart)) _counterResult[namePart] += counterAll;
+                    else _counterResult.Add(namePart, counterAll);
+
+                    if (_counterGroups.ContainsKey(namePart)) _counterGroups[namePart] += groupCounter;
+                    else _counterGroups.Add(namePart, groupCounter);
+
+                    if (_counterNonGroups.ContainsKey(namePart)) _counterNonGroups[namePart] += nonGroupCounter;
+                    else _counterNonGroups.Add(namePart, nonGroupCounter);
+
+                    if (_detailedNames.Contains(namePart))
+                    {
+                        bool hasAnotherDetailed =
+                            detailedCodesInName.Count > 1 ||
+                            (detailedCodesInName.Count == 1 && !detailedCodesInName.Contains(namePart)); 
+
+                        bool isIosOnIos = hasAnotherDetailed || nameHasDupOrSelf;
+                        if (isIosOnIos)
+                        {
+                            if (_counterIosOnIos.ContainsKey(namePart)) _counterIosOnIos[namePart] += counterAll;
+                            else _counterIosOnIos.Add(namePart, counterAll);
+
+                            if (_counterIosOnIosGroups.ContainsKey(namePart)) _counterIosOnIosGroups[namePart] += groupCounter;
+                            else _counterIosOnIosGroups.Add(namePart, groupCounter);
+
+                            if (_counterIosOnIosNonGroups.ContainsKey(namePart)) _counterIosOnIosNonGroups[namePart] += nonGroupCounter;
+                            else _counterIosOnIosNonGroups.Add(namePart, nonGroupCounter);
                         }
                     }
                 }
-
+                                                        
                 if (!isExsist)
                     _errorTestNames.Add(savedItem.DisplayName);
             }
         }
+
+
+
+
 
         /// <summary>
         /// Вывод результатов обработки отчетов о коллизиях
@@ -163,9 +192,25 @@ namespace KPLN_Quantificator.Services
                     {
                         int clashCount = _counterResult[key];
                         int groupCount = _counterGroups.ContainsKey(key) ? _counterGroups[key] : 0;
-                        int nonGroupCount = _counterNonGroups.ContainsKey(key) ? _counterNonGroups[key] : 0; 
+                        int nonGroupCount = _counterNonGroups.ContainsKey(key) ? _counterNonGroups[key] : 0;
 
-                        Output.PrintSuccess($"Количество коллизий для раздела {key} составляет: {clashCount} шт. (Групп {groupCount + nonGroupCount})");
+                        if (_detailedNames.Contains(key))
+                        {
+                            int iosTotal = _counterIosOnIos.ContainsKey(key) ? _counterIosOnIos[key] : 0;
+                            int iosGroups = _counterIosOnIosGroups.ContainsKey(key) ? _counterIosOnIosGroups[key] : 0;
+                            int iosNonGroups = _counterIosOnIosNonGroups.ContainsKey(key) ? _counterIosOnIosNonGroups[key] : 0;
+
+                            Output.PrintSuccess(
+                                $"Количество коллизий для раздела {key} составляет: {clashCount} шт. (Групп {groupCount + nonGroupCount}). " +
+                                $"ИОС на ИОС - {iosTotal} шт. (Групп {iosGroups + iosNonGroups})"
+                            );
+                        }
+                        else
+                        {
+                            Output.PrintSuccess(
+                                $"Количество коллизий для раздела {key} составляет: {clashCount} шт. (Групп {groupCount + nonGroupCount})"
+                            );
+                        }
                     }
                 }
             }
