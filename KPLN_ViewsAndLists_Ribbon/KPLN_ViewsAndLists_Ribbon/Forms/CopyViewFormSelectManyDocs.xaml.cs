@@ -37,14 +37,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
         private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
 
-        private bool _openDocument;
-        List<string> _worksetPrefixName;
-        private bool _useRevitServer;
+        private bool _synchronizationDocument;
 
         string smallDebugMessage;
         string debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, bool openDocument, List<string> worksetPrefixName, bool useRevitServer)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, 
+            bool synchronizationDocument, List<string> worksetPrefixName, bool useRevitServer)
         {
             InitializeComponent();
 
@@ -53,9 +52,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _mainDocument = mainDocument;
 
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
-            _openDocument = openDocument;
-            _worksetPrefixName = worksetPrefixName;
-            _useRevitServer = useRevitServer;
+            _synchronizationDocument = synchronizationDocument;
 
             ItemsList.ItemsSource = _items;
 
@@ -105,33 +102,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
 
 
-            string pathMD = _mainDocument.PathName;
-            if (!string.IsNullOrEmpty(pathMD))
-            {
-                try
-                {
-                    ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(pathMD);
+  
+            
 
-                    WorksetConfiguration silentWorksetConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-                    OpenOptions silentOptions = new OpenOptions
-                    {
-                        DetachFromCentralOption = DetachFromCentralOption.DoNotDetach,
-                        Audit = false
-                    };
-                    silentOptions.SetOpenWorksetsConfiguration(silentWorksetConfig);
-
-                    UIDocument uiDoc = _uiapp.OpenAndActivateDocument(modelPath, silentOptions, false);
-                }
-                catch (Exception ex)
-                {
-                    TaskDialog.Show("ОШИБКА", $"{ex.Message}");
-                }
-            }
+            List<ModelPath> processedPaths = new List<ModelPath>();
 
             foreach (FileItem item in _items)
             {
                 if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
                 {
+                    
                     Document doc = null;
 
                     try
@@ -146,18 +126,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             Audit = false
                         };
                         silentOptions.SetOpenWorksetsConfiguration(silentWorksetConfig);
-                       
-                        if (_openDocument)
-                        {
-                            UIDocument uiDoc = _uiapp.OpenAndActivateDocument(modelPath, silentOptions, false);
-                            doc = uiDoc.Document;
-                        }
-                        else
-                        {
-                            doc = _uiapp.Application.OpenDocumentFile(modelPath, silentOptions);
-                        }
-                              
-                        debugMessage += $"ИНФО. Получен документ {doc.Title} ({item.FullPath}).\n";               
+
+                        doc = _uiapp.Application.OpenDocumentFile(modelPath, silentOptions);                           
+                        debugMessage += $"ИНФО. Получен документ {doc.Title} ({item.FullPath}).\n";
+
+                        processedPaths.Add(modelPath);
                     }
                     catch (Exception ex)
                     {
@@ -165,10 +138,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
                         continue;
                     }
-
-
-
-
 
                     using (Transaction trans = new Transaction(doc, "KPLN. Копирование шаблонов видов"))
                     {
@@ -331,7 +300,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     try
                     {
                         doc.Save();
-
                         debugMessage += $"ИНФО. Документ сохранён {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
                     }
                     catch (Exception ex)
@@ -341,7 +309,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         continue;
                     }
 
-                    if (doc.IsWorkshared)
+                    if (doc.IsWorkshared && _synchronizationDocument)
                     {
                         try
                         {
@@ -369,21 +337,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             continue;
                         }
                     }
-
-                    if (!_openDocument)
+             
+                    try
                     {
-                        try
-                        {
-                            doc.Close(false);
-                            debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
-                        }
-                        catch (Exception ex)
-                        {
-                            debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex.Message}.\n";
-                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                            continue;
-                        }
+                        doc.Close(false);
+                        debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
                     }
+                    catch (Exception ex)
+                    {
+                        debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex.Message}.\n";
+                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                        continue;
+                    }                   
                 }
 
                 smallDebugMessage += $"ИНФО. Документ обработан - {item.FullPath}.\n";
@@ -400,7 +365,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
             }
 
-            DebugMessageWindow debugWindow = new DebugMessageWindow(smallDebugMessage, debugMessage);
+            DebugMessageWindow debugWindow = new DebugMessageWindow (_uiapp,smallDebugMessage, debugMessage, processedPaths);
             debugWindow.ShowDialog();
         }
 
