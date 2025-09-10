@@ -263,7 +263,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
+            bool synchronizationDocument = CHK_SynchronizationDocument.IsChecked ?? false;
 
             string inputText = "#";
             List<string> worksetPrefixName = inputText
@@ -271,7 +271,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 .Select(word => word.Trim())
                 .ToList();
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, false);
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, synchronizationDocument, worksetPrefixName, false);
             openManeDocsWindows.Owner = this;       
             openManeDocsWindows.ShowDialog();
         }
@@ -298,14 +298,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool openDocument = CHK_OpenDocument.IsChecked ?? false;
+            bool synchronizationDocument = CHK_SynchronizationDocument.IsChecked ?? false;
             string inputText = "#";
             List<string> worksetPrefixName = inputText
                 .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(word => word.Trim())
                 .ToList();
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, openDocument, worksetPrefixName, true);
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, synchronizationDocument, worksetPrefixName, true);
             openManeDocsWindows.Owner = this;
             openManeDocsWindows.ShowDialog();
         }
