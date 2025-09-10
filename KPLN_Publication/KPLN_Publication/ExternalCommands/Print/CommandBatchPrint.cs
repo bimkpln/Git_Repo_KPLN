@@ -464,9 +464,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                         }
 
                         if (printerName == "PDFCreator" && printSettings.isUseOrientation)
-                        {
                             System.Threading.Thread.Sleep(5000);
-                        }
 
                         t.RollBack();
                     }
@@ -580,11 +578,13 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write(" ");
                 logger.Write("\nОбъединение PDF файлов");
                 System.Threading.Thread.Sleep(500);
-                string combinedFile = System.IO.Path.Combine(outputFolder, mainDoc.Title + ".pdf");
+                string combinedFile = Path.Combine(outputFolder, mainDoc.Title + ".pdf");
 
-                PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNames, combinedFile, logger);
+                string[] pdfFileNamesFromPath = Directory.GetFiles(outputFolder, "*.pdf");
 
-                foreach (string file in pdfFileNames)
+                PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNamesFromPath, combinedFile, logger);
+
+                foreach (string file in pdfFileNamesFromPath)
                 {
                     System.IO.File.Delete(file);
                     logger.Write("Удален файл " + file);
