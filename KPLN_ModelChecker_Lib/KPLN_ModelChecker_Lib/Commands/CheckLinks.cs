@@ -1,18 +1,31 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Common;
+using KPLN_ModelChecker_Lib.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_ModelChecker_Lib.Commands
 {
-    public sealed class CheckLinks : AbstrCheck<CheckLinks>
+    public sealed class CheckLinks : AbstrCheck
     {
-        public CheckLinks(UIApplication uiapp) : base(uiapp) { }
-
-        public override Element[] GetElemsToCheck()
+        /// <summary>
+        /// Пустой конструктор для внесения статичных данных класса
+        /// </summary>
+        public CheckLinks() : base()
         {
-            return new FilteredElementCollector(CheckDoc)
+            if (PluginName == null)
+                PluginName = "Проверка связей";
+            
+            if (ESEntity == null)
+                ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CheckLinks", new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
+        }
+
+
+        public override Element[] GetElemsToCheck(Document doc)
+        {
+            return new FilteredElementCollector(doc)
                 .OfCategory(BuiltInCategory.OST_RvtLinks)
                 .WhereElementIsNotElementType()
                 // Фильтрация по имени от вложенных прикрепленных связей
@@ -22,7 +35,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
         private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
             

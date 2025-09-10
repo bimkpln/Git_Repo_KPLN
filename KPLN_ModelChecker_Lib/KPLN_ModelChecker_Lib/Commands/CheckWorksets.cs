@@ -1,34 +1,55 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Common;
+using KPLN_ModelChecker_Lib.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_ModelChecker_Lib.Commands
 {
-    public sealed class CheckWorksets : AbstrCheck<CheckWorksets>
+    public sealed class CheckWorksets : AbstrCheck
     {
-        public CheckWorksets(UIApplication uiapp) : base(uiapp) { }
+        /// <summary>
+        /// Пустой конструктор для внесения статичных данных класса
+        /// </summary>
+        public CheckWorksets() : base()
+        {
+            if (PluginName == null)
+                PluginName = "Проверка рабочих наборов";
 
-        public override Element[] GetElemsToCheck() => 
-            new FilteredElementCollector(CheckDoc)
-            .WhereElementIsNotElementType()
-            .ToArray();
+            if (ESEntity == null)
+                ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CheckElementWorksets", new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7"), new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8"));
+        }
+
+        public override Element[] GetElemsToCheck(Document doc) => 
+            new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType()
+                .Where(el =>
+                    // Игнор безкатегорийных эл-в
+                    el.Category != null
+                    // Игнор вложенных системных эл-в (Осевая линия, подъемы, <Эскиз> и т.п.)
+                    && el.Category.Parent == null)
+                .ToArray();
 
         private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
-            if (CheckDoc.IsWorkshared)
+            if (doc.IsWorkshared)
             {
-                Workset[] worksets = new FilteredWorksetCollector(CheckDoc).OfKind(WorksetKind.UserWorkset).Where(w => w.IsOpen).ToArray();
+                Workset[] worksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).Where(w => w.IsOpen).ToArray();
 
+                bool isSET = doc.Title.Contains("СЕТ_1");
                 foreach (Element element in elemColl)
                 {
-                    // Игнор безкатегорийных эл-в
-                    if (element.Category == null) continue;
+                    // Игнор вложенных общих семейств (нужен только родитель)
+                    if (element is FamilyInstance fi && fi.SuperComponent != null) continue;
+
+                    // Игнор разделителей помещений для СЕТ (так нужно)
+                    if (isSET && element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RoomSeparationLines) continue;
 
                     // Анализ Revit-связей
                     if (element is RevitLinkInstance link)
@@ -104,7 +125,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     }
 
                     //Анализ уровней и осей
-                    if (element.GetType() == typeof(Grid) | element.GetType() == typeof(Level))
+                    if (element.GetType() == typeof(Grid) || element.GetType() == typeof(Level))
                     {
                         string wsName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         if (!wsName.ToLower().Contains("оси и уровни") & !wsName.ToLower().Contains("общие уровни и сетки"))
@@ -136,9 +157,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         if (elemWS == null) continue;
 
                         // Проверка моделируемых элементов на рабочий набор связей 
-                        if (elemWSName.StartsWith("00")
-                            | elemWSName.StartsWith("#")
-                            && !elemWSName.ToLower().Contains("dwg"))
+                        if (elemWSName.StartsWith("00") || elemWSName.StartsWith("#"))
                         {
                             CheckerEntity entity = new CheckerEntity(
                                 element,
@@ -152,8 +171,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         }
                         
                         // Проверка моделируемых элементов на рабочий набор для сеток
-                        else if (elemWSName.ToLower().Contains("оси и уровни")
-                            | elemWSName.ToLower().Contains("общие уровни и сетки"))
+                        else if (elemWSName.ToLower().Contains("оси и уровни") || elemWSName.ToLower().Contains("общие уровни и сетки"))
                         {
                             CheckerEntity entity = new CheckerEntity(
                                 element,

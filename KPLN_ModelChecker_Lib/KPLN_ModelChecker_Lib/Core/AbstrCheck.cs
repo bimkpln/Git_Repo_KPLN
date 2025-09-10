@@ -1,26 +1,26 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_ModelChecker_Lib.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KPLN_ModelChecker_Lib.Commands
+namespace KPLN_ModelChecker_Lib.Core
 {
     /// <summary>
     /// Абстрактный класс для подготовки, создания и вывода отчета пользователю
     /// </summary>
-    public abstract class AbstrCheck<T>
+    public abstract class AbstrCheck
     {
-        public AbstrCheck(UIApplication uiapp)
-        {
-            CheckDoc = uiapp.ActiveUIDocument.Document;
-        }
-
         /// <summary>
-        /// Ссылка на документ Revit
+        /// Пустой конструктор для внесения статичных данных класса
         /// </summary>
-        private protected Document CheckDoc { get; set; }
+        public AbstrCheck() { }
+
+        public string PluginName { get; protected set; }
+
+        public ExtensibleStorageEntity ESEntity { get; protected set; }
 
         /// <summary>
         /// Список подготовленных элементов, которые прошли проверку перед запуском
@@ -47,14 +47,15 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// <summary>
         /// Получить коллекцию CheckerEntity
         /// </summary>
+        /// <param name="doc">Revit-проект</param>
         /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
         /// <returns>Коллекция WPFEntity, содержащая выявленные ошибки проектирования в Revit</returns>
-        private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl);
+        private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl);
 
         /// <summary>
         /// Подготовить коллекцию элементов для проверки
         /// </summary>
-        public abstract Element[] GetElemsToCheck();
+        public abstract Element[] GetElemsToCheck(Document doc);
 
         /// <summary>
         /// Запуск проверки
@@ -62,7 +63,7 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для полного анализа</param>
         /// <returns>Коллекция CheckerEntity для передачи в отчет пользовател</returns>
-        public CheckerEntity[] ExecuteCheck(Element[] elemColl)
+        public CheckerEntity[] ExecuteCheck(Document doc, Element[] elemColl)
         {
             if (!elemColl.Any()) return null;
 
@@ -74,7 +75,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 else
                     PreparedElemColl = elemColl;
 
-                CheckerEntity[] result = GetCheckerEntities(PreparedElemColl).ToArray();
+                CheckerEntity[] result = GetCheckerEntities(doc, PreparedElemColl).ToArray();
                 return result;
             }
             catch (Exception ex)
