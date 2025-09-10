@@ -10,7 +10,6 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
-using KPLN_ModelChecker_User.ExternalCommands;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -159,7 +158,11 @@ namespace KPLN_Looker
             string fileFullName = GetFileFullName(doc);
 
             if (!doc.IsFamilyDocument
+#if Revit2020 || Revit2023
                 && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
+#elif Debug2020 || Debug2023
+                && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("fs01\\lib\\отдел bim\\") || fileFullName.ToLower().Contains("rsn"))
+#endif
                 && !fileFullName.EndsWith("rte")
                 // Офис КПЛН
                 && !fileFullName.ToLower().Contains("16с13"))
@@ -201,7 +204,7 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif
-            #region Закрываю вид, если он для бим-отдела
+#region Закрываю вид, если он для бим-отдела
             if (!(activeView is View3D _)
                 || (!activeView.Title.ToUpper().Contains("BIM360")
                     && !activeView.Title.ToUpper().Contains("NAVISWORKS")
@@ -928,11 +931,6 @@ namespace KPLN_Looker
             }
             #endregion
 
-            #region Автопроверки
-            UIApplication uiApp = new UIApplication(doc.Application);
-            CheckBatchRunner.RunAll(uiApp);
-            #endregion
-
             string fileFullName = GetFileFullName(doc);
 
             #region Обработка работы в архивных копиях
@@ -956,9 +954,6 @@ namespace KPLN_Looker
             #region Работа с проектами КПЛН
             // Получаю проект из БД КПЛН
             DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
-            if (dBProject != null)
-                return;
-
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
             DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
             if (dBDocument == null)
@@ -1047,7 +1042,19 @@ namespace KPLN_Looker
                         RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
                 }
             }
-            #endregion            
+            #endregion
+
+
+            #region Автопроверки (лучше в конец, чтобы всё остальное отработало корректно)
+            if (!doc.Title.StartsWith("ИЗМЛ_")
+                && !doc.Title.StartsWith("ПШМ1_")
+                && !doc.Title.StartsWith("ПСРВ_")
+                && !doc.Title.StartsWith("SH1-"))
+            {
+                UIApplication uiApp = new UIApplication(doc.Application);
+                CheckBatchRunner.RunAll(uiApp);
+            }
+            #endregion
         }
     }
 }

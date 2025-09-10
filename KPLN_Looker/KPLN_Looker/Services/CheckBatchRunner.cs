@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Core;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System.Linq;
 using System.Windows.Forms;
@@ -15,15 +17,16 @@ namespace KPLN_Looker.Services
             bool anyErrors = false;
 
             // Дадавай новыя праверкі тут:
-            anyErrors |= Run<CommandCheckLinks>(uiApp);
-            anyErrors |= Run<CommandCheckWorksets>(uiApp);
-            // anyErrors |= Run<CommandCheckSomethingElse>(uiApp);
+            anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiApp);
+            anyErrors |= Run<CommandCheckMainLines, CheckMainLines>(uiApp);
+            anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiApp);
+            // anyErrors |= Run<CommandCheckSomethingElse1, CommandCheckSomethingElse2>(uiApp);
 
             if (anyErrors)
             {
                 MessageBox.Show(
                     "Вы произвели синхронизацию проекта, в котором находятся критические ошибки.\n\n" +
-                    $"Окна с ошибками появились отдельно, чтобы они больше не всплывали - исправь замечания",
+                    $"Окна с ошибками появились отдельно, чтобы они больше не всплывали - исправь замечания (как минимум категории \"Ошибка\", т.е. красного цвета)",
                     "KPLN: Ошибка",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -33,25 +36,27 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Запуск выбранной проверки
         /// </summary>
-        private static bool Run<T>(UIApplication uiApp) where T : AbstrCommand<T>, new()
+        private static bool Run<TCmd, TCheck>(UIApplication uiApp)
+            where TCmd : AbstrCommand, new()
+            where TCheck : AbstrCheck, new()
         {
-            var cmd = new T();
+            var cmd = new TCmd();
 
-            // Ніякіх Activity-логів, ніякіх "усё добра" банэраў — ціхі запуск
-            cmd.ExecuteByUIApp(
+            cmd.ExecuteByUIApp<TCheck>(
                 uiapp: uiApp,
+                onlyErrorType: true,
                 setPluginActivity: false,
                 setLastRun: false,
                 showMainForm: false,
                 showSuccsessText: false);
 
             // ДОСТУП да вынікаў праз generic-static (асобнае статычнае поле на кожны closed generic T)
-            var entities = AbstrCommand<T>.CheckerEntities;
-            bool hasErrors = entities != null && entities.Any(e => e.Status == KPLN_ModelChecker_Lib.ErrorStatus.Error);
+            var entities = cmd.CheckerEntities;
+            bool hasErrors = entities != null && entities.Any();
 
             // Паказваем справаздачу толькі калі ёсць памылкі
             if (hasErrors)
-                cmd.ReportCreatorAndDemonstrator(uiApp);
+                cmd.ReportCreatorAndDemonstrator<TCheck>(uiApp);
 
             return hasErrors;
         }
