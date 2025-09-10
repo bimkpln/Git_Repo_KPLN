@@ -550,6 +550,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 if (obj is ReportItem instance)
                 {
+                    rows.Add(string.Empty);
                     rows.Add(GetExportRow(instance));
                     foreach (ReportItem subInstance in instance.SubElements)
                     {
@@ -652,11 +653,16 @@ namespace KPLN_Clashes_Ribbon.Forms
                     parts.Add(Optimize("..."));
                 }
             }
-            parts.Add(Optimize(instance.Element_1_Id.ToString()));
-            parts.Add(Optimize(instance.Element_1_Info));
-            parts.Add(Optimize(instance.Element_2_Id.ToString()));
-            parts.Add(Optimize(instance.Element_2_Info));
-            parts.Add(Optimize(instance.Point));
+
+            if (instance.Element_1_Id != -1 && instance.Element_2_Id != -1)
+            {
+                parts.Add(Optimize(instance.Element_1_Id.ToString()));
+                parts.Add(Optimize(instance.Element_1_Info));
+                parts.Add(Optimize(instance.Element_2_Id.ToString()));
+                parts.Add(Optimize(instance.Element_2_Info));
+                parts.Add(Optimize(instance.Point));
+            }
+
             return string.Join("\t", parts);
         }
 
