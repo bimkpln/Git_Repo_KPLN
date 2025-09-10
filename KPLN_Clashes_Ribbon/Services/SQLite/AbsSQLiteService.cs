@@ -72,11 +72,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 using (IDbConnection connection = new SQLiteConnection(_dbConnectionPath))
                 {
                     connection.Open();
-                    IEnumerable<T> data = connection.Query<T>(query, parameters);
-                    if (data != null)
-                        return data;
-
-                    return null;
+                    return connection.Query<T>(query, parameters);
                 }
             }
             catch (Exception ex)

@@ -119,7 +119,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     
                 if (viewElemsColl.Length == 0)
                 {
-                    Logger.Error($"На вид с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
+                    Logger.Error($"На виде с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
                     return null;
                 }
 

@@ -29,11 +29,10 @@ namespace KPLN_ModelChecker_User.Forms
 
             _uiApp = uiApp;
             _activeDoc = activeDoc;
-#if (Revit2023 || Debug2023)
+
             FillCategories();
             IList<FamilyInstance> monolithClashPoints = CommandCheckMonolith.GetMonolithClashPoints(_activeDoc);
             btnClashInfo.IsEnabled = monolithClashPoints.Count != 0;
-#endif
         }
 
         /// <summary>
@@ -55,7 +54,6 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void ButtonClashInfo_Click(object sender, RoutedEventArgs e)
         {
-#if (Revit2023 || Debug2023)
             IList<FamilyInstance> monolithClashPoints = CommandCheckMonolith.GetMonolithClashPoints(_activeDoc);
             if (monolithClashPoints.Count != 0)
             {
@@ -67,7 +65,6 @@ namespace KPLN_ModelChecker_User.Forms
                 win.Show();
                 this.Close();
             }
-#endif
         }
 
         /// <summary>

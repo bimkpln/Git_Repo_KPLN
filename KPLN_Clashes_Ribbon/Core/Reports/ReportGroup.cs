@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -32,6 +33,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private bool _isEnabled = true;
         private bool _isExpandedItem = false;
         private static ProjectDbService _libProjectDbService;
+        private string _searchText = string.Empty;
 
         private int _bitrixTaskIdAR;
         private int _bitrixTaskIdKR;
@@ -42,6 +44,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private int _bitrixTaskIdEOM;
         private int _bitrixTaskIdSS;
         private int _bitrixTaskIdAV;
+
+        private DBProject _dBProject;
 
         #region Данные из БД
         [Key]
@@ -120,7 +124,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 {
                     _userCreated = value;
                     NotifyPropertyChanged();
-                    NotifySelectedPropertyChanged(nameof(UserCreatedFullName));
                 }
             }
         }
@@ -150,7 +153,6 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 {
                     _userLast = value;
                     NotifyPropertyChanged();
-                    NotifySelectedPropertyChanged(nameof(LastUserFullName));
                 }
             }
         }
@@ -274,34 +276,52 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         #endregion
 
         #region Дополнительная визуализация
-        /// <summary>
-        /// Специальный формат для вывода в окно пользователя
-        /// </summary>
-        public string UserCreatedFullName
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (_searchText != value)
+                {
+                    _searchText = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        public DBProject DBProject
         {
             get
             {
-                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserCreated);
-                if (dBUser == null)
-                    return "Не установлено :(";
-                
-                return $"{dBUser.Name} {dBUser.Surname}";
-            } 
+                if (_dBProject == null)
+                    _dBProject = LibProjectDbService.GetDBProject_ByProjectId(ProjectId);
+
+                return _dBProject;
+            }
         }
 
         /// <summary>
-        /// Специальный формат для вывода в окно пользователя
+        /// Коллекция задач в bitrix с привязкой к отделу
         /// </summary>
-        public string LastUserFullName
+        public ObservableCollection<SubDepartmentBtn> SubDepartmentBtns
         {
             get
             {
-                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserLast);
-                if (dBUser == null)
-                    return "Не установлено :(";
+                SubDepartmentBtn[] tempColl = new SubDepartmentBtn[]
+                {
+                    new SubDepartmentBtn(_bitrixTaskIdAR, "АР", "Архитектурный раздел"),
+                    new SubDepartmentBtn(_bitrixTaskIdKR, "КР", "Конструктивные и объемно-планировочные решения"),
+                    new SubDepartmentBtn(_bitrixTaskIdOV, "ОВ", "Отопление, вентиляция и кондиционирование"),
+                    new SubDepartmentBtn(_bitrixTaskIdVK, "ВК", "Водоснабжение и канализация"),
+                    new SubDepartmentBtn(_bitrixTaskIdEOM, "ЭОМ", "Внутреннее электрооборудование и освещение"),
+                    new SubDepartmentBtn(_bitrixTaskIdSS, "СС", "Слаботочные системы"),
+                    new SubDepartmentBtn(_bitrixTaskIdITP, "ИТП", "Индивидуальный тепловой пункт"),
+                    new SubDepartmentBtn(_bitrixTaskIdAUPT, "ПТ", "Система пожаротушения"),
+                    new SubDepartmentBtn(_bitrixTaskIdAV, "АВ", "Автоматизация (подраздел СС)"),
+                };
 
-                return $"{dBUser.Name} {dBUser.Surname}";
-            }
+                return new ObservableCollection<SubDepartmentBtn>(tempColl.Where(btn => btn.Id > 1));
+            }            
         }
 
         /// <summary>
@@ -309,11 +329,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string GroupName
         {
-            get
-            {
-                DBProject dBProject = LibProjectDbService.GetDBProject_ByProjectId(ProjectId);
-                return $"[{dBProject.Code}]: {Name} ({dBProject.Name})";
-            }
+            get => $"[{DBProject.Code}]: {Name} ({DBProject.Name})";
         }
 
         public bool IsEnabled
@@ -373,9 +389,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get
             {
                 if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
-                {
                     return System.Windows.Visibility.Visible;
-                }
 
                 return System.Windows.Visibility.Collapsed;
             }
@@ -442,19 +456,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             {
                 case KPItemStatus.New:
                     Source = new Source.Source(KPIcon.Report_New);
-                    IsExpandedItem = true;
                     Fill = new SolidColorBrush(Color.FromArgb(255, 86, 88, 211));
                     IsEnabled = true;
                     break;
                 case KPItemStatus.Opened:
                     Source = new Source.Source(KPIcon.Report);
-                    IsExpandedItem = true;
                     Fill = new SolidColorBrush(Color.FromArgb(255, 86, 156, 211));
                     IsEnabled = true;
                     break;
                 case KPItemStatus.Closed:
                     Source = new Source.Source(KPIcon.Report_Closed);
-                    IsExpandedItem = false;
                     Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
                     IsEnabled = false;
                     break;

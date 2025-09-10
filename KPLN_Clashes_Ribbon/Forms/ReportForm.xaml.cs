@@ -3,6 +3,7 @@ using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
@@ -29,6 +30,7 @@ namespace KPLN_Clashes_Ribbon.Forms
     {
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
+        private readonly ReportManagerForm _reportManagerForm;
         private readonly ReportGroup _repourtGroup;
         private readonly Report _currentReport;
         private readonly Services.SQLite.SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
@@ -38,8 +40,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         private string _idDataTBx = string.Empty;
         private string _conflictMetaDataTBx = string.Empty;
 
-        public ReportForm(Report report, ReportGroup reportGroup)
+        public ReportForm(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup)
         {
+            _reportManagerForm = reportManagerForm;
             _repourtGroup = reportGroup;
             _currentReport = report;
 
@@ -48,7 +51,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             FilteredInstancesColl = CollectionViewSource.GetDefaultView(ReportInstancesColl);
             FilteredInstancesColl.Filter += FilterForRepItems;
-            
+
             if (_repourtGroup.IsEnabled)
             {
                 foreach (ReportItem instance in ReportInstancesColl)
@@ -83,33 +86,60 @@ namespace KPLN_Clashes_Ribbon.Forms
                 if (sfCBX == null)
                     return true;
 
+                // Ключевя переменная по имени файла
+                bool docCheck = false;
+                if ((bool)this.AllItemsRB.IsChecked)
+                    docCheck = true;
+                else
+                {
+                    CommandShowManager.ExtEvent.Raise();
+                    UIApplication uiapp = CommandShowManager.ActiveDocHandler.ResultUIApplication;
+                    if (uiapp == null || uiapp.ActiveUIDocument == null)
+                        docCheck = false;
+                    else
+                    {
+                        string docTitle = uiapp.ActiveUIDocument.Document.Title;
+                        docCheck = docTitle.Contains(item.Element_1_DocName) || docTitle.Contains(item.Element_2_DocName);
+                    }
+                }
+
+
+                // Ключевя переменная по статусу
+                bool statusCheck = false;
                 int mainStatusFilterIndex = this.StatusFilterCBX.SelectedIndex;
-                // Фильтрация по статусу
                 switch (mainStatusFilterIndex)
                 {
                     case 0:
-                        return CheckParamData(item);
+                        statusCheck = true;
+                        break;
                     case 1:
                         if (item.Status == KPItemStatus.Opened || item.Status == KPItemStatus.Delegated)
-                            return CheckParamData(item);
+                            statusCheck = true;
 
-                        return false;
+                        break;
                     case 2:
-                        if (item.Status == KPItemStatus.Closed)
-                            return CheckParamData(item);
+                        if (item.Status == KPItemStatus.Opened)
+                            statusCheck = true;
 
-                        return false;
+                        break;
                     case 3:
-                        if (item.Status == KPItemStatus.Approved)
-                            return CheckParamData(item);
-
-                        return false;
-                    case 4:
                         if (item.Status == KPItemStatus.Delegated)
-                            return CheckParamData(item);
+                            statusCheck = true;
 
-                        return false;
+                        break;
+                    case 4:
+                        if (item.Status == KPItemStatus.Approved)
+                            statusCheck = true;
+
+                        break;
+                    case 5:
+                        if (item.Status == KPItemStatus.Closed)
+                            statusCheck = true;
+
+                        break;
                 }
+
+                return docCheck && statusCheck && CheckParamData(item);
             }
 
             return false;
@@ -132,11 +162,11 @@ namespace KPLN_Clashes_Ribbon.Forms
                 bool checkConflData = item.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                     || item.SubElements.Any(sub => sub.Name.IndexOf(_conflictDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
 
-                bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0 
+                bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                         || sub.Element_2_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
 
                 bool checkIDData = item.GroupElementIds.Contains(_idDataTBx);
-                    
+
                 if (checkConflData && checkConflictMetaData && checkIDData)
                     return true;
             }
@@ -179,6 +209,8 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(cmd);
             }
+
+            _reportManagerForm.UpdateSelectedReportGroup(_repourtGroup);
         }
 
         private void OnLoadImage(object sender, RoutedEventArgs e)
@@ -337,17 +369,14 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
 
-            List<ReportItem> items = GetTargetItems(item);
-
-            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
-            textInputForm.ShowDialog();
-            string msg = textInputForm.UserComment;
-            if (msg == null)
-                return;
-
-            foreach (ReportItem ri in items)
+            UserTextInput textInputForm = new UserTextInput("Введите комментарий для допуска:");
+            if ((bool)textInputForm.ShowDialog())
             {
-                ItemMessageWorker(ri, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
+                string msg = textInputForm.UserInput;
+                foreach (ReportItem ri in GetTargetItems(item))
+                {
+                    ItemMessageWorker(ri, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
+                }
             }
         }
 
@@ -356,7 +385,8 @@ namespace KPLN_Clashes_Ribbon.Forms
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
             foreach (ReportItem ri in GetTargetItems(item))
             {
-                ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\\n");
+                if (ri.Status == KPItemStatus.Closed || ri.Status == KPItemStatus.Approved)
+                    ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\\n");
             }
         }
 
@@ -364,15 +394,14 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
 
-            TextInputForm textInputForm = new TextInputForm(this, "Введите комментарий:");
-            textInputForm.ShowDialog();
-            string msg = textInputForm.UserComment;
-            if (msg == null)
-                return;
-
-            foreach (ReportItem ri in GetTargetItems(item))
+            UserTextInput textInputForm = new UserTextInput("Введите комментарий:");
+            if ((bool)textInputForm.ShowDialog())
             {
-                ItemMessageWorker(ri, $"{msg}");
+                string msg = textInputForm.UserInput;
+                foreach (ReportItem ri in GetTargetItems(item))
+                {
+                    ItemMessageWorker(ri, $"{msg}");
+                }
             }
         }
 
@@ -451,7 +480,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                         BitrixMessageSender
                             .SendMsgToTask_ByTaskId(
                             delegBitrixTaskId,
-                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> делегировал вам коллизию из отчета: \"{_currentReport.Name}\""));
+                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> " +
+                                $"делегировал вам коллизию из отчета: \"{_currentReport.Name}\" " +
+                                $"с именем: \"{currentItem.Name}\""));
 
                     if (sendMsgToTaskTask.Result)
                         System.Windows.MessageBox.Show(
@@ -490,6 +521,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 sdBtn.DelegateBtnBackground = Brushes.Transparent;
             }
+
             report.DelegatedDepartmentId = -1;
         }
 
@@ -514,15 +546,19 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void OnExport(object sender, RoutedEventArgs e)
         {
             List<string> rows = new List<string>();
-            ObservableCollection<ReportItem> visibleCollection = ReportControll.ItemsSource as ObservableCollection<ReportItem>;
-            foreach (ReportItem instance in visibleCollection)
+            foreach (object obj in FilteredInstancesColl)
             {
-                rows.Add(GetExportRow(instance));
-                foreach (ReportItem subInstance in instance.SubElements)
+                if (obj is ReportItem instance)
                 {
-                    rows.Add(GetExportRow(subInstance, instance));
+                    rows.Add(string.Empty);
+                    rows.Add(GetExportRow(instance));
+                    foreach (ReportItem subInstance in instance.SubElements)
+                    {
+                        rows.Add(GetExportRow(subInstance, instance));
+                    }
                 }
             }
+
             SaveFileDialog dialog = new SaveFileDialog
             {
                 Title = "Сохранить отчет",
@@ -534,6 +570,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 OverwritePrompt = true,
                 SupportMultiDottedExtensions = false
             };
+
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 StreamWriter writer = new StreamWriter(dialog.OpenFile());
@@ -541,6 +578,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 {
                     writer.WriteLine(row);
                 }
+
                 writer.Dispose();
                 writer.Close();
             }
@@ -615,11 +653,16 @@ namespace KPLN_Clashes_Ribbon.Forms
                     parts.Add(Optimize("..."));
                 }
             }
-            parts.Add(Optimize(instance.Element_1_Id.ToString()));
-            parts.Add(Optimize(instance.Element_1_Info));
-            parts.Add(Optimize(instance.Element_2_Id.ToString()));
-            parts.Add(Optimize(instance.Element_2_Info));
-            parts.Add(Optimize(instance.Point));
+
+            if (instance.Element_1_Id != -1 && instance.Element_2_Id != -1)
+            {
+                parts.Add(Optimize(instance.Element_1_Id.ToString()));
+                parts.Add(Optimize(instance.Element_1_Info));
+                parts.Add(Optimize(instance.Element_2_Id.ToString()));
+                parts.Add(Optimize(instance.Element_2_Info));
+                parts.Add(Optimize(instance.Point));
+            }
+
             return string.Join("\t", parts);
         }
 
@@ -633,6 +676,8 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
 
             return parentObject as T;
-        }        
+        }
+
+        private void FileNameFilterGroup_Checked(object sender, RoutedEventArgs e) => FilteredInstancesColl?.Refresh();
     }
 }

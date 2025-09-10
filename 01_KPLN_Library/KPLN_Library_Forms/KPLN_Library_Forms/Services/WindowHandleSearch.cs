@@ -6,15 +6,15 @@ using System.Text;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace KPLN_TaskManager.Services
+namespace KPLN_Library_Forms.Services
 {
-    internal class WindowHandleSearch : IWin32Window, System.Windows.Forms.IWin32Window
+    public class WindowHandleSearch : IWin32Window, System.Windows.Forms.IWin32Window
     {
         #region Static methods
         /// <summary>
         /// Revit main window handle
         /// </summary>
-        static public WindowHandleSearch MainWindowHandle
+        public static WindowHandleSearch MainWindowHandle
         {
             get
             {
@@ -33,12 +33,12 @@ namespace KPLN_TaskManager.Services
         public WindowHandleSearch(IntPtr hwnd)
         {
             // Assert valid window handle
-            Debug.Assert(IntPtr.Zero != hwnd,
-              "Null window handle");
+            Debug.Assert(IntPtr.Zero != hwnd, "Null window handle");
 
             Handle = hwnd;
         }
         #endregion
+
         #region Methods
         /// <summary>
         /// Window handle
@@ -139,7 +139,7 @@ namespace KPLN_TaskManager.Services
         /// <param name="handles"></param>
         /// <returns></returns>
         private static IntPtr DetermineMainWindow(
-          List<IntPtr> handles)
+            List<IntPtr> handles)
         {
             // Safty conditions, bail if not met.
             if (handles == null || handles.Count <= 0)
@@ -166,14 +166,14 @@ namespace KPLN_TaskManager.Services
                     if (length == 0) continue;
 
                     StringBuilder builder = new StringBuilder(
-                      length);
+                        length);
 
                     GetWindowText(hWnd, builder, length + 1);
 
                     // Depending on the Title of the Main Window 
                     // to have "Autodesk Revit" in it.
                     if (builder.ToString().ToLower().Contains(
-                      "autodesk revit"))
+                        "autodesk revit"))
                     {
                         mainWindow = hWnd;
                         break; // found Main Window stop and return it.

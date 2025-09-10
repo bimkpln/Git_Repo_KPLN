@@ -2,6 +2,8 @@ using Autodesk.Revit.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
+using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System;
@@ -43,20 +45,13 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckDimensions",
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
-            CommandCheckElementWorksets commandCheckElementWorksets = new CommandCheckElementWorksets(new ExtensibleStorageEntity(
-                CommandCheckElementWorksets.PluginName,
-                "KPLN_CheckElementWorksets",
-                new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7"),
-                new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8")));
+            CheckWorksets checkWorksets = new CheckWorksets();
             CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
                 CommandCheckFamilies.PluginName,
                 "KPLN_CommandCheckFamilies",
                 new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
                 new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
-            CommandCheckMainLines commandCheckGrids = new CommandCheckMainLines(new ExtensibleStorageEntity(
-                CommandCheckMainLines.PluginName,
-                "KPLN_CommandCheckMainLines",
-                new Guid("eac2c205-342d-4ba3-98a1-d82c82a4638e")));
+            CheckMainLines checkMainLines = new CheckMainLines();
             CommandCheckFlatsArea commandCheckFlatsArea = new CommandCheckFlatsArea(new ExtensibleStorageEntity(
                 CommandCheckFlatsArea.PluginName,
                 "KPLN_CheckFlatsArea",
@@ -73,10 +68,7 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckLevelOfInstances",
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf52"),
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf53")));
-            CommandCheckLinks commandCheckLinks = new CommandCheckLinks(new ExtensibleStorageEntity(
-                CommandCheckLinks.PluginName,
-                "KPLN_CheckLinks",
-                new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e")));
+            CheckLinks checkLinks = new CheckLinks();
             CommandCheckListAnnotations commandCheckListAnnotations = new CommandCheckListAnnotations(new ExtensibleStorageEntity(
                 CommandCheckListAnnotations.PluginName,
                 "KPLN_CheckAnnotation",
@@ -97,14 +89,13 @@ namespace KPLN_ModelChecker_User
             {
                 // Проверки из этой сборки
                 CommandCheckDimensions.ESEntity,
-                CommandCheckElementWorksets.ESEntity,
+                checkWorksets.ESEntity,
                 CommandCheckFamilies.ESEntity,
-                CommandCheckMainLines.ESEntity,
+                checkMainLines.ESEntity,
                 CommandCheckFlatsArea.ESEntity,
                 CommandCheckHoles.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
-                CommandCheckLinks.ESEntity,
-                //CommandCheckListAnnotations.ESEntity,
+                checkLinks.ESEntity,
                 CommandCheckMEPHeight.ESEntity,
                 CommandCheckMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
@@ -144,7 +135,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckCoordinates",
-                CommandCheckLinks.PluginName,
+                checkLinks.PluginName,
                 "Проверка подгруженных rvt-связей:" +
                 "\n1. Корректность настройки общей площадки Revit;" +
                 "\n2. Корректность заданного рабочего набора;" +
@@ -159,7 +150,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMainLines",
-                CommandCheckMainLines.PluginName,
+                checkMainLines.PluginName,
                 "Анализирует оси и уровни на:" +
                     "\n1. Наличие и корректность мониторинга;" +
                     "\n2. Наличие прикрепления;" +
@@ -189,13 +180,13 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckWorksets",
-                CommandCheckElementWorksets.PluginName,
+                checkWorksets.PluginName,
                 "Проверка элементов на корректность следующих рабочих наборов:"+
                     "\n1. РН для связей;" +
                     "\n2. РН для осей и уровней;" +
                     "\n3. РН для скопированных и замониторенных элементов из других моделей.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckElementWorksets).FullName,
+                typeof(CommandCheckWorksets).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_worksets.png",
                 _mainContextualHelp,
@@ -233,7 +224,6 @@ namespace KPLN_ModelChecker_User
                 true
                 );
 
-#if (Revit2023 || Debug2023)
             AddPushButtonData(
                 "CheckMonolith",
                 CommandCheckMonolith.PluginName,
@@ -245,7 +235,6 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 CurrentDbUser.SubDepartmentId == 8
                 );
-#endif
 
             AddPushButtonData(
                 "CheckLevels",

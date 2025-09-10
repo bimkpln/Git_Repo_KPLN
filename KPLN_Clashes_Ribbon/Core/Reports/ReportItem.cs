@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -79,17 +78,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             ReportId = repId;
             Name = name;
 
-            using (Stream image_stream = File.Open(image, FileMode.Open))
+            byte[] imageBytes = File.ReadAllBytes(image);
+            using (MemoryStream imageStream = new MemoryStream(imageBytes))
             {
-                Image = SystemTools.ReadFully(image_stream);
-            }
+                Image = imageStream.ToArray();
+                imageStream.Position = 0;
 
-            using (Stream image_stream = File.Open(image, FileMode.Open))
-            {
                 var imageSource = new BitmapImage();
                 imageSource.BeginInit();
-                imageSource.StreamSource = image_stream;
-                imageSource.CacheOption = BitmapCacheOption.Default;
+                imageSource.StreamSource = imageStream;
+                imageSource.CacheOption = BitmapCacheOption.OnLoad;
                 imageSource.EndInit();
                 ImageSource = imageSource;
             }
@@ -323,16 +321,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 switch (value)
                 {
                     case KPItemStatus.Closed:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 190, 104));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 0, 190, 104));
                         break;
                     case KPItemStatus.Approved:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 78, 97, 112));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 78, 97, 112));
                         break;
                     case KPItemStatus.Delegated:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 135, 0, 255));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 135, 0, 255));
                         break;
                     case KPItemStatus.Opened:
-                        Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 84, 42));
+                        Fill = new SolidColorBrush(Color.FromArgb(255, 255, 84, 42));
                         break;
                 }
 

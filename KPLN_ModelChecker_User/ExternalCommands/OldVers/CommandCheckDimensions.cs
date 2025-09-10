@@ -2,13 +2,14 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
+using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -22,7 +23,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckDimensions : AbstrCheckCommand<CommandCheckDimensions>, IExternalCommand
+    internal class CommandCheckDimensions : AbstrCheckCommandOld<CommandCheckDimensions>, IExternalCommand
     {
         internal const string PluginName = "Проверка размеров";
 
@@ -228,7 +229,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         "Не удалось определить данные. Нужен ручной анализ",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
                         false,
-                        CheckStatus.Warning);
+                        ErrorStatus.Warning);
                 }
             }
 
@@ -246,7 +247,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         "Не удалось определить данные. Нужен ручной анализ",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
                         false,
-                        CheckStatus.Warning);
+                        ErrorStatus.Warning);
                 }
                 else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
                 {
@@ -267,7 +268,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         "Размер незначительно отличается от реального",
                         $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
                         false,
-                        CheckStatus.Warning);
+                        ErrorStatus.Warning);
                 }
             }
 

@@ -2,7 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_ModelChecker_Lib;
-using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -10,14 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
     /// <summary>
     /// Абстрактный класс для подготовки, создания и вывода отчета пользователю
     /// </summary>
-    internal abstract class AbstrCheckCommand<T>
+    public abstract class AbstrCheckCommandOld<T>
     {
         /// <summary>
         /// Ссылка на Revit-UIApplication
@@ -43,14 +42,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Конструктор для классов, наследуемых от AbstrCheckCommand. Если его не переопределить в наследнике - IExternalCommand не справиться с запуском (ему нужен конструтор по умолчанию)
         /// </summary>
-        public AbstrCheckCommand()
+        public AbstrCheckCommandOld()
         {
         }
 
         /// <summary>
         /// Конструктор для класса Module. Он инициализирует основные переменные для работы с ExtensibleStorage
         /// </summary>
-        internal AbstrCheckCommand(ExtensibleStorageEntity esEntity)
+        internal AbstrCheckCommandOld(ExtensibleStorageEntity esEntity)
         {
             ESEntity = esEntity;
         }
@@ -179,14 +178,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="obj">Объект, который должен представлять элемент Revit</param>
         /// <param name="ifNullComment">Статус</param>
-        private protected CheckStatus SetApproveStatusByUserComment(object obj, CheckStatus ifNullComment)
+        private protected ErrorStatus SetApproveStatusByUserComment(object obj, ErrorStatus ifNullComment)
         {
-            CheckStatus currentStatus;
+            ErrorStatus currentStatus;
             if (obj is Element elem)
             {
                 if (ESEntity.ESBuilderUserText.IsDataExists_Text(elem))
                 {
-                    currentStatus = CheckStatus.Approve;
+                    currentStatus = ErrorStatus.Approve;
                 }
                 else currentStatus = ifNullComment;
             }

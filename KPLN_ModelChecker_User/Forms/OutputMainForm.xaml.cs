@@ -5,6 +5,7 @@ using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.ExecutableCommand;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.ExternalCommands;
@@ -115,13 +116,13 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 string selectedName = selectedContent.ToString();
                 if (selectedName == "Допустимое")
-                    e.Accepted = entity.CurrentStatus == Common.CheckCommandCollections.CheckStatus.Approve;
+                    e.Accepted = entity.CurrentStatus == ErrorStatus.Approve;
                 else if (chbxApproveShow.IsChecked is true)
                     e.Accepted = selectedName == "Необработанные предупреждения" || entity.FiltrationDescription == selectedName;
                 else if (selectedName == "Необработанные предупреждения")
-                    e.Accepted = entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
+                    e.Accepted = entity.CurrentStatus != ErrorStatus.Approve;
                 else
-                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != Common.CheckCommandCollections.CheckStatus.Approve;
+                    e.Accepted = entity.FiltrationDescription == selectedName && entity.CurrentStatus != ErrorStatus.Approve;
             }
         }
 
@@ -210,21 +211,27 @@ namespace KPLN_ModelChecker_User.Forms
         /// </summary>
         private void RestartBtn_Clicked(object sender, RoutedEventArgs e)
         {
-            // Создаем тип
-            Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
+            try
+            {
+                // Создаем тип
+                Type type = Type.GetType($"KPLN_ModelChecker_User.ExternalCommands.{_externalCommand}", true);
 
-            // Создаем экземпляр типа
-            object instance = Activator.CreateInstance(type);
-            
-            // Определяем метод ExecuteByUIApp
-            MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+                // Создаем экземпляр типа
+                object instance = Activator.CreateInstance(type);
 
-            // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
-            if (executeMethod != null)
-                executeMethod.Invoke(instance, new object[] { _application });
-            else
-                throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
-                
+                // Определяем метод ExecuteByUIApp
+                MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+
+                // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
+                if (executeMethod != null)
+                    executeMethod.Invoke(instance, new object[] { _application });
+                else
+                    throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
+            }
+            catch (Exception) 
+            {
+                TaskDialog.Show("KPLN: Ошибка", "Не удалось перезапустить. Запусти плагин заново, из меню KPLN");
+            }
 
             this.Close();
         }

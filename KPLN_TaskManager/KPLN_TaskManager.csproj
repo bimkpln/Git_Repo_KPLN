@@ -265,7 +265,6 @@
     </Compile>
     <Compile Include="Services\ExportToExcelService.cs" />
     <Compile Include="Services\TaskManagerDBService.cs" />
-    <Compile Include="Services\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\showMenu.png" />

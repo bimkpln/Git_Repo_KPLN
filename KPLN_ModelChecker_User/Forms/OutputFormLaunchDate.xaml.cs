@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_ExtensibleStorage;
-using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_Lib.Common;
 using System;
 using System.Linq;
 using System.Text;
@@ -22,11 +22,11 @@ namespace KPLN_ModelChecker_User.Forms
             foreach (ExtensibleStorageEntity entity in esEntitys)
             {
                 string resultMsg = string.Empty;
-                
+
                 int maxLines = 5;
                 ResultMessage esMsgRun = entity.ESBuilderRun.GetResMessage_Element(piElem);
                 string esMsgDiscr = esMsgRun.Description;
-                
+
                 string[] splitedMsgDescr = esMsgDiscr.Split('\n');
                 int lineCount = splitedMsgDescr.Count();
                 if (lineCount > maxLines)

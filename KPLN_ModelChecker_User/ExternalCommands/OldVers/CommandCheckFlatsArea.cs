@@ -5,6 +5,7 @@ using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -16,7 +17,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckFlatsArea : AbstrCheckCommand<CommandCheckFlatsArea>, IExternalCommand
+    internal class CommandCheckFlatsArea : AbstrCheckCommandOld<CommandCheckFlatsArea>, IExternalCommand
     {
         #region Инициализация полей
         internal const string PluginName = "АР_Р: Проверка помещений";

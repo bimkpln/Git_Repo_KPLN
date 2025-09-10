@@ -1,23 +1,25 @@
 ﻿using KPLN_Library_ExtensibleStorage;
-using KPLN_ModelChecker_User.Forms;
 using System;
 using System.Windows.Media;
 
-namespace KPLN_ModelChecker_User.Common
+namespace KPLN_ModelChecker_Lib.Common
 {
+    /// <summary>
+    /// Расширенная сущность ExtensibleStorage
+    /// </summary>
     public sealed class ExtensibleStorageEntity
     {
         // Последний запуск
         private ExtensibleStorageBuilder _esBuilderRun;
-        internal readonly string LastRunFieldName = "Last_Run";
+        public readonly string LastRunFieldName = "Last_Run";
 
         // Комментарий по внесению в допустимое
         private ExtensibleStorageBuilder _esBuilderUserText;
-        internal readonly string UserTextFieldName = "Approve_Comment";
+        public readonly string UserTextFieldName = "Approve_Comment";
 
         // Ключевой комментарий - маркер
         private ExtensibleStorageBuilder _esBuildergMarker;
-        internal readonly string MarkerFieldName = "Main_Marker";
+        public readonly string MarkerFieldName = "Main_Marker";
 
         /// <summary>
         /// Цвет текста при выводе в форме (если нужно переопределить)
@@ -32,7 +34,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Имя основного Storage
         /// </summary>
-        internal string MainStorageName { get; private set; }
+        public string MainStorageName { get; private set; }
 
         /// <summary>
         /// Данные из Storage последнего запуска
@@ -42,22 +44,22 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// GUID для Storage последнего запуска
         /// </summary>
-        internal Guid LastRunGuid { get; private set; }
+        public Guid LastRunGuid { get; private set; }
 
         /// <summary>
         /// GUID для Storage комментария пользователя (для допустимых)
         /// </summary>
-        internal Guid UserTextGuid { get; private set; }
+        public Guid UserTextGuid { get; private set; }
 
         /// <summary>
         /// GUID для Storage ключевого комментария
         /// </summary>
-        internal Guid MarkerGuid { get; private set; }
+        public Guid MarkerGuid { get; private set; }
 
         /// <summary>
         /// Extensible Storage для последнего запуска
         /// </summary>
-        internal ExtensibleStorageBuilder ESBuilderRun
+        public ExtensibleStorageBuilder ESBuilderRun
         {
             get
             {
@@ -69,7 +71,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Extensible Storage для пользовательского комментария
         /// </summary>
-        internal ExtensibleStorageBuilder ESBuilderUserText
+        public ExtensibleStorageBuilder ESBuilderUserText
         {
             get
             {
@@ -81,7 +83,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Extensible Storage для ключевого комментария (помечает факт запуска проектировщиком)
         /// </summary>
-        internal ExtensibleStorageBuilder ESBuildergMarker
+        public ExtensibleStorageBuilder ESBuildergMarker
         {
             get
             {
@@ -97,7 +99,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Метод инициализации статических свойств классов для работы с ExtensibleStorage
         /// </summary>
-        internal ExtensibleStorageEntity(string checkName, string mainStorageName, Guid lastRunGuid)
+        public ExtensibleStorageEntity(string checkName, string mainStorageName, Guid lastRunGuid)
         {
             CheckName = checkName;
             MainStorageName = mainStorageName;
@@ -107,7 +109,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Метод инициализации статических свойств классов для работы с ExtensibleStorage. Включая текстовую пометку от пользователя
         /// </summary>
-        internal ExtensibleStorageEntity (string checkName, string mainStorageName, Guid lastRunGuid, Guid userTextGuid) : this (checkName, mainStorageName, lastRunGuid)
+        public ExtensibleStorageEntity(string checkName, string mainStorageName, Guid lastRunGuid, Guid userTextGuid) : this(checkName, mainStorageName, lastRunGuid)
         {
             UserTextGuid = userTextGuid;
         }
@@ -115,7 +117,7 @@ namespace KPLN_ModelChecker_User.Common
         /// <summary>
         /// Метод инициализации статических свойств классов для работы с ExtensibleStorage. Включая текстовую пометку от пользователя и основной маркер
         /// </summary>
-        internal ExtensibleStorageEntity (string checkName, string mainStorageName, Guid lastRunGuid, Guid userTextGuid, Guid markerGuid) : this (checkName, mainStorageName, lastRunGuid, userTextGuid)
+        public ExtensibleStorageEntity(string checkName, string mainStorageName, Guid lastRunGuid, Guid userTextGuid, Guid markerGuid) : this(checkName, mainStorageName, lastRunGuid, userTextGuid)
         {
             MarkerGuid = markerGuid;
         }

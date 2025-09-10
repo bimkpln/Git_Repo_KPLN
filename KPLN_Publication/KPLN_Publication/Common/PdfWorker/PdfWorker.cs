@@ -144,20 +144,20 @@ namespace KPLN_Publication.PdfWorker
         }
 
 
-        public static bool CombineMultiplyPDFs(List<string> names, string outFile, Logger logger)
+        public static bool CombineMultiplyPDFs(string[] names, string outFile, Logger logger)
         {
             bool merged = false;
 
             using (FileStream stream = new FileStream(outFile, FileMode.Create))
             {
                 Document doc = new Document();
-                PdfCopy writer = new PdfCopy(doc, stream);
-                if (writer == null) throw new Exception("Не удалось создать файл: " + outFile);
+                PdfCopy writer = new PdfCopy(doc, stream) ?? throw new Exception("Не удалось создать файл: " + outFile);
+                
                 PdfReader reader = null;
                 try
                 {
                     doc.Open();
-                    for (int i = 0; i < names.Count; i++)
+                    for (int i = 0; i < names.Length; i++)
                     {
                         string fileName = names[i];
                         logger.Write("Обрабатывается файл " + fileName);
@@ -177,7 +177,8 @@ namespace KPLN_Publication.PdfWorker
                 }
                 finally
                 {
-                    if (doc != null) doc.Close();
+                    if (doc != null) 
+                        doc.Close();
                 }
 
             }
