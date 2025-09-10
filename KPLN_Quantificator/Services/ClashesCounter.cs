@@ -3,6 +3,7 @@ using Autodesk.Navisworks.Api.Clash;
 using KPLN_Quantificator.Forms;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace KPLN_Quantificator.Services
 {
@@ -10,7 +11,7 @@ namespace KPLN_Quantificator.Services
     {
         private static readonly Document _doc = Application.ActiveDocument;
 
-        private static List<string> _testNames = new List<string>
+        private static List<string> _testNamesList = new List<string>
         {
             "АР",
             "КР",
@@ -24,7 +25,7 @@ namespace KPLN_Quantificator.Services
             "ССАВ",      
         };
 
-        private static List<string> _detailedNames = new List<string>
+        private static List<string> _detailedNamesList = new List<string>
         {
             "ОВ",
             "ИТП",
@@ -33,6 +34,12 @@ namespace KPLN_Quantificator.Services
             "ЭОМ",
             "СС",
             "АВ",
+        };
+
+        private static List<string> _ignoreNamesList = new List<string>
+        {
+            "АР",
+            "КР"         
         };
 
         private static Dictionary<string, int> _counterResult = new Dictionary<string, int>();
@@ -44,7 +51,6 @@ namespace KPLN_Quantificator.Services
         private static Dictionary<string, int> _counterIosOnIosNonGroups = new Dictionary<string, int>();
 
 
-
         private static List<string> _errorTestNames = new List<string>();
 
         public static void Prepare()
@@ -52,12 +58,25 @@ namespace KPLN_Quantificator.Services
             _counterResult.Clear();
             _counterGroups.Clear();
             _counterNonGroups.Clear();
-            _errorTestNames.Clear();
-
+            
             _counterIosOnIos.Clear();
             _counterIosOnIosGroups.Clear();
             _counterIosOnIosNonGroups.Clear();
+
+            _errorTestNames.Clear();
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// Формирование данных по отчетам о коллизиях
@@ -66,33 +85,36 @@ namespace KPLN_Quantificator.Services
         {
             DocumentClashTests docClashTests = _doc.GetClash().TestsData;
 
+            // Один Clash из ClashTest (из Item)
             foreach (SavedItem savedItem in docClashTests.Tests)
             {
                 bool isExsist = false;
+
+                // Дисплейное имя
                 string testName = savedItem.DisplayName ?? string.Empty;
-                bool isSSAV = savedItem.DisplayName.Contains("СС") && savedItem.DisplayName.Contains("АВ");
 
-                HashSet<string> detailedCodesInName = new HashSet<string>();
-                foreach (var d in _detailedNames)
-                    if (testName.Contains(d))
-                        detailedCodesInName.Add(d);
+                // Список только ИОСных имён
+                HashSet<string> detailedCodesInName = GetDetailedCodesInName(testName);
 
-                bool nameHasDupOrSelf = testName.Contains("(Дублирование)") || testName.Contains("(Самопересечение)");
+                // ИОС и (Дублирование)/(Самопересечение)
+                bool nameHasDupOrSelf =
+                    (testName.Contains("(Дублирование)") || testName.Contains("(Самопересечение)"))
+                    && HasAnyDetailed(testName);
 
-                foreach (string namePart in _testNames)
+                // Отдел словоря со всеми отделами
+                foreach (string namePart in _testNamesList)
                 {
-                    if (!testName.Contains(namePart))
-                        continue;
 
-                    if (namePart == "СС" && isSSAV)
+                    if (!IsCategoryMatch(testName, namePart))
                         continue;
-
                     isExsist = true;
 
                     int counterAll = 0;
+
                     int groupCounter = 0;
                     int nonGroupCounter = 0;
 
+                    // Один Clash, как ClashTest
                     ClashTest currentClashTest = savedItem as ClashTest;
                     if (currentClashTest == null)
                     {
@@ -100,7 +122,9 @@ namespace KPLN_Quantificator.Services
                         continue;
                     }
 
+                    // Clash и группы Clash внутри отчёта
                     SavedItemCollection savedItemsColl = currentClashTest.Children;
+
                     foreach (SavedItem child in savedItemsColl)
                     {
                         if (child is ClashResult cr)
@@ -108,12 +132,13 @@ namespace KPLN_Quantificator.Services
                             if (cr.Status == ClashResultStatus.Active || cr.Status == ClashResultStatus.New)
                             {
                                 if (child.IsGroup)
-                                    groupCounter++;
+                                    groupCounter++; // Групп
                                 else
-                                    nonGroupCounter++;
+                                    nonGroupCounter++; // Без групп
                                 counterAll++;
                             }
                         }
+
                         else if (child.IsGroup)
                         {
                             if (child is GroupItem gi)
@@ -135,45 +160,138 @@ namespace KPLN_Quantificator.Services
                                     }
                                 }
                                 if (hasRelevantClash)
-                                    groupCounter++;
+                                    groupCounter++; // Групп
                             }
                         }
                     }
 
+                    // Всего
                     if (_counterResult.ContainsKey(namePart)) _counterResult[namePart] += counterAll;
                     else _counterResult.Add(namePart, counterAll);
 
+                    // Групп
                     if (_counterGroups.ContainsKey(namePart)) _counterGroups[namePart] += groupCounter;
                     else _counterGroups.Add(namePart, groupCounter);
 
+                    // Вне групп
                     if (_counterNonGroups.ContainsKey(namePart)) _counterNonGroups[namePart] += nonGroupCounter;
                     else _counterNonGroups.Add(namePart, nonGroupCounter);
 
-                    if (_detailedNames.Contains(namePart))
+
+
+
+
+
+
+
+
+                    if (_detailedNamesList.Contains(namePart))
                     {
-                        bool hasAnotherDetailed =
-                            detailedCodesInName.Count > 1 ||
-                            (detailedCodesInName.Count == 1 && !detailedCodesInName.Contains(namePart)); 
-
-                        bool isIosOnIos = hasAnotherDetailed || nameHasDupOrSelf;
-                        if (isIosOnIos)
+                        // 1) игнор-отделы (АР/КР и т.п.)
+                        bool hasIgnore = false;
+                        foreach (var ign in _ignoreNamesList)
                         {
-                            if (_counterIosOnIos.ContainsKey(namePart)) _counterIosOnIos[namePart] += counterAll;
-                            else _counterIosOnIos.Add(namePart, counterAll);
+                            if (IsCategoryMatch(testName, ign)) { hasIgnore = true; break; }
+                        }
 
-                            if (_counterIosOnIosGroups.ContainsKey(namePart)) _counterIosOnIosGroups[namePart] += groupCounter;
-                            else _counterIosOnIosGroups.Add(namePart, groupCounter);
+                        // 2) фильтруем детальные коды через IsCategoryMatch
+                        var filteredDetailed = new HashSet<string>();
+                        foreach (var d in detailedCodesInName)
+                        {
+                            if (!IsCategoryMatch(testName, d)) continue;
+                            filteredDetailed.Add(d);
+                        }
 
-                            if (_counterIosOnIosNonGroups.ContainsKey(namePart)) _counterIosOnIosNonGroups[namePart] += nonGroupCounter;
-                            else _counterIosOnIosNonGroups.Add(namePart, nonGroupCounter);
+                        // 3) составной "ССАВ/СС_АВ" детектим отдельно (он не в _detailedNamesList)
+                        bool hasCompositeSSAV = IsCategoryMatch(testName, "ССАВ");
+
+                        // 4) составной даёт «пару», только если нет игнора и есть хотя бы один детальный код
+                        bool compositeGivesPair = hasCompositeSSAV && !hasIgnore && filteredDetailed.Count > 0;
+
+                        // 5) берём в расчёт только если текущий детальный реально найден и нет игнора
+                        bool eligible = filteredDetailed.Contains(namePart) && !hasIgnore;
+
+                        if (eligible)
+                        {
+                            // 6) спец-кейс: “ОВ1 vs ОВ2” учитываем ТОЛЬКО в ИОС-на-ИОС
+                            bool ovHasTwo = (namePart == "ОВ") && HasOV1andOV2(testName);
+
+                            bool hasAnotherDetailed =
+                                (filteredDetailed.Count > 1) ||                                  // другой детальный код
+                                (filteredDetailed.Count == 1 && !filteredDetailed.Contains(namePart)) || // единственный код не равен namePart
+                                compositeGivesPair ||                                             // пара от ССАВ/СС_АВ
+                                ovHasTwo;                                                         // ОВ1 + ОВ2
+
+                            bool isIosOnIos = hasAnotherDetailed || nameHasDupOrSelf;
+
+                            if (isIosOnIos)
+                            {
+                                if (_counterIosOnIos.ContainsKey(namePart)) _counterIosOnIos[namePart] += counterAll;
+                                else _counterIosOnIos.Add(namePart, counterAll);
+
+                                if (_counterIosOnIosGroups.ContainsKey(namePart)) _counterIosOnIosGroups[namePart] += groupCounter;
+                                else _counterIosOnIosGroups.Add(namePart, groupCounter);
+
+                                if (_counterIosOnIosNonGroups.ContainsKey(namePart)) _counterIosOnIosNonGroups[namePart] += nonGroupCounter;
+                                else _counterIosOnIosNonGroups.Add(namePart, nonGroupCounter);
+                            }
                         }
                     }
+
                 }
-                                                        
+
                 if (!isExsist)
                     _errorTestNames.Add(savedItem.DisplayName);
             }
         }
+
+        private static bool HasOV1andOV2(string s) => s.Contains("ОВ1") && s.Contains("ОВ2");
+
+
+
+
+        // Единая проверка вхождения кода в названии теста
+        private static bool IsCategoryMatch(string testName, string code)
+        {
+            switch (code)
+            {
+                case "СС":
+                    // "СС", за которым НЕ идёт "АВ" и НЕ "_АВ"
+                    return Regex.IsMatch(testName, @"СС(?!_?АВ)");
+
+                case "АВ":
+                    // "АВ", перед которым НЕ "СС" и НЕ "СС_"
+                    return Regex.IsMatch(testName, @"(?<!СС)(?<!СС_)АВ");
+
+                case "ССАВ":
+                    // Ловим и слитно, и через подчёркивание
+                    return Regex.IsMatch(testName, @"СС_?АВ");
+
+                default:
+                    // Остальные — по-старому
+                    return testName.Contains(code);
+            }
+        }
+
+        // Сбор детальных кодов
+        private static HashSet<string> GetDetailedCodesInName(string testName)
+        {
+            var set = new HashSet<string>();
+            foreach (var d in _detailedNamesList)
+                if (IsCategoryMatch(testName, d))
+                    set.Add(d);
+            return set;
+        }
+
+        // Наличие ИОС-кода в имени
+        private static bool HasAnyDetailed(string testName)
+        {
+            foreach (var d in _detailedNamesList)
+                if (IsCategoryMatch(testName, d))
+                    return true;
+            return false;
+        }
+
 
 
 
@@ -186,7 +304,7 @@ namespace KPLN_Quantificator.Services
         {
             if (_counterResult.Count > 0)
             {
-                foreach (string key in _testNames)
+                foreach (string key in _testNamesList)
                 {
                     if (_counterResult.ContainsKey(key))
                     {
@@ -194,7 +312,7 @@ namespace KPLN_Quantificator.Services
                         int groupCount = _counterGroups.ContainsKey(key) ? _counterGroups[key] : 0;
                         int nonGroupCount = _counterNonGroups.ContainsKey(key) ? _counterNonGroups[key] : 0;
 
-                        if (_detailedNames.Contains(key))
+                        if (_detailedNamesList.Contains(key))
                         {
                             int iosTotal = _counterIosOnIos.ContainsKey(key) ? _counterIosOnIos[key] : 0;
                             int iosGroups = _counterIosOnIosGroups.ContainsKey(key) ? _counterIosOnIosGroups[key] : 0;
@@ -218,7 +336,7 @@ namespace KPLN_Quantificator.Services
             if (_errorTestNames.Count > 0)
             {
                 StringBuilder stringBuilder = new StringBuilder();
-                foreach (string name in _testNames)
+                foreach (string name in _testNamesList)
                 {
                     stringBuilder.Append($" {name},");
                 }
