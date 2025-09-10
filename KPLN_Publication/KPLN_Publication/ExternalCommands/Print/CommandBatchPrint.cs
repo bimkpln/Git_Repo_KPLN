@@ -269,6 +269,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             int printedSheetCount = 0;
 
             //печатаю листы из каждого выбранного revit-файла
+            List<string> pdfFileNames = new List<string>();
             foreach (string docTitle in allSheets.Keys)
             {
                 Document openedDoc = null;
@@ -443,6 +444,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             string fullFilename = System.IO.Path.Combine(outputFolder, tempFilename);
                             fullFilename = fullFilename.Replace("\\\\", "\\");
                             logger.Write("Печать в файл " + fullFilename);
+                            pdfFileNames.Add(fullFilename);
 
                             //смещаю область для печати многолистовых спецификаций
                             double offsetX = -i * msheet.WidthMm / 25.4; //смещение задается в дюймах!
@@ -514,12 +516,13 @@ namespace KPLN_Publication.ExternalCommands.Print
             {
                 printedSheets.AddRange(mss);
             }
-            List<string> pdfFileNames = printedSheets.Select(i => i.PdfFileName).ToList();
+
             logger.Write("PDF файлы которые должны быть напечатаны:");
             foreach (string pdfname in pdfFileNames)
             {
                 logger.Write("  " + pdfname);
             }
+
             logger.Write("PDF файлы напечатанные по факту:");
             foreach (string pdfnameOut in System.IO.Directory.GetFiles(outputFolder, "*.pdf"))
             {
@@ -566,8 +569,8 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                     //GrayscaleConvertTools.ConvertPdf(file, outFile, ColorType.Grayscale, new List<ExcludeRectangle> { rect, rect2 });
 
-                    System.IO.File.Delete(file);
-                    System.IO.File.Move(outFile, file);
+                    File.Delete(file);
+                    File.Move(outFile, file);
                     logger.Write("Лист успешно преобразован в ч/б");
                 }
             }
@@ -582,11 +585,11 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 string[] pdfFileNamesFromPath = Directory.GetFiles(outputFolder, "*.pdf");
 
-                PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNamesFromPath, combinedFile, logger);
+                PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNames, combinedFile, logger);
 
-                foreach (string file in pdfFileNamesFromPath)
+                foreach (string file in pdfFileNames)
                 {
-                    System.IO.File.Delete(file);
+                    File.Delete(file);
                     logger.Write("Удален файл " + file);
                 }
                 logger.Write("Объединено успешно");

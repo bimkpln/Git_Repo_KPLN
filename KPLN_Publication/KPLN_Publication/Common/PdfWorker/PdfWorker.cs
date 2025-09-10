@@ -144,7 +144,7 @@ namespace KPLN_Publication.PdfWorker
         }
 
 
-        public static bool CombineMultiplyPDFs(string[] names, string outFile, Logger logger)
+        public static bool CombineMultiplyPDFs(List<string> names, string outFile, Logger logger)
         {
             bool merged = false;
 
@@ -157,7 +157,7 @@ namespace KPLN_Publication.PdfWorker
                 try
                 {
                     doc.Open();
-                    for (int i = 0; i < names.Length; i++)
+                    for (int i = 0; i < names.Count; i++)
                     {
                         string fileName = names[i];
                         logger.Write("Обрабатывается файл " + fileName);
@@ -177,8 +177,7 @@ namespace KPLN_Publication.PdfWorker
                 }
                 finally
                 {
-                    if (doc != null) 
-                        doc.Close();
+                    doc?.Close();
                 }
 
             }
