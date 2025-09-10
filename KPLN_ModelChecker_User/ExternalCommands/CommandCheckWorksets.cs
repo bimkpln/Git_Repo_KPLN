@@ -56,7 +56,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            if (ExecuteByUIApp<CheckWorksets>(commandData.Application, true, true, true, true))
+            if (ExecuteByUIApp<CheckWorksets>(commandData.Application, false, true, true, true, true))
                 return Result.Succeeded;
 
             return Result.Cancelled;

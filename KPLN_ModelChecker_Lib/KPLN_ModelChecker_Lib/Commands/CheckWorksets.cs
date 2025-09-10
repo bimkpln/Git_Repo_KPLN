@@ -127,8 +127,12 @@ namespace KPLN_ModelChecker_Lib.Commands
                     //Анализ уровней и осей
                     if (element.GetType() == typeof(Grid) || element.GetType() == typeof(Level))
                     {
-                        string wsName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
-                        if (!wsName.ToLower().Contains("оси и уровни") & !wsName.ToLower().Contains("общие уровни и сетки"))
+                        string wsName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString().ToLower();
+                        if (!wsName.Contains("оси и уровни") && !wsName.Contains("общие уровни и сетки")
+                            // Для СЕТ
+                            && !wsName.Contains("_уровни")
+                            // Для СЕТ
+                            && !wsName.Contains("оси_"))
                         {
                             result.Add(new CheckerEntity(
                                 element,

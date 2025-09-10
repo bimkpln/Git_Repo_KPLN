@@ -17,6 +17,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KPLN_ModelChecker_User.Forms
 {
@@ -50,13 +51,18 @@ namespace KPLN_ModelChecker_User.Forms
         /// Коллеция WPFEntity, которая должна отображаться в отчете
         /// </summary>
         private readonly IEnumerable<WPFEntity> _entities;
+        /// <summary>
+        /// Тип плагина, который запускает окно
+        /// </summary>
+        private readonly Type _pluginType;
         private readonly WPFReportCreator _creator;
         private CollectionViewSource _entityViewSource;
 
-        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, bool setLastRun)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, Type pluginType, WPFReportCreator creator, bool setLastRun)
         {
             _application = uiapp;
             _externalCommand = externalCommand;
+            _pluginType = pluginType;
             _creator = creator;
             _setLastRun = setLastRun;
             _entities = _creator.WPFEntityCollection;
@@ -82,7 +88,7 @@ namespace KPLN_ModelChecker_User.Forms
                 this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 
-        public CheckMainForm(UIApplication uiapp, string externalCommand, WPFReportCreator creator, bool setLastRun, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, creator, setLastRun)
+        public CheckMainForm(UIApplication uiapp, string externalCommand, Type pluginType, WPFReportCreator creator, bool setLastRun, ExtensibleStorageBuilder esBuilderRun, ExtensibleStorageBuilder esBuilderUserText, ExtensibleStorageBuilder esBuilderMarker) : this(uiapp, externalCommand, pluginType, creator, setLastRun)
         {
             _esBuilderRun = esBuilderRun;
             _esBuilderUserText = esBuilderUserText;
@@ -199,20 +205,13 @@ namespace KPLN_ModelChecker_User.Forms
                 if (wpfEntity.IsApproveElement)
                 {
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
-                    userTextInput.ShowDialog();
-
-                    if (userTextInput.Status == UIStatus.RunStatus.Run)
-                    {
+                    if ((bool)userTextInput.ShowDialog())
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
-                    }
                 }
             }
         }
 
-        private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateEntityList();
-        }
+        private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e) => UpdateEntityList();
 
         /// <summary>
         /// Перезапустить плагин БЕЗ обновления информации по последнему запуску
@@ -229,10 +228,11 @@ namespace KPLN_ModelChecker_User.Forms
 
                 // Определяем метод ExecuteByUIApp
                 MethodInfo executeMethod = type.GetMethod("ExecuteByUIApp");
+                MethodInfo executeMethodRef = executeMethod.MakeGenericMethod(_pluginType);
 
                 // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
                 if (executeMethod != null)
-                    executeMethod.Invoke(instance, new object[] { _application, true, true, true, true });
+                    executeMethodRef.Invoke(instance, new object[] { _application, false, false, true, false, true });
                 else
                     throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
             }

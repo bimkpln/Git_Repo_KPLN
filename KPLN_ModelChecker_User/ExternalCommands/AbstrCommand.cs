@@ -38,7 +38,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        public virtual bool ExecuteByUIApp<T>(UIApplication uiapp, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false)
+        public virtual bool ExecuteByUIApp<T>(UIApplication uiapp, bool onlyErrorType = false, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false) 
             where T : AbstrCheck, new()
         {
             Document doc = uiapp.ActiveUIDocument.Document;
@@ -53,14 +53,16 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
 
-            CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck);
+            CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
             if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
-                ReportCreatorAndDemonstrator(uiapp, setLastRun);
+                ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
             else if (showSuccsessText)
             {
                 // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
+                if (showMainForm)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
 
+                // Выводим, что всё ок
                 HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
             }
 
@@ -74,12 +76,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="setLastRun">Нужно ли записывать последний запуск?</param>
         /// <param name="isMarkered">Нужно ли использовать основной маркер при создании окна?</param>
         /// <returns>Окно для вывода пользователю</returns>
-        public void ReportCreatorAndDemonstrator(UIApplication uiapp, bool setLastRun = false, bool isMarkered = false)
+        public void ReportCreatorAndDemonstrator<T>(UIApplication uiapp, bool setLastRun = false, bool isMarkered = false) where T : AbstrCheck, new()
         {
             WPFReportCreator repCreator = CreateReport(uiapp.ActiveUIDocument.Document, isMarkered);
             SetWPFEntityFiltration(repCreator);
 
-            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, repCreator, setLastRun, CommandCheck.ESEntity.ESBuilderRun, CommandCheck.ESEntity.ESBuilderUserText, CommandCheck.ESEntity.ESBuildergMarker);
+            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, typeof(T), repCreator, setLastRun, CommandCheck.ESEntity.ESBuilderRun, CommandCheck.ESEntity.ESBuilderUserText, CommandCheck.ESEntity.ESBuildergMarker);
             form.Show();
         }
 

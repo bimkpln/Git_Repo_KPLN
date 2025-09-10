@@ -39,7 +39,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            if (ExecuteByUIApp<CheckLinks>(commandData.Application, true, true, true, true))
+            if (ExecuteByUIApp<CheckLinks>(commandData.Application, false, true, true, true, true))
                 return Result.Succeeded;
 
             return Result.Cancelled;

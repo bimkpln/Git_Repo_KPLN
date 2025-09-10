@@ -62,8 +62,9 @@ namespace KPLN_ModelChecker_Lib.Core
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для полного анализа</param>
+        /// <param name="onlyErrorType">Только сущности, с типом Error из ключевого enum по статусам проверок</param>
         /// <returns>Коллекция CheckerEntity для передачи в отчет пользовател</returns>
-        public CheckerEntity[] ExecuteCheck(Document doc, Element[] elemColl)
+        public CheckerEntity[] ExecuteCheck(Document doc, Element[] elemColl, bool onlyErrorType)
         {
             if (!elemColl.Any()) return null;
 
@@ -75,8 +76,11 @@ namespace KPLN_ModelChecker_Lib.Core
                 else
                     PreparedElemColl = elemColl;
 
-                CheckerEntity[] result = GetCheckerEntities(doc, PreparedElemColl).ToArray();
-                return result;
+                IEnumerable<CheckerEntity> entColl = GetCheckerEntities(doc, PreparedElemColl);
+                if (onlyErrorType)
+                    return entColl.Where(e => e.Status == ErrorStatus.Error).ToArray();
+                else
+                    return entColl.ToArray();
             }
             catch (Exception ex)
             {
