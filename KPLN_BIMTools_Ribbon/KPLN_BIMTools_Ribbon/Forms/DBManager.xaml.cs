@@ -11,7 +11,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             InitializeComponent();
 
-            DataContext = new DBManagerViewModel();
+            DataContext = new DBManagerViewModel(this);
 
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
         }
