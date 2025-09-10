@@ -78,8 +78,7 @@ namespace KPLN_ModelChecker_User.Forms
             UpdateEntityList();
 
             // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
-            if (_externalCommand == nameof(CommandCheckLinks) 
-                || _externalCommand == nameof(CommandCheckFamilies)) 
+            if (_externalCommand == nameof(CommandCheckFamilies)) 
                 this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 

@@ -205,7 +205,6 @@
     <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
     <Compile Include="Common\CheckMEPHeightARElemData.cs" />
     <Compile Include="Common\CheckMEPHeightMEPData.cs" />
-    <Compile Include="Common\ExtensibleStorageEntity.cs" />
     <Compile Include="Common\IJsonSerializable.cs" />
     <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
@@ -214,6 +213,7 @@
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExternalCommands\AbstrCommand.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckWorksets.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckMonolith.cs" />
@@ -226,7 +226,6 @@
     <Compile Include="ExternalCommands\OldVers\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckListAnnotations.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckFamilies.cs" />
     <Compile Include="Forms\CheckMainForm.xaml.cs">
       <DependentUpon>CheckMainForm.xaml</DependentUpon>

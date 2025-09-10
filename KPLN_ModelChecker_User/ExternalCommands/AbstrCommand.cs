@@ -2,9 +2,9 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
-using KPLN_ModelChecker_Lib.Commands;
-using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_Lib.Core;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -13,42 +13,59 @@ using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
-    public abstract class AbstrCommand<T>
+    public abstract class AbstrCommand
     {
         /// <summary>
         /// Конструктор для классов, наследуемых от AbstrCheckCommand. Если его не переопределить в наследнике - IExternalCommand не справиться с запуском (ему нужен конструтор по умолчанию)
         /// </summary>
-        public AbstrCommand()
-        {
-        }
+        public AbstrCommand(){ }
 
         /// <summary>
-        /// Конструктор для класса Module. Он инициализирует основные переменные для работы с ExtensibleStorage
+        /// Коллекция элементов для проверки
         /// </summary>
-        internal AbstrCommand(ExtensibleStorageEntity esEntity)
-        {
-            ESEntity = esEntity;
-        }
+        public Element[] ElemsToCheck { get; private protected set; }
 
         /// <summary>
         /// Коллекция элементов с ошибками
         /// </summary>
-        public static CheckerEntity[] CheckerEntities { get; private protected set; }
-
-        /// <summary>
-        /// Ссылка на ExtensibleStorageEntity
-        /// </summary>
-        internal static ExtensibleStorageEntity ESEntity { get; private protected set; }
+        public CheckerEntity[] CheckerEntities { get; private protected set; }
 
         /// <summary>
         /// Ссылка на проверку
         /// </summary>
-        public AbstrCheck<T> CommandCheck { get; set; }
+        public AbstrCheck CommandCheck { get; set; }
 
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        public abstract Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false);
+        public virtual bool ExecuteByUIApp<T>(UIApplication uiapp, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false)
+            where T : AbstrCheck, new()
+        {
+            Document doc = uiapp.ActiveUIDocument.Document;
+            
+            if (CommandCheck == null || ElemsToCheck == null)
+            {
+                CommandCheck = new T();
+                ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+            }
+            
+            if (setPluginActivity)
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
+
+            CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck);
+            if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
+                ReportCreatorAndDemonstrator(uiapp, setLastRun);
+            else if (showSuccsessText)
+            {
+                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
+
+                HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// Подготовка окна результата проверки для пользователя
@@ -62,7 +79,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             WPFReportCreator repCreator = CreateReport(uiapp.ActiveUIDocument.Document, isMarkered);
             SetWPFEntityFiltration(repCreator);
 
-            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, repCreator, setLastRun, ESEntity.ESBuilderRun, ESEntity.ESBuilderUserText, ESEntity.ESBuildergMarker);
+            CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, repCreator, setLastRun, CommandCheck.ESEntity.ESBuilderRun, CommandCheck.ESEntity.ESBuilderUserText, CommandCheck.ESEntity.ESBuildergMarker);
             form.Show();
         }
 
@@ -78,20 +95,20 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             #region Настройка информации по логам проека
             Element piElem = doc.ProjectInformation;
-            ResultMessage esMsgRun = ESEntity.ESBuilderRun.GetResMessage_Element(piElem);
-            ResultMessage esMsgMarker = ESEntity.ESBuildergMarker.GetResMessage_Element(piElem);
+            ResultMessage esMsgRun = CommandCheck.ESEntity.ESBuilderRun.GetResMessage_Element(piElem);
+            ResultMessage esMsgMarker = CommandCheck.ESEntity.ESBuildergMarker.GetResMessage_Element(piElem);
             #endregion
 
             WPFReportCreator result = null;
-            WPFEntity[] wpfEntityColl = CheckerEntities.Select(chEnt => new WPFEntity(chEnt, ESEntity)).ToArray();
-            if (ESEntity.ESBuildergMarker.Guid.Equals(Guid.Empty))
-                result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
+            WPFEntity[] wpfEntityColl = CheckerEntities.Select(chEnt => new WPFEntity(chEnt, CommandCheck.ESEntity)).ToArray();
+            if (CommandCheck.ESEntity.ESBuildergMarker.Guid.Equals(Guid.Empty))
+                result = new WPFReportCreator(wpfEntityColl, CommandCheck.ESEntity.CheckName, esMsgRun.Description);
             else
             {
                 switch (esMsgMarker.CurrentStatus)
                 {
                     case MessageStatus.Ok:
-                        result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description, esMsgMarker.Description);
+                        result = new WPFReportCreator(wpfEntityColl, CommandCheck.ESEntity.CheckName, esMsgRun.Description, esMsgMarker.Description);
                         break;
 
                     case MessageStatus.Error:
@@ -99,13 +116,13 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         {
                             TaskDialog taskDialog = new TaskDialog("[ОШИБКА]")
                             {
-                                MainInstruction = $"{ESEntity.CheckName}: {esMsgMarker.Description}"
+                                MainInstruction = $"{CommandCheck.ESEntity.CheckName}: {esMsgMarker.Description}"
                             };
                             taskDialog.Show();
                             return null;
                         }
                         else
-                            result = new WPFReportCreator(wpfEntityColl, ESEntity.CheckName, esMsgRun.Description);
+                            result = new WPFReportCreator(wpfEntityColl, CommandCheck.ESEntity.CheckName, esMsgRun.Description);
 
                         break;
                 }

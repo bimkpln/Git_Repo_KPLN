@@ -4,7 +4,6 @@ using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib.Commands;
-using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
@@ -14,26 +13,19 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public sealed class CommandCheckWorksets : AbstrCommand<CommandCheckWorksets>, IExternalCommand
+    public sealed class CommandCheckWorksets : AbstrCommand, IExternalCommand
     {
-        internal const string PluginName = "Проверка рабочих наборов";
-
-        private CheckWorksets _checkWorksets;
-        private Element[] _elemsToCheck;
-
         public CommandCheckWorksets() : base() { }
-
-        internal CommandCheckWorksets(ExtensibleStorageEntity esEntity) : base(esEntity) { }
 
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            _checkWorksets = new CheckWorksets(commandData.Application);
-            _elemsToCheck = _checkWorksets.GetElemsToCheck();
-
             Document doc = commandData.Application.ActiveUIDocument.Document;
+            
+            CommandCheck = new CheckWorksets();
+            ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
 
             // Блокирую проверку части РН ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.
@@ -64,32 +56,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            return ExecuteByUIApp(commandData.Application, true, true, true, true);
-        }
+            if (ExecuteByUIApp<CheckWorksets>(commandData.Application, true, true, true, true))
+                return Result.Succeeded;
 
-        public override Result ExecuteByUIApp(UIApplication uiapp, bool setPluginActivity, bool showMainForm, bool setLastRun, bool showSuccsessText)
-        {
-            if (setPluginActivity)
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
-            if (_checkWorksets == null || _elemsToCheck == null)
-            {
-                _checkWorksets = new CheckWorksets(uiapp);
-                _elemsToCheck = _checkWorksets.GetElemsToCheck();
-            }
-
-            CheckerEntities = _checkWorksets.ExecuteCheck(_elemsToCheck);
-            if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
-                ReportCreatorAndDemonstrator(uiapp, setLastRun);
-            else if (showSuccsessText)
-            {
-                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
-
-                HtmlOutput.Print($"[{ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
-            }
-
-            return Result.Succeeded;
+            return Result.Cancelled;
         }
 
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)

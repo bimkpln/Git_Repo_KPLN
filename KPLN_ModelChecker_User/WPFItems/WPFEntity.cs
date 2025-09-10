@@ -1,14 +1,12 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using KPLN_ModelChecker_Lib;
-using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_Lib.Common;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Windows;
 using System.Windows.Media;
-using System.Xml.Linq;
 
 namespace KPLN_ModelChecker_User.WPFItems
 {
@@ -62,10 +60,10 @@ namespace KPLN_ModelChecker_User.WPFItems
                         .GetResMessage_Element(e)
                         .Description
                         .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
-                    {
-                        CurrentStatus = ErrorStatus.Approve;
-                        ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
-                    }
+                {
+                    CurrentStatus = ErrorStatus.Approve;
+                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
+                }
                 else
                     CurrentStatus = ErrorStatus.Error;
             }

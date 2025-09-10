@@ -43,8 +43,15 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 Element piElem = pi as Element;
 
                 // Вписываю, если РН НЕ занят
-                ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, new ElementId[] { piElem.Id });
-                if (availableWSElemsId.Count > 0) 
+                bool allAvailableWSElems = true;
+                if (doc.IsWorkshared)
+                {
+                    ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, new ElementId[] { piElem.Id });
+                    allAvailableWSElems = availableWSElemsId.Count > 0;
+
+                }
+
+                if (allAvailableWSElems) 
                 {
                     ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
                     esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);
