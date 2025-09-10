@@ -145,6 +145,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_OpenDocHandler">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -164,6 +168,10 @@
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_OpenDocHandler">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -187,6 +195,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_OpenDocHandler">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -208,6 +220,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_OpenDocHandler">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -220,8 +236,6 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\FieldChangedEventArgs.cs" />
-    <Compile Include="Common\RevitEventWorker.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\IExecuteByUIApp.cs" />
     <Compile Include="Common\ExchangeService.cs" />
