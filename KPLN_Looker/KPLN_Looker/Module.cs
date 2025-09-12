@@ -367,6 +367,7 @@ namespace KPLN_Looker
                     if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\022_Подписи в штамп")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\0_Штамп\\023_Подписи на титул")
+                        || familyPath.Contains("X:\\BIM\\3_Семейства\\0_Общие семейства\\1_Марки\\011_Разрывы скобки")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\1_АР")
                         || familyPath.Contains("X:\\BIM\\3_Семейства\\2_КР")
                         || familyPath.Contains("Y:\\Жилые здания\\Самолет Сетунь\\4.Оформление\\4.Стадия_Р")
@@ -1046,14 +1047,8 @@ namespace KPLN_Looker
 
 
             #region Автопроверки (лучше в конец, чтобы всё остальное отработало корректно)
-            if (!doc.Title.StartsWith("ИЗМЛ_")
-                && !doc.Title.StartsWith("ПШМ1_")
-                && !doc.Title.StartsWith("ПСРВ_")
-                && !doc.Title.StartsWith("SH1-"))
-            {
-                UIApplication uiApp = new UIApplication(doc.Application);
-                CheckBatchRunner.RunAll(uiApp);
-            }
+            UIApplication uiApp = new UIApplication(doc.Application);
+            CheckBatchRunner.RunAll(uiApp, doc.Title);
             #endregion
         }
     }

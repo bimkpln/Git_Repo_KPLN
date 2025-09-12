@@ -12,15 +12,26 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Запуск всех проверок по преднастройке в коде
         /// </summary>
-        public static void RunAll(UIApplication uiApp)
+        public static void RunAll(UIApplication uiApp, string docTitle)
         {
             bool anyErrors = false;
 
-            // Дадавай новыя праверкі тут:
-            anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiApp);
-            anyErrors |= Run<CommandCheckMainLines, CheckMainLines>(uiApp);
-            anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiApp);
-            // anyErrors |= Run<CommandCheckSomethingElse1, CommandCheckSomethingElse2>(uiApp);
+            // Общий фильтр по проектам
+            if (!docTitle.StartsWith("ИЗМЛ_")
+                && !docTitle.StartsWith("ПШМ1_")
+                && !docTitle.StartsWith("ПСРВ_")
+                && !docTitle.StartsWith("SH1-"))
+            {
+                // anyErrors |= Run<CommandCheckSomethingElse1, CommandCheckSomethingElse2>(uiApp);
+                
+                anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiApp);
+                anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiApp);
+                
+                // Персональный фильтр по проектам
+                if (!docTitle.StartsWith("МТРС_")
+                    && !docTitle.StartsWith("СЕТ_1_"))
+                    anyErrors |= Run<CommandCheckMainLines, CheckMainLines>(uiApp);
+            }
 
             if (anyErrors)
             {
