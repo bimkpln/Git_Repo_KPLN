@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
@@ -11,13 +10,13 @@ namespace KPLN_ModelChecker_Lib.Commands
     public sealed class CheckLinks : AbstrCheck
     {
         /// <summary>
-        /// Пустой конструктор для внесения статичных данных класса
+        /// Пустой конструктор для внесения данных класса
         /// </summary>
         public CheckLinks() : base()
         {
             if (PluginName == null)
                 PluginName = "Проверка связей";
-            
+
             if (ESEntity == null)
                 ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CheckLinks", new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
         }
@@ -38,7 +37,7 @@ namespace KPLN_ModelChecker_Lib.Commands
         private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
-            
+
             RevitLinkInstance[] openedRLIColl = elemColl
                 .Cast<RevitLinkInstance>()
                 .Where(rli => rli.GetLinkDocument() != null)

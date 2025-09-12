@@ -46,7 +46,9 @@ namespace KPLN_ModelChecker_Lib
             else if (elemData is IEnumerable<Element> elements)
             {
                 ElementCollection = elements;
-                ElementIdCollection = elements.Select(e => e.Id);
+                ElementIdCollection = elements
+                    .Where(e => e.IsValidObject)
+                    .Select(e => e.Id);
 
                 if (ElementCollection.Count() > 1)
                 {

@@ -23,7 +23,7 @@ namespace KPLN_ModelChecker_Lib.Commands
     public sealed class CheckMainLines : AbstrCheck
     {
         /// <summary>
-        /// Пустой конструктор для внесения статичных данных класса
+        /// Пустой конструктор для внесения данных класса
         /// </summary>
         public CheckMainLines() : base()
         {
@@ -95,7 +95,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             element,
                             "Ошибка мониторинга",
                             $"Связь не найдена: «{element.Name}»",
-                            $"Элементу с ID {element.Id} необходимо исправить мониторинг",
+                            $"Мониторинг назначен на связь, которой больше не существует в модели.",
                             false);
                     }
                     else if (!link.Name.ToLower().Contains("разб")
@@ -105,7 +105,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             element,
                             "Ошибка мониторинга",
                             $"Мониторинг не из разбивочного файла: «{element.Name}»",
-                            $"Элементу с ID {element.Id} необходимо исправить мониторинг, сейчас он присвоен связи {link.Name}",
+                            $"Мониторинг может быть только из разбивочного файла, сейчас он присвоен связи {link.Name}",
                             false);
                     }
                 }
@@ -116,8 +116,8 @@ namespace KPLN_ModelChecker_Lib.Commands
             {
                 return new CheckerEntity(
                     element,
-                    "Отсутсвие мониторинга",
-                    $"Элементу с ID {element.Id} необходимо задать мониторинг",
+                    "Отсутствие мониторинга",
+                    $"Оси и уровни обязательно должны иметь мониторинг из разбивочного файла",
                     string.Empty,
                     false);
             }
@@ -139,7 +139,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             return new CheckerEntity(
                 element,
-                "Отсутсвие прикрепления (PIN)",
+                "Отсутствие прикрепления (PIN)",
                 $"Элемент не прикреплен: «{element.Name}»",
                 $"Элемент с ID {element.Id} необходимо прикрепить (PIN). Если он в группе - достаточно прикрепить (PIN) группу",
                 false);

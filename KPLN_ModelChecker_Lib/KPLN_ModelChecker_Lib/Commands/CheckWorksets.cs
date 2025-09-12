@@ -11,7 +11,7 @@ namespace KPLN_ModelChecker_Lib.Commands
     public sealed class CheckWorksets : AbstrCheck
     {
         /// <summary>
-        /// Пустой конструктор для внесения статичных данных класса
+        /// Пустой конструктор для внесения данных класса
         /// </summary>
         public CheckWorksets() : base()
         {

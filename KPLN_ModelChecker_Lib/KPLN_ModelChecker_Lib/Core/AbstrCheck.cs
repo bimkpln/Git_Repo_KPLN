@@ -14,7 +14,7 @@ namespace KPLN_ModelChecker_Lib.Core
     public abstract class AbstrCheck
     {
         /// <summary>
-        /// Пустой конструктор для внесения статичных данных класса
+        /// Пустой конструктор для внесения данных класса
         /// </summary>
         public AbstrCheck() { }
 
