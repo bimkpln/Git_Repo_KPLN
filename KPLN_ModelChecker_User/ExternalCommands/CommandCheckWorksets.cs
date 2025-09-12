@@ -56,10 +56,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            if (ExecuteByUIApp<CheckWorksets>(commandData.Application, false, true, true, true, true))
-                return Result.Succeeded;
-
-            return Result.Cancelled;
+            ExecuteByUIApp<CheckWorksets>(commandData.Application, false, true, true, true, true);
+            
+            return Result.Succeeded;
         }
 
         private protected override void SetWPFEntityFiltration(WPFReportCreator report)

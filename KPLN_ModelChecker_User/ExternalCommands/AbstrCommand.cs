@@ -38,35 +38,40 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        public virtual bool ExecuteByUIApp<T>(UIApplication uiapp, bool onlyErrorType = false, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false) 
+        public virtual void ExecuteByUIApp<T>(UIApplication uiapp, bool onlyErrorType = false, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false) 
             where T : AbstrCheck, new()
         {
-            Document doc = uiapp.ActiveUIDocument.Document;
-            
-            if (CommandCheck == null || ElemsToCheck == null)
+            try
             {
-                CommandCheck = new T();
-                ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+                Document doc = uiapp.ActiveUIDocument.Document;
+
+                if (CommandCheck == null || ElemsToCheck == null)
+                {
+                    CommandCheck = new T();
+                    ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+                }
+
+                if (setPluginActivity)
+                    DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+
+
+                CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
+                if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
+                    ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
+                else if (showSuccsessText)
+                {
+                    // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+                    if (showMainForm)
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
+
+                    // Выводим, что всё ок
+                    HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
+                }
             }
-            
-            if (setPluginActivity)
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
-
-            CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
-            if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
-                ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
-            else if (showSuccsessText)
+            catch (Exception ex) 
             {
-                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                if (showMainForm)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
-
-                // Выводим, что всё ок
-                HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
+                HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] - ошибка при проверке: {ex.Message}", MessageType.Error);
             }
-
-            return true;
         }
 
         /// <summary>
