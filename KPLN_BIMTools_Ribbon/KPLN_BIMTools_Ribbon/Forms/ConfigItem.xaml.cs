@@ -17,6 +17,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -413,11 +414,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // Получаем выбранные элементы
             var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
 
-            // Удаляем каждый выбранный элемент из коллекции
-            foreach (var item in selectedItems)
+            UserDialog cd = new UserDialog("Предупреждение", $"Сейчас будет удалены элементы в количестве {selectedItems.Count} шт.");
+            if ((bool)cd.ShowDialog())
             {
-                if (item is FileEntity fileEntity)
-                    FileEntitiesList.Remove(fileEntity);
+                // Удаляем каждый выбранный элемент из коллекции
+                foreach (var item in selectedItems)
+                {
+                    if (item is FileEntity fileEntity)
+                        FileEntitiesList.Remove(fileEntity);
+                }
             }
         }
         #endregion

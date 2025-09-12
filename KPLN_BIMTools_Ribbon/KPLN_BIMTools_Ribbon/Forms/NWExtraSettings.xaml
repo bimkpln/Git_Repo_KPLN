@@ -1,11 +1,12 @@
-﻿<UserControl x:Class="KPLN_BIMTools_Ribbon.Forms.NWExtraSettings"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:KPLN_BIMTools_Ribbon.Forms"
-             mc:Ignorable="d" 
-             Background="#FF292D36">
+﻿<UserControl 
+    x:Class="KPLN_BIMTools_Ribbon.Forms.NWExtraSettings"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_BIMTools_Ribbon.Forms"
+    mc:Ignorable="d" 
+    Background="#FF292D36">
     <UserControl.Resources>
         
         <local:DoubleValidationRule x:Key="DoubleValidationRule"/>
@@ -46,18 +47,20 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <Style 
+            TargetType="Border">
+            <Setter Property="BorderBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
 
     </UserControl.Resources>
 
-    <Grid ShowGridLines="True">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0"/>
-            <ColumnDefinition Width="400*"/>
-            <ColumnDefinition Width="150"/>
-            <ColumnDefinition Width="0"/>
+            <ColumnDefinition MinWidth="385"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="0"/>
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
@@ -68,143 +71,200 @@
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
-            <RowDefinition Height="0"/>
         </Grid.RowDefinitions>
+
+        <Border>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Коэффициент фасетизации"/>
+                <TextBox
+                    Grid.Column="1"
+                    Style="{StaticResource TBox}"
+                    Width="50"
+                    TextChanged="FacTBox_TextChanged">
+                    <TextBox.Text>
+                        <Binding 
+                            Path="FacetingFactor" 
+                            UpdateSourceTrigger="PropertyChanged">
+                            <Binding.ValidationRules>
+                                <StaticResource ResourceKey="DoubleValidationRule"/>
+                            </Binding.ValidationRules>
+                        </Binding>
+                    </TextBox.Text>
+                </TextBox>
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Преобразовать свойства объектов"/>
+                <CheckBox
+                    Grid.Column="1"
+                    Style="{StaticResource CBox}"
+                    IsChecked="{Binding ConvertElementProperties, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
         
-        <TextBlock
-            Grid.Row="1"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Коэффициент фасетизации"/>
-        <TextBox
-            Grid.Row="1"
-            Grid.Column="2"
-            Style="{StaticResource TBox}"
-            Width="50"
-            TextChanged="FacTBox_TextChanged">
-            <TextBox.Text>
-                <Binding 
-                    Path="FacetingFactor" 
-                    UpdateSourceTrigger="PropertyChanged">
-                    <Binding.ValidationRules>
-                        <StaticResource ResourceKey="DoubleValidationRule"/>
-                    </Binding.ValidationRules>
-                </Binding>
-            </TextBox.Text>
-        </TextBox>
-
-        <TextBlock
-            Grid.Row="2"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Преобразовать свойства объектов"/>
-        <CheckBox
-            Grid.Row="2"
-            Grid.Column="2"
-            Style="{StaticResource CBox}"
-            IsChecked="{Binding ConvertElementProperties, 
-                UpdateSourceTrigger=PropertyChanged}"/>
+        <Border
+            Grid.Row="2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Преобразовать связанные файлы"/>
+                <CheckBox
+                    Grid.Column="1"
+                    Style="{StaticResource CBox}"
+                    IsChecked="{Binding ExportLinks, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
         
-        <TextBlock
-            Grid.Row="3"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Преобразовать связанные файлы"/>
-        <CheckBox
-            Grid.Row="3"
-            Grid.Column="2"
-            Style="{StaticResource CBox}"
-            IsChecked="{Binding ExportLinks, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="4"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Проверять и находить отсутсв. материалы"/>
-        <CheckBox
-            Grid.Row="4"
-            Grid.Column="2"
-            Style="{StaticResource CBox}"
-            IsChecked="{Binding FindMissingMaterials, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="5"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Разделять файл по уровням"/>
-        <CheckBox
-            Grid.Row="5"
-            Grid.Column="2"
-            Style="{StaticResource CBox}"
-            IsChecked="{Binding DivideFileIntoLevels, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="6"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Область экспорта"/>
-        <ComboBox
-            x:Name="ExportScopeComboBox"
-            Grid.Row="6"
-            Grid.Column="2"
-            Style="{StaticResource CombBox}"
-            SelectionChanged="ExportScope_Selected"/>
-
-        <TextBlock
-            Grid.Row="7"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Экспортировать геомтерию помещений"/>
-        <CheckBox
-            Grid.Row="7"
-            Grid.Column="2"
-            Style="{StaticResource CBox}"
-            IsChecked="{Binding ExportRoomGeometry, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="8"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Имя вида для экспорта"/>
-        <TextBox
-            Grid.Row="8"
-            Grid.Column="2"
-            Style="{StaticResource TBox}"
-            Width="140"
-            Text="{Binding ViewName, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="9"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Имя рабочих наборов, которые нужно закрыть (указывать через '~')"/>
-        <TextBox
-            Grid.Row="9"
-            Grid.Column="2"
-            Style="{StaticResource TBox}"
-            Width="140"
-            ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
-            Text="{Binding WorksetToCloseNamesStartWith, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-        <TextBlock
-            Grid.Row="10"
-            Grid.Column="1"
-            Style="{StaticResource TBlock}"
-            Text="Спец. окончание в имени файла Navisworks"/>
-        <TextBox
-            Grid.Row="10"
-            Grid.Column="2"
-            Style="{StaticResource TBox}"
-            Width="140"
-            ToolTip="Добавляется в конце имени получаемого файла nwc. Разделить нужно указывать самостоятельно"
-            Text="{Binding NavisDocPostfix, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
+        <Border
+            Grid.Row="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Проверять и находить отсутсв. материалы"/>
+                <CheckBox
+                    Grid.Column="1"
+                    Style="{StaticResource CBox}"
+                    IsChecked="{Binding FindMissingMaterials, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Разделять файл по уровням"/>
+                <CheckBox
+                    Grid.Column="1"
+                    Style="{StaticResource CBox}"
+                    IsChecked="{Binding DivideFileIntoLevels, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Область экспорта"/>
+                <ComboBox
+                    x:Name="ExportScopeComboBox"
+                    Grid.Column="1"
+                    Style="{StaticResource CombBox}"
+                    SelectionChanged="ExportScope_Selected"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Экспортировать геомтерию помещений"/>
+                <CheckBox
+                    Grid.Column="1"
+                    Style="{StaticResource CBox}"
+                    IsChecked="{Binding ExportRoomGeometry, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Имя вида для экспорта"/>
+                <TextBox
+                    Grid.Column="1"
+                    Style="{StaticResource TBox}"
+                    Width="140"
+                    Text="{Binding ViewName, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Имя рабочих наборов, которые нужно закрыть (указывать через '~')"/>
+                <TextBox
+                    Grid.Column="1"
+                    Style="{StaticResource TBox}"
+                    Width="140"
+                    ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
+                    Text="{Binding WorksetToCloseNamesStartWith, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
+        
+        <Border
+            Grid.Row="9">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Style="{StaticResource TBlock}"
+                    Text="Спец. окончание в имени файла Navisworks"/>
+                <TextBox
+                    Grid.Column="1"
+                    Style="{StaticResource TBox}"
+                    Width="140"
+                    ToolTip="Добавляется в конце имени получаемого файла nwc. Разделить нужно указывать самостоятельно"
+                    Text="{Binding NavisDocPostfix, 
+                        UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

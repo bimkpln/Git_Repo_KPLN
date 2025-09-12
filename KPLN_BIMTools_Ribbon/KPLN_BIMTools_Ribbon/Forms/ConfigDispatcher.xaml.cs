@@ -173,9 +173,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void OnBtnDelConf(object sender, RoutedEventArgs e)
         {
             UserDialog cd = new UserDialog("ВНИМАНИЕ", "Сейчас будут удалены выбранные элементы. Продолжить?");
-            cd.ShowDialog();
-
-            if (cd.IsRun)
+            if ((bool)cd.ShowDialog())
             {
                 DeleteDBRevitDocExchange(SelectedDBExchWrappers);
 
@@ -237,8 +235,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (SelectedDBExchWrappers.Count() > 1)
                     {
                         UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалено {SelectedDBExchWrappers.Count()} конфигурации. Продолжить?");
-                        cd.ShowDialog();
-                        if (cd.IsRun)
+                        if ((bool)cd.ShowDialog())
                         {
                             DeleteDBRevitDocExchange(SelectedDBExchWrappers);
                             foreach (DBRevitDocExchangesWrapper docEcxhWr in SelectedDBExchWrappers)
@@ -250,9 +247,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         UserDialog cd = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена конфигурация \"{docExchWrapper.SettingName}\". Продолжить?");
-                        cd.ShowDialog();
-
-                        if (cd.IsRun)
+                        if ((bool)cd.ShowDialog())
                             DeleteDBRevitDocExchange(new DBRevitDocExchangesWrapper[] { docExchWrapper });
                     }
                 }
