@@ -25,6 +25,8 @@ namespace KPLN_Tools.Forms
         private byte[] _preparedImageBytes;
 
         public FamilyManagerRecord ResultRecord { get; private set; }
+        public bool DeleteStatus { get; private set; }
+
         private string _originalStatus;
 
         private List<CategoryItem> _categories;
@@ -44,8 +46,6 @@ namespace KPLN_Tools.Forms
             public int STAGE { get; set; }
             public string DEPARTAMENT { get; set; }
             public string IMPORT_INFO { get; set; }
-            public string CUSTOM_INFO { get; set; }
-            public string INSTRUCTION_LINK { get; set; }
             public byte[] IMAGE { get; set; }
         }
 
@@ -221,7 +221,7 @@ namespace KPLN_Tools.Forms
                 {
                     cmd.CommandText =
                         @"SELECT ID, STATUS, FULLPATH, LM_DATE, CATEGORY, SUB_CATEGORY, PROJECT, STAGE,
-                                 DEPARTAMENT, IMPORT_INFO, CUSTOM_INFO, INSTRUCTION_LINK, IMAGE
+                                 DEPARTAMENT, IMPORT_INFO, IMAGE
                           FROM FamilyManager
                           WHERE ID = @id
                           LIMIT 1;";
@@ -243,9 +243,7 @@ namespace KPLN_Tools.Forms
                             STAGE = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
                             DEPARTAMENT = reader.IsDBNull(8) ? "" : reader.GetString(8),
                             IMPORT_INFO = reader.IsDBNull(9) ? "" : reader.GetString(9),
-                            CUSTOM_INFO = reader.IsDBNull(10) ? "" : reader.GetString(10),
-                            INSTRUCTION_LINK = reader.IsDBNull(11) ? "" : reader.GetString(11),
-                            IMAGE = reader.IsDBNull(12) ? null : (byte[])reader[12]
+                            IMAGE = reader.IsDBNull(10) ? null : (byte[])reader[10]
                         };
                     }
                 }
@@ -790,8 +788,6 @@ namespace KPLN_Tools.Forms
                             STAGE = @stage,
                             DEPARTAMENT = @dept,
                             IMPORT_INFO = @import,
-                            CUSTOM_INFO = @custom,
-                            INSTRUCTION_LINK = @link,
                             IMAGE = @image
                         WHERE ID = @id;";
 
@@ -805,8 +801,6 @@ namespace KPLN_Tools.Forms
                     cmd.Parameters.AddWithValue("@stage", rec.STAGE);
                     cmd.Parameters.AddWithValue("@dept", (object)(rec.DEPARTAMENT ?? string.Empty));
                     cmd.Parameters.AddWithValue("@import", (object)(rec.IMPORT_INFO ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@custom", (object)(rec.CUSTOM_INFO ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@link", (object)(rec.INSTRUCTION_LINK ?? string.Empty));
 
                     var pImage = cmd.CreateParameter();
                     pImage.ParameterName = "@image";
@@ -1024,13 +1018,12 @@ namespace KPLN_Tools.Forms
                     STAGE = selectedStageId,   
                     DEPARTAMENT = record.DEPARTAMENT,
                     IMPORT_INFO = record.IMPORT_INFO,
-                    CUSTOM_INFO = record.CUSTOM_INFO,
-                    INSTRUCTION_LINK = record.INSTRUCTION_LINK,
                     IMAGE = imgBytes
                 };
 
                 ResultRecord = result;
 
+                DeleteStatus = false;
                 DialogResult = true;
                 Close();
             }
@@ -1045,6 +1038,7 @@ namespace KPLN_Tools.Forms
         // XAML. Удаление из БД
         private void ButtonDeleteDB_Click(object sender, RoutedEventArgs e)
         {
+            DeleteStatus = true;
             DialogResult = true;
             Close();
         }

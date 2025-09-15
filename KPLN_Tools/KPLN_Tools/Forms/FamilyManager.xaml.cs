@@ -31,8 +31,6 @@ namespace KPLN_Tools.Forms
         public int Stage { get; set; }
         public string Departament { get; set; }
         public string ImportInfo { get; set; }
-        public string CustomInfo { get; set; }
-        public string InstructionLink { get; set; }
     }
 
     public partial class FamilyManager : UserControl
@@ -144,7 +142,7 @@ namespace KPLN_Tools.Forms
             {
                 conn.Open();
                 using (var cmd = new SQLiteCommand(
-                    "SELECT ID, STATUS, FULLPATH, LM_DATE, CATEGORY, PROJECT, STAGE, DEPARTAMENT, IMPORT_INFO, CUSTOM_INFO, INSTRUCTION_LINK FROM FamilyManager",
+                    "SELECT ID, STATUS, FULLPATH, LM_DATE, CATEGORY, PROJECT, STAGE, DEPARTAMENT, IMPORT_INFO FROM FamilyManager",
                     conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -161,8 +159,6 @@ namespace KPLN_Tools.Forms
                             Stage = reader.GetInt32(6),
                             Departament = reader.IsDBNull(7) ? null : reader.GetString(7),
                             ImportInfo = reader.IsDBNull(8) ? null : reader.GetString(8),
-                            CustomInfo = reader.IsDBNull(9) ? null : reader.GetString(9),
-                            InstructionLink = reader.IsDBNull(10) ? null : reader.GetString(10)
                         };
                         result.Add(rec);
                     }
@@ -439,12 +435,6 @@ namespace KPLN_Tools.Forms
                 (r.ImportInfo == null)
             ).ToList();
 
-
-            var catOkMissingCustomInfo = all.Where(r =>
-                (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") &&
-                (r.CustomInfo == null)
-            ).ToList();
-
             var catIgnored = all.Where(r => norm(r.Status) == "IGNORE").ToList();
 
             var catOkProcessed = all.Where(r => norm(r.Status) == "OK" &&
@@ -455,8 +445,7 @@ namespace KPLN_Tools.Forms
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОШИБКИ / НЕ НАЙДЕН", "bim_error.png", catAbsentError, "Семейства, которые были удалены, или семейства, в которые параметры были экспортированы с ошибками.\nДанные семейства не отображаются в списке у пользователей до исправления ошибок BIM-координатором.", key: "errorabsent"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОТДЕЛА", "bim_error.png", catNotDepartament, "Семейства, которые не содержут информацию об отделе.\nДанные семейства не отображаются в списке у пользователей до указания отдела BIM-координатором.", key: "nodept"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОСНОВНОГО ИНФО", "bim_caution.png", catOkWithBadMeta, "Семейства, в которых не указан один из параметров - КАТЕГОРИЯ, СТАДИЯ или ПРОЕКТ.\nБез указания данных параметров семейство группируется в директории по-умолчанию.", key: "badmeta"));
-            _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ СВОЙСТВ СЕМЕЙСТВА", "bim_caution.png", catOkMissingImportOrImage, "Семейства, в которых не указаны экспортируемые свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (из файла).", key: "missingimport"));
-            _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ПОЛЬЗОВАТ. ИНФО", "bim_caution.png", catOkMissingCustomInfo, "Семейства, в которых не указаны пользовательские свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (добавленное BIM-координатором).", key: "missingcustom"));
+            _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ СВОЙСТВ СЕМЕЙСТВА", "bim_caution.png", catOkMissingImportOrImage, "Семейства, в которых не указаны экспортируемые свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (из файла).", key: "missingimport"));           
             _bimRootPanel.Children.Add(CreateCategoryExpander("ИГНОРИРУЮТСЯ", "bim_ignore.png", catIgnored, "Семейства, помеченные к игнорированию. Не отображаются у пользователей.", key: "ignored"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОБРАБОТАННЫЕ СЕМЕЙСТВА", "bim_ok.png", catOkProcessed, "Полностью обработанные семейства со статусом «OK». Отдел указан, базовые поля заполнены, свойства из файла присутствуют.", key: "ok"));
 
@@ -576,15 +565,26 @@ namespace KPLN_Tools.Forms
 
             if (win.ShowDialog() == true)
             {
-                var rec = win.ResultRecord;
-                if (rec == null) return;
+                bool delStatus = win.DeleteStatus;
 
-                if (string.Equals(rec.STATUS, "ERROR", StringComparison.OrdinalIgnoreCase) || string.Equals(rec.STATUS, "ABSENT", StringComparison.OrdinalIgnoreCase))
+                if (delStatus)
                 {
-                   
+                    int? idToDelete = null;
+
+                    if (int.TryParse(idText, out int parsedId))
+                    {
+                        idToDelete = parsedId;
+                    }
+
+                    if (idToDelete == null)
+                    {
+                        MessageBox.Show("Не выбран элемент для удаления.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
                     try
                     {
-                        DeleteRecordFromDatabase(rec.ID);
+                        DeleteRecordFromDatabase(idToDelete.Value);
                     }
                     catch (Exception ex)
                     {
@@ -593,6 +593,13 @@ namespace KPLN_Tools.Forms
                 }
                 else
                 {
+                    var rec = win.ResultRecord;
+                    if (rec == null)
+                    {
+                        MessageBox.Show("Нет данных для сохранения.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
                     try
                     {
                         FamilyManagerEditBIM.SaveRecordToDatabase(rec);

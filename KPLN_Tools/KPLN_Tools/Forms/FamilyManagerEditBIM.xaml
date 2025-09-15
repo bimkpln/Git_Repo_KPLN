@@ -130,7 +130,6 @@
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
@@ -140,12 +139,6 @@
                 </StackPanel>
                 <TextBox AcceptsReturn="True" Height="230px" Padding="5" VerticalScrollBarVisibility="Auto"
                          TextWrapping="Wrap" Text="{Binding IMPORT_INFO}" IsReadOnly="True"/>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1">
-                <TextBlock Text="Пользовательское описание семейства:" Margin="0 0 0 12" FontWeight="Bold"/>
-                <TextBox AcceptsReturn="True" Height="232px" Padding="5" VerticalScrollBarVisibility="Auto"
-                         TextWrapping="Wrap" Text="{Binding CUSTOM_INFO}"/>
             </StackPanel>
         </Grid>
 
