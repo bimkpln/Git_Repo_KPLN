@@ -121,7 +121,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 string idColl;
                 IEnumerable<ElementId> ids = w.ElementIdCollection.ToList();
-                if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection);
+                if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection.ToList());
                 else idColl = ids.FirstOrDefault().ToString();
 
                 w.FiltrationDescription = idColl;

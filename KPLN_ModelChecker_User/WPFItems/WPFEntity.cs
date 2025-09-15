@@ -35,9 +35,9 @@ namespace KPLN_ModelChecker_User.WPFItems
             Element = checkEntity.Element;
             ElementCollection = checkEntity.ElementCollection;
 
-            if (ElementCollection.Any())
+            if (ElementCollection != null && ElementCollection.Any())
             {
-                ElementIdCollection = ElementCollection.Select(e => e.Id);
+                ElementIdCollection = ElementCollection.Where(e => e.IsValidObject).Select(e => e.Id).ToArray();
 
                 if (ElementCollection.Count() > 1)
                 {
@@ -158,8 +158,11 @@ namespace KPLN_ModelChecker_User.WPFItems
         [Obsolete]
         public WPFEntity(ExtensibleStorageEntity esEntity, IEnumerable<Element> elements, string header, string description, string info, bool isZoomElement)
         {
-            ElementCollection = elements;
-            ElementIdCollection = elements.Select(e => e.Id);
+            ElementCollection = elements.ToArray();
+            ElementIdCollection = elements
+                .Where(e => e.IsValidObject)
+                .Select(e => e.Id)
+                .ToArray();
 
             if (ElementCollection.Count() > 1)
             {
@@ -200,12 +203,12 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Коллекция Revit-элементов, объединенных одной ошибкой
         /// </summary>
-        public IEnumerable<Element> ElementCollection { get; }
+        public Element[] ElementCollection { get; }
 
         /// <summary>
         /// Коллекция Id Revit-элементов, объединенных одной ошибкой
         /// </summary>
-        public IEnumerable<ElementId> ElementIdCollection { get; }
+        public ElementId[] ElementIdCollection { get; }
 
         /// <summary>
         /// Изображение поиска в WPF
