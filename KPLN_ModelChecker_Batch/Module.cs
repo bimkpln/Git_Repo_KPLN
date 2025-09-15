@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Batch.Availability;
-using KPLN_ModelChecker_Batch.Forms.Entities;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -28,8 +27,8 @@ namespace KPLN_ModelChecker_Batch
 
             //Добавляю кнопку в панель (тут приведен пример поиска панели, вместо этого - панель можно создать)
             AddPushButtonDataInPanel(
-                BatchManagerModel.PluginName,
-                BatchManagerModel.PluginName,
+                "Пакетная\nпроверка",
+                "Пакетная\nпроверка",
                 "Пакетный запуск проверок моделей в автоматическом режиме",
                 string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",

@@ -1,16 +1,12 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Core;
-using KPLN_ModelChecker_User.ExternalCommands;
-using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace KPLN_ModelChecker_Batch.Forms.Entities
 {
-    public sealed class CheckEntity: INotifyPropertyChanged
+    public sealed class CheckEntity : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -24,8 +20,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
         public string Name { get; }
 
-        public bool IsChecked 
-        { 
+        public bool IsChecked
+        {
             get => _isChecked;
             set
             {

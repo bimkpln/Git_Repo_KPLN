@@ -9,7 +9,6 @@ using KPLN_Library_OpenDocHandler.Core;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker;
 using KPLN_ModelChecker_Batch.Common;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Commands;
 using Microsoft.Win32;
 using System;
@@ -26,7 +25,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 {
     public sealed class BatchManagerModel : INotifyPropertyChanged, IFieldChangedNotifier
     {
-        internal const string PluginName = "Пакетная\nпроверка";
+        internal const string PluginName = "Пакетная проверка";
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler<FieldChangedEventArgs> FieldChanged;
@@ -224,43 +223,43 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     #region Открытие документа
                     ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
 
-                    #region Подготовка OpenOptions
-                    IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
-                    IList<WorksetId> worksetIds = new List<WorksetId>();
-
-                    string[] wsExceptions = WorksetToCloseNamesStartWith.Split('~');
-                    int openWS = 0;
-                    int allWS = 0;
-                    foreach (WorksetPreview worksetPrev in worksets)
-                    {
-                        allWS++;
-                        if (WorksetToCloseNamesStartWith.Count() == 0)
-                        {
-                            openWS++;
-                            worksetIds.Add(worksetPrev.Id);
-                        }
-                        else if (!wsExceptions.Any(name => worksetPrev.Name.StartsWith(name)))
-                        {
-                            openWS++;
-                            worksetIds.Add(worksetPrev.Id);
-                        }
-                    }
-                    excelEnt.OpenedWorksets = $"{openWS}/{allWS}";
-
-                    OpenOptions openOptions = new OpenOptions()
-                    {
-                        DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
-                    };
-
-                    WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-                    openConfig.Open(worksetIds);
-                    openOptions.SetOpenWorksetsConfiguration(openConfig);
-                    #endregion
-
                     Document doc = null;
                     // Открываем документ по указанному пути
                     try
                     {
+                        #region Подготовка OpenOptions
+                        IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
+                        IList<WorksetId> worksetIds = new List<WorksetId>();
+
+                        string[] wsExceptions = WorksetToCloseNamesStartWith.Split('~');
+                        int openWS = 0;
+                        int allWS = 0;
+                        foreach (WorksetPreview worksetPrev in worksets)
+                        {
+                            allWS++;
+                            if (WorksetToCloseNamesStartWith.Count() == 0)
+                            {
+                                openWS++;
+                                worksetIds.Add(worksetPrev.Id);
+                            }
+                            else if (!wsExceptions.Any(name => worksetPrev.Name.StartsWith(name)))
+                            {
+                                openWS++;
+                                worksetIds.Add(worksetPrev.Id);
+                            }
+                        }
+                        excelEnt.OpenedWorksets = $"{openWS}/{allWS}";
+
+                        OpenOptions openOptions = new OpenOptions()
+                        {
+                            DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
+                        };
+
+                        WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
+                        openConfig.Open(worksetIds);
+                        openOptions.SetOpenWorksetsConfiguration(openConfig);
+                        #endregion
+
                         // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
                         Thread.Sleep(2000);
 
@@ -281,7 +280,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         string modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
                         string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
                         CurrentLogger.Error(msg);
-                        doc.Close(false);
+
+                        doc?.Close(false);
 
                         continue;
                     }
@@ -290,7 +290,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         CurrentLogger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath)}). Нужно вмешаться человеку, " +
                             $"ошибка при открытии: \"{ex.Message}\"");
                         isFileError = true;
-                        doc.Close(false);
+
+                        doc?.Close(false);
 
                         continue;
                     }
@@ -302,21 +303,21 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     {
                         foreach (CheckEntity check in CheckEntitiesList)
                         {
-                            if (!check.IsChecked) continue;
+                            if (!check.IsChecked)
+                            {
+                                CurrentLogger.Info($"Пользователь выбрал игнорировать проверку с именем: \"{checkName}\"");
+                                continue;
+                            }
+
 
                             checkName = check.Name;
                             CurrentLogger.Info($"Начинаю проверку с именем: \"{checkName}\"");
 
-                            CheckerEntity[] docErrors = check.RunCommand(doc);
-
-                            if (docErrors != null && docErrors.Length > 0)
+                            excelEnt.ChecksData.Add(new CheckData()
                             {
-                                excelEnt.ChecksData.Add(new CheckData()
-                                {
-                                    PluginName = checkName,
-                                    CheckEntities = docErrors
-                                });
-                            }
+                                PluginName = checkName,
+                                CheckerEntities = check.RunCommand(doc),
+                            });
 
                             CurrentLogger.Info($"Завершена проверка с именем: \"{checkName}\"");
                         }
@@ -327,11 +328,10 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         CurrentLogger.Error($"Работа плагина \"{PluginName}\" с проверкой прервана\"{checkName}\". Ошибка: \"{ex.Message}\"\n");
                     }
 
+                    excelDataEntities.Add(excelEnt);
 
                     doc.Close(false);
                     #endregion
-
-                    excelDataEntities.Add(excelEnt);
 
                     CurrentLogger.Info($"Завершена проверка файла: \"{file.Name}\"");
                 }
@@ -340,32 +340,26 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             }
 
 
-            ExportToExcel.Run(excelPath, excelDataEntities.ToArray());
-
+            string excelFilePath = ExportToExcel.Run(excelPath, excelDataEntities.ToArray());
 
             if (isCheckError || isFileError)
-                SendResultErrorMsg(fileNames, checkNames);
+                SendResultErrorMsg(fileNames, checkNames, excelFilePath);
             else
-                SendResultMsg(fileNames, checkNames);
+                SendResultMsg(fileNames, checkNames, excelFilePath);
 
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
         }
 
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        private void OnFieldChanged(FieldChangedEventArgs e) =>
-            FieldChanged?.Invoke(this, e);
-
         /// <summary>
         /// Отправка результата пользователю в месенджер
         /// </summary>
-        private void SendResultMsg(string fileNames, string checkNames)
+        private static void SendResultMsg(string fileNames, string checkNames, string excelFilePath)
         {
             BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                 DBMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
+                $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
                 $"Статус: Отработано без ошибок.\n");
         }
@@ -373,16 +367,23 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         /// <summary>
         /// Отправка результата об ошибке пользователю в месенджер
         /// </summary>
-        private void SendResultErrorMsg(string fileNames, string checkNames)
+        private static void SendResultErrorMsg(string fileNames, string checkNames, string excelFilePath)
         {
             BitrixMessageSender.SendMsg_ToUser_ByDBUser(
                 DBMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
+                $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
                 $"Статус: Отработано с ошибками.\n" +
                 $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
                 $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}");
         }
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        private void OnFieldChanged(FieldChangedEventArgs e) =>
+            FieldChanged?.Invoke(this, e);
     }
 }
