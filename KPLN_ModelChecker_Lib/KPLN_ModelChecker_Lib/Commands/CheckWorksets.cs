@@ -137,7 +137,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             result.Add(new CheckerEntity(
                                 element,
                                 "Ошибка сеток",
-                                $"Ось или уровень с ID: {element.Id} находится не в специальном рабочем наборе",
+                                $"Ось или уровень находится не в специальном рабочем наборе",
                                 "Имя рабочего набора для осей и уровней - <..._Оси и уровни>",
                                 false));
                         }
@@ -166,7 +166,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             CheckerEntity entity = new CheckerEntity(
                                 element,
                                 "Ошибка элементов",
-                                $"Элементс с ID: {element.Id} находится в рабочем наборе для связей",
+                                $"Элемент находится в рабочем наборе для связей",
                                 string.Empty,
                                 true);
 
@@ -180,7 +180,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             CheckerEntity entity = new CheckerEntity(
                                 element,
                                 "Ошибка элементов",
-                                $"Элементс с ID: {element.Id} находится в рабочем наборе для осей и уровней",
+                                $"Элемент находится в рабочем наборе для осей и уровней",
                                 string.Empty,
                                 true);
 

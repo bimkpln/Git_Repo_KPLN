@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -45,10 +46,11 @@ namespace KPLN_ModelChecker_Lib
             }
             else if (elemData is IEnumerable<Element> elements)
             {
-                ElementCollection = elements;
+                ElementCollection = elements.ToArray();
                 ElementIdCollection = elements
                     .Where(e => e.IsValidObject)
-                    .Select(e => e.Id);
+                    .Select(e => e.Id)
+                    .ToArray();
 
                 if (ElementCollection.Count() > 1)
                 {
@@ -85,12 +87,12 @@ namespace KPLN_ModelChecker_Lib
         /// <summary>
         /// Коллекция Revit-элементов, объединенных одной ошибкой
         /// </summary>
-        public IEnumerable<Element> ElementCollection { get; } = Enumerable.Empty<Element>();
+        public Element[] ElementCollection { get; }
 
         /// <summary>
         /// Коллекция Id Revit-элементов, объединенных одной ошибкой
         /// </summary>
-        public IEnumerable<ElementId> ElementIdCollection { get; } = Enumerable.Empty<ElementId>();
+        public ElementId[] ElementIdCollection { get; }
 
         /// <summary>
         /// Заголовок ошибки

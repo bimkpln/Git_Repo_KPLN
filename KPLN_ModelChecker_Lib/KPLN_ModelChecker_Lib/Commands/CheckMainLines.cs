@@ -94,7 +94,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         return new CheckerEntity(
                             element,
                             "Ошибка мониторинга",
-                            $"Связь не найдена: «{element.Name}»",
+                            $"Связь не найдена",
                             $"Мониторинг назначен на связь, которой больше не существует в модели.",
                             false);
                     }
@@ -104,7 +104,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         return new CheckerEntity(
                             element,
                             "Ошибка мониторинга",
-                            $"Мониторинг не из разбивочного файла: «{element.Name}»",
+                            $"Мониторинг не из разбивочного файла",
                             $"Мониторинг может быть только из разбивочного файла, сейчас он присвоен связи {link.Name}",
                             false);
                     }
@@ -131,7 +131,7 @@ namespace KPLN_ModelChecker_Lib.Commands
         {
             if (element.Document.GetElement(element.GroupId) is Group group)
             {
-                if (group.Pinned)
+                if (group.Pinned || element.Pinned)
                     return null;
             }
             else if (element.Pinned) 
@@ -140,8 +140,8 @@ namespace KPLN_ModelChecker_Lib.Commands
             return new CheckerEntity(
                 element,
                 "Отсутствие прикрепления (PIN)",
-                $"Элемент не прикреплен: «{element.Name}»",
-                $"Элемент с ID {element.Id} необходимо прикрепить (PIN). Если он в группе - достаточно прикрепить (PIN) группу",
+                $"Элемент не прикреплен",
+                $"Элемент необходимо прикрепить (PIN). Если он в группе - достаточно прикрепить (PIN) группу",
                 false);
         }
 
