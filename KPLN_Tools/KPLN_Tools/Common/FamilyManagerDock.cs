@@ -2,8 +2,6 @@
 using KPLN_Library_SQLiteWorker;       
 using KPLN_Tools.Forms;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_Tools.Docking
 {
@@ -47,16 +45,29 @@ namespace KPLN_Tools.Docking
 
             var provider = new FamilyManagerPaneProvider(_paneInstance);
             app.RegisterDockablePane(PaneId, "KPLN. Менеджер семейств", provider);
+          
+            app.ViewActivated += (s, e) =>
+            {
+                var uiapp = new UIApplication(e.Document.Application);
+                _paneInstance?.SetUIApplication(uiapp);
+            };
+
+            ExternalEventsHost.EnsureCreated();
         }
 
         public static void Toggle(UIApplication uiapp)
         {
             if (uiapp == null) throw new ArgumentNullException(nameof(uiapp));
             var pane = uiapp.GetDockablePane(PaneId);
+
             if (pane.IsShown())
+            { 
                 pane.Hide();
+            }
             else
+            {
                 pane.Show();
+            }
         }
     }
 }

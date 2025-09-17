@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -10,15 +11,70 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
+using Grid = System.Windows.Controls.Grid;
 using TextBox = System.Windows.Controls.TextBox;
 
 
 namespace KPLN_Tools.Forms
 {
+    // ExternalEventsHost
+    internal static class ExternalEventsHost
+    {
+        public static ExternalEvent LoadFamilyEvent;
+        public static LoadFamilyHandler LoadFamilyHandler;
+
+        public static void EnsureCreated()
+        {
+            if (LoadFamilyEvent == null)
+            {
+                LoadFamilyHandler = new LoadFamilyHandler();
+                LoadFamilyEvent = ExternalEvent.Create(LoadFamilyHandler);
+            }
+        }
+    }
+
+    internal class LoadFamilyHandler : IExternalEventHandler
+    {
+        public string FilePath;
+
+        public void Execute(UIApplication app)
+        {
+            if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
+            {
+                TaskDialog.Show("Ошибка", $"Файл не найден: {FilePath}");
+                return;
+            }
+
+            UIDocument uidoc = app.ActiveUIDocument;
+            if (uidoc == null)
+            {
+                TaskDialog.Show("Ошибка", "Нет активного проекта для загрузки семейства.");
+                return;
+            }
+
+            Document doc = uidoc.Document;
+
+            using (Transaction t = new Transaction(doc, "KPLN. Загрузить семейство"))
+            {
+                t.Start();
+                if (doc.LoadFamily(FilePath, out Family fam))
+                {
+                    TaskDialog.Show("Загрузка семейства", $"Семейство «{fam?.Name}» загружено.");
+                }
+                else
+                {
+                    TaskDialog.Show("Загрузка семейства", "Не удалось загрузить семейство.");
+                }
+                t.Commit();
+            }
+        }
+
+        public string GetName() => "KPLN.LoadFamilyHandler";
+    }
+
     // Данные из БД
     public class FamilyManagerRecord
     {
@@ -33,8 +89,11 @@ namespace KPLN_Tools.Forms
         public string ImportInfo { get; set; }
     }
 
+    // Док-панель
     public partial class FamilyManager : UserControl
     {
+        private UIApplication _uiapp;
+
         private const string ITEM_ERROR = "ОШИБКА";
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
         private const string RFA_ROOT = @"X:\BIM\3_Семейства";
@@ -53,6 +112,11 @@ namespace KPLN_Tools.Forms
         private Dictionary<string, bool> _bimExpandState = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private double _bimScrollOffset = 0;
         private ScrollViewer _bimScrollViewer;
+
+        public void SetUIApplication(UIApplication uiapp)
+        {
+            _uiapp = uiapp;
+        }
 
         public FamilyManager(string currentStr)
         {
@@ -368,13 +432,17 @@ namespace KPLN_Tools.Forms
             }
                 };
             }
-
-
-
-
-
-
         }
+
+
+
+
+
+
+
+
+
+
 
         // Вспомогательный метод интерфейса. Формирование имени
         private static string SafeFileName(string fullPath)
@@ -423,12 +491,7 @@ namespace KPLN_Tools.Forms
                 .ToList();
 
             var catOkWithBadMeta = all.Where(r =>
-                (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") &&
-                (
-                    r.Category == 1 || r.Project == 1 || r.Stage == 1 ||
-                    string.IsNullOrWhiteSpace(r.Departament)
-                )
-            ).ToList();
+                (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") && r.Category == 1).ToList();
 
             var catOkMissingImportOrImage = all.Where(r =>
                 (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") &&
@@ -444,7 +507,7 @@ namespace KPLN_Tools.Forms
             _bimRootPanel.Children.Add(CreateCategoryExpander("НОВЫЕ СЕМЕЙСТВА", "bim_new.png", catNew, "Семейства, которые ранее были добавлены на диск и не были обработаны.\nДанные семейства не отображаются в списке у пользователей до изменения статуса на «OK» у семейства BIM-координатором.", key: "new"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОШИБКИ / НЕ НАЙДЕН", "bim_error.png", catAbsentError, "Семейства, которые были удалены, или семейства, в которые параметры были экспортированы с ошибками.\nДанные семейства не отображаются в списке у пользователей до исправления ошибок BIM-координатором.", key: "errorabsent"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОТДЕЛА", "bim_error.png", catNotDepartament, "Семейства, которые не содержут информацию об отделе.\nДанные семейства не отображаются в списке у пользователей до указания отдела BIM-координатором.", key: "nodept"));
-            _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОСНОВНОГО ИНФО", "bim_caution.png", catOkWithBadMeta, "Семейства, в которых не указан один из параметров - КАТЕГОРИЯ, СТАДИЯ или ПРОЕКТ.\nБез указания данных параметров семейство группируется в директории по-умолчанию.", key: "badmeta"));
+            _bimRootPanel.Children.Add(CreateCategoryExpander("НЕ УКАЗАНА КАТЕГОРИЯ", "bim_caution.png", catOkWithBadMeta, "Семейства, в которых не указан параметр КАТЕГОРИЯ.\nБез указания данного параметра семейство группируется в директории по-умолчанию.", key: "badmeta"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ СВОЙСТВ СЕМЕЙСТВА", "bim_caution.png", catOkMissingImportOrImage, "Семейства, в которых не указаны экспортируемые свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (из файла).", key: "missingimport"));           
             _bimRootPanel.Children.Add(CreateCategoryExpander("ИГНОРИРУЮТСЯ", "bim_ignore.png", catIgnored, "Семейства, помеченные к игнорированию. Не отображаются у пользователей.", key: "ignored"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОБРАБОТАННЫЕ СЕМЕЙСТВА", "bim_ok.png", catOkProcessed, "Полностью обработанные семейства со статусом «OK». Отдел указан, базовые поля заполнены, свойства из файла присутствуют.", key: "ok"));
@@ -563,61 +626,121 @@ namespace KPLN_Tools.Forms
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (win.ShowDialog() == true)
             {
-                bool delStatus = win.DeleteStatus;
+                string openFormat = win.OpenFormat;
+                string filePathFI = win.filePathFI;
 
-                if (delStatus)
+                if (openFormat == "OpenFamily" || openFormat == "OpenFamilyInProject")
                 {
-                    int? idToDelete = null;
-
-                    if (int.TryParse(idText, out int parsedId))
+                    if (_uiapp == null)
                     {
-                        idToDelete = parsedId;
-                    }
-
-                    if (idToDelete == null)
-                    {
-                        MessageBox.Show("Не выбран элемент для удаления.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
                         return;
                     }
 
-                    try
+                    string path = filePathFI;
+                    if (!System.IO.File.Exists(path))
                     {
-                        DeleteRecordFromDatabase(idToDelete.Value);
+                        TaskDialog.Show("Ошибка", $"Файл не найден: {path}");
+                        return;
                     }
-                    catch (Exception ex)
+                    else if (openFormat == "OpenFamily")
                     {
-                        MessageBox.Show("Не удалось удалить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                        try
+                        {
+                            _uiapp.OpenAndActivateDocument(path);
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("Ошибка", ex.Message);
+                        }
+                    }
+                    else if (openFormat == "OpenFamilyInProject")
+                    {
+                        try
+                        {
+                            ExternalEventsHost.LoadFamilyHandler.FilePath = path;
+                            ExternalEventsHost.LoadFamilyEvent.Raise();
+                            return;
+                        }
+                        catch (Exception ex) 
+                        {
+                            TaskDialog.Show("Ошибка", ex.Message);
+                        }
                     }
                 }
                 else
                 {
-                    var rec = win.ResultRecord;
-                    if (rec == null)
+                    bool delStatus = win.DeleteStatus;
+                    if (delStatus)
                     {
-                        MessageBox.Show("Нет данных для сохранения.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
+                        int? idToDelete = null;
+
+                        if (int.TryParse(idText, out int parsedId))
+                        {
+                            idToDelete = parsedId;
+                        }
+
+                        if (idToDelete == null)
+                        {
+                            MessageBox.Show("Не выбран элемент для удаления.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        try
+                        {
+                            DeleteRecordFromDatabase(idToDelete.Value);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Не удалось удалить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                    else
+                    {
+                        var rec = win.ResultRecord;
+                        if (rec == null)
+                        {
+                            MessageBox.Show("Нет данных для сохранения.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+
+                        try
+                        {
+                            FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Не удалось сохранить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                     }
 
-                    try
-                    {
-                        FamilyManagerEditBIM.SaveRecordToDatabase(rec);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Не удалось сохранить запись: " + ex.Message, "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    ReloadFromDbAndRefreshUI();
                 }
-
-                ReloadFromDbAndRefreshUI();
             }
         }
-
-
-
-
-
 
         // Удаление записи из БД
         public static void DeleteRecordFromDatabase(int id)
@@ -890,7 +1013,7 @@ namespace KPLN_Tools.Forms
                 string dirName = Path.GetFileName(dir) ?? dir;
 
                 if ((dirName.IndexOf("архив", StringComparison.OrdinalIgnoreCase) >= 0) 
-                    || (dirName.IndexOf("шаблоны семейств", StringComparison.OrdinalIgnoreCase) >= 0))
+                    || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0))
                     continue;
 
                 IEnumerable<string> subdirs = Enumerable.Empty<string>();
@@ -1086,7 +1209,13 @@ namespace KPLN_Tools.Forms
             string Like(string s)
             {
                 if (string.IsNullOrEmpty(s)) return "%";
-                return s.Replace("|", "||").Replace("_", "|_").Replace("%", "|%") + "%";
+                return s.Replace("|", "||").Replace("_", "|_").Replace("%", "|%") + "%"; 
+            }
+
+            string ContainsLike(string s)
+            {
+                if (string.IsNullOrEmpty(s)) return "%";
+                return "%" + s.Replace("|", "||").Replace("_", "|_").Replace("%", "|%") + "%";
             }
 
             using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
@@ -1098,45 +1227,55 @@ namespace KPLN_Tools.Forms
                     cmd.Transaction = tx;
 
                     cmd.CommandText = @"
-                        UPDATE FamilyManager
-                            SET 
-                              DEPARTAMENT = CASE
-                                WHEN (FULLPATH LIKE @ar1 ESCAPE '|' OR FULLPATH LIKE @ar2 ESCAPE '|') THEN 'АР'
-                                WHEN (FULLPATH LIKE @kr1 ESCAPE '|' OR FULLPATH LIKE @kr2 ESCAPE '|') THEN 'КР'
-                                WHEN (FULLPATH LIKE @ov1 ESCAPE '|' OR FULLPATH LIKE @ov2 ESCAPE '|' OR FULLPATH LIKE @ov3 ESCAPE '|') THEN 'ОВиК'
-                                WHEN (FULLPATH LIKE @vk1 ESCAPE '|' OR FULLPATH LIKE @vk2 ESCAPE '|') THEN 'ВК'
-                                WHEN (FULLPATH LIKE @eom1 ESCAPE '|' OR FULLPATH LIKE @eom2 ESCAPE '|') THEN 'ЭОМ'
-                                WHEN (FULLPATH LIKE @ss1 ESCAPE '|' OR FULLPATH LIKE @ss2 ESCAPE '|') THEN 'СС'
-                                ELSE DEPARTAMENT
-                              END
-                        WHERE 
-                          DEPARTAMENT IS NULL
-                          AND STATUS IN ('NEW','UPDATE','OK')
-                          AND (
-                            FULLPATH LIKE @ar1 ESCAPE '|' OR FULLPATH LIKE @ar2 ESCAPE '|' OR
-                            FULLPATH LIKE @kr1 ESCAPE '|' OR FULLPATH LIKE @kr2 ESCAPE '|' OR
-                            FULLPATH LIKE @ov1 ESCAPE '|' OR FULLPATH LIKE @ov2 ESCAPE '|' OR FULLPATH LIKE @ov3 ESCAPE '|' OR
-                            FULLPATH LIKE @vk1 ESCAPE '|' OR FULLPATH LIKE @vk2 ESCAPE '|' OR
-                            FULLPATH LIKE @eom1 ESCAPE '|' OR FULLPATH LIKE @eom2 ESCAPE '|' OR
-                            FULLPATH LIKE @ss1 ESCAPE '|' OR FULLPATH LIKE @ss2 ESCAPE '|'
-                          );";
+                UPDATE FamilyManager
+                    SET 
+                      DEPARTAMENT = CASE
+                        WHEN (FULLPATH LIKE @bimTemplates ESCAPE '|' OR FULLPATH LIKE @nameObshVl ESCAPE '|') THEN 'BIM'
+                        WHEN (FULLPATH LIKE @ovvk ESCAPE '|') THEN 'ОВиК, ВК'
+                        WHEN (FULLPATH LIKE @eomss ESCAPE '|') THEN 'ЭОМ, СС'
 
+                        WHEN (FULLPATH LIKE @ar1 ESCAPE '|' OR FULLPATH LIKE @ar2 ESCAPE '|') THEN 'АР'
+                        WHEN (FULLPATH LIKE @kr1 ESCAPE '|' OR FULLPATH LIKE @kr2 ESCAPE '|') THEN 'КР'
+                        WHEN (FULLPATH LIKE @ov1 ESCAPE '|' OR FULLPATH LIKE @ov2 ESCAPE '|' OR FULLPATH LIKE @ov3 ESCAPE '|') THEN 'ОВиК'
+                        WHEN (FULLPATH LIKE @vk1 ESCAPE '|' OR FULLPATH LIKE @vk2 ESCAPE '|') THEN 'ВК'
+                        WHEN (FULLPATH LIKE @eom1 ESCAPE '|' OR FULLPATH LIKE @eom2 ESCAPE '|') THEN 'ЭОМ'
+                        WHEN (FULLPATH LIKE @ss1 ESCAPE '|' OR FULLPATH LIKE @ss2 ESCAPE '|') THEN 'СС'
+                        ELSE DEPARTAMENT
+                      END
+                WHERE 
+                  DEPARTAMENT IS NULL
+                  AND STATUS IN ('NEW','UPDATE','OK')
+                  AND (
+                    -- Новые правила
+                    FULLPATH LIKE @bimTemplates ESCAPE '|' OR FULLPATH LIKE @nameObshVl ESCAPE '|' OR
+                    FULLPATH LIKE @ovvk ESCAPE '|' OR
+                    FULLPATH LIKE @eomss ESCAPE '|' OR
+
+                    -- Старые правила
+                    FULLPATH LIKE @ar1 ESCAPE '|' OR FULLPATH LIKE @ar2 ESCAPE '|' OR
+                    FULLPATH LIKE @kr1 ESCAPE '|' OR FULLPATH LIKE @kr2 ESCAPE '|' OR
+                    FULLPATH LIKE @ov1 ESCAPE '|' OR FULLPATH LIKE @ov2 ESCAPE '|' OR FULLPATH LIKE @ov3 ESCAPE '|' OR
+                    FULLPATH LIKE @vk1 ESCAPE '|' OR FULLPATH LIKE @vk2 ESCAPE '|' OR
+                    FULLPATH LIKE @eom1 ESCAPE '|' OR FULLPATH LIKE @eom2 ESCAPE '|' OR
+                    FULLPATH LIKE @ss1 ESCAPE '|' OR FULLPATH LIKE @ss2 ESCAPE '|'
+                  );";
+
+
+                    cmd.Parameters.AddWithValue("@bimTemplates", Like(@"X:\BIM\3_Семейства\7_Шаблоны семейств"));
+                    cmd.Parameters.AddWithValue("@nameObshVl", ContainsLike("_ОбщВл_"));
+                    cmd.Parameters.AddWithValue("@ovvk", Like(@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\ОВВК"));
+                    cmd.Parameters.AddWithValue("@eomss", Like(@"X:\BIM\3_Семейства\0_Общие семейства\2_ИОС\ЭОМСС"));
                     cmd.Parameters.AddWithValue("@ar1", Like(@"X:\BIM\3_Семейства\1_АР"));
                     cmd.Parameters.AddWithValue("@ar2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\01_АР"));
-
                     cmd.Parameters.AddWithValue("@kr1", Like(@"X:\BIM\3_Семейства\2_КР"));
                     cmd.Parameters.AddWithValue("@kr2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\02_КР"));
-
                     cmd.Parameters.AddWithValue("@ov1", Like(@"X:\BIM\3_Семейства\4_ОВиК"));
                     cmd.Parameters.AddWithValue("@ov2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\08_ТМ"));
                     cmd.Parameters.AddWithValue("@ov3", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\03_ОВ"));
-
                     cmd.Parameters.AddWithValue("@vk1", Like(@"X:\BIM\3_Семейства\3_ВК"));
                     cmd.Parameters.AddWithValue("@vk2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\04_ВК"));
-
                     cmd.Parameters.AddWithValue("@eom1", Like(@"X:\BIM\3_Семейства\6_ЭОМ"));
                     cmd.Parameters.AddWithValue("@eom2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\05_ЭОМ"));
-
                     cmd.Parameters.AddWithValue("@ss1", Like(@"X:\BIM\3_Семейства\5_СС"));
                     cmd.Parameters.AddWithValue("@ss2", Like(@"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\06_СС"));
 

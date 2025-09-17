@@ -80,9 +80,12 @@
             <StackPanel Grid.Column="1" Margin="16,0,0,20" VerticalAlignment="Top">
 
                 <TextBlock x:Name="FamilyName" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,4" MaxWidth="800" FontSize="15" FontWeight="Bold"/>
-                <TextBlock Text="{Binding FULLPATH}" ToolTip ="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,0,0,3" MaxWidth="800"/>
-          
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,25">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                    <Button Content="📂" Width="24" Height="22" Margin="0,0,6,0" Padding="0.3,0,0,0.8" ToolTip="Открыть папку" Click="BtnOpenFolder_Click" Background="#FFFFC72C"/>
+                    <TextBlock Text="{Binding FULLPATH}" ToolTip="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" MaxWidth="770" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                     <TextBlock Text="Последнее обновление файла:" FontWeight="Bold" Width="200"/>
                     <TextBlock Text="{Binding LM_DATE}"/>
                 </StackPanel>
@@ -91,14 +94,14 @@
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                     <TextBlock Text="Статус:" FontWeight="Bold" Width="90"/>
-                    <ComboBox x:Name="StatusCombo" MinWidth="225" IsReadOnly="True"/>
+                    <ComboBox x:Name="StatusCombo" MinWidth="340" IsReadOnly="True"/>
                 </StackPanel>
 
 
 
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,7" Height="23">
-                    <TextBlock Text="Отдел:" FontWeight="Bold" Width="90" VerticalAlignment="Center" Margin="0 0 0 3"/>
+                    <TextBlock x:Name="DeptLabel" Text="Отдел:" ToolTip="Выбрать все отделы" FontWeight="Bold" Width="50" VerticalAlignment="Center" Margin="0 0 40 3" Cursor="Hand" MouseLeftButtonUp="DeptLabel_MouseLeftButtonUp"/>
                     <WrapPanel x:Name="DeptPanel" VerticalAlignment="Center"/>
                 </StackPanel>
 
@@ -108,18 +111,18 @@
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Категория:" FontWeight="Bold" Width="90"/>
-                    <ComboBox x:Name="CategoryCombo" MinWidth="225" />
-                    <ComboBox x:Name="CategoryNcCombo" MinWidth="225" Margin="8,0,0,0" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SUB_CATEGORY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <ComboBox x:Name="CategoryCombo" MinWidth="340" />
+                    <ComboBox x:Name="CategoryNcCombo" MinWidth="340" Margin="8,0,0,0" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SUB_CATEGORY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Проект:" FontWeight="Bold" Width="90"/>
-                    <ComboBox x:Name="ProjectCombo" MinWidth="225" />
+                    <ComboBox x:Name="ProjectCombo" MinWidth="340" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <TextBlock Text="Стадия:" FontWeight="Bold" Width="90"/>
-                    <ComboBox x:Name="StageCombo" MinWidth="225" />
+                    <ComboBox x:Name="StageCombo" MinWidth="340" />
                 </StackPanel>
 
 
@@ -134,10 +137,10 @@
 
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <StackPanel Orientation="Horizontal" Margin="0 0 0 5" HorizontalAlignment="Left">
-                    <Button Content="🔄" Width="24" Height="24" FontSize="12"/>
+                    <Button Content="🔄" Width="24" Height="24" Padding="0.2,0,0,2" FontSize="12" Background="#FF7CFCFF"/>
                     <TextBlock Text="Импортируемая из файла информация:" Margin="6 5 0 0" FontWeight="Bold"/>
                 </StackPanel>
-                <TextBox AcceptsReturn="True" Height="230px" Padding="5" VerticalScrollBarVisibility="Auto"
+                <TextBox AcceptsReturn="True" Height="225px" Padding="5" VerticalScrollBarVisibility="Auto"
                          TextWrapping="Wrap" Text="{Binding IMPORT_INFO}" IsReadOnly="True"/>
             </StackPanel>
         </Grid>
@@ -154,8 +157,8 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Загрузить семейство" IsEnabled="False" Width="140" Height="22" Margin="0,0,8,0"  />
-                <Button Content="Загрузить семейство в проект" IsEnabled="False" Width="210" Height="22" />
+                <Button x:Name="ButtonOpenFamily" Content="Открыть семейство" Width="140" Height="22" Margin="0,0,8,0" Click="ButtonOpenFamily_Click"  />
+                <Button x:Name="ButtonOpenFamilyInProject" Content="Загрузить семейство в проект" Width="210" Height="22" Click="ButtonOpenFamilyInProject_Click" />
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">

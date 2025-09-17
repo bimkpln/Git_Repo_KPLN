@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 
@@ -18,14 +21,19 @@ namespace KPLN_Tools.Forms
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
         private static readonly string[] ALL_DEPARTMENTS = { "АР", "КР", "ОВиК", "ВК", "ЭОМ", "СС", "BIM" };
 
-        private const string DEPT_ALL = "NOTASSIGNED";
+        private const string DEPT_DEF = "NOTASSIGNED";
+        private const string DEPT_MAIN = "MAIN";
+        private const int DEFAULT_CATEGORY_ID = 1;
 
         private const int TARGET_MAX_SIDE = 512;   
         private const long JPEG_QUALITY = 85L; 
         private byte[] _preparedImageBytes;
 
         public FamilyManagerRecord ResultRecord { get; private set; }
+
+        public string OpenFormat { get; private set; }
         public bool DeleteStatus { get; private set; }
+        public string filePathFI { get; private set; }
 
         private string _originalStatus;
 
@@ -103,6 +111,8 @@ namespace KPLN_Tools.Forms
 
             DataContext = record;
             BuildDepartmentUI(record);
+
+            filePathFI = record.FULLPATH;
 
             if (!string.IsNullOrEmpty(record.FULLPATH))
             {
@@ -250,7 +260,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
         // Создание ComboBox со статусом
         private void SetupStatusCombo(string status)
         {
@@ -344,9 +353,9 @@ namespace KPLN_Tools.Forms
 
                 DeptPanel.Children.Add(cb);
             }
+
         }
-
-
+      
         // Категории, прошедшие фильтр по отделам
         private static List<CategoryItem> FilterCategoriesByDepartments(
             IEnumerable<CategoryItem> all, string selectedDepartments)
@@ -358,17 +367,27 @@ namespace KPLN_Tools.Forms
             {
                 var cdeps = ParseDepartments(c.DEPARTAMENT);
 
-                if (cdeps.Contains(DEPT_ALL)) return true;
+                if (cdeps.Contains(DEPT_DEF)) return true;
+                if (cdeps.Contains(DEPT_MAIN)) return true;
 
                 if (!hasSelection)
                 {
-                    return cdeps.Count == 0 || cdeps.Contains(DEPT_ALL);
+                    return cdeps.Count == 0 || cdeps.Contains(DEPT_DEF);
                 }
 
                 return cdeps.Any(sel.Contains);
             })
-            .OrderBy(c => c.NAME)
+            .OrderBy(c => IsDefaultCategory(c) ? 0 : 1)
+            .ThenBy(c => c.NAME, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+        }
+
+        // Вспомогательный метод сортировки
+        private static bool IsDefaultCategory(CategoryItem c)
+        {
+            if (c == null) return false;
+            return c.ID == DEFAULT_CATEGORY_ID
+                || string.Equals(c.NAME, "Не назначен", StringComparison.CurrentCultureIgnoreCase);
         }
 
         // Перерасчёт категорий из отделов
@@ -459,20 +478,6 @@ namespace KPLN_Tools.Forms
                 return fallback;
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         // Получение байтов из Image.Source
         private static byte[] GetImageBytesFromImageControl(System.Windows.Controls.Image img)
@@ -733,19 +738,9 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
         // Мапинг статуса
         private string MapStatusForSave(string originalStatus, string selectedUiStatus)
         {
-            // Если "Требует подтверждения", "Файл не найден..." или "В записи БД присутствует ошибка" — оставляем исходный
             if (selectedUiStatus == "Требует подтверждения" ||
                 selectedUiStatus == "Файл не найден на диске" ||
                 selectedUiStatus == "В записи БД присутствует ошибка")
@@ -756,7 +751,6 @@ namespace KPLN_Tools.Forms
             if (selectedUiStatus == "Игнорировать в БД") return "IGNORE";
             if (selectedUiStatus == "Подтверждено") return "OK";
 
-            // Иначе без изменений
             return originalStatus;
         }
 
@@ -814,6 +808,55 @@ namespace KPLN_Tools.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // XAML. Открытие папки с семейством
+        private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var rec = DataContext as FamilyManagerRecord;
+            if (rec == null || string.IsNullOrEmpty(rec.FULLPATH))
+            {
+                MessageBox.Show("Путь к файлу не задан.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                string filePath = rec.FULLPATH;
+
+                if (File.Exists(filePath))
+                {
+                    Process.Start("explorer.exe", "/select,\"" + filePath + "\"");
+                    return;
+                }
+
+                string dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    Process.Start("explorer.exe", "\"" + dir + "\"");
+                }
+                else
+                {
+                    MessageBox.Show("Файл или папка не найдены.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при открытии папки:\n" + ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         // XAML. Чек-боксы "Отдел"
         private void DepartmentCheckChanged(object sender, RoutedEventArgs e)
         {
@@ -830,9 +873,32 @@ namespace KPLN_Tools.Forms
             RefreshCategoryCombos();
         }
 
+        // XAML. Кнопка выбрать/снять все отделы
+        private void DeptLabel_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            bool anyUnchecked = DeptPanel.Children.OfType<CheckBox>().Any(cb => cb.IsChecked != true);
+            SetAllDepartments(anyUnchecked);
+        }
 
+        // Выбрать все чекбоксы с оделами
+        private void SetAllDepartments(bool check)
+        {
+            foreach (var cb in DeptPanel.Children.OfType<CheckBox>())
+                cb.IsChecked = check;
 
+            UpdateDeptToggleVisual();
+        }
 
+        // Обновления статуса кнопки для выбора всех отделов
+        private void UpdateDeptToggleVisual()
+        {
+            if (DeptLabel == null) return;
+
+            bool allChecked = DeptPanel.Children.OfType<CheckBox>().All(cb => cb.IsChecked == true);
+            DeptLabel.ToolTip = allChecked ? "Снять все отделы" : "Выбрать все отделы";
+        }
+
+        // XAML.Чек-боксы отделов
         private void CategoryCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             var record = DataContext as FamilyManagerRecord;
@@ -851,11 +917,6 @@ namespace KPLN_Tools.Forms
             CategoryNcCombo.ItemsSource = subcats;
             CategoryNcCombo.SelectedValue = record.SUB_CATEGORY;
         }
-
-
-
-
-
 
         // XAML. Пользовательское изображение
         private void ButtonUserPic_Click(object sender, RoutedEventArgs e)
@@ -951,13 +1012,25 @@ namespace KPLN_Tools.Forms
                    (ext.Equals(".rfa", StringComparison.OrdinalIgnoreCase));
         }
 
-
-
-
-
         // XAML. Отмена
         private void BtnCancel_OnClick(object sender, RoutedEventArgs e)
         {
+            Close();
+        }
+
+        // XAML. Открыть семейство
+        private void ButtonOpenFamily_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFormat = "OpenFamily";
+            DialogResult = true;
+            Close();
+        }
+
+        // XAML. Загрузить семейство в проект
+        private void ButtonOpenFamilyInProject_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFormat = "OpenFamilyInProject";
+            DialogResult = true;
             Close();
         }
 
@@ -1034,7 +1107,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
         // XAML. Удаление из БД
         private void ButtonDeleteDB_Click(object sender, RoutedEventArgs e)
         {
@@ -1042,5 +1114,6 @@ namespace KPLN_Tools.Forms
             DialogResult = true;
             Close();
         }
+
     }
 }
