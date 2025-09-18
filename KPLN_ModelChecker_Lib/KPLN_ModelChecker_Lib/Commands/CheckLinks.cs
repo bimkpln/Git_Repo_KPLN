@@ -9,22 +9,22 @@ namespace KPLN_ModelChecker_Lib.Commands
 {
     public sealed class CheckLinks : AbstrCheck
     {
-        /// <summary>
-        /// Пустой конструктор для внесения данных класса
-        /// </summary>
         public CheckLinks() : base()
         {
             if (PluginName == null)
                 PluginName = "Проверка связей";
 
             if (ESEntity == null)
-                ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CheckLinks", new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
+                ESEntity = new ExtensibleStorageEntity(
+                    PluginName,
+                    "KPLN_CheckLinks",
+                    new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
         }
 
 
-        public override Element[] GetElemsToCheck(Document doc)
+        public override Element[] GetElemsToCheck()
         {
-            return new FilteredElementCollector(doc)
+            return new FilteredElementCollector(CheckDocument)
                 .OfCategory(BuiltInCategory.OST_RvtLinks)
                 .WhereElementIsNotElementType()
                 // Фильтрация по имени от вложенных прикрепленных связей
@@ -32,9 +32,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .ToArray();
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
-
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
@@ -195,8 +193,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                         "Подозрительный путь",
                         $"Большая вероятность, что связь случайно выбрана из архива, т.к. путь: {lDocPath}",
                         $"Ошибка может быть ложной, если на данном проекте принято такое решение. Перед заменой - ПРОКОНСУЛЬТИРУЙСЯ в BIM-отделе",
-                        false,
-                        ErrorStatus.Warning));
+                        false)
+                        .Set_Status(ErrorStatus.Warning));
             }
 
             return result;

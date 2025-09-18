@@ -26,7 +26,7 @@ namespace KPLN_ModelChecker_Lib
         private BoundingBoxXYZ _zoomBBox;
         private XYZ _zoomCentroid;
 
-        public CheckerEntity(object elemData, string header, string description, string info, bool isZoomElement)
+        public CheckerEntity(object elemData, string header, string description, string info, bool canZoomed)
         {
             if (elemData is Element element)
             {
@@ -71,13 +71,32 @@ namespace KPLN_ModelChecker_Lib
             Header = header;
             Description = description;
             Info = info;
-            IsZoomElement = isZoomElement;
+            CanZoomed = canZoomed;
         }
 
-        public CheckerEntity(object elemData, string header, string description, string info, bool isZoomElement, ErrorStatus status) : this(elemData, header, description, info, isZoomElement)
+        /// <summary>
+        /// Взвести метку, что замечание может быть подтверждено юзером
+        /// </summary>
+        /// <returns></returns>
+        public CheckerEntity Set_CanApproved()
+        {
+            CanApproved = true;
+            
+            return this;
+        }
+
+        /// <summary>
+        /// Вручную указать статус замечания
+        /// </summary>
+        /// <param name="status">Статус, который нужно присвоить замечанию</param>
+        /// <returns></returns>
+        public CheckerEntity Set_Status(ErrorStatus status)
         {
             Status = status;
+
+            return this;
         }
+
 
         /// <summary>
         /// Revit-элемент
@@ -122,12 +141,17 @@ namespace KPLN_ModelChecker_Lib
         /// <summary>
         /// Статус ошибки
         /// </summary>
-        public ErrorStatus Status { get; } = ErrorStatus.Error;
+        public ErrorStatus Status { get; private set; } = ErrorStatus.Error;
 
         /// <summary>
         /// Можно использовать кастомный зум?
         /// </summary>
-        public bool IsZoomElement { get; }
+        public bool CanZoomed { get; private set; } = false;
+
+        /// <summary>
+        /// Есть возможность подтверждать ошибку?
+        /// </summary>
+        public bool CanApproved { get; private set; } = false;
 
         /// <summary>
         /// BoundingBoxXYZ для зума
@@ -136,7 +160,7 @@ namespace KPLN_ModelChecker_Lib
         {
             get
             {
-                if (IsZoomElement && _zoomBBox == null)
+                if (CanZoomed && _zoomBBox == null)
                     _zoomBBox = Element.get_BoundingBox(null);
 
                 return _zoomBBox;
@@ -150,7 +174,7 @@ namespace KPLN_ModelChecker_Lib
         {
             get
             {
-                if (IsZoomElement && _zoomCentroid == null)
+                if (CanZoomed && _zoomCentroid == null)
                 {
                     if (ZoomBBox != null)
                         _zoomCentroid = new XYZ(
