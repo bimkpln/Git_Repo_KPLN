@@ -32,10 +32,10 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
         public AbstrCheck CurrentAbstrCheck { get; }
 
-        public CheckerEntity[] RunCommand(Document doc)
+        public CheckerEntity[] RunCommand()
         {
-            Element[] elemsToCheck = CurrentAbstrCheck.GetElemsToCheck(doc);
-            return CurrentAbstrCheck.ExecuteCheck(doc, elemsToCheck, false);
+            Element[] elemsToCheck = CurrentAbstrCheck.GetElemsToCheck();
+            return CurrentAbstrCheck.ExecuteCheck(elemsToCheck, false);
         }
 
         private void OnPropertyChanged([CallerMemberName] string name = null) =>

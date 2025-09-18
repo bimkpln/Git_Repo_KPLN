@@ -1,5 +1,6 @@
 ﻿using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.Commands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,13 @@ namespace KPLN_ModelChecker_Batch.Common
 
         internal string FileSize;
 
-        internal string OpenedLinks;
+        internal int CountedLinks;
+        
+        internal int OpenedLinks;
 
-        internal string OpenedWorksets;
+        internal int CountedWorksets;
+        
+        internal int OpenedWorksets;
 
         internal List<CheckData> ChecksData;
     }
@@ -64,6 +69,9 @@ namespace KPLN_ModelChecker_Batch.Common
         /// <param name="excelEntities">Коллекция структуры-оболочки</param>
         public static string Run(string path, ExcelDataEntity[] excelEntities)
         {
+            // Имя проверок с кастомным набором полей
+            string checkLinksName = new CheckLinks().PluginName;
+            
             Excel.Application excelApp = new Excel.Application
             {
                 SheetsInNewWorkbook = excelEntities.Length
@@ -94,9 +102,9 @@ namespace KPLN_ModelChecker_Batch.Common
                 worksheet.Cells[3, 1].Value = "Название файла";
                 worksheet.Cells[3, 2].Value = excelEnt.FileName;
                 worksheet.Cells[4, 1].Value = "Связей открыто/Всего связей";
-                worksheet.Cells[4, 2].Value = excelEnt.OpenedLinks;
+                worksheet.Cells[4, 2].Value = $"{excelEnt.OpenedLinks}/{excelEnt.CountedLinks}";
                 worksheet.Cells[5, 1].Value = "Рабочих наборов открыто/Всего рабочих наборов";
-                worksheet.Cells[5, 2].Value = excelEnt.OpenedWorksets;
+                worksheet.Cells[5, 2].Value = $"{excelEnt.OpenedWorksets}/{excelEnt.CountedWorksets}";
                 worksheet.Cells[6, 1].Value = "Размер файла [МБ]";
                 worksheet.Cells[6, 2].Value = excelEnt.FileSize;
 
@@ -104,7 +112,10 @@ namespace KPLN_ModelChecker_Batch.Common
                 worksheet.Cells[8, 1].Value = "ВЫЯВЛЕННЫЕ ОШИБКИ:";
                 worksheet.Cells[8, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Yellow);
                 worksheet.Cells[8, 1].Font.Bold = true;
+                
                 int row = 9;
+                // Пометка для дополнительной строки ошибки открытых линков
+                bool allLinksOpened = excelEnt.OpenedLinks == excelEnt.CountedLinks;
                 foreach (CheckData chData in excelEnt.ChecksData)
                 {
                     // Заголовки данных по проверкам (!!!если добавишь строку - не забудь поменять кол-во строк для смещения в конце!!!)
@@ -112,8 +123,19 @@ namespace KPLN_ModelChecker_Batch.Common
                     worksheet.Cells[row, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Orange);
                     worksheet.Cells[row, 2].Value = chData.PluginName;
                     worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Orange);
+                    
+                    // Кастомный заголовок для проверки связей
+                    if (!allLinksOpened && chData.PluginName == checkLinksName)
+                    {
+                        row++;
+                        worksheet.Cells[row, 1].Value = "!!!Внимание!!!";
+                        worksheet.Cells[row, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                        worksheet.Cells[row, 2].Value = "Не все связи удалось загрузить. Нужно вмешаться человеку";
+                        worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                    }
 
-                    Dictionary<string, string> checkerEntityData = GetStringFromat(chData.CheckerEntities);
+
+                    Dictionary<string, string> checkerEntityData = GetStringFromat(chData);
 
                     int column = 2;
                     foreach(var kvp in checkerEntityData)
@@ -124,7 +146,7 @@ namespace KPLN_ModelChecker_Batch.Common
                         worksheet.Cells[row + 1, column].Value = kvp.Key;
 
 
-                        worksheet.Cells[row + 2, 1].Value = "ID элемента/-ов";
+                        worksheet.Cells[row + 2, 1].Value = "ID/Имена элементов";
                         worksheet.Cells[row + 2, column].Value = kvp.Value;
 
                         column++;
@@ -185,10 +207,11 @@ namespace KPLN_ModelChecker_Batch.Common
         /// <summary>
         /// Форматирование данных из ошибок в нужный текстовый формат
         /// </summary>
-        /// <param name="docErrors"></param>
-        /// <returns>1 - Описание ошибок; 2 - ID-элементов </returns>
-        private static Dictionary<string, string> GetStringFromat(CheckerEntity[] docErrors)
+        /// <returns>1 - Описание ошибок; 2 - ID/Имя-элементов </returns>
+        private static Dictionary<string, string> GetStringFromat(CheckData chData)
         {
+            CheckerEntity[] docErrors = chData.CheckerEntities;
+
             if (docErrors == null || docErrors.Length == 0)
             {
                 return
@@ -197,6 +220,10 @@ namespace KPLN_ModelChecker_Batch.Common
                         { "Ошибок не выявлено!", "-" },
                     };
             }
+
+            // Имя проверок-исключений, для которых вместо ID - нужен кастом
+            string checkFamName = new CheckFamilies().PluginName;
+
 
             Dictionary<string, string> dict = new Dictionary<string, string>();
             foreach (CheckerEntity entity in docErrors)
@@ -212,7 +239,11 @@ namespace KPLN_ModelChecker_Batch.Common
                     .ToArray(); 
 
                 string headerData = string.Join("→", headerDataParts);
-                string IdData = string.Join(", ", entity.ElementIdCollection.ToList());
+                string IdData = string.Empty;
+                if (chData.PluginName == checkFamName)
+                    IdData = string.Join(", ", entity.ElementName);
+                else
+                    IdData = string.Join(", ", entity.ElementIdCollection.ToList());
 
                 if (dict.TryGetValue(headerData, out string dictIdData))
                     dict[headerData] = string.Concat(dictIdData, ", ", IdData);

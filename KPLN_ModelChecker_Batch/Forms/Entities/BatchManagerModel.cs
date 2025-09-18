@@ -81,10 +81,14 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         /// </summary>
         public ICommand RunCommand { get; }
 
+        /// <summary>
+        /// Коллекция проверок для запуска
+        /// </summary>
         public ObservableCollection<CheckEntity> CheckEntitiesList { get; private set; } = new ObservableCollection<CheckEntity>()
         {
             new CheckEntity(new CheckLinks()),
             new CheckEntity(new CheckMainLines()),
+            new CheckEntity(new CheckFamilies()),
             new CheckEntity(new CheckWorksets()),
         };
 
@@ -248,7 +252,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                                 worksetIds.Add(worksetPrev.Id);
                             }
                         }
-                        excelEnt.OpenedWorksets = $"{openWS}/{allWS}";
+                        excelEnt.CountedWorksets = allWS;
+                        excelEnt.OpenedWorksets = openWS;
 
                         OpenOptions openOptions = new OpenOptions()
                         {
@@ -272,7 +277,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
                         int modelLinks = linkTypes.Length;
                         int loadedLinks = linkTypes.Where(rlt => rlt.GetLinkedFileStatus() == LinkedFileStatus.Loaded).Count();
-                        excelEnt.OpenedLinks = $"{loadedLinks}/{modelLinks}";
+                        excelEnt.CountedLinks = modelLinks;
+                        excelEnt.OpenedLinks = loadedLinks;
 
                     }
                     catch (Autodesk.Revit.Exceptions.FileNotFoundException)
@@ -309,6 +315,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                                 continue;
                             }
 
+                            check.CurrentAbstrCheck.Set_UIAppData(_uiapp, doc);
 
                             checkName = check.Name;
                             CurrentLogger.Info($"Начинаю проверку с именем: \"{checkName}\"");
@@ -316,7 +323,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                             excelEnt.ChecksData.Add(new CheckData()
                             {
                                 PluginName = checkName,
-                                CheckerEntities = check.RunCommand(doc),
+                                CheckerEntities = check.RunCommand(),
                             });
 
                             CurrentLogger.Info($"Завершена проверка с именем: \"{checkName}\"");
