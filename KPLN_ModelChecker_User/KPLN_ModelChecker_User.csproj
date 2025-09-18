@@ -213,6 +213,7 @@
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExternalCommands\AbstrCommand.cs" />
+    <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckWorksets.cs" />
@@ -226,7 +227,6 @@
     <Compile Include="ExternalCommands\OldVers\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckListAnnotations.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckFamilies.cs" />
     <Compile Include="Forms\CheckMainForm.xaml.cs">
       <DependentUpon>CheckMainForm.xaml</DependentUpon>
     </Compile>

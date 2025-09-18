@@ -1,12 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib.Commands;
-using KPLN_ModelChecker_User.ExecutableCommand;
-using KPLN_ModelChecker_User.WPFItems;
-using System;
 using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -22,10 +17,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            UIApplication uiapp = commandData.Application;
+
+            CommandCheck = new CheckWorksets().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
+            ElemsToCheck = CommandCheck.GetElemsToCheck();
+
             Document doc = commandData.Application.ActiveUIDocument.Document;
-            
-            CommandCheck = new CheckWorksets();
-            ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
 
             // Блокирую проверку части РН ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.
@@ -56,14 +53,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            ExecuteByUIApp<CheckWorksets>(commandData.Application, false, true, true, true, true);
-            
-            return Result.Succeeded;
-        }
+            ExecuteByUIApp<CheckWorksets>(uiapp, false, true, true, true, true);
 
-        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
-        {
-            report.SetWPFEntityFiltration_ByErrorHeader();
+            return Result.Succeeded;
         }
     }
 }

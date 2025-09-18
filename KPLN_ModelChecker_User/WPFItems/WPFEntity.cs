@@ -95,7 +95,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             Description = checkEntity.Description;
             Info = checkEntity.Info;
             CurrentStatus = checkEntity.Status;
-            IsZoomElement = checkEntity.IsZoomElement;
+            CanZoomed = checkEntity.CanZoomed;
             Box = checkEntity.ZoomBBox;
             Centroid = checkEntity.ZoomCentroid;
         }
@@ -120,7 +120,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             Header = header;
             Description = description;
             Info = info;
-            IsZoomElement = isZoomElement;
+            CanZoomed = isZoomElement;
 
             Box = Element.get_BoundingBox(null);
             // У некоторых эл-в нет BBox.
@@ -146,13 +146,13 @@ namespace KPLN_ModelChecker_User.WPFItems
         [Obsolete]
         public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement, ErrorStatus status, bool isApproveElement) : this(esEntity, element, header, description, info, isZoomElement, status)
         {
-            IsApproveElement = isApproveElement;
+            CanApproved = isApproveElement;
         }
 
         [Obsolete]
         public WPFEntity(ExtensibleStorageEntity esEntity, Element element, string header, string description, string info, bool isZoomElement, bool isApproveElement) : this(esEntity, element, header, description, info, isZoomElement)
         {
-            IsApproveElement = isApproveElement;
+            CanApproved = isApproveElement;
         }
 
         [Obsolete]
@@ -181,7 +181,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             Header = header;
             Description = description;
             Info = info;
-            IsZoomElement = isZoomElement;
+            CanZoomed = isZoomElement;
 
             if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
                 && ElementCollection.All(e =>
@@ -317,12 +317,12 @@ namespace KPLN_ModelChecker_User.WPFItems
         /// <summary>
         /// Использовать кастомный зум?
         /// </summary>
-        public bool IsZoomElement { get; }
+        public bool CanZoomed { get; }
 
         /// <summary>
         /// Есть возможность подтверждать ошибку?
         /// </summary>
-        public bool IsApproveElement { get; } = false;
+        public bool CanApproved { get; } = false;
 
         /// <summary>
         /// Фон элемента

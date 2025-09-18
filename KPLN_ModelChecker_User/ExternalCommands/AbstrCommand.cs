@@ -47,15 +47,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 if (CommandCheck == null || ElemsToCheck == null)
                 {
-                    CommandCheck = new T();
-                    ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+                    CommandCheck = new T().Set_UIAppData(uiapp, doc);
+                    ElemsToCheck = CommandCheck.GetElemsToCheck();
                 }
 
                 if (setPluginActivity)
                     DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
 
-                CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
+                CheckerEntities = CommandCheck.ExecuteCheck(ElemsToCheck, onlyErrorType);
                 if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
                     ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
                 else if (showSuccsessText)
@@ -93,7 +93,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Установить фильтрацию элементов в отчете
         /// </summary>
-        private protected abstract void SetWPFEntityFiltration(WPFReportCreator report);
+        private protected virtual void SetWPFEntityFiltration(WPFReportCreator report) => report.SetWPFEntityFiltration_ByErrorHeader();
 
         /// <summary>
         /// Метод для подготовки отчета

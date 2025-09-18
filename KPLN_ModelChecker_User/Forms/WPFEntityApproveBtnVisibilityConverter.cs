@@ -17,7 +17,7 @@ namespace KPLN_ModelChecker_User.Forms
             WPFEntity entity = value as WPFEntity;
             if (entity != null)
             {
-                return entity.IsApproveElement ? Visibility.Visible : Visibility.Hidden;
+                return entity.CanApproved ? Visibility.Visible : Visibility.Hidden;
             }
 
             return Visibility.Visible;

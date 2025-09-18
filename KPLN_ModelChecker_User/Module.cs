@@ -4,7 +4,6 @@ using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Common;
-using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System;
 using System.IO;
@@ -46,11 +45,7 @@ namespace KPLN_ModelChecker_User
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
                 new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
             CheckWorksets checkWorksets = new CheckWorksets();
-            CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
-                CommandCheckFamilies.PluginName,
-                "KPLN_CommandCheckFamilies",
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
+            CheckFamilies checkFamilies = new CheckFamilies();
             CheckMainLines checkMainLines = new CheckMainLines();
             CommandCheckFlatsArea commandCheckFlatsArea = new CommandCheckFlatsArea(new ExtensibleStorageEntity(
                 CommandCheckFlatsArea.PluginName,
@@ -90,7 +85,7 @@ namespace KPLN_ModelChecker_User
                 // Проверки из этой сборки
                 CommandCheckDimensions.ESEntity,
                 checkWorksets.ESEntity,
-                CommandCheckFamilies.ESEntity,
+                checkFamilies.ESEntity,
                 checkMainLines.ESEntity,
                 CommandCheckFlatsArea.ESEntity,
                 CommandCheckHoles.ESEntity,
@@ -165,7 +160,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckNames",
-                CommandCheckFamilies.PluginName,
+                checkFamilies.PluginName,
                 "Проверка семейств на:" +
                     "\n1. Импорт семейств из разрешенных источников (диск Х);" +
                     "\n2. Наличие дубликатов имен (проверяются и типоразмеры);" +
@@ -181,7 +176,7 @@ namespace KPLN_ModelChecker_User
             AddPushButtonData(
                 "CheckWorksets",
                 checkWorksets.PluginName,
-                "Проверка элементов на корректность следующих рабочих наборов:"+
+                "Проверка элементов на корректность следующих рабочих наборов:" +
                     "\n1. РН для связей;" +
                     "\n2. РН для осей и уровней;" +
                     "\n3. РН для скопированных и замониторенных элементов из других моделей.",

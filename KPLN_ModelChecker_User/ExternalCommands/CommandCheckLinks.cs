@@ -2,7 +2,6 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Commands;
-using KPLN_ModelChecker_User.WPFItems;
 using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -18,8 +17,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            CommandCheck = new CheckLinks();
-            ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
+            UIApplication uiapp = commandData.Application;
+
+            CommandCheck = new CheckLinks().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
+            ElemsToCheck = CommandCheck.GetElemsToCheck();
 
             // Блокирую проверку части линков ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.
@@ -39,14 +40,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            ExecuteByUIApp<CheckLinks>(commandData.Application, false, true, true, true, true);
-            
-            return Result.Succeeded;
-        }
+            ExecuteByUIApp<CheckLinks>(uiapp, false, true, true, true, true);
 
-        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
-        {
-            report.SetWPFEntityFiltration_ByErrorHeader();
+            return Result.Succeeded;
         }
     }
 }
