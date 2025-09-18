@@ -15,8 +15,9 @@ namespace KPLN_BIMTools_Ribbon
 {
     public class Module : IExternalModule
     {
+        internal static Logger CurrentLogger;
+        
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
-        private Logger _logger;
         private UIApplication _uiApp;
 
         public Result Close()
@@ -37,7 +38,7 @@ namespace KPLN_BIMTools_Ribbon
 
             #region Настройка NLog
             // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
-            _logger = LogManager.GetLogger("KPLN_BIMTools");
+            CurrentLogger = LogManager.GetLogger("KPLN_BIMTools");
 
             string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}";
             string logFileName = "KPLN_BIMTools";
@@ -45,8 +46,7 @@ namespace KPLN_BIMTools_Ribbon
             LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;
             #endregion
 
-            CommandAutoExchangeConfig.SetStaticEnvironment(_logger);
-            CommandRVTExchange.SetStaticEnvironment(application, _logger);
+            CommandRVTExchange.SetStaticEnvironment(application);
 
             Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
 
@@ -296,7 +296,7 @@ namespace KPLN_BIMTools_Ribbon
                         catch (UnauthorizedAccessException) { }
                         catch (Exception ex)
                         {
-                            _logger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
+                            CurrentLogger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
                         }
                     }
                 }

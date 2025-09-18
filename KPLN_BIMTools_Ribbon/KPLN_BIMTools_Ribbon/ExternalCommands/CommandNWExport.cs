@@ -5,8 +5,6 @@ using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using NLog;
-using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -89,9 +87,9 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
+                    Module.CurrentLogger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
                         $"ошибка при открытии: {ex.Message}");
-                    
+
                     return null;
                 }
 
@@ -103,7 +101,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     .Select(e => e as View3D);
                 if (currentDoc3DViews.Count() == 0)
                 {
-                    Logger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
+                    Module.CurrentLogger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
                     return null;
                 }
 
@@ -111,15 +109,15 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
                 var viewElemsColl = new FilteredElementCollector(doc, viewId)
                     .WhereElementIsNotElementType()
-                    .Where(e => 
-                        e.Category != null 
-                        && e.Category.CategoryType == CategoryType.Model 
+                    .Where(e =>
+                        e.Category != null
+                        && e.Category.CategoryType == CategoryType.Model
                         && (e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
                     .ToArray();
-                    
+
                 if (viewElemsColl.Length == 0)
                 {
-                    Logger.Error($"На виде с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
+                    Module.CurrentLogger.Error($"На виде с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
                     return null;
                 }
 

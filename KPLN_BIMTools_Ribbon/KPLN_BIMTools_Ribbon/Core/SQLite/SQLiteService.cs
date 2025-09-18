@@ -2,7 +2,6 @@
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -18,13 +17,11 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
     {
         private const string _dbTableName = "Items";
 
-        private readonly Logger _logger;
         private readonly string _dbPath;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
 
-        internal SQLiteService(Logger logger, string dbPath, RevitDocExchangeEnum revitDocExchangeEnum)
+        internal SQLiteService(string dbPath, RevitDocExchangeEnum revitDocExchangeEnum)
         {
-            _logger = logger;
             CurrentDBFullPath = dbPath;
             _dbPath = "Data Source=" + CurrentDBFullPath + "; Version=3;";
             _revitDocExchangeEnum = revitDocExchangeEnum;
@@ -227,9 +224,9 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                         {
                             HtmlOutput.Print(
                                 "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
-                                "Если нужно его заменить - сними копию текушего конфига, а старую удали", 
+                                "Если нужно его заменить - сними копию текушего конфига, а старую удали",
                                 MessageType.Warning);
-                            
+
                             return ExecuteQuery<DBRVTConfigData>(
                                 $"UPDATE {_dbTableName} " +
                                 $"SET " +
@@ -252,7 +249,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
         /// <summary>
         /// Очистить таблицу от всех данных
         /// </summary>
-        public void DropTable() 
+        public void DropTable()
         {
             ExecuteNonQuery($"DELETE FROM {_dbTableName};");
         }

@@ -49,8 +49,6 @@ namespace KPLN_BIMTools_Ribbon.Common
 
         internal static UIControlledApplication RevitUIControlledApp { get; set; }
 
-        internal static NLog.Logger Logger { get; set; }
-
         /// <summary>
         /// Метка сервиса о том, что он запускается автоматически
         /// </summary>
@@ -85,10 +83,9 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Установка общих параметров для запуска
         /// </summary>
-        internal static void SetStaticEnvironment(UIControlledApplication application, NLog.Logger logger)
+        internal static void SetStaticEnvironment(UIControlledApplication application)
         {
             RevitUIControlledApp = application;
-            Logger = logger;
         }
 
         /// <summary>
@@ -140,7 +137,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
                 _sourceProjectName = dBProject.Name;
 
-                ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, dBProject, revitDocExchangeEnum, false);
+                ConfigDispatcher configDispatcher = new ConfigDispatcher(dBProject, revitDocExchangeEnum, false);
                 if (!(bool)configDispatcher.ShowDialog())
                     return;
 
@@ -153,16 +150,16 @@ namespace KPLN_BIMTools_Ribbon.Common
             if (dbRevitDocExchanges == null)
                 return;
 
-            using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(RevitUIControlledApp, Logger, this))
+            using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(RevitUIControlledApp, Module.CurrentLogger, this))
             {
                 // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
                 try
                 {
-                    Logger.Info($"Старт экспорта: [{docExchangeModuleName}].\nКонфигурация/-ии: [{configNames}]");
+                    Module.CurrentLogger.Info($"Старт экспорта: [{docExchangeModuleName}].\nКонфигурация/-ии: [{configNames}]");
 
                     foreach (DBRevitDocExchangesWrapper currentDocExchEnt in dbRevitDocExchanges)
                     {
-                        SQLiteService sqliteService = new SQLiteService(Logger, currentDocExchEnt.SettingDBFilePath, revitDocExchangeEnum);
+                        SQLiteService sqliteService = new SQLiteService(currentDocExchEnt.SettingDBFilePath, revitDocExchangeEnum);
                         IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
                         foreach (DBConfigEntity config in configs)
                         {
@@ -185,7 +182,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                     // Если ничего из вышеописанного - то ошибка
                                     else
                                     {
-                                        Logger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
+                                        Module.CurrentLogger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
                                         continue;
                                     }
 
@@ -193,7 +190,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                     if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
                                         CountProcessedDocs++;
                                     else
-                                        Logger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
+                                        Module.CurrentLogger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
                                 }
                             }
                             // Все равно добавляю 1, чтобы попало в отчет
@@ -202,12 +199,12 @@ namespace KPLN_BIMTools_Ribbon.Common
                     }
 
                     SendResultMsg($"Плагин экспорта [{docExchangeModuleName}]", configNames);
-                    Logger.Info($"Работа плагина [{docExchangeModuleName}] завершена.\n");
+                    Module.CurrentLogger.Info($"Работа плагина [{docExchangeModuleName}] завершена.\n");
                 }
                 catch (Exception ex)
                 {
                     SendResultMsg($"Плагин экспорта [{docExchangeModuleName}]", configNames);
-                    Logger.Error($"Работа плагина [{docExchangeModuleName}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
+                    Module.CurrentLogger.Error($"Работа плагина [{docExchangeModuleName}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
                     throw ex;
                 }
             }
@@ -328,7 +325,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 int pathPartsLenght = pathParts.Length;
                 if (rsHostName == null)
                 {
-                    Logger.Error($"Ошибка заполнения пути для копирования с Revit-Server: ({pathFrom}). Путь должен быть в формате '\\\\HOSTNAME\\PATH'");
+                    Module.CurrentLogger.Error($"Ошибка заполнения пути для копирования с Revit-Server: ({pathFrom}). Путь должен быть в формате '\\\\HOSTNAME\\PATH'");
                     return null;
                 }
                 try
@@ -351,7 +348,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Ошибка открытия Revit-Server ({pathFrom}):\n{ex.Message}");
+                    Module.CurrentLogger.Error($"Ошибка открытия Revit-Server ({pathFrom}):\n{ex.Message}");
                     return null;
                 }
             }
@@ -362,7 +359,7 @@ namespace KPLN_BIMTools_Ribbon.Common
 
             if (fileFromPathes.Count == 0)
             {
-                Logger.Error($"Не удалось найти Revit-файлы из папки: {pathFrom}");
+                Module.CurrentLogger.Error($"Не удалось найти Revit-файлы из папки: {pathFrom}");
                 return null;
             }
 
