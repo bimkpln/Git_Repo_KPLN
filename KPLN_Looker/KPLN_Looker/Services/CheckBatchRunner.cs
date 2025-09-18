@@ -12,7 +12,7 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Запуск всех проверок по преднастройке в коде
         /// </summary>
-        public static void RunAll(UIApplication uiApp, string docTitle)
+        public static void RunAll(UIApplication uiapp, string docTitle)
         {
             bool anyErrors = false;
 
@@ -22,15 +22,15 @@ namespace KPLN_Looker.Services
                 && !docTitle.StartsWith("ПСРВ_")
                 && !docTitle.StartsWith("SH1-"))
             {
-                // anyErrors |= Run<CommandCheckSomethingElse1, CommandCheckSomethingElse2>(uiApp);
-                
-                anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiApp);
-                anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiApp);
+                // anyErrors |= Run<CommandCheckSomethingElse1, CommandCheckSomethingElse2>(uiapp);
+
+                anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiapp);
+                anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiapp);
                 
                 // Персональный фильтр по проектам
                 if (!docTitle.StartsWith("МТРС_")
                     && !docTitle.StartsWith("СЕТ_1_"))
-                    anyErrors |= Run<CommandCheckMainLines, CheckMainLines>(uiApp);
+                    anyErrors |= Run<CommandCheckMainLines, CheckMainLines>(uiapp);
             }
 
             if (anyErrors)
@@ -47,14 +47,14 @@ namespace KPLN_Looker.Services
         /// <summary>
         /// Запуск выбранной проверки
         /// </summary>
-        private static bool Run<TCmd, TCheck>(UIApplication uiApp)
+        private static bool Run<TCmd, TCheck>(UIApplication uiapp)
             where TCmd : AbstrCommand, new()
             where TCheck : AbstrCheck, new()
         {
             var cmd = new TCmd();
 
             cmd.ExecuteByUIApp<TCheck>(
-                uiapp: uiApp,
+                uiapp: uiapp,
                 onlyErrorType: true,
                 setPluginActivity: false,
                 setLastRun: false,
@@ -67,7 +67,7 @@ namespace KPLN_Looker.Services
 
             // Паказваем справаздачу толькі калі ёсць памылкі
             if (hasErrors)
-                cmd.ReportCreatorAndDemonstrator<TCheck>(uiApp);
+                cmd.ReportCreatorAndDemonstrator<TCheck>(uiapp);
 
             return hasErrors;
         }

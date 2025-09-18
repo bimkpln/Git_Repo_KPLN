@@ -39,7 +39,7 @@ namespace KPLN_Library_Forms.UI
                 Close();
             }
 
-            if (e.Key == Key.Escape)
+            if (e.Key == Key.Enter)
             {
                 DialogResult = true;
                 Close();
