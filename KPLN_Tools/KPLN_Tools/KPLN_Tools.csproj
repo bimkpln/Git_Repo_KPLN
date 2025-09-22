@@ -334,6 +334,9 @@
     <Compile Include="Forms\FamilyManagerEditBIM.xaml.cs">
       <DependentUpon>FamilyManagerEditBIM.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FamilyManagerSettingDB.xaml.cs">
+      <DependentUpon>FamilyManagerSettingDB.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FamilyManagerSettingsImport.xaml.cs">
       <DependentUpon>FamilyManagerSettingsImport.xaml</DependentUpon>
     </Compile>
@@ -481,6 +484,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\FamilyManagerEditBIM.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\FamilyManagerSettingDB.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

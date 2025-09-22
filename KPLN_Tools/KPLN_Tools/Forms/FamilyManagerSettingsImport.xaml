@@ -8,22 +8,23 @@
     <Border Padding="16">
         <StackPanel Orientation="Vertical" Margin="5 0 5 5" MinWidth="320">
             <TextBlock Text="Выберите параметры, которые будут обновлены в БД:" FontWeight="SemiBold" Margin="0,0,0,8"/>
-            <CheckBox x:Name="cbDepartment" Content="Отдел" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД.&#x0a;Общие семейства не обрабатываются." Margin="0,0,0,6" FontSize="11"/>
-            <CheckBox x:Name="cbStage" IsEnabled="False" Content="Стадия" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД." Margin="0,0,0,6"/>
-            <CheckBox x:Name="cbProject" IsEnabled="False" Content="Проект" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД." Margin="0,0,0,6"/>
-            <CheckBox x:Name="cbImportParams" IsEnabled="False" Content="Набор параметров семейства" Margin="0,0,0,6" Foreground="#FFB30707"/>
-            <CheckBox x:Name="cbFamilyImage" Content="Изображение семейства (только для актуальной версии Revit)" ToolTip="Формирование миниатюр изображений из файлов семейств." Margin="0,0,0,12" Foreground="#FFB30707"/>
+            <CheckBox x:Name="cbDepartment" Checked="AnyOther_Checked" Content="Отдел" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД.&#x0a;Общие семейства не обрабатываются." Margin="0,0,0,6" FontSize="11"/>
+            <CheckBox x:Name="cbStage" Checked="AnyOther_Checked" IsEnabled="False" Content="Стадия" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД." Margin="0,0,0,6"/>
+            <CheckBox x:Name="cbProject" Checked="AnyOther_Checked" IsEnabled="False" Content="Проект" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД." Margin="0,0,0,6"/>
+            <CheckBox x:Name="cbFamilyImage" Checked="AnyOther_Checked" Content="Изображение семейства (только для актуальной версии Revit)" ToolTip="Формирование миниатюр изображений из файлов семейств." Margin="0,0,0,6" Foreground="#FFB30707"/>
+            <CheckBox x:Name="cbImportParams" Checked="CbImportParams_Checked" Content="Набор параметров семейства" Margin="0,0,0,12" Foreground="#FFB30707"/>
 
 
 
             <TextBlock FontSize="10" TextWrapping="Wrap">
                 <Run Text="Параметры "/><Run FontWeight="SemiBold" Text="«Отдел»"/><Run Text=", "/><Run FontWeight="SemiBold" Text="«Стадия»"/><Run Text=" и "/><Run FontWeight="SemiBold" Text="«Проект»"/><Run Text=" обрабатываются мгновенно."/>
-                <LineBreak/>
-                 <Run Text="Параметр"/> <Run FontWeight="SemiBold" Text="«Набор параметров семейства»"/><Run Text=" - ?"/>
-                <LineBreak/>
+                <LineBreak/>                
                 <Run Text="Параметр "/><Run FontWeight="SemiBold" Text="«Изображение семейства»"/><Run Text=" обрабатывается "/><Underline><Run Text="по 4000 файлов за раз"/></Underline><Run Text="."/>
                 <LineBreak/>
                 <Run Text="Время обработки"/> <Run Text="параметра "/><Run FontWeight="SemiBold" Text="«Изображение семейства»"/><Run Text=" - "/><Underline><Run Text="от 2 до 7 минут за одну итерацию."/></Underline>
+                <LineBreak/>
+                <Run Text="Параметр"/> <Run FontWeight="SemiBold" Text="«Набор параметров семейства»"/><Run Text=" - "/><Underline><Run Text="обрабатывается отдельно (долго)"/></Underline>
+                <LineBreak/>
             </TextBlock>
 
 

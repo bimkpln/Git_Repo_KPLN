@@ -50,6 +50,26 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+
+        <Style x:Key="FlatRichTextBox" TargetType="{x:Type RichTextBox}">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RichTextBox}">
+                        <Border Background="{TemplateBinding Background}">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                  VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"
+                                  HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <Grid Margin="16">
@@ -137,11 +157,11 @@
 
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <StackPanel Orientation="Horizontal" Margin="0 0 0 5" HorizontalAlignment="Left">
-                    <Button Content="🔄" Width="24" Height="24" Padding="0.2,0,0,2" FontSize="12" Background="#FF7CFCFF"/>
+                    <Button x:Name="ButtonUpdateFamilyInfo" Content="🔄" ToolTip="Получить IMPORT_INFO из RFA" Width="24" Height="24" Margin="0 0 6 0" Padding="0.2,0,0,2" FontSize="12" Background="#FF7CFCFF" Click="ButtonUpdateFamilyInfo_Click"/>
+                    <Button x:Name="ButtonEditFamilyInfo" Content="✏️" ToolTip="Редактировать IMPORT_INFO" Width="24" Height="24" Padding="0.2,0,0,2" Margin="0 0 3 0" FontSize="12" Background="#FFECFF7C" Click="ButtonEditFamilyInfo_Click"/>
                     <TextBlock Text="Импортируемая из файла информация:" Margin="6 5 0 0" FontWeight="Bold"/>
                 </StackPanel>
-                <TextBox AcceptsReturn="True" Height="225px" Padding="5" VerticalScrollBarVisibility="Auto"
-                         TextWrapping="Wrap" Text="{Binding IMPORT_INFO}" IsReadOnly="True"/>
+                <RichTextBox x:Name="ImportInfoBox" Style="{StaticResource FlatRichTextBox}" Height="225" Padding="5" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#FFE8E8E8" FontFamily="Century Gothic" FontSize="13"/>
             </StackPanel>
         </Grid>
 

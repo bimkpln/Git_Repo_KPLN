@@ -9,9 +9,16 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Documents;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+using CheckBox = System.Windows.Controls.CheckBox;
+using Style = System.Windows.Style;
+using Window = System.Windows.Window;
+using System.Windows.Controls;
 
 
 namespace KPLN_Tools.Forms
@@ -28,6 +35,9 @@ namespace KPLN_Tools.Forms
         private const int TARGET_MAX_SIDE = 512;   
         private const long JPEG_QUALITY = 85L; 
         private byte[] _preparedImageBytes;
+
+        private bool _isEditingImportInfo = false;
+        private string _importInfoBackup = null;
 
         public FamilyManagerRecord ResultRecord { get; private set; }
 
@@ -111,6 +121,7 @@ namespace KPLN_Tools.Forms
 
             DataContext = record;
             BuildDepartmentUI(record);
+            RenderImportInfo(record.IMPORT_INFO);
 
             filePathFI = record.FULLPATH;
 
@@ -360,24 +371,25 @@ namespace KPLN_Tools.Forms
         private static List<CategoryItem> FilterCategoriesByDepartments(
             IEnumerable<CategoryItem> all, string selectedDepartments)
         {
-            var sel = ParseDepartments(selectedDepartments);
-            bool hasSelection = sel.Count > 0;
+            var selRaw = ParseDepartments(selectedDepartments);
+            var sel = NormalizeDeptSet(selRaw);
+            int selCnt = sel.Count;
 
             return all.Where(c =>
             {
-                var cdeps = ParseDepartments(c.DEPARTAMENT);
+                var cdepsRaw = ParseDepartments(c.DEPARTAMENT);
 
-                if (cdeps.Contains(DEPT_DEF)) return true;
-                if (cdeps.Contains(DEPT_MAIN)) return true;
+                if (cdepsRaw.Any(d => d.Equals(DEPT_MAIN, StringComparison.OrdinalIgnoreCase))) return true;
+                if (cdepsRaw.Any(d => d.Equals(DEPT_DEF, StringComparison.OrdinalIgnoreCase))) return true;
 
-                if (!hasSelection)
-                {
-                    return cdeps.Count == 0 || cdeps.Contains(DEPT_DEF);
-                }
+                var cdeps = NormalizeDeptSet(cdepsRaw);
 
-                return cdeps.Any(sel.Contains);
+                if (selCnt == 0)
+                    return cdepsRaw.Count == 0;
+
+                return sel.All(s => cdeps.Contains(s));
             })
-            .OrderBy(c => IsDefaultCategory(c) ? 0 : 1)
+            .OrderBy(c => IsDefaultCategory(c) ? 0 : 1)                             
             .ThenBy(c => c.NAME, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
         }
@@ -388,6 +400,20 @@ namespace KPLN_Tools.Forms
             if (c == null) return false;
             return c.ID == DEFAULT_CATEGORY_ID
                 || string.Equals(c.NAME, "Не назначен", StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        // Убираем служебные и пустые отделы перед сравнением
+        private static HashSet<string> NormalizeDeptSet(IEnumerable<string> deps)
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in deps ?? Enumerable.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(d)) continue;
+                if (string.Equals(d, DEPT_DEF, StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(d, DEPT_MAIN, StringComparison.OrdinalIgnoreCase)) continue;
+                set.Add(d.Trim());
+            }
+            return set;
         }
 
         // Перерасчёт категорий из отделов
@@ -754,6 +780,87 @@ namespace KPLN_Tools.Forms
             return originalStatus;
         }
 
+        // IMPORT_INFO. Парсинг JSON
+        private void RenderImportInfo(string json)
+        {
+            ImportInfoBox.Document.Blocks.Clear();
+
+            if (string.IsNullOrWhiteSpace(json))
+                return;
+
+            try
+            {
+                var obj = JObject.Parse(json);
+
+                var para = new Paragraph { Margin = new Thickness(0) };
+
+                foreach (var prop in obj.Properties())
+                {
+                    para.Inlines.Add(new Bold(new Run($"{prop.Name}: ")));
+
+                    var val = prop.Value?.Type == JTokenType.Null
+                        ? "—"
+                        : (prop.Value?.ToString() ?? "—");
+
+                    para.Inlines.Add(new Run(val));
+                    para.Inlines.Add(new LineBreak());
+                }
+
+                ImportInfoBox.Document.Blocks.Add(para);
+            }
+            catch
+            {
+                ImportInfoBox.Document.Blocks.Add(new Paragraph(new Run(json)) { Margin = new Thickness(0) });
+            }
+        }
+
+        // IMPORT_INFO. Кол-во отделов выбрано
+        private int GetSelectedDepartmentsCount()
+        {
+            return DeptPanel.Children
+                .OfType<CheckBox>()
+                .Count(c => c.IsChecked == true);
+        }
+
+        // IMPORT_INFO. Вытащить сырой текст из RichTextBox
+        private static string GetRtbText(RichTextBox rtb)
+        {
+            var tr = new TextRange(rtb.Document.ContentStart, rtb.Document.ContentEnd);
+            return tr.Text?.TrimEnd('\r', '\n');
+        }
+
+        // IMPORT_INFO. Показать сырой JSON для редактирования (моноширинный)
+        private void ShowRawJsonInEditor(string json)
+        {
+            ImportInfoBox.Document.Blocks.Clear();
+            var para = new Paragraph { Margin = new Thickness(0) };
+            para.Inlines.Add(new Run(json ?? string.Empty)
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Consolas")
+            });
+            ImportInfoBox.Document.Blocks.Add(para);
+        }
+
+        // IMPORT_INFO. Проверка и нормализация JSON 
+        private static string ValidateAndNormalizeJson(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                throw new Exception("JSON пустой.");
+
+            var token = JToken.Parse(raw);
+            if (token.Type != JTokenType.Object)
+                throw new Exception("Ожидался JSON-объект { ... }.");
+
+            var obj = (JObject)token;
+
+            foreach (var p in obj.Properties().ToList())
+            {
+                if (p.Value.Type == JTokenType.Null) p.Value = "";
+            }
+
+            return obj.ToString(Formatting.None);
+        }
+
         // Статистический метод записи данных в БД
         public static void SaveRecordToDatabase(FamilyManagerRecord rec)
         {
@@ -807,19 +914,6 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         // XAML. Открытие папки с семейством
         private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)
@@ -1034,6 +1128,80 @@ namespace KPLN_Tools.Forms
             Close();
         }
 
+        // XAML. Обновить информацию о семействе
+        private void ButtonUpdateFamilyInfo_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFormat = "UpdateFamily";
+            DialogResult = true;
+            Close();
+        }
+
+
+
+
+
+
+
+
+
+        // XAML. Редактировать информацию о семействе
+        private void ButtonEditFamilyInfo_Click(object sender, RoutedEventArgs e)
+        {
+            var record = DataContext as FamilyManagerRecord;
+            if (record == null) return;
+
+            if (!_isEditingImportInfo)
+            {
+                if (GetSelectedDepartmentsCount() == 0)
+                {
+                    MessageBox.Show("Выберите хотя бы один отдел, чтобы редактировать IMPORT_INFO.", "Family Manager", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                _importInfoBackup = record.IMPORT_INFO;     
+                ShowRawJsonInEditor(record.IMPORT_INFO);        
+                ImportInfoBox.IsReadOnly = false;      
+                ImportInfoBox.Focusable = true;
+                ImportInfoBox.Focus();
+
+                ButtonEditFamilyInfo.Content = "💾";  
+                ButtonEditFamilyInfo.ToolTip = "Сохранить IMPORT_INFO";
+
+                _isEditingImportInfo = true;
+                return;
+            }
+
+            try
+            {
+                var raw = GetRtbText(ImportInfoBox);
+                var normalized = ValidateAndNormalizeJson(raw);  
+
+                record.IMPORT_INFO = normalized;     
+
+                ImportInfoBox.IsReadOnly = true;      
+                ImportInfoBox.Focusable = true;           
+                RenderImportInfo(record.IMPORT_INFO);   
+
+                ButtonEditFamilyInfo.Content = "✏️";   
+                ButtonEditFamilyInfo.ToolTip = "Редактировать IMPORT_INFO";
+
+                _isEditingImportInfo = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("JSON невалиден:\n" + ex.Message,  "Проверка JSON", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+            }
+        }
+
+
+
+
+
+
+
+
+
         // XAML. Запись данных в БД
         private void ButtonSaveDB_Click(object sender, RoutedEventArgs e)
         {
@@ -1114,6 +1282,5 @@ namespace KPLN_Tools.Forms
             DialogResult = true;
             Close();
         }
-
     }
 }
