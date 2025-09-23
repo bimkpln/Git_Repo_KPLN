@@ -25,7 +25,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             Document doc = commandData.Application.ActiveUIDocument.Document;
             
             CommandCheck = new CheckWorksets();
-            ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+            //ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
 
             // Блокирую проверку части РН ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.

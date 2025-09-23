@@ -48,14 +48,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (CommandCheck == null || ElemsToCheck == null)
                 {
                     CommandCheck = new T();
-                    ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+                    //ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
                 }
 
                 if (setPluginActivity)
                     DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
 
-                CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
+                //CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
                 if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
                     ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
                 else if (showSuccsessText)

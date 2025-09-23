@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.ExternalCommands;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,8 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class WetZoneReviewWindow : Window
     {
+        private const double EPS = 1e-3;
+
         public static UIDocument _uiDoc;
         public List<Element> allRooms;
         public List<string> _invalidEquipment;
@@ -39,6 +42,10 @@ namespace KPLN_ModelChecker_User.Forms
             UndefinedList.ItemsSource = FormatRooms(undefinedRooms);
 
             _invalidEquipment = WetZoneCategories.InvalidEquipment.Any() ? WetZoneCategories.InvalidEquipment : null;
+
+            var allEquipment = WetZoneCategories.GetAllInvalidEquipment();
+            EquipmentExp.Header = $"Обрабатываемое оборудование ({allEquipment.Count})";
+            EquipmentList.ItemsSource = allEquipment;
 
             BuildInfoReport(doc, livingRooms, kitchenRooms, wetRooms, undefinedRooms);        
         }
@@ -389,6 +396,11 @@ namespace KPLN_ModelChecker_User.Forms
                 Start2Button.IsEnabled = false;
             }
 
+            bool canStart1 = !hasCriticalLevelError && undefinedRooms.Count == 0;
+            bool canStart2 = !hasCriticalParamError && undefinedRooms.Count == 0 && !canStart1; 
+            Start1Button.IsEnabled = canStart1;
+            Start2Button.IsEnabled = canStart2;
+
             InfoText.Document.Blocks.Clear();
             InfoText.Document.Blocks.Add(report);
         }
@@ -672,10 +684,94 @@ namespace KPLN_ModelChecker_User.Forms
             return outline;
         }
 
-        // Вспомогательный метод. Функция пересечения 2D-многоугольников
+        private static (double minX, double minY, double maxX, double maxY) GetBBox(List<XYZ> poly)
+        {
+            double minX = double.PositiveInfinity, minY = double.PositiveInfinity;
+            double maxX = double.NegativeInfinity, maxY = double.NegativeInfinity;
+            foreach (var p in poly)
+            {
+                if (p.X < minX) minX = p.X;
+                if (p.Y < minY) minY = p.Y;
+                if (p.X > maxX) maxX = p.X;
+                if (p.Y > maxY) maxY = p.Y;
+            }
+            return (minX, minY, maxX, maxY);
+        }
+
+        private static bool BBoxesOverlapWithArea(List<XYZ> a, List<XYZ> b)
+        {
+            var A = GetBBox(a);
+            var B = GetBBox(b);
+
+            double w = Math.Min(A.maxX, B.maxX) - Math.Max(A.minX, B.minX);
+            double h = Math.Min(A.maxY, B.maxY) - Math.Max(A.minY, B.minY);
+
+            return (w > EPS) && (h > EPS);
+        }
+
+        private static int SignWithTol(double v, double eps)
+        {
+            if (v > eps) return 1;
+            if (v < -eps) return -1;
+            return 0;
+        }
+
+        private static double Cross2D(XYZ u, XYZ v) => u.X * v.Y - u.Y * v.X;
+
+        private static bool SegmentsProperlyIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
+        {
+            var o1 = SignWithTol(Cross2D(p2 - p1, q1 - p1), EPS);
+            var o2 = SignWithTol(Cross2D(p2 - p1, q2 - p1), EPS);
+            var o3 = SignWithTol(Cross2D(q2 - q1, p1 - q1), EPS);
+            var o4 = SignWithTol(Cross2D(q2 - q1, p2 - q1), EPS);
+
+            return (o1 * o2 < 0) && (o3 * o4 < 0);
+        }
+
+        private static bool IsPointOnSegment(XYZ p, XYZ a, XYZ b)
+        {
+            if (Math.Abs(Cross2D(b - a, p - a)) > EPS) return false;
+
+            double dot = (p.X - a.X) * (b.X - a.X) + (p.Y - a.Y) * (b.Y - a.Y);
+            if (dot < -EPS) return false;
+
+            double ab2 = (b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y);
+            if (dot - ab2 > EPS) return false;
+
+            return true;
+        }
+
+        private static bool IsPointStrictlyInsidePolygon(XYZ point, List<XYZ> polygon)
+        {
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i];
+                var b = polygon[(i + 1) % polygon.Count];
+                if (IsPointOnSegment(point, a, b))
+                    return false;
+            }
+
+            bool inside = false;
+            int count = polygon.Count;
+            for (int i = 0, j = count - 1; i < count; j = i++)
+            {
+                var pi = polygon[i];
+                var pj = polygon[j];
+
+                bool intersect = ((pi.Y > point.Y) != (pj.Y > point.Y)) &&
+                                 (point.X < (pj.X - pi.X) * (point.Y - pi.Y) / (pj.Y - pi.Y) + pi.X);
+                if (intersect)
+                    inside = !inside;
+            }
+            return inside;
+        }
+
         private static bool DoPolygonsIntersect(List<XYZ> poly1, List<XYZ> poly2)
         {
-            if (poly1 == null || poly2 == null || poly1.Count < 2 || poly2.Count < 2)
+            if (poly1 == null || poly2 == null || poly1.Count < 3 || poly2.Count < 3)
+                return false;
+
+            if (!BBoxesOverlapWithArea(poly1, poly2))
                 return false;
 
             for (int i = 0; i < poly1.Count; i++)
@@ -688,18 +784,17 @@ namespace KPLN_ModelChecker_User.Forms
                     XYZ b1 = poly2[j];
                     XYZ b2 = poly2[(j + 1) % poly2.Count];
 
-                    if (LinesIntersect(a1, a2, b1, b2))
+                    if (SegmentsProperlyIntersect(a1, a2, b1, b2))
                         return true;
                 }
             }
 
-            if (IsPointInsidePolygon(poly1[0], poly2) || IsPointInsidePolygon(poly2[0], poly1))
-                return true;
+            if (poly1.Any(p => IsPointStrictlyInsidePolygon(p, poly2))) return true;
+            if (poly2.Any(p => IsPointStrictlyInsidePolygon(p, poly1))) return true;
 
             return false;
         }
 
-        // Вспомогательный метод. Проверка пересечения отрезков
         private static bool LinesIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
         {
             double o1 = Orientation(p1, p2, q1);
@@ -710,28 +805,9 @@ namespace KPLN_ModelChecker_User.Forms
             return o1 * o2 < 0 && o3 * o4 < 0;
         }
 
-        // Вспомогательный метод. Векторное произведение: (b - a) × (c - a)
         private static double Orientation(XYZ a, XYZ b, XYZ c)
         {
             return (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
-        }
-
-        private static bool IsPointInsidePolygon(XYZ point, List<XYZ> polygon)
-        {
-            bool inside = false;
-            int count = polygon.Count;
-
-            for (int i = 0, j = count - 1; i < count; j = i++)
-            {
-                if (((polygon[i].Y > point.Y) != (polygon[j].Y > point.Y)) &&
-                    (point.X < (polygon[j].X - polygon[i].X) * (point.Y - polygon[i].Y) /
-                     (polygon[j].Y - polygon[i].Y) + polygon[i].X))
-                {
-                    inside = !inside;
-                }
-            }
-
-            return inside;
         }
         /////////////////// 
         ///////////////////

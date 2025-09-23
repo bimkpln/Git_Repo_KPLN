@@ -15,7 +15,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             CommandCheck = new CheckMainLines();
-            ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
+            //ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
 
             ExecuteByUIApp<CheckMainLines>(commandData.Application, false, true, true, true, true);
             

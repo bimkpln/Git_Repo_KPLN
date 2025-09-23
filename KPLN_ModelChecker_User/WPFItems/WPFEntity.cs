@@ -95,7 +95,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             Description = checkEntity.Description;
             Info = checkEntity.Info;
             CurrentStatus = checkEntity.Status;
-            IsZoomElement = checkEntity.IsZoomElement;
+            //IsZoomElement = checkEntity.IsZoomElement;
             Box = checkEntity.ZoomBBox;
             Centroid = checkEntity.ZoomCentroid;
         }

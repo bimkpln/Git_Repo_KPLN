@@ -19,7 +19,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             CommandCheck = new CheckLinks();
-            ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
+            //ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
 
             // Блокирую проверку части линков ПРИ РУЧНОМ ЗАПУСКЕ
             // Для авт. запуска блок не нужен, достаточно проверять часть.
