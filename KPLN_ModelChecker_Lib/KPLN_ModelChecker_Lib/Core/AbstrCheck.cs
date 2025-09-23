@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <summary>
         /// Ссылка на UIApplication Revit
         /// </summary>
-        public UIApplication CheckUIApp{ get; private set; }
+        public UIApplication CheckUIApp { get; private set; }
 
         /// <summary>
         /// Имя плагина
@@ -56,8 +56,6 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <summary>
         /// Докрутка нужных параметров, из-за пустого конструктора для использовния дженериков
         /// </summary>
-        /// <param name="uiapp"></param>
-        /// <returns></returns>
         public AbstrCheck Set_UIAppData(UIApplication uiapp, Document doc)
         {
             CheckUIApp = uiapp;
@@ -148,7 +146,7 @@ namespace KPLN_ModelChecker_Lib.Core
         /// Получить коллекцию CheckerEntity
         /// </summary>
         /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
-        /// <returns>Коллекция WPFEntity, содержащая выявленные ошибки проектирования в Revit</returns>
+        /// <returns>Коллекция CheckerEntity, содержащая выявленные ошибки проектирования в Revit</returns>
         private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl);        
     }
 }

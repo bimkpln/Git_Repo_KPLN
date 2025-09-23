@@ -1,4 +1,5 @@
-﻿using KPLN_Library_ExtensibleStorage;
+﻿using Autodesk.Revit.DB;
+using KPLN_Library_ExtensibleStorage;
 using System;
 using System.Windows.Media;
 
@@ -120,6 +121,23 @@ namespace KPLN_ModelChecker_Lib.Common
         public ExtensibleStorageEntity(string checkName, string mainStorageName, Guid lastRunGuid, Guid userTextGuid, Guid markerGuid) : this(checkName, mainStorageName, lastRunGuid, userTextGuid)
         {
             MarkerGuid = markerGuid;
+        }
+
+        public static ErrorStatus SetApproveStatusByUserComment(object obj, ExtensibleStorageBuilder objESB, ErrorStatus ifNullComment)
+        {
+            ErrorStatus currentStatus;
+            if (obj is Element elem)
+            {
+                if (objESB.IsDataExists_Text(elem))
+                    currentStatus = ErrorStatus.Approve;
+                else 
+                    currentStatus = ifNullComment;
+            }
+            else
+                throw new Exception($"{obj} - не Element Revit");
+
+
+            return currentStatus;
         }
     }
 }

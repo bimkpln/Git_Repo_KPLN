@@ -175,7 +175,9 @@
     <Compile Include="CheckCommandError.cs" />
     <Compile Include="CheckerEntity.cs" />
     <Compile Include="CheckerException.cs" />
+    <Compile Include="Commands\CheckDimensions.cs" />
     <Compile Include="Commands\CheckFamilies.cs" />
+    <Compile Include="Commands\CheckMirroredInstances.cs" />
     <Compile Include="Core\AbstrCheck.cs" />
     <Compile Include="Commands\CheckLinks.cs" />
     <Compile Include="Commands\CheckMainLines.cs" />
