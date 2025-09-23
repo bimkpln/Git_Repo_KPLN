@@ -15,8 +15,8 @@ namespace KPLN_BIMTools_Ribbon
 {
     public class Module : IExternalModule
     {
-        internal static Logger CurrentLogger;
-        
+        internal static Logger CurrentLogger { get; private set; }
+
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private UIApplication _uiApp;
 
@@ -40,7 +40,8 @@ namespace KPLN_BIMTools_Ribbon
             // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
             CurrentLogger = LogManager.GetLogger("KPLN_BIMTools");
 
-            string logDirPath = $"c:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}";
+            string windrive = $"{Path.GetPathRoot(Environment.SystemDirectory)}KPLN_Temp";
+            string logDirPath = $"{windrive}\\KPLN_Logs\\{ModuleData.RevitVersion}";
             string logFileName = "KPLN_BIMTools";
             LogManager.Configuration.Variables["bimtools_logdir"] = logDirPath;
             LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;
