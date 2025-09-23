@@ -26,7 +26,7 @@ namespace KPLN_Looker.Services
 
                 anyErrors |= Run<CommandCheckLinks, CheckLinks>(uiapp);
                 anyErrors |= Run<CommandCheckWorksets, CheckWorksets>(uiapp);
-                
+
                 // Персональный фильтр по проектам
                 if (!docTitle.StartsWith("МТРС_")
                     && !docTitle.StartsWith("СЕТ_1_"))

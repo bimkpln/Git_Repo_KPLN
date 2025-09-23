@@ -3,7 +3,6 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
-using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
@@ -204,7 +203,7 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif
-#region Закрываю вид, если он для бим-отдела
+            #region Закрываю вид, если он для бим-отдела
             if (!(activeView is View3D _)
                 || (!activeView.Title.ToUpper().Contains("BIM360")
                     && !activeView.Title.ToUpper().Contains("NAVISWORKS")
@@ -329,17 +328,10 @@ namespace KPLN_Looker
             }
 
             UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X (из папки проекта, если она есть)");
-            userVerify.ShowDialog();
-
-            switch (userVerify.Status)
+            if (!(bool)userVerify.ShowDialog())
             {
-                case UIStatus.RunStatus.CloseBecauseError:
-                    TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке семейства отказано!");
-                    args.Cancel();
-                    break;
-                case UIStatus.RunStatus.Close:
-                    args.Cancel();
-                    break;
+                TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке семейства отказано!");
+                args.Cancel();
             }
         }
 
@@ -536,17 +528,11 @@ namespace KPLN_Looker
                     "[ОШИБКА]: Выявлена попытка копирования эл-в через буфер обмена. При несколько открытых моделях РАЗНЫХ, или НЕОПРЕДЕЛЕННЫХ (в том числе открытых с ОТСОЕДИНЕНИЕМ) проектов в одном Revit - данный функционал запрещен.\n" +
                     "[ЧТО ДЕЛАТЬ]: Если нужно скопировать фрагмент из другой модели - обратитесь в BIM-отдел. Иначе - оставьте открытым только ОДИН проект.\n" +
                     "[ИНФО]: Вместо буфера обмена - пользуйтесь командами со вкладки \"Изменить\"->\"Изменить\"->\"Копировать\").");
-                userVerify.ShowDialog();
 
-                switch (userVerify.Status)
+                if (!(bool)userVerify.ShowDialog())
                 {
-                    case UIStatus.RunStatus.CloseBecauseError:
-                        TaskDialog.Show("Запрещено", "Не верный пароль, отказано!");
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
-                        break;
-                    case UIStatus.RunStatus.Close:
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
-                        break;
+                    TaskDialog.Show("Запрещено", "Не верный пароль, отказано!");
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new UndoEvantHandler());
                 }
             }
         }
