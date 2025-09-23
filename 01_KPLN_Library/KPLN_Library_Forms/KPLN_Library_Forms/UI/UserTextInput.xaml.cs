@@ -39,11 +39,7 @@ namespace KPLN_Library_Forms.UI
                 Close();
             }
 
-            if (e.Key == Key.Enter)
-            {
-                DialogResult = true;
-                Close();
-            }
+            // Обработка Enter - может вызывть запуск последней команды, и окно опять появиться. Запрещено её добавлять
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(tBox);

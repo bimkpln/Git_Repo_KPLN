@@ -11,11 +11,6 @@ namespace KPLN_Library_Forms.UI
     {
         private string _inputPassword;
 
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        private bool _isRun = false;
-
         public UserVerify(string description)
         {
             InitializeComponent();
@@ -28,6 +23,7 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Статус запуска
         /// </summary>
+        [Obsolete("Нужно использовать DialogResult")]
         public RunStatus Status { get; private set; }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
@@ -35,26 +31,14 @@ namespace KPLN_Library_Forms.UI
             if (e.Key == Key.Escape)
             {
                 Status = RunStatus.Close;
+                DialogResult = false;
                 Close();
             }
             else if (e.Key == Key.Enter)
-            {
                 OnRunClick(sender, e);
-            }
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            Keyboard.Focus(SearchPassword);
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if (!_isRun)
-            {
-                Status = RunStatus.Close;
-            }
-        }
+        private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchPassword);
 
         private void PasswordText_Changed(object sender, RoutedEventArgs e)
         {
@@ -64,10 +48,17 @@ namespace KPLN_Library_Forms.UI
 
         private void OnRunClick(object sender, RoutedEventArgs e)
         {
-            _isRun = true;
-
-            if (CheckVerify(_inputPassword)) { Status = RunStatus.Run; }
-            else { Status = RunStatus.CloseBecauseError; }
+            
+            if (CheckVerify(_inputPassword))
+            {
+                Status = RunStatus.Run;
+                DialogResult = true;
+            }
+            else 
+            { 
+                Status = RunStatus.CloseBecauseError; 
+                DialogResult = false;
+            }
 
             Close();
         }
