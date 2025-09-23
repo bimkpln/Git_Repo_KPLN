@@ -39,11 +39,7 @@ namespace KPLN_ModelChecker_User
         {
             #region Инициализация элементов нужно для плагина проверки факта запуска
             // Инициирую статические поля проверок
-            CommandCheckDimensions commandCheckDimensions = new CommandCheckDimensions(new ExtensibleStorageEntity(
-                CommandCheckDimensions.PluginName,
-                "KPLN_CheckDimensions",
-                new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
-                new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
+            CheckDimensions checkDimensions = new CheckDimensions();
             CheckWorksets checkWorksets = new CheckWorksets();
             CheckFamilies checkFamilies = new CheckFamilies();
             CheckMainLines checkMainLines = new CheckMainLines();
@@ -73,17 +69,13 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckMEPHeight",
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68"),
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69")));
-            CommandCheckMirroredInstances commandCheckMirroredInstances = new CommandCheckMirroredInstances(new ExtensibleStorageEntity(
-                CommandCheckMirroredInstances.PluginName,
-                "KPLN_CheckMirroredInstances",
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320557b"),
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320557c")));
+            CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
             // Запись в массив для передачи ExtensibleStorageEntity в CommandCheckLaunchDate (после инициализации статических полей)
             ExtensibleStorageEntity[] extensibleStorageEntities = new ExtensibleStorageEntity[]
             {
                 // Проверки из этой сборки
-                CommandCheckDimensions.ESEntity,
+                checkDimensions.ESEntity,
                 checkWorksets.ESEntity,
                 checkFamilies.ESEntity,
                 checkMainLines.ESEntity,
@@ -92,7 +84,7 @@ namespace KPLN_ModelChecker_User
                 CommandCheckLevelOfInstances.ESEntity,
                 checkLinks.ESEntity,
                 CommandCheckMEPHeight.ESEntity,
-                CommandCheckMirroredInstances.ESEntity,
+                checkMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
                 new ExtensibleStorageEntity("ОВ: Толщина воздуховодов", "KPLN_DuctSize", new Guid("753380C4-DF00-40F8-9745-D53F328AC139")),
@@ -190,7 +182,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckDimensions",
-                CommandCheckDimensions.PluginName,
+                checkDimensions.PluginName,
                 "Анализирует все размеры, на предмет:" +
                     "\n1. Замены значения;" +
                     "\n2. Округления значений размеров с нарушением требований пункта 5.1 ВЕР.",
@@ -245,7 +237,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMirrored",
-                CommandCheckMirroredInstances.PluginName,
+                checkMirroredInstances.PluginName,
                 "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckMirroredInstances).FullName,

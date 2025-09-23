@@ -213,19 +213,19 @@
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetTimeRunLog.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
     <Compile Include="ExternalCommands\AbstrCommand.cs" />
+    <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckWorksets.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckMonolith.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckWetZones.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckFlatsArea.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckHoles.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckLaunchDate.cs" />
+    <Compile Include="ExternalCommands\CommandCheckLaunchDate.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckMEPHeight.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckListAnnotations.cs" />
     <Compile Include="Forms\CheckMainForm.xaml.cs">
       <DependentUpon>CheckMainForm.xaml</DependentUpon>

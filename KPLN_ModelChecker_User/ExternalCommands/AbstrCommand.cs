@@ -10,6 +10,7 @@ using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Linq;
+using System.Windows.Interop;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -87,6 +88,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             SetWPFEntityFiltration(repCreator);
 
             CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, typeof(T), repCreator, setLastRun, CommandCheck.ESEntity.ESBuilderRun, CommandCheck.ESEntity.ESBuilderUserText, CommandCheck.ESEntity.ESBuildergMarker);
+            
+            // Связываю с окном ревит, откуда был запуск
+            IntPtr windHandle = CommandCheck.CheckUIApp.MainWindowHandle;
+            new WindowInteropHelper(form)
+            {
+                Owner = windHandle
+            };
+
             form.Show();
         }
 
