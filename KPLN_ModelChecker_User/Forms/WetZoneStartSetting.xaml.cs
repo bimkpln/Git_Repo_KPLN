@@ -558,7 +558,7 @@ namespace KPLN_ModelChecker_User.Forms
                         if (isLivingLower && isWetUpper)
                             WetOverLiving_Illegal.Add(new List<Element> { lower, upper });
 
-                        // МОЖНО/НЕЛЬЗЯ: Мокрые над кухнями
+                        // МОЖНО (одна квартира) /НЕЛЬЗЯ (разные): Мокрые над кухнями
                         if (isKitchenLower && isWetUpper)
                         {
                             if (lowerKvNum == upperKvNum)
