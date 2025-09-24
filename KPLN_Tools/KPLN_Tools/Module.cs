@@ -1,15 +1,12 @@
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.Docking;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.ExternalCommands;
-using System;
 using System.IO;
 using System.Reflection;
-using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -28,21 +25,22 @@ namespace KPLN_Tools
         {
             ModuleData.MainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
-            
+
+            FamilyManagerDock.Register(application);
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
 
-            //Äîáàâëÿþ ïàíåëü
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Èíñòðóìåíòû");
+            //Добавляю панель
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
 
-            //Äîáàâëÿþ âûïàäàþùèé ñïèñîê pullDown
-            #region Îáùèå èíñòðóìåíòû
-            PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Îáùèå",
-                "Îáùèå",
-                "Îáùàÿ êîëëåêöèÿ ìèíè-ïëàãèíîâ",
+            //Добавляю выпадающий список pullDown
+            #region Общие инструменты
+            PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
+                "Общие",
+                "Общая коллекция мини-плагинов",
                 string.Format(
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName),
@@ -54,13 +52,13 @@ namespace KPLN_Tools
             PushButtonData autonumber = CreateBtnData(
                 CommandAutonumber.PluginName,
                 CommandAutonumber.PluginName,
-                "Íóìåðàöèÿ ïîçèöè â ñïåöèôèêàöèè íà +1 îò íà÷àëüíîãî çíà÷åíèÿ",
+                "Нумерация позици в спецификации на +1 от начального значения",
                 string.Format(
-                    "Àëãîðèòì çàïóñêà:\n" +
-                        "1. Çàïóñêàåì ïëàãèí äëÿ ôèêñàöèè ðàçìåðîâ øòàìïîâ;\n" +
-                        "2. Ìåíÿåì ñåìåéñòâî íà ñîãëàñîâàííîå ñ BIM-îòäåëîì;\n" +
-                        "3. Çàïóñêàåì ïëàãèí äëÿ óñòàíîâêè ðàçìåðîâ ëèñòîâ è äîáàâëåíèÿ ïàðàìåòðîâ.\n\n" +
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Алгоритм запуска:\n" +
+                        "1. Запускаем плагин для фиксации размеров штампов;\n" +
+                        "2. Меняем семейство на согласованное с BIM-отделом;\n" +
+                        "3. Запускаем плагин для установки размеров листов и добавления параметров.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -73,11 +71,11 @@ namespace KPLN_Tools
             PushButtonData searchUser = CreateBtnData(
                 CommandSearchRevitUser.PluginName,
                 CommandSearchRevitUser.PluginName,
-                "Âûäàåò äàííûå KPLN-ïîëüçîâàòåëÿ Revit",
+                "Выдает данные KPLN-пользователя Revit",
                 string.Format(
-                    "Äëÿ ïîèñêà ââåäè èìÿ Revit-ïîëüçîâàòåëÿ.\n" +
+                    "Для поиска введи имя Revit-пользователя.\n" +
                     "\n" +
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -91,13 +89,13 @@ namespace KPLN_Tools
             PushButtonData tagWiper = CreateBtnData(
                 CommandTagWiper.PluginName,
                 CommandTagWiper.PluginName,
-                "ÓÄÀËßÅÒ âñå ìàðêè ïîìåùåíèé, êîòîðûå ïîòåðÿëè îñíîâó, à òàêæå ïûòàåòñÿ ÎÁÍÎÂÈÒÜ ñâÿçè ìàðêàì ïîìåùåíèé",
+                "УДАЛЯЕТ все марки помещений, которые потеряли основу, а также пытается ОБНОВИТЬ связи маркам помещений",
                 string.Format(
-                    "Âàðèàíòû çàïóñêà:\n" +
-                        "1. Âûäåëèòü ËÌÊ ëèñòû, ÷òîáû ïðîàíàëèçèðîâàòü ðàçìåùåííûå íà íèõ âèäû;\n" +
-                        "2. Îòêðûòü ëèñò, ÷òîáû ïðîàíàëèçèðîâàòü ðàçìåùåííûå íà íåì âèäû;\n" +
-                        "3. Îòêðûòü îòäåëüíûé âèä.\n\n" +
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Варианты запуска:\n" +
+                        "1. Выделить ЛМК листы, чтобы проанализировать размещенные на них виды;\n" +
+                        "2. Открыть лист, чтобы проанализировать размещенные на нем виды;\n" +
+                        "3. Открыть отдельный вид.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -110,8 +108,8 @@ namespace KPLN_Tools
             PushButtonData monitoringHelper = CreateBtnData(
                 CommandExtraMonitoring.PluginName,
                 CommandExtraMonitoring.PluginName,
-                "Ïîìîùü ïðè êîïèðîâàíèè è ïðîâåðêå çíà÷åíèé ïàðàìòåðîâ äëÿ ýëåìåíòîâ ñ ìîíèòîðèíãîì",
-                string.Format("\nÄàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                "Помощь при копировании и проверке значений парамтеров для элементов с мониторингом",
+                string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -122,11 +120,11 @@ namespace KPLN_Tools
                 "http://moodle");
 
             PushButtonData changeLevel = CreateBtnData(
-                "Èçìåíåíèå óðîâíÿ",
-                "Èçìåíåíèå óðîâíÿ",
-                "Ïëàãèí äëÿ èçìåíåíèÿ ïîçèöèè óðîâíÿ ñ ñîõðàíåíèåì ïðèâÿçàííîñòè ýëåìåíòîâ",
+                "Изменение уровня",
+                "Изменение уровня",
+                "Плагин для изменения позиции уровня с сохранением привязанности элементов",
                 string.Format(
-                    "\nÄàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -136,17 +134,17 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "http://moodle/");
 
-            // Ïëàãèí íå ðåàëèçîâàí äî êîíöà. 
+            // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData(
                 CommandDimensionHelper.PluginName,
                 CommandDimensionHelper.PluginName,
-                "Âîññòàíîâëèâàåò ðàçìåðû, êîòîðûå áûëè óäàëåíû èç-çà ïåðåñîçäàíèÿ îñíîâû",
+                "Восстановливает размеры, которые были удалены из-за пересоздания основы",
                 string.Format(
-                    "Âàðèàíòû çàïóñêà:\n" +
-                        "1. Çàïóñêàåì ïðîåêò ñ âûãðóæåííîé ñâÿçüþ è çàïèñûâàåì ðàçìåðû, êîòîðûå èìåëè ê ýòîé ñâÿçè îòíîøåíèÿ;\n" +
-                        "2. Ïîäãðóæàåì ñâÿçü, ïî êîòîðîé áûëè ðàññòàâëåíû ðàçìåðû. Ïðè ýòîì ðàçìåðû - óäàëÿþòñÿ (ýòî íîðìàëüíî);\n" +
-                        "3. Çàïóñêàåì ïëàãèí è ïûòàåìñÿ âîññòàíîâèòü ðàçìåðû, çàïèñàííûå ðàíåå.\n\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Варианты запуска:\n" +
+                        "1. Запускаем проект с выгруженной связью и записываем размеры, которые имели к этой связи отношения;\n" +
+                        "2. Подгружаем связь, по которой были расставлены размеры. При этом размеры - удаляются (это нормально);\n" +
+                        "3. Запускаем плагин и пытаемся восстановить размеры, записанные ранее.\n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -159,15 +157,15 @@ namespace KPLN_Tools
             PushButtonData changeRLinks = CreateBtnData(
                 CommandRLinkManager.PluginName,
                 CommandRLinkManager.PluginName,
-                "Çàãðóçèòü/îáíîâèòü ñâÿçè âíóòðè ïðîåêòà",
+                "Загрузить/обновить связи внутри проекта",
                 string.Format(
-                    "Âàðèàíòû çàïóñêà:\n" +
-                        "1. Çàãðóçèòü ñâÿçü ïî óêàçàííîìó ïóòè ñ ñåðâåðà KPLN;\n" +
-                        "2. Çàãðóçèòü ñâÿçü ïî óêàçàííîìó ïóòè ñ Revit-Server KPLN;\n" +
-                        "3. Îáíîâèòü ñâÿçè ïðîåêòà:\n" +
-                        "3.1 Ïðåäâàðèòåëüíî âûäåëèòü â äèñïåò÷åðå ïðîåêòà íóæíûå ñâÿçè íà çàìåíó; \n" +
-                        "3.2 Ïðîñòî çàïóñòèòü, òîãäà âñå ñâÿçè ïîÿâÿòñÿ â ñïèñêå íà çàìåíó. \n\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Варианты запуска:\n" +
+                        "1. Загрузить связь по указанному пути с сервера KPLN;\n" +
+                        "2. Загрузить связь по указанному пути с Revit-Server KPLN;\n" +
+                        "3. Обновить связи проекта:\n" +
+                        "3.1 Предварительно выделить в диспетчере проекта нужные связи на замену; \n" +
+                        "3.2 Просто запустить, тогда все связи появятся в списке на замену. \n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -179,11 +177,11 @@ namespace KPLN_Tools
 
 #if Revit2020 || Debug2020
             PushButtonData set_ChangeRSLinks = CreateBtnData(
-                "ÑÅÒ: Îáíîâèòü ñâÿçè",
-                "ÑÅÒ: Îáíîâèòü ñâÿçè",
-                "Îáíîâëÿåò ñâÿçè ìåæäó ðåâèò-ñåðâåðàìè",
+                "СЕТ: Обновить связи",
+                "СЕТ: Обновить связи",
+                "Обновляет связи между ревит-серверами",
                 string.Format(
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -203,15 +201,15 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(changeRLinks);
             #endregion
 
-            #region Èíñòðóìåíòû ÀÐ
+            #region Инструменты АР
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 2 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton arToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Ïëàãèíû ÀÐ",
-                    "Ïëàãèíû ÀÐ",
-                    "ÀÐ: Êîëëåêöèÿ ïëàãèíîâ äëÿ àâòîìàòèçàöèè çàäà÷",
+                    "Плагины АР",
+                    "Плагины АР",
+                    "АР: Коллекция плагинов для автоматизации задач",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -221,11 +219,11 @@ namespace KPLN_Tools
                     false);
 
                 PushButtonData arGNSArea = CreateBtnData(
-                    "Ïëîùàäü ÃÍÑ",
-                    "Ïëîùàäü ÃÍÑ",
-                    "Îáâîäèò âíåøíèå ãðàíèöû çäàíèÿ íà ïëàíå",
+                    "Площадь ГНС",
+                    "Площадь ГНС",
+                    "Обводит внешние границы здания на плане",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -236,11 +234,11 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 PushButtonData TEPDesign = CreateBtnData(
-                    "Îôîðìëåíèå ÒÝÏ",
-                    "Îôîðìëåíèå ÒÝÏ",
-                    "Ïëàãèí äëÿ îôîðìëåíèÿ ÒÝÏ",
+                    "Оформление ТЭП",
+                    "Оформление ТЭП",
+                    "Плагин для оформления ТЭП",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -258,15 +256,15 @@ namespace KPLN_Tools
 
             #endregion
 
-            #region Èíñòðóìåíòû ÊÐ
+            #region Инструменты КР
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 3 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Ïëàãèíû ÊÐ",
-                    "Ïëàãèíû ÊÐ",
-                    "ÊÐ: Êîëëåêöèÿ ïëàãèíîâ äëÿ àâòîìàòèçàöèè çàäà÷",
+                    "Плагины КР",
+                    "Плагины КР",
+                    "КР: Коллекция плагинов для автоматизации задач",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -276,14 +274,14 @@ namespace KPLN_Tools
                     false);
 
                 PushButtonData smnx_Rebar = CreateBtnData(
-                    "SMNX_Ìåòàëî¸ìêîñòü",
-                    "SMNX_Ìåòàëî¸ìêîñòü",
-                    "SMNX: Çàïîëíÿåò ïàðàìåòð \"SMNX_Ðàñõîä àðìàòóðû (Êã/ì3)\"",
+                    "SMNX_Металоёмкость",
+                    "SMNX_Металоёмкость",
+                    "SMNX: Заполняет параметр \"SMNX_Расход арматуры (Кг/м3)\"",
                     string.Format(
-                        "Âàðèàíòû çàïóñêà:\n" +
-                            "1. Çàïèñàòü îáú¸ì áåòîíà è îñíîâíóþ ìàðêó â àðìàòóðó;\n" +
-                            "2. Ïåðåíåñòè çíà÷åíèÿ èç ñïåöèôèêàöèè â ïàðàìåòð;\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Варианты запуска:\n" +
+                            "1. Записать объём бетона и основную марку в арматуру;\n" +
+                            "2. Перенести значения из спецификации в параметр;\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -297,17 +295,17 @@ namespace KPLN_Tools
             }
             #endregion
 
-            #region Èíñòðóìåíòû ÎÂÂÊ
+            #region Инструменты ОВВК
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 4
                 || DBWorkerService.CurrentDBUserSubDepartment.Id == 5
                 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Ïëàãèíû ÎÂÂÊ",
-                    "Ïëàãèíû ÎÂÂÊ",
-                    "ÎÂÂÊ: Êîëëåêöèÿ ïëàãèíîâ äëÿ àâòîìàòèçàöèè çàäà÷",
+                    "Плагины ОВВК",
+                    "Плагины ОВВК",
+                    "ОВВК: Коллекция плагинов для автоматизации задач",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -319,9 +317,9 @@ namespace KPLN_Tools
                 PushButtonData ovvk_pipeThickness = CreateBtnData(
                     Command_OVVK_PipeThickness.PluginName,
                     Command_OVVK_PipeThickness.PluginName,
-                    "Çàïîëíÿåò òîëùèíó òðóá ïî âûáðàííîé êîíôèãóðàöèè",
+                    "Заполняет толщину труб по выбранной конфигурации",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -334,13 +332,13 @@ namespace KPLN_Tools
                 PushButtonData ovvk_systemManager = CreateBtnData(
                     Command_OVVK_SystemManager.PluginName,
                     Command_OVVK_SystemManager.PluginName,
-                    "Óïðàâëåíèå ñèñòåìàìè â ïðîåêòå",
+                    "Управление системами в проекте",
                     string.Format(
-                        "Ôóíêöèîíàë:" +
-                            "\n1. Îáíîâëÿåò èìÿ ñèñòåì;" +
-                            "\n2. Îáúåäèíÿåò ñèñòåìû â ãðóïïû äëÿ ñïåöèôèöèðîâàíèÿ è ãåíåðàöèè âèäîâ;" +
-                            "\n3. Ãåíåðàöèÿ âèäîâ." +
-                            "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Функционал:" +
+                            "\n1. Обновляет имя систем;" +
+                            "\n2. Объединяет системы в группы для специфицирования и генерации видов;" +
+                            "\n3. Генерация видов." +
+                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -353,9 +351,9 @@ namespace KPLN_Tools
                 PushButtonData ov_ductThickness = CreateBtnData(
                     Command_OV_DuctThickness.PluginName,
                     Command_OV_DuctThickness.PluginName,
-                    "Çàïîëíÿåò òîëùèíó âîçäóõîâîäîâ â çàâèñèìîñòè îò òèïà ñèñòåìû è íàëè÷èÿ èçîëÿöèÿÿ/îãíåçàùèòû ñîãëàñíî ÑÏ.60 è ÑÏ.7",
+                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты согласно СП.60 и СП.7",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -368,9 +366,9 @@ namespace KPLN_Tools
                 PushButtonData ov_ozkDuctAccessory = CreateBtnData(
                     Command_OV_OZKDuctAccessory.PluginName,
                     Command_OV_OZKDuctAccessory.PluginName,
-                    "Çàïîëíÿåò äàííûå ïî ÎÇÊ êëàïàíàì",
+                    "Заполняет данные по ОЗК клапанам",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -382,11 +380,11 @@ namespace KPLN_Tools
 
 #if Revit2020 || Debug2020
                 PushButtonData set_InsulationPipes = CreateBtnData(
-                    "ÎÂÂÊ: ÑÅÒ_Èçîëÿöèÿ",
-                    "ÎÂÂÊ: ÑÅÒ_Èçîëÿöèÿ",
-                    "(ÈÑÏÐÀÂËÅÍÍÀß ÂÅÐÑÈß ÑÌËÒ): Çàïîëíÿåò äàííûå ïî èçîëÿöèè",
+                    "ОВВК: СЕТ_Изоляция",
+                    "ОВВК: СЕТ_Изоляция",
+                    "(ИСПРАВЛЕННАЯ ВЕРСИЯ СМЛТ): Заполняет данные по изоляции",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -406,15 +404,15 @@ namespace KPLN_Tools
             }
             #endregion
 
-            #region Èíñòðóìåíòû ÑÑ
+            #region Инструменты СС
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Ïëàãèíû ÑÑ",
-                    "Ïëàãèíû ÑÑ",
-                    "ÑÑ: Êîëëåêöèÿ ïëàãèíîâ äëÿ àâòîìàòèçàöèè çàäà÷",
+                    "Плагины СС",
+                    "Плагины СС",
+                    "СС: Коллекция плагинов для автоматизации задач",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -424,12 +422,12 @@ namespace KPLN_Tools
                     false);
 
                 PushButtonData ssSystems = CreateBtnData(
-                    "Ñëàáîòî÷íûå ñèñòåìû",
-                    "Ñëàáîòî÷íûå ñèñòåìû",
-                    "Ïîìîùü â ñîçäàíèè öåïåé ÑÑ",
-                    string.Format("Ïëàãèí ñîçäà¸ò öåïè íåñòàíäàðòíûì ïóò¸ì - ãåíåðèðóþòñÿ îòäåëüíûå ñèñòåìû íà ó÷àñòêè ìåæäó 2ìÿ ýëåìåíòàìè. " +
-                        "Ïðè ýòîì ýëåìåíòó ¹2 â êà÷åñòâå ùèòà ïðèñâàèâàåòñÿ ýëåìåíò ¹1.\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Слаботочные системы",
+                    "Слаботочные системы",
+                    "Помощь в создании цепей СС",
+                    string.Format("Плагин создаёт цепи нестандартным путём - генерируются отдельные системы на участки между 2мя элементами. " +
+                        "При этом элементу №2 в качестве щита присваивается элемент №1.\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -440,12 +438,12 @@ namespace KPLN_Tools
                     "http://moodle");
 
                 PushButtonData ssFillInParameters = CreateBtnData(
-                    "Çàïîëíèòü ïàðàìåòðû íà ÷åðòåæíîì âèäå",
-                    "Çàïîëíèòü ïàðàìåòðû íà ÷åðòåæíîì âèäå",
-                    "Çàïîëíèòü ïàðàìåòðû íà ÷åðòåæíîì âèäå",
-                    string.Format("Ïëàãèí çàïîëíÿåò ïàðàìåòð ``ÊÏ_Ïîçèöèÿ_Ñóììà`` äëÿ îäèíàêîâûõ ñåìåéñòâ íà ÷åðòåæíîì âèäå, ñîáèðàÿ çíà÷åíèÿ ïàðàìåòðîâ ``ÊÏ_Î_Ïîçèöèÿ`` ñ ó÷åòîì ïàðàìåòðà ``ÊÏ_Î_Ãðóïïèðîâàíèå``, " +
-                    "à òàêæå çàïîëíÿåò ïàðàìåòð ``ÊÏ_È_Êîëè÷åñòâî â ñïåöèôèêàöèþ`` äëÿ ñåìåéñòâ êàòåãîðèè ``Ýëåìåíòû óçëîâ`` íà ÷åðòåæíîì âèäå, ó êîòîðûõ â ñïåöèôèêàöèè íåîáõîäèìî ó÷èòûâàòü äëèíó, à íå êîëè÷åñòâî\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Заполнить параметры на чертежном виде",
+                    "Заполнить параметры на чертежном виде",
+                    "Заполнить параметры на чертежном виде",
+                    string.Format("Плагин заполняет параметр ``КП_Позиция_Сумма`` для одинаковых семейств на чертежном виде, собирая значения параметров ``КП_О_Позиция`` с учетом параметра ``КП_О_Группирование``, " +
+                    "а также заполняет параметр ``КП_И_Количество в спецификацию`` для семейств категории ``Элементы узлов`` на чертежном виде, у которых в спецификации необходимо учитывать длину, а не количество\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -460,15 +458,15 @@ namespace KPLN_Tools
             }
             #endregion
 
-            #region Èíñòðóìåíòû ÝÎÌ
+            #region Инструменты ЭОМ
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 6 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
             {
                 PulldownButton eomToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Ïëàãèíû ÝÎÌ",
-                    "Ïëàãèíû ÝÎÌ",
-                    "ÝÎÌ: Êîëëåêöèÿ ïëàãèíîâ äëÿ àâòîìàòèçàöèè çàäà÷",
+                    "Плагины ЭОМ",
+                    "Плагины ЭОМ",
+                    "ЭОМ: Коллекция плагинов для автоматизации задач",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -478,14 +476,14 @@ namespace KPLN_Tools
                     false);
 
                 PushButtonData setParams = CreateBtnData(
-                    "ÑÅÒ: Çàïîëíèòü ïàðàìåòðû",
-                    "ÑÅÒ: Çàïîëíèòü ïàðàìåòðû",
-                    "ÑÅÒ: Çàïîëíèòü ïàðàìåòðû",
-                    string.Format("Ïëàãèí çàïîëíÿåò ïàðàìåòð äëÿ ôîðìèðîâàíèÿ ñïåöèôèêàöèè äëÿ: \n" +
-                        "1. Êàáåëüíûõ ëîòêîâ;\n" +
-                        "2. Ñîåä. äåòàëåé êàáåëüíûõ ëîòêîâ;\n" +
-                        "3. Âîçäóõîâîäîâ (îãíåçàùèòà).\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "СЕТ: Заполнить параметры",
+                    "СЕТ: Заполнить параметры",
+                    "СЕТ: Заполнить параметры",
+                    string.Format("Плагин заполняет параметр для формирования спецификации для: \n" +
+                        "1. Кабельных лотков;\n" +
+                        "2. Соед. деталей кабельных лотков;\n" +
+                        "3. Воздуховодов (огнезащита).\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -501,16 +499,16 @@ namespace KPLN_Tools
             #endregion
 
 
-            #region Îòâåðñòèÿ
-            // Íàïîëíÿþ ïëàãèíàìè â çàâèñèìîñòè îò îòäåëà
+            #region Отверстия
+            // Наполняю плагинами в зависимости от отдела
             if (DBWorkerService.CurrentDBUserSubDepartment.Id != 2 && DBWorkerService.CurrentDBUserSubDepartment.Id != 3)
             {
                 PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Îòâåðñòèÿ",
-                    "Îòâåðñòèÿ",
-                    "Ïëàãèíû äëÿ ðàáîòû ñ îòâåðñòèÿìè",
+                    "Отверстия",
+                    "Отверстия",
+                    "Плагины для работы с отверстиями",
                     string.Format(
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
@@ -522,12 +520,12 @@ namespace KPLN_Tools
                 PushButtonData holesManagerIOS = CreateBtnData(
                     CommandHolesManagerIOS.PluginName,
                     CommandHolesManagerIOS.PluginName,
-                    "Ïîäãîòîâêà çàäàíèé íà îòâåðñòèÿ îò èíæåíåðîâ äëÿ ÀÐ.",
+                    "Подготовка заданий на отверстия от инженеров для АР.",
                     string.Format(
-                        "Ïëàãèí âûïîëíÿåò ñëåäóþùèå ôóíêöèè:\n" +
-                            "1. Ðàñøèðÿåò ñïåöèàëüíûå ýëåìåíòû ñåìåéñòâ, êîòîðûå ïîçâîëÿþò âèäåòü îòâåðñòèÿ âíå çàâèñèìîñòè îò ñåêóùåãî äèàïîçîíà;\n" +
-                            "2. Çàïîëíÿþò äàííûå ïî îòíîñèòåëüíîé îòìåòêå.\n\n" +
-                        "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                        "Плагин выполняет следующие функции:\n" +
+                            "1. Расширяет специальные элементы семейств, которые позволяют видеть отверстия вне зависимости от секущего диапозона;\n" +
+                            "2. Заполняют данные по относительной отметке.\n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
@@ -541,15 +539,15 @@ namespace KPLN_Tools
             }
             #endregion
 
-            #region Îòäåëüíûå êíîïêè
+            #region Отдельные кнопки
             PushButtonData sendMsgToBitrix = CreateBtnData(
                 CommandSendMsgToBitrix.PluginName,
                 CommandSendMsgToBitrix.PluginName,
-                "Îòïðàâëÿåò äàííûå ïî âûäåëåííîìó ýëåìåíòó ïîëüçîâàòåëþ â Bitrix",
+                "Отправляет данные по выделенному элементу пользователю в Bitrix",
                 string.Format(
-                    "Ãåíåðèðóåòñÿ ñîîáùåíèå ñ äàííûìè ïî ýëåìåíòó, äîïîëíèòåëüíûìè êîììåíòàðèÿìè è îòïðàâëÿåòñÿ âûáðàííîìó/-ûì ïîëüçîâàòåëÿì Bitrix.\n" +
+                    "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному/-ым пользователям Bitrix.\n" +
                     "\n" +
-                    "Äàòà ñáîðêè: {0}\nÍîìåð ñáîðêè: {1}\nÈìÿ ìîäóëÿ: {2}",
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -559,15 +557,15 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.sendMsgBig.png",
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
-            
+
             PushButtonData familyManagerPanel = CreateBtnData(
                 CommandFamilyManager.PluginName,
                 CommandFamilyManager.PluginName,
-                "ÐÐ°ÑÐ°Ð»Ð¾Ð³ ÑÐµÐ¼ÐµÐ¹ÑÑÐ² KPLN",
+                "Каталог семейств KPLN",
                 string.Format(
-                    "ÐÐ°ÑÐ°Ð»Ð¾Ð³ ÑÐµÐ¼ÐµÐ¹ÑÑÐ² KPLN.\n" +
+                    "Каталог семейств KPLN.\n" +
                     "\n" +
-                    "ÐÐ°ÑÐ° ÑÐ±Ð¾ÑÐºÐ¸: {0}\nÐÐ¾Ð¼ÐµÑ ÑÐ±Ð¾ÑÐºÐ¸: {1}\nÐÐ¼Ñ Ð¼Ð¾Ð´ÑÐ»Ñ: {2}",
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -576,7 +574,7 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.familyManagerBig.png",
                 "KPLN_Tools.Imagens.familyManagerBig.png",
                 "http://moodle");
-         
+
             panel.AddItem(sendMsgToBitrix);
             panel.AddItem(familyManagerPanel);
             #endregion
@@ -586,14 +584,14 @@ namespace KPLN_Tools
         }
 
         /// <summary>
-        /// Ìåòîä äëÿ ñîçäàíèÿ PushButtonData áóäóùåé êíîïêè
+        /// Метод для создания PushButtonData будущей кнопки
         /// </summary>
-        /// <param name="name">Âíóòðåííåå èìÿ êíîïêè</param>
-        /// <param name="text">Èìÿ, âèäèìîå ïîëüçîâàòåëþ</param>
-        /// <param name="shortDescription">Êðàòêîå îïèñàíèå, âèäèìîå ïîëüçîâàòåëþ</param>
-        /// <param name="longDescription">Ïîëíîå îïèñàíèå, âèäèìîå ïîëüçîâàòåëþ ïðè çàëåðæêå êóðñîðà</param>
-        /// <param name="className">Èìÿ êëàññà, ñîäåðæàùåãî ðåàëèçàöèþ êîìàíäû</param>
-        /// <param name="contextualHelp">Ññûëêà íà web-ñòðàíèöó ïî êëàâèøå F1</param>
+        /// <param name="name">Внутреннее имя кнопки</param>
+        /// <param name="text">Имя, видимое пользователю</param>
+        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
+        /// <param name="className">Имя класса, содержащего реализацию команды</param>
+        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private PushButtonData CreateBtnData(
             string name,
             string text,
@@ -623,9 +621,9 @@ namespace KPLN_Tools
         }
 
         /// <summary>
-        /// Ìåòîä äëÿ äîáàâëåíèÿ èêîíêè ButtonData
+        /// Метод для добавления иконки ButtonData
         /// </summary>
-        /// <param name="embeddedPathname">Èìÿ èêîíêè. Äëÿ èêîíîê óêàçàòü Build Action -> Embedded Resource</param>
+        /// <param name="embeddedPathname">Имя иконки. Для иконок указать Build Action -> Embedded Resource</param>
         private ImageSource PngImageSource(string embeddedPathname)
         {
             Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
@@ -635,15 +633,15 @@ namespace KPLN_Tools
         }
 
         /// <summary>
-        /// Ìåòîä äëÿ ñîçäàíèÿ PulldownButton èç RibbonItem (âûïàäàþùèé ñïèñîê).
-        /// Äàííûé ìåòîä äîáàâëÿåò 1 îòäåëüíûé ýëåìåíò. Äëÿ äîáàâëåíèÿ íåñêîëüêèõ - íóæíû ïåðåãðóçêè ìåòîäîâ AddStackedItems (äîáàâèò 2-3 ýëåìåíòà â ñòîëáèê)
+        /// Метод для создания PulldownButton из RibbonItem (выпадающий список).
+        /// Данный метод добавляет 1 отдельный элемент. Для добавления нескольких - нужны перегрузки методов AddStackedItems (добавит 2-3 элемента в столбик)
         /// </summary>
-        /// <param name="name">Âíóòðåííåå èìÿ âûï. ñïèñêà</param>
-        /// <param name="text">Èìÿ, âèäèìîå ïîëüçîâàòåëþ</param>
-        /// <param name="shortDescription">Êðàòêîå îïèñàíèå, âèäèìîå ïîëüçîâàòåëþ</param>
-        /// <param name="longDescription">Ïîëíîå îïèñàíèå, âèäèìîå ïîëüçîâàòåëþ ïðè çàëåðæêå êóðñîðà</param>
-        /// <param name="imgSmall">Êàðòèíêà ìàëåíüêàÿ</param>
-        /// <param name="imgBig">Êàðòèíêà áîëüøàÿ</param>
+        /// <param name="name">Внутреннее имя вып. списка</param>
+        /// <param name="text">Имя, видимое пользователю</param>
+        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
+        /// <param name="imgSmall">Картинка маленькая</param>
+        /// <param name="imgBig">Картинка большая</param>
         private PulldownButton CreatePulldownButtonInRibbon(
             string name,
             string text,
@@ -662,7 +660,7 @@ namespace KPLN_Tools
                 LargeImage = imgBig,
             });
 
-            // Òîíêàÿ íàñòðîéêà âèäèìîñòè RibbonItem
+            // Тонкая настройка видимости RibbonItem
             var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(pullDownRI.GetId());
             revitRibbonItem.ShowText = showName;
 
@@ -670,5 +668,6 @@ namespace KPLN_Tools
         }
     }
 }
+
 
 

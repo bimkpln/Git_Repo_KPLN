@@ -175,7 +175,12 @@ namespace KPLN_ModelChecker_User.Forms
                     if (wpfEntity.Element != null)
                     {
                         if (wpfEntity.Box == null || wpfEntity.Centroid == null)
-                            HtmlOutput.Print($"Ошибка - у элемента {wpfEntity.Element} не предопределена геометрия. Ищи элемент вручную, через id\n", MessageType.Warning);
+                        {
+                            if (wpfEntity.Element != null)
+                                HtmlOutput.Print($"Ошибка - у элемента \"{wpfEntity.ElementName}\" не предопределена геометрия. Ищи элемент вручную, через id {wpfEntity.Element.Id}\n", MessageType.Warning);
+                            else if (wpfEntity.ElementCollection != null && wpfEntity.ElementCollection.Any())
+                                HtmlOutput.Print($"Ошибка - у элементов \"{wpfEntity.ElementName}\" не предопределена геометрия. Ищи элемент вручную, через id {wpfEntity.ElementCollection.Select(el => el.Id)}\n", MessageType.Warning);
+                        }
                         else
                             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ZoomElementCommand(wpfEntity.Element, wpfEntity.Box, wpfEntity.Centroid));
                     }
