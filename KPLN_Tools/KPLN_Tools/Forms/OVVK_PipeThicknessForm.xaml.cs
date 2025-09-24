@@ -29,7 +29,7 @@ namespace KPLN_Tools.Forms
 
             ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            _dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+            _dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
 
             if (_dBProject != null)
                 _configType = ConfigType.Shared;
