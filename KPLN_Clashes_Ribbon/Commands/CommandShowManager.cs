@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Forms;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
@@ -16,8 +15,15 @@ namespace KPLN_Clashes_Ribbon.Commands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandShowManager : IExternalCommand
     {
+        public static GetActiveDocumentHandler ActiveDocHandler { get; private set; }
+        public static ExternalEvent ExtEvent { get; private set; }
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            ActiveDocHandler = new GetActiveDocumentHandler();
+            ExtEvent = ExternalEvent.Create(ActiveDocHandler);
+            ExtEvent.Raise();
+
             try
             {
                 DBProject dBProject = null;
@@ -29,7 +35,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                     string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
                     dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
                 }
-                
+
                 if (uidoc == null || dBProject == null)
                 {
                     // Для пользователей бим-отдела - показываю все проекты, включая архивные
@@ -50,8 +56,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             catch (Exception ex)
             {
                 PrintError(ex);
-
-                return Result.Failed;
+                return Result.Cancelled;
             }
         }
     }

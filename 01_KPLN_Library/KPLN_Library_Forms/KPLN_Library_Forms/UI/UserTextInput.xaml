@@ -14,7 +14,6 @@
         ResizeMode="NoResize" 
         WindowStyle="ToolWindow" 
         Topmost="True" 
-        Closing="Window_Closing" 
         Loaded="OnLoaded">
     <Window.Resources>
         <Style TargetType="TextBox" x:Key="BX">
@@ -28,7 +27,7 @@
             <Setter Property="BorderBrush" Value="White"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
+            <Setter Property="Margin" Value="5,5,0,0"/>
             <Setter Property="Padding" Value="5,0,5,0"/>
         </Style>
         <Style TargetType="TextBlock" x:Key="TXT">
@@ -57,7 +56,8 @@
 
         <TextBox 
             x:Name="tBox" 
-            Grid.Row="1" 
+            Grid.Row="1"
+            xml:lang="ru-RU"
             Style="{StaticResource BX}" 
             TextWrapping="Wrap"/>
 

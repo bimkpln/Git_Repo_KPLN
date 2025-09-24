@@ -1,0 +1,69 @@
+﻿<Window  
+    x:Class="KPLN_ModelChecker_Lib.Forms.EmptyWorksetsForm"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="KPLN: Очистка пустых рабочих наборов" 
+    Height="480" 
+    Width="720"
+    WindowStartupLocation="CenterOwner" 
+    ResizeMode="CanResize"
+    MinWidth="600" 
+    MinHeight="360">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <StackPanel 
+            Orientation="Horizontal" 
+            Margin="0,0,0,8">
+            <TextBlock 
+                Text="Документ: " 
+                FontWeight="Bold"/>
+            <TextBlock 
+                Text="{Binding DocumentTitle}" />
+        </StackPanel>
+
+        <!-- Таблица -->
+        <DataGrid 
+            Grid.Row="1"
+            ItemsSource="{Binding EmptyWorksets}"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            IsReadOnly="False"
+            SelectionMode="Extended"
+            HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn 
+                    Binding="{Binding IsSelected, Mode=TwoWay}" 
+                    Header="" 
+                    Width="40"/>
+                <DataGridTextColumn 
+                    Binding="{Binding RevitWSName}" 
+                    Header="Рабочий набор" 
+                    IsReadOnly="True" 
+                    Width="*"/>
+                <DataGridTextColumn 
+                    Binding="{Binding RevitWSId.IntegerValue}" 
+                    Header="Id" 
+                    IsReadOnly="True" 
+                    Width="120"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Кнопки -->
+        <StackPanel 
+            Grid.Row="2" 
+            Orientation="Horizontal" 
+            HorizontalAlignment="Right" 
+            Margin="0,8,0,0">
+            <Button 
+                Content="Удалить выбранные" 
+                MinWidth="160" 
+                Click="DeleteSelected_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

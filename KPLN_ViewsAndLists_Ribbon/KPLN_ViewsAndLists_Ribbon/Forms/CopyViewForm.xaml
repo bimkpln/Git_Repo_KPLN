@@ -37,7 +37,7 @@
         <Grid Grid.Row="2">
             <GroupBox Header="Дополнительные настройки" Margin="5,7,0,0" FontSize="12" Width="370" HorizontalAlignment="Left">
                 <StackPanel Margin="5 5 5 3" VerticalAlignment="Bottom">
-                    <CheckBox x:Name="CHK_OpenDocument" Content=" Открыть документы после обработки" FontSize="12" Margin="0,0,0,4"/>
+                    <CheckBox x:Name="CHK_SynchronizationDocument" Content=" Синхронизировать документы после обработки" FontSize="12" Margin="0,0,0,4"/>
                 </StackPanel>
             </GroupBox>
             <GroupBox Header="Документы для обработки" Margin="5 7 0 0" FontSize="12" Width="296px" HorizontalAlignment="Right">

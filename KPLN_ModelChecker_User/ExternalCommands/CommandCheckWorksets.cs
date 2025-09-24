@@ -1,0 +1,61 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Commands;
+using System.Linq;
+
+namespace KPLN_ModelChecker_User.ExternalCommands
+{
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public sealed class CommandCheckWorksets : AbstrCommand, IExternalCommand
+    {
+        public CommandCheckWorksets() : base() { }
+
+        /// <summary>
+        /// Реализация IExternalCommand
+        /// </summary>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+
+            CommandCheck = new CheckWorksets().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
+            ElemsToCheck = CommandCheck.GetElemsToCheck();
+
+            Document doc = commandData.Application.ActiveUIDocument.Document;
+
+            // Блокирую проверку части РН ПРИ РУЧНОМ ЗАПУСКЕ
+            // Для авт. запуска блок не нужен, достаточно проверять часть.
+            // Даже если это перезапуск - изначально всё равно нужно вручную запустить и открыть РН
+            if (!doc.IsWorkshared)
+            {
+                TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                {
+                    MainContent = $"Проверка рабочих наборов может выполняться ТОЛЬКО с моделями для совместной работы",
+                };
+                taskDialog.Show();
+
+                return Result.Cancelled;
+            }
+
+            Workset[] worksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToArray();
+            foreach (Workset ws in worksets)
+            {
+                if (!ws.IsOpen)
+                {
+                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
+                    {
+                        MainContent = $"Необходимо загрузить ВСЕ рабочие наборы",
+                    };
+                    taskDialog.Show();
+
+                    return Result.Cancelled;
+                }
+            }
+
+            ExecuteByUIApp<CheckWorksets>(uiapp, false, true, true, true, true);
+
+            return Result.Succeeded;
+        }
+    }
+}

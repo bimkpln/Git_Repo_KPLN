@@ -12,8 +12,10 @@
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         ResizeMode="CanResize"
-        Width="1000" 
-        Height="650" 
+        Width="1000"
+        MinWidth="1000" 
+        Height="675" 
+        MinHeight="675" 
         Background="#FF292D36">
     <Window.Resources>
 
@@ -171,7 +173,7 @@
                     <ColumnDefinition Width="0.59*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="15"/>
+                    <RowDefinition Height="25"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
@@ -179,7 +181,8 @@
                 <TextBlock 
                     Grid.Column="0"
                     Grid.Row="0"
-                    Text="Дополнительные настройки:"/>
+                    Text="Дополнительные настройки:"
+                    Margin="5"/>
                 <ContentPresenter
                     Grid.Column="0"
                     Grid.Row="1"
@@ -200,7 +203,8 @@
                 <TextBlock 
                     Grid.Column="2"
                     Grid.Row="0"
-                    Text="Список папок/файлов для экспорта:"/>
+                    Text="Список папок/файлов для экспорта:"
+                    Margin="5"/>
                 <StackPanel  
                     Name="FileStackPanel"
                     Grid.Column="2" 
@@ -243,7 +247,7 @@
                                         <TextBlock 
                                             Text="{Binding Name}"
                                             TextWrapping="Wrap"
-                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо/редактировать файал или удалить файл/группу файлов (удалять можно несколько)"
+                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо/редактировать файл или удалить файл/группу файлов (удалять можно несколько)"
                                             HorizontalAlignment="Stretch"
                                             Foreground="White"/>
                                     </Border>

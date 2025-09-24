@@ -16,12 +16,9 @@ namespace KPLN_Tools.Forms
 {
     public partial class RLinkUpdateContent : UserControl, IRLinkUserControl
     {
-        private readonly int _revitVersion;
-
-        public RLinkUpdateContent(int revitVersion)
+        public RLinkUpdateContent()
         {
             LinkChangeEntityColl = new ObservableCollection<LinkManagerEntity>();
-            _revitVersion = revitVersion;
 
             InitializeComponent();
             DataContext = this;
@@ -37,9 +34,7 @@ namespace KPLN_Tools.Forms
             if (btn.DataContext is LinkManagerUpdateEntity linkChange)
             {
                 UserDialog ud = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена замена файла \"{linkChange.LinkName}\". Продолжить?");
-                ud.ShowDialog();
-
-                if (ud.IsRun)
+                if ((bool)ud.ShowDialog())
                     LinkChangeEntityColl.Remove(linkChange);
             }
         }
@@ -75,14 +70,14 @@ namespace KPLN_Tools.Forms
 
         private void RevitServerPathSelect_Click(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(_revitVersion);
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(ModuleData.RevitVersion);
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
                 string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
                 string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
 
-                RevitServer revitServer = new RevitServer(selectedRSHostName, _revitVersion);
+                RevitServer revitServer = new RevitServer(selectedRSHostName, ModuleData.RevitVersion);
 
                 IList<Folder> rsFolders = revitServer.GetFolderContents(selectedRSMainDir, 0).Folders;
                 List<ElementEntity> activeEntitiesForForm = new List<ElementEntity>(
@@ -153,7 +148,7 @@ namespace KPLN_Tools.Forms
                 }
 
                 // Тут нужно заменить на одиночный выбор, но это нужно библиотеку править. Пока оставляю так
-                ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+                ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
                 if (rsFilesPickForm == null)
                     return;
 
@@ -188,7 +183,7 @@ namespace KPLN_Tools.Forms
                 if (lmEntity.CurrentEntStatus == EntityStatus.MarkedAsFinal)
                     continue;
 
-                LinkManagerUpdateEntity updatedEntity = LoadRLI_Service.GetSimilarByPath(lmEntity, selectedPath, _revitVersion);
+                LinkManagerUpdateEntity updatedEntity = LoadRLI_Service.GetSimilarByPath(lmEntity, selectedPath, ModuleData.RevitVersion);
                 if (updatedEntity != null)
                     resulDict.Add(LinkChangeEntityColl.IndexOf(lmEntity), updatedEntity);
             }

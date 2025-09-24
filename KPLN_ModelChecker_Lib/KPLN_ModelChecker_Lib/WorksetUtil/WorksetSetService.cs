@@ -22,10 +22,12 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         /// <param name="rvtLinks">Список связей, для которых нужно создать РНы</param>
         /// <param name="modelElemWSCreating">Метка создания РН для элементов модели (кроме экземпляров связей)</param>
         public static bool ExecuteFromService(
-            Document doc, 
-            IEnumerable<RevitLinkInstance> rvtLinks, 
-            IEnumerable<ImportInstance> importInstances, 
-            bool impInstWSCreating = true, 
+            Document doc,
+            IEnumerable<RevitLinkInstance> rvtLinks,
+            IEnumerable<DirectShape> dirShapes,
+            IEnumerable<PointCloudInstance> pcInstances,
+            IEnumerable<ImportInstance> importInstances,
+            bool impInstWSCreating = true,
             bool modelElemWSCreating = true)
         {
             // Кастомная настройка пути под проекты
@@ -36,14 +38,14 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
 
             #region Вывод пользовательского окна с xml-шаблонами
             System.Windows.Forms.OpenFileDialog dialog = new System.Windows.Forms.OpenFileDialog
-                {
-                    InitialDirectory = WSPatternFolderPath,
-                    Multiselect = false,
-                    Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
-                };
+            {
+                InitialDirectory = WSPatternFolderPath,
+                Multiselect = false,
+                Filter = "xml files (*.xml)|*.xml|All files (*.*)|*.*"
+            };
             if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
                 return false;
-                
+
             string xmlFilePath = dialog.FileName;
 
             //Десериализация пользовательского xml-файла
@@ -106,7 +108,6 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 string linkedFilesPrefix = dto.LinkedFilesPrefix;
                 string dwgLinksName = dto.DWGLinksName;
                 bool useMonitoredElems = dto.UseMonitoredElements;
-                string monitoredElementsName = dto.MonitoredElementsName;
 
                 //Назначение рабочих наборов для связанных файлов
                 foreach (RevitLinkInstance linkInstance in rvtLinks)
@@ -125,6 +126,24 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     }
                 }
 
+                //Назначение рабочих наборов для координационных моделей
+                foreach (DirectShape dirShape in dirShapes)
+                {
+                    string linkWorksetName = linkedFilesPrefix + "КоордМодель_" + dirShape.Name.Split(new string[] { ".nw" }, StringSplitOptions.None)[0];
+                    Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+
+                    WorksetByCurrentParameter.SetWorkset(dirShape, linkWorkset);
+                }
+
+                //Назначение рабочих наборов для облака точек
+                foreach (PointCloudInstance pcInstance in pcInstances)
+                {
+                    string linkWorksetName = linkedFilesPrefix + "ОблТочек_" + pcInstance.Name.Split(new string[] { ".rcs" }, StringSplitOptions.None)[0];
+                    Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+
+                    WorksetByCurrentParameter.SetWorkset(pcInstance, linkWorkset);
+                }
+
                 //Назначение рабочих наборов для dwg-импорта/связей
                 if (impInstWSCreating)
                 {
@@ -133,33 +152,13 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                         // Обход конфиогов, где НЕ нужно генерить РН под cad (например: Сетунь)
                         if (string.IsNullOrEmpty(dwgLinksName))
                             break;
-                    
+
                         if (doc.GetElement(importInstance.GetTypeId()) is CADLinkType cadLinkType)
                         {
                             Workset cadWorkset = CreateNewWorkset(doc, dwgLinksName);
 
                             WorksetByCurrentParameter.SetWorkset(importInstance, cadWorkset);
                             WorksetByCurrentParameter.SetWorkset(cadLinkType, cadWorkset);
-                        }
-                    }
-                }
-
-                //Назначение рабочих наборов для элементов с монитрингом (кроме осей и уровней)
-                if (useMonitoredElems && modelElemWSCreating)
-                {
-                    Workset monitoredWorkset = CreateNewWorkset(doc, monitoredElementsName);
-                    List<FamilyInstance> allModelElements = new FilteredElementCollector(doc)
-                        .OfClass(typeof(FamilyInstance))
-                        .Cast<FamilyInstance>()
-                        .ToList();
-
-                    foreach (Element elem in allModelElements)
-                    {
-                        if ((elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Grids)
-                            && (elem.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Levels)
-                            && (elem.IsMonitoringLinkElement() || elem.IsMonitoringLocalElement()))
-                        {
-                            WorksetByCurrentParameter.SetWorkset(elem, monitoredWorkset);
                         }
                     }
                 }
@@ -220,10 +219,10 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                             foreach (Element elem in allModelElements)
                             {
                                 ElementId typeId = elem.GetTypeId();
-                                if (typeId == null || typeId == ElementId.InvalidElementId) 
+                                if (typeId == null || typeId == ElementId.InvalidElementId)
                                     continue;
 
-                                if (!(doc.GetElement(typeId) is ElementType elemType)) 
+                                if (!(doc.GetElement(typeId) is ElementType elemType))
                                     continue;
 
                                 if (elemType.Name.ToLower().Contains(typeName.ToLower()))
@@ -273,6 +272,11 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
             }
             #endregion
 
+            // ВОЗМОЖНО УДАЛЕНИЕ РН ТОЛЬКО НАЧИНАЯ С РЕВИТ2024, до этого - нет API
+            //EmptyWorksetsForm emptyWorksetsForm = new EmptyWorksetsForm(doc);
+            //if (emptyWorksetsForm.EmptyWorksets.Any())
+            //    emptyWorksetsForm.Show();
+
             List<string> emptyWorksetsNames = GetEmptyWorksets(doc);
             if (emptyWorksetsNames.Count > 0)
             {
@@ -320,9 +324,8 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         {
             bool isUnique = WorksetTable.IsWorksetNameUnique(doc, name);
             if (isUnique)
-            {
                 Workset.Create(doc, name);
-            }
+
             Workset linkWorkset = new FilteredWorksetCollector(doc)
                 .OfKind(WorksetKind.UserWorkset)
                 .ToWorksets()

@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_ModelChecker_Lib;
 using System.Collections.Generic;
 using System.Linq;
-using static KPLN_ModelChecker_User.Common.CheckCommandCollections;
 
 namespace KPLN_ModelChecker_User.WPFItems
 {
@@ -17,7 +17,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             LogLastRun = logLastRun;
             
             FiltrationCollection = new HashSet<string>() { "Необработанные предупреждения" };
-            if (WPFEntityCollection.FirstOrDefault(w => w.CurrentStatus == CheckStatus.Approve) != null) 
+            if (WPFEntityCollection.FirstOrDefault(w => w.CurrentStatus == ErrorStatus.Approve) != null) 
                 FiltrationCollection.Add("Допустимое");
         }
 
@@ -77,19 +77,19 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 switch (w.CurrentStatus)
                 {
-                    case CheckStatus.AllmostOk:
+                    case ErrorStatus.AllmostOk:
                         w.FiltrationDescription = "Почти хорошо";
                         break;
-                    case CheckStatus.LittleWarning:
+                    case ErrorStatus.LittleWarning:
                         w.FiltrationDescription = "Обрати внимание";
                         break;
-                    case CheckStatus.Warning:
+                    case ErrorStatus.Warning:
                         w.FiltrationDescription = "Предупреждение";
                         break;
-                    case CheckStatus.Error:
+                    case ErrorStatus.Error:
                         w.FiltrationDescription = "Ошибка";
                         break;
-                    case CheckStatus.Approve:
+                    case ErrorStatus.Approve:
                         w.FiltrationDescription = "Допустимое";
                         break;
                 }
@@ -104,7 +104,7 @@ namespace KPLN_ModelChecker_User.WPFItems
         {
             foreach (WPFEntity w in WPFEntityCollection)
             {
-                if (w.CurrentStatus != CheckStatus.Approve)
+                if (w.CurrentStatus != ErrorStatus.Approve)
                 {
                     w.FiltrationDescription = w.Header;
                     FiltrationCollection.Add(w.FiltrationDescription);
@@ -121,7 +121,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             {
                 string idColl;
                 IEnumerable<ElementId> ids = w.ElementIdCollection.ToList();
-                if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection);
+                if (ids.Count() > 1) idColl = string.Join(", ", w.ElementIdCollection.ToList());
                 else idColl = ids.FirstOrDefault().ToString();
 
                 w.FiltrationDescription = idColl;

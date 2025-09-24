@@ -151,8 +151,8 @@ namespace KPLN_Publication.PdfWorker
             using (FileStream stream = new FileStream(outFile, FileMode.Create))
             {
                 Document doc = new Document();
-                PdfCopy writer = new PdfCopy(doc, stream);
-                if (writer == null) throw new Exception("Не удалось создать файл: " + outFile);
+                PdfCopy writer = new PdfCopy(doc, stream) ?? throw new Exception("Не удалось создать файл: " + outFile);
+                
                 PdfReader reader = null;
                 try
                 {
@@ -177,7 +177,7 @@ namespace KPLN_Publication.PdfWorker
                 }
                 finally
                 {
-                    if (doc != null) doc.Close();
+                    doc?.Close();
                 }
 
             }

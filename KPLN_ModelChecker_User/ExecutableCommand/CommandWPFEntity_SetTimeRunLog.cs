@@ -5,6 +5,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
@@ -40,8 +41,21 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
                 Document doc = app.ActiveUIDocument.Document;
                 ProjectInfo pi = doc.ProjectInformation;
                 Element piElem = pi as Element;
-                ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
-                esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);
+
+                // Вписываю, если РН НЕ занят
+                bool allAvailableWSElems = true;
+                if (doc.IsWorkshared)
+                {
+                    ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, new ElementId[] { piElem.Id });
+                    allAvailableWSElems = availableWSElemsId.Count > 0;
+
+                }
+
+                if (allAvailableWSElems) 
+                {
+                    ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
+                    esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);
+                }
 
                 t.Commit();
             }

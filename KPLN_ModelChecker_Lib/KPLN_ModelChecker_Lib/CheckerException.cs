@@ -5,7 +5,7 @@ namespace KPLN_ModelChecker_Lib
     /// <summary>
     /// Пользовательская ошибка для отлова некорректного поведения пользователя
     /// </summary>
-    public class CheckerException : Exception
+    public sealed class CheckerException : Exception
     {
         public CheckerException()
         {

@@ -94,9 +94,6 @@
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="RevitAPI">
-      <HintPath>..\..\..\..\..\..\..\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-    </Reference>
     <Reference Include="RevitServerAPILib, Version=0.1.10.34061, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
       <Private>False</Private>
@@ -277,7 +274,6 @@
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
-    <Compile Include="Common\EnvironmentService.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
     <Compile Include="Common\SS_System\GraphicsStyleWrapper.cs" />
@@ -401,7 +397,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tools\WindowHandleSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\autonumberSmall.png" />

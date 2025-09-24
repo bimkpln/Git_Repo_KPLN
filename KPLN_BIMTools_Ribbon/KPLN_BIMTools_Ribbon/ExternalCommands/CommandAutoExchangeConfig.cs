@@ -20,16 +20,6 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
         }
 
-        internal static NLog.Logger Logger { get; set; }
-
-        /// <summary>
-        /// Установка общих параметров для запуска
-        /// </summary>
-        internal static void SetStaticEnvironment(NLog.Logger logger)
-        {
-            Logger = logger;
-        }
-
         /// <summary>
         /// Реализация IExternalCommand
         /// </summary>
@@ -52,7 +42,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
 
             DBProject dBProject = (DBProject)selectedProjectForm.SelectedElement.Element;
-            ConfigDispatcher configDispatcher = new ConfigDispatcher(Logger, dBProject, selectedEnum, true);
+            ConfigDispatcher configDispatcher = new ConfigDispatcher(dBProject, selectedEnum, true);
             if (!(bool)configDispatcher.ShowDialog())
                 return Result.Cancelled;
 

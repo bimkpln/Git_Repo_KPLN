@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_SQLiteWorker",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_Forms", "..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\KPLN_Library_Forms.csproj", "{6DEDAA32-33DF-4AE2-8158-9D49798E2966}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Library_OpenDocHandler", "..\01_KPLN_Library\KPLN_Library_OpenDocHandler\KPLN_Library_OpenDocHandler.csproj", "{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug2020|x64 = Debug2020|x64
@@ -41,6 +43,14 @@ Global
 		{6DEDAA32-33DF-4AE2-8158-9D49798E2966}.Revit2020|x64.Build.0 = Revit2020|x64
 		{6DEDAA32-33DF-4AE2-8158-9D49798E2966}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{6DEDAA32-33DF-4AE2-8158-9D49798E2966}.Revit2023|x64.Build.0 = Revit2023|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Debug2020|x64.Build.0 = Debug2020|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Debug2023|x64.Build.0 = Debug2023|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Revit2020|x64.Build.0 = Revit2020|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{01BA2A52-3862-4F44-BBD7-BBEE181F52A5}.Revit2023|x64.Build.0 = Revit2023|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

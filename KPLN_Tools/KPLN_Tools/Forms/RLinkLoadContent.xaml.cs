@@ -42,9 +42,7 @@ namespace KPLN_Tools.Forms
             if (btn.DataContext is LinkManagerLoadEntity linkLoad)
             {
                 UserDialog ud = new UserDialog("ВНИМАНИЕ", $"Сейчас будут удалена загрузка файла \"{linkLoad.LinkName}\". Продолжить?");
-                ud.ShowDialog();
-
-                if (ud.IsRun)
+                if ((bool)ud.ShowDialog())
                     LinkChangeEntityColl.Remove(linkLoad);
             }
         }

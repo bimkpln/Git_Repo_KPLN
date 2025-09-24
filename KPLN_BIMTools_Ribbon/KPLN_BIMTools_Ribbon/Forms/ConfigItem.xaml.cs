@@ -30,7 +30,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// </summary>
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
 
-        private readonly NLog.Logger _logger;
         private readonly SQLiteService _sqliteService;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
@@ -43,20 +42,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
         /// <summary>
         /// Конструктор основной единицы отчета
         /// </summary>
-        /// <param name="logger">Логгер</param>
-        /// <param name="revitDocExchangestDbService">Текущий сервис работы с БД по отчетам из диспетчера</param>
         /// <param name="sqliteService">Текущий сервис работы с БД по отчетам из текущего окна</param>
         /// <param name="project">Ссылка на проект</param>
         /// <param name="revitDocExchangeEnum">Тип обмена</param>
         /// <param name="dbRevitDocExchangesEntities">Ссылка на существующий конфиг</param>
         public ConfigItem(
-            NLog.Logger logger,
             SQLiteService sqliteService,
             DBProject project,
             RevitDocExchangeEnum revitDocExchangeEnum,
             DBRevitDocExchangesWrapper dbRevitDocExchangesEntities = null)
         {
-            _logger = logger;
             _sqliteService = sqliteService;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
@@ -80,7 +75,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 // Проверяю на триггер копирования - базы данных не будут совпадать
                 SQLiteService tempSqliteService = null;
                 if (_sqliteService.CurrentDBFullPath != DBRevitDocExchWrapper.SettingDBFilePath)
-                    tempSqliteService = new SQLiteService(_logger, DBRevitDocExchWrapper.SettingDBFilePath, _revitDocExchangeEnum);
+                    tempSqliteService = new SQLiteService(DBRevitDocExchWrapper.SettingDBFilePath, _revitDocExchangeEnum);
                 else
                     tempSqliteService = _sqliteService;
 
@@ -413,11 +408,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // Получаем выбранные элементы
             var selectedItems = fileWrapPanel.SelectedItems.Cast<FileEntity>().ToList();
 
-            // Удаляем каждый выбранный элемент из коллекции
-            foreach (var item in selectedItems)
+            UserDialog cd = new UserDialog("Предупреждение", $"Сейчас будет удалены элементы в количестве {selectedItems.Count} шт.");
+            if ((bool)cd.ShowDialog())
             {
-                if (item is FileEntity fileEntity)
-                    FileEntitiesList.Remove(fileEntity);
+                // Удаляем каждый выбранный элемент из коллекции
+                foreach (var item in selectedItems)
+                {
+                    if (item is FileEntity fileEntity)
+                        FileEntitiesList.Remove(fileEntity);
+                }
             }
         }
         #endregion

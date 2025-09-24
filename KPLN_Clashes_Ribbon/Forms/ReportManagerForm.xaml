@@ -11,8 +11,8 @@
         WindowStyle="ToolWindow" 
         Topmost="False"
         WindowStartupLocation="CenterScreen" 
-        Width="600" 
-        Height="500" 
+        Width="700" 
+        Height="600" 
         Background="#FF292D36">
     <Window.Resources>
         
@@ -70,11 +70,20 @@
             </Setter>
         </Style>
 
+        <Style
+            x:Key="MainTBL"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
         <Style x:Key="TXTBX" TargetType="TextBox">
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
         </Style>
 
         <Style
@@ -93,14 +102,69 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+
+
+        <StackPanel>
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) Поиск по имени проверки:" 
+                    MinWidth="200"
+                    Style="{StaticResource MainTBL}"/>
+                <TextBox 
+                    x:Name="ReportNameTBx"
+                    Style="{StaticResource TXTBX}"
+                    MinHeight="20" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ReportNameTBx_TextChanged"/>
+            </DockPanel>
+            
+            <DockPanel>
+                <TextBlock 
+                    Text="(ИЛИ) ID задачи в Bitrix:" 
+                    MinWidth="200"
+                    Style="{StaticResource MainTBL}"/>
+                <TextBox 
+                    x:Name="ReportBitrixIdTBx"
+                    Style="{StaticResource TXTBX}"
+                    MinHeight="20" 
+                    DockPanel.Dock="Left"
+                    TextChanged="ReportBitrixIdTBx_TextChanged">
+                    <TextBox.ToolTip>
+                        <StackPanel>
+                            <TextBlock 
+                                Text="Укажи ID задачи из Bitrix. Как получить данные по задаче - см. скрин ниже:"
+                                TextWrapping="Wrap"
+                                Width="600"
+                                FontSize="14"
+                                FontWeight="Bold"/>
+                            <Image 
+                                Source="pack://application:,,,/KPLN_Clashes_Ribbon;component/Source/ImageData/bitrixTaskID.png"
+                                Width="600" 
+                                Height="475"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
+            </DockPanel>
+        </StackPanel>
         
-        <TextBlock Text="Группы отчетов:" Margin="0,0,0,5" FontWeight="Bold" Foreground="White"/>
-        <ScrollViewer Padding="0,0,5,0" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <TextBlock 
+            Grid.Row="1" 
+            Text="Группы отчетов:" 
+            FontSize="14"
+            Style="{StaticResource MainTBL}"/>
+        <ScrollViewer 
+            Padding="0,0,5,0"
+            Grid.Row="2" 
+            HorizontalScrollBarVisibility="Disabled" 
+            VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" x:Name="sp">
-                <ItemsControl x:Name="iControllGroups">
+                <ItemsControl 
+                    x:Name="iControllGroups"
+                    ItemsSource="{Binding FilteredRepGroupColl}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="5,5,5,10">
@@ -112,23 +176,103 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 
-                                <Rectangle Margin="-5" RadiusX="3" RadiusY="3" Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}" Grid.RowSpan="5"/>
+                                <Rectangle 
+                                    Grid.RowSpan="5"
+                                    Margin="-5" 
+                                    RadiusX="3" 
+                                    RadiusY="3" 
+                                    Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}"/>
                                 
-                                <StackPanel Orientation="Horizontal" Grid.Row="0">
-                                    <Image Source="{Binding Source.Value, UpdateSourceTrigger=PropertyChanged}" Grid.Column="0" Width="30" Height="30"/>
-                                    <StackPanel Margin="5,0,0,0" Orientation="Vertical" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding GroupName}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Foreground="White"/>
-                                        <TextBlock Text="{Binding DateCreated}" TextWrapping="Wrap" VerticalAlignment="Center" Opacity="0.5" Foreground="White"/>
+                                <StackPanel 
+                                    Grid.Row="0"
+                                    Orientation="Horizontal">
+                                    <Image 
+                                        Grid.Column="0" 
+                                        Source="{Binding Source.Value, UpdateSourceTrigger=PropertyChanged}" 
+                                        Width="30" 
+                                        Height="30"/>
+                                    <StackPanel 
+                                        Margin="5,0,0,0" 
+                                        Orientation="Vertical" 
+                                        VerticalAlignment="Center">
+                                        <TextBlock 
+                                            Text="{Binding GroupName}" 
+                                            TextWrapping="Wrap" 
+                                            VerticalAlignment="Center" 
+                                            FontWeight="Bold" 
+                                            FontSize="16" 
+                                            Foreground="White"/>
+                                        
+                                        <!-- Кнопки задач в Bitrix-->
+                                        <DockPanel>
+                                            <TextBlock 
+                                                Text="Задача Bitrix:" 
+                                                VerticalAlignment="Center" 
+                                                FontWeight="Bold" 
+                                                Margin="5"/>
+                                            <ItemsControl 
+                                                ItemsSource="{Binding SubDepartmentBtns}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel Margin="0,0,0,4" LastChildFill="False">
+                                                            <Button 
+                                                                x:Name="BitrixTaskBtn" 
+                                                                Height="25" 
+                                                                Width="50" 
+                                                                Padding="5,0,5,0" 
+                                                                Margin="3,0,0,0" 
+                                                                Content="{Binding Name}" 
+                                                                Background="{Binding DelegateBtnBackground, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                                BorderBrush="White" 
+                                                                Foreground="White" 
+                                                                FontWeight="Bold" 
+                                                                BorderThickness="2" 
+                                                                Click="BitrixTaskBtn_Click">
+                                                                <Button.ToolTip>
+                                                                    <TextBlock 
+                                                                        TextWrapping="Wrap" 
+                                                                        FontWeight="Bold" 
+                                                                        Margin="0,0,0,5" 
+                                                                        Text="{Binding Description}"/>
+                                                                </Button.ToolTip>
+                                                            </Button>
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </DockPanel>
+                                        
                                         <!-- Поиск внутри группы-->
                                         <DockPanel>
-                                            <TextBlock Text="Поиск отчета:" VerticalAlignment="Center" FontWeight="Bold" Margin="5"/>
-                                            <TextBox x:Name="SearchText" Style="{StaticResource TXTBX}" Grid.Row="0" TextChanged="SearchText_Changed"
-                                                     TextAlignment="Left" VerticalAlignment="Center" DockPanel.Dock="Right" FontStretch="ExtraExpanded"/>
+                                            <TextBlock 
+                                                Text="Поиск отчета:" 
+                                                VerticalAlignment="Center" 
+                                                FontWeight="Bold" 
+                                                Margin="5"/>
+                                            <TextBox 
+                                                x:Name="SearchText" 
+                                                DockPanel.Dock="Right" 
+                                                Style="{StaticResource TXTBX}" 
+                                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                TextChanged="SearchText_Changed"
+                                                TextAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                FontStretch="ExtraExpanded"/>
                                         </DockPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 
-                                <Expander Grid.Row="1" Margin="0,0,0,0" Header="Список отчетов:" Foreground="White" IsExpanded="{Binding IsExpandedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <Expander 
+                                    Grid.Row="1" 
+                                    Margin="0,0,0,0" 
+                                    Header="Список отчетов:" 
+                                    Foreground="White" 
+                                    IsExpanded="{Binding IsExpandedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <ItemsControl ItemsSource="{Binding Reports}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -144,6 +288,7 @@
                                                         <RowDefinition Height="6"/>
                                                         <RowDefinition/>
                                                     </Grid.RowDefinitions>
+                                                    
                                                     <!--Прямоугольник с отчетом-->
                                                     <Rectangle 
                                                         Grid.Row="0" 
@@ -263,7 +408,18 @@
                                                             </StackPanel>
                                                         </TextBlock.ToolTip>
                                                     </TextBlock>
-                                                    <Button Grid.Row="3" Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" Width="20" Height="20" Grid.Column="2" Content="✖" VerticalAlignment="Top" Background="{x:Null}" Foreground="#4C000000" BorderBrush="#7F707070" Click="OnBtnRemoveReport">
+                                                    <Button 
+                                                        Grid.Row="3" 
+                                                        Grid.Column="2"
+                                                        Content="✖" 
+                                                        Visibility="{Binding AdminControllsVisibility, UpdateSourceTrigger=PropertyChanged}" 
+                                                        Width="20" 
+                                                        Height="20" 
+                                                        VerticalAlignment="Top" 
+                                                        Background="{x:Null}" 
+                                                        Foreground="#4C000000" 
+                                                        BorderBrush="#7F707070" 
+                                                        Click="OnBtnRemoveReport">
                                                         <Button.ToolTip>
                                                             <StackPanel MaxWidth="300">
                                                                 <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Удалить"/>
@@ -340,7 +496,7 @@
                                 
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">
                                     <TextBlock Text="Автор: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding UserCreatedFullName}" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="{Binding UserCreated}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DateCreated}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
@@ -348,7 +504,7 @@
                                 
                                 <StackPanel Grid.Row="4" Orientation="Horizontal">
                                     <TextBlock Text="Изменил: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding LastUserFullName}" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="{Binding UserLast}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text="{Binding DateLast}" Opacity="0.2" Foreground="White"/>
                                     <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
@@ -362,7 +518,7 @@
         </ScrollViewer>
         
         <DockPanel 
-            Grid.Row="2"
+            Grid.Row="3"
             LastChildFill="False" >
             <Button 
                 x:Name="btnAddGroup" 

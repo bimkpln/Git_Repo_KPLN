@@ -15,7 +15,7 @@ namespace KPLN_Library_Forms.UI
         {
             try
             {
-                return (System.Convert.ToInt32(value) > 5);
+                return (System.Convert.ToInt32(value) > 3);
             }
             catch (InvalidCastException)
             {

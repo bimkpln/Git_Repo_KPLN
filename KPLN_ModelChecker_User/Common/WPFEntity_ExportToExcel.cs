@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_Forms.UI;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Collections.Generic;
@@ -67,7 +68,7 @@ namespace KPLN_ModelChecker_User.Common
             int row = 2;
             foreach (WPFEntity entity in entities)
             {
-                if (entity.CurrentStatus == CheckCommandCollections.CheckStatus.Approve) continue;
+                if (entity.CurrentStatus == ErrorStatus.Approve) continue;
 
                 int column = 1;
                 string valueFromColl = string.Empty;

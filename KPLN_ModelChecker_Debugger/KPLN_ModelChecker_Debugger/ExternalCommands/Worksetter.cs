@@ -24,11 +24,20 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     .OfClass(typeof(RevitLinkInstance))
                     .Cast<RevitLinkInstance>();
 
+                IEnumerable<DirectShape> dirShapes = new FilteredElementCollector(doc)
+                    .OfClass(typeof(DirectShape))
+                    .Where(el => el.Name.Contains(".nw"))
+                    .Cast<DirectShape>();
+
+                IEnumerable<PointCloudInstance> pcInstances = new FilteredElementCollector(doc)
+                    .OfClass(typeof(PointCloudInstance))
+                    .Cast<PointCloudInstance>();
+
                 IEnumerable<ImportInstance> importInstances = new FilteredElementCollector(doc)
                     .OfClass(typeof(ImportInstance))
                     .Cast<ImportInstance>();
 
-                if (WorksetSetService.ExecuteFromService(doc, rvtLinks, importInstances))
+                if (WorksetSetService.ExecuteFromService(doc, rvtLinks, dirShapes, pcInstances, importInstances))
                     return Result.Succeeded;
                 else
                     return Result.Cancelled;

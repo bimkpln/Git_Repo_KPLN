@@ -232,7 +232,14 @@ namespace KPLN_Tools.ExecutableCommand
 
             // Создание отдельного РН, если нужно.
             if (instForWS.Count() > 0)
-                WorksetSetService.ExecuteFromService(doc, instForWS, null, null, null);
+                WorksetSetService.ExecuteFromService(
+                    doc, 
+                    instForWS, 
+                    Array.Empty<DirectShape>(), 
+                    Array.Empty<PointCloudInstance>(), 
+                    Array.Empty<ImportInstance>(), 
+                    false, 
+                    false);
         }
 
         /// <summary>

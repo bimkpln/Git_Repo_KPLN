@@ -2,7 +2,8 @@ using Autodesk.Revit.UI;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
-using KPLN_ModelChecker_User.Common;
+using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System;
 using System.IO;
@@ -38,25 +39,10 @@ namespace KPLN_ModelChecker_User
         {
             #region Инициализация элементов нужно для плагина проверки факта запуска
             // Инициирую статические поля проверок
-            CommandCheckDimensions commandCheckDimensions = new CommandCheckDimensions(new ExtensibleStorageEntity(
-                CommandCheckDimensions.PluginName,
-                "KPLN_CheckDimensions",
-                new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
-                new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569")));
-            CommandCheckElementWorksets commandCheckElementWorksets = new CommandCheckElementWorksets(new ExtensibleStorageEntity(
-                CommandCheckElementWorksets.PluginName,
-                "KPLN_CheckElementWorksets",
-                new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b7"),
-                new Guid("844c6eb2-37db-4f67-b212-d95824a0a6b8")));
-            CommandCheckFamilies commandCheckFamilies = new CommandCheckFamilies(new ExtensibleStorageEntity(
-                CommandCheckFamilies.PluginName,
-                "KPLN_CommandCheckFamilies",
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0807"),
-                new Guid("168c83b9-1d62-4d3f-9bbb-fd1c1e9a0808")));
-            CommandCheckMainLines commandCheckGrids = new CommandCheckMainLines(new ExtensibleStorageEntity(
-                CommandCheckMainLines.PluginName,
-                "KPLN_CommandCheckMainLines",
-                new Guid("eac2c205-342d-4ba3-98a1-d82c82a4638e")));
+            CheckDimensions checkDimensions = new CheckDimensions();
+            CheckWorksets checkWorksets = new CheckWorksets();
+            CheckFamilies checkFamilies = new CheckFamilies();
+            CheckMainLines checkMainLines = new CheckMainLines();
             CommandCheckFlatsArea commandCheckFlatsArea = new CommandCheckFlatsArea(new ExtensibleStorageEntity(
                 CommandCheckFlatsArea.PluginName,
                 "KPLN_CheckFlatsArea",
@@ -73,10 +59,7 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckLevelOfInstances",
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf52"),
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf53")));
-            CommandCheckLinks commandCheckLinks = new CommandCheckLinks(new ExtensibleStorageEntity(
-                CommandCheckLinks.PluginName,
-                "KPLN_CheckLinks",
-                new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e")));
+            CheckLinks checkLinks = new CheckLinks();
             CommandCheckListAnnotations commandCheckListAnnotations = new CommandCheckListAnnotations(new ExtensibleStorageEntity(
                 CommandCheckListAnnotations.PluginName,
                 "KPLN_CheckAnnotation",
@@ -86,27 +69,22 @@ namespace KPLN_ModelChecker_User
                 "KPLN_CheckMEPHeight",
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68"),
                 new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69")));
-            CommandCheckMirroredInstances commandCheckMirroredInstances = new CommandCheckMirroredInstances(new ExtensibleStorageEntity(
-                CommandCheckMirroredInstances.PluginName,
-                "KPLN_CheckMirroredInstances",
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320557b"),
-                new Guid("33b660af-95b8-4d7c-ac42-c9425320557c")));
+            CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
             // Запись в массив для передачи ExtensibleStorageEntity в CommandCheckLaunchDate (после инициализации статических полей)
             ExtensibleStorageEntity[] extensibleStorageEntities = new ExtensibleStorageEntity[]
             {
                 // Проверки из этой сборки
-                CommandCheckDimensions.ESEntity,
-                CommandCheckElementWorksets.ESEntity,
-                CommandCheckFamilies.ESEntity,
-                CommandCheckMainLines.ESEntity,
+                checkDimensions.ESEntity,
+                checkWorksets.ESEntity,
+                checkFamilies.ESEntity,
+                checkMainLines.ESEntity,
                 CommandCheckFlatsArea.ESEntity,
                 CommandCheckHoles.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
-                CommandCheckLinks.ESEntity,
-                //CommandCheckListAnnotations.ESEntity,
+                checkLinks.ESEntity,
                 CommandCheckMEPHeight.ESEntity,
-                CommandCheckMirroredInstances.ESEntity,
+                checkMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
                 new ExtensibleStorageEntity("ОВ: Толщина воздуховодов", "KPLN_DuctSize", new Guid("753380C4-DF00-40F8-9745-D53F328AC139")),
@@ -144,7 +122,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckCoordinates",
-                CommandCheckLinks.PluginName,
+                checkLinks.PluginName,
                 "Проверка подгруженных rvt-связей:" +
                 "\n1. Корректность настройки общей площадки Revit;" +
                 "\n2. Корректность заданного рабочего набора;" +
@@ -159,7 +137,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMainLines",
-                CommandCheckMainLines.PluginName,
+                checkMainLines.PluginName,
                 "Анализирует оси и уровни на:" +
                     "\n1. Наличие и корректность мониторинга;" +
                     "\n2. Наличие прикрепления;" +
@@ -174,7 +152,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckNames",
-                CommandCheckFamilies.PluginName,
+                checkFamilies.PluginName,
                 "Проверка семейств на:" +
                     "\n1. Импорт семейств из разрешенных источников (диск Х);" +
                     "\n2. Наличие дубликатов имен (проверяются и типоразмеры);" +
@@ -189,13 +167,13 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckWorksets",
-                CommandCheckElementWorksets.PluginName,
-                "Проверка элементов на корректность следующих рабочих наборов:"+
+                checkWorksets.PluginName,
+                "Проверка элементов на корректность следующих рабочих наборов:" +
                     "\n1. РН для связей;" +
                     "\n2. РН для осей и уровней;" +
                     "\n3. РН для скопированных и замониторенных элементов из других моделей.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckElementWorksets).FullName,
+                typeof(CommandCheckWorksets).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_worksets.png",
                 _mainContextualHelp,
@@ -204,7 +182,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckDimensions",
-                CommandCheckDimensions.PluginName,
+                checkDimensions.PluginName,
                 "Анализирует все размеры, на предмет:" +
                     "\n1. Замены значения;" +
                     "\n2. Округления значений размеров с нарушением требований пункта 5.1 ВЕР.",
@@ -259,7 +237,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMirrored",
-                CommandCheckMirroredInstances.PluginName,
+                checkMirroredInstances.PluginName,
                 "Проверка проекта на наличие зеркальных элементов (<Окна>, <Двери>).",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckMirroredInstances).FullName,

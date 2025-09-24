@@ -21,17 +21,19 @@ namespace KPLN_Looker.ExecutableCommand
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        private static Document _doc;
-        private static string _docName;
-
         private readonly DBUser _currentDBUser;
+        
+        private readonly Document _doc;
+        private readonly string _docName;
+        private readonly bool _sendToBitrix;
 
-        public DocCloser(DBUser currentDBUser, Document doc)
+        public DocCloser(DBUser currentDBUser, Document doc, bool sendToBitrix = true)
         {
             _currentDBUser = currentDBUser;
-
+            
             _doc = doc;
             _docName = _doc.Title;
+            _sendToBitrix = sendToBitrix;
         }
 
         public Result Execute(UIApplication app)
@@ -61,9 +63,10 @@ namespace KPLN_Looker.ExecutableCommand
                         ThreadPool.QueueUserWorkItem(new WaitCallback(CloseDocProc));
                     else
                     {
-                        BitrixMessageSender
-                            .SendMsg_ToBIMChat($"Проект {_docName} не удалось закрыть у пользователя {_currentDBUser.Surname} {_currentDBUser.Name}. " +
-                            $"Проблема: \n{ex.Message}");
+                        if (_sendToBitrix)
+                            BitrixMessageSender
+                                .SendMsg_ToBIMChat($"Проект {_docName} не удалось закрыть у пользователя {_currentDBUser.Surname} {_currentDBUser.Name}. " +
+                                $"Проблема: \n{ex.Message}");
 
                         // Отписка в случае ошибки
                         app.DialogBoxShowing -= App_DialogBoxShowing;
@@ -75,9 +78,10 @@ namespace KPLN_Looker.ExecutableCommand
             }
             catch (Exception ex)
             {
-                BitrixMessageSender
-                    .SendMsg_ToBIMChat($"Проект {_docName} не удалось закрыть у пользователя {_currentDBUser.Surname} {_currentDBUser.Name}. " +
-                    $"Проблема: \n{ex.Message}");
+                if (_sendToBitrix)
+                    BitrixMessageSender
+                        .SendMsg_ToBIMChat($"Проект {_docName} не удалось закрыть у пользователя {_currentDBUser.Surname} {_currentDBUser.Name}. " +
+                        $"Проблема: \n{ex.Message}");
 
                 // Отписка в случае ошибки
                 app.DialogBoxShowing -= App_DialogBoxShowing;
@@ -85,7 +89,9 @@ namespace KPLN_Looker.ExecutableCommand
                 return Result.Cancelled;
             }
 
-            BitrixMessageSender.SendMsg_ToBIMChat($"Проект {_docName} у пользователя {_currentDBUser.Surname} {_currentDBUser.Name} успешно закрылся (если далее не следуют сообщения об ошибках).");
+            if (_sendToBitrix)
+                BitrixMessageSender
+                    .SendMsg_ToBIMChat($"Проект {_docName} у пользователя {_currentDBUser.Surname} {_currentDBUser.Name} успешно закрылся (если далее не следуют сообщения об ошибках).");
 
             return Result.Succeeded;
         }
@@ -121,16 +127,14 @@ namespace KPLN_Looker.ExecutableCommand
                         if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
                         {
                             bool overrideResult = args.OverrideResult((int)taskDialogResult);
-                            if (!overrideResult)
+                            if (!overrideResult && _sendToBitrix)
                                 BitrixMessageSender.SendMsg_ToBIMChat($"Проект {_docName}: при закрывании проекта - не удалось переопределить окно {args.DialogId}. Необходим контроль со стороны человека");
                         }
-                        else
+                        else if (_sendToBitrix)
                             BitrixMessageSender.SendMsg_ToBIMChat($"Проект {_docName}: при закрывании проекта - не  удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
                     }
-                    else
-                    {
+                    else if (_sendToBitrix)
                         BitrixMessageSender.SendMsg_ToBIMChat($"Проект {_docName}: при закрывании проекта - окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека");
-                    }
                 }
             }
             // Самоотписка после обработки окон, если проект закрылся (отписаться выше нельзя - обработчик событий работает ПОСЛЕ освобождения Idling, что НЕ приемлемо)

@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ModelChecker_Batch", "KPLN_ModelChecker_Batch.csproj", "{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_ModelChecker_Lib", "..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib.csproj", "{57CAEFFD-5880-4A89-A882-127729008CB1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Debug2020|x64.Build.0 = Debug2020|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Debug2023|x64.Build.0 = Debug2023|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Revit2020|x64.Build.0 = Revit2020|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{03A9B4B1-3AEA-4E45-AF7D-D5C8501A58F4}.Revit2023|x64.Build.0 = Revit2023|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2020|x64.Build.0 = Debug2020|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2023|x64.Build.0 = Debug2023|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2020|x64.Build.0 = Revit2020|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2023|x64.Build.0 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {97BE3030-A3CB-448E-AB8D-333C11718317}
+	EndGlobalSection
+EndGlobal

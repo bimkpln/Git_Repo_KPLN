@@ -19,14 +19,18 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        private DBManager _dBManagerForm;
+        
         private DBProjectWrapper _createdDBProject;
 
         public ICommand SetServerPathCommand { get; }
 
         public ICommand CreateDBProjectCommand { get; }
 
-        public DBManagerViewModel()
+        public DBManagerViewModel(DBManager dBManagerForm)
         {
+            _dBManagerForm = dBManagerForm;
+
             DBPrjWrapper = new DBProjectWrapper();
 
             SetServerPathCommand = new RelayCommand(SetServerPath);
@@ -70,14 +74,16 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                 #region Верификация
                 // Проверка на пустые значения
                 if (string.IsNullOrEmpty(DBPrjWrapper.WrName)
-                    || (string.IsNullOrEmpty(DBPrjWrapper.WrCode) || DBPrjWrapper.WrCode.Any(c => char.IsLower(c)) || !DBPrjWrapper.WrCode.All(c => char.IsLetterOrDigit(c)))
+                    || (string.IsNullOrEmpty(DBPrjWrapper.WrCode) 
+                        || DBPrjWrapper.WrCode.Any(c => char.IsLower(c)) 
+                        || DBPrjWrapper.WrCode.Any(c => char.IsSeparator(c) || c == '~' || c == '/'))
                     || string.IsNullOrEmpty(DBPrjWrapper.WrStage)
                     || (DBPrjWrapper.WrRevitVersion != 2020 && DBPrjWrapper.WrRevitVersion != 2023)
                     || string.IsNullOrEmpty(DBPrjWrapper.WrServerPath))
                 {
                     MessageBox.Show(
                         "Для создания проекта как минимум нужно указать:\n" +
-                            "Имя проекта;\nКод проекта (только заглавные и цифры);\nСтадию проекта;\nВерсию Revit (2020 или 2023);\nПуть к папке стадии на сервере",
+                            "Имя проекта;\nКод проекта (заглавные буквы, цифры, символы: \".\", \"_\");\nСтадию проекта;\nВерсию Revit (2020 или 2023);\nПуть к папке стадии на сервере",
                         "KPLN_DB: Ошибка!",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -85,9 +91,8 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                     return;
                 }
 
-
                 // Проверка на эквивалентные проекты в БД
-                IEnumerable<DBProject> dbrjColl = DBMainService
+                IEnumerable <DBProject> dbrjColl = DBMainService
                     .ProjectDbService
                     .GetDBProjects_ByRVersion(DBPrjWrapper.WrRevitVersion);
 
@@ -195,6 +200,8 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                         "KPLN_DB: Создание проекта",
                         MessageBoxButton.OK,
                         MessageBoxImage.Asterisk);
+
+                    _dBManagerForm.Close();
                 }
             }
             catch (System.Exception ex)

@@ -29,7 +29,7 @@ namespace KPLN_TaskManager
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
-                return fileInfo.CreationTime.ToString("yyyy/MM/dd");
+                return fileInfo.LastWriteTime.ToString("yyyy/MM/dd");
             }
 
             return "Дата не определена";

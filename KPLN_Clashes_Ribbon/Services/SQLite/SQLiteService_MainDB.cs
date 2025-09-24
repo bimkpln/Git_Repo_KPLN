@@ -3,6 +3,7 @@ using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
@@ -48,9 +49,9 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"'{rGroup.Name}', " +
                     $"'{KPItemStatus.New}', " +
                     $"'{CurrentTime}', " +
-                    $"'{DBMainService.CurrentDBUser.SystemName}', " +
+                    $"'{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}', " +
                     $"'{CurrentTime}', " +
-                    $"'{DBMainService.CurrentDBUser.SystemName}', " +
+                    $"'{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}', " +
                     $"'{rGroup.BitrixTaskIdAR}', " +
                     $"'{rGroup.BitrixTaskIdKR}', " +
                     $"'{rGroup.BitrixTaskIdOV}', " +
@@ -104,6 +105,15 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
 
         #region Read
         /// <summary>
+        /// Получить коллекцию ReportGroup по ID
+        /// </summary>
+        public ReportGroup GetReportGroup_ById(int id) =>
+            ExecuteQuery<ReportGroup>(
+                $"SELECT * FROM {MainDB_Enumerator.ReportGroups} " +
+                $"WHERE {nameof(ReportGroup.Id)} = {id}")
+            .FirstOrDefault();
+
+        /// <summary>
         /// Получить коллекцию ReportGroup для текущего проекта
         /// </summary>
         /// <param name="project">Проект для поиска</param>
@@ -155,7 +165,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         public void UpdateReportGroup_MarksLastChange_ByGroupId(int groupId) =>
             ExecuteNonQuery(
                 $"UPDATE {MainDB_Enumerator.ReportGroups} " +
-                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{DBMainService.CurrentDBUser.SystemName}' " +
+                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}' " +
                 $"WHERE Id={groupId}");
 
         /// <summary>

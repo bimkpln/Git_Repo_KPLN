@@ -31,7 +31,7 @@ namespace KPLN_Publication
 
         public YayPrintSettings PrintSettings
         {
-            get { return _printSettings; }
+            get =>  _printSettings;
         }
 
         private readonly Dictionary<string, List<MainEntity>> _entitiesBaseToPrint = new Dictionary<string, List<MainEntity>>();
@@ -187,6 +187,8 @@ namespace KPLN_Publication
             if (dwgExpTypeFromConfigIndex != -1)
                 comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
             #endregion
+
+            checkBoxMergePdfs_CheckedChanged(null, null);
         }
 
         private void cbx_Enter(object sender, EventArgs e)
@@ -212,10 +214,12 @@ namespace KPLN_Publication
                 foreach (TreeNode sheetNode in docNode.Nodes)
                 {
                     if (!sheetNode.Checked) continue;
+                    
                     string sheetTitle = sheetNode.Text;
 
                     var tempSheets = _entitiesBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
                     if (tempSheets.Count == 0) throw new Exception("Cant get sheets from TreeNode");
+                    
                     MainEntity msheet = tempSheets.First();
                     selectedSheetsInDoc.Add(msheet);
                 }
