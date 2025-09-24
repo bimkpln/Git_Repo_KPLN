@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-        xmlns:local="clr-namespace:KPLN_ModelChecker_Batch.Forms"
+        xmlns:local="clr-namespace:KPLN_ModelChecker_Batch.Forms.Converters"
         mc:Ignorable="d" 
         WindowStyle="ToolWindow" 
         WindowStartupLocation="CenterOwner" 
@@ -17,6 +17,9 @@
         Background="#FF292D36">
 
     <Window.Resources>
+
+        <local:TextToBooleanConverter x:Key="TextToBooleanConverter"/>
+
         <Style 
             x:Key="UserActionBtns"
             TargetType="Button">
@@ -35,6 +38,14 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <Style 
+            TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="5,5,3,5"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
@@ -110,13 +121,78 @@
                     Grid.Row="1" 
                     Grid.Column="0" 
                     Margin="0,5,0,0">
-                    
+
+                    <!--Блок быстрых настроек проверок-->
+                    <TextBlock 
+                        Text="Преднастроенный выбор:" 
+                        FontSize="16"/>
+
+                    <DockPanel>
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="Все"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_All, 
+                                Mode=TwoWay}"/>
+
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="АР"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_AR, 
+                                Mode=TwoWay}"/>
+                        
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="КР"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_KR, 
+                                Mode=TwoWay}"/>
+                        
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="ВК, АПТ"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_VK, 
+                                Mode=TwoWay}"/>
+
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="ОВиК, ИТП"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_OV, 
+                                Mode=TwoWay}"/>
+
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="СС, АВ"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_SS, 
+                                Mode=TwoWay}"/>
+
+                        <RadioButton
+                            GroupName="RBPresets"
+                            Content="ЭОМ"
+                            IsChecked="{Binding SelectedPresets,
+                                Converter={StaticResource TextToBooleanConverter}, 
+                                ConverterParameter=Preset_EOM, 
+                                Mode=TwoWay}"/>
+                    </DockPanel>
+
                     <!--Блок выбора проверок-->
                     <TextBlock 
                         Text="Список проверок:" 
                         FontSize="16"/>
 
-                    <ItemsControl ItemsSource="{Binding CheckEntitiesList}">
+                    <ItemsControl ItemsSource="{Binding СheckEntities, 
+                            Mode=TwoWay, 
+                            UpdateSourceTrigger=PropertyChanged}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border 

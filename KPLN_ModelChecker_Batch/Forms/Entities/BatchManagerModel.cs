@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Windows.Data;
 using System.Windows.Input;
 
 namespace KPLN_ModelChecker_Batch.Forms.Entities
@@ -31,17 +32,33 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         public event EventHandler<FieldChangedEventArgs> FieldChanged;
 
         /// <summary>
+        /// Коллекция проверок для запуска
+        /// </summary>
+        private readonly CheckEntity[] _checkEntitiesList = new CheckEntity[6]
+        {
+            new CheckEntity(new CheckLinks()),
+            new CheckEntity(new CheckMainLines()),
+            new CheckEntity(new CheckFamilies()),
+            new CheckEntity(new CheckWorksets()),
+            new CheckEntity(new CheckDimensions()),
+            new CheckEntity(new CheckMirroredInstances()),
+        };
+
+        /// <summary>
         /// Кэширование пути для выбора файлов
         /// </summary>
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
 
         private readonly UIApplication _uiapp;
         private string _worksetToCloseNamesStartWith = string.Empty;
+        public string _selectedPresets;
 
         public BatchManagerModel(NLog.Logger currentLogger, UIApplication uiapp)
         {
             CurrentLogger = currentLogger;
             _uiapp = uiapp;
+
+            СheckEntities = CollectionViewSource.GetDefaultView(_checkEntitiesList);
 
             // Устанавливаю команды
             InfoCommand = new RelayCommand(Info);
@@ -55,6 +72,11 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         /// Ссылка на коллекцию путей к файлам в конфиге
         /// </summary>
         public ObservableCollection<FileEntity> FileEntitiesList { get; private set; } = new ObservableCollection<FileEntity>();
+
+        /// <summary>
+        /// Коллекция проверок для формирования в окне
+        /// </summary>
+        public ICollectionView СheckEntities { get; set; }
 
         /// <summary>
         /// Комманда: Получить инфо по элементу
@@ -82,17 +104,6 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         public ICommand RunCommand { get; }
 
         /// <summary>
-        /// Коллекция проверок для запуска
-        /// </summary>
-        public ObservableCollection<CheckEntity> CheckEntitiesList { get; private set; } = new ObservableCollection<CheckEntity>()
-        {
-            new CheckEntity(new CheckLinks()),
-            new CheckEntity(new CheckMainLines()),
-            new CheckEntity(new CheckFamilies()),
-            new CheckEntity(new CheckWorksets()),
-        };
-
-        /// <summary>
         /// Имя рабочих наборов, которые нужно закрыть (имя начинается с)
         /// </summary>
         public string WorksetToCloseNamesStartWith
@@ -105,8 +116,57 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             }
         }
 
+        /// <summary>
+        /// Фильтрация по открым замечаниям
+        /// </summary>
+        public string SelectedPresets
+        {
+            get => _selectedPresets;
+            set
+            {
+                _selectedPresets = value;
+                OnPropertyChanged();
+
+                UpdateChecksSelected_ByRBPresets();
+            }
+        }
+
         internal static NLog.Logger CurrentLogger { get; set; }
 
+        /// <summary>
+        /// Обновить список выбранных проверок согласно быстрому выбору
+        /// </summary>
+        private void UpdateChecksSelected_ByRBPresets()
+        {
+            if (SelectedPresets == "Preset_All")
+                СheckEntities = CollectionViewSource.GetDefaultView(
+                    _checkEntitiesList.Select(e => e.IsChecked = true));
+            else if (SelectedPresets == "Preset_AR" 
+                || SelectedPresets == "Preset_OV")
+                СheckEntities = CollectionViewSource.GetDefaultView(
+                    _checkEntitiesList.Select(e => e.IsChecked = true));
+            else if (SelectedPresets == "Preset_KR"
+                || SelectedPresets == "Preset_VK"
+                || SelectedPresets == "Preset_SS"
+                || SelectedPresets == "Preset_EOM")
+            {
+                // Проверки зеркальных не запускаем
+                string checkMirrInstName = new CheckMirroredInstances().PluginName;
+                
+                List<CheckEntity> filteredEnt = new List<CheckEntity>();
+                foreach (CheckEntity ent in _checkEntitiesList)
+                {
+                    if (ent.Name == checkMirrInstName)
+                    {
+                        ent.IsChecked = false;
+                        filteredEnt.Add(ent);
+                    }
+                    else
+                        filteredEnt.Add(ent);
+                }
+            }
+        }
+        
         private void Info(object parameter)
         {
             // Получаем выбранные элементы
@@ -203,7 +263,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             bool isFileError = false;
             bool isCheckError = false;
             string fileNames = string.Join("; ", FileEntitiesList.Select(ent => ent.Name));
-            string checkNames = string.Join("; ", CheckEntitiesList.Select(ent => ent.Name));
+            string checkNames = string.Join("; ", _checkEntitiesList.Select(ent => ent.Name));
             List<ExcelDataEntity> excelDataEntities = new List<ExcelDataEntity>();
 
             string excelPath = ExportToExcel.SetPath();
@@ -307,7 +367,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     string checkName = string.Empty;
                     try
                     {
-                        foreach (CheckEntity check in CheckEntitiesList)
+                        foreach (CheckEntity check in _checkEntitiesList)
                         {
                             if (!check.IsChecked)
                             {

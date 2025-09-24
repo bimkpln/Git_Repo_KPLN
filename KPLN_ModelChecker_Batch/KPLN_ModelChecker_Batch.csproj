@@ -220,6 +220,7 @@
     <Compile Include="Availability\StaticAvailable.cs" />
     <Compile Include="Common\ExportToExcel.cs" />
     <Compile Include="ExternalCommands\CommandShowManager.cs" />
+    <Compile Include="Forms\Converters\TextToBooleanConverter.cs" />
     <Compile Include="Forms\Entities\BatchManagerModel.cs" />
     <Compile Include="Forms\Entities\CheckEntity.cs" />
     <Compile Include="Forms\Entities\RelayCommand.cs" />

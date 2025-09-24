@@ -1,9 +1,12 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Batch.Availability;
+using NLog;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -11,6 +14,8 @@ namespace KPLN_ModelChecker_Batch
 {
     public class Module : IExternalModule
     {
+        internal static Logger CurrentLogger { get; private set; }
+        
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
         public Result Close() => Result.Succeeded;
@@ -19,6 +24,21 @@ namespace KPLN_ModelChecker_Batch
         {
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
             ModuleData.RevitUIControlledApp = application;
+
+
+            #region Настройка NLog
+            // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
+            CurrentLogger = LogManager.GetLogger("KPLN_ModelChecker_Batch");
+
+            string windrive = $"{Path.GetPathRoot(Environment.SystemDirectory)}KPLN_Temp";
+            string logDirPath = $"{windrive}\\KPLN_Logs\\{ModuleData.RevitVersion}";
+            string logFileName = "KPLN_ModelChecker_Batch";
+            LogManager.Configuration.Variables["modelCheckerBatch_logdir"] = logDirPath;
+            LogManager.Configuration.Variables["modelCheckerBatch_logfilename"] = logFileName;
+            #endregion
+
+            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
+
 
             //Добавляю кнопку в панель
             string currentPanelName = "Контроль качества";
@@ -90,6 +110,33 @@ namespace KPLN_ModelChecker_Batch
             var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
 
             return decoder.Frames[0];
+        }
+
+        /// <summary>
+        /// Очистка от старых логов
+        /// </summary>
+        private void ClearingOldLogs(string logPath, string logName)
+        {
+            if (Directory.Exists(logPath))
+            {
+                System.IO.DirectoryInfo logDI = new System.IO.DirectoryInfo(logPath);
+                foreach (FileInfo log in logDI.EnumerateFiles())
+                {
+                    if (log.CreationTime.Date < DateTime.Now.AddDays(-5) && log.Name.Contains(logName))
+                    {
+                        try
+                        {
+                            log.Delete();
+                        }
+                        // Ошибка будет только если файл занят
+                        catch (UnauthorizedAccessException) { }
+                        catch (Exception ex)
+                        {
+                            CurrentLogger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
+                        }
+                    }
+                }
+            }
         }
     }
 }

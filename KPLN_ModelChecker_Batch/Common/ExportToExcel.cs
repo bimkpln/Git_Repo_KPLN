@@ -1,6 +1,7 @@
 ﻿using KPLN_Library_Forms.UI;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,28 +12,30 @@ namespace KPLN_ModelChecker_Batch.Common
 {
     internal struct ExcelDataEntity
     {
-        internal string CheckRunData;
+        internal string CheckRunData { get; set; }
 
-        internal string FileName;
+        internal string FileName { get; set; }
 
-        internal string FileSize;
+        internal string FileSize { get; set; }
 
-        internal int CountedLinks;
-        
-        internal int OpenedLinks;
+        internal int CountedLinks { get; set; }
 
-        internal int CountedWorksets;
-        
-        internal int OpenedWorksets;
+        internal int OpenedLinks { get; set; }
 
-        internal List<CheckData> ChecksData;
+        internal int CountedWorksets { get; set; }
+
+        internal int OpenedWorksets { get; set; }
+
+        internal List<CheckData> ChecksData { get; set; }
     }
 
     internal struct CheckData
     {
-        internal string PluginName;
+        internal string PluginName {  get; set; }
 
-        internal CheckerEntity[] CheckerEntities;
+        internal AbstrCheck[] AbstrCheckes { get; set; }
+
+        internal CheckerEntity[] CheckerEntities { get; set; }
     }
 
     /// <summary>
@@ -228,8 +231,34 @@ namespace KPLN_ModelChecker_Batch.Common
             Dictionary<string, string> dict = new Dictionary<string, string>();
             foreach (CheckerEntity entity in docErrors)
             {
-                string[] headerDataParts = new string[3]
+                string errorStatus = string.Empty;
+                switch (entity.Status)
+                {
+                    case ErrorStatus.Error:
+                        errorStatus = "Критическая ошибка";
+                        break;
+                    case ErrorStatus.Warning:
+                        errorStatus = "Предупреждение";
+                        break;
+                    case ErrorStatus.LittleWarning:
+                        goto case ErrorStatus.AllmostOk;
+                    case ErrorStatus.AllmostOk:
+                        errorStatus = "Для справки";
+                        break;
+                    case ErrorStatus.Approve:
+                        errorStatus = "Допустимое";
+                        break;
+                }
+
+                string approveComment = string.Empty;
+                if (entity.Status == ErrorStatus.Approve)
+                    approveComment = $"[{entity.ApproveComment}]";
+                
+
+                string[] headerDataParts = new string[5]
                     {
+                        $"[{errorStatus}]",
+                        approveComment,
                         entity.Header,
                         entity.Description,
                         entity.Info,
