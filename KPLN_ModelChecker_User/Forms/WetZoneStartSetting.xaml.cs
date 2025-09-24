@@ -583,58 +583,130 @@ namespace KPLN_ModelChecker_User.Forms
             }
 
             // НЕЛЬЗЯ: InvalidEquipment над жилыми
-            foreach (var upperFloor in familyInstancesByLevel.Keys)
             {
-                foreach (var familyInstance in familyInstancesByLevel[upperFloor])
+                const double EQUIP_OVERLAP_MARGIN = 0.03; // Перекрытие bbox по X и Y (3 см)
+                const double ROOM_INSET_MARGIN = 0.01; // Инсет прямоугольной комнаты внутрь (1 см)
+                const double EQUIP_SHRINK = 0.01; // Ужим BBOX оборудования (1 см с каждой стороны)
+                const double AREA_MIN_M2 = 0.001; // Мин. площадь перекрытия (10 см)
+
+                List<XYZ> ShrinkRect(List<XYZ> rect, double inset)
                 {
-                    int lowerFloor = upperFloor - 1;
-                    if (!roomsByFloorParam.ContainsKey(lowerFloor))
-                        continue;
+                    var (minX, minY, maxX, maxY) = GetBBox(rect);
+                    double nx = minX + inset, ny = minY + inset, px = maxX - inset, py = maxY - inset;
+                    if (nx >= px || ny >= py) return rect;
+                    return new List<XYZ> { new XYZ(nx, ny, 0), new XYZ(px, ny, 0), new XYZ(px, py, 0), new XYZ(nx, py, 0) };
+                }
 
-                    List<Room> lowerRooms = roomsByFloorParam[lowerFloor].OfType<Room>().ToList();
-
-                    foreach (var lower in lowerRooms)
+                bool IsAxisAlignedRect(List<XYZ> poly, double eps = 1e-6)
+                {
+                    if (poly == null || poly.Count < 4) return false;
+                    var pts = new List<XYZ>(poly);
+                    if (pts.Count > 1 && pts[0].DistanceTo(pts[pts.Count - 1]) < eps) pts.RemoveAt(pts.Count - 1);
+                    if (pts.Count != 4) return false;
+                    for (int i = 0; i < 4; i++)
                     {
-                        string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
-                        bool isLivingLower = WetZoneCategories.LivingRooms.Contains(lowerType);
-                        if (!isLivingLower)
-                            continue;
+                        var a = pts[i]; var b = pts[(i + 1) % 4];
+                        if (!(Math.Abs(a.Y - b.Y) < eps || Math.Abs(a.X - b.X) < eps)) return false;
+                    }
+                    return true;
+                }
 
-                        var lowerPoly = GetRoom2DOutline(lower);
-                        var familyInstancePoly = GetFamilyInstance2DOutline(familyInstance);
+                List<XYZ> GetLargestOutline(Room room)
+                {
+                    var opts = new SpatialElementBoundaryOptions { SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish };
+                    var loops = room.GetBoundarySegments(opts);
+                    if (loops == null || loops.Count == 0) return null;
 
-                        if (DoPolygonsIntersect(familyInstancePoly, lowerPoly))
+                    List<XYZ> best = null; double bestArea = double.NegativeInfinity;
+                    var plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ.Zero);
+
+                    foreach (var loop in loops)
+                    {
+                        if (loop == null || loop.Count == 0) continue;
+                        var poly = new List<XYZ>();
+                        foreach (var seg in loop)
                         {
-                            InvalidEquipmentOverLiving_Illegal.Add(new List<Element> { lower, familyInstance });
+                            var pt = seg.GetCurve().GetEndPoint(0);
+                            double z = plane.Normal.DotProduct(pt - plane.Origin);
+                            poly.Add(pt - z * plane.Normal);
+                        }
+                        var (minX, minY, maxX, maxY) = GetBBox(poly);
+                        double areaBox = Math.Max(0, maxX - minX) * Math.Max(0, maxY - minY);
+                        if (areaBox > bestArea) { bestArea = areaBox; best = poly; }
+                    }
+                    return best;
+                }
+
+                bool BBoxesOverlapWithMargin(List<XYZ> a, List<XYZ> b, double margin, out double overlapArea)
+                {
+                    overlapArea = 0.0;
+                    if (a == null || b == null || a.Count == 0 || b.Count == 0) return false;
+                    var A = GetBBox(a); var B = GetBBox(b);
+                    double w = Math.Min(A.maxX, B.maxX) - Math.Max(A.minX, B.minX);
+                    double h = Math.Min(A.maxY, B.maxY) - Math.Max(A.minY, B.minY);
+                    if (w > margin && h > margin) { overlapArea = w * h; return true; }
+                    return false;
+                }
+
+                bool PointInsideRoom(Room room, XYZ p)
+                {
+                    try { if (room.IsPointInRoom(p)) return true; } catch {}
+                    var poly = GetLargestOutline(room);
+                    if (poly == null || poly.Count < 3) return false;
+                    return IsPointStrictlyInsidePolygon(new XYZ(p.X, p.Y, 0), poly);
+                }
+
+                XYZ GetFamilyCenter(FamilyInstance fi)
+                {
+                    if (fi.Location is LocationPoint lp) return lp.Point;
+                    var bb = fi.get_BoundingBox(null);
+                    return bb != null ? (bb.Min + bb.Max) * 0.5 : XYZ.Zero;
+                }
+
+                if (familyInstancesByLevel != null)
+                {
+                    foreach (var upperFloor in familyInstancesByLevel.Keys)
+                    {
+                        foreach (var familyInstance in familyInstancesByLevel[upperFloor])
+                        {
+                            int lowerFloor = upperFloor - 1;
+                            if (!roomsByFloorParam.ContainsKey(lowerFloor)) continue;
+
+                            var famPolyRaw = GetFamilyInstance2DOutline(familyInstance);
+                            if (famPolyRaw == null || famPolyRaw.Count < 3) continue;
+                            var famPoly = ShrinkRect(famPolyRaw, EQUIP_SHRINK);
+
+                            var famPt = GetFamilyCenter(familyInstance);
+
+                            var lowerRooms = roomsByFloorParam[lowerFloor].OfType<Room>().ToList();
+                            foreach (var lower in lowerRooms)
+                            {
+                                string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
+                                if (!WetZoneCategories.LivingRooms.Contains(lowerType)) continue;
+
+                                var roomPolyRaw = GetLargestOutline(lower);
+                                if (roomPolyRaw == null || roomPolyRaw.Count < 3) continue;
+
+                                var roomPoly = IsAxisAlignedRect(roomPolyRaw) ? ShrinkRect(roomPolyRaw, ROOM_INSET_MARGIN) : roomPolyRaw;
+
+                                if (!BBoxesOverlapWithMargin(famPoly, roomPoly, EQUIP_OVERLAP_MARGIN, out double ovlArea)) continue;
+                                if (ovlArea < AREA_MIN_M2) continue;
+
+                                if (!PointInsideRoom(lower, famPt)) continue;
+
+                                if (DoPolygonsIntersect(famPoly, roomPoly))
+                                {
+                                    InvalidEquipmentOverLiving_Illegal.Add(new List<Element> { lower, familyInstance });
+                                }
+                            }
                         }
                     }
                 }
             }
 
-
-
-
-
-
-
-
-
-
-
-
             var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, InvalidEquipmentOverLiving_Illegal, _selectedParam);
             windowResult.Show();            
         }
-
-
-
-
-
-
-
-
-
-
 
         /////////////////// Расчёт пересечения
         ///////////////////
@@ -793,21 +865,6 @@ namespace KPLN_ModelChecker_User.Forms
             if (poly2.Any(p => IsPointStrictlyInsidePolygon(p, poly1))) return true;
 
             return false;
-        }
-
-        private static bool LinesIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
-        {
-            double o1 = Orientation(p1, p2, q1);
-            double o2 = Orientation(p1, p2, q2);
-            double o3 = Orientation(q1, q2, p1);
-            double o4 = Orientation(q1, q2, p2);
-
-            return o1 * o2 < 0 && o3 * o4 < 0;
-        }
-
-        private static double Orientation(XYZ a, XYZ b, XYZ c)
-        {
-            return (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
         }
         /////////////////// 
         ///////////////////
