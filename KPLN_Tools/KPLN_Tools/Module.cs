@@ -26,7 +26,9 @@ namespace KPLN_Tools
             ModuleData.MainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
-            FamilyManagerDock.Register(application);
+            if(DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+                FamilyManagerDock.Register(application);
+            
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
@@ -558,25 +560,29 @@ namespace KPLN_Tools
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
-            PushButtonData familyManagerPanel = CreateBtnData(
-                CommandFamilyManager.PluginName,
-                CommandFamilyManager.PluginName,
-                "Каталог семейств KPLN",
-                string.Format(
-                    "Каталог семейств KPLN.\n" +
-                    "\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(CommandFamilyManager).FullName,
-                "KPLN_Tools.Imagens.familyManagerBig.png",
-                "KPLN_Tools.Imagens.familyManagerBig.png",
-                "http://moodle");
+            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            {
+                PushButtonData familyManagerPanel = CreateBtnData(
+                    CommandFamilyManager.PluginName,
+                    CommandFamilyManager.PluginName,
+                    "Каталог семейств KPLN",
+                    string.Format(
+                        "Каталог семейств KPLN.\n" +
+                        "\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(CommandFamilyManager).FullName,
+                    "KPLN_Tools.Imagens.familyManagerBig.png",
+                    "KPLN_Tools.Imagens.familyManagerBig.png",
+                    "http://moodle");
+
+                panel.AddItem(familyManagerPanel);
+            }
 
             panel.AddItem(sendMsgToBitrix);
-            panel.AddItem(familyManagerPanel);
             #endregion
 
 
