@@ -34,7 +34,7 @@ namespace KPLN_ModelChecker_User.Forms
             LivingExp.Header = $"Жилые комнаты ({livingRooms.Count})";
             WetExp.Header = $"Мокрые зоны ({wetRooms.Count})";
             KitchenExp.Header = $"Кухни ({kitchenRooms.Count})";
-            UndefinedExp.Header = $"Необработанные помещения помещения ({undefinedRooms.Count})";
+            UndefinedExp.Header = $"Необработанные помещения ({undefinedRooms.Count})";
 
             LivingList.ItemsSource = FormatRooms(livingRooms);
             WetList.ItemsSource = FormatRooms(wetRooms);
