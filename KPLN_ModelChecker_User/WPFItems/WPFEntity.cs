@@ -53,19 +53,6 @@ namespace KPLN_ModelChecker_User.WPFItems
                     CategoryName = currentElem.Category.Name;
                 }
 
-                if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
-                    && ElementCollection.All(e =>
-                        esEntity
-                        .ESBuilderUserText
-                        .GetResMessage_Element(e)
-                        .Description
-                        .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
-                {
-                    CurrentStatus = ErrorStatus.Approve;
-                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
-                }
-                else
-                    CurrentStatus = ErrorStatus.Error;
             }
             else
             {
@@ -81,14 +68,6 @@ namespace KPLN_ModelChecker_User.WPFItems
                     CategoryName = elType.FamilyName;
                 else
                     CategoryName = Element.Category.Name;
-
-                if (esEntity.ESBuilderUserText.IsDataExists_Text(Element))
-                {
-                    CurrentStatus = ErrorStatus.Approve;
-                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(Element).Description;
-                }
-                else
-                    CurrentStatus = ErrorStatus.Error;
             }
 
             Header = checkEntity.Header;
@@ -97,6 +76,7 @@ namespace KPLN_ModelChecker_User.WPFItems
             CurrentStatus = checkEntity.Status;
             CanZoomed = checkEntity.CanZoomed;
             CanApproved = checkEntity.CanApproved;
+            ApproveComment = checkEntity.ApproveComment;
             Box = checkEntity.ZoomBBox;
             Centroid = checkEntity.ZoomCentroid;
         }
