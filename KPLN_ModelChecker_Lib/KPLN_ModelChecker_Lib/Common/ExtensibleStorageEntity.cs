@@ -123,19 +123,14 @@ namespace KPLN_ModelChecker_Lib.Common
             MarkerGuid = markerGuid;
         }
 
-        public static ErrorStatus SetApproveStatusByUserComment(object obj, ExtensibleStorageBuilder objESB, ErrorStatus ifNullComment)
+        public static ErrorStatus GetApproveStatus(Element elem, ExtensibleStorageBuilder objESB, ErrorStatus ifNullComment)
         {
             ErrorStatus currentStatus;
-            if (obj is Element elem)
-            {
-                if (objESB.IsDataExists_Text(elem))
-                    currentStatus = ErrorStatus.Approve;
-                else 
-                    currentStatus = ifNullComment;
-            }
-            else
-                throw new Exception($"{obj} - не Element Revit");
-
+            
+            if (objESB.IsDataExists_Text(elem))
+                currentStatus = ErrorStatus.Approve;
+            else 
+                currentStatus = ifNullComment;
 
             return currentStatus;
         }

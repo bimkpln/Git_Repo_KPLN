@@ -162,8 +162,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             dim,
                             "Нарушение диапозона",
                             "Размер вне диапозона",
-                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                            false);
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
                     }
                 }
                 else
@@ -172,8 +171,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         dim,
                         "Нарушение диапозона",
                         "Не удалось определить данные. Нужен ручной анализ",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                        false)
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"")
                         .Set_Status(ErrorStatus.Warning);
                 }
             }
@@ -189,8 +187,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         dim,
                         "Нарушение переопределения размера",
                         "Не удалось определить данные. Нужен ручной анализ",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
-                        false)
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную")
                         .Set_Status(ErrorStatus.Warning);
                 }
                 else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
@@ -199,8 +196,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         dim,
                         "Нарушение переопределения размера",
                         "Размер значительно отличается от реального",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.",
-                        false);
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.");
                 }
                 else
                 {
@@ -208,8 +204,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         dim,
                         "Нарушение переопределения размера",
                         "Размер незначительно отличается от реального",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
-                        false)
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.")
                         .Set_Status(ErrorStatus.Warning);
                 }
             }
@@ -246,8 +241,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 CheckDocument.GetElement(new ElementId(dimType.Id.IntegerValue)),
                                 "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
-                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер.",
-                                false));
+                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));
                         }
                     }
                     catch (Exception)

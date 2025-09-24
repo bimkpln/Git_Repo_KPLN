@@ -111,8 +111,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 string.Empty,
                                 true)
-                                .Set_Status(ExtensibleStorageEntity.SetApproveStatusByUserComment(element, ESEntity.ESBuilderUserText, ErrorStatus.Error))
-                                .Set_CanApproved();
+                                .Set_CanApproved()
+                                .Set_DataByESData(ESEntity);
 
 
                             result.Add(hostEntity);
@@ -129,8 +129,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                             string.Empty,
                             true)
-                            .Set_Status(ExtensibleStorageEntity.SetApproveStatusByUserComment(element, ESEntity.ESBuilderUserText, ErrorStatus.Error))
-                            .Set_CanApproved();
+                            .Set_CanApproved()
+                            .Set_DataByESData(ESEntity);
 
                         result.Add(elemEntity);
                     }
