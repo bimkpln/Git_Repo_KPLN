@@ -37,7 +37,7 @@ namespace KPLN_ModelChecker_User.Forms
             AddViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над жилыми помещениями", wetOverLiving);
             AddViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над кухнями", kitchenUnderWet);
             AddViolationBlocks("СП 54.13330.2022 (7.21): Недопустимо размещать кухни над жилыми помещениями", kitchenOverLiving);
-            AddInvalidEquipmentViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины над жилыми помещениями", InvalidEquipmentOverLiving);
+            AddInvalidEquipmentViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины и другое «мокрое» оборудование над жилыми помещениями", InvalidEquipmentOverLiving);
         }
 
         // Заполнение интерфейса информацией. Квартиры
@@ -316,11 +316,6 @@ namespace KPLN_ModelChecker_User.Forms
             }
         }
 
-
-
-
-
-
         // Сохранение отчёта о влажных зонах
         private void TopSaveInfoButton_Click(object sender, RoutedEventArgs e)
         {
@@ -329,7 +324,7 @@ namespace KPLN_ModelChecker_User.Forms
             report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над жилыми помещениями", _wetOverLiving);
             report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над кухнями", _kitchenUnderWet);
             report += BuildViolationReport("СП 54.13330.2022 (7.21): Недопустимо размещать кухни над жилыми помещениями", _kitchenOverLiving);
-            report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины над жилыми помещениями", _invalidEquipmentOverLiving);
+            report += BuildViolationReport("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины и другое «мокрое» оборудование над жилыми помещениями", _invalidEquipmentOverLiving);
 
             // Показываем диалог для сохранения файла
             var saveDialog = new Microsoft.Win32.SaveFileDialog

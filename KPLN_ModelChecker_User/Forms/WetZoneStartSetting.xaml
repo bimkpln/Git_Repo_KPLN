@@ -27,8 +27,8 @@
              Padding="5"/>
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 0 5 5">
                 <Button Content="Отмена" Width="80" Height="22" Margin="5" Click="ButtonCancel_Click" Background="#FFFFC6C6"/>
-                <Button Name="Start1Button" Content="Запуск (Уровень)" Width="130" Height="22" Margin="5" Click="Start1Button_Click"/>
-                <Button Name="Start2Button" Content="Запуск (ПОМ_Номер этажа)" Width="180" Height="22" Margin="5" Click="Start2Button_Click"/>
+                <Button Name="Start1Button" Content="Запуск" Width="130" Height="22" Margin="5" Click="Start1Button_Click"/>
+                <Button Name="Start2Button" Content="Запуск (без проверки оборудования)" Width="240" Height="22" Margin="5" Click="Start2Button_Click"/>
             </StackPanel>
         </Grid>
 
@@ -53,7 +53,12 @@
                         <ListBox Name="KitchenList" IsHitTestVisible="False" Focusable="False"/>
                     </ScrollViewer>
                 </Expander>
-
+                
+                <Expander Header="Обрабатываемое оборудование" Name="EquipmentExp" IsExpanded="False">
+                    <ScrollViewer Height="230" Margin="0 2 0 5">
+                        <ListBox Name="EquipmentList" IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </Expander>
 
                 <Expander Header="Необработанные помещения" Name="UndefinedExp" IsExpanded="False" Foreground="Black">
                     <ScrollViewer Height="230" Margin="0 2 0 5">

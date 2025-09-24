@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_User.ExternalCommands;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,8 @@ namespace KPLN_ModelChecker_User.Forms
     /// </summary>
     public partial class WetZoneReviewWindow : Window
     {
+        private const double EPS = 1e-3;
+
         public static UIDocument _uiDoc;
         public List<Element> allRooms;
         public List<string> _invalidEquipment;
@@ -31,7 +34,7 @@ namespace KPLN_ModelChecker_User.Forms
             LivingExp.Header = $"Жилые комнаты ({livingRooms.Count})";
             WetExp.Header = $"Мокрые зоны ({wetRooms.Count})";
             KitchenExp.Header = $"Кухни ({kitchenRooms.Count})";
-            UndefinedExp.Header = $"Необработанные помещения помещения ({undefinedRooms.Count})";
+            UndefinedExp.Header = $"Необработанные помещения ({undefinedRooms.Count})";
 
             LivingList.ItemsSource = FormatRooms(livingRooms);
             WetList.ItemsSource = FormatRooms(wetRooms);
@@ -39,6 +42,10 @@ namespace KPLN_ModelChecker_User.Forms
             UndefinedList.ItemsSource = FormatRooms(undefinedRooms);
 
             _invalidEquipment = WetZoneCategories.InvalidEquipment.Any() ? WetZoneCategories.InvalidEquipment : null;
+
+            var allEquipment = WetZoneCategories.GetAllInvalidEquipment();
+            EquipmentExp.Header = $"Обрабатываемое оборудование ({allEquipment.Count})";
+            EquipmentList.ItemsSource = allEquipment;
 
             BuildInfoReport(doc, livingRooms, kitchenRooms, wetRooms, undefinedRooms);        
         }
@@ -389,6 +396,11 @@ namespace KPLN_ModelChecker_User.Forms
                 Start2Button.IsEnabled = false;
             }
 
+            bool canStart1 = !hasCriticalLevelError && undefinedRooms.Count == 0;
+            bool canStart2 = !hasCriticalParamError && undefinedRooms.Count == 0 && !canStart1; 
+            Start1Button.IsEnabled = canStart1;
+            Start2Button.IsEnabled = canStart2;
+
             InfoText.Document.Blocks.Clear();
             InfoText.Document.Blocks.Add(report);
         }
@@ -571,58 +583,130 @@ namespace KPLN_ModelChecker_User.Forms
             }
 
             // НЕЛЬЗЯ: InvalidEquipment над жилыми
-            foreach (var upperFloor in familyInstancesByLevel.Keys)
             {
-                foreach (var familyInstance in familyInstancesByLevel[upperFloor])
+                const double EQUIP_OVERLAP_MARGIN = 0.03; // Перекрытие bbox по X и Y (3 см)
+                const double ROOM_INSET_MARGIN = 0.01; // Инсет прямоугольной комнаты внутрь (1 см)
+                const double EQUIP_SHRINK = 0.01; // Ужим BBOX оборудования (1 см с каждой стороны)
+                const double AREA_MIN_M2 = 0.001; // Мин. площадь перекрытия (10 см)
+
+                List<XYZ> ShrinkRect(List<XYZ> rect, double inset)
                 {
-                    int lowerFloor = upperFloor - 1;
-                    if (!roomsByFloorParam.ContainsKey(lowerFloor))
-                        continue;
+                    var (minX, minY, maxX, maxY) = GetBBox(rect);
+                    double nx = minX + inset, ny = minY + inset, px = maxX - inset, py = maxY - inset;
+                    if (nx >= px || ny >= py) return rect;
+                    return new List<XYZ> { new XYZ(nx, ny, 0), new XYZ(px, ny, 0), new XYZ(px, py, 0), new XYZ(nx, py, 0) };
+                }
 
-                    List<Room> lowerRooms = roomsByFloorParam[lowerFloor].OfType<Room>().ToList();
-
-                    foreach (var lower in lowerRooms)
+                bool IsAxisAlignedRect(List<XYZ> poly, double eps = 1e-6)
+                {
+                    if (poly == null || poly.Count < 4) return false;
+                    var pts = new List<XYZ>(poly);
+                    if (pts.Count > 1 && pts[0].DistanceTo(pts[pts.Count - 1]) < eps) pts.RemoveAt(pts.Count - 1);
+                    if (pts.Count != 4) return false;
+                    for (int i = 0; i < 4; i++)
                     {
-                        string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
-                        bool isLivingLower = WetZoneCategories.LivingRooms.Contains(lowerType);
-                        if (!isLivingLower)
-                            continue;
+                        var a = pts[i]; var b = pts[(i + 1) % 4];
+                        if (!(Math.Abs(a.Y - b.Y) < eps || Math.Abs(a.X - b.X) < eps)) return false;
+                    }
+                    return true;
+                }
 
-                        var lowerPoly = GetRoom2DOutline(lower);
-                        var familyInstancePoly = GetFamilyInstance2DOutline(familyInstance);
+                List<XYZ> GetLargestOutline(Room room)
+                {
+                    var opts = new SpatialElementBoundaryOptions { SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish };
+                    var loops = room.GetBoundarySegments(opts);
+                    if (loops == null || loops.Count == 0) return null;
 
-                        if (DoPolygonsIntersect(familyInstancePoly, lowerPoly))
+                    List<XYZ> best = null; double bestArea = double.NegativeInfinity;
+                    var plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, XYZ.Zero);
+
+                    foreach (var loop in loops)
+                    {
+                        if (loop == null || loop.Count == 0) continue;
+                        var poly = new List<XYZ>();
+                        foreach (var seg in loop)
                         {
-                            InvalidEquipmentOverLiving_Illegal.Add(new List<Element> { lower, familyInstance });
+                            var pt = seg.GetCurve().GetEndPoint(0);
+                            double z = plane.Normal.DotProduct(pt - plane.Origin);
+                            poly.Add(pt - z * plane.Normal);
+                        }
+                        var (minX, minY, maxX, maxY) = GetBBox(poly);
+                        double areaBox = Math.Max(0, maxX - minX) * Math.Max(0, maxY - minY);
+                        if (areaBox > bestArea) { bestArea = areaBox; best = poly; }
+                    }
+                    return best;
+                }
+
+                bool BBoxesOverlapWithMargin(List<XYZ> a, List<XYZ> b, double margin, out double overlapArea)
+                {
+                    overlapArea = 0.0;
+                    if (a == null || b == null || a.Count == 0 || b.Count == 0) return false;
+                    var A = GetBBox(a); var B = GetBBox(b);
+                    double w = Math.Min(A.maxX, B.maxX) - Math.Max(A.minX, B.minX);
+                    double h = Math.Min(A.maxY, B.maxY) - Math.Max(A.minY, B.minY);
+                    if (w > margin && h > margin) { overlapArea = w * h; return true; }
+                    return false;
+                }
+
+                bool PointInsideRoom(Room room, XYZ p)
+                {
+                    try { if (room.IsPointInRoom(p)) return true; } catch {}
+                    var poly = GetLargestOutline(room);
+                    if (poly == null || poly.Count < 3) return false;
+                    return IsPointStrictlyInsidePolygon(new XYZ(p.X, p.Y, 0), poly);
+                }
+
+                XYZ GetFamilyCenter(FamilyInstance fi)
+                {
+                    if (fi.Location is LocationPoint lp) return lp.Point;
+                    var bb = fi.get_BoundingBox(null);
+                    return bb != null ? (bb.Min + bb.Max) * 0.5 : XYZ.Zero;
+                }
+
+                if (familyInstancesByLevel != null)
+                {
+                    foreach (var upperFloor in familyInstancesByLevel.Keys)
+                    {
+                        foreach (var familyInstance in familyInstancesByLevel[upperFloor])
+                        {
+                            int lowerFloor = upperFloor - 1;
+                            if (!roomsByFloorParam.ContainsKey(lowerFloor)) continue;
+
+                            var famPolyRaw = GetFamilyInstance2DOutline(familyInstance);
+                            if (famPolyRaw == null || famPolyRaw.Count < 3) continue;
+                            var famPoly = ShrinkRect(famPolyRaw, EQUIP_SHRINK);
+
+                            var famPt = GetFamilyCenter(familyInstance);
+
+                            var lowerRooms = roomsByFloorParam[lowerFloor].OfType<Room>().ToList();
+                            foreach (var lower in lowerRooms)
+                            {
+                                string lowerType = lower.LookupParameter(_selectedParam)?.AsString() ?? string.Empty;
+                                if (!WetZoneCategories.LivingRooms.Contains(lowerType)) continue;
+
+                                var roomPolyRaw = GetLargestOutline(lower);
+                                if (roomPolyRaw == null || roomPolyRaw.Count < 3) continue;
+
+                                var roomPoly = IsAxisAlignedRect(roomPolyRaw) ? ShrinkRect(roomPolyRaw, ROOM_INSET_MARGIN) : roomPolyRaw;
+
+                                if (!BBoxesOverlapWithMargin(famPoly, roomPoly, EQUIP_OVERLAP_MARGIN, out double ovlArea)) continue;
+                                if (ovlArea < AREA_MIN_M2) continue;
+
+                                if (!PointInsideRoom(lower, famPt)) continue;
+
+                                if (DoPolygonsIntersect(famPoly, roomPoly))
+                                {
+                                    InvalidEquipmentOverLiving_Illegal.Add(new List<Element> { lower, familyInstance });
+                                }
+                            }
                         }
                     }
                 }
             }
 
-
-
-
-
-
-
-
-
-
-
-
             var windowResult = new WetZoneResult(_uiDoc, roomsByFloorParam, KitchenOverLiving_Illegal, WetOverLiving_Illegal, KitchenUnderWet_Illegal, InvalidEquipmentOverLiving_Illegal, _selectedParam);
             windowResult.Show();            
         }
-
-
-
-
-
-
-
-
-
-
 
         /////////////////// Расчёт пересечения
         ///////////////////
@@ -672,10 +756,94 @@ namespace KPLN_ModelChecker_User.Forms
             return outline;
         }
 
-        // Вспомогательный метод. Функция пересечения 2D-многоугольников
+        private static (double minX, double minY, double maxX, double maxY) GetBBox(List<XYZ> poly)
+        {
+            double minX = double.PositiveInfinity, minY = double.PositiveInfinity;
+            double maxX = double.NegativeInfinity, maxY = double.NegativeInfinity;
+            foreach (var p in poly)
+            {
+                if (p.X < minX) minX = p.X;
+                if (p.Y < minY) minY = p.Y;
+                if (p.X > maxX) maxX = p.X;
+                if (p.Y > maxY) maxY = p.Y;
+            }
+            return (minX, minY, maxX, maxY);
+        }
+
+        private static bool BBoxesOverlapWithArea(List<XYZ> a, List<XYZ> b)
+        {
+            var A = GetBBox(a);
+            var B = GetBBox(b);
+
+            double w = Math.Min(A.maxX, B.maxX) - Math.Max(A.minX, B.minX);
+            double h = Math.Min(A.maxY, B.maxY) - Math.Max(A.minY, B.minY);
+
+            return (w > EPS) && (h > EPS);
+        }
+
+        private static int SignWithTol(double v, double eps)
+        {
+            if (v > eps) return 1;
+            if (v < -eps) return -1;
+            return 0;
+        }
+
+        private static double Cross2D(XYZ u, XYZ v) => u.X * v.Y - u.Y * v.X;
+
+        private static bool SegmentsProperlyIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
+        {
+            var o1 = SignWithTol(Cross2D(p2 - p1, q1 - p1), EPS);
+            var o2 = SignWithTol(Cross2D(p2 - p1, q2 - p1), EPS);
+            var o3 = SignWithTol(Cross2D(q2 - q1, p1 - q1), EPS);
+            var o4 = SignWithTol(Cross2D(q2 - q1, p2 - q1), EPS);
+
+            return (o1 * o2 < 0) && (o3 * o4 < 0);
+        }
+
+        private static bool IsPointOnSegment(XYZ p, XYZ a, XYZ b)
+        {
+            if (Math.Abs(Cross2D(b - a, p - a)) > EPS) return false;
+
+            double dot = (p.X - a.X) * (b.X - a.X) + (p.Y - a.Y) * (b.Y - a.Y);
+            if (dot < -EPS) return false;
+
+            double ab2 = (b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y);
+            if (dot - ab2 > EPS) return false;
+
+            return true;
+        }
+
+        private static bool IsPointStrictlyInsidePolygon(XYZ point, List<XYZ> polygon)
+        {
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                var a = polygon[i];
+                var b = polygon[(i + 1) % polygon.Count];
+                if (IsPointOnSegment(point, a, b))
+                    return false;
+            }
+
+            bool inside = false;
+            int count = polygon.Count;
+            for (int i = 0, j = count - 1; i < count; j = i++)
+            {
+                var pi = polygon[i];
+                var pj = polygon[j];
+
+                bool intersect = ((pi.Y > point.Y) != (pj.Y > point.Y)) &&
+                                 (point.X < (pj.X - pi.X) * (point.Y - pi.Y) / (pj.Y - pi.Y) + pi.X);
+                if (intersect)
+                    inside = !inside;
+            }
+            return inside;
+        }
+
         private static bool DoPolygonsIntersect(List<XYZ> poly1, List<XYZ> poly2)
         {
-            if (poly1 == null || poly2 == null || poly1.Count < 2 || poly2.Count < 2)
+            if (poly1 == null || poly2 == null || poly1.Count < 3 || poly2.Count < 3)
+                return false;
+
+            if (!BBoxesOverlapWithArea(poly1, poly2))
                 return false;
 
             for (int i = 0; i < poly1.Count; i++)
@@ -688,50 +856,15 @@ namespace KPLN_ModelChecker_User.Forms
                     XYZ b1 = poly2[j];
                     XYZ b2 = poly2[(j + 1) % poly2.Count];
 
-                    if (LinesIntersect(a1, a2, b1, b2))
+                    if (SegmentsProperlyIntersect(a1, a2, b1, b2))
                         return true;
                 }
             }
 
-            if (IsPointInsidePolygon(poly1[0], poly2) || IsPointInsidePolygon(poly2[0], poly1))
-                return true;
+            if (poly1.Any(p => IsPointStrictlyInsidePolygon(p, poly2))) return true;
+            if (poly2.Any(p => IsPointStrictlyInsidePolygon(p, poly1))) return true;
 
             return false;
-        }
-
-        // Вспомогательный метод. Проверка пересечения отрезков
-        private static bool LinesIntersect(XYZ p1, XYZ p2, XYZ q1, XYZ q2)
-        {
-            double o1 = Orientation(p1, p2, q1);
-            double o2 = Orientation(p1, p2, q2);
-            double o3 = Orientation(q1, q2, p1);
-            double o4 = Orientation(q1, q2, p2);
-
-            return o1 * o2 < 0 && o3 * o4 < 0;
-        }
-
-        // Вспомогательный метод. Векторное произведение: (b - a) × (c - a)
-        private static double Orientation(XYZ a, XYZ b, XYZ c)
-        {
-            return (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
-        }
-
-        private static bool IsPointInsidePolygon(XYZ point, List<XYZ> polygon)
-        {
-            bool inside = false;
-            int count = polygon.Count;
-
-            for (int i = 0, j = count - 1; i < count; j = i++)
-            {
-                if (((polygon[i].Y > point.Y) != (polygon[j].Y > point.Y)) &&
-                    (point.X < (polygon[j].X - polygon[i].X) * (point.Y - polygon[i].Y) /
-                     (polygon[j].Y - polygon[i].Y) + polygon[i].X))
-                {
-                    inside = !inside;
-                }
-            }
-
-            return inside;
         }
         /////////////////// 
         ///////////////////

@@ -24,8 +24,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIDocument uiDoc = uiApp.ActiveUIDocument;
             Document doc = uiDoc.Document;
 
-
-
             var rooms = new FilteredElementCollector(doc)
                 .OfCategory(BuiltInCategory.OST_Rooms)
                 .WhereElementIsNotElementType()
@@ -100,7 +98,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public static List<string> NonProcessedRooms { get; private set; } = new List<string>();
         public static List<string> InvalidEquipment { get; private set; } = new List<string>();
 
-        private static readonly string BasePath = @"X:\BIM\6_Инструменты\Плагин мокрые зоны\";
+        public static readonly string BasePath = @"X:\BIM\6_Инструменты\Плагин мокрые зоны\";
         private const string MainFileName = "_categoriesMain.json";
 
         public static void LoadForDocument(Document doc)
@@ -193,7 +191,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 OverrideTerms(overrideData.KitchenRooms, "KitchenRooms");
                 OverrideTerms(overrideData.WetRooms, "WetRooms");
                 OverrideTerms(overrideData.NonProcessedRooms, "NonProcessedRooms");
-                OverrideTerms(baseData.InvalidEquipment, "InvalidEquipment");
+                OverrideTerms(overrideData.InvalidEquipment, "InvalidEquipment");
             }
 
             LivingRooms = new List<string>();
@@ -230,6 +228,37 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             public List<string> WetRooms { get; set; }
             public List<string> NonProcessedRooms { get; set; }
             public List<string> InvalidEquipment { get; set; }
+        }
+
+        // Cбор уникальных InvalidEquipment из всех JSON в папке
+        public static List<string> GetAllInvalidEquipment()
+        {
+            var set = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+
+            if (!Directory.Exists(BasePath))
+                return new List<string>();
+
+            foreach (var path in Directory.EnumerateFiles(BasePath, "*.json"))
+            {
+                try
+                {
+                    var data = LoadFromJson(path);
+                    if (data?.InvalidEquipment == null) continue;
+
+                    foreach (var raw in data.InvalidEquipment)
+                    {
+                        var term = raw?.Trim();
+                        if (!string.IsNullOrEmpty(term))
+                            set.Add(term);
+                    }
+                }
+                catch
+                {
+                    // глотаем ошибки по отдельным файлам, чтобы не падать из-за одного битого JSON
+                }
+            }
+
+            return set.OrderBy(s => s).ToList();
         }
     }
 }
