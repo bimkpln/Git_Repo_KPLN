@@ -105,9 +105,8 @@
                     <TextBlock Text="{Binding FULLPATH}" ToolTip="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" MaxWidth="770" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                    <TextBlock Text="Последнее обновление файла:" FontWeight="Bold" Width="200"/>
-                    <TextBlock Text="{Binding LM_DATE}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBlock Text="" FontWeight="Bold" Width="200"/>
                 </StackPanel>
 
                 
@@ -120,10 +119,17 @@
 
 
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,7" Height="23">
-                    <TextBlock x:Name="DeptLabel" Text="Отдел:" ToolTip="Выбрать все отделы" FontWeight="Bold" Width="50" VerticalAlignment="Center" Margin="0 0 40 3" Cursor="Hand" MouseLeftButtonUp="DeptLabel_MouseLeftButtonUp"/>
-                    <WrapPanel x:Name="DeptPanel" VerticalAlignment="Center"/>
-                </StackPanel>
+                <Grid Margin="0,0,0,7">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Отдел:" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,9,0"/>
+                    <Button x:Name="DeptToggleBtn" Grid.Column="1" Height="22" MinWidth="110" Padding="8,0" Margin="40,0,12,0" Click="DeptToggleBtn_Click" Content="Выбрать все" ToolTip="Выбрать все отделы"/>
+                    <WrapPanel x:Name="DeptPanel" Grid.Column="2" VerticalAlignment="Center"/>
+                </Grid>
 
 
 
@@ -158,7 +164,7 @@
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <StackPanel Orientation="Horizontal" Margin="0 0 0 5" HorizontalAlignment="Left">
                     <Button x:Name="ButtonUpdateFamilyInfo" Content="🔄" ToolTip="Получить IMPORT_INFO из RFA" Width="24" Height="24" Margin="0 0 6 0" Padding="0.2,0,0,2" FontSize="12" Background="#FF7CFCFF" Click="ButtonUpdateFamilyInfo_Click"/>
-                    <Button x:Name="ButtonEditFamilyInfo" Content="✏️" ToolTip="Редактировать IMPORT_INFO" Width="24" Height="24" Padding="0.2,0,0,2" Margin="0 0 3 0" FontSize="12" Background="#FFECFF7C" Click="ButtonEditFamilyInfo_Click"/>
+                    <Button x:Name="ButtonEditFamilyInfo" Content="✏️" IsEnabled="False" ToolTip="Редактировать IMPORT_INFO" Width="24" Height="24" Padding="0.2,0,0,2" Margin="0 0 3 0" FontSize="12" Background="#FFECFF7C" Click="ButtonEditFamilyInfo_Click"/>
                     <TextBlock Text="Импортируемая из файла информация:" Margin="6 5 0 0" FontWeight="Bold"/>
                 </StackPanel>
                 <RichTextBox x:Name="ImportInfoBox" Style="{StaticResource FlatRichTextBox}" Height="225" Padding="5" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#FFE8E8E8" FontFamily="Century Gothic" FontSize="13"/>

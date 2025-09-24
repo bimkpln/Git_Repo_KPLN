@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
@@ -16,9 +17,12 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-
+using Action = System.Action;
+using Application = System.Windows.Application;
+using Button = System.Windows.Controls.Button;
 using Grid = System.Windows.Controls.Grid;
 using TextBox = System.Windows.Controls.TextBox;
+using Window = System.Windows.Window;
 
 
 namespace KPLN_Tools.Forms
@@ -119,7 +123,7 @@ namespace KPLN_Tools.Forms
                         SELECT ID
                         FROM FamilyManager
                         WHERE STATUS NOT IN ('ABSENT','ERROR','IGNORE')
-                          AND (IMPORT_INFO IS NULL OR length(IMPORT_INFO)=0 OR STATUS='UPDATE')
+                          AND (IMPORT_INFO IS NULL OR length(IMPORT_INFO)=0)
                           AND ID > @last
                         ORDER BY ID
                         LIMIT @lim;", conn))
@@ -286,6 +290,7 @@ namespace KPLN_Tools.Forms
 
         private bool _depsTried = false;  
         private bool _depsLoaded = false;
+        private Dictionary<int, string> _searchIndex = new Dictionary<int, string>();
         private DispatcherTimer _searchDebounceTimer;
 
         private Dictionary<string, bool> _bimExpandState = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
@@ -488,6 +493,7 @@ namespace KPLN_Tools.Forms
                 try
                 {
                     _records = LoadFamilyManagerRecords(DB_PATH);
+                    RebuildSearchIndex();
                     BuildMainArea(GetCurrentDepartment());
                 }
                 catch (Exception ex)
@@ -501,6 +507,80 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        // Индексация IMPORT_INFO. Собираем строковые/числовые значения из JSON
+        private static void CollectJsonValues(JToken token, List<string> bag)
+        {
+            if (token == null) return;
+
+            switch (token.Type)
+            {
+                case JTokenType.String:
+                    {
+                        var s = token.Value<string>();
+                        if (!string.IsNullOrWhiteSpace(s)) bag.Add(s);
+                        break;
+                    }
+                case JTokenType.Integer:
+                case JTokenType.Float:
+                case JTokenType.Boolean:
+                    bag.Add(token.ToString());
+                    break;
+
+                case JTokenType.Array:
+                    foreach (var it in token.Children())
+                        CollectJsonValues(it, bag);
+                    break;
+
+                case JTokenType.Object:
+                    foreach (var prop in ((JObject)token).Properties())
+                        CollectJsonValues(prop.Value, bag); 
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        // Индексация IMPORT_INFO. Строим текст для поиска: имя файла + все значения из IMPORT_INFO
+        private static string BuildSearchText(FamilyManagerRecord r)
+        {
+            var sb = new StringBuilder(256);
+
+            var name = SafeFileName(r.FullPath);
+            if (!string.IsNullOrWhiteSpace(name))
+                sb.Append(name).Append(' ');
+
+            if (!string.IsNullOrWhiteSpace(r.ImportInfo))
+            {
+                try
+                {
+                    var root = JToken.Parse(r.ImportInfo);
+                    var bag = new List<string>(8);
+                    CollectJsonValues(root, bag);
+
+                    foreach (var v in bag)
+                    {
+                        var t = (v ?? "").Trim();
+                        if (t.Length > 0)
+                            sb.Append(t).Append(' ');
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return sb.ToString().ToUpperInvariant(); 
+        }
+
+        // Индексация IMPORT_INFO. Перестроение индекса для всех записей
+        private void RebuildSearchIndex()
+        {
+            _searchIndex.Clear();
+            var src = _records ?? new List<FamilyManagerRecord>();
+            foreach (var r in src)
+                _searchIndex[r.ID] = BuildSearchText(r);
+        }
 
         // Загрузка данных по кнопке. Построение интерфейса в MainArea
         private void BuildMainArea(string subDepartamentName)
@@ -618,15 +698,19 @@ namespace KPLN_Tools.Forms
             string q = _tbSearch?.Text?.Trim() ?? "";
             if (!string.IsNullOrEmpty(q))
             {
+                string qNorm = q.ToUpperInvariant();
+
                 all = all.Where(r =>
                 {
-                    var name = SafeFileName(r.FullPath);
-                    return name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
+                    string hay;
+                    if (_searchIndex != null && _searchIndex.TryGetValue(r.ID, out hay) && hay != null)
+                        return hay.Contains(qNorm);
+                    return SafeFileName(r.FullPath)
+                           .IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
                 }).ToList();
             }
 
             Func<string, string> norm = s => (s ?? "").Trim().ToUpperInvariant();
-            var catUpdate = all.Where(r => norm(r.Status) == "UPDATE").ToList();
             var catNew = all.Where(r => norm(r.Status) == "NEW").ToList();
             var catAbsentError = all.Where(r =>
             {
@@ -634,25 +718,12 @@ namespace KPLN_Tools.Forms
                 return st == "ABSENT" || st == "ERROR";
             }).ToList();
 
-            var catNotDepartament = all
-                .Where(r => r.Departament == null &&
-                            norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE")
-                .ToList();
-
-            var catOkWithBadMeta = all.Where(r =>
-                (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") && r.Category == 1).ToList();
-
-            var catOkMissingImportOrImage = all.Where(r =>
-                (norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") &&
-                (r.ImportInfo == null)
-            ).ToList();
-
+            var catNotDepartament = all.Where(r => r.Departament == null &&norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE").ToList();
+            var catOkWithBadMeta = all.Where(r =>(norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") && r.Category == 1).ToList();
+            var catOkMissingImportOrImage = all.Where(r =>(norm(r.Status) != "ABSENT" && norm(r.Status) != "ERROR" && norm(r.Status) != "IGNORE") && (r.ImportInfo == null)).ToList();
             var catIgnored = all.Where(r => norm(r.Status) == "IGNORE").ToList();
+            var catOkProcessed = all.Where(r => (norm(r.Status) == "OK") && r.Departament != null && r.Category != 1).ToList();
 
-            var catOkProcessed = all.Where(r => norm(r.Status) == "OK" &&
-                r.Departament != null && r.Category != 1 && r.Project != 1 && r.Stage != 1 && r.ImportInfo != null).ToList();
-
-            _bimRootPanel.Children.Add(CreateCategoryExpander("ОБНОВЛЕНЫ (ФАЙЛ)", "bim_update.png", catUpdate, "Семейства, которые были изменены, а также восстановленые после удаления семейства.\nДанные семейства не отображаются в списке у пользователей до изменения статуса на «OK» у семейства BIM-координатором.", key: "update"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НОВЫЕ СЕМЕЙСТВА", "bim_new.png", catNew, "Семейства, которые ранее были добавлены на диск и не были обработаны.\nДанные семейства не отображаются в списке у пользователей до изменения статуса на «OK» у семейства BIM-координатором.", key: "new"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОШИБКИ / НЕ НАЙДЕН", "bim_error.png", catAbsentError, "Семейства, которые были удалены, или семейства, в которые параметры были экспортированы с ошибками.\nДанные семейства не отображаются в списке у пользователей до исправления ошибок BIM-координатором.", key: "errorabsent"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОТДЕЛА", "bim_error.png", catNotDepartament, "Семейства, которые не содержут информацию об отделе.\nДанные семейства не отображаются в списке у пользователей до указания отдела BIM-координатором.", key: "nodept"));
@@ -871,6 +942,24 @@ namespace KPLN_Tools.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /// <summary>
         /// Обновляет IMPORT_INFO для записи FamilyManager по текстовому ID.
         /// Делает все проверки статуса/отдела, открывает RFA, читает параметры, пишет JSON в БД.
@@ -987,7 +1076,7 @@ namespace KPLN_Tools.Forms
         }
 
         // IMPORT_INFO. Открывает семейство в зависимости от отдела и возвращает JSON
-        internal static string ReadImportInfoFromFamily(UIApplication uiapp, string familyPath, string department)
+        internal static string ReadImportInfoFromFamily(UIApplication uiapp, string familyPath, string department, string rteTemplateIfNeeded = null)
         {
             var kind = DetectDepartmentKind(department);
             if (kind == DepartmentKind.Unknown)
@@ -1006,12 +1095,12 @@ namespace KPLN_Tools.Forms
 
                 switch (kind)
                 {
-                    case DepartmentKind.AR: return ExtractJson_AR(fm);
-                    case DepartmentKind.KR: return ExtractJson_KR(fm);
-                    case DepartmentKind.OViK: return ExtractJson_OViK(fm);
-                    case DepartmentKind.VK: return ExtractJson_VK(fm);
-                    case DepartmentKind.EOM: return ExtractJson_EOM(fm);
-                    case DepartmentKind.SS: return ExtractJson_SS(fm);
+                    case DepartmentKind.AR: return ExtractJson_AR(famDoc, fm);
+                    case DepartmentKind.KR: return ExtractJson_KR(famDoc, fm);
+                    case DepartmentKind.OViK: return ExtractJson_OViK(famDoc, fm);
+                    case DepartmentKind.VK: return ExtractJson_VK(famDoc, fm);
+                    case DepartmentKind.EOM: return ExtractJson_EOM(famDoc, fm);
+                    case DepartmentKind.SS: return ExtractJson_SS(famDoc, fm);
                     default: return "";
                 }
             }
@@ -1046,38 +1135,38 @@ namespace KPLN_Tools.Forms
         /////////////////// IMPORT_INFO. Список всех отделов
         ////////////////////// 
         // IMPORT_INFO. --- АР ---
-        private static string ExtractJson_AR(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_AR(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             FamilyParameter pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
             return "{"
                  + "\"Примечание\":\"" + JsonEscape(note) + "\""
                  + "}";
         }
 
         // IMPORT_INFO. --- КР ---
-        private static string ExtractJson_KR(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_KR(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             FamilyParameter pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
             return "{"
                  + "\"Примечание\":\"" + JsonEscape(note) + "\""
                  + "}";
         }
 
         // IMPORT_INFO. --- ОВиК ---
-        private static string ExtractJson_OViK(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_OViK(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             var pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
             var pDescr = fm.get_Parameter(new Guid("f194bf60-b880-4217-b793-1e0c30dda5e9")); // КП_О_Наименование
             var pMark = fm.get_Parameter(new Guid("2204049c-d557-4dfc-8d70-13f19715e46d")); // КП_О_Марка
             var pManuf = fm.get_Parameter(new Guid("a8cdbf7b-d60a-485e-a520-447d2055f351")); // КП_О_Завод-изготовитель
 
-            string descr = FirstNonEmptyByTypes(fm, pDescr) ?? "";
-            string mark = FirstNonEmptyByTypes(fm, pMark) ?? "";
-            string manuf = FirstNonEmptyByTypes(fm, pManuf) ?? "";
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
-
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
+            string descr = FirstNonEmptyByTypes(doc, fm, pDescr) ?? "";
+            string mark = FirstNonEmptyByTypes(doc, fm, pMark) ?? "";
+            string manuf = FirstNonEmptyByTypes(doc, fm, pManuf) ?? "";
+           
             return "{"
                  + "\"Описание\":\"" + JsonEscape(descr) + "\","
                  + "\"Марка\":\"" + JsonEscape(mark) + "\","
@@ -1087,17 +1176,17 @@ namespace KPLN_Tools.Forms
         }
 
         // IMPORT_INFO. --- ВК ---
-        private static string ExtractJson_VK(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_VK(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             var pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
             var pDescr = fm.get_Parameter(new Guid("f194bf60-b880-4217-b793-1e0c30dda5e9")); // КП_О_Наименование
             var pMark = fm.get_Parameter(new Guid("2204049c-d557-4dfc-8d70-13f19715e46d")); // КП_О_Марка
             var pManuf = fm.get_Parameter(new Guid("a8cdbf7b-d60a-485e-a520-447d2055f351")); // КП_О_Завод-изготовитель
 
-            string descr = FirstNonEmptyByTypes(fm, pDescr) ?? "";
-            string mark = FirstNonEmptyByTypes(fm, pMark) ?? "";
-            string manuf = FirstNonEmptyByTypes(fm, pManuf) ?? "";
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
+            string descr = FirstNonEmptyByTypes(doc, fm, pDescr) ?? "";
+            string mark = FirstNonEmptyByTypes(doc, fm, pMark) ?? "";
+            string manuf = FirstNonEmptyByTypes(doc, fm, pManuf) ?? "";
 
             return "{"
                  + "\"Описание\":\"" + JsonEscape(descr) + "\","
@@ -1108,17 +1197,17 @@ namespace KPLN_Tools.Forms
         }
 
         // IMPORT_INFO. --- ЭОМ ---
-        private static string ExtractJson_EOM(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_EOM(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             var pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
             var pDescr = fm.get_Parameter(new Guid("f194bf60-b880-4217-b793-1e0c30dda5e9")); // КП_О_Наименование
             var pMark = fm.get_Parameter(new Guid("2204049c-d557-4dfc-8d70-13f19715e46d")); // КП_О_Марка
             var pManuf = fm.get_Parameter(new Guid("a8cdbf7b-d60a-485e-a520-447d2055f351")); // КП_О_Завод-изготовитель
 
-            string descr = FirstNonEmptyByTypes(fm, pDescr) ?? "";
-            string mark = FirstNonEmptyByTypes(fm, pMark) ?? "";
-            string manuf = FirstNonEmptyByTypes(fm, pManuf) ?? "";
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
+            string descr = FirstNonEmptyByTypes(doc, fm, pDescr) ?? "";
+            string mark = FirstNonEmptyByTypes(doc, fm, pMark) ?? "";
+            string manuf = FirstNonEmptyByTypes(doc, fm, pManuf) ?? "";
 
             return "{"
                  + "\"Описание\":\"" + JsonEscape(descr) + "\","
@@ -1129,17 +1218,17 @@ namespace KPLN_Tools.Forms
         }
 
         // IMPORT_INFO. --- СС ---
-        private static string ExtractJson_SS(Autodesk.Revit.DB.FamilyManager fm)
+        private static string ExtractJson_SS(Document doc, Autodesk.Revit.DB.FamilyManager fm)
         {
             var pNote = fm.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
             var pDescr = fm.get_Parameter(new Guid("f194bf60-b880-4217-b793-1e0c30dda5e9")); // КП_О_Наименование
             var pMark = fm.get_Parameter(new Guid("2204049c-d557-4dfc-8d70-13f19715e46d")); // КП_О_Марка
             var pManuf = fm.get_Parameter(new Guid("a8cdbf7b-d60a-485e-a520-447d2055f351")); // КП_О_Завод-изготовитель
 
-            string descr = FirstNonEmptyByTypes(fm, pDescr) ?? "";
-            string mark = FirstNonEmptyByTypes(fm, pMark) ?? "";
-            string manuf = FirstNonEmptyByTypes(fm, pManuf) ?? "";
-            string note = FirstNonEmptyByTypes(fm, pNote) ?? "";
+            string note = FirstNonEmptyByTypes(doc, fm, pNote) ?? "";
+            string descr = FirstNonEmptyByTypes(doc, fm, pDescr) ?? "";
+            string mark = FirstNonEmptyByTypes(doc, fm, pMark) ?? "";
+            string manuf = FirstNonEmptyByTypes(doc, fm, pManuf) ?? "";
 
             return "{"
                  + "\"Описание\":\"" + JsonEscape(descr) + "\","
@@ -1149,8 +1238,11 @@ namespace KPLN_Tools.Forms
                  + "}";
         }
 
+
+
+
         // IMPORT_INFO. Первый непустой текст среди всех типов семейства для указанного FamilyParameter
-        private static string FirstNonEmptyByTypes(Autodesk.Revit.DB.FamilyManager fm, FamilyParameter param)
+        private static string FirstNonEmptyByTypes(Document doc, Autodesk.Revit.DB.FamilyManager fm, FamilyParameter param)
         {
             if (fm == null || param == null || fm.Types == null) return null;
 
@@ -1161,8 +1253,92 @@ namespace KPLN_Tools.Forms
                 if (!string.IsNullOrWhiteSpace(val))
                     return val;
             }
+
+            bool isInstance = IsInstanceParamCompat(param);
+
+            string formula = GetFormulaCompat(fm, param);
+            bool hasFormula = !string.IsNullOrWhiteSpace(formula);
+
+            if (isInstance && hasFormula)
+            {
+                return null;
+            }
+            if (isInstance && !hasFormula)
+            {
+                return null;
+            }
+            if (!isInstance && hasFormula)
+            {
+                return null;
+            }
+
             return null;
         }
+
+        // IMPORT_INFO. Определение параметра экземпляра
+        private static bool IsInstanceParamCompat(FamilyParameter fp)
+        {
+            if (fp == null) return false;
+            var prop = typeof(FamilyParameter).GetProperty("IsInstance");
+            if (prop != null && prop.CanRead)
+            {
+                try { return (bool)prop.GetValue(fp); } catch { }
+            }
+            return false; 
+        }
+
+        // IMPORT_INFO. Определение наличия формулы
+        private static string GetFormulaCompat(Autodesk.Revit.DB.FamilyManager fm, FamilyParameter fp)
+        {
+            if (fm == null || fp == null) return null;
+
+            var prop = typeof(FamilyParameter).GetProperty("Formula");
+            if (prop != null && prop.CanRead)
+            {
+                try { return prop.GetValue(fp) as string; } catch { }
+            }
+
+            var mi = typeof(Autodesk.Revit.DB.FamilyManager).GetMethod("GetFormula", new[] { typeof(FamilyParameter) });
+            if (mi != null)
+            {
+                try { return mi.Invoke(fm, new object[] { fp }) as string; } catch { }
+            }
+            return null;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // IMPORT_INFO. Чтение строкового представления значения параметра у конкретного FamilyType
         private static string GetFamilyParamStringValue(FamilyType type, FamilyParameter fp)
@@ -1238,6 +1414,21 @@ namespace KPLN_Tools.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // Удаление записи из БД
         public static void DeleteRecordFromDatabase(int id)
         {
@@ -1292,7 +1483,8 @@ namespace KPLN_Tools.Forms
         {
             try
             {
-                _records = LoadFamilyManagerRecords(DB_PATH); 
+                _records = LoadFamilyManagerRecords(DB_PATH);
+                RebuildSearchIndex();
                 RefreshScenario();                             
             }
             catch (Exception ex)
@@ -1337,7 +1529,7 @@ namespace KPLN_Tools.Forms
 
                         var (inserted, updated, deleted) = InsertRfaRecords(DB_PATH, rfaFiles);
                         TaskDialog.Show("Индексация RFA",
-                            $"Добавлено: {inserted}\nОбновлено: {updated}\nУдалено: {deleted}");
+                            $"Добавлено: {inserted}\nУдалено: {deleted}");
                     }
                     catch (Exception ex)
                     {
@@ -1449,7 +1641,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// --- Обновлеие ID, FILEPATH, STATUS, LM_DATE в FamilyManager
+        /// --- Обновлеие ID, FILEPATH, STATUS в FamilyManager
         // Обход файлов .rfa 
         private static IEnumerable<string> EnumerateRfaFilesSkippingArchive(string root)
         {
@@ -1483,7 +1675,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// --- Обновлеие ID, FILEPATH, STATUS, LM_DATE в FamilyManager
+        /// --- Обновлеие ID, FILEPATH, STATUS в FamilyManager
         // Игнорирование дуюликатов семейств
         private static bool ShouldSkipByBackupSuffix(string path)
         {
@@ -1506,8 +1698,8 @@ namespace KPLN_Tools.Forms
                    && c3 >= '0' && c3 <= '9';
         }
 
-        /// --- Обновлеие ID, FILEPATH, STATUS, LM_DATE в FamilyManager
-        // Запись данных в БД (FamilyManager). ID, FILEPATH, STATUS, LM_DATE
+        /// --- Обновлеие ID, FILEPATH, STATUS в FamilyManager
+        // Запись данных в БД (FamilyManager). ID, FILEPATH, STATUS
         private static (int inserted, int updated, int deleted) InsertRfaRecords(string dbPath, List<string> rfaPaths)
         {
             int inserted = 0;
@@ -1521,9 +1713,7 @@ namespace KPLN_Tools.Forms
                 using (var tx = conn.BeginTransaction())
                 {
                     var byFullPath = new Dictionary<string, (long id, string lmDate, string status)>(StringComparer.OrdinalIgnoreCase);
-
-                    using (var cmdSel = new SQLiteCommand(
-                        "SELECT ID, FULLPATH, LM_DATE, STATUS FROM FamilyManager;", conn, tx))
+                    using (var cmdSel = new SQLiteCommand("SELECT ID, FULLPATH, LM_DATE, STATUS FROM FamilyManager;", conn, tx))
                     using (var rd = cmdSel.ExecuteReader())
                     {
                         while (rd.Read())
@@ -1543,24 +1733,16 @@ namespace KPLN_Tools.Forms
                         nextId = (o == null || o == DBNull.Value) ? 1L : Convert.ToInt64(o) + 1L;
                     }
 
-                    using (var cmdUpdateLmAndStatus = new SQLiteCommand(
-                            @"UPDATE FamilyManager
-                      SET STATUS = @ustatus, LM_DATE = @ulm
-                      WHERE ID = @uid;", conn, tx))
-                        using (var cmdUpdateStatusOnly = new SQLiteCommand(
-                            @"UPDATE FamilyManager
-                      SET STATUS = @ustatus
-                      WHERE ID = @uid;", conn, tx))
-                        using (var cmdInsert = new SQLiteCommand(
-                            @"INSERT INTO FamilyManager (ID, STATUS, FULLPATH, LM_DATE)
-                      VALUES (@id, @status, @fullpath, @lmdate);", conn, tx))
+                    using (var cmdUpdateStatusOnly = new SQLiteCommand(
+                               @"UPDATE FamilyManager
+                         SET STATUS = @ustatus
+                         WHERE ID = @uid;", conn, tx))
+                    using (var cmdInsert = new SQLiteCommand(
+                               @"INSERT INTO FamilyManager (ID, STATUS, FULLPATH, LM_DATE)
+                         VALUES (@id, @status, @fullpath, @lmdate);", conn, tx))
                     {
-                        var pU1Status = cmdUpdateLmAndStatus.Parameters.Add("@ustatus", System.Data.DbType.String);
-                        var pU1Lm = cmdUpdateLmAndStatus.Parameters.Add("@ulm", System.Data.DbType.String);
-                        var pU1Id = cmdUpdateLmAndStatus.Parameters.Add("@uid", System.Data.DbType.Int64);
-
-                        var pU2Status = cmdUpdateStatusOnly.Parameters.Add("@ustatus", System.Data.DbType.String);
-                        var pU2Id = cmdUpdateStatusOnly.Parameters.Add("@uid", System.Data.DbType.Int64);
+                        var pUStatus = cmdUpdateStatusOnly.Parameters.Add("@ustatus", System.Data.DbType.String);
+                        var pUId = cmdUpdateStatusOnly.Parameters.Add("@uid", System.Data.DbType.Int64);
 
                         var pId = cmdInsert.Parameters.Add("@id", System.Data.DbType.Int64);
                         var pStatus = cmdInsert.Parameters.Add("@status", System.Data.DbType.String);
@@ -1572,16 +1754,13 @@ namespace KPLN_Tools.Forms
                             string path = kv.Key;
                             var rec = kv.Value;
 
-                            if (string.Equals(rec.status, "IGNORE", StringComparison.OrdinalIgnoreCase))
-                                continue;
-
                             bool exists = false;
                             try { exists = File.Exists(path); } catch { }
 
                             if (!exists && !string.Equals(rec.status, "ABSENT", StringComparison.OrdinalIgnoreCase))
                             {
-                                pU2Status.Value = "ABSENT";
-                                pU2Id.Value = rec.id;
+                                pUStatus.Value = "ABSENT";
+                                pUId.Value = rec.id;
                                 cmdUpdateStatusOnly.ExecuteNonQuery();
                                 deleted++;
 
@@ -1591,57 +1770,36 @@ namespace KPLN_Tools.Forms
 
                         foreach (var path in rfaPaths)
                         {
-                            DateTime lm = DateTime.MinValue;
-                            try { lm = File.GetLastWriteTime(path); } catch { }
-                            string lmStr = lm == DateTime.MinValue ? "" : lm.ToString("yyyy-MM-dd-HH-mm-ss");
-
-                            bool exists = false;
-                            try { exists = File.Exists(path); } catch { }
-
                             if (byFullPath.TryGetValue(path, out var existed))
                             {
                                 if (string.Equals(existed.status, "IGNORE", StringComparison.OrdinalIgnoreCase))
-                                {
                                     continue;
-                                }
 
-                                if (string.Equals(existed.status, "ABSENT", StringComparison.OrdinalIgnoreCase) && exists)
+                                if (string.Equals(existed.status, "OK", StringComparison.OrdinalIgnoreCase))
+                                    continue;
+
+                                if (!string.Equals(existed.status, "NEW", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    pU2Status.Value = "UPDATE";
-                                    pU2Id.Value = existed.id;
+                                    pUStatus.Value = "NEW";
+                                    pUId.Value = existed.id;
                                     cmdUpdateStatusOnly.ExecuteNonQuery();
                                     updated++;
 
-                                    byFullPath[path] = (existed.id, existed.lmDate, "UPDATE");
-                                    continue;
+                                    byFullPath[path] = (existed.id, existed.lmDate, "NEW");
                                 }
-
-                                string oldLm = existed.lmDate ?? "";
-                                if (!string.Equals(oldLm, lmStr, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    pU1Status.Value = "UPDATE";
-                                    pU1Lm.Value = lmStr;
-                                    pU1Id.Value = existed.id;
-
-                                    cmdUpdateLmAndStatus.ExecuteNonQuery();
-                                    updated++;
-
-                                    byFullPath[path] = (existed.id, lmStr, "UPDATE");
-                                }
-      
-                                continue;
                             }
+                            else
+                            {
+                                pId.Value = nextId;
+                                pStatus.Value = "NEW";
+                                pPath.Value = path;
+                                pLmDate.Value = ""; 
+                                cmdInsert.ExecuteNonQuery();
+                                inserted++;
 
-                            pId.Value = nextId;
-                            pStatus.Value = "NEW";
-                            pPath.Value = path;
-                            pLmDate.Value = lmStr;
-
-                            cmdInsert.ExecuteNonQuery();
-                            inserted++;
-
-                            byFullPath[path] = (nextId, lmStr, "NEW");
-                            nextId++;
+                                byFullPath[path] = (nextId, "", "NEW");
+                                nextId++;
+                            }
                         }
                     }
 

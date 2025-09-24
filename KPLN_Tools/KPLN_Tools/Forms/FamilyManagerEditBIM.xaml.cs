@@ -79,11 +79,16 @@ namespace KPLN_Tools.Forms
         // Класс JSON. Подкатегории
         private class SubCategoryItem
         {
-            [Newtonsoft.Json.JsonProperty("id")]
+            [JsonProperty("id")]
             public int Id { get; set; }
 
-            [Newtonsoft.Json.JsonProperty("name")]
+            [JsonProperty("name")]
             public string Name { get; set; }
+
+            [JsonProperty("dep")]
+            public string DepRaw { get; set; }
+
+            public HashSet<string> DepSet { get; set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         // Класс БД. Проекты
@@ -282,7 +287,6 @@ namespace KPLN_Tools.Forms
             switch (s)
             {
                 case "NEW":
-                case "UPDATE":
                     StatusCombo.Items.Add("Подтверждено");
                     StatusCombo.Items.Add("Требует подтверждения");
                     StatusCombo.Items.Add("Игнорировать в БД");
@@ -365,6 +369,7 @@ namespace KPLN_Tools.Forms
                 DeptPanel.Children.Add(cb);
             }
 
+            UpdateDeptToggleVisual();
         }
       
         // Категории, прошедшие фильтр по отделам
@@ -460,7 +465,8 @@ namespace KPLN_Tools.Forms
                           ?? filtered.FirstOrDefault()
                           ?? (_categories.FirstOrDefault(c => c.ID == 1) ?? _categories.OrderBy(c => c.ID).FirstOrDefault());
 
-            var subcats = ParseSubcategories(currentCat?.NC_NAME);
+            var subcatsAll = ParseSubcategories(currentCat?.NC_NAME);
+            var subcats = FilterSubcategoriesByDept(subcatsAll, record.DEPARTAMENT);
 
             if (!subcats.Any(sc => sc.Id == record.SUB_CATEGORY))
             {
@@ -492,17 +498,61 @@ namespace KPLN_Tools.Forms
                 if (items == null || items.Count == 0)
                     return fallback;
 
+                foreach (var it in items)
+                {
+                    it.DepSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var raw = it.DepRaw ?? "";
+                    foreach (var part in raw.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var p = part.Trim();
+                        if (string.IsNullOrEmpty(p)) continue;
+                        if (p.Equals(DEPT_DEF, StringComparison.OrdinalIgnoreCase)) continue;
+                        if (p.Equals(DEPT_MAIN, StringComparison.OrdinalIgnoreCase)) continue;
+                        it.DepSet.Add(p);
+                    }
+                }
+
                 return items
                     .Where(i => i != null)
                     .GroupBy(i => i.Id)
                     .Select(g => g.First())
-                    .OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase)
+                    .OrderBy(i => i.Id)
                     .ToList();
             }
             catch
             {
                 return fallback;
             }
+        }
+
+        // Фильтр субкатегорий
+        private static List<SubCategoryItem> FilterSubcategoriesByDept(List<SubCategoryItem> subcats, string departmentsCsv)
+        {
+            var selected = NormalizeDeptSet(ParseDepartments(departmentsCsv));
+            int cnt = selected.Count;
+
+            IEnumerable<SubCategoryItem> filtered;
+
+            if (cnt == 0)
+            {
+                filtered = subcats.Where(sc => sc.DepSet == null || sc.DepSet.Count == 0);
+            }
+            else if (cnt == 1)
+            {
+                string one = selected.First();
+                filtered = subcats.Where(sc =>
+                    sc.DepSet == null || sc.DepSet.Count == 0 || sc.DepSet.Contains(one));
+            }
+            else
+            {
+                filtered = subcats.Where(sc =>
+                    sc.DepSet == null || sc.DepSet.Count == 0 || selected.All(d => sc.DepSet.Contains(d)));
+            }
+
+            return filtered
+                .OrderBy(sc => sc.Id == 0 ? 0 : 1) // сначала "Корневая директория"
+                .ThenBy(sc => sc.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
         }
 
         // Получение байтов из Image.Source
@@ -965,13 +1015,15 @@ namespace KPLN_Tools.Forms
 
             record.DEPARTAMENT = JoinDepartments(selected);
             RefreshCategoryCombos();
+            UpdateDeptToggleVisual();
         }
 
         // XAML. Кнопка выбрать/снять все отделы
-        private void DeptLabel_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void DeptToggleBtn_Click(object sender, RoutedEventArgs e)
         {
-            bool anyUnchecked = DeptPanel.Children.OfType<CheckBox>().Any(cb => cb.IsChecked != true);
-            SetAllDepartments(anyUnchecked);
+            bool allChecked = DeptPanel.Children.OfType<CheckBox>().All(cb => cb.IsChecked == true);
+            SetAllDepartments(!allChecked);
+            UpdateDeptToggleVisual();
         }
 
         // Выбрать все чекбоксы с оделами
@@ -986,10 +1038,11 @@ namespace KPLN_Tools.Forms
         // Обновления статуса кнопки для выбора всех отделов
         private void UpdateDeptToggleVisual()
         {
-            if (DeptLabel == null) return;
+            if (DeptToggleBtn == null) return;
 
             bool allChecked = DeptPanel.Children.OfType<CheckBox>().All(cb => cb.IsChecked == true);
-            DeptLabel.ToolTip = allChecked ? "Снять все отделы" : "Выбрать все отделы";
+            DeptToggleBtn.Content = allChecked ? "Снять все" : "Выбрать все";
+            DeptToggleBtn.ToolTip = allChecked ? "Снять все отделы" : "Выбрать все отделы";
         }
 
         // XAML.Чек-боксы отделов
@@ -1003,7 +1056,8 @@ namespace KPLN_Tools.Forms
 
             var filtered = CategoryCombo.ItemsSource as IEnumerable<CategoryItem> ?? Enumerable.Empty<CategoryItem>();
             var currentCat = filtered.FirstOrDefault(c => c.ID == record.CATEGORY);
-            var subcats = ParseSubcategories(currentCat?.NC_NAME);
+            var subcatsAll = ParseSubcategories(currentCat?.NC_NAME);
+            var subcats = FilterSubcategoriesByDept(subcatsAll, record.DEPARTAMENT);
 
             if (!subcats.Any(sc => sc.Id == record.SUB_CATEGORY))
                 record.SUB_CATEGORY = subcats.FirstOrDefault()?.Id ?? 0;
@@ -1136,14 +1190,6 @@ namespace KPLN_Tools.Forms
             Close();
         }
 
-
-
-
-
-
-
-
-
         // XAML. Редактировать информацию о семействе
         private void ButtonEditFamilyInfo_Click(object sender, RoutedEventArgs e)
         {
@@ -1216,41 +1262,49 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
-                // DEPARTAMENT
-                {
-                    var selected = DeptPanel.Children
-                        .OfType<System.Windows.Controls.CheckBox>()
-                        .Where(c => c.IsChecked == true)
-                        .Select(c => c.Content?.ToString())
-                        .Where(s => !string.IsNullOrWhiteSpace(s));
+                // Собираем отделы из чекбоксов 
+                var selectedDeps = DeptPanel.Children
+                    .OfType<System.Windows.Controls.CheckBox>()
+                    .Where(c => c.IsChecked == true)
+                    .Select(c => c.Content?.ToString())
+                    .Where(s => !string.IsNullOrWhiteSpace(s));
 
-                    // JoinDepartments — утилита из кода, который я дал выше
-                    record.DEPARTAMENT = JoinDepartments(selected);
-                }
+                record.DEPARTAMENT = JoinDepartments(selectedDeps);
 
                 // STATUS
                 var selectedUiStatus = StatusCombo.SelectedItem as string ?? "";
-                var finalStatus = MapStatusForSave(_originalStatus, selectedUiStatus);
+                var mappedStatus = MapStatusForSave(_originalStatus, selectedUiStatus);
 
-                // CATEGORY (ID) и NC_NAME
-                var selectedCategoryId = CategoryCombo.SelectedValue is int cid ? cid : 0;
-                var selectedCategory = _categories?.Find(c => c.ID == selectedCategoryId);
-                var selectedCategoryNcName = selectedCategory?.NC_NAME ?? "";
+                bool isIgnore = string.Equals(mappedStatus, "IGNORE", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(_originalStatus, "IGNORE", StringComparison.OrdinalIgnoreCase);
 
-                // PROJECT (ID)
-                var selectedProjectId = ProjectCombo.SelectedValue is int pid ? pid : 0;
 
-                // STAGE (ID)
-                var selectedStageId = StageCombo.SelectedValue is int sid ? sid : 0;
+                var selectedCategoryId = CategoryCombo.SelectedValue is int cid ? cid : 0; // CATEGORY (ID) и NC_NAME              
+                var selectedProjectId = ProjectCombo.SelectedValue is int pid ? pid : 0; // PROJECT (ID)
+                var selectedStageId = StageCombo.SelectedValue is int sid ? sid : 0; // STAGE (ID)
+                var imgBytes = GetImageBytesFromImageControl(PreviewImage); // Копия IMAGE из PreviewImage
 
-                // Копия IMAGE из PreviewImage
-                var imgBytes = GetImageBytesFromImageControl(PreviewImage);
+                if (!isIgnore)
+                {
+                    bool deptFilled = !string.IsNullOrWhiteSpace(record.DEPARTAMENT);
+                    bool categoryOk = selectedCategoryId != 1;
 
-                // Собираем финальный объект
+                    List<string> errors = new List<string>();
+                    if (!deptFilled) errors.Add("— Не выбран ни один отдел");
+                    if (!categoryOk) errors.Add("— Не выбрана категория");
+
+                    if (errors.Count > 0)
+                    {
+                        string msg = "Были допущены ошибки:\n" + string.Join("\n", errors);
+                        MessageBox.Show(msg, "Проверка данных", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return; 
+                    }
+                }
+
                 var result = new FamilyManagerRecord
                 {
                     ID = record.ID,
-                    STATUS = finalStatus,
+                    STATUS = isIgnore ? mappedStatus : "OK",
                     FULLPATH = record.FULLPATH,
                     LM_DATE = record.LM_DATE,
                     CATEGORY = selectedCategoryId,
