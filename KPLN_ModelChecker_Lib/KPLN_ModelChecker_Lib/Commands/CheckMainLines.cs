@@ -22,38 +22,38 @@ namespace KPLN_ModelChecker_Lib.Commands
 
     public sealed class CheckMainLines : AbstrCheck
     {
-        /// <summary>
-        /// Пустой конструктор для внесения данных класса
-        /// </summary>
         public CheckMainLines() : base()
         {
             if (PluginName == null)
                 PluginName = "Проверка осей/уровней";
 
             if (ESEntity == null)
-                ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CommandCheckMainLines", new Guid("eac2c205-342d-4ba3-98a1-d82c82a4638e"));
+                ESEntity = new ExtensibleStorageEntity(
+                    PluginName,
+                    "KPLN_CommandCheckMainLines",
+                    new Guid("eac2c205-342d-4ba3-98a1-d82c82a4638e"));
         }
 
 
-        public override Element[] GetElemsToCheck(Document doc)
+        public override Element[] GetElemsToCheck()
         {
-            IEnumerable<Element> levels = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType();
-            IEnumerable<Element> grids = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType();
+            IEnumerable<Element> levels = new FilteredElementCollector(CheckDocument).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType();
+            IEnumerable<Element> grids = new FilteredElementCollector(CheckDocument).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType();
+
             return levels.Union(grids).ToArray();
         }
-        private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
-            string docTitle = doc.Title;
+            string docTitle = CheckDocument.Title;
             bool isRazbFile = docTitle.Contains("_РФ_") || docTitle.Contains("Разб");
             foreach (Element element in elemColl)
             {
                 if (!isRazbFile)
                 {
-                    CheckerEntity monitorErrorEnt = GetMonitoringErrorEnt(doc, element);
+                    CheckerEntity monitorErrorEnt = GetMonitoringErrorEnt(CheckDocument, element);
                     if (monitorErrorEnt != null)
                         result.Add(monitorErrorEnt);
                 }
@@ -95,8 +95,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             element,
                             "Ошибка мониторинга",
                             $"Связь не найдена",
-                            $"Мониторинг назначен на связь, которой больше не существует в модели.",
-                            false);
+                            $"Мониторинг назначен на связь, которой больше не существует в модели.");
                     }
                     else if (!link.Name.ToLower().Contains("разб")
                         && !link.Name.Contains("СЕТ_1_1-3_00_РФ"))
@@ -105,8 +104,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             element,
                             "Ошибка мониторинга",
                             $"Мониторинг не из разбивочного файла",
-                            $"Мониторинг может быть только из разбивочного файла, сейчас он присвоен связи {link.Name}",
-                            false);
+                            $"Мониторинг может быть только из разбивочного файла, сейчас он присвоен связи {link.Name}");
                     }
                 }
 
@@ -118,8 +116,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     element,
                     "Отсутствие мониторинга",
                     $"Оси и уровни обязательно должны иметь мониторинг из разбивочного файла",
-                    string.Empty,
-                    false);
+                    string.Empty);
             }
         }
 
@@ -134,15 +131,14 @@ namespace KPLN_ModelChecker_Lib.Commands
                 if (group.Pinned || element.Pinned)
                     return null;
             }
-            else if (element.Pinned) 
+            else if (element.Pinned)
                 return null;
 
             return new CheckerEntity(
                 element,
                 "Отсутствие прикрепления (PIN)",
                 $"Элемент не прикреплен",
-                $"Элемент необходимо прикрепить (PIN). Если он в группе - достаточно прикрепить (PIN) группу",
-                false);
+                $"Элемент необходимо прикрепить (PIN). Если он в группе - достаточно прикрепить (PIN) группу");
         }
 
         /// <summary>
@@ -171,8 +167,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .Select(ge => new CheckerEntity(ge.CurrentGrid,
                     "Нарушена точность построения",
                     $"Ось «{ge.CurrentGrid.Name}» расположена на расстоянии {ge.Distance} от оси «{ge.NearestGrid.Name}»",
-                    $"Точность построения осей - 5,00001. ПРЕДВАРИТЕЛЬНО - согласуй внесение изменений со своим BIM-координатором",
-                    false));
+                    $"Точность построения осей - 5,00001. ПРЕДВАРИТЕЛЬНО - согласуй внесение изменений со своим BIM-координатором"));
         }
 
         /// <summary>

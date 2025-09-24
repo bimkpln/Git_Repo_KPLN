@@ -77,13 +77,13 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     string modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom);
                     string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
                     Print(msg, MessageType.Warning);
-                    Logger.Error(msg);
+                    Module.CurrentLogger.Error(msg);
                     
                     return null;
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
+                    Module.CurrentLogger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
                         $"ошибка при открытии: {ex.Message}");
                     
                     return null;

@@ -30,11 +30,7 @@ namespace KPLN_Library_Forms.UI
                 Close();
             }
 
-            if (e.Key == Key.Escape)
-            {
-                DialogResult = true;
-                Close();
-            }
+            // Обработка Enter - может вызывть запуск последней команды, и окно опять появиться. Запрещено её добавлять
         }
 
         /// <summary>

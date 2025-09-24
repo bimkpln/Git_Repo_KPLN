@@ -10,7 +10,6 @@ using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.Forms.Models.Core;
 using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -23,18 +22,16 @@ namespace KPLN_Tools.Forms
         private static string _initialDirectoryForOpenFileDialog;
 
         private readonly UIApplication _uiapp;
-        private readonly int _revitVersion;
 
         public RLinkManagerForm(UIApplication uiapp)
         {
             _uiapp = uiapp;
             Document doc = _uiapp.ActiveUIDocument.Document;
-            _revitVersion = int.Parse(uiapp.Application.VersionNumber);
 
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
 
-            DBProject dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+            DBProject dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
             if (dBProject != null) InitialDirectoryForOpenFileDialog = dBProject.MainPath;
             else InitialDirectoryForOpenFileDialog = Path.GetPathRoot(Environment.SystemDirectory);
 
@@ -47,7 +44,7 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Кэширование пути для выбора файлов с сервера
         /// </summary>
-        public static string InitialDirectoryForOpenFileDialog 
+        public static string InitialDirectoryForOpenFileDialog
         {
             get => _initialDirectoryForOpenFileDialog;
             set
@@ -96,7 +93,7 @@ namespace KPLN_Tools.Forms
 
                 return;
             }
-            
+
             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandLinkChanger_Start(SelectedConfig.LinkChangeEntityColl.ToArray()));
             Close();
         }
@@ -139,7 +136,7 @@ namespace KPLN_Tools.Forms
         {
             ResetConfigToLoad();
 
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 
@@ -192,7 +189,7 @@ namespace KPLN_Tools.Forms
             // Переключение и пересоздание основного конфига как при другом типе, так и при существующем (обнуление)
             if (SelectedConfig == null || SelectedConfig is RLinkLoadContent || SelectedConfig is RLinkUpdateContent)
             {
-                SelectedConfig = new RLinkUpdateContent(_revitVersion);
+                SelectedConfig = new RLinkUpdateContent();
                 DataContext = SelectedConfig;
             }
         }

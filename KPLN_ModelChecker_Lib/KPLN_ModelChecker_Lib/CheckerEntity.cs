@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using System;
+using KPLN_ModelChecker_Lib.Common;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,7 +26,12 @@ namespace KPLN_ModelChecker_Lib
         private BoundingBoxXYZ _zoomBBox;
         private XYZ _zoomCentroid;
 
-        public CheckerEntity(object elemData, string header, string description, string info, bool isZoomElement)
+        public CheckerEntity(
+            object elemData, 
+            string header, 
+            string description, 
+            string info, 
+            bool canZoomed = false)
         {
             if (elemData is Element element)
             {
@@ -71,13 +76,65 @@ namespace KPLN_ModelChecker_Lib
             Header = header;
             Description = description;
             Info = info;
-            IsZoomElement = isZoomElement;
+            CanZoomed = canZoomed;
         }
 
-        public CheckerEntity(object elemData, string header, string description, string info, bool isZoomElement, ErrorStatus status) : this(elemData, header, description, info, isZoomElement)
+        /// <summary>
+        /// Взвести метку, что замечание может быть подтверждено юзером
+        /// </summary>
+        /// <returns></returns>
+        public CheckerEntity Set_CanApproved()
+        {
+            CanApproved = true;
+
+            return this;
+        }
+
+        /// <summary>
+        /// Вручную указать статус замечания
+        /// </summary>
+        /// <param name="status">Статус, который нужно присвоить замечанию</param>
+        /// <returns></returns>
+        public CheckerEntity Set_Status(ErrorStatus status)
         {
             Status = status;
+
+            return this;
         }
+
+        /// <summary>
+        /// Вручную указать данные из ExtStorage (статус и комментарий)
+        /// </summary>
+        /// <returns></returns>
+        public CheckerEntity Set_DataByESData(ExtensibleStorageEntity esEntity)
+        {
+            if (Element != null) 
+            {
+                if (esEntity.ESBuilderUserText.IsDataExists_Text(Element))
+                {
+                    Status = ErrorStatus.Approve;
+                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(Element).Description;
+                }
+                else
+                    Status = ErrorStatus.Error;
+            }
+            else if (ElementCollection != null && ElementCollection.Any())
+            {
+                if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
+                    && ElementCollection.All(e =>
+                        esEntity.ESBuilderUserText.GetResMessage_Element(e).Description
+                            .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
+                {
+                    Status = ErrorStatus.Approve;
+                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
+                }
+                else
+                    Status = ErrorStatus.Error;
+            }
+
+            return this;
+        }
+
 
         /// <summary>
         /// Revit-элемент
@@ -122,12 +179,22 @@ namespace KPLN_ModelChecker_Lib
         /// <summary>
         /// Статус ошибки
         /// </summary>
-        public ErrorStatus Status { get; } = ErrorStatus.Error;
+        public ErrorStatus Status { get; private set; } = ErrorStatus.Error;
 
         /// <summary>
         /// Можно использовать кастомный зум?
         /// </summary>
-        public bool IsZoomElement { get; }
+        public bool CanZoomed { get; private set; }
+
+        /// <summary>
+        /// Есть возможность подтверждать ошибку?
+        /// </summary>
+        public bool CanApproved { get; private set; }
+
+        /// <summary>
+        /// Комментарий, указанный при подтверждении
+        /// </summary>
+        public string ApproveComment { get; private set; }
 
         /// <summary>
         /// BoundingBoxXYZ для зума
@@ -136,7 +203,7 @@ namespace KPLN_ModelChecker_Lib
         {
             get
             {
-                if (IsZoomElement && _zoomBBox == null)
+                if (CanZoomed && _zoomBBox == null)
                     _zoomBBox = Element.get_BoundingBox(null);
 
                 return _zoomBBox;
@@ -150,7 +217,7 @@ namespace KPLN_ModelChecker_Lib
         {
             get
             {
-                if (IsZoomElement && _zoomCentroid == null)
+                if (CanZoomed && _zoomCentroid == null)
                 {
                     if (ZoomBBox != null)
                         _zoomCentroid = new XYZ(

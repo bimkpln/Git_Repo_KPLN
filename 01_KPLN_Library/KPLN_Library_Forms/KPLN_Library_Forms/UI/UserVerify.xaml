@@ -12,7 +12,6 @@
         WindowStyle="ToolWindow"  
         Topmost="False" 
         WindowStartupLocation="CenterScreen" 
-        Closing="Window_Closing"
         Loaded="OnLoaded">
     
     <Window.Resources>

@@ -14,11 +14,8 @@ namespace KPLN_ModelChecker_User.Forms
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            WPFEntity entity = value as WPFEntity;
-            if (entity != null)
-            {
-                return entity.IsApproveElement ? Visibility.Visible : Visibility.Hidden;
-            }
+            if (value is WPFEntity entity)
+                return entity.CanApproved ? Visibility.Visible : Visibility.Hidden;
 
             return Visibility.Visible;
         }

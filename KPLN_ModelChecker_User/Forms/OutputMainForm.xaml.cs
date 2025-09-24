@@ -158,7 +158,7 @@ namespace KPLN_ModelChecker_User.Forms
             {
                 wpfEntity.BackgroundLightening();
                 
-                if (wpfEntity.IsZoomElement)
+                if (wpfEntity.CanZoomed)
                 {
                     if (wpfEntity.Element != null)
                     {
@@ -188,7 +188,7 @@ namespace KPLN_ModelChecker_User.Forms
         {
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
-                if (wpfEntity.IsApproveElement)
+                if (wpfEntity.CanApproved)
                 {
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
                     userTextInput.ShowDialog();

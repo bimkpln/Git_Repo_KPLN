@@ -8,6 +8,7 @@ namespace KPLN_Tools
     internal static class ModuleData
     {
         public static System.IntPtr MainWindowHandle { get; set; }
+        
         /// <summary>
         /// Версия сборки, отображаемая в Revit
         /// </summary>
@@ -17,6 +18,11 @@ namespace KPLN_Tools
         /// Актуальная дата плагина
         /// </summary>
         public static string Date = GetModuleCreationDate();
+
+        /// <summary>
+        /// Версия Revit, в которой запускается плагин
+        /// </summary>
+        public static int RevitVersion { get; set; }
 
         /// <summary>
         /// Имя модуля

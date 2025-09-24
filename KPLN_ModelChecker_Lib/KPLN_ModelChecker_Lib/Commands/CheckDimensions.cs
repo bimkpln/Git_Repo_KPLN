@@ -1,17 +1,11 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
-using KPLN_ModelChecker_Lib;
+﻿using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.Common;
-using KPLN_ModelChecker_User.Common;
-using KPLN_ModelChecker_User.Forms;
-using KPLN_ModelChecker_User.WPFItems;
+using KPLN_ModelChecker_Lib.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KPLN_ModelChecker_User.ExternalCommands
+namespace KPLN_ModelChecker_Lib.Commands
 {
     internal class DimTypeCompare : IEqualityComparer<DimensionType>
     {
@@ -20,13 +14,8 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         public int GetHashCode(DimensionType obj) => obj.Id.GetHashCode();
     }
 
-
-    [Transaction(TransactionMode.Manual)]
-    [Regeneration(RegenerationOption.Manual)]
-    internal class CommandCheckDimensions : AbstrCheckCommandOld<CommandCheckDimensions>, IExternalCommand
+    public sealed class CheckDimensions : AbstrCheck
     {
-        internal const string PluginName = "Проверка размеров";
-
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
         /// </summary>
@@ -41,55 +30,29 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             "мин"
         };
 
-        public CommandCheckDimensions() : base()
+        public CheckDimensions() : base()
         {
+            if (PluginName == null)
+                PluginName = "Проверка размеров";
+
+            if (ESEntity == null)
+                ESEntity = new ExtensibleStorageEntity(
+                    PluginName,
+                    "KPLN_CheckDimensions",
+                    new Guid("f2e615e0-a15b-43df-a199-a88d18a2f568"),
+                    new Guid("f2e615e0-a15b-43df-a199-a88d18a2f569"));
         }
 
-        internal CommandCheckDimensions(ExtensibleStorageEntity esEntity) : base(esEntity)
+        public override Element[] GetElemsToCheck()
         {
-        }
+            List<Element> result = new List<Element>();
 
-        /// <summary>
-        /// Реализация IExternalCommand
-        /// </summary>
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
-        {
-            return ExecuteByUIApp(commandData.Application);
-        }
-
-        public override Result ExecuteByUIApp(UIApplication uiapp)
-        {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
-            _uiApp = uiapp;
-
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
-            string docTitle = doc.Title;
-
-
-            // Собираю листы модели
-            ViewSheet[] docSheetColl;
-            IEnumerable<ViewSheet> docAllList = new FilteredElementCollector(doc)
-                .OfCategory(BuiltInCategory.OST_Sheets)
-                .WhereElementIsNotElementType()
-                .Cast<ViewSheet>();
-            // Кастомно для проектов на основе моделей субчиков (например только нужную стадию)
-            if (docTitle.Contains("СЕТ_1") && (docTitle.Contains("_КЖ") || docTitle.Contains("_КМ")))
-                docSheetColl = docAllList
-                    .Where(vsh => vsh.LookupParameter("Орг.КомплектЧертежей")?.AsString()?.ToLower().Contains("кж") == true)
-                    .ToArray();
-            // Стандартно - для всех листов
-            else
-                docSheetColl = docAllList.ToArray();
-
-
-            // Собираю размеры с видов на листах
-            List<Element> dimToCheck = new List<Element>();
-            List<Element> docDimensions = new FilteredElementCollector(doc)
+            Element[] docDimensions = new FilteredElementCollector(CheckDocument)
                 .OfClass(typeof(Dimension))
                 .WhereElementIsNotElementType()
-                .ToList();
+                .ToArray();
+
+            // Анализирую ТОЛЬКО размеры на листах
             foreach (Element elem in docDimensions)
             {
                 Dimension dim = (Dimension)elem;
@@ -98,48 +61,32 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (dimView == null)
                     continue;
 
-                // Если листа нет, то анализировать нечего. Коллекция листов готовиться заранее (по нужному парамтеру)
                 string sheetName = dimView.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NAME)?.AsString();
                 if (string.IsNullOrEmpty(sheetName))
                     continue;
 
-                dimToCheck.Add(elem);
+                result.Add(elem);
             }
 
-
-            #region Проверяю и обрабатываю элементы
-            WPFEntity[] wpfColl = CheckCommandRunner(doc, dimToCheck.ToArray());
-            OutputMainForm form = ReportCreatorAndDemonstrator(doc, wpfColl);
-            if (form != null) form.Show();
-            else return Result.Cancelled;
-            #endregion
-
-            return Result.Succeeded;
+            return result.ToArray();
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
-
-        private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
         {
-            List<WPFEntity> result = new List<WPFEntity>();
+            List<CheckerEntity> result = new List<CheckerEntity>();
 
             result.AddRange(CheckOverride(elemColl));
-            result.AddRange(CheckAccuracy(doc, elemColl));
+            result.AddRange(CheckAccuracy(elemColl));
 
             return result;
-        }
-
-        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
-        {
-            report.SetWPFEntityFiltration_ByErrorHeader();
         }
 
         /// <summary>
         /// Определяю размеры, которые были переопределены в проекте
         /// </summary>
-        private IEnumerable<WPFEntity> CheckOverride(Element[] elemColl)
+        private IEnumerable<CheckerEntity> CheckOverride(Element[] elemColl)
         {
-            List<WPFEntity> result = new List<WPFEntity>();
+            List<CheckerEntity> result = new List<CheckerEntity>();
 
             foreach (Element elem in elemColl)
             {
@@ -150,7 +97,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 if (dim.View.GetType().Equals(typeof(ViewDrafting))) continue;
 
-                WPFEntity error = null;
+                CheckerEntity error = null;
                 double? currentValue = dim.Value;
                 if (currentValue.HasValue && dim.ValueOverride?.Length > 0)
                 {
@@ -181,7 +128,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Анализ значения размера
         /// </summary>
-        private WPFEntity CheckDimValues(Dimension dim, double value, string overrideValue)
+        private CheckerEntity CheckDimValues(Dimension dim, double value, string overrideValue)
         {
             int dimId = dim.Id.IntegerValue;
             string dimName = dim.Name;
@@ -211,25 +158,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     // Нахожу значения вне диапозоне
                     if (value >= overrideMaxDouble | value < overrideMinDouble)
                     {
-                        return new WPFEntity(
-                            ESEntity,
+                        return new CheckerEntity(
                             dim,
                             "Нарушение диапозона",
                             "Размер вне диапозона",
-                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                            false);
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
                     }
                 }
                 else
                 {
-                    return new WPFEntity(
-                        ESEntity,
+                    return new CheckerEntity(
                         dim,
                         "Нарушение диапозона",
                         "Не удалось определить данные. Нужен ручной анализ",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"",
-                        false,
-                        ErrorStatus.Warning);
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"")
+                        .Set_Status(ErrorStatus.Warning);
                 }
             }
 
@@ -240,35 +183,29 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Double.TryParse(onlyNumbMin, out double overrideDouble);
                 if (overrideDouble == 0.0)
                 {
-                    return new WPFEntity(
-                        ESEntity,
+                    return new CheckerEntity(
                         dim,
                         "Нарушение переопределения размера",
                         "Не удалось определить данные. Нужен ручной анализ",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную",
-                        false,
-                        ErrorStatus.Warning);
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\". Оцени вручную")
+                        .Set_Status(ErrorStatus.Warning);
                 }
                 else if (Math.Abs(overrideDouble - value) > 10.0 || Math.Abs((overrideDouble / value) * 100 - 100) > 5)
                 {
-                    return new WPFEntity(
-                        ESEntity,
+                    return new CheckerEntity(
                         dim,
                         "Нарушение переопределения размера",
                         "Размер значительно отличается от реального",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.",
-                        false);
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница существенная, лучше устранить.");
                 }
                 else
                 {
-                    return new WPFEntity(
-                        ESEntity,
+                    return new CheckerEntity(
                         dim,
                         "Нарушение переопределения размера",
                         "Размер незначительно отличается от реального",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.",
-                        false,
-                        ErrorStatus.Warning);
+                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а при переопределении указано \"{overrideValue}\" мм. Разница не существенная, достаточно проконтролировать.")
+                        .Set_Status(ErrorStatus.Warning);
                 }
             }
 
@@ -278,12 +215,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Определяю размеры, которые не соответствуют необходимой точности
         /// </summary>
-        private IEnumerable<WPFEntity> CheckAccuracy(Document doc, Element[] elemColl)
+        private IEnumerable<CheckerEntity> CheckAccuracy(Element[] elemColl)
         {
-            List<WPFEntity> result = new List<WPFEntity>();
+            List<CheckerEntity> result = new List<CheckerEntity>();
 
             HashSet<DimensionType> elemCollDimTypes = new HashSet<DimensionType>(
-                elemColl.Select(elem => doc.GetElement(elem.GetTypeId())).Cast<DimensionType>(),
+                elemColl.Select(elem => CheckDocument.GetElement(elem.GetTypeId())).Cast<DimensionType>(),
                 new DimTypeCompare());
 
             foreach (DimensionType dimType in elemCollDimTypes)
@@ -300,13 +237,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         double currentAccuracy = typeOpt.Accuracy;
                         if (currentAccuracy > 1.0)
                         {
-                            result.Add(new WPFEntity(
-                                ESEntity,
-                                doc.GetElement(new ElementId(dimType.Id.IntegerValue)),
+                            result.Add(new CheckerEntity(
+                                CheckDocument.GetElement(new ElementId(dimType.Id.IntegerValue)),
                                 "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
-                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер.",
-                                false));
+                                $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));
                         }
                     }
                     catch (Exception)

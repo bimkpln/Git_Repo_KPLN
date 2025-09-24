@@ -14,13 +14,29 @@ namespace KPLN_ModelChecker_Lib.Core
     public abstract class AbstrCheck
     {
         /// <summary>
-        /// Пустой конструктор для внесения данных класса
+        /// Пустой конструктор для использования дженериков
         /// </summary>
         public AbstrCheck() { }
 
+        /// <summary>
+        /// Ссылка на UIApplication Revit
+        /// </summary>
+        public UIApplication CheckUIApp { get; private set; }
+
+        /// <summary>
+        /// Имя плагина
+        /// </summary>
         public string PluginName { get; protected set; }
 
+        /// <summary>
+        /// Ссылка на ExtStorage
+        /// </summary>
         public ExtensibleStorageEntity ESEntity { get; protected set; }
+
+        /// <summary>
+        /// Ссылка на Revit-документ
+        /// </summary>
+        private protected Document CheckDocument { get; set; }
 
         /// <summary>
         /// Список подготовленных элементов, которые прошли проверку перед запуском
@@ -38,33 +54,28 @@ namespace KPLN_ModelChecker_Lib.Core
         private protected IEnumerable<CheckCommandError> ErrorRunColl { get; set; } = new List<CheckCommandError>();
 
         /// <summary>
-        /// Проверка элементов перед запуском
+        /// Докрутка нужных параметров, из-за пустого конструктора для использовния дженериков
         /// </summary>
-        /// <param name="objColl">Коллеция элементов для проверки</param>
-        /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
-        private protected abstract IEnumerable<CheckCommandError> CheckRElems(object[] objColl);
+        public AbstrCheck Set_UIAppData(UIApplication uiapp, Document doc)
+        {
+            CheckUIApp = uiapp;
+            CheckDocument = doc;
 
-        /// <summary>
-        /// Получить коллекцию CheckerEntity
-        /// </summary>
-        /// <param name="doc">Revit-проект</param>
-        /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
-        /// <returns>Коллекция WPFEntity, содержащая выявленные ошибки проектирования в Revit</returns>
-        private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl);
+            return this;
+        }
 
         /// <summary>
         /// Подготовить коллекцию элементов для проверки
         /// </summary>
-        public abstract Element[] GetElemsToCheck(Document doc);
+        public abstract Element[] GetElemsToCheck();
 
         /// <summary>
         /// Запуск проверки
         /// </summary>
-        /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для полного анализа</param>
         /// <param name="onlyErrorType">Только сущности, с типом Error из ключевого enum по статусам проверок</param>
         /// <returns>Коллекция CheckerEntity для передачи в отчет пользовател</returns>
-        public CheckerEntity[] ExecuteCheck(Document doc, Element[] elemColl, bool onlyErrorType)
+        public CheckerEntity[] ExecuteCheck(Element[] elemColl, bool onlyErrorType)
         {
             if (!elemColl.Any()) return null;
 
@@ -76,7 +87,7 @@ namespace KPLN_ModelChecker_Lib.Core
                 else
                     PreparedElemColl = elemColl;
 
-                IEnumerable<CheckerEntity> entColl = GetCheckerEntities(doc, PreparedElemColl);
+                IEnumerable<CheckerEntity> entColl = GetCheckerEntities(PreparedElemColl);
                 if (onlyErrorType)
                     return entColl.Where(e => e.Status == ErrorStatus.Error).ToArray();
                 else
@@ -123,5 +134,19 @@ namespace KPLN_ModelChecker_Lib.Core
                 HtmlOutput.Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", MessageType.Warning);
             }
         }
+
+        /// <summary>
+        /// Проверка элементов перед запуском
+        /// </summary>
+        /// <param name="objColl">Коллеция элементов для проверки</param>
+        /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
+        private protected virtual IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
+
+        /// <summary>
+        /// Получить коллекцию CheckerEntity
+        /// </summary>
+        /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
+        /// <returns>Коллекция CheckerEntity, содержащая выявленные ошибки проектирования в Revit</returns>
+        private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl);        
     }
 }

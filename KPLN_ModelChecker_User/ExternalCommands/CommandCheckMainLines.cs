@@ -2,7 +2,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Commands;
-using KPLN_ModelChecker_User.WPFItems;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -14,17 +13,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            CommandCheck = new CheckMainLines();
-            //ElemsToCheck = CommandCheck.GetElemsToCheck(commandData.Application.ActiveUIDocument.Document);
+            UIApplication uiapp = commandData.Application;
 
-            ExecuteByUIApp<CheckMainLines>(commandData.Application, false, true, true, true, true);
-            
+            CommandCheck = new CheckMainLines().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
+            ElemsToCheck = CommandCheck.GetElemsToCheck();
+
+            ExecuteByUIApp<CheckMainLines>(uiapp, false, true, true, true, true);
+
             return Result.Succeeded;
-        }
-
-        private protected override void SetWPFEntityFiltration(WPFReportCreator report)
-        {
-            report.SetWPFEntityFiltration_ByErrorHeader();
         }
     }
 }

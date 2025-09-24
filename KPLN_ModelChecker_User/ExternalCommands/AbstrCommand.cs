@@ -10,6 +10,7 @@ using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
 using System;
 using System.Linq;
+using System.Windows.Interop;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -47,15 +48,15 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
                 if (CommandCheck == null || ElemsToCheck == null)
                 {
-                    CommandCheck = new T();
-                    //ElemsToCheck = CommandCheck.GetElemsToCheck(doc);
+                    CommandCheck = new T().Set_UIAppData(uiapp, doc);
+                    ElemsToCheck = CommandCheck.GetElemsToCheck();
                 }
 
                 if (setPluginActivity)
                     DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
 
-                //CheckerEntities = CommandCheck.ExecuteCheck(doc, ElemsToCheck, onlyErrorType);
+                CheckerEntities = CommandCheck.ExecuteCheck(ElemsToCheck, onlyErrorType);
                 if (CheckerEntities != null && CheckerEntities.Length > 0 && showMainForm)
                     ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
                 else if (showSuccsessText)
@@ -87,13 +88,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             SetWPFEntityFiltration(repCreator);
 
             CheckMainForm form = new CheckMainForm(uiapp, this.GetType().Name, typeof(T), repCreator, setLastRun, CommandCheck.ESEntity.ESBuilderRun, CommandCheck.ESEntity.ESBuilderUserText, CommandCheck.ESEntity.ESBuildergMarker);
+            
+            // Связываю с окном ревит, откуда был запуск
+            IntPtr windHandle = CommandCheck.CheckUIApp.MainWindowHandle;
+            new WindowInteropHelper(form)
+            {
+                Owner = windHandle
+            };
+
             form.Show();
         }
 
         /// <summary>
         /// Установить фильтрацию элементов в отчете
         /// </summary>
-        private protected abstract void SetWPFEntityFiltration(WPFReportCreator report);
+        private protected virtual void SetWPFEntityFiltration(WPFReportCreator report) => report.SetWPFEntityFiltration_ByErrorHeader();
 
         /// <summary>
         /// Метод для подготовки отчета

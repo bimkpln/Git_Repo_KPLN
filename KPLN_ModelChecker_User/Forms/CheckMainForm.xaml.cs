@@ -1,7 +1,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ExtensibleStorage;
-using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.ExecutableCommand;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
@@ -17,7 +16,6 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace KPLN_ModelChecker_User.Forms
 {
@@ -84,7 +82,7 @@ namespace KPLN_ModelChecker_User.Forms
             UpdateEntityList();
 
             // Блокирую возможность перезапуска у проверок, которые содержат транзакции (они не открываются вне Ревит) или которые содержат подписки на обработчики событий в конексте Revit API
-            if (_externalCommand == nameof(CommandCheckFamilies)) 
+            if (_externalCommand == nameof(CommandCheckFamilies))
                 this.RestartBtn.Visibility = System.Windows.Visibility.Collapsed;
         }
 
@@ -92,7 +90,7 @@ namespace KPLN_ModelChecker_User.Forms
         {
             _esBuilderRun = esBuilderRun;
             _esBuilderUserText = esBuilderUserText;
-            
+
             #region Настраиваю данные блока ключевого лога
             _esBuilderMarker = esBuilderMarker;
             if (!_esBuilderMarker.Guid.Equals(Guid.Empty))
@@ -157,7 +155,7 @@ namespace KPLN_ModelChecker_User.Forms
 
         private void OnSelectClicked(object sender, RoutedEventArgs e)
         {
-            if((sender as Button).DataContext is WPFEntity wpfEntity)
+            if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 if (wpfEntity.Element != null)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(new List<Element>(1) { wpfEntity.Element }));
@@ -171,8 +169,8 @@ namespace KPLN_ModelChecker_User.Forms
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 wpfEntity.BackgroundLightening();
-                
-                if (wpfEntity.IsZoomElement)
+
+                if (wpfEntity.CanZoomed)
                 {
                     if (wpfEntity.Element != null)
                     {
@@ -202,7 +200,7 @@ namespace KPLN_ModelChecker_User.Forms
         {
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
-                if (wpfEntity.IsApproveElement)
+                if (wpfEntity.CanApproved)
                 {
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
                     if ((bool)userTextInput.ShowDialog())

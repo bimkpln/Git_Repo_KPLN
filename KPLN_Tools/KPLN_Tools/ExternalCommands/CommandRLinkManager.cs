@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Forms;
+using System.Windows.Interop;
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -16,6 +17,11 @@ namespace KPLN_Tools.ExternalCommands
             UIApplication uiapp = commandData.Application;
 
             RLinkManagerForm rlinkLoaderForm = new RLinkManagerForm(uiapp);
+            new WindowInteropHelper(rlinkLoaderForm)
+            {
+                Owner = ModuleData.MainWindowHandle,
+            };
+
             rlinkLoaderForm.Show();
 
             return Result.Succeeded;

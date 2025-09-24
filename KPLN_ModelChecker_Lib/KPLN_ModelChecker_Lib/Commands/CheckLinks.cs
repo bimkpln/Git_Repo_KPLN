@@ -9,22 +9,22 @@ namespace KPLN_ModelChecker_Lib.Commands
 {
     public sealed class CheckLinks : AbstrCheck
     {
-        /// <summary>
-        /// Пустой конструктор для внесения данных класса
-        /// </summary>
         public CheckLinks() : base()
         {
             if (PluginName == null)
                 PluginName = "Проверка связей";
 
             if (ESEntity == null)
-                ESEntity = new ExtensibleStorageEntity(PluginName, "KPLN_CheckLinks", new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
+                ESEntity = new ExtensibleStorageEntity(
+                    PluginName,
+                    "KPLN_CheckLinks",
+                    new Guid("045e7890-0ff3-4be3-8f06-1fa1dd7e762e"));
         }
 
 
-        public override Element[] GetElemsToCheck(Document doc)
+        public override Element[] GetElemsToCheck()
         {
-            return new FilteredElementCollector(doc)
+            return new FilteredElementCollector(CheckDocument)
                 .OfCategory(BuiltInCategory.OST_RvtLinks)
                 .WhereElementIsNotElementType()
                 // Фильтрация по имени от вложенных прикрепленных связей
@@ -32,9 +32,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .ToArray();
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
-
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Document doc, Element[] elemColl)
+        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
@@ -74,8 +72,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         "Ошибка общей площадки",
                         "У связи не выбрана общая площадка",
                         "Запрещено размещать связи без общих площадок, т.к. может быть ошибка в пространственном положении связи. " +
-                            "Если не знаешь как исправить - обратись в BIM-отдел",
-                        false));
+                            "Если не знаешь как исправить - обратись в BIM-отдел"));
                 }
 
                 // Анализ наличия нескольких экземпляров связей
@@ -86,8 +83,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         "Ошибка размещения",
                         "Экземпляры данной связи размещены несколько раз",
                         "Проверку необходимо выполнить вручную. Положение связей задается ТОЛЬКО через общую площадку, а наличие нескольких экземпляров разрешено только для типовых этажей."
-                            + "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая",
-                        false));
+                            + "\nВАЖНО: в отчет попала связь БЕЗ площадки, скорее всего её нужно удалить, но всё зависит от конкретного случая"));
                 }
 
                 // Анализ ОП в линках (выкинул в архив, т.к. для автопроверок постоянно занимается РН, плюс юзеру важен факт - дальше сам разберёться)
@@ -162,8 +158,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     errorElems,
                     "Ошибка прикрепления",
                     "Связи необходимо прикрепить (команда 'Прикрепить' ('Pin')) ВНИМАНИЕ: не путать с настройкой типа связи 'Прикрепление' ('Attachment')",
-                    "Это позволит избежать случайного смещения связи пользователем, при работе с моделью",
-                    false);
+                    "Это позволит избежать случайного смещения связи пользователем, при работе с моделью");
             }
 
             return null;
@@ -194,9 +189,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                         link,
                         "Подозрительный путь",
                         $"Большая вероятность, что связь случайно выбрана из архива, т.к. путь: {lDocPath}",
-                        $"Ошибка может быть ложной, если на данном проекте принято такое решение. Перед заменой - ПРОКОНСУЛЬТИРУЙСЯ в BIM-отделе",
-                        false,
-                        ErrorStatus.Warning));
+                        $"Ошибка может быть ложной, если на данном проекте принято такое решение. Перед заменой - ПРОКОНСУЛЬТИРУЙСЯ в BIM-отделе")
+                        .Set_Status(ErrorStatus.Warning));
             }
 
             return result;

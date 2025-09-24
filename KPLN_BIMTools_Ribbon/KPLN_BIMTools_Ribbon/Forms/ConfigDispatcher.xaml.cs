@@ -4,7 +4,6 @@ using KPLN_BIMTools_Ribbon.Forms.Models;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -24,7 +23,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private readonly DBModuleAutostart[] _dbModuleAutostarArrForUser;
         private readonly ObservableCollection<DBRevitDocExchangesWrapper> _dbRevitDocExchWrappers;
 
-        private readonly Logger _logger;
         private readonly DBProject _project;
         private readonly RevitDocExchangeEnum _revitDocExchangeEnum;
         /// <summary>
@@ -34,12 +32,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private readonly int _moduleId = 80;
 
         public ConfigDispatcher(
-            Logger logger,
             DBProject project,
             RevitDocExchangeEnum revitDocExchangeEnum,
             bool isAutoStartConfig)
         {
-            _logger = logger;
             _project = project;
             _revitDocExchangeEnum = revitDocExchangeEnum;
             _isAutoStartConfig = isAutoStartConfig;
@@ -65,7 +61,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     .ToArray();
 
                 // Взвожу галку, если конфиг в списке
-                foreach(DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
+                foreach (DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
                 {
                     DBRevitDocExchangesWrapper selectedExchWr = _dbRevitDocExchWrappers.FirstOrDefault(dExhWr => dExhWr.Id == dBModuleAutostart.DBTableKeyId);
                     if (selectedExchWr == null) continue;
@@ -125,14 +121,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 // Создаю и обновляю новые
                 var selectedDocExch = SelectedDBExchWrappers
                     .Select(docExch => new DBModuleAutostart()
-                        {
-                            UserId = DBMainService.CurrentDBUser.Id,
-                            RevitVersion = ModuleData.RevitVersion,
-                            ProjectId = _project.Id,
-                            ModuleId = _moduleId,
-                            DBTableName = DB_Enumerator.RevitDocExchanges.ToString(),
-                            DBTableKeyId = docExch.Id,
-                        });
+                    {
+                        UserId = DBMainService.CurrentDBUser.Id,
+                        RevitVersion = ModuleData.RevitVersion,
+                        ProjectId = _project.Id,
+                        ModuleId = _moduleId,
+                        DBTableName = DB_Enumerator.RevitDocExchanges.ToString(),
+                        DBTableKeyId = docExch.Id,
+                    });
 
                 DBMainService
                     .ModuleAutostartDbService
@@ -147,9 +143,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             // Создание конфига
             FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
-            SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
+            SQLiteService sqliteService = new SQLiteService(db_FI.FullName, _revitDocExchangeEnum);
 
-            ConfigItem configItem = new ConfigItem(_logger, sqliteService, _project, _revitDocExchangeEnum);
+            ConfigItem configItem = new ConfigItem(sqliteService, _project, _revitDocExchangeEnum);
             if ((bool)configItem.ShowDialog() && configItem.DBRevitDocExchWrapper is DBRevitDocExchangesWrapper dExchEnt)
             {
                 _dbRevitDocExchWrappers.Add(dExchEnt);
@@ -187,8 +183,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 if (menuItem.DataContext is DBRevitDocExchangesWrapper docExchangeEnt)
                 {
-                    SQLiteService sqliteService = new SQLiteService(_logger, docExchangeEnt.SettingDBFilePath, _revitDocExchangeEnum);
-                    ConfigItem configItem = new ConfigItem(_logger, sqliteService, _project,
+                    SQLiteService sqliteService = new SQLiteService(docExchangeEnt.SettingDBFilePath, _revitDocExchangeEnum);
+                    ConfigItem configItem = new ConfigItem(sqliteService, _project,
                         _revitDocExchangeEnum, docExchangeEnt);
 
                     configItem.ShowDialog();
@@ -210,9 +206,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     // Создание конфига
                     FileInfo db_FI = DBEnvironment.GenerateNewPath(_project, _revitDocExchangeEnum);
-                    SQLiteService sqliteService = new SQLiteService(_logger, db_FI.FullName, _revitDocExchangeEnum);
+                    SQLiteService sqliteService = new SQLiteService(db_FI.FullName, _revitDocExchangeEnum);
 
-                    ConfigItem configItem = new ConfigItem(_logger, sqliteService,
+                    ConfigItem configItem = new ConfigItem(sqliteService,
                         _project, _revitDocExchangeEnum, docExchangeEnt);
                     configItem.SettingName = $"{configItem.SettingName}_new_{DateTime.Now:d}";
 
@@ -240,8 +236,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             DeleteDBRevitDocExchange(SelectedDBExchWrappers);
                             foreach (DBRevitDocExchangesWrapper docEcxhWr in SelectedDBExchWrappers)
 
-                            // Блокирую старт, т.к. ничего не выбрано
-                            BtnEnableSwitch();
+                                // Блокирую старт, т.к. ничего не выбрано
+                                BtnEnableSwitch();
                         }
                     }
                     else
@@ -275,8 +271,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private void DeleteDBRevitDocExchange(IEnumerable<DBRevitDocExchangesWrapper> docExchWrappers)
         {
             ExchangeService.RevitDocExchangesDbService.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
-            
-            foreach(DBRevitDocExchangesWrapper docExchWrapper in docExchWrappers)
+
+            foreach (DBRevitDocExchangesWrapper docExchWrapper in docExchWrappers)
             {
                 _dbRevitDocExchWrappers.Remove(docExchWrapper);
 
@@ -318,7 +314,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (item is DBRevitDocExchangesWrapper docExchWrapper)
             {
                 bool isOnlyChecked = (bool)this.OnlySelChBx.IsChecked;
-                
+
                 string userStringInput = this.FilterItems.Text.ToLower();
                 if (string.IsNullOrEmpty(userStringInput) || docExchWrapper.SettingName.ToLower().Contains(userStringInput))
                 {

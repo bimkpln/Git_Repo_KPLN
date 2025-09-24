@@ -590,7 +590,7 @@ namespace KPLN_TaskManager.Forms
                 || CurrentTaskItemEntity.DelegatedDepartmentId == 0)
             {
                 MessageBox.Show(
-                    $"Обязательно заполни заголовок, ответсвенный отдел и описание ошибки, прежде чем ставить задачу",
+                    $"Обязательно заполни заголовок, ответственный отдел и описание ошибки, прежде чем ставить задачу",
                     "Ошибка",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

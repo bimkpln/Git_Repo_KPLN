@@ -9,7 +9,6 @@
         MinHeight="200"
         MaxHeight="900"
         ResizeMode="NoResize"
-        Topmost="True"
         WindowStartupLocation="CenterOwner"
         Background="#FF292D36">
     
