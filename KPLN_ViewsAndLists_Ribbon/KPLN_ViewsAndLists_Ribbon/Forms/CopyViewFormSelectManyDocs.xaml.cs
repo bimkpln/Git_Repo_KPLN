@@ -1,19 +1,20 @@
-﻿using System;
-using System.Windows;
-using System.IO;
-using System.Linq;
-using System.Collections.ObjectModel;
-using Microsoft.Win32;
-using System.Collections.Generic;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
-using Autodesk.Revit.UI.Events;
+using KPLN_Library_SQLiteWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
+using System.Windows;
 
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
@@ -31,19 +32,23 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         const uint WM_CLOSE = 0x0010;
 
         private readonly int _revitVersion;
-        private UIApplication _uiapp;      
-        private Document _mainDocument;
+        private readonly UIApplication _uiapp;
+        private readonly Document _mainDocument;
 
-        private ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
-        private Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
+        private readonly ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
+        private readonly Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
 
-        private bool _synchronizationDocument;
+        private readonly bool _leaveOpened;
 
-        string smallDebugMessage;
-        string debugMessage;
+        private string _smallDebugMessage;
+        private string _debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges, 
-            bool synchronizationDocument, List<string> worksetPrefixName, bool useRevitServer)
+        public ManyDocumentsSelectionWindow(
+            UIApplication uiApp,
+            Document mainDocument,
+            Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges,
+            bool leaveOpened,
+            bool useRevitServer)
         {
             InitializeComponent();
 
@@ -52,11 +57,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _mainDocument = mainDocument;
 
             _viewOnlyTemplateChanges = viewOnlyTemplateChanges;
-            _synchronizationDocument = synchronizationDocument;
+            _leaveOpened = leaveOpened;
 
             ItemsList.ItemsSource = _items;
 
-            debugMessage = "";
+            _debugMessage = "";
 
             if (useRevitServer)
             {
@@ -68,6 +73,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public class FileItem
         {
             public string FullPath { get; set; }
+
+            public string Name
+            {
+                get => FullPath.Split('\\').Last().TrimEnd(".rvt".ToCharArray());
+            }
         }
 
         private void ProcessButton_Click(object sender, RoutedEventArgs e)
@@ -93,279 +103,309 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _uiapp.DialogBoxShowing += OnDialogBoxShowing;
             _uiapp.Application.FailuresProcessing += OnFailureProcessing;
 
-
-
-
-
-
-
-
-
-
-  
-            
-
             List<ModelPath> processedPaths = new List<ModelPath>();
-
-            foreach (FileItem item in _items)
+            try
             {
-                if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
+
+                foreach (FileItem item in _items)
                 {
-                    
-                    Document doc = null;
-
-                    try
+                    bool isWorkShared = false;
+                    if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
                     {
-                        bool isRevitServerPath = item.FullPath.StartsWith("RSN:", StringComparison.OrdinalIgnoreCase);
-                        ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+                        BasicFileInfo basicFileInfo = BasicFileInfo.Extract(item.FullPath);
+                        isWorkShared = basicFileInfo.IsWorkshared;
 
-                        WorksetConfiguration silentWorksetConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-                        OpenOptions silentOptions = new OpenOptions
+                        Document openedDoc = null;
+                        UIDocument openeUIdDoc = null;
+                        try
                         {
-                            DetachFromCentralOption = DetachFromCentralOption.DoNotDetach,
-                            Audit = false
-                        };
-                        silentOptions.SetOpenWorksetsConfiguration(silentWorksetConfig);
+                            ModelPath fileModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
 
-                        doc = _uiapp.Application.OpenDocumentFile(modelPath, silentOptions);                           
-                        debugMessage += $"ИНФО. Получен документ {doc.Title} ({item.FullPath}).\n";
-
-                        processedPaths.Add(modelPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        debugMessage += $"ОШИБКА. Не удалось открыть документ {item.FullPath}: {ex.Message}.\n";
-                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                        continue;
-                    }
-
-                    using (Transaction trans = new Transaction(doc, "KPLN. Копирование шаблонов видов"))
-                    {
-                        trans.Start();
-
-                        // Шаблоны видов
-                        if (_viewOnlyTemplateChanges.Count > 0)
-                        {
-                            foreach (var kvp in _viewOnlyTemplateChanges)
+                            // Определяю имя файла для открытия. Если это ФХ - то нужно открыть локальную копию
+                            ModelPath openDocModelPath = fileModelPath;
+                            if (isWorkShared)
                             {
-                                string viewTemplateName = kvp.Key;
-                                string statusView = kvp.Value.Item1;
-                                string statusResaveInView = kvp.Value.Item2;
-                                string statusCopyView = kvp.Value.Item3;
-                                View templateView = kvp.Value.Item4;
+                                string localFileName = Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\Documents\" + $"{item.Name}_{_uiapp.Application.Username}_{DateTime.Now:HHmmss}.rvt");
+                                ModelPath localOpenDocModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(localFileName);
+                                WorksharingUtils.CreateNewLocal(openDocModelPath, localOpenDocModelPath);
 
-                                if (statusView == "resave" && templateView != null)
+                                openDocModelPath = localOpenDocModelPath;
+                            }
+
+                            WorksetConfiguration silentWorksetConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
+                            OpenOptions silentOptions = new OpenOptions();
+                            silentOptions.SetOpenWorksetsConfiguration(silentWorksetConfig);
+
+                            if (_leaveOpened)
+                            {
+                                openeUIdDoc = _uiapp.OpenAndActivateDocument(openDocModelPath, silentOptions, false);
+                                openedDoc = openeUIdDoc.Document;
+                            }
+                            else
+                                openedDoc = _uiapp.Application.OpenDocumentFile(openDocModelPath, silentOptions);
+
+                            _debugMessage += $"ИНФО. Получен документ {openedDoc.Title} ({item.FullPath}).\n";
+
+                            processedPaths.Add(openDocModelPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            _debugMessage += $"ОШИБКА. Не удалось открыть документ {item.FullPath}: {ex.Message}.\n";
+                            _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                            continue;
+                        }
+
+                        using (Transaction trans = new Transaction(openedDoc, "KPLN. Копирование шаблонов видов"))
+                        {
+                            trans.Start();
+
+                            // Шаблоны видов
+                            if (_viewOnlyTemplateChanges.Count > 0)
+                            {
+                                foreach (var kvp in _viewOnlyTemplateChanges)
                                 {
-                                    View existingTemplate = new FilteredElementCollector(doc)
-                                            .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
-                                    List<View> viewsUsingexistingTemplate = null;
+                                    string viewTemplateName = kvp.Key;
+                                    string statusView = kvp.Value.Item1;
+                                    string statusResaveInView = kvp.Value.Item2;
+                                    string statusCopyView = kvp.Value.Item3;
+                                    View templateView = kvp.Value.Item4;
 
-                                    // Удаление
-                                    if (statusCopyView == "ignoreCopyView")
-                                    {                                       
-                                        if (existingTemplate != null)
+                                    if (statusView == "resave" && templateView != null)
+                                    {
+                                        View existingTemplate = new FilteredElementCollector(openedDoc)
+                                                .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
+                                        List<View> viewsUsingexistingTemplate = null;
+
+                                        // Удаление
+                                        if (statusCopyView == "ignoreCopyView")
                                         {
-                                            viewsUsingexistingTemplate = new FilteredElementCollector(doc)
-                                                .OfClass(typeof(View))
-                                                .Cast<View>()
-                                                .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
-                                                .ToList();
-
-                                            try
+                                            if (existingTemplate != null)
                                             {
-                                                string existingTemplateName = existingTemplate.Name;
-                                                existingTemplate.Name = $"{existingTemplateName}_DeleteTemp{DateTime.Now:yyyyMMddHHmmss}";
-                                                doc.Delete(existingTemplate.Id);
+                                                viewsUsingexistingTemplate = new FilteredElementCollector(openedDoc)
+                                                    .OfClass(typeof(View))
+                                                    .Cast<View>()
+                                                    .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
+                                                    .ToList();
 
-                                                debugMessage += $"ИНФО. Временный шаблон {existingTemplate.ToString()} удалён.\n";
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                debugMessage += $"ОШИБКА. Не удалось удалить шаблон {existingTemplate.ToString()}: {ex.Message}.\n";
-                                                smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                                                continue;
-                                            }
-                                        }                                        
-                                                                             
-                                        CopyPasteOptions options = new CopyPasteOptions();
-                                        options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
-                                        ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
-                                            _mainDocument,
-                                            new List<ElementId> { templateView.Id },
-                                            doc,
-                                            null,
-                                            options
-                                        );                                       
-
-                                        ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
-                                        View copiedTemplateViewNew = doc.GetElement(copiedTemplateIdNew) as View;
-                                        string templateName = templateView.Name;
-
-                                        try
-                                        {
-                                            copiedTemplateViewNew.Name = viewTemplateName;
-
-                                            debugMessage += $"ИНФО. Шаблон {viewTemplateName} переименован.\n";
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {viewTemplateName}: {ex.Message}\n";
-                                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                                            continue;
-                                        }
-
-                                        if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
-                                        {
-                                            foreach (View view in viewsUsingexistingTemplate)
-                                            {
                                                 try
                                                 {
-                                                    view.ViewTemplateId = copiedTemplateIdNew;
+                                                    string existingTemplateName = existingTemplate.Name;
+                                                    existingTemplate.Name = $"{existingTemplateName}_DeleteTemp{DateTime.Now:yyyyMMddHHmmss}";
+                                                    openedDoc.Delete(existingTemplate.Id);
 
-                                                    debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
+                                                    _debugMessage += $"ИНФО. Временный шаблон {existingTemplate.ToString()} удалён.\n";
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
-                                                    smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                                    _debugMessage += $"ОШИБКА. Не удалось удалить шаблон {existingTemplate.ToString()}: {ex.Message}.\n";
+                                                    _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
                                                     continue;
+                                                }
+                                            }
+
+                                            CopyPasteOptions options = new CopyPasteOptions();
+                                            options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
+                                            ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
+                                                _mainDocument,
+                                                new List<ElementId> { templateView.Id },
+                                                openedDoc,
+                                                null,
+                                                options
+                                            );
+
+                                            ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                                            View copiedTemplateViewNew = openedDoc.GetElement(copiedTemplateIdNew) as View;
+                                            string templateName = templateView.Name;
+
+                                            try
+                                            {
+                                                copiedTemplateViewNew.Name = viewTemplateName;
+
+                                                _debugMessage += $"ИНФО. Шаблон {viewTemplateName} переименован.\n";
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                _debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {viewTemplateName}: {ex.Message}\n";
+                                                _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                                continue;
+                                            }
+
+                                            if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
+                                            {
+                                                foreach (View view in viewsUsingexistingTemplate)
+                                                {
+                                                    try
+                                                    {
+                                                        view.ViewTemplateId = copiedTemplateIdNew;
+
+                                                        _debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        _debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
+                                                        _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                                        continue;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else if (statusCopyView == "copyView")
+                                        {
+                                            if (existingTemplate != null)
+                                            {
+                                                viewsUsingexistingTemplate = new FilteredElementCollector(openedDoc)
+                                                    .OfClass(typeof(View))
+                                                    .Cast<View>()
+                                                    .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
+                                                    .ToList();
+
+                                                try
+                                                {
+                                                    existingTemplate.Name = $"{viewTemplateName}_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+                                                    _debugMessage += $"ИНФО. Шаблон {existingTemplate.Name} переименован.\n";
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    _debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n";
+                                                    _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                                    continue;
+                                                }
+                                            }
+
+                                            CopyPasteOptions options = new CopyPasteOptions();
+                                            options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
+                                            ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
+                                                _mainDocument,
+                                                new List<ElementId> { templateView.Id },
+                                                openedDoc,
+                                                null,
+                                                options
+                                            );
+
+                                            ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
+                                            View copiedTemplateViewNew = openedDoc.GetElement(copiedTemplateIdNew) as View;
+
+                                            copiedTemplateViewNew.Name = viewTemplateName;
+
+                                            if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
+                                            {
+                                                foreach (View view in viewsUsingexistingTemplate)
+                                                {
+                                                    try
+                                                    {
+                                                        view.ViewTemplateId = copiedTemplateIdNew;
+
+                                                        _debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        _debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
+                                                        _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                                        continue;
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                    else if (statusCopyView == "copyView")
-                                    {
-                                        if (existingTemplate != null)
-                                        {
-                                            viewsUsingexistingTemplate = new FilteredElementCollector(doc)
-                                                .OfClass(typeof(View))
-                                                .Cast<View>()
-                                                .Where(v => !v.IsTemplate && v.ViewTemplateId == existingTemplate.Id)
-                                                .ToList();
-
-                                            try
-                                            {
-                                                existingTemplate.Name = $"{viewTemplateName}_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-                                                debugMessage += $"ИНФО. Шаблон {existingTemplate.Name} переименован.\n";
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                debugMessage += $"ОШИБКА. Не удалось переименовать шаблон {existingTemplate.Name}: {ex.Message}\n";
-                                                smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                                                continue;
-                                            }
-                                        }
-                                                                             
-                                        CopyPasteOptions options = new CopyPasteOptions();
-                                        options.SetDuplicateTypeNamesHandler(new ReplaceDuplicateTypeNamesHandler());
-                                        ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(
-                                            _mainDocument,
-                                            new List<ElementId> { templateView.Id },
-                                            doc,
-                                            null,
-                                            options
-                                        );
-                                        
-                                        ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
-                                        View copiedTemplateViewNew = doc.GetElement(copiedTemplateIdNew) as View;
-
-                                        copiedTemplateViewNew.Name = viewTemplateName;
-
-                                        if (statusResaveInView == "resaveIV" && viewsUsingexistingTemplate != null)
-                                        {
-                                            foreach (View view in viewsUsingexistingTemplate)
-                                            {
-                                                try
-                                                {
-                                                    view.ViewTemplateId = copiedTemplateIdNew;
-
-                                                    debugMessage += $"ИНФО. Шаблон {copiedTemplateViewNew.Name} назначен на вид {view.Name}.\n";
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    debugMessage += $"ОШИБКА. Не удалось назначить шаблон {copiedTemplateViewNew.Name} на вид '{view.Name}': {ex.Message}.\n";
-                                                    smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                                                    continue;
-                                                }
-                                            }
-                                        }                                        
-                                    }                              
                                 }
                             }
+
+                            trans.Commit();
                         }
 
-                        trans.Commit();
-                    }
-                    try
-                    {
-                        doc.Save();
-                        debugMessage += $"ИНФО. Документ сохранён {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
-                    }
-                    catch (Exception ex)
-                    {
-                        debugMessage += $"ОШИБКА. Не удалось сохранить документ {item.FullPath}: {ex.Message}.\n";
-                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                        continue;
-                    }
 
-                    if (doc.IsWorkshared && _synchronizationDocument)
-                    {
-                        try
+                        if (_leaveOpened)
+                            _smallDebugMessage += $"ИНФО. {item.FullPath}: " +
+                                $"Документ обработан и оставлен открытым. " +
+                                $"\n!!!ВАЖНО!!! Изменения НЕ сохранены/синхронизированы, подразумевается пользовательские действия по сохранению/синхронизации.\n";
+                        else
                         {
-                            var options = new SynchronizeWithCentralOptions();
-                            var transOptions = new TransactWithCentralOptions();
-                            var relinquishOptions = new RelinquishOptions(true)
+                            // Синхронизирую модель из хранилища
+                            if (isWorkShared)
                             {
-                                StandardWorksets = true,
-                                FamilyWorksets = true,
-                                ViewWorksets = true,
-                                UserWorksets = true
-                            };
+                                try
+                                {
+                                    var options = new SynchronizeWithCentralOptions();
+                                    var transOptions = new TransactWithCentralOptions();
+                                    var relinquishOptions = new RelinquishOptions(true)
+                                    {
+                                        StandardWorksets = true,
+                                        FamilyWorksets = true,
+                                        ViewWorksets = true,
+                                        UserWorksets = true
+                                    };
 
-                            options.SetRelinquishOptions(relinquishOptions);
-                            options.Comment = "Автоматическая синхронизация через скрипт";
+                                    options.SetRelinquishOptions(relinquishOptions);
+                                    options.Comment = "Автоматическая синхронизация через скрипт";
 
-                            doc.SynchronizeWithCentral(transOptions, options);
+                                    openedDoc.SynchronizeWithCentral(transOptions, options);
 
-                            debugMessage += $"ИНФО. Документ синхронизирован {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
-                        }
-                        catch (Exception ex)
-                        {
-                            debugMessage += $"ОШИБКА. Не удалось синхронизировать документ {item.FullPath}: {ex.Message}.\n";
-                            smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                            continue;
+                                    _debugMessage += $"ИНФО. Документ синхронизирован {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                                }
+                                catch (Exception ex)
+                                {
+                                    _debugMessage += $"ОШИБКА. Не удалось синхронизировать документ {item.FullPath}: {ex.Message}.\n";
+                                    _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                    continue;
+                                }
+                            }
+                            // Сохраняю обычный файл
+                            else
+                            {
+                                try
+                                {
+                                    openedDoc.Save();
+                                    _debugMessage += $"ИНФО. Документ сохранён {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                                }
+                                catch (Exception ex)
+                                {
+                                    _debugMessage += $"ОШИБКА. Не удалось сохранить документ {item.FullPath}: {ex.Message}.\n";
+                                    _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                    continue;
+                                }
+                            }
+
+                            // Закрываю файл
+                            try
+                            {
+                                openedDoc.Close(false);
+                                _debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
+                            }
+                            catch (Exception ex)
+                            {
+                                _debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex.Message}.\n";
+                                _smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
+                                continue;
+                            }
+
+                            _smallDebugMessage += $"ИНФО. {item.FullPath}: Документ обработан, изменения сохранены/синхронизированы.\n";
                         }
                     }
-             
-                    try
-                    {
-                        doc.Close(false);
-                        debugMessage += $"ИНФО. Документ закрыт {Path.GetFileNameWithoutExtension(item.FullPath)} ({item.FullPath}).\n";
-                    }
-                    catch (Exception ex)
-                    {
-                        debugMessage += $"ОШИБКА. Не удалось закрыть документ {item.FullPath}: {ex.Message}.\n";
-                        smallDebugMessage += $"ОШИБКА. {item.FullPath}: {ex.Message}.\n";
-                        continue;
-                    }                   
                 }
 
-                smallDebugMessage += $"ИНФО. Документ обработан - {item.FullPath}.\n";
+                // Закрываю это окно
+                this.Close();
+
+                // Закрываю основное окно
+                IntPtr hWnd = FindWindow(null, "KPLN. Копирование шаблонов вида");
+                if (hWnd != IntPtr.Zero)
+                    PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+
             }
-           
-            _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
-            _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
-
-            this.Close();
-
-            IntPtr hWnd = FindWindow(null, "KPLN. Копирование шаблонов вида");
-            if (hWnd != IntPtr.Zero)
+            catch (Exception ex)
             {
-                PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                _debugMessage += $"ОШИБКА. Обратисть к разработчику. Работа остановлена с критической ошибкой: {ex.Message}.\n";
+                _smallDebugMessage += $"ОШИБКА. Обратисть к разработчику. Работа остановлена с критической ошибкой: {ex.Message}.\n";
+            }
+            finally
+            {
+                _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
+                _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
             }
 
-            DebugMessageWindow debugWindow = new DebugMessageWindow (_uiapp,smallDebugMessage, debugMessage, processedPaths);
+            // Открываю окно с результатами
+            DebugMessageWindow debugWindow = new DebugMessageWindow(_uiapp, _smallDebugMessage, _debugMessage, processedPaths);
             debugWindow.ShowDialog();
         }
 
@@ -390,14 +430,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        private void AddButton_RevitServer_Click (object sender, RoutedEventArgs e)
+        private void AddButton_RevitServer_Click(object sender, RoutedEventArgs e)
         {
 
             ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
             if (rsFilesPickForm == null)
                 return;
 
-            if ((bool) rsFilesPickForm.ShowDialog())
+            if ((bool)rsFilesPickForm.ShowDialog())
             {
                 foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
                 {
@@ -449,12 +489,37 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         internal void OnDialogBoxShowing(object sender, DialogBoxShowingEventArgs args)
         {
             if (args.Cancellable)
-            {
                 args.Cancel();
-            }
             else
-            {                
-                return;              
+            {
+                DBRevitDialog currentDBDialog = null;
+                if (string.IsNullOrEmpty(args.DialogId))
+                {
+                    TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
+                    currentDBDialog = DBMainService
+                        .DBRevitDialogColl
+                        .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+                }
+                else
+                    currentDBDialog = DBMainService
+                        .DBRevitDialogColl
+                        .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
+
+                if (currentDBDialog == null)
+                {
+                    _smallDebugMessage += $"ОШИБКА. Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека";
+                    return;
+                }
+
+                if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
+                {
+                    if (args.OverrideResult((int)taskDialogResult))
+                        _smallDebugMessage += $"ИНФО. Окно {args.DialogId} успешно закрыто. Была применена команда {currentDBDialog.OverrideResult}";
+                    else
+                        _smallDebugMessage += $"ОШИБКА. Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!";
+                }
+                else
+                    _smallDebugMessage += $"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!";
             }
         }
 

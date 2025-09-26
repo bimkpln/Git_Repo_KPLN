@@ -123,14 +123,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         public void Execute(UIApplication app)
         {
-            var appDoc = _uiapp.Application;
-
             var wsCfg = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-            var opts = new OpenOptions
-            {
-                DetachFromCentralOption = DetachFromCentralOption.DoNotDetach,
-                Audit = false
-            };
+            var opts = new OpenOptions();
             opts.SetOpenWorksetsConfiguration(wsCfg);
 
             while (_queue.Count > 0)
@@ -152,7 +146,4 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         public string GetName() => "KPLN.OpenBatchHandler";
     }
-
-
-
 }

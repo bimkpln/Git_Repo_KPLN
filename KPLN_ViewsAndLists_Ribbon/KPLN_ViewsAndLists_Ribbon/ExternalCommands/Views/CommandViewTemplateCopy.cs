@@ -14,10 +14,8 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
         {
             //Получение объектов приложения и документа
             UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
 
-            CopyViewForm copyViewForm = new CopyViewForm(uiapp, null, null);
+            CopyViewForm copyViewForm = new CopyViewForm(uiapp);
             copyViewForm.ShowDialog();
 
             return Result.Failed;

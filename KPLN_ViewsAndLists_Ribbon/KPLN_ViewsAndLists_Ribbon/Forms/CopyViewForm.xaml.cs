@@ -29,22 +29,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     {
         private readonly ExternalEvent _copyEvent;
         private readonly CopyViewExternalHandler _copyHandler;
-
-        UIApplication _uiapp;
-
-        Document mainDocument = null;
+        private readonly UIApplication _uiapp;
+        private readonly Document _mainDocument;
 
         SortedDictionary<string, View> mainTemplates;
         private Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, string, View>>();
 
-        public CopyViewForm(UIApplication uiapp, Document heritageMainDocument, Document heritageAdditionalDocument)
+        public CopyViewForm(UIApplication uiapp)
         {
             InitializeComponent();
             _uiapp = uiapp;
 
-            mainDocument = uiapp.ActiveUIDocument.Document;           
-            string mainDocPath = mainDocument.PathName;
-            string mainDocName = mainDocument.Title;
+            _mainDocument = uiapp.ActiveUIDocument.Document;           
+            string mainDocPath = _mainDocument.PathName;
+            string mainDocName = _mainDocument.Title;
 
             if (mainDocPath != null && mainDocName != null)
             {
@@ -52,7 +50,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 TB_ActivDocumentName.ToolTip = $"{mainDocPath}";
             }
 
-            DisplayAllTemplatesInPanel(mainDocument);
+            DisplayAllTemplatesInPanel(_mainDocument);
 
             _copyHandler = new CopyViewExternalHandler();
             _copyEvent = ExternalEvent.Create(_copyHandler);
@@ -246,8 +244,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             List<Document> openedDocs = _uiapp.Application.Documents
                 .Cast<Document>()
                 .Where(doc =>
-                    doc.PathName != mainDocument.PathName &&             
-                    !doc.PathName.Equals(mainDocument.PathName, StringComparison.OrdinalIgnoreCase) &&
+                    doc.PathName != _mainDocument.PathName &&             
+                    !doc.PathName.Equals(_mainDocument.PathName, StringComparison.OrdinalIgnoreCase) &&
                     !doc.IsLinked)          
                 .ToList();
 
@@ -263,16 +261,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool synchronizationDocument = CHK_SynchronizationDocument.IsChecked ?? false;
-
-            string inputText = "#";
-            List<string> worksetPrefixName = inputText
-                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(word => word.Trim())
-                .ToList();
-
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, synchronizationDocument, worksetPrefixName, false);
-            openManeDocsWindows.Owner = this;       
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, false)
+            {
+                Owner = this
+            };
             openManeDocsWindows.ShowDialog();
         }
 
@@ -281,8 +273,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             List<Document> openedDocs = _uiapp.Application.Documents
                 .Cast<Document>()
                 .Where(doc =>
-                    doc.PathName != mainDocument.PathName &&
-                    !doc.PathName.Equals(mainDocument.PathName, StringComparison.OrdinalIgnoreCase) &&
+                    doc.PathName != _mainDocument.PathName &&
+                    !doc.PathName.Equals(_mainDocument.PathName, StringComparison.OrdinalIgnoreCase) &&
                     !doc.IsLinked)
                 .ToList();
 
@@ -298,15 +290,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            bool synchronizationDocument = CHK_SynchronizationDocument.IsChecked ?? false;
-            string inputText = "#";
-            List<string> worksetPrefixName = inputText
-                .Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(word => word.Trim())
-                .ToList();
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, mainDocument, viewOnlyTemplateChanges, synchronizationDocument, worksetPrefixName, true);
-            openManeDocsWindows.Owner = this;
+            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, true)
+            {
+                Owner = this
+            };
             openManeDocsWindows.ShowDialog();
         }
     }
