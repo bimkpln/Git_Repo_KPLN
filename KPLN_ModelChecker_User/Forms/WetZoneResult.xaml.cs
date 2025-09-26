@@ -38,6 +38,8 @@ namespace KPLN_ModelChecker_User.Forms
             AddViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать мокрые зоны над кухнями", kitchenUnderWet);
             AddViolationBlocks("СП 54.13330.2022 (7.21): Недопустимо размещать кухни над жилыми помещениями", kitchenOverLiving);
             AddInvalidEquipmentViolationBlocks("СП 54.13330.2022 (7.20): Недопустимо размещать стиральные машины и другое «мокрое» оборудование над жилыми помещениями", InvalidEquipmentOverLiving);
+
+            ShowNoViolationsBannerIfEmpty();
         }
 
         // Заполнение интерфейса информацией. Квартиры
@@ -393,6 +395,34 @@ namespace KPLN_ModelChecker_User.Forms
             }
 
             return result;
+        }
+
+        // Нарушений не найдено
+        private void ShowNoViolationsBannerIfEmpty()
+        {
+            if (ViolationsPanel.Children.Count > 0) return;
+
+            var text = new TextBlock
+            {
+                Text = "Нарушений не найдено",
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.ForestGreen,
+                Margin = new Thickness(0)
+            };
+
+            var border = new Border
+            {
+                BorderThickness = new Thickness(1),
+                BorderBrush = Brushes.Gray,
+                Background = new SolidColorBrush((System.Windows.Media.Color)ColorConverter.ConvertFromString("#FFEFFAEF")),
+                Margin = new Thickness(0, 6, 0, 6),
+                Padding = new Thickness(8),
+                CornerRadius = new CornerRadius(6),
+                Child = text
+            };
+
+            ViolationsPanel.Children.Add(border);
         }
 
     }
