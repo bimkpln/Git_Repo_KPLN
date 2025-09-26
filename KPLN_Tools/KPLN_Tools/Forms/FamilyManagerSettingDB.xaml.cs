@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SQLite; 
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Data.SQLite; 
+using System.Text.RegularExpressions;
 
 namespace KPLN_Tools.Forms
 {
@@ -14,23 +15,40 @@ namespace KPLN_Tools.Forms
         public FamilyManagerSettingDB()
         {
             InitializeComponent();
+            Loaded += FamilyManagerSettingDB_Loaded;
+        }
+
+        private void FamilyManagerSettingDB_Loaded(object sender, RoutedEventArgs e)
+        {
+            string currentUser = Environment.UserName;
+
+            if (!string.Equals(currentUser, "rtuleninov", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    $"Текущий пользователь: {currentUser}\nДоступ разрешён только для rtuleninov.",
+                    "Отказано в доступе",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                DialogResult = false; 
+                Close();       
+            }
         }
 
         private void OnSelectionChanged(object sender, RoutedEventArgs e)
         {
-            btnDelete.IsEnabled = cbDept.IsChecked == true || cbInfo.IsChecked == true || cbImage.IsChecked == true;
+            btnDelete.IsEnabled = cbInfo.IsChecked == true || cbImage.IsChecked == true;
         }
 
         private async void Delete_Click(object sender, RoutedEventArgs e)
         {
-            bool delDept = cbDept.IsChecked == true;
             bool delInfo = cbInfo.IsChecked == true;
             bool delImage = cbImage.IsChecked == true;
 
-            if (!delDept && !delInfo && !delImage)
+            if (!delInfo && !delImage)
                 return;
 
-            var confirm = MessageBox.Show(BuildConfirmText(delDept, delInfo, delImage), "Подтверждение удаления", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+            var confirm = MessageBox.Show(BuildConfirmText(delInfo, delImage), "Подтверждение удаления", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
 
             if (confirm != MessageBoxResult.OK)
                 return;
@@ -39,7 +57,7 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                await DoDeletionAsync(delDept, delInfo, delImage);
+                await DoDeletionAsync(delInfo, delImage);
 
                 MessageBox.Show("Удаление выполнено.", "Готово",
                                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -54,16 +72,15 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        private static string BuildConfirmText(bool delDept, bool delInfo, bool delImage)
+        private static string BuildConfirmText(bool delInfo, bool delImage)
         {
             string list = "";
-            if (delDept) list += "• Отдел\n";
             if (delInfo) list += "• Информация\n";
             if (delImage) list += "• Изображение\n";
             return "Удалить следующие элементы (для всех записей)?\n" + list.TrimEnd();
         }
 
-        private Task DoDeletionAsync(bool delDept, bool delInfo, bool delImage)
+        private Task DoDeletionAsync(bool delInfo, bool delImage)
         {
             return Task.Run(() =>
             {
@@ -71,7 +88,6 @@ namespace KPLN_Tools.Forms
                     throw new FileNotFoundException("Не найден файл базы данных.", DB_PATH);
 
                 var setParts = new List<string>();
-                if (delDept) setParts.Add("DEPARTAMENT = NULL");
                 if (delInfo) setParts.Add("IMPORT_INFO = NULL");
                 if (delImage) setParts.Add("IMAGE = NULL");
 
@@ -105,6 +121,6 @@ namespace KPLN_Tools.Forms
         {
             DialogResult = false;
             Close();
-        }
+        }      
     }
 }

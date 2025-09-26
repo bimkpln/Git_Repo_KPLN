@@ -13,14 +13,10 @@ namespace KPLN_Tools.Forms
             cbImportParams.Checked += CbImportParams_Checked;
 
             cbDepartment.Checked += AnyOther_Checked;
-            cbStage.Checked += AnyOther_Checked;
-            cbProject.Checked += AnyOther_Checked;
             cbFamilyImage.Checked += AnyOther_Checked;
         }
 
         public bool DoDepartment => cbDepartment.IsChecked == true;
-        public bool DoStage => cbStage.IsChecked == true;
-        public bool DoProject => cbProject.IsChecked == true;
         public bool DoImportParams => cbImportParams.IsChecked == true;
         public bool DoFamilyImage => cbFamilyImage.IsChecked == true;
 
@@ -31,8 +27,6 @@ namespace KPLN_Tools.Forms
             try
             {
                 cbDepartment.IsChecked = false;
-                cbStage.IsChecked = false;
-                cbProject.IsChecked = false;
                 cbFamilyImage.IsChecked = false;
             }
             finally { _updating = false; }
