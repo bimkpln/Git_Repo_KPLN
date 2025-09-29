@@ -73,6 +73,10 @@
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Looker">
+      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2023\KPLN_Looker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitServerAPILib">

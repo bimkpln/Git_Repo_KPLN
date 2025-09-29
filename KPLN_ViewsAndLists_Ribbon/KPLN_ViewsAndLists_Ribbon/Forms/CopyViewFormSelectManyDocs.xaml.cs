@@ -102,6 +102,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             _uiapp.DialogBoxShowing += OnDialogBoxShowing;
             _uiapp.Application.FailuresProcessing += OnFailureProcessing;
+            KPLN_Looker.Module.RunAutoChecks = false;
 
             List<ModelPath> processedPaths = new List<ModelPath>();
             try
@@ -402,6 +403,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             {
                 _uiapp.DialogBoxShowing -= OnDialogBoxShowing;
                 _uiapp.Application.FailuresProcessing -= OnFailureProcessing;
+                KPLN_Looker.Module.RunAutoChecks = true;
             }
 
             // Открываю окно с результатами
