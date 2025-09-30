@@ -54,10 +54,25 @@
             
             <GroupBox Header="Документы для обработки" Margin="5 7 0 0" FontSize="12" Width="296px" HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal" Margin="5">
-                    <Button x:Name="BTN_RunManyFile" HorizontalAlignment="Right" IsEnabled="False" Content="Локальный диск"
-                    Width="130" Height="24" FontSize="12" Margin="0 0 10 0" Click="BTN_RunManyFile_Click"/>
-                    <Button x:Name="BTN_RunManyFileRS" HorizontalAlignment="Right" IsEnabled="False" Content="Revit-сервер"
-                    Width="130" Height="24" FontSize="12" Click="BTN_RunManyFileRS_Click"/>
+                    <Button 
+                        x:Name="BTN_RunManyFile" 
+                        HorizontalAlignment="Right" 
+                        IsEnabled="False" 
+                        Content="Локальный диск"
+                        Width="130" 
+                        Height="24" 
+                        FontSize="12" 
+                        Margin="0 0 10 0" 
+                        Click="BTN_RunManyFile_Click"/>
+                    <Button 
+                        x:Name="BTN_RunManyFileRS" 
+                        HorizontalAlignment="Right" 
+                        IsEnabled="False" 
+                        Content="Revit-сервер"
+                        Width="130" 
+                        Height="24" 
+                        FontSize="12" 
+                        Click="BTN_RunManyFileRS_Click"/>
                 </StackPanel>
             </GroupBox>
         </Grid>

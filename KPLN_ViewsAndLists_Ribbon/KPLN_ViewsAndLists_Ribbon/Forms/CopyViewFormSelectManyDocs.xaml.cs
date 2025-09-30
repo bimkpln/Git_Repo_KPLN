@@ -113,14 +113,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     bool isWorkShared = false;
                     if (File.Exists(item.FullPath) || item.FullPath.Contains("RSN"))
                     {
-                        BasicFileInfo basicFileInfo = BasicFileInfo.Extract(item.FullPath);
-                        isWorkShared = basicFileInfo.IsWorkshared;
-
                         Document openedDoc = null;
                         UIDocument openeUIdDoc = null;
                         try
                         {
                             ModelPath fileModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(item.FullPath);
+
+                            if (fileModelPath.ServerPath)
+                                isWorkShared = true;
+                            else
+                            {
+                                BasicFileInfo basicFileInfo = BasicFileInfo.Extract(item.FullPath);
+                                isWorkShared = basicFileInfo.IsWorkshared;
+                            }
 
                             // Определяю имя файла для открытия. Если это ФХ - то нужно открыть локальную копию
                             ModelPath openDocModelPath = fileModelPath;
@@ -383,6 +388,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             _smallDebugMessage += $"ИНФО. {item.FullPath}: Документ обработан, изменения сохранены/синхронизированы.\n";
                         }
                     }
+                    else
+                        throw new Exception($"Файл по указанному пути - отсутсвует: {item.FullPath}");
                 }
 
                 // Закрываю это окно
