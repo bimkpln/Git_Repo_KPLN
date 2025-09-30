@@ -213,6 +213,7 @@ namespace KPLN_Looker
                 || (!activeView.Title.ToUpper().Contains("BIM360")
                     && !activeView.Title.ToUpper().Contains("NAVISWORKS")
                     && !activeView.Title.ToUpper().Contains("GSTATION")
+                    && !activeView.Title.ToUpper().Contains("KPLN_NW_")
                     && !activeView.Title.ToUpper().Contains("NWC")
                     && !activeView.Title.ToUpper().Contains("NWD"))
                 || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
