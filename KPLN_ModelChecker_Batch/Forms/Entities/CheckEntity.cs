@@ -1,11 +1,13 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Core;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace KPLN_ModelChecker_Batch.Forms.Entities
 {
+    /// <summary>
+    /// Данные по проверке
+    /// </summary>
     public sealed class CheckEntity : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -32,7 +34,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
         public AbstrCheck CurrentAbstrCheck { get; }
 
-        public CheckerEntity[] RunCommand()
+        public CheckResultStatus RunCommand()
         {
             Element[] elemsToCheck = CurrentAbstrCheck.GetElemsToCheck();
             return CurrentAbstrCheck.ExecuteCheck(elemsToCheck, false);

@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_Forms.UI;
+using KPLN_ModelChecker_Batch.Forms.Entities;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
@@ -10,6 +11,9 @@ using Excel = Microsoft.Office.Interop.Excel;
 
 namespace KPLN_ModelChecker_Batch.Common
 {
+    /// <summary>
+    /// Обертка основных данных проверки для каждого проверяемого файла.
+    /// </summary>
     internal struct ExcelDataEntity
     {
         internal string CheckRunData { get; set; }
@@ -29,13 +33,20 @@ namespace KPLN_ModelChecker_Batch.Common
         internal List<CheckData> ChecksData { get; set; }
     }
 
+    /// <summary>
+    /// Обертка результатов проверки для каждого проверяемого файла.
+    /// ВАЖНО: Напрямую ссылку на CheckEntity делать нельзя, т.к. все внутренности перезаписываются по новому открытому файлу. Только через эту оболочку!
+    /// </summary>
     internal struct CheckData
     {
-        internal string PluginName {  get; set; }
+        internal string PluginName { get; set; }
+        
+        /// <summary>
+        /// Копия данных по результатам проверки (напрямую из проверки - НЕ ЗАБИРАТЬ)
+        /// </summary>
+        internal CheckerEntity[] PluginCheckerEntitiesColl { get; set; }
 
-        internal AbstrCheck[] AbstrCheckes { get; set; }
-
-        internal CheckerEntity[] CheckerEntities { get; set; }
+        internal CheckResultStatus CheckRunResult { get; set; }
     }
 
     /// <summary>
@@ -74,7 +85,7 @@ namespace KPLN_ModelChecker_Batch.Common
         {
             // Имя проверок с кастомным набором полей
             string checkLinksName = new CheckLinks().PluginName;
-            
+
             Excel.Application excelApp = new Excel.Application
             {
                 SheetsInNewWorkbook = excelEntities.Length
@@ -99,7 +110,7 @@ namespace KPLN_ModelChecker_Batch.Common
                 worksheet.Columns[1].ColumnWidth = 30;
                 worksheet.Cells[1, 1].Value = "ОБЩИЕ СВЕДЕНИЯ:";
                 worksheet.Cells[1, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Yellow);
-                worksheet.Cells[1, 1].Font.Bold= true;
+                worksheet.Cells[1, 1].Font.Bold = true;
                 worksheet.Cells[2, 1].Value = "Дата/время";
                 worksheet.Cells[2, 2].Value = excelEnt.CheckRunData;
                 worksheet.Cells[3, 1].Value = "Название файла";
@@ -115,7 +126,7 @@ namespace KPLN_ModelChecker_Batch.Common
                 worksheet.Cells[8, 1].Value = "ВЫЯВЛЕННЫЕ ОШИБКИ:";
                 worksheet.Cells[8, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Yellow);
                 worksheet.Cells[8, 1].Font.Bold = true;
-                
+
                 int row = 9;
                 // Пометка для дополнительной строки ошибки открытых линков
                 bool allLinksOpened = excelEnt.OpenedLinks == excelEnt.CountedLinks;
@@ -126,7 +137,7 @@ namespace KPLN_ModelChecker_Batch.Common
                     worksheet.Cells[row, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Orange);
                     worksheet.Cells[row, 2].Value = chData.PluginName;
                     worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Orange);
-                    
+
                     // Кастомный заголовок для проверки связей
                     if (!allLinksOpened && chData.PluginName == checkLinksName)
                     {
@@ -137,13 +148,42 @@ namespace KPLN_ModelChecker_Batch.Common
                         worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
                     }
 
+                    // Кастомный заголовок для проверок с критической ошибкой запуска
+                    if (chData.CheckRunResult == CheckResultStatus.Failed)
+                    {
+                        row++;
+                        worksheet.Cells[row, 1].Value = "!!!Внимание!!!";
+                        worksheet.Cells[row, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                        worksheet.Cells[row, 2].Value = "Проверку НЕВОЗМОЖНО запустить автоматически. Нужен ручной запуск пользователем, чтобы исправить критические ошибки при запуске";
+                        worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                        row += 2;
+
+                        // Выхожу из цикла, т.к. показывать в отчете нечего
+                        continue;
+                    }
+
+                    // Кастомный заголовок для проверок с ошибкой, при которой НЕТ элементов для проверки
+                    if (chData.CheckRunResult == CheckResultStatus.NoItemsToCheck)
+                    {
+                        row++;
+                        worksheet.Cells[row, 1].Value = "!!!Внимание!!!";
+                        worksheet.Cells[row, 1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                        worksheet.Cells[row, 2].Value = "Проверку НЕВОЗМОЖНО запустить, т.к. в модели нет подходящих элементов";
+                        worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Red);
+                        row += 2;
+
+                        // Выхожу из цикла, т.к. показывать в отчете нечего
+                        continue;
+                    }
+
 
                     Dictionary<string, string> checkerEntityData = GetStringFromat(chData);
 
                     int column = 2;
-                    foreach(var kvp in checkerEntityData)
+                    foreach (var kvp in checkerEntityData)
                     {
                         worksheet.Columns[column].ColumnWidth = 100;
+
 
                         worksheet.Cells[row + 1, 1].Value = "Описание ошибки";
                         worksheet.Cells[row + 1, column].Value = kvp.Key;
@@ -152,9 +192,10 @@ namespace KPLN_ModelChecker_Batch.Common
                         worksheet.Cells[row + 2, 1].Value = "ID/Имена элементов";
                         worksheet.Cells[row + 2, column].Value = kvp.Value;
 
+
                         column++;
                     }
-                    
+
                     // Добавляется кол-во строк
                     row += 4;
                 }
@@ -213,21 +254,21 @@ namespace KPLN_ModelChecker_Batch.Common
         /// <returns>1 - Описание ошибок; 2 - ID/Имя-элементов </returns>
         private static Dictionary<string, string> GetStringFromat(CheckData chData)
         {
-            CheckerEntity[] docErrors = chData.CheckerEntities;
+            CheckerEntity[] docErrors = chData.PluginCheckerEntitiesColl;
 
-            if (docErrors == null || docErrors.Length == 0)
-            {
-                return
-                    new Dictionary<string, string>()
-                    {
-                        { "Ошибок не выявлено!", "-" },
-                    };
-            }
+            // Если ошибок не выявили
+            if (chData.CheckRunResult == CheckResultStatus.Succeeded && docErrors.Length == 0)
+                return new Dictionary<string, string>()
+                {
+                    { "Ошибок не выявлено!", "-" }
+                };
+
 
             // Имя проверок-исключений, для которых вместо ID - нужен кастом
             string checkFamName = new CheckFamilies().PluginName;
 
 
+            // Генерирую словарь
             Dictionary<string, string> dict = new Dictionary<string, string>();
             foreach (CheckerEntity entity in docErrors)
             {
@@ -253,7 +294,7 @@ namespace KPLN_ModelChecker_Batch.Common
                 string approveComment = string.Empty;
                 if (entity.Status == ErrorStatus.Approve)
                     approveComment = $"[{entity.ApproveComment}]";
-                
+
 
                 string[] headerDataParts = new string[5]
                     {
@@ -265,7 +306,7 @@ namespace KPLN_ModelChecker_Batch.Common
                     }
                     // Чтобы не было пустых стрелок
                     .Where(s => !string.IsNullOrEmpty(s))
-                    .ToArray(); 
+                    .ToArray();
 
                 string headerData = string.Join("→", headerDataParts);
                 string IdData = string.Empty;
@@ -273,6 +314,7 @@ namespace KPLN_ModelChecker_Batch.Common
                     IdData = string.Join(", ", entity.ElementName);
                 else
                     IdData = string.Join(", ", entity.ElementIdCollection.ToList());
+
 
                 if (dict.TryGetValue(headerData, out string dictIdData))
                     dict[headerData] = string.Concat(dictIdData, ", ", IdData);

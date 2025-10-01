@@ -10,6 +10,7 @@ using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker;
 using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Core;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -34,7 +35,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         /// <summary>
         /// Коллекция проверок для запуска
         /// </summary>
-        private readonly CheckEntity[] _checkEntitiesList = new CheckEntity[6]
+        private readonly CheckEntity[] _checkEntitiesList = new CheckEntity[8]
         {
             new CheckEntity(new CheckLinks()),
             new CheckEntity(new CheckMainLines()),
@@ -42,6 +43,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             new CheckEntity(new CheckWorksets()),
             new CheckEntity(new CheckDimensions()),
             new CheckEntity(new CheckMirroredInstances()),
+            new CheckEntity(new CheckHoles()),
+            new CheckEntity(new CheckFlatsAreaCompare()),
         };
 
         /// <summary>
@@ -141,28 +144,50 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             if (SelectedPresets == "Preset_All")
                 СheckEntities = CollectionViewSource.GetDefaultView(
                     _checkEntitiesList.Select(e => e.IsChecked = true));
-            else if (SelectedPresets == "Preset_AR" 
-                || SelectedPresets == "Preset_OV")
+            else if (SelectedPresets == "Preset_AR")
                 СheckEntities = CollectionViewSource.GetDefaultView(
                     _checkEntitiesList.Select(e => e.IsChecked = true));
-            else if (SelectedPresets == "Preset_KR"
-                || SelectedPresets == "Preset_VK"
-                || SelectedPresets == "Preset_SS"
-                || SelectedPresets == "Preset_EOM")
+            else
             {
-                // Проверки зеркальных не запускаем
-                string checkMirrInstName = new CheckMirroredInstances().PluginName;
-                
+                // Проверки площадей АР
+                string checkFlatsAreaCompareName = new CheckFlatsAreaCompare().PluginName;
+                // Проверки отверстий АР
+                string checkHolesName = new CheckHoles().PluginName;
+                // Проверки зеркальных
+                string checkMirroredInstancesName = new CheckMirroredInstances().PluginName;
+
+
+                List<string> removeCheckNames = new List<string>();
+                if (SelectedPresets == "Preset_OV")
+                {
+                    removeCheckNames.Add(checkFlatsAreaCompareName);
+                    removeCheckNames.Add(checkHolesName);
+                }
+                else if (SelectedPresets == "Preset_KR"
+                    || SelectedPresets == "Preset_VK"
+                    || SelectedPresets == "Preset_SS"
+                    || SelectedPresets == "Preset_EOM")
+                {
+                    removeCheckNames.Add(checkMirroredInstancesName);                    
+                    
+                    removeCheckNames.Add(checkFlatsAreaCompareName);
+                    removeCheckNames.Add(checkHolesName);
+                }
+
+                // Чистим коллекцию в зависимости от исключений
                 List<CheckEntity> filteredEnt = new List<CheckEntity>();
                 foreach (CheckEntity ent in _checkEntitiesList)
                 {
-                    if (ent.Name == checkMirrInstName)
+                    if (removeCheckNames.Contains(ent.Name))
                     {
                         ent.IsChecked = false;
                         filteredEnt.Add(ent);
                     }
                     else
+                    {
+                        ent.IsChecked = true;
                         filteredEnt.Add(ent);
+                    }
                 }
             }
         }
@@ -369,21 +394,25 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     {
                         foreach (CheckEntity check in _checkEntitiesList)
                         {
+                            check.CurrentAbstrCheck.Set_UIAppData(_uiapp, doc);
+                            checkName = check.Name;
+                            
+                            
                             if (!check.IsChecked)
                             {
                                 CurrentLogger.Info($"Пользователь выбрал игнорировать проверку с именем: \"{checkName}\"");
                                 continue;
                             }
+                            
 
-                            check.CurrentAbstrCheck.Set_UIAppData(_uiapp, doc);
-
-                            checkName = check.Name;
                             CurrentLogger.Info($"Начинаю проверку с именем: \"{checkName}\"");
 
+                            CheckResultStatus checkResultStatus = check.RunCommand();
                             excelEnt.ChecksData.Add(new CheckData()
                             {
+                                PluginCheckerEntitiesColl = check.CurrentAbstrCheck.CheckerEntitiesColl,
                                 PluginName = checkName,
-                                CheckerEntities = check.RunCommand(),
+                                CheckRunResult = checkResultStatus,
                             });
 
                             CurrentLogger.Info($"Завершена проверка с именем: \"{checkName}\"");
@@ -403,7 +432,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     CurrentLogger.Info($"Завершена проверка файла: \"{file.Name}\"");
                 }
 
-                CurrentLogger.Info($"Плагин \"{PluginName}\" завершил работу.");
+                CurrentLogger.Info($"Плагин \"{PluginName}\" завершил работу.\n");
             }
 
 
@@ -428,7 +457,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 $"Анализируемые файлы: {fileNames}\n" +
                 $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
-                $"Статус: Отработано без ошибок.\n");
+                $"Статус: Отработано. Глобальных ошибок нет. Возможны локальные, внимательно изучи полученный файл с результатом проверок.\n");
         }
 
         /// <summary>
@@ -442,7 +471,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 $"Анализируемые файлы: {fileNames}\n" +
                 $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
-                $"Статус: Отработано с ошибками.\n" +
+                $"Статус: Отработано с глобальными ошибками.\n" +
                 $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
                 $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}");
         }

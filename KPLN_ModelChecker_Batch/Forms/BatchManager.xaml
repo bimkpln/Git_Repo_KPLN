@@ -154,7 +154,7 @@
                         
                         <RadioButton
                             GroupName="RBPresets"
-                            Content="ВК, АПТ"
+                            Content="ВК/АПТ"
                             IsChecked="{Binding SelectedPresets,
                                 Converter={StaticResource TextToBooleanConverter}, 
                                 ConverterParameter=Preset_VK, 
@@ -162,7 +162,7 @@
 
                         <RadioButton
                             GroupName="RBPresets"
-                            Content="ОВиК, ИТП"
+                            Content="ОВиК/ИТП"
                             IsChecked="{Binding SelectedPresets,
                                 Converter={StaticResource TextToBooleanConverter}, 
                                 ConverterParameter=Preset_OV, 
@@ -170,7 +170,7 @@
 
                         <RadioButton
                             GroupName="RBPresets"
-                            Content="СС, АВ"
+                            Content="СС/АВ"
                             IsChecked="{Binding SelectedPresets,
                                 Converter={StaticResource TextToBooleanConverter}, 
                                 ConverterParameter=Preset_SS, 
