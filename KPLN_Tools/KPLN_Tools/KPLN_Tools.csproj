@@ -304,7 +304,6 @@
     <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
-    <Compile Include="ExternalCommands\Command_SETLinkChangerOLD.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
     <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
