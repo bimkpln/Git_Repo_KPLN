@@ -195,18 +195,8 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\CheckCommandError.cs" />
     <Compile Include="Common\CheckDimension_OpenView.cs" />
-    <Compile Include="Common\CheckHolesEntity.cs" />
-    <Compile Include="Common\CheckHolesMEPData.cs" />
-    <Compile Include="Common\CheckHolesHoleData.cs" />
     <Compile Include="Common\CheckLevelOfInstanceData.cs" />
-    <Compile Include="Common\CheckMEPHeightViewModel.cs" />
-    <Compile Include="Common\CheckMEPHeightARRoomData.cs" />
-    <Compile Include="Common\CheckMEPHeightARElemData.cs" />
-    <Compile Include="Common\CheckMEPHeightMEPData.cs" />
-    <Compile Include="Common\IJsonSerializable.cs" />
-    <Compile Include="Common\RoomParamData.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
     <Compile Include="ExecutableCommand\CommandSelectElements.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
@@ -215,17 +205,17 @@
     <Compile Include="ExternalCommands\AbstrCommand.cs" />
     <Compile Include="ExternalCommands\CommandCheckDimensions.cs" />
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
+    <Compile Include="ExternalCommands\CommandCheckFlatsAreaCompare.cs" />
+    <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckWorksets.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckMonolith.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckWetZones.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckFlatsArea.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckHoles.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMonolith.cs" />
+    <Compile Include="ExternalCommands\CommandCheckWetZones.cs" />
     <Compile Include="ExternalCommands\CommandCheckLaunchDate.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckLevelOfInstances.cs" />
-    <Compile Include="ExternalCommands\OldVers\CommandCheckMEPHeight.cs" />
+    <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckListAnnotations.cs" />
     <Compile Include="Forms\CheckMainForm.xaml.cs">
       <DependentUpon>CheckMainForm.xaml</DependentUpon>
@@ -239,9 +229,6 @@
     <Compile Include="Forms\ElementIdListToStringConverter.cs" />
     <Compile Include="Forms\OutputFormLaunchDate.xaml.cs">
       <DependentUpon>OutputFormLaunchDate.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\CheckMEPHeight_ARDataForm.xaml.cs">
-      <DependentUpon>CheckMEPHeight_ARDataForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
@@ -297,10 +284,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\OutputFormLaunchDate.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\CheckMEPHeight_ARDataForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

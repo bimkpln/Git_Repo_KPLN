@@ -43,17 +43,8 @@ namespace KPLN_ModelChecker_User
             CheckWorksets checkWorksets = new CheckWorksets();
             CheckFamilies checkFamilies = new CheckFamilies();
             CheckMainLines checkMainLines = new CheckMainLines();
-            CommandCheckFlatsArea commandCheckFlatsArea = new CommandCheckFlatsArea(new ExtensibleStorageEntity(
-                CommandCheckFlatsArea.PluginName,
-                "KPLN_CheckFlatsArea",
-                new Guid("720080C5-DA99-40D7-9445-E53F288AA150"),
-                new Guid("720080C5-DA99-40D7-9445-E53F288AA151"),
-                new Guid("720080C5-DA99-40D7-9445-E53F288AA155")));
-            CommandCheckHoles commandCheckHoles = new CommandCheckHoles(new ExtensibleStorageEntity(
-                CommandCheckHoles.PluginName,
-                "KPLN_CheckHoles",
-                new Guid("820080C5-DA99-40D7-9445-E53F288AA160"),
-                new Guid("820080C5-DA99-40D7-9445-E53F288AA161")));
+            CheckFlatsAreaCompare checkFlatsAreaCompare = new CheckFlatsAreaCompare();
+            CheckHoles checkHoles = new CheckHoles();
             CommandCheckLevelOfInstances сommandCheckLevelOfInstances = new CommandCheckLevelOfInstances(new ExtensibleStorageEntity(
                 CommandCheckLevelOfInstances.PluginName,
                 "KPLN_CheckLevelOfInstances",
@@ -64,11 +55,7 @@ namespace KPLN_ModelChecker_User
                 CommandCheckListAnnotations.PluginName,
                 "KPLN_CheckAnnotation",
                 new Guid("caf1c9b7-14cc-4ba1-8336-aa4b357d2898")));
-            CommandCheckMEPHeight commandCheckMEPHeight = new CommandCheckMEPHeight(new ExtensibleStorageEntity(
-                CommandCheckMEPHeight.PluginName,
-                "KPLN_CheckMEPHeight",
-                new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b68"),
-                new Guid("1c2d57de-4b61-4d2b-a81b-070d5aa76b69")));
+            CheckMEPHeight checkMEPHeight = new CheckMEPHeight();
             CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
             // Запись в массив для передачи ExtensibleStorageEntity в CommandCheckLaunchDate (после инициализации статических полей)
@@ -79,11 +66,11 @@ namespace KPLN_ModelChecker_User
                 checkWorksets.ESEntity,
                 checkFamilies.ESEntity,
                 checkMainLines.ESEntity,
-                CommandCheckFlatsArea.ESEntity,
-                CommandCheckHoles.ESEntity,
+                checkFlatsAreaCompare.ESEntity,
+                checkHoles.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
                 checkLinks.ESEntity,
-                CommandCheckMEPHeight.ESEntity,
+                checkMEPHeight.ESEntity,
                 checkMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
@@ -261,7 +248,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckHoles",
-                CommandCheckHoles.PluginName,
+                checkHoles.PluginName,
                 "Плагин выполняет следующие функции:\n" +
                         "1. Проверяет отверстия, в которых нет лючков на наличие в нем элементов ИОС;\n" +
                         "2. Проверяет отверстия, в которых нет лючков на заполненность элементами ИОС.",
@@ -275,7 +262,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckFlatsArea",
-                CommandCheckFlatsArea.PluginName,
+                checkFlatsAreaCompare.PluginName,
                 "Стадия РД - сравнить фактические значения площадей (по квартирографии) со значениями, зафиксированными на стадии П (после выхода из экспертизы):" +
                     "\n1. Находит разницу имен и номеров помещений;" +
                     "\n2. Находит разницу в суммарной площади (физической) квартиры, если она превышает 1 м²;" +
@@ -283,7 +270,7 @@ namespace KPLN_ModelChecker_User
                     "\n4. Находит разницу в значениях параметров площадей в марках и фактической, если она превышает 0,1 м²;" +
                     "\n5. Находит разницу зафиксированной площади квартиры.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
-                typeof(CommandCheckFlatsArea).FullName,
+                typeof(CommandCheckFlatsAreaCompare).FullName,
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
                 _mainContextualHelp,
@@ -292,7 +279,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckMEPHeight",
-                CommandCheckMEPHeight.PluginName,
+                checkMEPHeight.PluginName,
                 "Найти элементы, которые расположены в границах помещений на высоте, меньше 2.2 м:",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckMEPHeight).FullName,

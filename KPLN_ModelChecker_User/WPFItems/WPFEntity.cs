@@ -35,41 +35,53 @@ namespace KPLN_ModelChecker_User.WPFItems
             Element = checkEntity.Element;
             ElementCollection = checkEntity.ElementCollection;
 
-            if (ElementCollection != null && ElementCollection.Any())
+            // Вношу данные по элементу, если он вообще есть
+            if (Element != null || ElementCollection != null)
             {
-                ElementIdCollection = ElementCollection.Where(e => e.IsValidObject).Select(e => e.Id).ToArray();
-
-                if (ElementCollection.Count() > 1)
+                if (ElementCollection != null && ElementCollection.Any())
                 {
-                    ElementName = "<Набор элементов>";
-                    HashSet<string> uniqueElemCatNames = new HashSet<string>(ElementCollection.Select(e => e.Category.Name));
-                    if (uniqueElemCatNames.Count() > 1) CategoryName = "<Набор категорий>";
-                    else CategoryName = uniqueElemCatNames.FirstOrDefault();
-                }
-                else if (ElementCollection.Count() == 1)
-                {
-                    Element currentElem = ElementCollection.FirstOrDefault();
-                    ElementName = !(currentElem is FamilyInstance familyInstance) ? currentElem.Name : $"{familyInstance.Symbol.FamilyName}: {currentElem.Name}";
-                    CategoryName = currentElem.Category.Name;
-                }
+                    ElementIdCollection = ElementCollection.Where(e => e.IsValidObject).Select(e => e.Id).ToArray();
 
+                    if (ElementCollection.Count() > 1)
+                    {
+                        ElementName = "<Набор элементов>";
+                        HashSet<string> uniqueElemCatNames = new HashSet<string>(ElementCollection.Select(e => e.Category.Name));
+                        if (uniqueElemCatNames.Count() > 1) CategoryName = "<Набор категорий>";
+                        else CategoryName = uniqueElemCatNames.FirstOrDefault();
+                    }
+                    else if (ElementCollection.Count() == 1)
+                    {
+                        Element currentElem = ElementCollection.FirstOrDefault();
+                        ElementName = !(currentElem is FamilyInstance familyInstance) ? currentElem.Name : $"{familyInstance.Symbol.FamilyName}: {currentElem.Name}";
+                        CategoryName = currentElem.Category.Name;
+                    }
+
+                }
+                else
+                {
+                    ElementIdCollection = new ElementId[] { Element.Id };
+
+                    if (Element is Room room)
+                        ElementName = room.Name;
+                    else
+                        ElementName = !(Element is FamilyInstance familyInstance) ? Element.Name : $"{familyInstance.Symbol.FamilyName}: {Element.Name}";
+                    if (Element is Family family)
+                        CategoryName = family.FamilyCategory.Name;
+                    else if (Element is ElementType elType)
+                        CategoryName = elType.FamilyName;
+                    else
+                        CategoryName = Element.Category.Name;
+                }
             }
+            // Если элементов нет - то "-"
             else
             {
-                ElementIdCollection = new ElementId[] { Element.Id };
-
-                if (Element is Room room)
-                    ElementName = room.Name;
-                else
-                    ElementName = !(Element is FamilyInstance familyInstance) ? Element.Name : $"{familyInstance.Symbol.FamilyName}: {Element.Name}";
-                if (Element is Family family)
-                    CategoryName = family.FamilyCategory.Name;
-                else if (Element is ElementType elType)
-                    CategoryName = elType.FamilyName;
-                else
-                    CategoryName = Element.Category.Name;
+                ElementName = "-";
+                CategoryName = "-";
             }
 
+
+            // Вношу данные по замечанию
             Header = checkEntity.Header;
             Description = checkEntity.Description;
             Info = checkEntity.Info;
