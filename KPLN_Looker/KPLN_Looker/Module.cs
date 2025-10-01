@@ -67,7 +67,7 @@ namespace KPLN_Looker
         /// <summary>
         /// Флаг запуска автопроверок (выключаем из модулей, которые запускают синхрон моделей)
         /// </summary>
-        public static bool RunAutoChecks { get; set; }
+        public static bool RunAutoChecks { get; set; } = true;
 
         public Result Close()
         {

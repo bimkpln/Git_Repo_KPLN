@@ -62,7 +62,9 @@ namespace KPLN_Looker.Services
                 showSuccsessText: false);
 
             // ДОСТУП да вынікаў праз generic-static (асобнае статычнае поле на кожны closed generic T)
-            var entities = cmd.CheckerEntities;
+            // ВАЖНО: Если будет ПАКЕТНАЯ проверка между файлами - нужны копии результатов таких проверок,
+            // т.к. инстанс AbstrCommand один, результаты просто перетираются при запуске на новом файле
+            var entities = cmd.CommandCheck.CheckerEntitiesColl;
             bool hasErrors = entities != null && entities.Any();
 
             // Паказваем справаздачу толькі калі ёсць памылкі
