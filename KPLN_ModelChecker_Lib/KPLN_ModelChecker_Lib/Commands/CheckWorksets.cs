@@ -32,10 +32,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                     && el.Category.Parent == null)
                 .ToArray();
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
-
             if (CheckDocument.IsWorkshared)
             {
                 Workset[] worksets = new FilteredWorksetCollector(CheckDocument).OfKind(WorksetKind.UserWorkset).Where(w => w.IsOpen).ToArray();
@@ -59,7 +57,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         string wsName = link.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                         {
-                            result.Add(new CheckerEntity(
+                            _checkerEntitiesCollHeap.Add(new CheckerEntity(
                                 link,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
@@ -75,7 +73,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         string wsName = dirShape.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                         {
-                            result.Add(new CheckerEntity(
+                            _checkerEntitiesCollHeap.Add(new CheckerEntity(
                                 dirShape,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
@@ -91,7 +89,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         string wsName = pcInstance.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                         if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                         {
-                            result.Add(new CheckerEntity(
+                            _checkerEntitiesCollHeap.Add(new CheckerEntity(
                                 pcInstance,
                                 "Ошибка рабочего набора",
                                 "Связь находится в некорректном рабочем наборе",
@@ -108,7 +106,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             string wsName = impInstance.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();
                             if (!wsName.StartsWith("00_") && !wsName.StartsWith("#"))
                             {
-                                result.Add(new CheckerEntity(
+                                _checkerEntitiesCollHeap.Add(new CheckerEntity(
                                     impInstance,
                                     "Ошибка рабочего набора",
                                     "Связь находится в некорректном рабочем наборе",
@@ -128,7 +126,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             // Для СЕТ
                             && !wsName.Contains("оси_"))
                         {
-                            result.Add(new CheckerEntity(
+                            _checkerEntitiesCollHeap.Add(new CheckerEntity(
                                 element,
                                 "Ошибка сеток",
                                 $"Ось или уровень находится не в специальном рабочем наборе",
@@ -163,7 +161,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 string.Empty,
                                 true);
 
-                            result.Add(entity);
+                            _checkerEntitiesCollHeap.Add(entity);
                             continue;
                         }
 
@@ -177,14 +175,16 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 string.Empty,
                                 true);
 
-                            result.Add(entity);
+                            _checkerEntitiesCollHeap.Add(entity);
                             continue;
                         }
                     }
                 }
             }
+            else
+                throw new CheckerException("Рабочие наборы можно проверить только в модели из хранилища");
 
-            return result;
+            return CheckResultStatus.Succeeded;
         }
     }
 }

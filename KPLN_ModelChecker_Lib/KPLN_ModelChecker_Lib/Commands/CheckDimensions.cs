@@ -71,14 +71,12 @@ namespace KPLN_ModelChecker_Lib.Commands
             return result.ToArray();
         }
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
+            _checkerEntitiesCollHeap.AddRange(CheckOverride(elemColl));
+            _checkerEntitiesCollHeap.AddRange(CheckAccuracy(elemColl));
 
-            result.AddRange(CheckOverride(elemColl));
-            result.AddRange(CheckAccuracy(elemColl));
-
-            return result;
+            return CheckResultStatus.Succeeded;
         }
 
         /// <summary>

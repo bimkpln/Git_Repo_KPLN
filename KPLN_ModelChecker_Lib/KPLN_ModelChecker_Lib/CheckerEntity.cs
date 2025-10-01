@@ -3,6 +3,7 @@ using Autodesk.Revit.DB.Architecture;
 using KPLN_ModelChecker_Lib.Common;
 using System.Collections.Generic;
 using System.Linq;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace KPLN_ModelChecker_Lib
 {
@@ -26,6 +27,21 @@ namespace KPLN_ModelChecker_Lib
         private BoundingBoxXYZ _zoomBBox;
         private XYZ _zoomCentroid;
 
+        /// <summary>
+        /// Конструктор для генерации замечания о отсутсвии элементов в файле
+        /// </summary>
+        public CheckerEntity(string header, string description, string info)
+        {
+            Status = ErrorStatus.Error;
+            
+            Header = header;
+            Description = description;
+            Info = info;
+        }
+
+        /// <summary>
+        /// Основной конструктор
+        /// </summary>
         public CheckerEntity(
             object elemData, 
             string header, 
@@ -78,63 +94,6 @@ namespace KPLN_ModelChecker_Lib
             Info = info;
             CanZoomed = canZoomed;
         }
-
-        /// <summary>
-        /// Взвести метку, что замечание может быть подтверждено юзером
-        /// </summary>
-        /// <returns></returns>
-        public CheckerEntity Set_CanApproved()
-        {
-            CanApproved = true;
-
-            return this;
-        }
-
-        /// <summary>
-        /// Вручную указать статус замечания
-        /// </summary>
-        /// <param name="status">Статус, который нужно присвоить замечанию</param>
-        /// <returns></returns>
-        public CheckerEntity Set_Status(ErrorStatus status)
-        {
-            Status = status;
-
-            return this;
-        }
-
-        /// <summary>
-        /// Вручную указать данные из ExtStorage (статус и комментарий)
-        /// </summary>
-        /// <returns></returns>
-        public CheckerEntity Set_DataByESData(ExtensibleStorageEntity esEntity)
-        {
-            if (Element != null) 
-            {
-                if (esEntity.ESBuilderUserText.IsDataExists_Text(Element))
-                {
-                    Status = ErrorStatus.Approve;
-                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(Element).Description;
-                }
-                else
-                    Status = ErrorStatus.Error;
-            }
-            else if (ElementCollection != null && ElementCollection.Any())
-            {
-                if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
-                    && ElementCollection.All(e =>
-                        esEntity.ESBuilderUserText.GetResMessage_Element(e).Description
-                            .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
-                {
-                    Status = ErrorStatus.Approve;
-                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
-                }
-                else
-                    Status = ErrorStatus.Error;
-            }
-
-            return this;
-        }
-
 
         /// <summary>
         /// Revit-элемент
@@ -208,6 +167,7 @@ namespace KPLN_ModelChecker_Lib
 
                 return _zoomBBox;
             }
+            private set => _zoomBBox = value;
         }
 
         /// <summary>
@@ -233,6 +193,72 @@ namespace KPLN_ModelChecker_Lib
 
                 return _zoomCentroid;
             }
+            private set => _zoomCentroid = value;
+        }
+
+        /// <summary>
+        /// Взвести метку, что замечание может быть подтверждено юзером, а также установить данные из ExtStorage (статус и комментарий)
+        /// </summary>
+        /// <param name="esEntity">ExtensibleStorageEntity проверки</param>
+        /// <param name="statusIfNotApprove">Статус, который нужно присвоить замечанию, если оно не помечено юзером</param>
+        /// <returns></returns>
+        public CheckerEntity Set_CanApprovedAndESData(ExtensibleStorageEntity esEntity, ErrorStatus statusIfNotApprove = ErrorStatus.Error)
+        {
+            CanApproved = true;
+
+            if (Element != null)
+            {
+                if (esEntity.ESBuilderUserText.IsDataExists_Text(Element))
+                {
+                    Status = ErrorStatus.Approve;
+                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(Element).Description;
+                }
+                else
+                    Status = statusIfNotApprove;
+            }
+            else if (ElementCollection != null && ElementCollection.Any())
+            {
+                if (ElementCollection.All(e => esEntity.ESBuilderUserText.IsDataExists_Text(e))
+                    && ElementCollection.All(e =>
+                        esEntity.ESBuilderUserText.GetResMessage_Element(e).Description
+                            .Equals(esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description)))
+                {
+                    Status = ErrorStatus.Approve;
+                    ApproveComment = esEntity.ESBuilderUserText.GetResMessage_Element(ElementCollection.FirstOrDefault()).Description;
+                }
+                else
+                    Status = statusIfNotApprove;
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Вручную указать статус замечания
+        /// </summary>
+        /// <param name="status">Статус, который нужно присвоить замечанию</param>
+        /// <returns></returns>
+        public CheckerEntity Set_Status(ErrorStatus status)
+        {
+            Status = status;
+
+            return this;
+        }
+
+        /// <summary>
+        /// Вручную установить ZoomBBox и ZoomCentroid.
+        /// </summary>
+        /// <param name="box">BoundingBoxXYZ для установки</param>
+        /// <returns></returns>
+        public CheckerEntity Set_ZoomData(BoundingBoxXYZ box)
+        {
+            if (box != null)
+            {
+                ZoomBBox = box;
+                ZoomCentroid = new XYZ((box.Min.X + box.Max.X) / 2, (box.Min.Y + box.Max.Y) / 2, (box.Min.Z + box.Max.Z) / 2);
+            }
+
+            return this;
         }
     }
 }

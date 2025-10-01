@@ -78,10 +78,8 @@ namespace KPLN_ModelChecker_Lib.Commands
             return result.ToArray();
         }
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
-
             foreach (Element element in elemColl)
             {
                 if (!(element is FamilyInstance instance))
@@ -111,11 +109,10 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                                 string.Empty,
                                 true)
-                                .Set_CanApproved()
-                                .Set_DataByESData(ESEntity);
+                                .Set_CanApprovedAndESData(ESEntity);
 
 
-                            result.Add(hostEntity);
+                            _checkerEntitiesCollHeap.Add(hostEntity);
                         }
                     }
                 }
@@ -129,16 +126,16 @@ namespace KPLN_ModelChecker_Lib.Commands
                             "Указанный элемент запрещено зеркалить, т.к. это повлияет на выдаваемые объемы в спецификациях",
                             string.Empty,
                             true)
-                            .Set_CanApproved()
-                            .Set_DataByESData(ESEntity);
+                            .Set_CanApprovedAndESData(ESEntity);
 
-                        result.Add(elemEntity);
+                        _checkerEntitiesCollHeap.Add(elemEntity);
                     }
                 }
             }
 
-            return result.OrderBy(e =>
-                    ((Level)CheckDocument.GetElement(e.Element.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).AsElementId())).Elevation);
+            _checkerEntitiesCollHeap.OrderBy(e => ((Level)CheckDocument.GetElement(e.Element.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM).AsElementId())).Elevation);
+
+            return CheckResultStatus.Succeeded;
         }
 
         /// <summary>

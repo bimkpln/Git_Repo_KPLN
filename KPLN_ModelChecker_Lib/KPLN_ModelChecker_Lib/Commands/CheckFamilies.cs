@@ -37,10 +37,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .ToArray();
         }
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
-
             CheckUIApp.Application.FailuresProcessing += FailuresProcessor;
 
             try
@@ -50,14 +48,14 @@ namespace KPLN_ModelChecker_Lib.Commands
                     // Проверяю семейства и их типоразмеры
                     if (elem is Family currentFam)
                     {
-                        result.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
+                        _checkerEntitiesCollHeap.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
 
                         // Проверка пути семейства - ТОЛЬКО для спецов BIM-отдела
                         if (DBMainService.CurrentDBUser.SubDepartmentId == 8)
                         {
                             CheckerEntity checkFamilyPath = CheckFamilyPath(CheckDocument, currentFam);
                             if (checkFamilyPath != null)
-                                result.Add(checkFamilyPath);
+                                _checkerEntitiesCollHeap.Add(checkFamilyPath);
                         }
                     }
 
@@ -75,14 +73,14 @@ namespace KPLN_ModelChecker_Lib.Commands
                         {
                             CheckerEntity typeNameError = CheckSysytemFamilyTypeName(currentType);
                             if (typeNameError != null)
-                                result.Add(typeNameError);
+                                _checkerEntitiesCollHeap.Add(typeNameError);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Дополнительная обертка из дополнительного try/cath ради отписки от события FailuresProcessor
+                // Дополнительная обертка из дополнительного try/cath ради отписки от события FailuresProcessor. Ошибку словит try/cath из метода ExecuteCheck
                 throw ex;
             }
             finally
@@ -90,7 +88,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 CheckUIApp.Application.FailuresProcessing -= FailuresProcessor;
             }
 
-            return result;
+            return CheckResultStatus.Succeeded;
         }
 
         /// <summary>
@@ -289,7 +287,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     "Ошибка типоразмера системного",
                     $"Данный типоразмер назван не по ВЕР - не хватает основных блоков",
                     "Имя системных типоразмеров делиться минимум на 3 блока: код, шифр слоёв и описание. Разделитель - нижнее подчеркивание '_'")
-                    .Set_CanApproved();
+                    .Set_CanApprovedAndESData(ESEntity);
             }
 
             if (!(typeSplitedName[0].StartsWith("00")
@@ -304,7 +302,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     "Ошибка типоразмера системного",
                     $"Данный типоразмер назван не по ВЕР - ошибка кода",
                     "Имя системных типоразмеров может иметь коды: 00, 01, 02, 03, 04, 05.")
-                    .Set_CanApproved();
+                    .Set_CanApprovedAndESData(ESEntity);
             }
 
             #region Проверка ЖБ на привязку к коду 00
@@ -319,7 +317,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     "Ошибка типоразмера системного",
                     $"Код '00_' может содержать только несущие конструкции",
                     $"Несущий стены/перекрытия - это ЖБ, К (для стен) (аббревиатуры указаны в ВЕР). Сейчас аббревиатура не содержит бетон, или кирпич (нет ЖБ/К): \"{sliceCode}\"")
-                    .Set_CanApproved();
+                    .Set_CanApprovedAndESData(ESEntity);
             }
             if (sliceCode.ToUpper().Contains("ЖБ") && !typeSplitedName[0].Equals("00"))
             {
@@ -328,8 +326,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     "Предупреждение типоразмера системного",
                     $"ЖБ вне несущего слоя",
                     $"Скорее всего это ошибка, т.к. ЖБ используется вне несущего слоя (код не 00, а \"{typeSplitedName[0]}\")")
-                    .Set_CanApproved()
-                    .Set_Status(ErrorStatus.Warning);
+                    .Set_CanApprovedAndESData(ESEntity, ErrorStatus.Warning);
             }
             #endregion
 
@@ -349,7 +346,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                             "Ошибка индекса положения суммарной толщины",
                             $"Толщина слоя указывается в последнем, или предпоследнем блоке имени типоразмера. Блоки имен разделяются нижним подчеркиванием \"_\". " +
                                 $"Сейчас это место занимамет не цифра, а: \"{totalThicknessStr}\". Нужно исправить имя типа в соотвествии с ВЕР.")
-                            .Set_CanApproved();
+                            .Set_CanApprovedAndESData(ESEntity);
                     }
                 }
             }
@@ -386,7 +383,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     "Ошибка типоразмера системного",
                     "Сумма слоёв не совпадает с описанием",
                     $"Толщина слоя в имени указана как \"{totalThicknessStr}\", хотя на самом деле она составляет \"{typeThickness}\"")
-                    .Set_CanApproved();
+                    .Set_CanApprovedAndESData(ESEntity);
             }
             #endregion
 

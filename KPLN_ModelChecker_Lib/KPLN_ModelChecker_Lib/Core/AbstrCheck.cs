@@ -9,10 +9,26 @@ using System.Linq;
 namespace KPLN_ModelChecker_Lib.Core
 {
     /// <summary>
+    /// Статус результат процесса запуска проверки
+    /// </summary>
+    public enum CheckResultStatus
+    {
+        Failed,
+        Succeeded,
+        Cancelled,
+        NoItemsToCheck
+    }
+
+    /// <summary>
     /// Абстрактный класс для подготовки, создания и вывода отчета пользователю
     /// </summary>
     public abstract class AbstrCheck
     {
+        /// <summary>
+        /// "Грязная" коллекция ошибок. Итог - в PreparedElemColl, который чиститься в основном методе "ExecuteCheck"
+        /// </summary>
+        private protected List<CheckerEntity> _checkerEntitiesCollHeap = new List<CheckerEntity>();
+
         /// <summary>
         /// Пустой конструктор для использования дженериков
         /// </summary>
@@ -34,6 +50,11 @@ namespace KPLN_ModelChecker_Lib.Core
         public ExtensibleStorageEntity ESEntity { get; protected set; }
 
         /// <summary>
+        /// Итоговая коллекция ошибок, полученных при проверке модели
+        /// </summary>
+        public CheckerEntity[] CheckerEntitiesColl { get; private protected set; }
+        
+        /// <summary>
         /// Ссылка на Revit-документ
         /// </summary>
         private protected Document CheckDocument { get; set; }
@@ -46,12 +67,12 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <summary>
         /// Список элементов, которые провалили проверку перед запуском
         /// </summary>
-        private protected IEnumerable<CheckCommandError> PrepareElemsErrorColl { get; set; } = new List<CheckCommandError>();
+        private protected List<CheckCommandError> PrepareElemsErrorColl { get; set; } = new List<CheckCommandError>();
 
         /// <summary>
         /// Список элементов, которые провалили прохождение скрипта, но НЕ критичные
         /// </summary>
-        private protected IEnumerable<CheckCommandError> ErrorRunColl { get; set; } = new List<CheckCommandError>();
+        private protected List<CheckCommandError> RunElemsWarningColl { get; set; } = new List<CheckCommandError>();
 
         /// <summary>
         /// Докрутка нужных параметров, из-за пустого конструктора для использовния дженериков
@@ -74,42 +95,61 @@ namespace KPLN_ModelChecker_Lib.Core
         /// </summary>
         /// <param name="elemColl">Коллеция элементов для полного анализа</param>
         /// <param name="onlyErrorType">Только сущности, с типом Error из ключевого enum по статусам проверок</param>
-        /// <returns>Коллекция CheckerEntity для передачи в отчет пользовател</returns>
-        public CheckerEntity[] ExecuteCheck(Element[] elemColl, bool onlyErrorType)
+        /// <returns>Статус результата запуска проверки</returns>
+        public CheckResultStatus ExecuteCheck(Element[] elemColl, bool onlyErrorType)
         {
-            if (!elemColl.Any()) return null;
+            // Если нет эл-в в модели - это ОШИБКА
+            if (!elemColl.Any())
+            {
+                CheckerEntitiesColl = new CheckerEntity[1] 
+                {
+                    new CheckerEntity(
+                        "Отсутсвуют элементы для проверки",
+                        "В модели нет подходящих для проверки элементов",
+                        "Либо проверку запустили по ошибке, либо проект НЕ содержит элементы, которые должен по требованиям ВЕР") 
+                };
+
+                return CheckResultStatus.NoItemsToCheck;
+            }
 
             try
             {
-                PrepareElemsErrorColl = CheckRElems(elemColl);
+                // Проверяю элементы на критические ошибки (исключение из проверки)
+                CheckRElems_SetElemErrorColl(elemColl);
                 if (PrepareElemsErrorColl.Count() > 0)
+                {
+                    ShowElementCheckingErrorReport();
                     PreparedElemColl = elemColl.Except(PrepareElemsErrorColl.Select(e => e.ErrorElement)).ToArray();
+                }
                 else
                     PreparedElemColl = elemColl;
 
-                IEnumerable<CheckerEntity> entColl = GetCheckerEntities(PreparedElemColl);
+
+                // Запускаю генерацию элементов-ошибок CheckerEntity
+                CheckResultStatus setEntitiesStatus = Set_CheckerEntitiesHeap(PreparedElemColl);
+                
+                // Если в момент генерации были предупреждения - вывожу
+                if (RunElemsWarningColl.Any())
+                    ShowElemntRunWarningReport();
+
+                // Возвращаю замечания в зависимости от потребоностей в статусе
                 if (onlyErrorType)
-                    return entColl.Where(e => e.Status == ErrorStatus.Error).ToArray();
+                    CheckerEntitiesColl = _checkerEntitiesCollHeap.Where(e => e.Status == ErrorStatus.Error).ToArray();
                 else
-                    return entColl.ToArray();
+                    CheckerEntitiesColl = _checkerEntitiesCollHeap.ToArray();
+
+                return setEntitiesStatus;
             }
             catch (Exception ex)
             {
                 if (ex is CheckerException _)
-                {
-                    TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
-                    {
-                        MainContent = ex.Message
-                    };
-                    taskDialog.Show();
-                }
-
+                    HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Исправь ошибку: {ex.Message}", MessageType.Error);
                 else if (ex.InnerException != null)
-                    HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
+                    HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку разработчику: {ex.InnerException.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
                 else
-                    HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Устрани ошибку: {ex.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
+                    HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку разработчику: {ex.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
 
-                return null;
+                return CheckResultStatus.Failed;
             }
         }
 
@@ -127,9 +167,9 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <summary>
         /// Вывод предупреждений пользователю об элементах, которые не прошли обработку плагином (но по сути - НЕ критичные)
         /// </summary>
-        public void ShowErrorRunColl()
+        public void ShowElemntRunWarningReport()
         {
-            foreach (CheckCommandError error in ErrorRunColl)
+            foreach (CheckCommandError error in RunElemsWarningColl)
             {
                 HtmlOutput.Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", MessageType.Warning);
             }
@@ -139,14 +179,13 @@ namespace KPLN_ModelChecker_Lib.Core
         /// Проверка элементов перед запуском
         /// </summary>
         /// <param name="objColl">Коллеция элементов для проверки</param>
-        /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
-        private protected virtual IEnumerable<CheckCommandError> CheckRElems(object[] objColl) => Enumerable.Empty<CheckCommandError>();
+        private protected virtual void CheckRElems_SetElemErrorColl(object[] objColl) { }
 
         /// <summary>
-        /// Получить коллекцию CheckerEntity
+        /// Запись данных в коллекцию _checkerEntitiesCollHeap, содержащая выявленные ошибки проектирования в Revit
         /// </summary>
         /// <param name="elemColl">Коллеция элементов для анализа, которые прошли проверку ПЕРЕД запуском</param>
-        /// <returns>Коллекция CheckerEntity, содержащая выявленные ошибки проектирования в Revit</returns>
-        private protected abstract IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl);        
+        /// <returns>Статус результата запуска проверки</returns>
+        private protected abstract CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl);        
     }
 }

@@ -43,10 +43,8 @@ namespace KPLN_ModelChecker_Lib.Commands
             return levels.Union(grids).ToArray();
         }
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
-
             string docTitle = CheckDocument.Title;
             bool isRazbFile = docTitle.Contains("_РФ_") || docTitle.Contains("Разб");
             foreach (Element element in elemColl)
@@ -55,12 +53,12 @@ namespace KPLN_ModelChecker_Lib.Commands
                 {
                     CheckerEntity monitorErrorEnt = GetMonitoringErrorEnt(CheckDocument, element);
                     if (monitorErrorEnt != null)
-                        result.Add(monitorErrorEnt);
+                        _checkerEntitiesCollHeap.Add(monitorErrorEnt);
                 }
 
                 CheckerEntity pinErrorEnt = GetPinErrorEnt(element);
                 if (pinErrorEnt != null)
-                    result.Add(pinErrorEnt);
+                    _checkerEntitiesCollHeap.Add(pinErrorEnt);
             }
 
             Grid[] lineGridsOnly = elemColl
@@ -73,10 +71,10 @@ namespace KPLN_ModelChecker_Lib.Commands
             {
                 IEnumerable<CheckerEntity> gridParallDistErrEnts = GetGridParallDistErrorEnt(lineGridsOnly);
                 if (gridParallDistErrEnts != null)
-                    result.AddRange(gridParallDistErrEnts);
+                    _checkerEntitiesCollHeap.AddRange(gridParallDistErrEnts);
             }
 
-            return result;
+            return CheckResultStatus.Succeeded;
         }
 
         /// <summary>

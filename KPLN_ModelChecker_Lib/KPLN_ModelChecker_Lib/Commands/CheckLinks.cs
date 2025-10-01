@@ -32,24 +32,22 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .ToArray();
         }
 
-        private protected override IEnumerable<CheckerEntity> GetCheckerEntities(Element[] elemColl)
+        private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {
-            List<CheckerEntity> result = new List<CheckerEntity>();
-
             RevitLinkInstance[] openedRLIColl = elemColl
                 .Cast<RevitLinkInstance>()
                 .Where(rli => rli.GetLinkDocument() != null)
                 .ToArray();
 
-            result.AddRange(CheckLocation(openedRLIColl));
+            _checkerEntitiesCollHeap.AddRange(CheckLocation(openedRLIColl));
 
             CheckerEntity checkPIN = CheckPin(openedRLIColl);
             if (checkPIN != null)
-                result.Add(checkPIN);
+                _checkerEntitiesCollHeap.Add(checkPIN);
 
-            result.AddRange(CheckPath(openedRLIColl));
+            _checkerEntitiesCollHeap.AddRange(CheckPath(openedRLIColl));
 
-            return result;
+            return CheckResultStatus.Succeeded;
         }
 
         /// <summary>
