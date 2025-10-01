@@ -41,10 +41,10 @@ namespace KPLN_Library_OpenDocHandler
         internal void OnDocumentClosing(object sender, DocumentClosingEventArgs args)
         {
             // Происходит, когда открытие проекта отменено
-            if (args.Document.PathName == null)
-                return;
-
-            _currentDocName = $"{args.Document.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}";
+            if (args.Document.PathName == null || args.Document.IsFamilyDocument)
+                _currentDocName = string.Empty;
+            else
+                _currentDocName = $"{args.Document.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}";
         }
 
         /// <summary>
@@ -52,7 +52,9 @@ namespace KPLN_Library_OpenDocHandler
         /// </summary>
         internal void OnDocumentClosed(object sender, DocumentClosedEventArgs args)
         {
-            _logger.Info($"Конец работы с файлом: {_currentDocName}");
+            if (!string.IsNullOrEmpty(_currentDocName))
+                _logger.Info($"Конец работы с файлом: {_currentDocName}");
+
         }
 
         /// <summary>
