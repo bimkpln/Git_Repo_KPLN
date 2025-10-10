@@ -517,8 +517,21 @@ namespace KPLN_Tools.Forms
 
         private StackPanel _universalRootPanel;
         private string _universalDepartment;
+        private readonly Dictionary<string, bool> _univExpandState = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private ScrollViewer _univScrollViewer;
+        private double _univScrollOffset = 0;
         private ComboBox _cbStage;
         private ComboBox _cbProject;
+
+        private readonly Dictionary<string, BitmapImage> _embeddedIconCache = new Dictionary<string, BitmapImage>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<(int CatId, int SubId), BitmapImage> _categoryIconCache = new Dictionary<(int, int), BitmapImage>();
+        private readonly Dictionary<(int CatId, int SubId), byte[]> _categoryPics = new Dictionary<(int, int), byte[]>();
+
+        private readonly HashSet<int> _favoriteIds = new HashSet<int>();
+        private string _favoritesPath;
+        private DateTime _favoritesLastWrite = DateTime.MinValue;
+        private FileSystemWatcher _favoritesWatcher;
+        private bool IsFavorite(FamilyManagerRecord r) => r != null && _favoriteIds.Contains(r.ID);
 
         private readonly Dictionary<(int Id, string Name), Dictionary<int, string>> _categoriesById = new Dictionary<(int Id, string Name), Dictionary<int, string>>();
 
@@ -591,15 +604,6 @@ namespace KPLN_Tools.Forms
             return result;
         }
 
-
-
-
-
-
-
-
-
-
         // Список отделов
         private void EnsureDepartmentsLoadedIntoComboPreservingSelection()
         {
@@ -655,18 +659,6 @@ namespace KPLN_Tools.Forms
             if (CmbDepartment != null)
                 EnsureDepartmentsLoadedIntoComboPreservingSelection();
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
         // Данные БД. Проверка того, что наш отдел содержится в БД
         private static bool DepartmentExistsInDb(string dbPath, string depName)
@@ -792,6 +784,7 @@ namespace KPLN_Tools.Forms
             if (_stagesById.Count == 0) LoadStages(DB_PATH);
             if (_projectsById.Count == 0) LoadProjects(DB_PATH);
             if (_categoriesById.Count == 0) LoadCategories(DB_PATH);
+            if (_categoryPics.Count == 0) LoadCategoryPics(DB_PATH);
         }
 
         // Данные БД. Стадия
@@ -934,6 +927,8 @@ namespace KPLN_Tools.Forms
             UpdateUiState();
 
             EnsureDepartmentsLoadedIntoComboPreservingSelection();
+            LoadFavoritesFromFile();
+            StartFavoritesWatcher();
         }
 
         // XAML. Док панель. Обновление статуса CmbDepartment (
@@ -962,6 +957,8 @@ namespace KPLN_Tools.Forms
         {
             var depUi = GetCurrentDepartment();  
             var depDb = DepForDb(depUi);
+
+            LoadFavoritesFromFile();
 
             if (!_depsLoaded || (CmbDepartment?.Items?.Count ?? 0) <= 2)
                 EnsureDepartmentsLoadedIntoComboPreservingSelection();
@@ -1191,7 +1188,7 @@ namespace KPLN_Tools.Forms
                 {
                     Orientation = Orientation.Horizontal,
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(0, 6, 0, 0)
+                    Margin = new Thickness(0, 10, 0, 0)
                 };
 
                 _btnOpenInRevit = new Button
@@ -1291,6 +1288,7 @@ namespace KPLN_Tools.Forms
                 _bimScrollViewer = null;
 
                 var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+                _univScrollViewer = scroll;
                 var panel = new StackPanel { Margin = new Thickness(0) };
                 scroll.Content = panel;
 
@@ -1465,7 +1463,11 @@ namespace KPLN_Tools.Forms
             OpenFamilyEditorLoop(idText);
         }
 
-        // Логика открытия окна
+
+
+
+
+        // Логика открытия окна. BIM
         private void OpenFamilyEditorLoop(string idText)
         {
             var owner = Window.GetWindow(this) ?? Application.Current?.MainWindow;
@@ -1569,6 +1571,63 @@ namespace KPLN_Tools.Forms
                     ReloadFromDbAndRefreshUI();
                     break;
                 }
+            }
+        }
+
+        private void OpenFamilyUserLoop(string idText)
+        {
+            var owner = Window.GetWindow(this) ?? Application.Current?.MainWindow;
+
+            while (true)
+            {
+                var win = new KPLN_Tools.Forms.FamilyManagerEditUser(idText)
+                {
+                    Owner = owner,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ShowInTaskbar = false,
+                    Topmost = true
+                };
+
+                if (win.ShowDialog() != true)
+                    break;
+
+                string openFormat = win.OpenFormat;
+                string filePathFI = win.filePathFI;
+
+                if (openFormat == "OpenFamily" || openFormat == "OpenFamilyInProject")
+                {
+                    if (_uiapp == null)
+                    {
+                        TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
+                        break;
+                    }
+
+                    string path = filePathFI;
+                    if (!System.IO.File.Exists(path))
+                    {
+                        TaskDialog.Show("Ошибка", $"Файл не найден: {path}");
+                        break;
+                    }
+
+                    try
+                    {
+                        if (openFormat == "OpenFamily")
+                        {
+                            _uiapp.OpenAndActivateDocument(path);
+                        }
+                        else
+                        {
+                            ExternalEventsHost.LoadFamilyHandler.FilePath = path;
+                            ExternalEventsHost.LoadFamilyEvent.Raise();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Ошибка", ex.Message);
+                    }
+
+                    break;
+                }            
             }
         }
 
@@ -2756,21 +2815,197 @@ namespace KPLN_Tools.Forms
         {
             if (_universalRootPanel == null) return;
 
+            CaptureUniversalScroll();
             _universalRootPanel.Children.Clear();
 
             var depUi = _universalDepartment ?? GetCurrentDepartment();
             var items = GetUniversalFiltered(depUi).ToList();
 
-            var set = GetOrCreateSelectionSet(GetDeptKey());
-            items = items
-                .OrderByDescending(r => set.Contains(r.ID))
-                .ThenBy(r => SafeFileName(r.FullPath), StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            bool isSearching = !_isWatermarkActive && !string.IsNullOrWhiteSpace(_tbSearch?.Text);
+
+            if (items.Count == 0)
+            {
+                _universalRootPanel.Children.Add(new TextBlock
+                {
+                    Text = "Нет элементов для отображения.",
+                    Opacity = 0.7,
+                    Margin = new Thickness(0, 6, 0, 0)
+                });
+                UpdateSelectionButtonsState();
+                RestoreUniversalScroll();
+                return;
+            }
+
+            var favorites = items.Where(IsFavorite).ToList();
+            if (favorites.Count > 0)
+            {
+                var favPanel = BuildRowsPanel(favorites);
+                var asm = this.GetType().Assembly;
+                var favRes = asm.GetName().Name + ".Imagens.FamilyManager.favorites.png";
+                var favIcon = GetEmbeddedIconCached(favRes);
+
+                var favExp = CreateUniversalExpander(
+                    "Избранное", favorites.Count,     
+                    "cat:favorites",
+                    favPanel, favIcon,
+                    forceExpanded: isSearching ? true : (bool?)null,
+                    persistState: !isSearching,
+                    iconSize: 32
+                );
+                _universalRootPanel.Children.Add(favExp);
+            }
+
+            var unassigned = new List<FamilyManagerRecord>();
+            var byCategory = new Dictionary<int, List<FamilyManagerRecord>>();
 
             foreach (var r in items)
-                _universalRootPanel.Children.Add(CreateUniversalRow(r));
+            {
+                if (IsUnassigned(r))
+                    unassigned.Add(r);
+                else
+                {
+                    if (!byCategory.TryGetValue(r.Category, out var list))
+                    {
+                        list = new List<FamilyManagerRecord>();
+                        byCategory[r.Category] = list;
+                    }
+                    list.Add(r);
+                }
+            }
+
+            if (unassigned.Count > 0)
+            {
+                var unassignedPanel = BuildRowsPanel(unassigned);
+                var asm = this.GetType().Assembly;
+                var ngRes = asm.GetName().Name + ".Imagens.FamilyManager.nongroup.png";
+                var unIcon = GetEmbeddedIconCached(ngRes);
+                var unHeader = $"Не назначенно ({unassigned.Count})";
+                var exp = CreateUniversalExpander(
+                    "Не назначенно", unassigned.Count,
+                    "cat:-1",
+                    unassignedPanel, unIcon,
+                    forceExpanded: isSearching ? true : (bool?)null,
+                    persistState: !isSearching,
+                    iconSize: 32
+                );
+                _universalRootPanel.Children.Add(exp);
+            }
+
+            foreach (var kv in byCategory)
+            {
+                int catId = kv.Key;
+                var catRecs = kv.Value;
+
+                TryGetCategoryInfo(catId, out string catName, out var subMap);
+
+                var atRoot = new List<FamilyManagerRecord>();
+                var bySub = new Dictionary<int, List<FamilyManagerRecord>>();
+
+                foreach (var r in catRecs)
+                {
+                    if (r.SubCategory > 0 && subMap.TryGetValue(r.SubCategory, out var _))
+                    {
+                        if (!bySub.TryGetValue(r.SubCategory, out var lst))
+                        {
+                            lst = new List<FamilyManagerRecord>();
+                            bySub[r.SubCategory] = lst;
+                        }
+                        lst.Add(r);
+                    }
+                    else
+                    {
+                        atRoot.Add(r);
+                    }
+                }
+
+                var catStack = new StackPanel { Margin = new Thickness(0) };
+
+                if (bySub.Count > 0)
+                {
+                    var orderedSubs = bySub
+                        .Select(s =>
+                        {
+                            string subName = subMap.TryGetValue(s.Key, out var sn) && !string.IsNullOrWhiteSpace(sn)
+                                ? sn
+                                : $"Подкатегория {s.Key}";
+                            int count = s.Value?.Count ?? 0;
+                            return (subId: s.Key, subName, recs: s.Value, count);
+                        })
+                        .OrderBy(x => x.subName, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    foreach (var (subId, subName, recs, count) in orderedSubs)
+                    {
+                        if (recs == null || recs.Count == 0) continue;
+
+                        var subPanel = BuildRowsPanel(recs);
+                        string subHeader = $"{subName} ({count})";
+                        var subIcon = GetCategoryHeaderIconCached(catId, subId);
+                        var subExp = CreateUniversalExpander(
+                            subName, count,
+                            $"cat:{catId}:sub:{subId}",
+                            subPanel, subIcon,
+                            forceExpanded: isSearching ? true : (bool?)null,
+                            persistState: !isSearching,
+                            iconSize: 32 
+                        );
+                        subExp.Margin = new Thickness(12, 4, 0, 0);
+                        catStack.Children.Add(subExp);
+                    }
+                }
+
+
+                if (atRoot.Count > 0)
+                {
+                    catStack.Children.Add(BuildRowsPanel(atRoot));
+                }
+
+                if (catStack.Children.Count > 0)
+                {
+                    var totalCount = catRecs.Count;
+                    var catIcon = GetCategoryHeaderIconCached(catId, 0);
+                    var catExp = CreateUniversalExpander(
+                        catName, totalCount,
+                        $"cat:{catId}",
+                        catStack, catIcon,
+                        forceExpanded: isSearching ? true : (bool?)null,
+                        persistState: !isSearching,
+                        iconSize: 32 
+                    );
+                    _universalRootPanel.Children.Add(catExp);
+                }
+            }
+
+            var allExps = _universalRootPanel.Children.OfType<Expander>().ToList();
+
+            var fav = allExps.Where(e => (e.Tag as string) == "cat:favorites").ToList();
+            var un = allExps.Where(e => (e.Tag as string) == "cat:-1").ToList();
+            var cats = allExps.Where(e =>
+            {
+                var tag = e.Tag as string;
+                return tag != "cat:favorites" && tag != "cat:-1";
+            })
+            .OrderBy(e =>
+            {
+                var sp = e.Header as StackPanel;
+                if (sp != null)
+                {
+                    var key = sp.Tag as string;
+                    if (!string.IsNullOrEmpty(key)) return key;
+                    var tb = sp.Children.OfType<TextBlock>().FirstOrDefault();
+                    if (tb != null && tb.Tag is string tkey && !string.IsNullOrEmpty(tkey)) return tkey;
+                }
+                return ""; 
+            }, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+            _universalRootPanel.Children.Clear();
+            foreach (var e in fav) _universalRootPanel.Children.Add(e);
+            foreach (var e in un) _universalRootPanel.Children.Add(e);
+            foreach (var e in cats) _universalRootPanel.Children.Add(e);
 
             UpdateSelectionButtonsState();
+            RestoreUniversalScroll();
         }
 
         // Интерфейс универсального отдела. Биндер для ComboBox - Cтадия
@@ -2829,8 +3064,14 @@ namespace KPLN_Tools.Forms
                 Tag = rec.ID
             };
 
-            //btn.Click += OnUniversalRowClick;
-            btn.Click += OnRowMainClick;
+            if (_currentSubDep == "BIM")
+            {
+                btn.Click += OnRowMainClick;
+            }
+            else
+            {
+                btn.Click += OnUniversalRowClick;
+            }
 
             var border = new Border
             {
@@ -2978,15 +3219,9 @@ namespace KPLN_Tools.Forms
         // Интерфейс универсального отдела. Заглушка для кнопки действия
         private void OnUniversalRowClick(object sender, RoutedEventArgs e)
         {
-            if ((sender as Button)?.Tag is FamilyManagerRecord rec)
-            {
-                string msg = $"ID: {rec.ID}\n" +
-                             $"Путь: {rec.FullPath}\n" +
-                             $"Отдел: {rec.Departament}\n" +
-                             $"Статус: {rec.Status}";
-                MessageBox.Show(msg, "Карточка семейства (универсальный UI)",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            var idObj = (sender as System.Windows.Controls.Button)?.Tag;
+            var idText = idObj?.ToString() ?? "null";
+            OpenFamilyUserLoop(idText);
         }
 
         // Интерфейс универсального отдела. Выделение элементов
@@ -3036,11 +3271,126 @@ namespace KPLN_Tools.Forms
             return pool.Where(r => set.Contains(r.ID)).ToList();
         }
 
+        // Определяем, что запись "не назначена" по категории
+        private static bool IsUnassigned(FamilyManagerRecord r)
+        {
+            if (r == null) return true;
+            if (r.Category == 0) return true;
+            if (r.Category == 1 && r.SubCategory == 0) return true;
+            return false;
+        }
 
+        // Получаем имя категории и карту подкатегорий по categoryId
+        private bool TryGetCategoryInfo(int categoryId, out string categoryName, out Dictionary<int, string> subMap)
+        {
+            var pair = _categoriesById.Keys.FirstOrDefault(k => k.Id == categoryId);
+            if (pair != default)
+            {
+                categoryName = string.IsNullOrWhiteSpace(pair.Name) ? $"Категория {categoryId}" : pair.Name;
+                subMap = _categoriesById[pair] ?? new Dictionary<int, string>();
+                return true;
+            }
+            categoryName = $"Категория {categoryId}";
+            subMap = new Dictionary<int, string>();
+            return false;
+        }
 
+        // Создаёт контейнер со строками элементов, отсортированными: выбранные — наверх, потом по имени
+        private System.Windows.Controls.Panel BuildRowsPanel(IEnumerable<FamilyManagerRecord> recs)
+        {
+            var sp = new StackPanel { Margin = new Thickness(8, 4, 0, 6) };
+            var set = GetOrCreateSelectionSet(GetDeptKey());
 
+            foreach (var r in recs
+                     .OrderByDescending(x => set.Contains(x.ID))
+                     .ThenBy(x => SafeFileName(x.FullPath), StringComparer.OrdinalIgnoreCase))
+            {
+                sp.Children.Add(CreateUniversalRow(r));
+            }
+            return sp;
+        }
 
+        // Перед очисткой — запоминаем позицию скролла
+        private void CaptureUniversalScroll()
+        {
+            if (_univScrollViewer != null)
+                _univScrollOffset = _univScrollViewer.VerticalOffset;
+        }
+        // После перестройки — восстанавливаем скролл
+        private void RestoreUniversalScroll()
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_univScrollViewer != null)
+                    _univScrollViewer.ScrollToVerticalOffset(_univScrollOffset);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
 
+        // Шапка экспандера: [стрелка] [картинка] [текст]
+        private object BuildExpanderHeader(string mainText, int? count, BitmapImage icon, double iconSize = 32)
+        {
+            var sp = new StackPanel
+            {
+                Tag = mainText,
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+
+            if (icon != null)
+            {
+                sp.Children.Add(new System.Windows.Controls.Image
+                {
+                    Source = icon,
+                    Width = iconSize,
+                    Height = iconSize,
+                    Margin = new Thickness(6, 0, 8, 0),
+                    SnapsToDevicePixels = true
+                });
+            }
+
+            var tb = new TextBlock
+            {
+                Tag = mainText,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 13,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            tb.Inlines.Add(new Run(mainText) { FontWeight = FontWeights.SemiBold });
+            if (count.HasValue)
+            {
+                tb.Inlines.Add(new Run(" (" + count.Value.ToString() + ")")
+                {
+                    FontWeight = FontWeights.Normal,
+                });
+            }
+
+            sp.Children.Add(tb);
+            return sp;
+        }
+
+        // Экспандер с запоминанием состояния
+        private Expander CreateUniversalExpander(string mainText, int? count, string stateKey, UIElement content, BitmapImage headerIcon = null, bool? forceExpanded = null, bool persistState = true, double iconSize = 32)
+        {
+            bool isExpanded = _univExpandState.TryGetValue(stateKey, out var saved) ? saved : false;
+            if (forceExpanded.HasValue) isExpanded = forceExpanded.Value;
+
+            var exp = new Expander
+            {
+                Header = BuildExpanderHeader(mainText, count, headerIcon, iconSize),
+                IsExpanded = isExpanded,
+                Margin = new Thickness(0, 6, 0, 0),
+                Content = content,
+                Tag = stateKey
+            };
+
+            if (persistState)
+            {
+                exp.Expanded += (s, e) => _univExpandState[stateKey] = true;
+                exp.Collapsed += (s, e) => _univExpandState[stateKey] = false;
+            }
+            return exp;
+        }
 
         // Интерфейс универсального отдела. Открыть в Revit
         private void OnOpenInRevitClick(object sender, RoutedEventArgs e)
@@ -3050,7 +3400,6 @@ namespace KPLN_Tools.Forms
 
             var names = list.Select(r => SafeFileName(r.FullPath)).ToList();
 
-            // подтверждение
             var msg = "Сейчас будут открыты в Revit следующие семейства:\n" +
                       string.Join("\n", names);
             var result = System.Windows.MessageBox.Show(
@@ -3116,15 +3465,6 @@ namespace KPLN_Tools.Forms
 
             evnt.Raise();
         }
-
-
-
-
-
-
-
-
-
 
         // Тултип для карточки семейства
         private ToolTip BuildFamilyTooltip(FamilyManagerRecord rec)
@@ -3240,5 +3580,191 @@ namespace KPLN_Tools.Forms
             catch { return null; }
         }
 
+        // Избраное. Ссылка на документ
+        private static string GetFavoritesPath()
+        {
+            try
+            {
+                var localDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (string.IsNullOrWhiteSpace(localDir))
+                    return null;
+                return Path.Combine(localDir, "RevitFamilyManagerFavorites.txt");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Избранное. Загрузка первичная
+        private bool LoadFavoritesFromFile()
+        {
+            try
+            {
+                if (_favoritesPath == null)
+                    _favoritesPath = GetFavoritesPath();
+
+                if (string.IsNullOrWhiteSpace(_favoritesPath))
+                    return false;
+
+                if (!File.Exists(_favoritesPath))
+                {
+                    if (_favoriteIds.Count > 0)
+                    {
+                        _favoriteIds.Clear();
+                        return true;
+                    }
+                    return false;
+                }
+
+                var fi = new FileInfo(_favoritesPath);
+                if (fi.LastWriteTimeUtc <= _favoritesLastWrite)
+                    return false;
+
+                var text = File.ReadAllText(_favoritesPath, Encoding.UTF8);
+
+                var newSet = new HashSet<int>();
+                foreach (var token in text.Split(new[] { ',', ';', '\n', '\r', '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    int id;
+                    if (int.TryParse(token.Trim(), out id) && id > 0)
+                        newSet.Add(id);
+                }
+
+                _favoriteIds.Clear();
+                foreach (var id in newSet) _favoriteIds.Add(id);
+                _favoritesLastWrite = fi.LastWriteTimeUtc;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Избранное. Загрузка повторная
+        private void StartFavoritesWatcher()
+        {
+            try
+            {
+                if (_favoritesPath == null)
+                    _favoritesPath = GetFavoritesPath();
+
+                if (string.IsNullOrWhiteSpace(_favoritesPath)) return;
+
+                if (_favoritesWatcher != null)
+                {
+                    _favoritesWatcher.EnableRaisingEvents = false;
+                    _favoritesWatcher.Dispose();
+                    _favoritesWatcher = null;
+                }
+
+                var dir = Path.GetDirectoryName(_favoritesPath);
+                var file = Path.GetFileName(_favoritesPath);
+                if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(file)) return;
+
+                _favoritesWatcher = new FileSystemWatcher(dir, file)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.Size | NotifyFilters.FileName,
+                    IncludeSubdirectories = false,
+                    EnableRaisingEvents = true
+                };
+
+                FileSystemEventHandler onChange = (s, e) =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (LoadFavoritesFromFile())
+                            RefreshScenario();
+                    }));
+                };
+
+                _favoritesWatcher.Changed += onChange;
+                _favoritesWatcher.Created += onChange;
+                _favoritesWatcher.Renamed += (s, e) => onChange(s, e);
+                _favoritesWatcher.Deleted += onChange;
+            }
+            catch { }
+        }
+
+        // Данные БД. Картинки категорий/подкатегорий (таблица Category_PIC)
+        private void LoadCategoryPics(string dbPath)
+        {
+            _categoryPics.Clear();
+            if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+                using (var cmd = new SQLiteCommand(@"
+            SELECT CAT_ID, SUBCAT_ID, PIC
+            FROM Category_PIC
+            WHERE CAT_ID IS NOT NULL;", conn))
+                using (var rd = cmd.ExecuteReader(System.Data.CommandBehavior.SequentialAccess))
+                {
+                    while (rd.Read())
+                    {
+                        int catId = rd.IsDBNull(0) ? 0 : Convert.ToInt32(rd.GetValue(0));
+                        int subId = rd.IsDBNull(1) ? 0 : Convert.ToInt32(rd.GetValue(1)); 
+                        byte[] bytes = rd.IsDBNull(2) ? null : (byte[])rd[2];
+
+                        if (catId > 0 && bytes != null && bytes.Length > 0)
+                            _categoryPics[(catId, subId)] = bytes;
+                    }
+                }
+            }
+        }
+
+        // Загрузка иконок. Embedded PNG → BitmapImage (с кешем)
+        private BitmapImage GetEmbeddedIconCached(string resourceName)
+        {
+            BitmapImage cached;
+            if (_embeddedIconCache.TryGetValue(resourceName, out cached))
+                return cached;
+
+            try
+            {
+                var asm = this.GetType().Assembly;
+                using (var s = asm.GetManifestResourceStream(resourceName))
+                {
+                    if (s == null) return null;
+                    var bi = new BitmapImage();
+                    bi.BeginInit();
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.StreamSource = s;
+                    bi.EndInit();
+                    bi.Freeze();
+                    _embeddedIconCache[resourceName] = bi;
+                    return bi;
+                }
+            }
+            catch { return null; }
+        }
+
+        // Загрузка иконок. Категории/подкатегории из БД
+        private BitmapImage GetCategoryHeaderIconCached(int catId, int subId)
+        {
+            BitmapImage cached;
+            if (_categoryIconCache.TryGetValue((catId, subId), out cached))
+                return cached;
+
+            byte[] bytes;
+            if (_categoryPics.TryGetValue((catId, subId), out bytes) && bytes != null && bytes.Length > 0)
+            {
+                try
+                {
+                    var bi = CreateBitmapImageFromBytes(bytes);
+                    if (bi != null)
+                    {
+                        _categoryIconCache[(catId, subId)] = bi;
+                        return bi;
+                    }
+                }
+                catch { }
+            }
+            _categoryIconCache[(catId, subId)] = null; 
+            return null;
+        }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
@@ -8,17 +10,15 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using System.Windows.Documents;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
 using CheckBox = System.Windows.Controls.CheckBox;
 using Style = System.Windows.Style;
 using Window = System.Windows.Window;
-using System.Windows.Controls;
 
 
 namespace KPLN_Tools.Forms
@@ -50,6 +50,8 @@ namespace KPLN_Tools.Forms
         private List<CategoryItem> _categories;
         private List<ProjectItem> _projects;
         private List<StageItem> _stages;
+
+        public bool IsFavorite { get; set; } = false;
 
         // Класс БД. Общее
         public class FamilyManagerRecord 
@@ -109,6 +111,7 @@ namespace KPLN_Tools.Forms
         public FamilyManagerEditBIM(string idText)
         {
             InitializeComponent();
+            EnsureFavoritesFileExists();
 
             LoadLookups(); // Справочники
 
@@ -125,6 +128,15 @@ namespace KPLN_Tools.Forms
             }
 
             DataContext = record;
+
+            try
+            {
+                var fav = IsFavoriteId(record.ID);
+                IsFavorite = fav;    
+                if (FavoriteToggle != null) FavoriteToggle.IsChecked = fav;
+            }
+            catch {}
+
             BuildDepartmentUI(record);
             RenderImportInfo(record.IMPORT_INFO);
 
@@ -1335,6 +1347,103 @@ namespace KPLN_Tools.Forms
             DeleteStatus = true;
             DialogResult = true;
             Close();
+        }
+
+        // XAML. Кнопка избранное
+        private void FavoriteToggle_Click(object sender, RoutedEventArgs e)
+        {
+            var rec = DataContext as FamilyManagerRecord;
+            if (rec == null) return;
+
+            var on = FavoriteToggle.IsChecked == true;
+            IsFavorite = on;
+
+            SetFavorite(rec.ID, on);
+        }
+
+        // Кнопка избранное. Получение пути
+        private static string GetFavoritesFilePath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RevitFamilyManagerFavorites.txt");
+        }
+
+        // Кнопка избранное. Запись в файл
+        private static void EnsureFavoritesFileExists()
+        {
+            var path = GetFavoritesFilePath();
+            var dir = Path.GetDirectoryName(path);
+            try
+            {
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                if (!File.Exists(path))
+                {
+                    using (var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+                    using (var sw = new StreamWriter(fs, Encoding.UTF8)) {}
+                }
+            }
+            catch{}
+        }
+
+        // Кнопка избранное. Чтение ИЗЮРАНОЕ
+        private static HashSet<int> LoadFavorites()
+        {
+            EnsureFavoritesFileExists();
+
+            var set = new HashSet<int>();
+            var path = GetFavoritesFilePath();
+            try
+            {
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var sr = new StreamReader(fs, Encoding.UTF8, true))
+                {
+                    var text = sr.ReadToEnd();
+                    foreach (var t in (text ?? "").Split(new[] { ',', ';', ' ', '\t', '\r', '\n' },
+                             StringSplitOptions.RemoveEmptyEntries))
+                        if (int.TryParse(t.Trim(), out var id)) set.Add(id);
+                }
+            }
+            catch { }
+            return set;
+        }
+
+        // Кнопка избранное. Запись в ИЗБРАНОЕ
+        private static void SaveFavorites(HashSet<int> set)
+        {
+            EnsureFavoritesFileExists();
+
+            var path = GetFavoritesFilePath();
+            var tmp = path + ".tmp";
+            var payload = string.Join(",", set.OrderBy(v => v));
+
+            try
+            {
+                File.WriteAllText(tmp, payload, Encoding.UTF8);
+                if (File.Exists(path)) File.Replace(tmp, path, null);
+                else File.Move(tmp, path);
+            }
+            catch
+            {
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+            }
+        }
+
+        // Кнопка избранное. Сетер ИЗБРАНОЕ
+        private static void SetFavorite(int id, bool isFav)
+        {
+            var set = LoadFavorites();
+            if (isFav) set.Add(id); else set.Remove(id);
+            SaveFavorites(set);
+        }
+
+        // Кнопка избранное. Поиск по ID
+        private static bool IsFavoriteId(int id)
+        {
+            var set = LoadFavorites();
+            return set.Contains(id);
         }
     }
 }
