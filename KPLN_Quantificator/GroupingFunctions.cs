@@ -722,7 +722,7 @@ namespace KPLN_Quantificator
                 ModelItem currentComposite = null;
 
                 //Get last composite item.
-                while (item.Parent != null)
+                while (item != null && item.Parent != null)
                 {
                     item = item.Parent;
                     if (item.IsComposite) currentComposite = item;
