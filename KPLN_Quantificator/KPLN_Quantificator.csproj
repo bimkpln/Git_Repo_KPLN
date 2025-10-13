@@ -2,7 +2,7 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Navisworks2018</Configuration>
+    <Configuration Condition=" '$(Configuration)' == '' ">Navisworks2020</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{60059845-6DB3-4ED2-91C6-18DDB6B52058}</ProjectGuid>
     <OutputType>Library</OutputType>
@@ -12,15 +12,6 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Navisworks2018|AnyCPU'">
-    <OutputPath>..\..\SetupFiles\Navisworks\KPLN_Quantificator\2018\</OutputPath>
-    <DefineConstants>Navisworks2018</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <Optimize>true</Optimize>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Navisworks2020|AnyCPU'">
     <OutputPath>..\..\SetupFiles\Navisworks\KPLN_Quantificator\2020\</OutputPath>
@@ -81,38 +72,6 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <Choose>
-    <When Condition=" '$(Configuration)'=='Navisworks2018' ">
-      <ItemGroup>
-        <Reference Include="AdWindows">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\AdWindows.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Autodesk.Navisworks.Api">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\Autodesk.Navisworks.Api.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Autodesk.Navisworks.Clash">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\Autodesk.Navisworks.Clash.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Autodesk.Navisworks.ComApi">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\Autodesk.Navisworks.ComApi.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Autodesk.Navisworks.Takeoff">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\Autodesk.Navisworks.Takeoff.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.Expression.Interactions">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\Microsoft.Expression.Interactions.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="navisworks.gui.roamer">
-          <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2018\navisworks.gui.roamer.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
     <When Condition=" '$(Configuration)'=='Navisworks2020' ">
       <ItemGroup>
         <Reference Include="AdWindows">

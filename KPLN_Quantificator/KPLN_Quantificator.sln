@@ -8,14 +8,11 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		Navisworks2018|Any CPU = Navisworks2018|Any CPU
 		Navisworks2020|Any CPU = Navisworks2020|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Navisworks2018|Any CPU.ActiveCfg = Navisworks2018|Any CPU
-		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Navisworks2018|Any CPU.Build.0 = Navisworks2018|Any CPU
 		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Navisworks2020|Any CPU.ActiveCfg = Navisworks2020|Any CPU
 		{60059845-6DB3-4ED2-91C6-18DDB6B52058}.Navisworks2020|Any CPU.Build.0 = Navisworks2020|Any CPU
 	EndGlobalSection
