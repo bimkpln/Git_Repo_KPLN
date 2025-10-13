@@ -54,6 +54,12 @@
                             ShowText="True"
                             Text="Сгруппировать&#x0a;коллизии"
                             Orientation="Vertical"/>
+				<local:NWRibbonButton x:Uid="Button_E2" Id="ID_Button_E2"
+                            Size="Large"
+                            KeyTip="T1"
+                            ShowText="True"
+                            Text="Сортировать&#x0a;коллизии"
+                            Orientation="Vertical"/>
             </RibbonPanelSource>
         </RibbonPanel>
 		<RibbonPanel x:Uid="KPLN_Tab_Other">

@@ -139,6 +139,9 @@
     <Compile Include="Forms\RenameViewForm.xaml.cs">
       <DependentUpon>RenameViewForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SortAllClashesForm.xaml.cs">
+      <DependentUpon>SortAllClashesForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="GlobalPreferences.cs" />
     <Compile Include="GroupingFunctions.cs" />
     <Compile Include="Output.cs" />
@@ -200,6 +203,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\SortAllClashesForm.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Source\comment_big.png">
@@ -242,6 +249,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\scope_set_small.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\sort_big.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\sort_small.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\update_q_big.png">
