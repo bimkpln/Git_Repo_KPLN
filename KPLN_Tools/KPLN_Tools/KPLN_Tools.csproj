@@ -329,6 +329,9 @@
     <Compile Include="Forms\FamilyManagerEditBIM.xaml.cs">
       <DependentUpon>FamilyManagerEditBIM.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FamilyManagerEditUser.xaml.cs">
+      <DependentUpon>FamilyManagerEditUser.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FamilyManagerSettingDB.xaml.cs">
       <DependentUpon>FamilyManagerSettingDB.xaml</DependentUpon>
     </Compile>
@@ -452,6 +455,8 @@
     <EmbeddedResource Include="Imagens\FamilyManager\bim_update.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\bim_ignore.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\bim_ok.png" />
+    <EmbeddedResource Include="Imagens\FamilyManager\favorites.png" />
+    <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -478,6 +483,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\FamilyManagerEditBIM.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\FamilyManagerEditUser.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
