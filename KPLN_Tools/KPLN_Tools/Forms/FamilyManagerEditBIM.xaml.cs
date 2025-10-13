@@ -301,22 +301,22 @@ namespace KPLN_Tools.Forms
                 case "NEW":
                     StatusCombo.Items.Add("Подтверждено");
                     StatusCombo.Items.Add("Требует подтверждения");
-                    StatusCombo.Items.Add("Игнорировать в БД");
+                    StatusCombo.Items.Add("Архив");
                     StatusCombo.SelectedItem = "Требует подтверждения";
                     ButtonSaveDB.IsEnabled = true;
                     break;
 
                 case "OK":
                     StatusCombo.Items.Add("Подтверждено");
-                    StatusCombo.Items.Add("Игнорировать в БД");
+                    StatusCombo.Items.Add("Архив");
                     StatusCombo.SelectedItem = "Подтверждено";
                     ButtonSaveDB.IsEnabled = true;
                     break;
 
                 case "IGNORE":
                     StatusCombo.Items.Add("Подтверждено");
-                    StatusCombo.Items.Add("Игнорировать в БД");
-                    StatusCombo.SelectedItem = "Игнорировать в БД";
+                    StatusCombo.Items.Add("Архив");
+                    StatusCombo.SelectedItem = "Архив";
                     ButtonSaveDB.IsEnabled = true;
                     break;
 
@@ -836,7 +836,7 @@ namespace KPLN_Tools.Forms
                 return originalStatus;
             }
 
-            if (selectedUiStatus == "Игнорировать в БД") return "IGNORE";
+            if (selectedUiStatus == "Архив") return "IGNORE";
             if (selectedUiStatus == "Подтверждено") return "OK";
 
             return originalStatus;

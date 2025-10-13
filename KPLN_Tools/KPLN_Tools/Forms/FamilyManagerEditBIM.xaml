@@ -132,8 +132,8 @@
                     </Grid>
                 </Border>
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Пользоватльское" Margin="0,4,8,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonUserPic_Click"/>
-                    <Button Content="Загрузить из RFA" Margin="0,4,0,0" Width="105" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonRFAPic_Click"/>
+                    <Button Content="Пользовательское" Margin="0,4,8,0" Width="109" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonUserPic_Click"/>
+                    <Button Content="Загрузить из RFA" Margin="0,4,0,0" Width="102" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonRFAPic_Click"/>
                 </StackPanel>
             </StackPanel>
             
@@ -207,7 +207,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="ButtonOpenFamily" Content="Открыть семейство" Width="140" Height="22" Margin="0,0,8,0" Click="ButtonOpenFamily_Click"  />
+                <Button x:Name="ButtonOpenFamily" Content="Редактировать в Revit" Width="150" Height="22" Margin="0,0,8,0" Click="ButtonOpenFamily_Click"  />
                 <Button x:Name="ButtonOpenFamilyInProject" Content="Загрузить семейство в проект" Width="210" Height="22" Click="ButtonOpenFamilyInProject_Click" />
             </StackPanel>
 

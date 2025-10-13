@@ -497,6 +497,7 @@ namespace KPLN_Tools.Forms
     {
         private UIApplication _uiapp;
         string _currentSubDep;
+        private bool _suppressAutoReload = false;
 
         private const string ITEM_ERROR = "ОШИБКА";
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
@@ -929,6 +930,9 @@ namespace KPLN_Tools.Forms
             EnsureDepartmentsLoadedIntoComboPreservingSelection();
             LoadFavoritesFromFile();
             StartFavoritesWatcher();
+
+            _suppressAutoReload = false; 
+            ReloadData();
         }
 
         // XAML. Док панель. Обновление статуса CmbDepartment (
@@ -950,12 +954,21 @@ namespace KPLN_Tools.Forms
             }
 
             UpdateUiState();
+
+            if (!_suppressAutoReload)
+                ReloadData();
         }
 
         // XAML. Док панель. Загрузка данных по кнопке
         private void BtnReload_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            var depUi = GetCurrentDepartment();  
+            ReloadData();
+        }
+
+        // Вспомогательный метод. Загрузка данных по кнопке
+        private void ReloadData()
+        {
+            var depUi = GetCurrentDepartment();
             var depDb = DepForDb(depUi);
 
             LoadFavoritesFromFile();
@@ -968,13 +981,9 @@ namespace KPLN_Tools.Forms
                 try
                 {
                     if (string.Equals(depUi, BIM_ADMIN, StringComparison.OrdinalIgnoreCase))
-                    {
                         _records = LoadFamilyManagerRecords(DB_PATH);
-                    }
                     else
-                    {
                         _records = LoadFamilyManagerRecordsForDepartment(DB_PATH, depUi);
-                    }
 
                     RebuildSearchIndex();
                     BuildMainArea(depUi);
@@ -1193,8 +1202,8 @@ namespace KPLN_Tools.Forms
 
                 _btnOpenInRevit = new Button
                 {
-                    Content = "Загрузить в Revit",
-                    MinWidth = 120,
+                    Content = "Редактировать в Revit",
+                    MinWidth = 145,
                     Height = 22,
                     Margin = new Thickness(0, 0, 8, 0),
                     Background = (System.Windows.Media.Brush)new BrushConverter().ConvertFromString("#90EE90"),
@@ -1325,17 +1334,7 @@ namespace KPLN_Tools.Forms
             string q = _isWatermarkActive ? null : _tbSearch?.Text?.Trim();
             if (!string.IsNullOrEmpty(q))
             {
-                all = all.Where(r =>
-                {
-                    var name = SafeFileName(r.FullPath);
-                    bool byName = name?.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    bool byImport = false;
-                    if (!string.IsNullOrEmpty(r.ImportInfo))
-                        byImport = r.ImportInfo.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    return byName || byImport;
-                }).ToList();
+                all = all.Where(r => MatchesSearchByIndex(r, q)).ToList();
             }
 
             Func<string, string> norm = s => (s ?? "").Trim().ToUpperInvariant();
@@ -1357,7 +1356,7 @@ namespace KPLN_Tools.Forms
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ ОТДЕЛА", "bim_error.png", catNotDepartament, "Семейства, которые не содержут информацию об отделе.\nДанные семейства не отображаются в списке у пользователей до указания отдела BIM-координатором.", key: "nodept"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕ УКАЗАНА КАТЕГОРИЯ", "bim_caution.png", catOkWithBadMeta, "Семейства, в которых не указан параметр КАТЕГОРИЯ.\nБез указания данного параметра семейство группируется в директории по-умолчанию.", key: "badmeta"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("НЕТ СВОЙСТВ СЕМЕЙСТВА", "bim_caution.png", catOkMissingImportOrImage, "Семейства, в которых не указаны экспортируемые свойства семейства.\nБез указания данных параметров семейство не содержит описания о себе (из файла).", key: "missingimport"));
-            _bimRootPanel.Children.Add(CreateCategoryExpander("ИГНОРИРУЮТСЯ", "bim_ignore.png", catIgnored, "Семейства, помеченные к игнорированию. Не отображаются у пользователей.", key: "ignored"));
+            _bimRootPanel.Children.Add(CreateCategoryExpander("АРХИВ", "bim_ignore.png", catIgnored, "Семейства, помеченные к игнорированию. Не отображаются у пользователей.", key: "ignored"));
             _bimRootPanel.Children.Add(CreateCategoryExpander("ОБРАБОТАННЫЕ СЕМЕЙСТВА", "bim_ok.png", catOkProcessed, "Полностью обработанные семейства со статусом «OK». Отдел указан, базовые поля заполнены, свойства из файла присутствуют.", key: "ok"));
 
             _bimRootPanel.UpdateLayout();
@@ -1462,10 +1461,6 @@ namespace KPLN_Tools.Forms
             var idText = idObj?.ToString() ?? "null";
             OpenFamilyEditorLoop(idText);
         }
-
-
-
-
 
         // Логика открытия окна. BIM
         private void OpenFamilyEditorLoop(string idText)
@@ -1573,6 +1568,24 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
+
+
+
+        // Поиск. Только по значениям (и имени файла), из _searchIndex
+        private bool MatchesSearchByIndex(FamilyManagerRecord r, string query)
+        {
+            if (string.IsNullOrWhiteSpace(query)) return true;
+            if (r == null) return false;
+
+            var q = query.ToUpperInvariant();
+
+            if (_searchIndex != null && _searchIndex.TryGetValue(r.ID, out var text) && !string.IsNullOrEmpty(text))
+                return text.Contains(q);
+
+            return false;
+        }
+
+
 
         private void OpenFamilyUserLoop(string idText)
         {
@@ -2765,17 +2778,7 @@ namespace KPLN_Tools.Forms
             string q = (_isWatermarkActive ? null : _tbSearch?.Text)?.Trim();
             if (!string.IsNullOrEmpty(q))
             {
-                filtered = filtered.Where(r =>
-                {
-                    var name = SafeFileName(r.FullPath);
-                    bool byName = name?.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    bool byImport = false;
-                    if (!string.IsNullOrEmpty(r.ImportInfo))
-                        byImport = r.ImportInfo.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    return byName || byImport;
-                });
+                filtered = filtered.Where(r => MatchesSearchByIndex(r, q));
             }
 
             if (string.Equals(depUi?.Trim(), "АР", StringComparison.OrdinalIgnoreCase)
@@ -2879,9 +2882,9 @@ namespace KPLN_Tools.Forms
                 var asm = this.GetType().Assembly;
                 var ngRes = asm.GetName().Name + ".Imagens.FamilyManager.nongroup.png";
                 var unIcon = GetEmbeddedIconCached(ngRes);
-                var unHeader = $"Не назначенно ({unassigned.Count})";
+                var unHeader = $"Не назначено ({unassigned.Count})";
                 var exp = CreateUniversalExpander(
-                    "Не назначенно", unassigned.Count,
+                    "Не назначено", unassigned.Count,
                     "cat:-1",
                     unassignedPanel, unIcon,
                     forceExpanded: isSearching ? true : (bool?)null,
