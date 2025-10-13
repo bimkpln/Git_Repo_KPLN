@@ -1,0 +1,91 @@
+﻿<Window x:Class="KPLN_Quantificator.Forms.SortAllClashesForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:KPLN_Quantificator.Forms"
+        Title="Сортировка отчётов"
+        Height="450" Width="600"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Window.Resources>
+
+        <local:BoolInverseToVisibilityConverter x:Key="BoolToVisibilityInverseConverter"/>
+
+        <Style x:Key="PlusBtn" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Content" Value="+"/>
+            <Setter Property="Background" Value="LightGreen"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <Style x:Key="MinusBtn" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Content" Value="–"/>
+            <Setter Property="Background" Value="#FFFF9595"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="ToolTip" Value="Удалить строку"/>
+        </Style>
+
+    </Window.Resources>
+
+    <DockPanel Margin="16">
+        <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Content="Отмена" Height="24" Width="90" Click="BtnCancel_Click" HorizontalAlignment="Left" Grid.Column="0" Padding="1,-1,1,1"/>
+            <Button x:Name="BtnApplyAll" Content="Применить ко всем отчётам" Height="24" Width="200" Click="BtnApplyAll_Click" HorizontalAlignment="Right" Grid.Column="2" Padding="1,-1,1,1"/>
+        </Grid>
+
+        <StackPanel>
+            <ItemsControl x:Name="RowsHost" ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="0,6,0,6">
+                            <Button Style="{StaticResource MinusBtn}" DockPanel.Dock="Right" Command="{Binding DataContext.RemoveRowCmd, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Visibility="{Binding IsProtected, Converter={StaticResource BoolToVisibilityInverseConverter}}" Padding="1,-2,1,1"/>
+                            <ComboBox ItemsSource="{Binding DataContext.SortOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                SelectedValuePath="Key" DisplayMemberPath="Value" SelectedValue="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="24" MinWidth="360" VerticalContentAlignment="Center">
+                                <ComboBox.ItemContainerStyle>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Key}" Value="{x:Static local:SortKey.None}">
+                                                <Setter Property="Foreground" Value="Gray"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ComboBox.ItemContainerStyle>
+
+                                <ComboBox.Style>
+                                    <Style TargetType="ComboBox">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Key}" Value="{x:Static local:SortKey.None}">
+                                                <Setter Property="Foreground" Value="Gray"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ComboBox.Style>
+                            </ComboBox>
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <Button x:Name="BtnAdd" Style="{StaticResource PlusBtn}" Padding="1,-1,1,1" Click="BtnAdd_Click" ToolTip="Добавить ключ"/>
+                <TextBlock Text="{Binding AddHint}" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.6"/>
+            </StackPanel>
+        </StackPanel>
+    </DockPanel>
+</Window>

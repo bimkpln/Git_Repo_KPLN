@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,6 +21,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using static KPLN_Quantificator.Common.Collections;
 using Application = Autodesk.Navisworks.Api.Application;
+using GroupItem = Autodesk.Navisworks.Api.GroupItem;
 
 namespace KPLN_Quantificator.Forms
 {
@@ -138,15 +140,6 @@ namespace KPLN_Quantificator.Forms
             }
         }
         
-
-
-
-
-
-
-
-
-
         private void Group_Button_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             string clashStatus = radioNewActive.IsChecked == true ? "NewActiveClash" : "AllClash";
@@ -169,9 +162,6 @@ namespace KPLN_Quantificator.Forms
 
                             if ((GroupingMode)comboBoxThenBy.SelectedItem != GroupingMode.None || (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
                             {
-
-
-
 
                                 if ((GroupingMode)comboBoxThenBy.SelectedItem == GroupingMode.None && (GroupingMode)comboBoxGroupBy.SelectedItem != GroupingMode.None)
                                 {
@@ -202,15 +192,6 @@ namespace KPLN_Quantificator.Forms
                 this.Close();
             }          
         }
-
-
-
-
-
-
-
-
-
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -259,7 +240,7 @@ namespace KPLN_Quantificator.Forms
                     {
                         if (clashTest.Children.Count != 0)
                         {
-                            GroupingFunctions.UnGroupClashes(clashTest);
+                            GroupingFunctions.UnGroupClashes(clashTest);                          
                         }
                     }
                     catch { }
@@ -316,6 +297,141 @@ namespace KPLN_Quantificator.Forms
             }
             comboBoxGroupBy.SelectedIndex = 0;
             comboBoxThenBy.SelectedIndex = 0;
+        }
+    }
+
+
+
+
+
+
+
+    public static class ClashSortHelper
+    {
+        static Document Doc => Application.ActiveDocument ?? Application.MainDocument;
+        static DocumentClashTests Dct() => Doc?.GetClash()?.TestsData;
+        static ClashTest ResolveTest(Guid guid) => Dct()?.Tests.OfType<ClashTest>().FirstOrDefault(t => t.Guid == guid);
+
+        static Guid? FindTestGuidByName(string displayName)
+        {
+            var dct = Dct();
+            if (dct == null || string.IsNullOrWhiteSpace(displayName)) return null;
+
+            var exact = dct.Tests.OfType<ClashTest>()
+                .FirstOrDefault(t => string.Equals(t.DisplayName, displayName, StringComparison.Ordinal));
+            if (exact != null) return exact.Guid;
+
+            var cur = ClashCurrentIssue.CurrentTest;
+            if (cur != null && string.Equals(cur.DisplayName, displayName, StringComparison.Ordinal))
+                return dct.Tests.OfType<ClashTest>().FirstOrDefault(t => t.Guid == cur.Guid)?.Guid;
+
+            var partial = dct.Tests.OfType<ClashTest>()
+                .FirstOrDefault(t => (t.DisplayName ?? "").IndexOf(displayName, StringComparison.OrdinalIgnoreCase) >= 0);
+            return partial?.Guid;
+        }
+
+        static string NameOf(SavedItem si) =>
+            (si as ClashResultGroup)?.DisplayName ??
+            (si as ClashResult)?.DisplayName ??
+            si?.DisplayName ?? "";
+
+        static ClashResultStatus StatusOf(SavedItem si) =>
+            si is ClashResult cr ? cr.Status :
+            si is ClashResultGroup cg ? cg.Status :
+            ClashResultStatus.New;
+
+        static int NaturalCompare(string a, string b)
+        {
+            if (a == null) a = "";
+            if (b == null) b = "";
+
+            var rx = new System.Text.RegularExpressions.Regex(@"\d+");
+            var asplit = rx.Split(a);
+            var bsplit = rx.Split(b);
+            var anum = rx.Matches(a).Cast<System.Text.RegularExpressions.Match>()
+                         .Select(m => long.Parse(m.Value)).ToArray();
+            var bnum = rx.Matches(b).Cast<System.Text.RegularExpressions.Match>()
+                         .Select(m => long.Parse(m.Value)).ToArray();
+
+            int i = 0, j = 0, ni = 0, nj = 0;
+            for (; i < asplit.Length && j < bsplit.Length; i++, j++)
+            {
+                int cmp = string.Compare(asplit[i], bsplit[j], StringComparison.CurrentCultureIgnoreCase);
+                if (cmp != 0) return cmp;
+
+                if (ni < anum.Length && nj < bnum.Length)
+                {
+                    if (anum[ni] != bnum[nj]) return anum[ni].CompareTo(bnum[nj]);
+                    ni++; nj++;
+                }
+            }
+            return asplit.Length - bsplit.Length;
+        }
+
+        public static void SortTestByStatusThenAlpha(string testDisplayName)
+        {
+            var dct = Dct();
+            if (Doc == null || Doc.IsClear || dct == null) return;
+
+            var guid = FindTestGuidByName(testDisplayName);
+            if (guid == null) return;
+
+            using (var tr = Doc.BeginTransaction("Sort clashes (Status -> Alpha)"))
+            {
+                var test = ResolveTest(guid.Value);
+                var parent = test as GroupItem;
+                if (parent == null) { tr.Commit(); return; }
+
+                var all = parent.Children.OfType<SavedItem>().ToList();
+
+                var statusOrder = new[]
+                {
+                    ClashResultStatus.New,
+                    ClashResultStatus.Active,
+                    ClashResultStatus.Reviewed,
+                    ClashResultStatus.Approved,
+                    ClashResultStatus.Resolved
+                };
+
+                var desired = new List<Guid>(all.Count);
+                foreach (var st in statusOrder)
+                {
+                    var bucket = all.Where(si => StatusOf(si) == st)
+                                    .OrderBy(si => NameOf(si), Comparer<string>.Create(NaturalCompare))
+                                    .ToList();
+
+                    foreach (var si in bucket)
+                    {
+                        if (si is ClashResultGroup g) desired.Add(g.Guid);
+                        else if (si is ClashResult r) desired.Add(r.Guid);
+                    }
+                }
+
+                for (int i = 0; i < desired.Count; i++)
+                {
+                    var need = desired[i];
+
+                    test = ResolveTest(guid.Value);
+                    parent = test as GroupItem;
+                    if (parent == null) break;
+
+                    var children = parent.Children.OfType<SavedItem>().ToList();
+
+                    var curAtI = children.ElementAtOrDefault(i);
+                    bool ok = (curAtI as ClashResult)?.Guid == need
+                           || (curAtI as ClashResultGroup)?.Guid == need;
+                    if (ok) continue;
+
+                    int j = children.FindIndex(si =>
+                              (si as ClashResult)?.Guid == need
+                           || (si as ClashResultGroup)?.Guid == need);
+                    if (j < 0 || j == i) continue;
+
+                    dct.TestsMove(parent, j, parent, i);
+                }
+
+                tr.Commit();
+            }
         }
     }
 }
