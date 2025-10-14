@@ -227,7 +227,7 @@ namespace KPLN_Looker
                 td = new TaskDialog("ВНИМАНИЕ")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать, поэтому он зароется",
+                    MainInstruction = "Данный вид предназначен только для bim-отдела. Его запрещено открывать или редактировать, поэтому он закроется",
                     CommonButtons = TaskDialogCommonButtons.Ok,
                 };
 
@@ -994,7 +994,7 @@ namespace KPLN_Looker
             #endregion
 
             #region Бэкап версий с RS на наш сервак по проектам
-            if (args.Status == RevitAPIEventStatus.Succeeded && dBProject.RevitServerPath != null)
+            if (args.Status == RevitAPIEventStatus.Succeeded && dBProject != null && dBProject.RevitServerPath != null)
             {
                 bool isSET = doc.PathName.Contains("СЕТ_1");
                 // Проект Сетунь
