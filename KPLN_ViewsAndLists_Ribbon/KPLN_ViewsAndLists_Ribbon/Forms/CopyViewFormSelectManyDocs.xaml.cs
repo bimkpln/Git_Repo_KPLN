@@ -36,19 +36,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly Document _mainDocument;
 
         private readonly ObservableCollection<FileItem> _items = new ObservableCollection<FileItem>();
-        private readonly Dictionary<string, Tuple<string, string, string, View>> _viewOnlyTemplateChanges;
+        private readonly Dictionary<string, Tuple<string, string, string, string, View>> _viewOnlyTemplateChanges;
 
         private readonly bool _leaveOpened;
 
         private string _smallDebugMessage;
         private string _debugMessage;
 
-        public ManyDocumentsSelectionWindow(
-            UIApplication uiApp,
-            Document mainDocument,
-            Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges,
-            bool leaveOpened,
-            bool useRevitServer)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp,Document mainDocument,Dictionary<string, Tuple<string, string, string, string, View>> viewOnlyTemplateChanges, bool leaveOpened, bool useRevitServer)
         {
             InitializeComponent();
 
@@ -174,13 +169,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                     string statusView = kvp.Value.Item1;
                                     string statusResaveInView = kvp.Value.Item2;
                                     string statusCopyView = kvp.Value.Item3;
-                                    View templateView = kvp.Value.Item4;
+                                    string statusCreate3D = kvp.Value.Item4;
+                                    View templateView = kvp.Value.Item5;
 
                                     if (statusView == "resave" && templateView != null)
                                     {
                                         View existingTemplate = new FilteredElementCollector(openedDoc)
                                                 .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
                                         List<View> viewsUsingexistingTemplate = null;
+
+                                        View finalTemplateInTarget = null;
+                                        ElementId finalTemplateId = ElementId.InvalidElementId;
 
                                         // Удаление
                                         if (statusCopyView == "ignoreCopyView")
@@ -219,6 +218,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                 options
                                             );
 
+
+
+
+
                                             ElementId copiedTemplateIdNew = copiedIds.FirstOrDefault();
                                             View copiedTemplateViewNew = openedDoc.GetElement(copiedTemplateIdNew) as View;
                                             string templateName = templateView.Name;
@@ -254,6 +257,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                     }
                                                 }
                                             }
+
+                                            finalTemplateInTarget = copiedTemplateViewNew;
+                                            finalTemplateId = copiedTemplateIdNew;
                                         }
                                         else if (statusCopyView == "copyView")
                                         {
@@ -311,6 +317,45 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                                                         continue;
                                                     }
                                                 }
+                                            }
+
+                                            finalTemplateInTarget = copiedTemplateViewNew;
+                                            finalTemplateId = copiedTemplateIdNew;
+                                        }
+
+                                        if (statusView == "resave" && statusCreate3D == "create3D" && templateView.ViewType == ViewType.ThreeD)
+                                        {
+                                            try
+                                            {
+                                                if (finalTemplateInTarget == null || finalTemplateId == ElementId.InvalidElementId)
+                                                {
+                                                    finalTemplateInTarget = new FilteredElementCollector(openedDoc)
+                                                        .OfClass(typeof(View)).Cast<View>()
+                                                        .FirstOrDefault(v => v.IsTemplate && v.Name == viewTemplateName);
+                                                    finalTemplateId = finalTemplateInTarget?.Id ?? ElementId.InvalidElementId;
+                                                }
+
+                                                if (finalTemplateInTarget == null)
+                                                    throw new InvalidOperationException($"Не найден 3D-шаблон '{viewTemplateName}' в целевом документе.");
+
+                                                var vft3d = new FilteredElementCollector(openedDoc)
+                                                    .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>()
+                                                    .FirstOrDefault(t => t.ViewFamily == ViewFamily.ThreeDimensional);
+                                                if (vft3d == null)
+                                                    throw new InvalidOperationException("Не найден ViewFamilyType для 3D.");
+
+                                                string finalName = MakeUniqueViewName(openedDoc, viewTemplateName);
+
+                                                View3D v3d = View3D.CreateIsometric(openedDoc, vft3d.Id);
+                                                v3d.ViewTemplateId = finalTemplateId;
+                                                v3d.Name = finalName;
+
+                                                _debugMessage += $"ИНФО. Создан 3D-вид '{v3d.Name}' и применён шаблон '{finalTemplateInTarget.Name}'.\n";
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                _debugMessage += $"ОШИБКА. Не удалось создать 3D-вид из шаблона '{viewTemplateName}': {ex.Message}.\n";
+                                                _smallDebugMessage += $"ОШИБКА. {item.FullPath}: 3D из '{viewTemplateName}' — {ex.Message}.\n";
                                             }
                                         }
                                     }
@@ -537,6 +582,31 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             public DuplicateTypeAction OnDuplicateTypeNamesFound(DuplicateTypeNamesHandlerArgs args)
             {
                 return DuplicateTypeAction.UseDestinationTypes;
+            }
+        }
+
+        private static string MakeUniqueViewName(Document doc, string baseName)
+        {
+            bool NameExists(string n) =>
+                new FilteredElementCollector(doc)
+                    .OfClass(typeof(View)).Cast<View>()
+                    .Any(v => !v.IsTemplate && v.Name.Equals(n, StringComparison.OrdinalIgnoreCase));
+
+            if (!NameExists(baseName))
+                return baseName;
+
+            string n1 = $"{baseName} (3D)";
+            if (!NameExists(n1))
+                return n1;
+
+            int i = 2;
+            while (true)
+            {
+                string cand = $"{baseName} (3D) {i}";
+                if (!NameExists(cand))
+                    return cand;
+                i++;
+                if (i > 9999) throw new InvalidOperationException("Не удалось подобрать уникальное имя 3D-вида.");
             }
         }
     }

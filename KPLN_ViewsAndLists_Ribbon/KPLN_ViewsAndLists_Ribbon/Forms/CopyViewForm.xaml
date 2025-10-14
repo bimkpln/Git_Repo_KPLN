@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d" 
-        Height="615" Width="730"
+        Height="615" Width="860"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Title="KPLN. Копирование шаблонов вида">

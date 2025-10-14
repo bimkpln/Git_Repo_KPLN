@@ -33,7 +33,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly Document _mainDocument;
 
         SortedDictionary<string, View> mainTemplates;
-        private Dictionary<string, Tuple<string, string, string, View>> viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, string, View>>();
+        private Dictionary<string, Tuple<string, string, string, string, View>> viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, string, string, View>>();
 
         public CopyViewForm(UIApplication uiapp)
         {
@@ -83,6 +83,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });  
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
             TextBlock emptyHeader = new TextBlock 
             { 
@@ -113,12 +114,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 Margin = new Thickness(5, 3, 0, 3),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
+            TextBlock create3DHeader = new TextBlock
+            {
+                Text = "Создать 3D-вид",
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(5, 3, 0, 3),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
 
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             Grid.SetRow(emptyHeader, 0); Grid.SetColumn(emptyHeader, 0); grid.Children.Add(emptyHeader);
             Grid.SetRow(nameHeader, 0); Grid.SetColumn(nameHeader, 1); grid.Children.Add(nameHeader);
             Grid.SetRow(replaceInViewsHeader, 0); Grid.SetColumn(replaceInViewsHeader, 2); grid.Children.Add(replaceInViewsHeader);
             Grid.SetRow(copyHeader, 0); Grid.SetColumn(copyHeader, 3); grid.Children.Add(copyHeader);
+            Grid.SetRow(create3DHeader, 0); Grid.SetColumn(create3DHeader, 4); grid.Children.Add(create3DHeader);
 
             int row = 1;
 
@@ -163,6 +173,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     IsEnabled = false
                 };
 
+                CheckBox create3DCheckBox = new CheckBox
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(5),
+                    ToolTip = "Создать из этого шаблона изометрический 3D-вид и применить к нему этот шаблон",
+                    IsEnabled = false
+                };
+                bool is3DTemplate = templateView.ViewType == ViewType.ThreeD;
+
                 selectCheckBox.Checked += (s, e) =>
                 {
                     copyCheckBox.IsEnabled = true;
@@ -170,7 +189,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     replaceCheckBox.IsEnabled = true;
                     replaceCheckBox.IsChecked = true;
 
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
+                    create3DCheckBox.IsEnabled = is3DTemplate; 
+                    create3DCheckBox.IsChecked = false;
+
+                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
                 };
 
                 selectCheckBox.Unchecked += (s, e) =>
@@ -179,28 +201,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     replaceCheckBox.IsChecked = false;
                     copyCheckBox.IsEnabled = false;
                     copyCheckBox.IsChecked = false;
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
+
+                    create3DCheckBox.IsEnabled = false; 
+                    create3DCheckBox.IsChecked = false;
+
+                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
                 };
 
-                replaceCheckBox.Checked += (s, e) =>
-                {
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
-                };
-
-                replaceCheckBox.Unchecked += (s, e) =>
-                {
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
-                };
-
-                copyCheckBox.Checked += (s, e) =>
-                {
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
-                };
-
-                copyCheckBox.Unchecked += (s, e) =>
-                {
-                    UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
-                };
+                replaceCheckBox.Checked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
+                replaceCheckBox.Unchecked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
+                copyCheckBox.Checked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
+                copyCheckBox.Unchecked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
+                create3DCheckBox.Checked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
+                create3DCheckBox.Unchecked += (s, e) => UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
 
                 Grid.SetRow(selectCheckBox, row);
                 Grid.SetColumn(selectCheckBox, 0);
@@ -218,9 +231,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 Grid.SetColumn(copyCheckBox, 3);
                 grid.Children.Add(copyCheckBox);
 
+                Grid.SetRow(create3DCheckBox, row);
+                Grid.SetColumn(create3DCheckBox, 4);
+                grid.Children.Add(create3DCheckBox);
+
                 row++;
 
-                UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, templateView);
+                UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
             }
 
             scrollViewer.Content = grid;
@@ -230,15 +247,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             BTN_RunManyFileRS.IsEnabled = true;
         }
 
-        private void UpdateTemplateBackupChoice(string templateName, CheckBox selectCheckBox, CheckBox replaceCheckBox, CheckBox copyCheckBox, View templateView)
+        private void UpdateTemplateBackupChoice(string templateName, CheckBox selectCheckBox, CheckBox replaceCheckBox, CheckBox copyCheckBox, CheckBox create3DCheckBox, View templateView)
         {
             string statusView = selectCheckBox.IsChecked == true ? "resave" : "ignore";
-            string statusResaveInView = replaceCheckBox.IsChecked == true ? "resaveIV" : "ignoreIV";
+            string statusResaveInV = replaceCheckBox.IsChecked == true ? "resaveIV" : "ignoreIV";
             string statusCopy = copyCheckBox.IsChecked == true ? "copyView" : "ignoreCopyView";
+            string statusCreate3D = create3DCheckBox.IsChecked == true ? "create3D" : "ignoreCreate3D";
 
-            viewOnlyTemplateChanges[templateName] = new Tuple<string, string, string, View>(statusView, statusResaveInView, statusCopy, templateView);
+            viewOnlyTemplateChanges[templateName] =
+                new Tuple<string, string, string, string, View>(statusView, statusResaveInV, statusCopy, statusCreate3D, templateView);
         }
-   
+
+
         private void BTN_RunManyFile_Click(object sender, RoutedEventArgs e)
         {
             List<Document> openedDocs = _uiapp.Application.Documents
@@ -261,11 +281,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return;
             }
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, false)
+            var openManyDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, false)
             {
                 Owner = this
             };
-            openManeDocsWindows.ShowDialog();
+            openManyDocsWindows.ShowDialog();
         }
 
         private void BTN_RunManyFileRS_Click(object sender, RoutedEventArgs e)
@@ -291,11 +311,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
 
-            var openManeDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, true)
+            var openManyDocsWindows = new ManyDocumentsSelectionWindow(_uiapp, _mainDocument, viewOnlyTemplateChanges, (bool)CHK_OpenDocuments.IsChecked, true)
             {
                 Owner = this
             };
-            openManeDocsWindows.ShowDialog();
+            openManyDocsWindows.ShowDialog();
         }
     }
 }
