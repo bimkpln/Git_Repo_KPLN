@@ -53,7 +53,15 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
             get
             {
                 if (_roomLinkTrans == null)
-                    _roomLinkTrans = RoomLinkInst.GetTotalTransform();
+                {
+                    Instance inst = RoomLinkInst as Instance;
+                    Transform transform = inst.GetTransform();
+                    // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
+                    if (transform.IsTranslation)
+                        _roomLinkTrans = transform;
+                    else
+                        _roomLinkTrans = Transform.CreateTranslation(transform.Origin);
+                }
 
                 return _roomLinkTrans;
             }
@@ -82,12 +90,12 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
                         {
                             case Solid solid:
                                 _roomSolid = solid;
-                                return _roomBBox = GetBoundingBoxXYZ(solid);
+                                return _roomBBox = GeometryUtil.GetBoundingBoxXYZ(solid, RoomLinkTrans);
                             case GeometryInstance geomInstance:
                                 GeometryElement instGeomElem = geomInstance.GetInstanceGeometry();
-                                return _roomBBox = GetBoundingBoxXYZ(instGeomElem);
+                                return _roomBBox = GeometryUtil.GetBoundingBoxXYZ(instGeomElem, RoomLinkTrans);
                             case GeometryElement geomElem:
-                                return _roomBBox = GetBoundingBoxXYZ(geomElem);
+                                return _roomBBox = GeometryUtil.GetBoundingBoxXYZ(geomElem, RoomLinkTrans);
                         }
                     }
                 }
@@ -230,34 +238,6 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
             return result.ToArray();
         }
 
-        private BoundingBoxXYZ GetBoundingBoxXYZ(GeometryElement geomElem)
-        {
-            foreach (GeometryObject obj in geomElem)
-            {
-                Solid solid = obj as Solid;
-                return GetBoundingBoxXYZ(solid);
-            }
-
-            return null;
-        }
-
-        private BoundingBoxXYZ GetBoundingBoxXYZ(Solid solid)
-        {
-            if (solid != null && solid.Volume != 0)
-            {
-                BoundingBoxXYZ bbox = solid.GetBoundingBox();
-                Transform transform = bbox.Transform;
-                Transform resultTrans = transform * RoomLinkTrans;
-                return new BoundingBoxXYZ()
-                {
-                    Max = resultTrans.OfPoint(bbox.Max),
-                    Min = resultTrans.OfPoint(bbox.Min),
-                };
-            }
-
-            return null;
-        }
-
         /// <summary>
         /// Внесение элементов в коллекцию RoomDownARElemDataColl, которые полностью погружены в текущее помещение, или полностью под ним
         /// </summary>
@@ -271,7 +251,7 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
                 XYZ arElemNativeCntrPnt = arElemSolidTransform.OfPoint((arElemSolidBbox.Max + arElemSolidBbox.Min) / 2);
 
                 // Анализ рабочих точек
-                XYZ arElemCntrPnt = null;
+                XYZ arElemCntrPnt;
                 // Проверка Transform между помещением и геометрией (могут быть из разных линков, тогда Transform нужен, иначе - нет)
                 if (arElem.ARElemLinkTrans.AlmostEqual(RoomLinkTrans))
                     arElemCntrPnt = arElemNativeCntrPnt;

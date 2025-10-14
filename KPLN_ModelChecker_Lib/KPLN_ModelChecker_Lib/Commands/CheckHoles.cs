@@ -145,7 +145,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 if (holeData.CurrentSolid != null)
                     result.Add(holeData);
                 else
-                    RunElemsWarningColl.Append(new CheckCommandError(hole, $"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную"));
+                    RunElemsWarningColl.Append(new CheckCommandMsg(hole, $"У элемента с id: {hole.Id} не удалось получить Solid. Проверь отверстие вручную"));
             }
 
             return result;

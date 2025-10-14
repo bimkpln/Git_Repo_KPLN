@@ -67,12 +67,12 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <summary>
         /// Список элементов, которые провалили проверку перед запуском
         /// </summary>
-        private protected List<CheckCommandError> PrepareElemsErrorColl { get; set; } = new List<CheckCommandError>();
+        private protected List<CheckCommandMsg> PrepareElemsErrorColl { get; set; } = new List<CheckCommandMsg>();
 
         /// <summary>
         /// Список элементов, которые провалили прохождение скрипта, но НЕ критичные
         /// </summary>
-        private protected List<CheckCommandError> RunElemsWarningColl { get; set; } = new List<CheckCommandError>();
+        private protected List<CheckCommandMsg> RunElemsWarningColl { get; set; } = new List<CheckCommandMsg>();
 
         /// <summary>
         /// Докрутка нужных параметров, из-за пустого конструктора для использовния дженериков
@@ -119,7 +119,7 @@ namespace KPLN_ModelChecker_Lib.Core
                 if (PrepareElemsErrorColl.Count() > 0)
                 {
                     ShowElementCheckingErrorReport();
-                    PreparedElemColl = elemColl.Except(PrepareElemsErrorColl.Select(e => e.ErrorElement)).ToArray();
+                    PreparedElemColl = elemColl.Except(PrepareElemsErrorColl.Select(e => e.MsgElement)).ToArray();
                 }
                 else
                     PreparedElemColl = elemColl;
@@ -158,9 +158,9 @@ namespace KPLN_ModelChecker_Lib.Core
         /// </summary>
         public void ShowElementCheckingErrorReport()
         {
-            foreach (CheckCommandError error in PrepareElemsErrorColl)
+            foreach (CheckCommandMsg error in PrepareElemsErrorColl)
             {
-                HtmlOutput.Print($"Элемент id {error.ErrorElement.Id} не прошел проверку! Ошибка: {error.ErrorMessage}", MessageType.Error);
+                HtmlOutput.Print($"Элемент id {error.MsgElement.Id} не прошел проверку! Ошибка: {error.Message}", MessageType.Error);
             }
         }
 
@@ -169,9 +169,9 @@ namespace KPLN_ModelChecker_Lib.Core
         /// </summary>
         public void ShowElemntRunWarningReport()
         {
-            foreach (CheckCommandError error in RunElemsWarningColl)
+            foreach (CheckCommandMsg error in RunElemsWarningColl)
             {
-                HtmlOutput.Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", MessageType.Warning);
+                HtmlOutput.Print($"Была выявлена НЕ критическая ошибка: \n{error.Message}\n", MessageType.Warning);
             }
         }
 

@@ -18,14 +18,16 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
         /// От данного парамтера зависит точность опредления привязки элемента к помещению
         /// </summary>
         private const int _bboxExpanded = 10;
-        private List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
-        public List<Solid> _mepElemSolids = new List<Solid>();
-        private BoundingBoxXYZ[] _currentBBoxArray;
+        
         /// <summary>
         /// Точность в проверке при анализе положения элементов
         /// </summary>
         private static readonly double _toleranceToCheck = 0.1;
         private static readonly object _locker = new object();
+        
+        private List<BoundingBoxXYZ> _mepElemBBoxes = new List<BoundingBoxXYZ>();
+        private List<Solid> _mepElemSolids = new List<Solid>();
+        private BoundingBoxXYZ[] _currentBBoxArray;
 
         public CheckMEPHeightMEPData(Element elem)
         {
@@ -137,11 +139,10 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
                 DetailLevel = ViewDetailLevel.Fine,
                 ComputeReferences = true
             };
+            
             GeometryElement geomElem = MEPElement.get_Geometry(opt);
             if (geomElem != null)
-            {
-                GetSolidsFromGeomElem(geomElem, Transform.Identity, MEPElemSolids);
-            }
+                GeometryUtil.SetSolidsFromGeomElem(geomElem, Transform.Identity, MEPElemSolids);
 
             return this;
         }
@@ -153,7 +154,7 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
         {
             foreach (Solid solid in MEPElemSolids)
             {
-                _mepElemBBoxes.Add(GetBoundingBoxXYZ(solid));
+                _mepElemBBoxes.Add(GeometryUtil.GetBoundingBoxXYZ(solid));
             }
 
             return this;
@@ -202,48 +203,6 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
             currentRoomMEPDataColl.Where(m => m.IsHeigtError(arData)).ToArray();
 
         /// <summary>
-        /// Получить солид из элементов
-        /// </summary>
-        private void GetSolidsFromGeomElem(GeometryElement geometryElement, Transform transformation, IList<Solid> solids)
-        {
-            foreach (GeometryObject geomObject in geometryElement)
-            {
-                switch (geomObject)
-                {
-                    case Solid solid:
-                        if (solid.Volume > 0) solids.Add(solid);
-                        break;
-
-                    case GeometryInstance geomInstance:
-                        GetSolidsFromGeomElem(geomInstance.GetInstanceGeometry(), geomInstance.Transform.Multiply(transformation), solids);
-                        break;
-
-                    case GeometryElement geomElem:
-                        GetSolidsFromGeomElem(geomElem, transformation, solids);
-                        break;
-                }
-            }
-        }
-
-        private BoundingBoxXYZ GetBoundingBoxXYZ(Solid solid)
-        {
-            if (solid != null && solid.Volume != 0)
-            {
-                BoundingBoxXYZ bbox = solid.GetBoundingBox();
-                Transform transform = bbox.Transform;
-                Transform resultTrans = transform;
-                return new BoundingBoxXYZ()
-                {
-                    Max = resultTrans.OfPoint(bbox.Max),
-                    Min = resultTrans.OfPoint(bbox.Min),
-                };
-            }
-
-            return null;
-        }
-
-
-        /// <summary>
         /// Проверить элемент на факт нарушения высоты
         /// </summary>
         /// <param name="arData">Спец. класс для проверки</param>
@@ -284,13 +243,13 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
                     {
                         foreach (Face face in arElemData.ARElemUpFacesArray)
                         {
-                            // Делаю инверсию точки элемента ИОС на координаты АР. Плоскость не подвергается трансформации координат, или созданию (нет конструктора)
-                            XYZ inversedPoint = arElemData.ARElemLinkTrans.Inverse.OfPoint(point);
-                            IntersectionResult intRes = face.Project(inversedPoint);
+                            // Делаю трансформ точки элемента ИОС на координаты АР. Плоскость не подвергается трансформации координат, или созданию (нет конструктора)
+                            XYZ transformedPoint = arElemData.ARElemLinkTrans.OfPoint(point);
+                            IntersectionResult intRes = face.Project(transformedPoint);
                             if (intRes != null && intRes.Distance < tempIntDist && intRes.Distance > minElemElevForCheck)
                             {
                                 tempIntDist = intRes.Distance;
-                                double iosDistance = inversedPoint.DistanceTo(intRes.XYZPoint);
+                                double iosDistance = transformedPoint.DistanceTo(intRes.XYZPoint);
                                 if (iosDistance * 304.8 < arData.CurrentRoomMinDistance)
                                     return true;
                             }

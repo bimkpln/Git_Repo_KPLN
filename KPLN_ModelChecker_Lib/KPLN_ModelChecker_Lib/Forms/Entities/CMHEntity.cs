@@ -42,7 +42,12 @@ namespace KPLN_ModelChecker_Lib.Forms.Entities
             VMCurrentRoomDepartmentName = room.get_Parameter(BuiltInParameter.ROOM_DEPARTMENT).AsString() ?? string.Empty;
 
             VMCurrentRoomMinElemElevationForCheck = 1500;
-            if (VMCurrentRoomName.ToLower().Contains("лк"))
+            string lowerRName = VMCurrentRoomName.ToLower();
+            if (lowerRName.Contains("лк") 
+                || lowerRName.Contains("лестничная клетка")
+                || lowerRName.Contains("вестибюль")
+                || lowerRName.Contains("тамбур-шлюз")
+                || lowerRName.Contains("лифтовый холл"))
                 VMCurrentRoomMinDistance = 2200;
             else
                 VMCurrentRoomMinDistance = 2000;

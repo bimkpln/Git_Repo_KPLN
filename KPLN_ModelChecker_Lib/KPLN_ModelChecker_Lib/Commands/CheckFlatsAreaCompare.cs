@@ -119,7 +119,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 if (obj is Element element)
                 {
                     if (!(element is Room room))
-                        PrepareElemsErrorColl.Append(new CheckCommandError(element, "Не помещение!"));
+                        PrepareElemsErrorColl.Append(new CheckCommandMsg(element, "Не помещение!"));
                     else
                     {
                         List<RoomParamData> tempColl = new List<RoomParamData>(_roomNameParamDataColl);

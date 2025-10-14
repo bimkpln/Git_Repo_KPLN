@@ -176,7 +176,7 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="CheckCommandError.cs" />
+    <Compile Include="CheckCommandMsg.cs" />
     <Compile Include="CheckerEntity.cs" />
     <Compile Include="CheckerException.cs" />
     <Compile Include="Commands\CheckHoles.cs" />
@@ -190,6 +190,7 @@
     <Compile Include="Commands\Common\CheckHoles\CheckHolesMEPData.cs" />
     <Compile Include="Commands\Common\CheckMEPHeight\CheckMEPHeightARElemData.cs" />
     <Compile Include="Commands\Common\CheckMEPHeight\CheckMEPHeightMEPData.cs" />
+    <Compile Include="Commands\Common\CheckMEPHeight\GeometryUtil.cs" />
     <Compile Include="Core\AbstrCheck.cs" />
     <Compile Include="Commands\CheckLinks.cs" />
     <Compile Include="Commands\CheckMainLines.cs" />
@@ -206,6 +207,11 @@
     <Compile Include="Forms\Entities\WSEntity.cs" />
     <Compile Include="Forms\Entities\CMHEntity.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\GripGeom\Core\InstanceElemData.cs" />
+    <Compile Include="Services\GripGeom\Core\InstanceGeomData.cs" />
+    <Compile Include="Services\GripGeom\Core\LevelAndSectionSolid.cs" />
+    <Compile Include="Services\GripGeom\GeometryWorker.cs" />
+    <Compile Include="Services\GripGeom\LevelWorker.cs" />
     <Compile Include="WorksetUtil\Common\SelectedParameter.cs" />
     <Compile Include="WorksetUtil\Common\WorksetByCurrentParameter.cs" />
     <Compile Include="WorksetUtil\Common\WorksetDTO.cs" />
