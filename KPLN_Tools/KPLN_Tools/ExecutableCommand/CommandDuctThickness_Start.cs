@@ -65,8 +65,8 @@ namespace KPLN_Tools.ExecutableCommand
 
                     if (_errorDict.Keys.Count != 0 || _warningDict.Keys.Count != 0)
                     {
-                        PrintMsgFromDict("ОШИБКА", MessageType.Critical, _errorDict);
-                        PrintMsgFromDict("ВНИМАНИЕ", MessageType.Warning, _warningDict);
+                        HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, _errorDict);
+                        HtmlOutput.PrintMsgDict("ВНИМАНИЕ", MessageType.Warning, _warningDict);
                 
                         MessageBox.Show(
                             $"Скрипт отработал, но есть замечания к некоторым элементам. Список выведен отдельным окном",
@@ -91,39 +91,6 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         /// <summary>
-        /// Добавить эл-т ревит к замечанию
-        /// </summary>
-        /// <param name="errMsg"></param>
-        /// <param name="elementId"></param>
-        private void AddToErrorDict(string errMsg, ElementId elementId, Dictionary<string, List<ElementId>> currentDict)
-        {
-            if (currentDict.ContainsKey(errMsg))
-            {
-                List<ElementId> ids = currentDict[errMsg];
-                ids.Add(elementId);
-
-                currentDict[errMsg] = ids;
-            }
-            else
-                currentDict.Add(errMsg, new List<ElementId> { elementId });
-        }
-
-        /// <summary>
-        /// Вывод ошибок пользователю
-        /// </summary>
-        private void PrintMsgFromDict(string errorTitle, MessageType msgType, Dictionary<string, List<ElementId>> currentDict)
-        {
-            if (currentDict.Keys.Count == 0)
-                return;
-            
-            foreach (KeyValuePair<string, List<ElementId>> kvp in currentDict)
-            {
-                string errorElemsId = string.Join(", ", kvp.Value);
-                HtmlOutput.Print($"{errorTitle}: \"{kvp.Key}\" у элементов: {errorElemsId}", msgType);
-            }
-        }
-
-        /// <summary>
         /// Запись параметров в указанные элементы
         /// </summary>
         private bool SetDuctThicknessData()
@@ -137,7 +104,7 @@ namespace KPLN_Tools.ExecutableCommand
                     Parameter canReValueParam = elem.get_Parameter(Command_OV_DuctThickness.RevalueParamGuid);
                     if (canReValueParam != null && canReValueParam.HasValue && canReValueParam.AsInteger() != 1)
                     {
-                        AddToErrorDict("У элемента заблокирована запись значения плагином", elem.Id, _warningDict);
+                        HtmlOutput.SetMsgDict_ByMsg("У элемента заблокирована запись значения плагином", elem.Id, _warningDict);
                         continue;
                     }
 
@@ -165,7 +132,7 @@ namespace KPLN_Tools.ExecutableCommand
                         || systemType.AsValueString().Contains("Не определено") 
                         || systemType.AsValueString().Contains("Нет системы")
                         || string.IsNullOrEmpty(systemAbbrev.AsString()))
-                        AddToErrorDict("Не определена система. Толщина НЕ записана", elem.Id, _errorDict);
+                        HtmlOutput.SetMsgDict_ByMsg("Не определена система. Толщина НЕ записана", elem.Id, _errorDict);
                     else
                     {
                         List<Connector> roundConn = new List<Connector>();
