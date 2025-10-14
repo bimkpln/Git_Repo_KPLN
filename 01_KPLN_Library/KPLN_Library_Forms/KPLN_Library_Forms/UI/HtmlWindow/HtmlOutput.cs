@@ -1,9 +1,12 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using HtmlAgilityPack;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace KPLN_Library_Forms.UI.HtmlWindow
@@ -39,6 +42,109 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
         /// Окно вывода информации пользователю
         /// </summary>
         public static OutputWindow FormOutput { get; set; }
+
+        /// <summary>
+        /// Вывод чистой ошибки
+        /// </summary>
+        /// <param name="e">Экземпля класса Exception</param>
+        public static void PrintError(Exception e)
+        {
+            OutputPrint(e.StackTrace, "code");
+            OutputPrint(e.Message, "logerrorheader");
+        }
+
+        /// <summary>
+        /// Вывод ошибки с дополнительным описанием
+        /// </summary>
+        /// <param name="e">Экземпля класса Exception</param>
+        /// <param name="message">Дополнительное описание</param>
+        public static void PrintError(Exception e, string message)
+        {
+            OutputPrint(e.StackTrace, "code");
+            OutputPrint(string.Format("{0}<br>   {1}", message, e.Message), "logerrorheader");
+        }
+
+        /// <summary>
+        /// Вывод сообщения с оформлением по типу сообщения
+        /// </summary>
+        /// <param name="value">Строка сообщения</param>
+        /// <param name="type">Тип ошибки</param>
+        public static void Print(string value, MessageType type)
+        {
+            switch (type)
+            {
+                case MessageType.Error:
+                    OutputPrint(value, "logerror");
+                    break;
+                case MessageType.Header:
+                    OutputPrint(value, "logheader");
+                    break;
+                case MessageType.Success:
+                    OutputPrint(value, "logsuccess");
+                    break;
+                case MessageType.Warning:
+                    OutputPrint(value, "logwarning");
+                    break;
+                case MessageType.Critical:
+                    OutputPrint(value, "logcritical");
+                    break;
+                case MessageType.Code:
+                    OutputPrint(value, "code");
+                    break;
+                case MessageType.System_OK:
+                    OutputPrint(value, "systemok");
+                    break;
+                case MessageType.System_Regular:
+                    OutputPrint(value, "systemregular");
+                    break;
+                default:
+                    OutputPrint(value, "logdefault");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Генерация словаря для группирования элементов по сообщению
+        /// </summary>
+        public static Dictionary<string, List<ElementId>> SetMsgDict_ByMsg(string keyMsg, ElementId idAddToValue, Dictionary<string, List<ElementId>> msgDict_ByMsg)
+        {
+            if (msgDict_ByMsg.ContainsKey(keyMsg))
+            {
+                List<ElementId> ids = msgDict_ByMsg[keyMsg];
+                ids.Add(idAddToValue);
+
+                msgDict_ByMsg[keyMsg] = ids;
+            }
+            else
+                msgDict_ByMsg.Add(keyMsg, new List<ElementId> { idAddToValue });
+
+            return msgDict_ByMsg;
+        }
+
+        /// <summary>
+        /// Вывод словаря для группирования элементов по сообщению
+        /// </summary>
+        public static void PrintMsgDict(string errorTitle, MessageType msgType, Dictionary<string, List<ElementId>> currentDict)
+        {
+            if (currentDict.Keys.Count == 0)
+                return;
+
+            foreach (KeyValuePair<string, List<ElementId>> kvp in currentDict)
+            {
+                StringBuilder idCollBuilder = new StringBuilder();
+                for (int i = 0; i < kvp.Value.Count; i++)
+                {
+                    if (i > 0)
+                        idCollBuilder.Append(",");
+                    if (i > 0 && i % 12 == 0)
+                        idCollBuilder.AppendLine();
+
+                    idCollBuilder.Append(kvp.Value[i]);
+                }
+
+                Print($"{errorTitle}: \"{kvp.Key}\" у элементов: {idCollBuilder}", msgType);
+            }
+        }
 
         /// <summary>
         /// Настрока html-файла
@@ -152,66 +258,6 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
                         td.Show();
                     }
                 }
-            }
-        }
-
-        /// <summary>
-        /// Вывод чистой ошибки
-        /// </summary>
-        /// <param name="e">Экземпля класса Exception</param>
-        public static void PrintError(Exception e)
-        {
-            OutputPrint(e.StackTrace, "code");
-            OutputPrint(e.Message, "logerrorheader");
-        }
-
-        /// <summary>
-        /// Вывод ошибки с дополнительным описанием
-        /// </summary>
-        /// <param name="e">Экземпля класса Exception</param>
-        /// <param name="message">Дополнительное описание</param>
-        public static void PrintError(Exception e, string message)
-        {
-            OutputPrint(e.StackTrace, "code");
-            OutputPrint(string.Format("{0}<br>   {1}", message, e.Message), "logerrorheader");
-        }
-
-        /// <summary>
-        /// Вывод сообщения с оформлением по типу сообщения
-        /// </summary>
-        /// <param name="value">Строка сообщения</param>
-        /// <param name="type">Тип ошибки</param>
-        public static void Print(string value, MessageType type)
-        {
-            switch (type)
-            {
-                case MessageType.Error:
-                    OutputPrint(value, "logerror");
-                    break;
-                case MessageType.Header:
-                    OutputPrint(value, "logheader");
-                    break;
-                case MessageType.Success:
-                    OutputPrint(value, "logsuccess");
-                    break;
-                case MessageType.Warning:
-                    OutputPrint(value, "logwarning");
-                    break;
-                case MessageType.Critical:
-                    OutputPrint(value, "logcritical");
-                    break;
-                case MessageType.Code:
-                    OutputPrint(value, "code");
-                    break;
-                case MessageType.System_OK:
-                    OutputPrint(value, "systemok");
-                    break;
-                case MessageType.System_Regular:
-                    OutputPrint(value, "systemregular");
-                    break;
-                default:
-                    OutputPrint(value, "logdefault");
-                    break;
             }
         }
     }
