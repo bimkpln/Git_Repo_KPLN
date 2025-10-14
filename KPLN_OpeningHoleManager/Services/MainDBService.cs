@@ -129,7 +129,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// Получить отдел, которому принадлежит файл
         /// </summary>
         /// <returns></returns>
-        internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => SubDepartmentDbService.GetDBSubDepartment_ByRevitDoc(doc);
+        internal static DBSubDepartment Get_DBDocumentSubDepartment(Document doc) => SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
 
     }
 }

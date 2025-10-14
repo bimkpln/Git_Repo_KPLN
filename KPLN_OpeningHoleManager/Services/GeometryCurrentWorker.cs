@@ -8,133 +8,11 @@ using System.Linq;
 
 namespace KPLN_OpeningHoleManager.Services
 {
-    internal static class GeometryWorker
+    /// <summary>
+    /// Локальная утилита работы с геометрией
+    /// </summary>
+    internal static class GeometryCurrentWorker
     {
-        /// <summary>
-        /// Создать СОЛИД вручную. Выдавливание идёт вдоль оси Z
-        /// </summary>
-        /// <returns></returns>
-        internal static Solid CreateSolid_ZDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
-        {
-            double extrusionDist = height > 0 ? height : radius; 
-
-            // Сістэма каардынат
-            XYZ xDir = direction; // па шырыні
-            XYZ zDir = XYZ.BasisZ; // уверх
-            XYZ yDir = zDir.CrossProduct(xDir).Normalize(); // бок
-
-            List<Curve> curvesList;
-            if (radius == 0)
-            {
-                List<XYZ> points = new List<XYZ>
-                {
-                    insertPoint - xDir * width/2,
-                    insertPoint - xDir * width/2 + yDir * height,
-                    insertPoint + xDir * width/2 + yDir * height,
-                    insertPoint + xDir * width/2,
-                };
-
-                curvesList = GetCurvesList_LinesByPoints(points);
-            }
-            else
-                curvesList = GetCurvesList_ArcByInsertPntAndRadius(direction, insertPoint, radius);
-
-            CurveLoop[] curves = new CurveLoop[] { CurveLoop.Create(curvesList) };
-            Solid extrSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curves, zDir, extrusionDist);
-
-            //var centr1 = extrSolid.ComputeCentroid();
-            //var bbox1 = extrSolid.GetBoundingBox();
-            //var trans1 = bbox1.Transform;
-            //var newbbox1 = new BoundingBoxXYZ() { Min = trans1.OfPoint(bbox1.Min), Max = trans1.OfPoint(bbox1.Max) };
-
-            return extrSolid;
-        }
-
-        /// <summary>
-        /// Архвная копия метода - выдавливание по перпендикулярной оси для вектора direction
-        /// </summary>
-        /// <returns></returns>
-        internal static Solid CreateSolid_XYDir(XYZ direction, XYZ insertPoint, double height, double width, double radius)
-        {
-            // Нармалізуем напрамак
-            XYZ xDir = direction.Normalize(); // напрамак шырыні
-            XYZ upGuess = XYZ.BasisZ;
-            if (Math.Abs(xDir.DotProduct(upGuess)) > 0.99)
-                upGuess = XYZ.BasisX;
-
-            XYZ yDir = upGuess.CrossProduct(xDir).Normalize(); // напрамак экструзіі (перпендыкуляр)
-            XYZ zDir = xDir.CrossProduct(yDir).Normalize();    // уверх
-
-            List<Curve> curvesList;
-            if (radius == 0)
-            {
-                List<XYZ> points = new List<XYZ>
-                {
-                    insertPoint - xDir * width/2 - zDir * height/2,
-                    insertPoint - xDir * width/2 + zDir * height/2,
-                    insertPoint + xDir * width/2 + zDir * height/2,
-                    insertPoint + xDir * width/2 - zDir * height/2,
-                };
-
-                curvesList = GetCurvesList_LinesByPoints(points);
-            }
-            else
-                curvesList = GetCurvesList_ArcByInsertPntAndRadius(zDir, insertPoint, radius);
-
-            CurveLoop[] curves = new CurveLoop[] { CurveLoop.Create(curvesList) };
-            Solid extrSolid = GeometryCreationUtilities.CreateExtrusionGeometry(curves, yDir, 1);
-
-            return extrSolid;
-        }
-
-
-        /// <summary>
-        /// Получить SOLID элемента Ревит
-        /// </summary>
-        internal static Solid GetRevitElemSolid(Element elem, Transform transform = null)
-        {
-            Solid resultSolid = null;
-
-            // Для кабельных лотков лучше подходит средний ур. детализации
-            Options opt = new Options();
-            if (elem is CableTray)
-                opt.DetailLevel = ViewDetailLevel.Medium;
-            else
-                opt.DetailLevel = ViewDetailLevel.Fine;
-
-            GeometryElement geomElem = elem.get_Geometry(opt);
-            foreach (GeometryObject gObj in geomElem)
-            {
-                Solid solid = gObj as Solid;
-                GeometryInstance gInst = gObj as GeometryInstance;
-                if (solid != null)
-                    resultSolid = solid;
-                else if (gInst != null)
-                {
-                    GeometryElement instGeomElem = gInst.GetInstanceGeometry();
-                    double tempVolume = 0;
-                    foreach (GeometryObject gObj2 in instGeomElem)
-                    {
-                        solid = gObj2 as Solid;
-                        if (solid != null && solid.Volume > tempVolume)
-                        {
-                            tempVolume = solid.Volume;
-                            resultSolid = solid;
-                        }
-                    }
-                }
-            }
-
-            if (resultSolid == null && (elem is FamilyInstance fi && fi.SuperComponent == null))
-                throw new Exception($"У элемента с именем \"{elem.Name}\" с id: {elem.Id} из модели {elem.Document.Title} проблемы с получением Solid. Отправь разработчику.");
-
-            // Трансформ по координатам (если нужно)
-            if (resultSolid != null && transform != null)
-                resultSolid = SolidUtils.CreateTransformed(resultSolid, transform);
-
-            return resultSolid;
-        }
-
         internal static double GetMinimumDistanceBetweenSolids(Solid solid1, Solid solid2)
         {
             double minDistance = double.MaxValue;
@@ -192,13 +70,13 @@ namespace KPLN_OpeningHoleManager.Services
                 }
                 else if (objElem is IOSOpeningHoleTaskEntity iosTask)
                 {
-                    elemBox = iosTask.OHE_Element.get_BoundingBox(null);
+                    elemBox = iosTask.IEDElem.get_BoundingBox(null);
                     trans = iosTask.OHE_LinkTransform;
 
                     if (elemBox == null)
                     {
                         HtmlOutput.Print($"Ошибка анализа, могут быть не предвиденные результат (проверь отдельно)." +
-                            $" У элемента с id:{iosTask.OHE_Element.Id} из связи {iosTask.OHE_LinkDocument.Title} - нет BoundingBoxXYZ",
+                            $" У элемента с id:{iosTask.IEDElem.Id} из связи {iosTask.OHE_LinkDocument.Title} - нет BoundingBoxXYZ",
                             MessageType.Error);
                         continue;
                     }
@@ -291,7 +169,7 @@ namespace KPLN_OpeningHoleManager.Services
         internal static XYZ GetHostDirection(Element host)
         {
             // Получаю вектор для стены
-            XYZ wallDirection = null;
+            XYZ wallDirection;
             if (host is Wall wall)
             {
                 Curve curve = (wall.Location as LocationCurve).Curve ??
@@ -411,54 +289,6 @@ namespace KPLN_OpeningHoleManager.Services
             };
 
             return result;
-        }
-
-        /// <summary>
-        /// Получить коллекцию кривых из линий по точкам
-        /// </summary>
-        private static List<Curve> GetCurvesList_LinesByPoints(List<XYZ> pointsOfIntersect)
-        {
-            List<Curve> curvesList = new List<Curve>();
-            for (int i = 0; i < pointsOfIntersect.Count; i++)
-            {
-                if (i == pointsOfIntersect.Count - 1)
-                {
-                    curvesList.Add(Line.CreateBound(pointsOfIntersect[i], pointsOfIntersect[0]));
-                    continue;
-                }
-
-                curvesList.Add(Line.CreateBound(pointsOfIntersect[i], pointsOfIntersect[i + 1]));
-            }
-            return curvesList;
-        }
-
-        /// <summary>
-        /// Получить коллекцию кривых из дуги по точкам
-        /// </summary>
-        private static List<Curve> GetCurvesList_ArcByInsertPntAndRadius(XYZ direction, XYZ insertPoint, double radius)
-        {
-            // Нармалізуем напрамак
-            XYZ xDir = direction.Normalize(); // асноўны напрамак (дыяметр)
-
-            // Знаходзім вектар, перпендыкулярны xDir у плоскасці (напрыклад, XY)
-            XYZ upGuess = XYZ.BasisZ;
-            if (Math.Abs(xDir.DotProduct(upGuess)) > 0.99)
-                upGuess = XYZ.BasisX;
-
-            XYZ yDir = upGuess.CrossProduct(xDir).Normalize(); // перпендыкуляр у плоскасці
-
-            // Пачатковая і канчатковая кропка круга
-            XYZ ptStart = insertPoint - xDir * radius;
-            XYZ ptEnd = insertPoint + xDir * radius;
-
-            // Дапаможныя сярэднія кропкі, каб задаць паўкругі
-            XYZ ptMid = insertPoint + yDir * radius;
-            XYZ ptMid2 = insertPoint - yDir * radius;
-
-            Arc arc1 = Arc.Create(ptStart, ptEnd, ptMid);
-            Arc arc2 = Arc.Create(ptEnd, ptStart, ptMid2);
-
-            return new List<Curve> { arc1, arc2 };
         }
     }
 }

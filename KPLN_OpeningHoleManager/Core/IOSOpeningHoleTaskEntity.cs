@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using System.Linq;
-using System.Security.Cryptography;
 
 namespace KPLN_OpeningHoleManager.Core
 {
@@ -10,10 +9,13 @@ namespace KPLN_OpeningHoleManager.Core
     /// </summary>
     internal sealed class IOSOpeningHoleTaskEntity : OpeningHoleEntity
     {
-        internal IOSOpeningHoleTaskEntity(Document doc, Element elem, XYZ point)
+        internal IOSOpeningHoleTaskEntity(Element elem) : base(elem)
+        {
+        }
+
+        internal IOSOpeningHoleTaskEntity(Element elem, Document doc, XYZ point) : this(elem) 
         {
             OHE_LinkDocument = doc;
-            OHE_Element = elem;
             OHE_Point = point;
         }
 
@@ -51,7 +53,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal IOSOpeningHoleTaskEntity SetGeomParams()
         {
-            if (OHE_Element != null)
+            if (IEDElem != null)
             {
                 if (OHE_Shape == OpenigHoleShape.Rectangular)
                 {
@@ -91,7 +93,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal IOSOpeningHoleTaskEntity SetGeomParamsData()
         {
-            if (OHE_Element != null)
+            if (IEDElem != null)
             {
                 if (OHE_Shape == OpenigHoleShape.Rectangular)
                 {
@@ -100,8 +102,8 @@ namespace KPLN_OpeningHoleManager.Core
                         if (OHE_ParamNameHeight == null || OHE_ParamNameWidth == null || OHE_ParamNameExpander == null)
                             throw new System.Exception ("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
 
-                        OHE_Height = OHE_Element.LookupParameter(OHE_ParamNameHeight).AsDouble() + OHE_Element.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
-                        OHE_Width = OHE_Element.LookupParameter(OHE_ParamNameWidth).AsDouble() + OHE_Element.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
+                        OHE_Height = IEDElem.LookupParameter(OHE_ParamNameHeight).AsDouble() + IEDElem.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
+                        OHE_Width = IEDElem.LookupParameter(OHE_ParamNameWidth).AsDouble() + IEDElem.LookupParameter(OHE_ParamNameExpander).AsDouble() * 2;
                     }
                 }
                 else
@@ -111,7 +113,7 @@ namespace KPLN_OpeningHoleManager.Core
                         if (OHE_ParamNameRadius == null || OHE_ParamNameExpander == null)
                             throw new System.Exception("У элемнта заданий нет нужных парамтеров. Обратись к разработчику");
                         
-                        OHE_Radius = OHE_Element.LookupParameter(OHE_ParamNameRadius).AsDouble();
+                        OHE_Radius = IEDElem.LookupParameter(OHE_ParamNameRadius).AsDouble();
                     }
                 }
             }

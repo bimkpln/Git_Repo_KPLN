@@ -73,8 +73,8 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                     app.ActiveUIDocument.Selection.SetElementIds(
                         _arEntitiesToCreate
-                        .Where(ent => doc.GetElement(ent.OHE_Element.Id).IsValidObject)
-                        .Select(ent => ent.OHE_Element.Id)
+                        .Where(ent => doc.GetElement(ent.IEDElem.Id).IsValidObject)
+                        .Select(ent => ent.IEDElem.Id)
                         .ToArray());
 
                     trans.Commit();

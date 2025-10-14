@@ -3,6 +3,8 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_ModelChecker_Lib;
+using KPLN_ModelChecker_Lib.Services.GripGeom;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.ExecutableCommand;
@@ -56,6 +58,11 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         /// Комманда: Выбрать задания и расстваить отверстия в модели
         /// </summary>
         public ICommand SetOpenHoleByTaskCommand { get; }
+
+        /// <summary>
+        /// Комманда: Растянуть границы отверстий в модели
+        /// </summary>
+        public ICommand SetOpenHoleExpandCommand { get; }
 
         /// <summary>
         /// Значение расширение отверстия при расстановке
@@ -156,6 +163,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             CreateOpenHole_SelectedARKRAndSelectedIOSElemsCommand = new RelayCommand(CreateOpenHole_SelectedARKRAndSelectedIOSElems);
             UnionOpenHolesCommand = new RelayCommand(UnionOpenHoles);
             SetOpenHoleByTaskCommand = new RelayCommand(SetOpenHoleByTask);
+            SetOpenHoleExpandCommand = new RelayCommand(SetOpenHoleExpand);
         }
 
         /// <summary>
@@ -194,7 +202,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 Element[] arHosts = new FilteredElementCollector(doc, activeView.Id)
                     .WhereElementIsNotElementType()
-                    .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARElemExtraFilterFunc(e))
+                    .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARHostElemExtraFilterFunc(e))
                     .ToArray();
 
                 if (arHosts == null || CheckWSAvailableError(doc, arHosts.Select(el => el.Id)))
@@ -495,10 +503,10 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
             // Подготовка Outline для глобальной фильтрации элементов линков
-            BoundingBoxXYZ filterBBox = GeometryWorker.CreateOverallBBox(arHostElems);
-            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 2);
+            BoundingBoxXYZ filterBBox = GeometryCurrentWorker.CreateOverallBBox(arHostElems);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 2);
 
-            
+
             // Фильтры
             BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
             BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);
@@ -519,14 +527,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     // Элементы линка, В РАМКАХ выбранных хостов АР (по пересечению)
                     linkElems_FromSection
                         .UnionWith(new FilteredElementCollector(linkDoc)
-                        .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, intersectsFilter))
-                        .Where(IOSElemEntity.ElemExtraFilterFunc));
+                            .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, intersectsFilter))
+                            .Where(IOSElemEntity.ElemExtraFilterFunc));
 
                     // Элементы линка, В РАМКАХ выбранных хостов АР (по вхождению)
                     linkElems_FromSection
                         .UnionWith(new FilteredElementCollector(linkDoc)
-                        .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, insideFilter))
-                        .Where(IOSElemEntity.ElemExtraFilterFunc));
+                            .WherePasses(new LogicalAndFilter(IOSElemEntity.ElemCatLogicalOrFilter, insideFilter))
+                            .Where(IOSElemEntity.ElemExtraFilterFunc));
 
                     linkElems[linkInst] = linkElems_FromSection;
                 }
@@ -580,16 +588,16 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             progressInfoViewModel.MaxProgress = arkrElemColl.Length;
             foreach (ARKRElemEntity arkrElemEnt in arkrElemColl)
             {
-                XYZ hostDir = GeometryWorker.GetHostDirection(arkrElemEnt.ARKRHost_Element);
+                XYZ hostDir = GeometryCurrentWorker.GetHostDirection(arkrElemEnt.IEDElem);
 
                 foreach (IOSElemEntity iosElemEnt in arkrElemEnt.IOSElemEntities)
                 {
                     // Получаю форму одиночного отверстия
                     OpenigHoleShape ohe_Shape = OpenigHoleShape.Rectangular;
 
-                    Face intersectMainFace = GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir)
+                    Face intersectMainFace = GeometryCurrentWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir)
                         // Такое может быть, если тело полность погружено в объём, тогда уменьшаем точность поиска
-                        ?? GeometryWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir, 5);
+                        ?? GeometryCurrentWorker.GetFace_ByAngleToDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir, 5);
 
                     var edgeFIter = intersectMainFace.EdgeLoops.ForwardIterator();
                     bool moveIterator = true;
@@ -613,7 +621,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     }
 
                     // Получаю ширину и высоту
-                    double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
+                    double[] widthAndHeight = GeometryCurrentWorker.GetSolidWidhtAndHeight_ByDirection(iosElemEnt.ARKRIOS_IntesectionSolid, hostDir);
                     double resultWidth = widthAndHeight[0];
                     double resultHeight = widthAndHeight[1];
                     double resultRadius = widthAndHeight[1];
@@ -624,7 +632,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                     // Создаю сущность AROpeningHoleEntity
-                    AROpeningHoleEntity arEntity = new AROpeningHoleEntity(ohe_Shape, MainDBService.Get_DBDocumentSubDepartment(iosElemEnt.IOS_LinkDocument).Code, arkrElemEnt.ARKRHost_Element, docCoord)
+                    AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, ohe_Shape, MainDBService.Get_DBDocumentSubDepartment(iosElemEnt.IOS_LinkDocument).Code, arkrElemEnt.IEDElem, docCoord)
                         .SetFamilyPathAndName(doc)
                         as AROpeningHoleEntity;
 
@@ -658,7 +666,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                 AROpeningHoleEntity[] arOHEColl = SelectAndGetAROpenHoles(uidoc, doc);
-                if (arOHEColl == null || CheckWSAvailableError(doc, arOHEColl.Select(arOHE => arOHE.OHE_Element.Id)))
+                if (arOHEColl == null || CheckWSAvailableError(doc, arOHEColl.Select(arOHE => arOHE.IEDElem.Id)))
                     return;
 
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
@@ -746,7 +754,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return null;
                 }
 
-                AROpeningHoleEntity arOHE = new AROpeningHoleEntity(Core.MainEntity.OpenigHoleShape.Rectangular, fi.Symbol.Name, hostElem, locPnt.Point, selectedElem);
+                AROpeningHoleEntity arOHE = new AROpeningHoleEntity(selectedElem, OpenigHoleShape.Rectangular, fi.Symbol.Name, hostElem, locPnt.Point);
 
                 arOHE.SetFamilyPathAndName(doc);
                 arOHE.SetGeomParams();
@@ -844,8 +852,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 if (linkedElement != null && linkedElement is FamilyInstance fi)
                 {
                     //LocationPoint locPnt = linkedElement.Location as LocationPoint;
-                    XYZ locPnt = GeometryWorker.GetRevitElemSolid(linkedElement).ComputeCentroid();
-                    IOSOpeningHoleTaskEntity iosTask = new IOSOpeningHoleTaskEntity(linkedDoc, linkedElement, locPnt)
+                    XYZ locPnt = GeometryWorker.GetRevitElemUniontSolid(linkedElement).ComputeCentroid();
+                    IOSOpeningHoleTaskEntity iosTask = new IOSOpeningHoleTaskEntity(linkedElement, linkedDoc, locPnt)
                         .SetFamilyPathAndName(linkedDoc)
                         .SetShapeByFamilyName(fi)
                         .SetTransform(linkInstance as Instance)
@@ -876,12 +884,12 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 Element hostElem = GetHostForOpening(arPotentialHosts, iosTask);
                 if (hostElem == null)
                 {
-                    HtmlOutput.Print($"Для задания с id: {iosTask.OHE_Element.Id} из файла {iosTask.OHE_LinkDocument.Title} не удалось найти основу. Выполни расстановку вручную",
+                    HtmlOutput.Print($"Для задания с id: {iosTask.IEDElem.Id} из файла {iosTask.OHE_LinkDocument.Title} не удалось найти основу. Выполни расстановку вручную",
                         MessageType.Error);
                     continue;
                 }
 
-                AROpeningHoleEntity arEntity = new AROpeningHoleEntity(iosTask.OHE_Shape, MainDBService.Get_DBDocumentSubDepartment(iosTask.OHE_LinkDocument).Code, hostElem, arDocCoord)
+                AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, iosTask.OHE_Shape, MainDBService.Get_DBDocumentSubDepartment(iosTask.OHE_LinkDocument).Code, hostElem, arDocCoord)
                     .SetFamilyPathAndName(doc)
                     as AROpeningHoleEntity;
 
@@ -902,8 +910,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         {
             List<Element> result = new List<Element>();
 
-            BoundingBoxXYZ filterBBox = GeometryWorker.CreateOverallBBox(iosTasks);
-            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 3);
+            BoundingBoxXYZ filterBBox = GeometryCurrentWorker.CreateOverallBBox(iosTasks);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 3);
 
             BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
             BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);
@@ -915,10 +923,10 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             // Подготовка коллекции эл-в пересекаемых и внутри расширенного BoundingBoxXYZ
             result.AddRange(allHostFromDocumentColl
-                .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRElemExtraFilterFunc(e)));
+                .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRHostElemExtraFilterFunc(e)));
 
             result.AddRange(allHostFromDocumentColl
-                .Where(e => ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRElemExtraFilterFunc(e)));
+                .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRHostElemExtraFilterFunc(e)));
 
             return result.ToArray();
         }
@@ -933,8 +941,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             double maxIntersection = 0;
             foreach (Element arPotHost in arPotentialHosts)
             {
-                Solid arPotHostSolid = GeometryWorker.GetRevitElemSolid(arPotHost);
-                Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arPotHostSolid, iosTask.OHE_Solid, BooleanOperationsType.Intersect);
+                Solid arPotHostSolid = GeometryWorker.GetRevitElemUniontSolid(arPotHost);
+                Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arPotHostSolid, iosTask.IGDSolid, BooleanOperationsType.Intersect);
                 if (intersectionSolid != null && intersectionSolid.Volume > maxIntersection)
                 {
                     maxIntersection = intersectionSolid.Volume;
@@ -943,6 +951,138 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             }
 
             return host;
+        }
+        #endregion
+
+        #region Выбрать задания и расстваить отверстия в модели
+        /// <summary>
+        /// Реализация: Растянуть границы отверстий в модели
+        /// </summary>
+        private void SetOpenHoleExpand()
+        {
+            try
+            {
+                if (Module.CurrentUIApplication == null) return;
+
+                UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
+                Document doc = uidoc.Document;
+                if (!doc.Title.Contains("СЕТ"))
+                {
+                    new TaskDialog("Внимание")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                        MainInstruction = $"Пока обучен работать только с СЕТ. Обратись к разработчику",
+                    }.Show();
+
+                    return;
+                }
+
+                // Забираю отверстия в текущей модели
+                List<AROpeningHoleEntity> arOHEEntColl = new List<AROpeningHoleEntity>();
+                Element[] docHoleColl = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .WhereElementIsNotElementType()
+                    .Where(e => ARKRElemsWorker.OpeningElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.OpeningElemExtraFilterFunc(e))
+                    .ToArray();
+
+
+                ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
+                ProgressWindow window = new ProgressWindow(progressInfoViewModel);
+                window.Show();
+                progressInfoViewModel.CurrentProgress = 0;
+                progressInfoViewModel.ProcessTitle = "Поиск и подготовка семейств отверстий...";
+                progressInfoViewModel.MaxProgress = docHoleColl.Length;
+
+                // Коллекция для группирования по сообщению и вывода данных (Id-элементов) пользователю
+                Dictionary<string, List<ElementId>> _msgDict_ByMsg = new Dictionary<string, List<ElementId>>();
+                bool isSet = doc.Title.StartsWith("СЕТ_1");
+                if (isSet)
+                {
+                    foreach (Element el in docHoleColl)
+                    {
+                        // Игнор отменённых пользователем отверстий
+                        Parameter overwriteParam = el.LookupParameter(AROpeningHoleEntity.AR_OHE_ParamNameCancelOverwrite);
+                        if (overwriteParam != null
+                            && overwriteParam.HasValue
+                            && overwriteParam.AsInteger() == 0)
+                        {
+                            HtmlOutput.SetMsgDict_ByMsg("Анализ отменён пользователем", el.Id, _msgDict_ByMsg);
+                            continue;
+                        }
+
+                        OpeningHoleEntity ohe = new AROpeningHoleEntity(el)
+                            .SetFamilyPathAndName(doc)
+                            .SET_SetSolids()
+                            .SetGeomVisibilityHandlesExpandParams()
+                            .SetFloorBindings(doc)
+                            .SetShapeByFamilyName(el);
+
+                        arOHEEntColl.Add((AROpeningHoleEntity)ohe);
+
+                        ++progressInfoViewModel.CurrentProgress;
+                        progressInfoViewModel.DoEvents();
+                    }
+                }
+                else
+                {
+                    foreach (Element el in docHoleColl)
+                    {
+                        // Игнор отменённых пользователем отверстий
+                        Parameter overwriteParam = el.LookupParameter(AROpeningHoleEntity.AR_OHE_ParamNameCancelOverwrite);
+                        if (overwriteParam != null
+                            && overwriteParam.HasValue
+                            && overwriteParam.AsInteger() == 0)
+                        {
+                            HtmlOutput.SetMsgDict_ByMsg("Анализ отменён пользователем", el.Id, _msgDict_ByMsg);
+                            continue;
+                        }
+
+                        OpeningHoleEntity ohe = new AROpeningHoleEntity(el)
+                            .SetFamilyPathAndName(doc)
+                            .SetGeomVisibilityHandlesExpandParams()
+                            .SetFloorBindings(doc)
+                            .SetShapeByFamilyName(el);
+
+                        arOHEEntColl.Add((AROpeningHoleEntity)ohe);
+
+                        ++progressInfoViewModel.CurrentProgress;
+                        progressInfoViewModel.DoEvents();
+                    }
+                }
+                HtmlOutput.PrintMsgDict("Внимание", MessageType.Warning, _msgDict_ByMsg);
+
+
+                if (arOHEEntColl == null || CheckWSAvailableError(doc, arOHEEntColl.Select(el => el.IEDElem.Id)))
+                    return;
+
+                int countHoles = arOHEEntColl.Count;
+                if (countHoles == 0)
+                {
+                    new TaskDialog("Внимание")
+                    {
+                        MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                        MainInstruction = $"Не удалось получить элементы отверстий в модели.",
+                    }.Show();
+
+                    return;
+                }
+
+                progressInfoViewModel.MaxProgress = countHoles;
+                progressInfoViewModel.CurrentProgress = countHoles;
+                progressInfoViewModel.DoEvents();
+
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_AddParams(arOHEEntColl.FirstOrDefault()));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_VisibilityHandles_Setter(arOHEEntColl, progressInfoViewModel));
+            }
+            catch (Exception ex)
+            {
+                new TaskDialog("Ошибка")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconError,
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                }.Show();
+            }
+
         }
         #endregion
 

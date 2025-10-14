@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_ModelChecker_Lib.Services.GripGeom;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.Services;
 using System;
@@ -13,24 +13,22 @@ namespace KPLN_OpeningHoleManager.Core
     /// </summary>
     internal sealed class AROpeningHoleEntity : OpeningHoleEntity
     {
+        /// <summary>
+        /// Имя параметр для исключения эл-нтов из анализа
+        /// </summary>
+        internal static string AR_OHE_ParamNameCancelOverwrite = "МО_Перезаписать границы видимости";
         private bool _ar_OHE_IsHostElementKR = false;
 
-        internal AROpeningHoleEntity(Element elem)
+        internal AROpeningHoleEntity(Element elem) : base(elem)
         {
-            OHE_Element = elem;
         }
 
-        internal AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point)
+        internal AROpeningHoleEntity(Element elem, OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point) : this(elem)
         {
             OHE_Shape = shape;
             AR_OHE_IOSDubDepCode = iosSubDepCode;
             AR_OHE_HostElement = hostElem;
             OHE_Point = point;
-        }
-
-        internal AROpeningHoleEntity(OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point, Element elem) : this(shape, iosSubDepCode, hostElem, point)
-        {
-            OHE_Element = elem;
         }
 
         /// <summary>
@@ -63,20 +61,53 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal string AR_OHE_IOSDubDepCode { get; private set; }
 
+
+        #region Блок пар-в для расширения границ
+        /// <summary>
+        /// Имя параметра расширения ручек отверстия ВВЕРХ
+        /// </summary>
+        internal string AR_OHE_VisibilityHandles_ParamNameUpExpander { get; private set; }
+
+        /// <summary>
+        /// Привязка к перекрытию выше
+        /// </summary>
+        public Element UpFloorBinding { get; set; }
+
+        /// <summary>
+        /// Расстояние до перекрытия выше
+        /// </summary>
+        public double UpFloorDistance { get; set; } = double.MaxValue;
+
+        /// <summary>
+        /// Имя параметра расширения ручек отверстия ВНИЗ
+        /// </summary>
+        internal string AR_OHE_VisibilityHandles_ParamNameDownExpander { get; private set; }
+
+        // <summary>
+        /// Привязка к перекрытию ниже
+        /// </summary>
+        public Element DownFloorBinding { get; set; }
+
+        /// <summary>
+        /// Расстояние до перекрытия ниже
+        /// </summary>
+        public double DownFloorDistance { get; set; } = double.MaxValue;
+        #endregion
+
         /// <summary>
         /// Создать объединённое отверстие по выбранной коллекции
         /// </summary>
         internal static AROpeningHoleEntity[] CreateUnionOpeningHole(Document doc, AROpeningHoleEntity[] arOHEColl)
         {
             List<AROpeningHoleEntity> resultColl = new List<AROpeningHoleEntity>();
-            
+
             // Анализирую на наличие нескольких основ у выборки отверстий
             IEnumerable<int> arOHEHostId = arOHEColl.Select(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue).Distinct();
             foreach (int hostIntId in arOHEHostId)
             {
                 // Получаю основу
                 Element hostElem = doc.GetElement(new ElementId(hostIntId));
-                
+
                 // Фильтрую коллекцию по основе (объединяю вокруг основы)
                 AROpeningHoleEntity[] arOHECollByHost = arOHEColl.Where(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue == hostIntId).ToArray();
 
@@ -96,10 +127,10 @@ namespace KPLN_OpeningHoleManager.Core
                     try
                     {
                         if (unionSolid == null)
-                            unionSolid = arOHE.OHE_Solid;
+                            unionSolid = arOHE.IGDSolid;
                         else
                         {
-                            Solid tempUnionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, arOHE.OHE_Solid, BooleanOperationsType.Union);
+                            Solid tempUnionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(unionSolid, arOHE.IGDSolid, BooleanOperationsType.Union);
                             if (tempUnionSolid != null && tempUnionSolid.Volume > 0)
                                 unionSolid = tempUnionSolid;
 
@@ -112,10 +143,10 @@ namespace KPLN_OpeningHoleManager.Core
                 }
 
                 // Анализирую вектор основы
-                XYZ hostDir = GeometryWorker.GetHostDirection(hostElem);
+                XYZ hostDir = GeometryCurrentWorker.GetHostDirection(hostElem);
 
                 // Получаю ширину и высоту
-                double[] widthAndHeight = GeometryWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir);
+                double[] widthAndHeight = GeometryCurrentWorker.GetSolidWidhtAndHeight_ByDirection(unionSolid, hostDir);
                 double resultWidth = widthAndHeight[0];
                 double resultHeight = widthAndHeight[1];
 
@@ -133,6 +164,7 @@ namespace KPLN_OpeningHoleManager.Core
 
                 // Создаю сущность для заполнения
                 AROpeningHoleEntity resultByHost = new AROpeningHoleEntity(
+                    null,
                     OpenigHoleShape.Rectangular,
                     resultSubDep,
                     hostElem,
@@ -144,7 +176,7 @@ namespace KPLN_OpeningHoleManager.Core
 
                 resultColl.Add(resultByHost);
             }
-            
+
             return resultColl.ToArray();
         }
 
@@ -157,23 +189,23 @@ namespace KPLN_OpeningHoleManager.Core
 
             foreach (AROpeningHoleEntity unionOHEEnt in arOHEColl)
             {
-                AROpeningHoleEntity[] hostOHEColl = new FilteredElementCollector(doc)
+                AROpeningHoleEntity[] AROHEEntColl = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
                     .Where(el => el is FamilyInstance fi
-                        && (fi.Symbol.FamilyName.StartsWith("199_Отвер") || fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие"))
+                        && (fi.Symbol.FamilyName.Contains(unionOHEEnt.OHE_FamilyName_Rectangle) || fi.Symbol.FamilyName.Contains(unionOHEEnt.OHE_FamilyName_Circle))
                         && fi.Host.Id.IntegerValue == unionOHEEnt.AR_OHE_HostElement.Id.IntegerValue)
                     .Select(el => new AROpeningHoleEntity(el))
                     .ToArray();
 
-                foreach (AROpeningHoleEntity checkHostOHE in hostOHEColl)
+                foreach (AROpeningHoleEntity AROHEEnt in AROHEEntColl)
                 {
-                    Solid hostOHESolid = GeometryWorker.GetRevitElemSolid(checkHostOHE.OHE_Element);
+                    Solid hostOHESolid = GeometryWorker.GetRevitElemUniontSolid(AROHEEnt.IEDElem);
                     if (hostOHESolid == null)
                         continue;
 
 
-                    if ((unionOHEEnt.OHE_Element != null && checkHostOHE.OHE_Element != null)
-                        && (unionOHEEnt.OHE_Element.Id.IntegerValue == checkHostOHE.OHE_Element.Id.IntegerValue))
+                    if ((unionOHEEnt.IEDElem != null && AROHEEnt.IEDElem != null)
+                        && (unionOHEEnt.IEDElem.Id.IntegerValue == AROHEEnt.IEDElem.Id.IntegerValue))
                         continue;
 
                     //var centr1 = unionOHEEnt.OHE_Solid.ComputeCentroid();
@@ -187,11 +219,11 @@ namespace KPLN_OpeningHoleManager.Core
                     //var trans2 = bbox2.Transform;
                     //var newbbox2 = new BoundingBoxXYZ() { Min = trans2.OfPoint(bbox2.Min), Max = trans2.OfPoint(bbox2.Max) };
 
-                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(hostOHESolid, unionOHEEnt.OHE_Solid, BooleanOperationsType.Intersect);
+                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(hostOHESolid, unionOHEEnt.IGDSolid, BooleanOperationsType.Intersect);
                     if (intersectSolid != null
                         && intersectSolid.Volume > 0
-                        && !elemToClearColl.Any(ohe => ohe.OHE_Element.Id.IntegerValue == checkHostOHE.OHE_Element.Id.IntegerValue))
-                        elemToClearColl.Add(checkHostOHE);
+                        && !elemToClearColl.Any(ohe => ohe.IEDElem.Id.IntegerValue == AROHEEnt.IEDElem.Id.IntegerValue))
+                        elemToClearColl.Add(AROHEEnt);
                 }
             }
 
@@ -283,14 +315,14 @@ namespace KPLN_OpeningHoleManager.Core
 
             foreach (AROpeningHoleEntity ent in arEntitiesToSet)
             {
-                ent.OHE_Solid = GeometryWorker.GetRevitElemSolid(ent.OHE_Element);
+                ent.IGDSolid = GeometryWorker.GetRevitElemUniontSolid(ent.IEDElem);
             }
         }
 
         /// <summary>
         /// Установить путь к Revit семействам
         /// </summary>
-        internal OpeningHoleEntity SetFamilyPathAndName(Document doc)
+        internal AROpeningHoleEntity SetFamilyPathAndName(Document doc)
         {
             if (doc.Title.Contains("СЕТ_1"))
             {
@@ -391,11 +423,92 @@ namespace KPLN_OpeningHoleManager.Core
         }
 
         /// <summary>
-        /// Создать СОЛИД используя параметры AROpeningHoleEntity
+        /// Установить основные геометрические параметры ручек расширения (вверх и вниз)
         /// </summary>
-        internal AROpeningHoleEntity CreateSolid_ByParams()
+        internal AROpeningHoleEntity SetGeomVisibilityHandlesExpandParams()
         {
-            OHE_Solid = GeometryWorker.CreateSolid_ZDir(GeometryWorker.GetHostDirection(AR_OHE_HostElement), OHE_Point, OHE_Height, OHE_Width, OHE_Radius);
+            if (OHE_FamilyName_Rectangle.Contains("199_Отверстие прямоугольное"))
+            {
+                AR_OHE_VisibilityHandles_ParamNameUpExpander = "SYS_OFFSET_UP";
+                AR_OHE_VisibilityHandles_ParamNameDownExpander = "SYS_OFFSET_DOWN";
+            }
+            else if (OHE_FamilyName_Rectangle.Contains("ASML_АР_Отверстие прямоугольное"))
+            {
+                AR_OHE_VisibilityHandles_ParamNameUpExpander = "АР_Проем видимость вверх";
+                AR_OHE_VisibilityHandles_ParamNameDownExpander = "АР_Проем видимость вниз";
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Установить привязки для указания данных в ручки расширения
+        /// </summary>
+        internal AROpeningHoleEntity SetFloorBindings(Document doc)
+        {
+            #region Забираю плиты перекрытий из моделей АР.
+            // Фильтр для текущего документа
+            Outline elemOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(this.IGDBBox, new XYZ(0, 0, 15));
+            BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(elemOutline, 0.1);
+            
+            // Список потенциальных перекрытий текущей модели
+            List<Element> potentialFloorColl = new FilteredElementCollector(doc)
+                .OfClass(typeof(Floor))
+                .WhereElementIsNotElementType()
+                .Where(e => ARKRElemsWorker.FloorElemExtraFilterFunc(e) && bboxIntersectFilter.PassesFilter(e))
+                .ToList();
+
+            SetFloorBindingData(doc, this.IGDBBox, potentialFloorColl);
+
+
+            // Список линков
+            RevitLinkInstance[] rliColl = new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                .Where(lm =>
+                    lm.Name.ToUpper().Contains("_AR_")
+                    || lm.Name.ToUpper().Contains("_АР_")
+                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                    || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
+                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
+                .Cast<RevitLinkInstance>()
+                .ToArray();
+
+
+            // Анализ линков
+            foreach (RevitLinkInstance rli in rliColl)
+            {
+                Document linkDoc = rli.GetLinkDocument();
+                if (linkDoc == null)
+                    continue;
+
+                // Беру трансформ для линка
+                Transform lDocTrans = rli.GetTotalTransform();
+
+
+                // Перевод фильтра на координаты связи
+                Outline transElemOutline = GeometryWorker.TransformFilterOutline_ToLink(elemOutline, lDocTrans);
+                BoundingBoxIntersectsFilter transBBoxIntersectFilter = new BoundingBoxIntersectsFilter(transElemOutline, 0.1);
+                
+                // Список потенциальных перекрытий линка
+                List<Element> potentialLinkFloorColl = new FilteredElementCollector(linkDoc)
+                    .OfClass(typeof(Floor))
+                    .WhereElementIsNotElementType()
+                    .Where(e => ARKRElemsWorker.FloorElemExtraFilterFunc(e) && transBBoxIntersectFilter.PassesFilter(e))
+                    .ToList();
+
+
+                // Перевод координат отверстия на координаты связи
+                BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
+                {
+                    Min = lDocTrans.Inverse.OfPoint(this.IGDBBox.Min),
+                    Max = lDocTrans.Inverse.OfPoint(this.IGDBBox.Max),
+                };
+
+                SetFloorBindingData(linkDoc, inversedFiBBox, potentialLinkFloorColl);
+            }
+
+
+            #endregion
 
             return this;
         }
@@ -412,6 +525,17 @@ namespace KPLN_OpeningHoleManager.Core
                 OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - this.OHE_Height / 2);
             else
                 OHE_Point = new XYZ(iosTransPnt.X, iosTransPnt.Y, iosTransPnt.Z - this.OHE_Radius / 2);
+
+            return this;
+        }
+
+        /// <summary>
+        /// Установить солид для СЕТ (там отверстия без тела)
+        /// </summary>
+        /// <returns></returns>
+        internal AROpeningHoleEntity SET_SetSolids()
+        {
+            this.IGDSolid = GeometryWorker.SET_GetRevitElemUniontSolid(this.IEDElem);
 
             return this;
         }
@@ -459,7 +583,7 @@ namespace KPLN_OpeningHoleManager.Core
 
             // Присваиваю параметр эл-та модели инстансу класса (далее используется)
             //doc.Regenerate();
-            OHE_Element = instance;
+            IEDElem = instance;
 
 
             // Указать уровень - для семейств на основе указывать НЕ нужно
@@ -468,21 +592,21 @@ namespace KPLN_OpeningHoleManager.Core
             // Заполнить параметры
             if (OHE_Shape == OpenigHoleShape.Rectangular)
             {
-                OHE_Element.LookupParameter(OHE_ParamNameHeight).Set(OHE_Height);
-                OHE_Element.LookupParameter(OHE_ParamNameWidth).Set(OHE_Width);
+                IEDElem.LookupParameter(OHE_ParamNameHeight).Set(OHE_Height);
+                IEDElem.LookupParameter(OHE_ParamNameWidth).Set(OHE_Width);
 
-                Parameter expandParam = OHE_Element.LookupParameter(OHE_ParamNameExpander);
+                Parameter expandParam = IEDElem.LookupParameter(OHE_ParamNameExpander);
                 if (expandParam != null && !expandParam.IsReadOnly)
-                    OHE_Element.LookupParameter(OHE_ParamNameExpander).Set(0);
+                    IEDElem.LookupParameter(OHE_ParamNameExpander).Set(0);
             }
             else
             {
-                OHE_Element.LookupParameter(OHE_ParamNameRadius).Set(OHE_Radius);
+                IEDElem.LookupParameter(OHE_ParamNameRadius).Set(OHE_Radius);
 
-                Parameter expandParam = OHE_Element.LookupParameter(OHE_ParamNameExpander);
+                Parameter expandParam = IEDElem.LookupParameter(OHE_ParamNameExpander);
                 if (expandParam != null && !expandParam.IsReadOnly)
-                    OHE_Element.LookupParameter(OHE_ParamNameExpander).Set(0);
-            }            
+                    IEDElem.LookupParameter(OHE_ParamNameExpander).Set(0);
+            }
         }
 
         private double RoundGeomParam(double geomParam)
@@ -503,6 +627,77 @@ namespace KPLN_OpeningHoleManager.Core
 #else
             return UnitUtils.ConvertToInternalUnits(round_mm, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif
+        }
+
+        private void SetFloorBindingData(Document doc, BoundingBoxXYZ holeBBox, List<Element> floorColl)
+        {
+            foreach (Element elem in floorColl)
+            {
+                if (!(elem is Floor floor))
+                    continue;
+
+                XYZ upPrjPoint = floor.GetVerticalProjectionPoint(holeBBox.Max, FloorFace.Bottom);
+                if (upPrjPoint == null) continue;
+
+                double upDistance = holeBBox.Max.DistanceTo(upPrjPoint);
+                if (Math.Round(holeBBox.Max.Z, 1) <= Math.Round(upPrjPoint.Z, 1) && upDistance <= this.UpFloorDistance)
+                {
+                    // Проверяю точку максимума и минимума по X, Y. Причина - отверстия в наружных стенах
+                    if (CheckFloorFaces(floor, upPrjPoint) || CheckFloorFaces(floor, new XYZ(holeBBox.Min.X, holeBBox.Min.Y, upPrjPoint.Z)))
+                    {
+                        this.UpFloorBinding = floor;
+                        this.UpFloorDistance = upDistance;
+                    }
+                }
+
+                XYZ downPrjPoint = floor.GetVerticalProjectionPoint(holeBBox.Min, FloorFace.Top);
+                if (downPrjPoint == null) continue;
+
+                double downDistance = holeBBox.Min.DistanceTo(downPrjPoint);
+                if (Math.Round(holeBBox.Min.Z, 1) >= Math.Round(downPrjPoint.Z, 1) && downDistance <= this.DownFloorDistance)
+                {
+                    // Проверяю точку максимума и минимума по X, Y. Причина - отверстия в наружных стенах
+                    if (CheckFloorFaces(floor, downPrjPoint) || CheckFloorFaces(floor, new XYZ(holeBBox.Max.X, holeBBox.Max.Y, downPrjPoint.Z)))
+                    {
+                        this.DownFloorBinding = floor;
+
+                        double floorAboveLevHeight = this.DownFloorBinding.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble();
+                        this.DownFloorDistance = downDistance + floorAboveLevHeight;
+                    }
+                }
+
+            }
+        }
+
+        /// <summary>
+        /// Проверка перекрытия на факт пересечения с точкой проецирования
+        /// </summary>
+        private bool CheckFloorFaces(Floor floor, XYZ prjPoint)
+        {
+            GeometryElement flGeomElem = floor
+                .get_Geometry(new Options()
+                {
+                    DetailLevel = ViewDetailLevel.Fine,
+                });
+
+            foreach (GeometryObject obj in flGeomElem)
+            {
+                Solid flSolid = obj as Solid;
+                if (flSolid != null && flSolid.Volume != 0)
+                {
+                    FaceArray flFaceArray = flSolid.Faces;
+                    foreach (Face flFace in flFaceArray)
+                    {
+                        IntersectionResult intRes = flFace.Project(prjPoint);
+                        if (intRes != null && intRes.Distance < 0.0001)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_OpeningHoleManager.Services;
+using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +16,11 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
     /// <summary>
     /// Обобщение отверстия в модели
     /// </summary>
-    public class OpeningHoleEntity
+    public class OpeningHoleEntity : InstanceGeomData
     {
-        private Solid _ohe_Solid;
+        public OpeningHoleEntity(Element elem) : base(elem)
+        {
+        }
 
         /// <summary>
         /// Ссылка на документ линка
@@ -29,11 +31,6 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// Ссылка на Transform для линка
         /// </summary>
         public Transform OHE_LinkTransform { get; private protected set; }
-
-        /// <summary>
-        /// Ссылка на элемент модели (ЗИ или отверстия)
-        /// </summary>
-        public Element OHE_Element { get; set; }
 
         /// <summary>
         /// Точка вставки элемента (ЗИ или отверстия)
@@ -106,40 +103,22 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         public string OHE_FamilyName_Circle { get; private protected set; }
 
         /// <summary>
-        /// Кэширование SOLID геометрии
-        /// </summary>
-        public Solid OHE_Solid
-        {
-            get
-            {
-                if (_ohe_Solid == null)
-                {
-                    if (OHE_LinkTransform == null)
-                        _ohe_Solid = GeometryWorker.GetRevitElemSolid(OHE_Element);
-                    else
-                        _ohe_Solid = GeometryWorker.GetRevitElemSolid(OHE_Element, OHE_LinkTransform);
-                }
-
-                return _ohe_Solid;
-            }
-
-            protected private set => _ohe_Solid = value;
-        }
-
-        /// <summary>
         /// Задать форму отверстия по имени элементу
         /// </summary>
-        public OpeningHoleEntity SetShapeByFamilyName(FamilyInstance fi)
+        public OpeningHoleEntity SetShapeByFamilyName(Element el)
         {
-            string fiName = fi.Symbol.FamilyName.ToLower();
-            // Обрезаю из имени резеврные копии и копии семейств
-            string clearedFiName = Regex.Replace(fiName, @"(\.\d+|\d+)$", "");
-            if (clearedFiName.StartsWith(OHE_FamilyName_Rectangle.ToLower()))
-                OHE_Shape = OpenigHoleShape.Rectangular;
-            else if (clearedFiName.StartsWith(OHE_FamilyName_Circle.ToLower()))
-                OHE_Shape = OpenigHoleShape.Round;
-            else
-                throw new Exception("Вы выбрали экзмеляр, который НЕ является заданием на отверстие");
+            if (el is FamilyInstance fi)
+            {
+                string fiName = fi.Symbol.FamilyName.ToLower();
+                // Обрезаю из имени резеврные копии и копии семейств
+                string clearedFiName = Regex.Replace(fiName, @"(\.\d+|\d+)$", "");
+                if (clearedFiName.StartsWith(OHE_FamilyName_Rectangle.ToLower()))
+                    OHE_Shape = OpenigHoleShape.Rectangular;
+                else if (clearedFiName.StartsWith(OHE_FamilyName_Circle.ToLower()))
+                    OHE_Shape = OpenigHoleShape.Round;
+                else
+                    throw new Exception("Вы выбрали экзмеляр, который НЕ является заданием на отверстие");
+            }
 
             return this;
         }

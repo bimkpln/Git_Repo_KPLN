@@ -26,7 +26,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
         /// </summary>
-        /// <param name="arEntities"></param>
+        /// <param name="arEntities">Коллекция для объединения</param>
         public AR_OHE_MakerWithUnion(AROpeningHoleEntity[] arEntities, string transName, MainViewModel viewModel, bool isUnionOnly, ProgressInfoViewModel progressInfoViewModel)
         {
             _arEntities = arEntities;
@@ -81,7 +81,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                         _progressInfoViewModel.MaxProgress= arEntities_FullIntersect.Length;
                         foreach (AROpeningHoleEntity arEntity in arEntities_FullIntersect)
                         {
-                            doc.Delete(arEntity.OHE_Element.Id);
+                            doc.Delete(arEntity.IEDElem.Id);
 
                             ++_progressInfoViewModel.CurrentProgress;
                             _progressInfoViewModel.DoEvents();
@@ -113,7 +113,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
 
                                 // Если словарь состоит из самого себя - игнор, зачем пересоздавать тот же самый эл-т
-                                if (kvp.Value.Count() == 1 && kvp.Key == kvp.Value.FirstOrDefault().OHE_Element.Id.IntegerValue)
+                                if (kvp.Value.Count() == 1 && kvp.Key == kvp.Value.FirstOrDefault().IEDElem.Id.IntegerValue)
                                 {
                                     // Проверка одиночных на размер - если меньше допуска - удаляю
                                     AROpeningHoleEntity checkSizeEnt = kvp.Value.FirstOrDefault();
@@ -174,8 +174,8 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                             foreach (AROpeningHoleEntity arEntity in arEntitiesForDelete)
                             {
                                 // Может быть, что элемента ещё нет в файле
-                                if (arEntity.OHE_Element.IsValidObject)
-                                    doc.Delete(arEntity.OHE_Element.Id);
+                                if (arEntity.IEDElem.IsValidObject)
+                                    doc.Delete(arEntity.IEDElem.Id);
 
                                 ++_progressInfoViewModel.CurrentProgress;
                                 _progressInfoViewModel.DoEvents();
@@ -204,8 +204,8 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                             app.ActiveUIDocument.Selection.SetElementIds(
                                 _arEntities
-                                .Where(ent => ent.OHE_Element.IsValidObject)
-                                .Select(ent => ent.OHE_Element.Id)
+                                .Where(ent => ent.IEDElem.IsValidObject)
+                                .Select(ent => ent.IEDElem.Id)
                                 .ToArray());
                         }
                     }
@@ -250,7 +250,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private Dictionary<int, List<AROpeningHoleEntity>> GetAROpenings_UnionByParams(AROpeningHoleEntity[] arEntities)
         {
             var adjacency = new Dictionary<int, List<int>>();
-            var idToEntity = arEntities.ToDictionary(e => e.OHE_Element.Id.IntegerValue, e => e);
+            var idToEntity = arEntities.ToDictionary(e => e.IEDElem.Id.IntegerValue, e => e);
 #if Debug2020 || Revit2020
             double ar_minDistance = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinDistanceValue, DisplayUnitType.DUT_MILLIMETERS);
             double kr_minDistance = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinDistanceValue, DisplayUnitType.DUT_MILLIMETERS);
@@ -262,12 +262,12 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             // Ствараем граф
             foreach (var ent1 in arEntities)
             {
-                int id1 = ent1.OHE_Element.Id.IntegerValue;
+                int id1 = ent1.IEDElem.Id.IntegerValue;
                 double minDistance = ent1.AR_OHE_IsHostElementKR ? kr_minDistance : ar_minDistance;
 
                 foreach (var ent2 in arEntities)
                 {
-                    int id2 = ent2.OHE_Element.Id.IntegerValue;
+                    int id2 = ent2.IEDElem.Id.IntegerValue;
                     if (id1 == id2) continue;
 
                     //bool isConnected = false;
@@ -280,7 +280,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     //catch (Autodesk.Revit.Exceptions.InvalidOperationException) { }
 
                     // Анализирую на минимальное расстояние
-                    double dist = GeometryWorker.GetMinimumDistanceBetweenSolids(ent1.OHE_Solid, ent2.OHE_Solid);
+                    double dist = GeometryCurrentWorker.GetMinimumDistanceBetweenSolids(ent1.IGDSolid, ent2.IGDSolid);
                     bool isConnected = dist <= minDistance;
 
                     if (isConnected)
@@ -326,7 +326,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 }
 
                 // Выкарыстоўваем першы ID у групе як ключ
-                result[group[0].OHE_Element.Id.IntegerValue] = group;
+                result[group[0].IEDElem.Id.IntegerValue] = group;
             }
 
             return result;

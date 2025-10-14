@@ -99,6 +99,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -109,6 +113,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -123,6 +131,10 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -133,6 +145,10 @@
         </Reference>
         <Reference Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -146,6 +162,8 @@
     <Compile Include="Core\MainConfig.cs" />
     <Compile Include="Core\MainEntity\OpeningHoleEntity.cs" />
     <Compile Include="ExecutableCommand\AR_OHE_MakerWithUnion.cs" />
+    <Compile Include="ExecutableCommand\AR_OHE_AddParams.cs" />
+    <Compile Include="ExecutableCommand\AR_OHE_VisibilityHandles_Setter.cs" />
     <Compile Include="Forms\MVVMCore_MainMenu\ProgressInfoViewModel.cs" />
     <Compile Include="Forms\ProgressWindow.xaml.cs">
       <DependentUpon>ProgressWindow.xaml</DependentUpon>
@@ -176,7 +194,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Services\GeometryWorker.cs" />
+    <Compile Include="Services\GeometryCurrentWorker.cs" />
     <Compile Include="Services\MainDBService.cs" />
     <Compile Include="Services\RevitEventWorker.cs" />
     <Compile Include="Services\ViewZoomCreator.cs" />

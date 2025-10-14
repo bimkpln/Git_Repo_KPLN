@@ -161,7 +161,7 @@ namespace KPLN_OpeningHoleManager.Services
             #endregion
 
             #region Настройка фильтров по имени типа
-            string filterName = $"OHM_Стена = !*{string.Join(" ИЛИ !*", ARKRElemsWorker.ARKRNames_StartWith)}";
+            string filterName = $"OHM_Стена = !*{string.Join(" ИЛИ !*", ARKRElemsWorker.ARKRHostNames_StartWith)}";
             
             ParameterFilterElement[] docFilters = new FilteredElementCollector(doc)
                 .OfClass(typeof(ParameterFilterElement))
@@ -170,9 +170,13 @@ namespace KPLN_OpeningHoleManager.Services
 
 
             List<ElementFilter> efColl = new List<ElementFilter>();
-            for (int i = 0; i < ARKRElemsWorker.ARKRNames_StartWith.Count(); i++)
+            for (int i = 0; i < ARKRElemsWorker.ARKRHostNames_StartWith.Count(); i++)
             {
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRNames_StartWith[i], false);
+#if Debug2020 || Revit2020
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i], false);
+#else
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i]);
+#endif
                 ElementParameterFilter elementParameterFilter = new ElementParameterFilter(fRule);
                 efColl.Add(elementParameterFilter);
             }
@@ -193,7 +197,7 @@ namespace KPLN_OpeningHoleManager.Services
 
             view3D.AddFilter(viewFilterId);
             view3D.SetFilterVisibility(viewFilterId, false);
-            #endregion
+#endregion
         }
 
         /// <summary>

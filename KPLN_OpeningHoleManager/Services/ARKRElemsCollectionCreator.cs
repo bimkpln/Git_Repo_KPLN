@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_ModelChecker_Lib.Services.GripGeom;
 using KPLN_OpeningHoleManager.Core;
 using System;
 using System.Collections.Generic;
@@ -39,7 +40,7 @@ namespace KPLN_OpeningHoleManager.Services
             IDictionary<RevitLinkInstance, ICollection<Element>> prefilteredLinkElems = null)
         {
             // Генерация Outline для быстрого поиска (QuickFilter)
-            Outline filterOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(arkrEntity.ARKRHost_Solid.GetBoundingBox(), 0.5);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(arkrEntity.IGDSolid.GetBoundingBox(), 0.5);
 
             foreach (RevitLinkInstance iosLinkInst in iosLinkInsts)
             {
@@ -97,7 +98,7 @@ namespace KPLN_OpeningHoleManager.Services
                 && iosLinkElemLocCurve.Curve is Line iosLinkElemLine)
             {
                 XYZ iosDir = iosLinkElemLine.Direction;
-                XYZ hostDir = GeometryWorker.GetHostDirection(entity.ARKRHost_Element);
+                XYZ hostDir = GeometryCurrentWorker.GetHostDirection(entity.IEDElem);
                 XYZ crossProd = iosDir.CrossProduct(hostDir);
 
                 // Отсеиваю вертикальные, под 90° участки и горизонтальные, параллельные хосту (они в 99% ошибки, остальное закроем Navisworks)
@@ -108,19 +109,19 @@ namespace KPLN_OpeningHoleManager.Services
             }
 
             // Основной анализ
-            Solid iosElemSolid = GeometryWorker.GetRevitElemSolid(iosLinkElem, iosLinkTransfrom);
+            Solid iosElemSolid = GeometryWorker.GetRevitElemUniontSolid(iosLinkElem, iosLinkTransfrom);
             if (iosElemSolid != null)
             {
                 try
                 {
-                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(entity.ARKRHost_Solid, iosElemSolid, BooleanOperationsType.Intersect);
+                    Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(entity.IGDSolid, iosElemSolid, BooleanOperationsType.Intersect);
                     if (intersectSolid != null && intersectSolid.Volume > 0)
                         return new IOSElemEntity(iosLinkDoc, iosLinkElem, intersectSolid);
                 }
                 // Может падать ошибка если тела неточно расположены между собой: https://www.revitapidocs.com/2023/89cb7975-cc76-65ba-b996-bcb78d12161a.htm
                 catch (Autodesk.Revit.Exceptions.InvalidOperationException)
                 {
-                    throw new Exception($"Для эл-та с id: {iosLinkElem.Id} из файла {iosLinkElem.Document.Title} не удалось провести анализ на пересечение со стеной АР с id: {entity.ARKRHost_Element.Id}");
+                    throw new Exception($"Для эл-та с id: {iosLinkElem.Id} из файла {iosLinkElem.Document.Title} не удалось провести анализ на пересечение со стеной АР с id: {entity.IEDElem.Id}");
                 }
                 catch (Exception ex)
                 {

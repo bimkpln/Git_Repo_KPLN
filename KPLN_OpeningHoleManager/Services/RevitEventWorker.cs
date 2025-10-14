@@ -1,11 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
-using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace KPLN_OpeningHoleManager.Services
 {

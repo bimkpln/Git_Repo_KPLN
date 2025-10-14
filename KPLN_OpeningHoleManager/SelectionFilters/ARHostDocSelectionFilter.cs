@@ -16,8 +16,8 @@ namespace KPLN_OpeningHoleManager.Forms.SelectionFilters
             {
                 string typeParamData = wall.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM).AsValueString();
 
-                bool isMatchTypeNameFilter = ARKRElemsWorker.ElemCatLogicalOrFilter.PassesFilter(elem);
-                bool isMatchExtraFilter = ARKRElemsWorker.ARKRElemExtraFilterFunc(elem);
+                bool isMatchTypeNameFilter = ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(elem);
+                bool isMatchExtraFilter = ARKRElemsWorker.ARKRHostElemExtraFilterFunc(elem);
 
                 return isMatchTypeNameFilter && isMatchExtraFilter;
             }

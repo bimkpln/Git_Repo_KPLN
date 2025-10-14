@@ -75,6 +75,8 @@
                                 <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий можно запустить на 3D-виде,
                                     который содержит весь проект, но не забывай что он НЕ работает с группами!
                                     Правильно будет запускать <Bold>на каждый типовой</Bold> этаж отдельно</TextBlock>
+                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> При запуске с плана - будет генерироваться и открываться вид, 
+                                    на котором видны все отверстия и основы</TextBlock>
                             </StackPanel>
                         </Button.ToolTip>
                     </Button>
@@ -157,6 +159,21 @@
                 <Button.ToolTip>
                     <StackPanel MaxWidth="400">
                         <TextBlock TextWrapping="Wrap">Потсавить отверстие по заданию от ИОС</TextBlock>
+                    </StackPanel>
+                </Button.ToolTip>
+            </Button>
+            
+            <Button
+                Style="{StaticResource BTN}"
+                Command="{Binding SetOpenHoleExpandCommand}">
+                <TextBlock
+                    Text="Расширить границы"
+                    TextWrapping="Wrap"
+                    MaxWidth="250"
+                    TextAlignment="Center"/>
+                <Button.ToolTip>
+                    <StackPanel MaxWidth="400">
+                        <TextBlock TextWrapping="Wrap">Задаёт значения для смещений вверх/вниз у спец. элементов семейства, чтобы семейства были видны на плане НЕ зависимо от секущего диапазона</TextBlock>
                     </StackPanel>
                 </Button.ToolTip>
             </Button>
