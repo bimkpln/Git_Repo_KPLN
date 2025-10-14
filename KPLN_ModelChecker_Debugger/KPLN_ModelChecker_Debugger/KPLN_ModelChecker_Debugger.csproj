@@ -56,6 +56,7 @@
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -180,30 +181,27 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="ExternalCommands\LevelAndGridsParamCopier.cs" />
+    <Compile Include="ExternalCommands\PatitionFileSetter.cs" />
     <Compile Include="ExternalCommands\Pinner.cs" />
     <Compile Include="ExternalCommands\Worksetter.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Forms\" />
     <Folder Include="Workset_Patterns\ГЛУ33\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Imagens\copyProjectParams.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\mainLarge.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\pinnerLarge.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Imagens\worksetLarge.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Imagens\setPatitionalFile.png" />
+    <EmbeddedResource Include="Imagens\mainLarge.png" />
+    <EmbeddedResource Include="Imagens\pinnerLarge.png" />
+    <EmbeddedResource Include="Imagens\worksetLarge.png" />
     <Content Include="Workset_Patterns\Workset_SS.xml" />
     <Content Include="Workset_Patterns\Workset_EOM.xml" />
     <Content Include="Workset_Patterns\Workset_VK.xml" />
@@ -211,6 +209,10 @@
     <Content Include="Workset_Patterns\Workset_OV.xml" />
     <Content Include="Workset_Patterns\Workset_AR.xml" />
     <Content Include="Workset_Patterns\Workset_KR.xml" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

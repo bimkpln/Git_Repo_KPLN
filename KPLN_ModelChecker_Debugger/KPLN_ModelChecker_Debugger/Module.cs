@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace KPLN_ModelChecker_Debugger
@@ -42,10 +43,11 @@ namespace KPLN_ModelChecker_Debugger
             //Добавляю выпадающий список pullDown
             PulldownButtonData pullDownData = new PulldownButtonData("Исправить", "Исправить")
             {
-                ToolTip = "Набор плагинов, для исправления выявленных ошибок в модели"
+                ToolTip = "Набор плагинов, для исправления выявленных ошибок в модели",
+                Image = PngImageSource("KPLN_ModelChecker_Debugger.Imagens.mainLarge.png"),
+                LargeImage = PngImageSource("KPLN_ModelChecker_Debugger.Imagens.mainLarge.png"),
             };
             PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
-            BtnImagine(pullDown, "mainLarge.png");
 
             //Добавляю pinner в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -60,7 +62,7 @@ namespace KPLN_ModelChecker_Debugger
                 ),
                 typeof(ExternalCommands.Pinner).FullName,
                 pullDown,
-                "pinnerLarge.png",
+                "KPLN_ModelChecker_Debugger.Imagens.pinnerLarge.png",
                 "http://moodle/mod/page/view.php?id=189"
             );
 
@@ -77,26 +79,24 @@ namespace KPLN_ModelChecker_Debugger
                 ),
                 typeof(ExternalCommands.Worksetter).FullName,
                 pullDown,
-                "worksetLarge.png",
+                "KPLN_ModelChecker_Debugger.Imagens.worksetLarge.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=668"
             );
 
             //Добавляю LevelAndGridsParamCopier в выпадающий список pullDown
             AddPushButtonDataInPullDown(
-                "Копировать параметры сеток",
-                "Копировать параметры сеток",
-                "Копирует параметры и их значения для уровней и осей из разбивочного файла. ",
+                "BIM: Анализ разб.файла",
+                "BIM: Анализ разб.файла",
+                "Проверка корректности относительно уровней (по оси Z) и привязка отдельных блоков к уровням проекта (по отметкам)",
                 string.Format(
-                    "1. Возможности:\nКопирование занчения параметров 'На уровень выше';" +
-                    "\n2. Копирование параметров и их значений для заполнения захваток." +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.LevelAndGridsParamCopier).FullName,
+                typeof(ExternalCommands.PatitionFileSetter).FullName,
                 pullDown,
-                "copyProjectParams.png",
+                "KPLN_ModelChecker_Debugger.Imagens.setPatitionalFile.png",
                 "http://moodle/"
             );
 
@@ -122,19 +122,20 @@ namespace KPLN_ModelChecker_Debugger
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            BtnImagine(button, imageName);
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(imageName);
         }
 
         /// <summary>
         /// Метод для добавления иконки для кнопки
         /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
-        private void BtnImagine(RibbonButton button, string imageName)
+        /// <param name="embeddedPathname">Имя иконки с раширением</param>
+        private ImageSource PngImageSource(string embeddedPathname)
         {
-            string imageFullPath = Path.Combine(new FileInfo(_AssemblyPath).DirectoryName, @"Imagens\", imageName);
-            button.LargeImage = new BitmapImage(new Uri(imageFullPath));
+            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
 
+            return decoder.Frames[0];
         }
     }
 }
