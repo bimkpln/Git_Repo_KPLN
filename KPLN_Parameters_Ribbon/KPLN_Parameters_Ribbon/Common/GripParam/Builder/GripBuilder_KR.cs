@@ -1,5 +1,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, SectionParamName, LevelParamName);
+                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc);
             });
 
             // Таска на подготовку элементов на основе (ByHost)
