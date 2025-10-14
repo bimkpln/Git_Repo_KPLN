@@ -29,11 +29,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Список элементов, которые провалили проверку перед запуском
         /// </summary>
-        private protected IEnumerable<CheckCommandError> _errorCheckElemsColl = new List<CheckCommandError>();
+        private protected IEnumerable<CheckCommandMsg> _errorCheckElemsColl = new List<CheckCommandMsg>();
         /// <summary>
         /// Список элементов, которые провалили прохождение скрипта, но НЕ критичные
         /// </summary>
-        private protected IEnumerable<CheckCommandError> _errorRunColl = new List<CheckCommandError>();
+        private protected IEnumerable<CheckCommandMsg> _errorRunColl = new List<CheckCommandMsg>();
         /// <summary>
         /// Список элементов, которые прошли проверку перед запуском
         /// </summary>
@@ -84,7 +84,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if (_errorCheckElemsColl.Count() > 0)
                 {
                     CreateAndShowElementCheckingErrorReport(_errorCheckElemsColl);
-                    _trueElemCollection = elemColl.Except(_errorCheckElemsColl.Select(e => e.ErrorElement)).ToArray();
+                    _trueElemCollection = elemColl.Except(_errorCheckElemsColl.Select(e => e.MsgElement)).ToArray();
                 }
                 else 
                     _trueElemCollection = elemColl;
@@ -122,9 +122,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         {
             if (_errorRunColl.Any())
             {
-                foreach (CheckCommandError error in _errorRunColl)
+                foreach (CheckCommandMsg error in _errorRunColl)
                 {
-                    Print($"Была выявлена НЕ критическая ошибка: \n{error.ErrorMessage}\n", MessageType.Warning);
+                    Print($"Была выявлена НЕ критическая ошибка: \n{error.Message}\n", MessageType.Warning);
                 }
             }
         }
@@ -158,7 +158,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов для проверки</param>
         /// <returns>Коллекция CheckCommandError для элементов, которые провалили проверку</returns>
-        private protected abstract IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl);
+        private protected abstract IEnumerable<CheckCommandMsg> CheckElements(Document doc, object[] objColl);
 
         /// <summary>
         /// Анализ элементов Revit и подготовка элементов WPFEntity для отчета
@@ -214,11 +214,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="doc">Revit-документ</param>
         /// <param name="elemColl">Коллеция элементов, котоыре проваили проверку ПЕРЕД запуском</param>
-        private void CreateAndShowElementCheckingErrorReport(IEnumerable<CheckCommandError> elemErrorColl)
+        private void CreateAndShowElementCheckingErrorReport(IEnumerable<CheckCommandMsg> elemErrorColl)
         {
-            foreach (CheckCommandError elem in elemErrorColl)
+            foreach (CheckCommandMsg elem in elemErrorColl)
             {
-                Print($"Элемент id {elem.ErrorElement.Id} не прошел проверку! Ошибка: {elem.ErrorMessage}", MessageType.Error);
+                Print($"Элемент id {elem.MsgElement.Id} не прошел проверку! Ошибка: {elem.Message}", MessageType.Error);
             }
         }
 

@@ -136,7 +136,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandMsg> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandMsg>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {

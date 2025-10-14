@@ -39,13 +39,17 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         private readonly List<string> _exceptionFamilyNameList = new List<string>
         {
             "011_",
+            "011_",
             "012_",
             "020_Эквив",
             "022_",
             "020_Эквив",
             "023_",
             "024_",
+            "030_Проем",
             "070_",
+            "071_Фон арм",
+            "076_Маркировка позиций арм",
             "099_"
         };
 
@@ -153,7 +157,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             return Result.Succeeded;
         }
 
-        private protected override IEnumerable<CheckCommandError> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandError>();
+        private protected override IEnumerable<CheckCommandMsg> CheckElements(Document doc, object[] objColl) => Enumerable.Empty<CheckCommandMsg>();
 
         private protected override IEnumerable<WPFEntity> PreapareElements(Document doc, Element[] elemColl)
         {

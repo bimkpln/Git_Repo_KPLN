@@ -324,9 +324,6 @@
     <EmbeddedResource Include="Source\launchDate.png" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Source\checkPatitionalFile.png" />
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Source\checker_mainLines.png" />
   </ItemGroup>
   <ItemGroup>
