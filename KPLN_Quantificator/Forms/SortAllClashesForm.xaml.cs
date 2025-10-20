@@ -208,7 +208,8 @@ namespace KPLN_Quantificator.Forms
                     var test = dct.Tests.OfType<ClashTest>().FirstOrDefault(t => t.Guid == testGuid);
                     if (test == null) continue;
 
-                    for (int i = keysTopToBottom.Count - 1; i >= 0; i--)
+   
+                    for (int i = 0; i < keysTopToBottom.Count; i++)
                     {
                         ApplySingleKey(dct, test, keysTopToBottom[i]);
                         test = dct.Tests.OfType<ClashTest>().FirstOrDefault(t => t.Guid == testGuid);
