@@ -1,5 +1,5 @@
 ﻿using KPLN_Library_SQLiteWorker.Core;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,12 +9,43 @@ using System.Text;
 namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
 {
     /// <summary>
+    /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+    /// </summary>
+    [Obsolete("Удалить - читай описание класса")]
+    public sealed class DB_Config
+    {
+        public string Name { get; set; }
+
+        public string Path { get; set; }
+
+        public string Description { get; set; }
+    }
+
+    /// <summary>
     /// Абстрактный создатель сервисов работы с БД
     /// </summary>
     public abstract class AbsCreatorDbService
     {
-        private protected static readonly string _sqlMainConfigPath = KPLN_Loader.Application.SQLMainConfigPath;
-        private List<DatabasePaths> _databasesPaths;
+        /// <summary>
+        /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        private protected static readonly string _mainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+        /// <summary>
+        /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        private protected static readonly string _mainDBName = "Loader_MainDB";
+        private DB_Config[] _databaseConfigs;
+
+        private DB_Config[] DatabaseConfigs
+        {
+            get
+            {
+                if (_databaseConfigs == null)
+                    _databaseConfigs = GetDBCongigs();
+
+                return _databaseConfigs;
+            }
+        }
 
         /// <summary>
         /// Создать инстанс необходимого сервиса
@@ -23,25 +54,21 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         public abstract DbService CreateService();
 
         /// <summary>
-        /// Проверка наличия файла конфига и самих файлов БД
+        /// Проверка наличия файла конфига и самих файлов БД, и получение конфигов
         /// </summary>
         /// <exception cref="Exception">Если чего-то нет - выброс ошибки</exception>
-        private protected void SQLFilesExistChecker()
+        private protected void SQLFilesExistCheckerAndDBDataSetter()
         {
             string userErrorMsg = string.Empty;
-            if (File.Exists(_sqlMainConfigPath))
+            if (File.Exists(_mainConfigPath))
             {
                 StringBuilder stringBuilder = new StringBuilder();
 
-                string jsonConfig = File.ReadAllText(_sqlMainConfigPath);
-                _databasesPaths = JsonConvert.DeserializeObject<List<DatabasePaths>>(jsonConfig);
-                foreach (DatabasePaths db in _databasesPaths)
+                foreach (DB_Config db in DatabaseConfigs)
                 {
                     string fullPath = db.Path;
                     if (!File.Exists(fullPath))
-                    {
                         stringBuilder.Append($"Отсутствует файл: {fullPath}\r\n");
-                    }
                 }
 
                 if (stringBuilder.Length > 0)
@@ -49,7 +76,7 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
             }
             else
             {
-                userErrorMsg = $"Отсутствует файл: {_sqlMainConfigPath}";
+                userErrorMsg = $"Отсутствует файл: {_mainConfigPath}";
             }
 
             if (!string.IsNullOrEmpty(userErrorMsg))
@@ -59,6 +86,31 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
         /// <summary>
         /// Подготовка пути для подключения к БД
         /// </summary>
-        private protected string CreateConnectionString(string currentPath) => $"Data Source={_databasesPaths.FirstOrDefault(d => d.Name.Contains(currentPath)).Path}; Version=3;";
+        private protected string CreateConnectionString() => $"Data Source={DatabaseConfigs.FirstOrDefault(d => d.Name.Contains(_mainDBName)).Path}; Version=3;";
+
+        /// <summary>
+        /// Получить конфиги по БД. Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        /// <returns></returns>
+        private DB_Config[] GetDBCongigs()
+        {
+            string jsonConfig = File.ReadAllText(_mainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var dbSection = root["DatabaseConfig"]?["DBConnections"] as JObject;
+            var dbList = new List<DB_Config>();
+
+            if (dbSection != null)
+            {
+                foreach (var prop in dbSection.Properties())
+                {
+                    var dbObj = prop.Value.ToObject<DB_Config>();
+                    if (dbObj != null)
+                        dbList.Add(dbObj);
+                }
+            }
+
+            return dbList.ToArray();
+        }
     }
 }

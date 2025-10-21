@@ -10,8 +10,8 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
     {
         public override DbService CreateService()
         {
-            SQLFilesExistChecker();
-            string connectionString = CreateConnectionString("KPLN_Loader_MainDB");
+            SQLFilesExistCheckerAndDBDataSetter();
+            string connectionString = CreateConnectionString();
 
             return new ModuleDbService(connectionString, DBModule.CurrentDB);
         }

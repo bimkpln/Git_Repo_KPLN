@@ -1,9 +1,11 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Net;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -13,13 +15,36 @@ using System.Windows.Forms;
 namespace KPLN_Library_Bitrix24Worker
 {
     /// <summary>
+    /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+    /// </summary>
+    [Obsolete("Удалить - читай описание класса")]
+    public sealed class Bitrix_Config
+    {
+        public string Name { get; set; }
+
+        public string URL { get; set; }
+    }
+
+
+    /// <summary>
     /// Сервис по отправке сообщений в Битрикс
     /// </summary>
     public class BitrixMessageSender
     {
-        private static readonly string _webHookUrl = "https://kpln.bitrix24.ru/rest/1310/uemokhg11u78vdvs";
         private static UserDbService _userDbService;
+        /// <summary>
+        /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        private protected static readonly string _mainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+        /// <summary>
+        /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        private protected static readonly string _bitrixConfigs_MainWebHookName = "MainWebHook";
+        private static Bitrix_Config[] _bitrixConfigs;
 
+        /// <summary>
+        /// Ссылка на пользователя
+        /// </summary>
         private static UserDbService CurrentUserDbService
         {
             get
@@ -30,6 +55,25 @@ namespace KPLN_Library_Bitrix24Worker
                 return _userDbService;
             }
         }
+
+        /// <summary>
+        /// Коллекция десерилизованныйх данных по настройкам Bitrix
+        /// </summary>
+        public static Bitrix_Config[] BitrixConfigs
+        {
+            get
+            {
+                if (_bitrixConfigs == null)
+                    _bitrixConfigs = GetBitrixCongigs();
+
+                return _bitrixConfigs;
+            }
+        }
+
+        /// <summary>
+        /// Ссылка на вебхук битрикс
+        /// </summary>
+        private static string WebHookUrl => BitrixConfigs.FirstOrDefault(conf => conf.Name == _bitrixConfigs_MainWebHookName).URL;
 
         #region Отправка сообщений
         /// <summary>
@@ -49,7 +93,7 @@ namespace KPLN_Library_Bitrix24Worker
                     };
 
                     var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-                    var response = await client.PostAsync($"{_webHookUrl}/im.message.add", jsonContent);
+                    var response = await client.PostAsync($"{WebHookUrl}/im.message.add", jsonContent);
                     string responseContent = await response.Content.ReadAsStringAsync();
                     if (!response.IsSuccessStatusCode)
                         throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
@@ -85,7 +129,7 @@ namespace KPLN_Library_Bitrix24Worker
                     };
 
                     var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-                    var response = await client.PostAsync($"{_webHookUrl}/im.message.add", jsonContent);
+                    var response = await client.PostAsync($"{WebHookUrl}/im.message.add", jsonContent);
                     string responseContent = await response.Content.ReadAsStringAsync();
                     if (!response.IsSuccessStatusCode)
                         throw new Exception("\n[KPLN]: Ошибка получения ответа от Bitrix\n\n");
@@ -149,7 +193,7 @@ namespace KPLN_Library_Bitrix24Worker
                     };
 
                     var content = new FormUrlEncodedContent(requestData);
-                    var response = await client.PostAsync($"{_webHookUrl}/task.commentitem.add", content);
+                    var response = await client.PostAsync($"{WebHookUrl}/task.commentitem.add", content);
                     return response.IsSuccessStatusCode;
                 }
             }
@@ -174,7 +218,7 @@ namespace KPLN_Library_Bitrix24Worker
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/tasks.task.get.json?taskId={taskId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/tasks.task.get.json?taskId={taskId}");
 
                     string content = await response.Content.ReadAsStringAsync();
                     if (string.IsNullOrEmpty(content))
@@ -233,7 +277,7 @@ namespace KPLN_Library_Bitrix24Worker
                     // Выполнение GET - запроса к странице
                     HttpResponseMessage response = await client
                         .GetAsync(
-                            $"{_webHookUrl}/task.item.add.json?" +
+                            $"{WebHookUrl}/task.item.add.json?" +
                             $"FIELDS[TITLE]={title}" +
                             $"&FIELDS[DESCRIPTION]={description}" +
                             $"&FIELDS[GROUP_ID]={groupId}" +
@@ -284,7 +328,7 @@ namespace KPLN_Library_Bitrix24Worker
                     };
 
                     var content = new FormUrlEncodedContent(requestData);
-                    var response = await client.PostAsync($"{_webHookUrl}/tasks.task.files.attach", content);
+                    var response = await client.PostAsync($"{WebHookUrl}/tasks.task.files.attach", content);
                     return response.IsSuccessStatusCode;
                 }
             }
@@ -314,7 +358,7 @@ namespace KPLN_Library_Bitrix24Worker
                     };
 
                     var jsonContent = new StringContent(JsonConvert.SerializeObject(requestData), Encoding.UTF8, "application/json");
-                    var response = await client.PostAsync($"{_webHookUrl}/tasks.task.list", jsonContent);
+                    var response = await client.PostAsync($"{WebHookUrl}/tasks.task.list", jsonContent);
                     string responseContent = await response.Content.ReadAsStringAsync();
 
                     dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
@@ -360,7 +404,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // 1. Атрымліваем uploadUrl
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/disk.folder.uploadfile?id={rootObjId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/disk.folder.uploadfile?id={rootObjId}");
                     string responseContent = await response.Content.ReadAsStringAsync();
 
                     dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
@@ -412,7 +456,7 @@ namespace KPLN_Library_Bitrix24Worker
             {
                 using (HttpClient client = new HttpClient())
                 {
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/disk.storage.getlist");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/disk.storage.getlist");
                     if (response.IsSuccessStatusCode)
                     {
                         string responseContent = await response.Content.ReadAsStringAsync();
@@ -474,7 +518,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/task.item.getdata.json?ID={taskId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/task.item.getdata.json?ID={taskId}");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -523,7 +567,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/user.search.json?ID={currentUserId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/user.search.json?ID={currentUserId}");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -560,7 +604,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/department.get.json?ID={depId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/department.get.json?ID={depId}");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -605,7 +649,7 @@ namespace KPLN_Library_Bitrix24Worker
                 using (HttpClient client = new HttpClient())
                 {
                     // Выполнение GET - запроса к странице
-                    HttpResponseMessage response = await client.GetAsync($"{_webHookUrl}/user.search.json?NAME={dBUser.Name}&LAST_NAME={dBUser.Surname}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/user.search.json?NAME={dBUser.Name}&LAST_NAME={dBUser.Surname}");
                     if (response.IsSuccessStatusCode)
                     {
                         string content = await response.Content.ReadAsStringAsync();
@@ -630,6 +674,28 @@ namespace KPLN_Library_Bitrix24Worker
             }
 
             return id;
+        }
+
+        /// <summary>
+        /// Получить конфиги по Bitrix. Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
+        /// </summary>
+        /// <returns></returns>
+        private static Bitrix_Config[] GetBitrixCongigs()
+        {
+            string jsonConfig = File.ReadAllText(_mainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var bitrixSection = root["BitrixConfig"]?["WEBHooks"];
+            var bitrixList = new List<Bitrix_Config>();
+
+            if (bitrixSection != null)
+            {
+                var bitrixObj = bitrixSection.ToObject<Bitrix_Config>();
+                if (bitrixObj != null)
+                    bitrixList.Add(bitrixObj);
+            }
+
+            return bitrixList.ToArray();
         }
     }
 }
