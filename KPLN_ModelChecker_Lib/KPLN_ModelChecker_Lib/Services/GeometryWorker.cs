@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KPLN_ModelChecker_Lib.Services.GripGeom
+namespace KPLN_ModelChecker_Lib.Services
 {
     /// <summary>
     /// Утилита работы с геометрией для определения захваток

@@ -59,6 +59,10 @@
       <HintPath>..\..\..\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Looker">
+      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2023\KPLN_Looker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -179,6 +183,7 @@
     <Compile Include="CheckCommandMsg.cs" />
     <Compile Include="CheckerEntity.cs" />
     <Compile Include="CheckerException.cs" />
+    <Compile Include="Commands\CheckHolesOnLists.cs" />
     <Compile Include="Commands\CheckHoles.cs" />
     <Compile Include="Commands\CheckDimensions.cs" />
     <Compile Include="Commands\CheckFamilies.cs" />
@@ -210,7 +215,7 @@
     <Compile Include="Services\GripGeom\Core\InstanceElemData.cs" />
     <Compile Include="Services\GripGeom\Core\InstanceGeomData.cs" />
     <Compile Include="Services\GripGeom\Core\LevelAndSectionSolid.cs" />
-    <Compile Include="Services\GripGeom\GeometryWorker.cs" />
+    <Compile Include="Services\GeometryWorker.cs" />
     <Compile Include="Services\GripGeom\LevelWorker.cs" />
     <Compile Include="WorksetUtil\Common\SelectedParameter.cs" />
     <Compile Include="WorksetUtil\Common\WorksetByCurrentParameter.cs" />
