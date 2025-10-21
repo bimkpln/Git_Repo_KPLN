@@ -207,6 +207,7 @@
     <Compile Include="ExternalCommands\CommandCheckFamilies.cs" />
     <Compile Include="ExternalCommands\CommandCheckFlatsAreaCompare.cs" />
     <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
+    <Compile Include="ExternalCommands\CommandCheckHolesOnLists.cs" />
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
@@ -331,6 +332,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checker_wet_zones.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\checkHolesOnLists.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

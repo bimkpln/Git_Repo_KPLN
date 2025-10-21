@@ -45,6 +45,7 @@ namespace KPLN_ModelChecker_User
             CheckMainLines checkMainLines = new CheckMainLines();
             CheckFlatsAreaCompare checkFlatsAreaCompare = new CheckFlatsAreaCompare();
             CheckHoles checkHoles = new CheckHoles();
+            CheckHolesOnLists checkHolesOnLists = new CheckHolesOnLists();
             CommandCheckLevelOfInstances сommandCheckLevelOfInstances = new CommandCheckLevelOfInstances(new ExtensibleStorageEntity(
                 CommandCheckLevelOfInstances.PluginName,
                 "KPLN_CheckLevelOfInstances",
@@ -68,6 +69,7 @@ namespace KPLN_ModelChecker_User
                 checkMainLines.ESEntity,
                 checkFlatsAreaCompare.ESEntity,
                 checkHoles.ESEntity,
+                checkHolesOnLists.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
                 checkLinks.ESEntity,
                 checkMEPHeight.ESEntity,
@@ -244,6 +246,21 @@ namespace KPLN_ModelChecker_User
                 "KPLN_ModelChecker_User.Source.checker_wet_zones.png",
                 _mainContextualHelp,
                 CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
+                );
+
+            AddPushButtonData(
+                "CheckHolesOnLists",
+                checkHolesOnLists.PluginName,
+                "Плагин проверяет чтобы все отверстия, хотя бы 1 раз встречались на ВЫБРАННЫХ листах модели." +
+                    "\nВАЖНО1: Нужно выбрать для анализа ВСЕ листы (через shift), на которых должны быть отверстия. Если пропустить лист - элемент ошибочно попадёт в отчёт." +
+                    "\nВАЖНО2: Если отверстие  будет на виде на листе, котором НЕ должно быть, оно засчитается как без ошибок. " +
+                        "Наполненность листов лишними элементами оценить програмно невозможно, это можно сделать только вручную, специалисту ответственного раздела.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckHolesOnLists).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checkHolesOnLists.png",
+                _mainContextualHelp,
+                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 3 || CurrentDbUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
