@@ -1,6 +1,5 @@
 using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Common;
@@ -21,14 +20,7 @@ namespace KPLN_ModelChecker_User
 
         public Module()
         {
-            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-            CurrentDbUser = userDbService.GetCurrentDBUser();
         }
-
-        /// <summary>
-        /// Текущий пользователь
-        /// </summary>
-        public static DBUser CurrentDbUser { get; private set; }
 
         public Result Close()
         {
@@ -106,7 +98,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.launchDate.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -209,7 +201,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_monolith.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -221,7 +213,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_levels.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 3 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -233,7 +225,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mirrored.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 4 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 4 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -245,7 +237,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_wet_zones.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -260,7 +252,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkHolesOnLists.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 3 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -274,7 +266,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checkHoles.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -291,7 +283,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_flatsArea.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 2 || CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             AddPushButtonData(
@@ -303,7 +295,7 @@ namespace KPLN_ModelChecker_User
                 pullDown,
                 "KPLN_ModelChecker_User.Source.checker_mepHeigtheight.png",
                 _mainContextualHelp,
-                CurrentDbUser.SubDepartmentId == 8
+                DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
             return Result.Succeeded;
