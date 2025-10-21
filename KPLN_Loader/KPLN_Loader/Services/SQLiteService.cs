@@ -48,7 +48,7 @@ namespace KPLN_Loader.Services
         /// БД: Авторизация пользователя KPLN
         /// </summary>
         /// <returns>Текущий пользователь</returns>
-        internal User Authorization()
+        internal User Authorization(EnvironmentService envService)
         {
             _logger.Info("БД: Авторизация пользователя KPLN");
 
@@ -61,7 +61,7 @@ namespace KPLN_Loader.Services
                 LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled), false);
                 if ((bool)loginForm.ShowDialog())
                 {
-                    int bitrixId = Task.Run(() => EnvironmentService.GetUserBitrixId_ByNameAndSurname(loginForm.CreatedWPFUser.Name, loginForm.CreatedWPFUser.Surname)).Result;
+                    int bitrixId = Task.Run(() => envService.GetUserBitrixId_ByNameAndSurname(loginForm.CreatedWPFUser.Name, loginForm.CreatedWPFUser.Surname)).Result;
                     currentUser = new User()
                     {
                         SystemName = sysUserName,
@@ -227,9 +227,16 @@ namespace KPLN_Loader.Services
             {
                 // Меняю объект
                 currentUser.RevitUserName = userName;
-                // Записываю в таблицу
-                ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
-                    $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+                try
+                {
+                    // Записываю в таблицу
+                    ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
+                        $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"БД: Не удалось обновить имени Revit-пользователя. Ошибка: {ex.Message}");
+                }
             }
         }
         #endregion

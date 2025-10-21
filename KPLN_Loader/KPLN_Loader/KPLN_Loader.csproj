@@ -201,7 +201,8 @@
     <Compile Include="Application.cs" />
     <Compile Include="Common\IExecutableCommand.cs" />
     <Compile Include="Common\IExternalModule.cs" />
-    <Compile Include="Core\DB_Paths.cs" />
+    <Compile Include="Core\Bitrix_Config.cs" />
+    <Compile Include="Core\DB_Config.cs" />
     <Compile Include="Core\Entities\LoaderDescription.cs" />
     <Compile Include="Core\Entities\Module.cs" />
     <Compile Include="Core\Entities\SubDepartment.cs" />

@@ -47,9 +47,9 @@ namespace KPLN_Loader
         public static Queue<IExecutableCommand> OnIdling_CommandQueue = new Queue<IExecutableCommand>();
 
         /// <summary>
-        /// ВНУТРИ KPLN: Основной путь к конфигу БД, которые используются всеми плагинами 
+        /// ВНУТРИ KPLN: Основной путь к основным конфигам для работы всей экосистемы
         /// </summary>
-        public readonly static string SQLMainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\SQLConfig.json";
+        public readonly static string MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
 
         /// <summary>
         /// ДЛЯ СУБЧИКА: ID листа гугл таблицы, которая выступает в роли БД KPLN_Loader
@@ -138,17 +138,18 @@ namespace KPLN_Loader
                 try
                 {
                     #region Подготовка и проверка окружения
-                    _envService = new EnvironmentService(_logger, loaderStatusForm, RevitVersion, _diteTime);
-                    _envService.SQLFilesExistChecker(SQLMainConfigPath);
-                    _envService.PreparingAndCliningDirectories();
+                    _envService = new EnvironmentService(_logger, loaderStatusForm, RevitVersion, _diteTime)
+                        .ConfigFileChecker()
+                        .PreparingAndCliningDirectories();
 
                     Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
                     #endregion
 
                     #region Подготовка/создание пользователя
-                    string mainDBPath = _envService.DatabasesPaths.FirstOrDefault(d => d.Name.Contains("KPLN_Loader_MainDB")).Path;
+                    
+                    string mainDBPath = _envService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
                     _dbService = new SQLiteService(_logger, mainDBPath);
-                    CurrentRevitUser = _dbService.Authorization();
+                    CurrentRevitUser = _dbService.Authorization(_envService);
                     if (CurrentRevitUser == null)
                     {
                         Progress?.Invoke(MainStatus.DbConnection, "Критическая ошибка пользователя! Подробнее - см. файл логов", System.Windows.Media.Brushes.Red);

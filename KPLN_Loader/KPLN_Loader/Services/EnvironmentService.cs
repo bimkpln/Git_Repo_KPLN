@@ -1,8 +1,10 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Loader.Core;
 using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -19,11 +21,6 @@ namespace KPLN_Loader.Services
     /// </summary>
     internal sealed class EnvironmentService
     {
-        /// <summary>
-        /// Вебхук для работы с BitrixAPI
-        /// </summary>
-        private static readonly string _webHook = "uemokhg11u78vdvs";
-
         ///<summary>
         ///Путь до локальной папки пользователя
         ///</summary>
@@ -43,6 +40,9 @@ namespace KPLN_Loader.Services
         private readonly Logger _logger;
         private readonly LoaderStatusForm _loaderStatusForm;
 
+        private DB_Config[] _databaseConfigs;
+        private Bitrix_Config[] _bitrixConfigs;
+
         internal EnvironmentService(Logger logger, LoaderStatusForm loaderStatusForm, string revitVersion, string diteTime)
         {
             _logger = logger;
@@ -54,9 +54,42 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
+        /// Имя основной БД для работы из конфигураций
+        /// </summary>
+        public static string DatabaseConfigs_LoaderMainDB { get; } = "Loader_MainDB";
+
+        /// <summary>
+        /// Имя вебхука для работы с BitrixAPI из конфигураций
+        /// </summary>
+        public static string BitrixConfigs_MainWebHookName { get; } = "MainWebHook";
+
+        /// <summary>
         /// Коллекция десерилизованныйх данных по БД
         /// </summary>
-        internal List<DB_Paths> DatabasesPaths { get; private set; }
+        public DB_Config[] DatabaseConfigs 
+        { 
+            get 
+            { 
+                if(_databaseConfigs == null )
+                    _databaseConfigs = GetDBCongigs();
+
+                return _databaseConfigs;
+            } 
+        }
+
+        /// <summary>
+        /// Коллекция десерилизованныйх данных по настройкам Bitrix
+        /// </summary>
+        public Bitrix_Config[] BitrixConfigs
+        {
+            get
+            {
+                if (_bitrixConfigs == null)
+                    _bitrixConfigs = GetBitrixCongigs();
+
+                return _bitrixConfigs;
+            }
+        }
 
         ///<summary>
         ///Путь, по которому будет создана папка со скопироваными модулями
@@ -68,13 +101,14 @@ namespace KPLN_Loader.Services
         /// </summary>
         /// <param name="name">Имя пользователя</param>
         /// <param name="surname">Фамилия пользователя</param>
-        internal static async Task<int> GetUserBitrixId_ByNameAndSurname(string name, string surname)
+        internal async Task<int> GetUserBitrixId_ByNameAndSurname(string name, string surname)
         {
             int id = -1;
+            string webHookUrl = BitrixConfigs.FirstOrDefault(d => d.Name == EnvironmentService.BitrixConfigs_MainWebHookName).URL;
             using (HttpClient client = new HttpClient())
             {
                 // Выполнение GET - запроса к странице
-                HttpResponseMessage response = await client.GetAsync($"https://kpln.bitrix24.ru/rest/1310/{_webHook}/user.search.json?NAME={name}&LAST_NAME={surname}");
+                HttpResponseMessage response = await client.GetAsync($"{webHookUrl}/user.search.json?NAME={name}&LAST_NAME={surname}");
                 if (response.IsSuccessStatusCode)
                 {
                     string content = await response.Content.ReadAsStringAsync();
@@ -96,50 +130,38 @@ namespace KPLN_Loader.Services
                 throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
 
             return id;
-        }
+        }        
 
         /// <summary>
-        /// Подготовка и очистка старых директорий для копирования
+        /// Проверка наличия файла конфигурации и необходимых БД
         /// </summary>
-        /// <returns></returns>
-        internal void PreparingAndCliningDirectories()
-        {
-            DirectoryInfo appDirInfo = Directory.CreateDirectory(_applicationLocation.FullName);
-            int delDirCount = ClearDirectory(appDirInfo.FullName);
-
-            _logger.Info($"Директории успешно очищены от неиспользуемых папок! Удалено {delDirCount} корневых папок");
-            Directory.CreateDirectory(ModulesLocation.FullName);
-        }
-
-        /// <summary>
-        /// Проверка наличия необходимых БД
-        /// </summary>
-        internal void SQLFilesExistChecker(string sqlConfigPath)
+        internal EnvironmentService ConfigFileChecker()
         {
             string userErrorMsg = string.Empty;
-            if (File.Exists(sqlConfigPath))
+            if (File.Exists(Application.MainConfigPath))
             {
                 StringBuilder stringBuilder = new StringBuilder();
 
-                string jsonConfig = File.ReadAllText(sqlConfigPath);
-                DatabasesPaths = JsonConvert.DeserializeObject<List<DB_Paths>>(jsonConfig);
-
-                foreach (DB_Paths db in DatabasesPaths)
+                // Проверка наличия БД
+                foreach (DB_Config db in DatabaseConfigs)
                 {
                     string fullPath = db.Path;
                     if (!File.Exists(fullPath))
-                    {
                         stringBuilder.Append($"Отсутствует файл: {fullPath}\r\n");
-                    }
+                }
+
+                // Проверка инициализации вебхуков
+                foreach (Bitrix_Config bitr in BitrixConfigs) 
+                { 
+                    if (string.IsNullOrEmpty(bitr.Name) || string.IsNullOrEmpty(bitr.URL))
+                        stringBuilder.Append($"Не все вебхуки активированы. Отправь разработчику\r\n");
                 }
 
                 if (stringBuilder.Length > 0)
                     userErrorMsg = stringBuilder.ToString().TrimEnd();
             }
             else
-            {
-                userErrorMsg = $"Отсутствует файл: {sqlConfigPath}";
-            }
+                userErrorMsg = $"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}";
 
             if (!string.IsNullOrEmpty(userErrorMsg))
             {
@@ -155,6 +177,23 @@ namespace KPLN_Loader.Services
                 _loaderStatusForm.Dispatcher.Invoke(() => _loaderStatusForm.Close());
                 throw new Exception(userErrorMsg);
             }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Подготовка и очистка старых директорий для копирования
+        /// </summary>
+        /// <returns></returns>
+        internal EnvironmentService PreparingAndCliningDirectories()
+        {
+            DirectoryInfo appDirInfo = Directory.CreateDirectory(_applicationLocation.FullName);
+            int delDirCount = ClearDirectory(appDirInfo.FullName);
+
+            _logger.Info($"Директории успешно очищены от неиспользуемых папок! Удалено {delDirCount} корневых папок");
+            Directory.CreateDirectory(ModulesLocation.FullName);
+
+            return this;
         }
 
         /// <summary>
@@ -281,5 +320,43 @@ namespace KPLN_Loader.Services
             }
         }
 
+        private DB_Config[] GetDBCongigs()
+        {
+            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var dbSection = root["DatabaseConfig"]?["DBConnections"] as JObject;
+            var dbList = new List<DB_Config>();
+
+            if (dbSection != null)
+            {
+                foreach (var prop in dbSection.Properties())
+                {
+                    var dbObj = prop.Value.ToObject<DB_Config>();
+                    if (dbObj != null)
+                        dbList.Add(dbObj);
+                }
+            }
+
+            return dbList.ToArray();
+        }
+
+        private Bitrix_Config[] GetBitrixCongigs()
+        {
+            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+            
+            var bitrixSection = root["BitrixConfig"]?["WEBHooks"];
+            var bitrixList = new List<Bitrix_Config>();
+
+            if (bitrixSection != null)
+            {
+                var bitrixObj = bitrixSection.ToObject<Bitrix_Config>();
+                if (bitrixObj != null)
+                    bitrixList.Add(bitrixObj);
+            }
+
+            return bitrixList.ToArray();
+        }
     }
 }
