@@ -3,8 +3,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_ModelChecker_Lib;
-using KPLN_ModelChecker_Lib.Services.GripGeom;
+using KPLN_ModelChecker_Lib.Services;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.ExecutableCommand;
@@ -977,14 +976,26 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
                 }
 
-                // Забираю отверстия в текущей модели
-                List<AROpeningHoleEntity> arOHEEntColl = new List<AROpeningHoleEntity>();
-                Element[] docHoleColl = new FilteredElementCollector(doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .WhereElementIsNotElementType()
+                // Подготовка отверстий ЛИБО по предварительно выбранным, ЛИБО на весь документ сразу
+                Selection selection = uidoc.Selection;
+                ICollection<ElementId> selIds = selection.GetElementIds();
+                
+                Element[] docHoleColl = selIds
+                    .Select(id => doc.GetElement(id))
+                    .OfType<FamilyInstance>()
                     .Where(e => ARKRElemsWorker.OpeningElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.OpeningElemExtraFilterFunc(e))
                     .ToArray();
-
+                List<AROpeningHoleEntity> arOHEEntColl = new List<AROpeningHoleEntity>();
+                if (!selIds.Any())
+                {
+                    if (!AskAndCollectAllOpeningsIfConfirmed(doc, "Ничего предварительно не выбрано. Выполнить анализ на весь проект?", ref docHoleColl))
+                        return;
+                }
+                else if (selIds.Any() && docHoleColl.Length == 0)
+                {
+                    if (!AskAndCollectAllOpeningsIfConfirmed(doc, "Были выбраны элементы, но они НЕ являются отверстиями. Выполнить анализ на весь проект?", ref docHoleColl))
+                        return;
+                }
 
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel();
                 ProgressWindow window = new ProgressWindow(progressInfoViewModel);
@@ -1000,6 +1011,12 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     foreach (Element el in docHoleColl)
                     {
+                        //List<string> ids = new List<string>() { "30806135"};
+                        //List<string> ids = new List<string>() { "30806135", "34566998", "34566999", "34568704", "34570271", "34621058", "34743787", "34744870", "35176761", "35177322", "35635021" };
+                        //List<string> ids = new List<string>() { "32301229", "36912067" };
+                        //if (!ids.Contains(el.Id.IntegerValue.ToString()))
+                        //    continue;
+
                         // Игнор отменённых пользователем отверстий
                         Parameter overwriteParam = el.LookupParameter(AROpeningHoleEntity.AR_OHE_ParamNameCancelOverwrite);
                         if (overwriteParam != null
@@ -1083,6 +1100,29 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 }.Show();
             }
 
+        }
+
+        private bool AskAndCollectAllOpeningsIfConfirmed(Document doc, string message, ref Element[] docHoleColl)
+        {
+            TaskDialog td = new TaskDialog("Внимание")
+            {
+                MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                MainInstruction = message,
+                CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.Cancel
+            };
+
+            if (td.Show() == TaskDialogResult.Yes)
+            {
+                docHoleColl = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilyInstance))
+                    .WhereElementIsNotElementType()
+                    .Where(e => ARKRElemsWorker.OpeningElemCatLogicalOrFilter.PassesFilter(e)
+                             && ARKRElemsWorker.OpeningElemExtraFilterFunc(e))
+                    .ToArray();
+                return true;
+            }
+
+            return false;
         }
         #endregion
 

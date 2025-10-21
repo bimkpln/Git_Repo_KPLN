@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib.Services.GripGeom;
+using KPLN_ModelChecker_Lib.Services;
 using KPLN_OpeningHoleManager.Core;
 using System;
 using System.Collections.Generic;

@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib.Services.GripGeom;
+using KPLN_ModelChecker_Lib.Services;
+using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
 using KPLN_OpeningHoleManager.Services;
 using System;
@@ -8,6 +9,16 @@ using System.Linq;
 
 namespace KPLN_OpeningHoleManager.Core
 {
+    /// <summary>
+    /// Кэширование данных по переркрытиям для анализа на расширение границ
+    /// </summary>
+    internal struct FloorBinding
+    {
+        internal Document Doc;
+        internal Transform Trans;
+        internal List<Element> FloorColl;
+    }
+    
     /// <summary>
     /// Сущность отверстия АР в модели
     /// </summary>
@@ -446,74 +457,177 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal AROpeningHoleEntity SetFloorBindings(Document doc)
         {
-            #region Забираю плиты перекрытий из моделей АР.
-            // Фильтр для текущего документа
-            Outline elemOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(this.IGDBBox, new XYZ(0, 0, 15));
-            BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(elemOutline, 0.1);
-            
-            // Список потенциальных перекрытий текущей модели
-            List<Element> potentialFloorColl = new FilteredElementCollector(doc)
-                .OfClass(typeof(Floor))
-                .WhereElementIsNotElementType()
-                .Where(e => ARKRElemsWorker.FloorElemExtraFilterFunc(e) && bboxIntersectFilter.PassesFilter(e))
-                .ToList();
-
-            SetFloorBindingData(doc, this.IGDBBox, potentialFloorColl);
-
-
-            // Список линков
-            RevitLinkInstance[] rliColl = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevitLinkInstance))
-                .Where(lm =>
-                    lm.Name.ToUpper().Contains("_AR_")
-                    || lm.Name.ToUpper().Contains("_АР_")
-                    || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
-                    || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
-                    || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                .Cast<RevitLinkInstance>()
-                .ToArray();
-
-
-            // Анализ линков
-            foreach (RevitLinkInstance rli in rliColl)
+            List<FloorBinding> floorBindings = new List<FloorBinding>
             {
-                Document linkDoc = rli.GetLinkDocument();
-                if (linkDoc == null)
+                new FloorBinding()
+                {
+                    Doc = doc,
+                    Trans = null,
+                    FloorColl = GetFloorsFromDocument(doc),
+            }
+            };
+
+            // Проход по эл. линков
+            var linkInstances = GetARLinkInstances(doc);
+            foreach (var rli in linkInstances)
+            {
+                Document lDoc = rli.GetLinkDocument();
+                Transform lTrans = rli.GetTotalTransform();
+                List<Element> linkFloors = GetFloorsFromDocument(lDoc, lTrans);
+                if (!linkFloors.Any())
                     continue;
 
-                // Беру трансформ для линка
-                Transform lDocTrans = rli.GetTotalTransform();
-
-
-                // Перевод фильтра на координаты связи
-                Outline transElemOutline = GeometryWorker.TransformFilterOutline_ToLink(elemOutline, lDocTrans);
-                BoundingBoxIntersectsFilter transBBoxIntersectFilter = new BoundingBoxIntersectsFilter(transElemOutline, 0.1);
-                
-                // Список потенциальных перекрытий линка
-                List<Element> potentialLinkFloorColl = new FilteredElementCollector(linkDoc)
-                    .OfClass(typeof(Floor))
-                    .WhereElementIsNotElementType()
-                    .Where(e => ARKRElemsWorker.FloorElemExtraFilterFunc(e) && transBBoxIntersectFilter.PassesFilter(e))
-                    .ToList();
-
-
-                // Перевод координат отверстия на координаты связи
-                BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
+                floorBindings.Add(new FloorBinding()
                 {
-                    Min = lDocTrans.Inverse.OfPoint(this.IGDBBox.Min),
-                    Max = lDocTrans.Inverse.OfPoint(this.IGDBBox.Max),
-                };
+                    Doc = lDoc,
+                    Trans = lTrans,
+                    FloorColl = linkFloors,
+                });
 
-                SetFloorBindingData(linkDoc, inversedFiBBox, potentialLinkFloorColl);
             }
 
+            SetUpFloorBinding(this.IGDGeomCenter, this.IGDBBox.Max, floorBindings);
+            SetDownFloorBinding(this.IGDGeomCenter, this.IGDBBox.Min, floorBindings);
 
-            #endregion
+            // Если не нашлось - диблированный проход со смещениями в пределах BBox
+            if (this.UpFloorBinding == null)
+            {
+                SetUpFloorBinding(this.IGDBBox.Max, this.IGDBBox.Max, floorBindings);
+                SetUpFloorBinding(this.IGDBBox.Min, this.IGDBBox.Max, floorBindings);
+            }                
+            if (this.DownFloorBinding == null)
+            {
+                SetDownFloorBinding(this.IGDBBox.Max, this.IGDBBox.Min, floorBindings);
+                SetDownFloorBinding(this.IGDBBox.Min, this.IGDBBox.Min, floorBindings);
+            }
 
             return this;
         }
 
         /// <summary>
+        /// Получить перекрытия из текущего документа
+        /// </summary>
+        private List<Element> GetFloorsFromDocument(Document doc, Transform trans = null)
+        {
+            // Область поиска
+            Outline outline;
+            BoundingBoxIntersectsFilter filter;
+            if (trans == null)
+            {
+                outline = GeometryWorker.CreateOutline_ByBBoxANDExpand(this.IGDBBox, new XYZ(0, 0, 30));
+                filter = new BoundingBoxIntersectsFilter(outline, 0.1);
+            }
+            else
+            {
+                Outline arEntOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(this.IGDBBox, new XYZ(0, 0, 30));
+                outline = GeometryWorker.TransformFilterOutline_ToLink(arEntOutline, trans);
+                filter = new BoundingBoxIntersectsFilter(outline, 0.1);
+            }
+
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(Floor))
+                .WhereElementIsNotElementType()
+                .Where(e => ARKRElemsWorker.FloorElemExtraFilterFunc(e) && filter.PassesFilter(e))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Задать привязку к перекрытиям СВЕРХУ
+        /// </summary>
+        /// <param name="elemCheckPnt">Точка элемента для проверки</param>
+        /// <param name="bbMaxPnt">Координаты BBox_Max элемента</param>
+        /// <param name="floorColl">Коллекция перекрытий для анализа</param>
+        private void SetUpFloorBinding(XYZ elemCheckPnt, XYZ bbMaxPnt, List<FloorBinding> floorBindings)
+        {
+            foreach (FloorBinding bind in floorBindings)
+            {
+                if (bind.Trans != null)
+                {
+                    Transform inv = bind.Trans.Inverse;
+                    elemCheckPnt = inv.OfPoint(elemCheckPnt);
+                    bbMaxPnt = inv.OfPoint(bbMaxPnt);
+                }
+
+                foreach (Element el in bind.FloorColl) 
+                { 
+                    if (!(el is Floor floor)) continue;
+
+                    XYZ upPrjPoint = floor.GetVerticalProjectionPoint(bbMaxPnt, FloorFace.Bottom);
+                    if (upPrjPoint == null) continue;
+
+                    double upDistance = bbMaxPnt.DistanceTo(upPrjPoint);
+                    if (Math.Round(bbMaxPnt.Z, 1) <= Math.Round(upPrjPoint.Z, 1) && upDistance <= this.UpFloorDistance)
+                    {
+                        GeometryElement flGeomElem = floor.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+
+                        if (CheckFloorFaces(flGeomElem, new XYZ(elemCheckPnt.X, elemCheckPnt.Y, upPrjPoint.Z)))
+                        {
+                            this.UpFloorBinding = floor;
+                            this.UpFloorDistance = upDistance;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Задать привязку к перекрытиям СВЕРХУ
+        /// </summary>
+        /// <param name="elemCheckPnt">Точка элемента для проверки</param>
+        /// <param name="bbMinPnt">оординаты BBox_Min элемента</param>
+        /// <param name="floorColl">Коллекция перекрытий для анализа</param>
+        private void SetDownFloorBinding(XYZ elemCheckPnt, XYZ bbMinPnt, List<FloorBinding> floorBindings)
+        {
+            foreach (FloorBinding bind in floorBindings)
+            {
+                Transform trans = bind.Trans;
+                if (bind.Trans != null)
+                {
+                    Transform inv = bind.Trans.Inverse;
+                    bbMinPnt = inv.OfPoint(bbMinPnt);
+                }
+
+                foreach (Element el in bind.FloorColl)
+                {
+                    if (!(el is Floor floor)) continue;
+
+                    XYZ downPrjPoint = floor.GetVerticalProjectionPoint(bbMinPnt, FloorFace.Top);
+                    if (downPrjPoint == null) continue;
+
+                    double downDistance = bbMinPnt.DistanceTo(downPrjPoint);
+                    if (Math.Round(bbMinPnt.Z, 1) >= Math.Round(downPrjPoint.Z, 1) && downDistance <= this.DownFloorDistance)
+                    {
+                        GeometryElement flGeomElem = floor.get_Geometry(new Options() { DetailLevel = ViewDetailLevel.Fine });
+
+                        if (CheckFloorFaces(flGeomElem, new XYZ(elemCheckPnt.X, elemCheckPnt.Y, downPrjPoint.Z)))
+                        {
+                            this.DownFloorBinding = floor;
+                            this.DownFloorDistance = downDistance;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Получить перекрытия из всех линков АР
+        /// </summary>
+        private static IEnumerable<RevitLinkInstance> GetARLinkInstances(Document doc)
+        {
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(RevitLinkInstance))
+                .Cast<RevitLinkInstance>()
+                .Where(l =>
+                {
+                    string n = l.Name.ToUpper();
+                    return n.Contains("_AR_") || n.Contains("_АР_") ||
+                           n.Contains("_AR.RVT") || n.Contains("_АР.RVT") ||
+                           n.Contains("-AR.RVT") || n.Contains("-АР.RVT") ||
+                           n.StartsWith("AR_") || n.StartsWith("АР_");
+                });
+        }
+
+       /// <summary>
         /// Уточнить значения точки в зависимости от формы
         /// </summary>
         /// <returns></returns>
@@ -629,57 +743,11 @@ namespace KPLN_OpeningHoleManager.Core
 #endif
         }
 
-        private void SetFloorBindingData(Document doc, BoundingBoxXYZ holeBBox, List<Element> floorColl)
-        {
-            foreach (Element elem in floorColl)
-            {
-                if (!(elem is Floor floor))
-                    continue;
-
-                XYZ upPrjPoint = floor.GetVerticalProjectionPoint(holeBBox.Max, FloorFace.Bottom);
-                if (upPrjPoint == null) continue;
-
-                double upDistance = holeBBox.Max.DistanceTo(upPrjPoint);
-                if (Math.Round(holeBBox.Max.Z, 1) <= Math.Round(upPrjPoint.Z, 1) && upDistance <= this.UpFloorDistance)
-                {
-                    // Проверяю точку максимума и минимума по X, Y. Причина - отверстия в наружных стенах
-                    if (CheckFloorFaces(floor, upPrjPoint) || CheckFloorFaces(floor, new XYZ(holeBBox.Min.X, holeBBox.Min.Y, upPrjPoint.Z)))
-                    {
-                        this.UpFloorBinding = floor;
-                        this.UpFloorDistance = upDistance;
-                    }
-                }
-
-                XYZ downPrjPoint = floor.GetVerticalProjectionPoint(holeBBox.Min, FloorFace.Top);
-                if (downPrjPoint == null) continue;
-
-                double downDistance = holeBBox.Min.DistanceTo(downPrjPoint);
-                if (Math.Round(holeBBox.Min.Z, 1) >= Math.Round(downPrjPoint.Z, 1) && downDistance <= this.DownFloorDistance)
-                {
-                    // Проверяю точку максимума и минимума по X, Y. Причина - отверстия в наружных стенах
-                    if (CheckFloorFaces(floor, downPrjPoint) || CheckFloorFaces(floor, new XYZ(holeBBox.Max.X, holeBBox.Max.Y, downPrjPoint.Z)))
-                    {
-                        this.DownFloorBinding = floor;
-
-                        double floorAboveLevHeight = this.DownFloorBinding.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble();
-                        this.DownFloorDistance = downDistance + floorAboveLevHeight;
-                    }
-                }
-
-            }
-        }
-
         /// <summary>
         /// Проверка перекрытия на факт пересечения с точкой проецирования
         /// </summary>
-        private bool CheckFloorFaces(Floor floor, XYZ prjPoint)
+        private bool CheckFloorFaces(GeometryElement flGeomElem, XYZ prjPoint)
         {
-            GeometryElement flGeomElem = floor
-                .get_Geometry(new Options()
-                {
-                    DetailLevel = ViewDetailLevel.Fine,
-                });
-
             foreach (GeometryObject obj in flGeomElem)
             {
                 Solid flSolid = obj as Solid;
@@ -689,10 +757,8 @@ namespace KPLN_OpeningHoleManager.Core
                     foreach (Face flFace in flFaceArray)
                     {
                         IntersectionResult intRes = flFace.Project(prjPoint);
-                        if (intRes != null && intRes.Distance < 0.0001)
-                        {
+                        if (intRes != null && intRes.Distance < 0.001)
                             return true;
-                        }
                     }
                 }
             }
