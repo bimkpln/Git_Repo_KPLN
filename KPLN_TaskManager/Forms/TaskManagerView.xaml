@@ -239,6 +239,13 @@
                                                 TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Button.ToolTip>
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem 
+                                                Header="Экспорт в Excel" 
+                                                Click="ExportExcel_Click"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

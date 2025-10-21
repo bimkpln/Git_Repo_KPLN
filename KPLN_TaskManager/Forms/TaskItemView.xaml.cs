@@ -271,6 +271,7 @@ namespace KPLN_TaskManager.Forms
             if (CurrentTaskItemEntity.Id == 0)
             {
                 CurrentTaskItemEntity.CreatedTaskData = GetCurrentData();
+                CurrentTaskItemEntity.LastChangeData = GetCurrentData();
 
                 TaskManagerDBService.CreateDBTaskItem(CurrentTaskItemEntity);
 

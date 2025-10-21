@@ -1,13 +1,16 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_SQLiteWorker;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.Services;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 
 namespace KPLN_TaskManager.Forms
@@ -18,6 +21,8 @@ namespace KPLN_TaskManager.Forms
 
         private ObservableCollection<TaskItemEntity> _collection;
 
+        // Подотделы для отдела пользователя
+        private DBSubDepartment[] _subDepsForUser;
         private string _searchHeader;
         private string _selectedOpenStausTasks = "Open";
         private bool _fullTaskCollection = false;
@@ -25,7 +30,12 @@ namespace KPLN_TaskManager.Forms
 
         public TaskManagerView()
         {
+            _subDepsForUser = DBMainService.DBSubDepartmentColl
+                .Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
+                .ToArray();
+
             InitializeComponent();
+            
             DataContext = this;
         }
 
@@ -128,8 +138,11 @@ namespace KPLN_TaskManager.Forms
 
                 bool userProp = GetUserPropValue(task);
 
-                bool isInputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.DelegatedDepartmentId;
-                bool isOutputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.CreatedTaskDepartmentId;
+                // Поиск по отделу и подотделу
+                bool isInputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.DelegatedDepartmentId
+                    || _subDepsForUser.Any(sdu => task.DelegatedDepartmentId == sdu.Id);
+                bool isOutputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.CreatedTaskDepartmentId 
+                    || _subDepsForUser.Any(sdu => task.CreatedTaskDepartmentId == sdu.Id);
 
                 if (SubDepDependence == "AllSuDepTask")
                     return matchesTitle && matchesStatus && userProp && (isInputSubDepTask || isOutputSubDepTask);
@@ -168,7 +181,7 @@ namespace KPLN_TaskManager.Forms
 
         private void TaskItem_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Controls.Button btn = sender as System.Windows.Controls.Button;
+            Button btn = sender as Button;
             if (btn.DataContext is TaskItemEntity taskItemEntity)
             {
                 // Открываю окно
@@ -215,12 +228,21 @@ namespace KPLN_TaskManager.Forms
         private void ExportExcel_Click(object sender, RoutedEventArgs e)
         {
             string path = ExportToExcelService.SetPath();
+
             if (!string.IsNullOrEmpty(path))
             {
                 List<TaskItemEntity> filteredTasks = new List<TaskItemEntity>();
-                foreach (TaskItemEntity task in FilteredTasks)
+                if (sender is MenuItem mItem)
                 {
+                    TaskItemEntity task = mItem.DataContext as TaskItemEntity;
                     filteredTasks.Add(task);
+                }
+                else
+                {
+                    foreach (TaskItemEntity task in FilteredTasks)
+                    {
+                        filteredTasks.Add(task);
+                    }
                 }
 
                 ExportToExcelService.Run(path, Module.CurrentDBProject.Name, filteredTasks);

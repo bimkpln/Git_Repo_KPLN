@@ -235,6 +235,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\TaskEntity_ImageBuffer.cs" />
     <Compile Include="Common\TaskItemEntity_Comment.cs" />
     <Compile Include="Common\TaskItemEntity.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />

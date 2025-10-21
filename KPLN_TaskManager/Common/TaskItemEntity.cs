@@ -20,7 +20,7 @@ namespace KPLN_TaskManager.Common
         Close
     }
 
-    public class TaskItemEntity : INotifyPropertyChanged
+    public sealed class TaskItemEntity : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -439,18 +439,12 @@ namespace KPLN_TaskManager.Common
         {
             get
             {
-                // Если новое замечание
-                if (Id == 0)
-                {
-                    // Отделы, которые имеют подчинения
-                    if (DBMainService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id))
-                        return DBMainService.DBSubDepartmentColl.Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id).ToArray();
-                    // Остальные
-                    else
-                        return DBMainService.DBSubDepartmentColl.Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id).ToArray();
-                }
-
-                return DBMainService.DBSubDepartmentColl;
+               return DBMainService
+                .DBSubDepartmentColl
+                .Where(sd =>
+                    sd.Id == DBMainService.CurrentUserDBSubDepartment.Id
+                    || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
+                .ToArray();
             }
         }
 

@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace KPLN_TaskManager.Common
 {
-    public class TaskItemEntity_Comment : INotifyPropertyChanged
+    public sealed class TaskItemEntity_Comment : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
