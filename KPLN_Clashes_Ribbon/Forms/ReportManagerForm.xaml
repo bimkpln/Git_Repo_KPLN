@@ -439,7 +439,7 @@
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
                                 </Expander>
-                                
+
                                 <Button Content="✖" Visibility="{Binding AdminControllsVisibility}" Width="20" Height="20" HorizontalAlignment="Right" VerticalAlignment="Top" Opacity="0.2" Click="OnRemoveGroup">
                                     <Button.ToolTip>
                                         <StackPanel MaxWidth="300">
@@ -450,7 +450,6 @@
                                         </StackPanel>
                                     </Button.ToolTip>
                                 </Button>
-                                
                                 <StackPanel 
                                     Margin="0,10,0,0" 
                                     Grid.Row="2" 
@@ -492,6 +491,37 @@
                                             </StackPanel>
                                         </Button.ToolTip>
                                     </Button>
+
+
+
+
+
+                                    <Button 
+                                        Visibility="{Binding AdminControllsVisibilityAdd}" 
+                                        IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
+                                        Margin="5,0,0,0" 
+                                        Content="Перенос статусов «Делегировано»"  
+                                        Background="{x:Null}" 
+                                        BorderBrush="White" 
+                                        Click="ButtonStatusTransfer" 
+                                        Opacity="0.2" 
+                                        Foreground="White">
+                                        <Button.ToolTip>
+                                            <StackPanel MaxWidth="300">
+                                                <TextBlock TextWrapping="Wrap" FontWeight="Bold" Margin="0,0,0,5" Text="Перенос статусов «Делегировано»"/>
+                                                <TextBlock TextWrapping="Wrap" Text="-"/>
+                                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                                <TextBlock TextWrapping="Wrap" Text="Подсказка: -" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </Button.ToolTip>
+                                    </Button>
+
+
+
+
+
+
+
                                 </StackPanel>
                                 
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">

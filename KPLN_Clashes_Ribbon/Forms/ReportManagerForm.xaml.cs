@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using Autodesk.Revit.UI;
+using HtmlAgilityPack;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.Services;
@@ -524,6 +525,52 @@ namespace KPLN_Clashes_Ribbon.Forms
                 UpdateReportGroups();
             }
         }
+
+
+
+
+
+
+
+
+
+        private void ButtonStatusTransfer(object sender, RoutedEventArgs args)
+        {
+            TaskDialog.Show("Результат", "Мы нажали на кнопку");
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void OnBtnUpdate(object sender, RoutedEventArgs args) => UpdateReportGroups();
 
