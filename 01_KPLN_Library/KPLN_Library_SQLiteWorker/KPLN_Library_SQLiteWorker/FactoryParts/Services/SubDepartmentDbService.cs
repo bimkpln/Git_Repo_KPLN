@@ -6,6 +6,7 @@ using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts
 {
@@ -110,12 +111,13 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
             if (docFullPath.Contains(".rfa") || docFullPath.Contains(".rte"))
                 return null;
 
+            Dictionary<string, int> depNameDict = new Dictionary<string, int>();
             if (docFullPath.Contains("_КФ."))
                 return GetDBSubDepartment_ByName("BIM");
             else
             {
+                // Т.к. имя может содержать подстроки - ищу наибольшее вол-во вхождений (может быть в пути к файлу, в имени раздел+подраздел)
                 IEnumerable<DBSubDepartmentCodeMatrix> sdMatrix = _subDepartmentCodeMatrixDbService.GetSubDepartmentCodeMatrix();
-                DBSubDepartmentCodeMatrix resultSD = null;
                 foreach (DBSubDepartmentCodeMatrix dbSubDepartmentCodeMatrix in sdMatrix)
                 {
                     if (docFullPath.Contains($"_{dbSubDepartmentCodeMatrix.Code}")
@@ -123,14 +125,37 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                         || docFullPath.Contains($"-{dbSubDepartmentCodeMatrix.Code}")
                         || docFullPath.Contains($"{dbSubDepartmentCodeMatrix.Code}-"))
                     {
-                        resultSD = dbSubDepartmentCodeMatrix;
+                        int count = 0;
+                        int index = 0;
+                        while ((index = docFullPath.IndexOf(dbSubDepartmentCodeMatrix.Code, index)) != -1)
+                        {
+                            count++;
+                            index += dbSubDepartmentCodeMatrix.Code.Length; 
+                        }
+
+                        string currentDepName = GetDBSubDepartment_SubDepartmentMatrixCode(dbSubDepartmentCodeMatrix).Name;
+                        if (depNameDict.TryGetValue(currentDepName, out int prevCount))
+                            depNameDict[currentDepName] = prevCount + count;
+                        else
+                            depNameDict[currentDepName] = count;
                     }
                 }
 
-                if (resultSD == null)
+                if (depNameDict.Count == 0)
                     throw new Worker_Error($"Не удалось определить раздел по имени файла: {docFullPath}");
 
-                return GetDBSubDepartment_SubDepartmentMatrixCode(resultSD);
+                int tempCount = 0;
+                DBSubDepartment resultSD = null;
+                foreach(var kvp in depNameDict)
+                {
+                    if (kvp.Value > tempCount)
+                    {
+                        tempCount = kvp.Value;
+                        resultSD = GetDBSubDepartment_ByName(kvp.Key);
+                    }
+                }
+
+                return resultSD;
             }
         }
     }
