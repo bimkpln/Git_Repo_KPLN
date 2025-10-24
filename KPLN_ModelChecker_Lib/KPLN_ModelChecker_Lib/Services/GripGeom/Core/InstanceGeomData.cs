@@ -7,9 +7,9 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
     /// </summary>
     public class InstanceGeomData : InstanceElemData
     {
-        private XYZ _igdGeomCenter;
-        private BoundingBoxXYZ _igdBBox;
-        private Solid _igdSolid;
+        private protected XYZ _igdGeomCenter;
+        private protected BoundingBoxXYZ _igdBBox;
+        private protected Solid _igdSolid;
 
         public InstanceGeomData(Element elem) : base(elem)
         {
@@ -43,6 +43,7 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
 
                 return _igdBBox;
             }
+            private set => _igdBBox = value;
         }
 
         /// <summary>
