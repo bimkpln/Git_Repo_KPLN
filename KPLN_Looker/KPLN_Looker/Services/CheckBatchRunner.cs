@@ -18,6 +18,7 @@ namespace KPLN_Looker.Services
 
             // Общий фильтр по проектам
             if (!docTitle.StartsWith("ИЗМЛ_")
+                && !docTitle.StartsWith("ИЗМЛ23_")
                 && !docTitle.StartsWith("ПШМ1_")
                 && !docTitle.StartsWith("ПСРВ_")
                 && !docTitle.StartsWith("SH1-"))
