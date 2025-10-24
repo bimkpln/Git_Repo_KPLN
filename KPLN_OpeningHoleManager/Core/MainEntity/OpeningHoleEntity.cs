@@ -130,12 +130,7 @@ namespace KPLN_OpeningHoleManager.Core.MainEntity
         /// <returns></returns>
         public OpeningHoleEntity SetTransform(Instance inst)
         {
-            Transform transform = inst.GetTransform();
-            // Метка того, что базис трансформа тождество. Если нет, то создаём такой трансформ
-            if (transform.IsTranslation)
-                OHE_LinkTransform = transform;
-            else
-                OHE_LinkTransform = Transform.CreateTranslation(transform.Origin);
+            OHE_LinkTransform = inst.GetTransform();
 
             return this;
         }
