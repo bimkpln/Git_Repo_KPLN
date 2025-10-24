@@ -61,10 +61,6 @@
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\obj\Revit2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_ConfigWorker">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="KPLN_Library_ExtensibleStorage">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
       <Private>False</Private>
@@ -141,6 +137,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -173,6 +173,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2023\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
@@ -202,7 +206,11 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -234,7 +242,11 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2023\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPI">
@@ -253,6 +265,12 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\ARPG_Flat.cs" />
+    <Compile Include="Common\ARPG_Room.cs" />
+    <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
+    <Compile Include="Forms\Models\Core\ARPG_TZ_Config.cs" />
+    <Compile Include="Forms\Models\Core\ARPG_TZ_MainData.cs" />
+    <Compile Include="Forms\Models\Core\ARPG_TZ_FlatData.cs" />
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\DBWorkerService.cs" />
     <Compile Include="Common\FamilyManagerDock.cs" />
@@ -293,13 +311,14 @@
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_AR_PyatnGraph.cs" />
     <Compile Include="ExternalCommands\CommandFamilyManager.cs" />
     <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
     <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
     <Compile Include="ExternalCommands\CommandSendMsgToBitrix.cs" />
-    <Compile Include="ExternalCommands\Command_AR_GNSBound.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_AR_GNSBound.cs" />
     <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
     <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
@@ -315,6 +334,9 @@
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
     <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
+    <Compile Include="Forms\AR_PyatnGraph_Main.xaml.cs">
+      <DependentUpon>AR_PyatnGraph_Main.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\AR_TEPDesign_categorySelect.xaml.cs">
       <DependentUpon>AR_TEPDesign_categorySelect.xaml</DependentUpon>
     </Compile>
@@ -344,7 +366,9 @@
     <Compile Include="Forms\FamilyManagerSettingsDialog.xaml.cs">
       <DependentUpon>FamilyManagerSettingsDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\AR_PyatnGraph_VM.cs" />
     <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
+    <Compile Include="Forms\Models\Core\RelayCommand.cs" />
     <Compile Include="Forms\Models\OVVK_SystemManager_ViewModel.cs" />
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
@@ -457,6 +481,8 @@
     <EmbeddedResource Include="Imagens\FamilyManager\bim_ok.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\favorites.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
+    <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
+    <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -470,6 +496,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\AR_PyatnGraph_Main.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\AR_TEPDesign_categorySelect.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

@@ -83,6 +83,26 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap arPyatnGraphBig {
+            get {
+                object obj = ResourceManager.GetObject("arPyatnGraphBig", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap arPyatnGraphSmall {
+            get {
+                object obj = ResourceManager.GetObject("arPyatnGraphSmall", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap autonumberSmall {
             get {
                 object obj = ResourceManager.GetObject("autonumberSmall", resourceCulture);

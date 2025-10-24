@@ -1,0 +1,502 @@
+﻿<Window x:Class="KPLN_Tools.Forms.AR_PyatnGraph_Main"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN: Пятнография — исходные данные"
+        SizeToContent="Height"
+        MinHeight="300"
+        MaxHeight="800"
+        Width="720"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="ToolWindow"
+        Background="#1E1E1E">
+
+    <Window.Resources>
+
+        <!-- 🎨 Асноўныя колеры -->
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#1E1E1E"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#2B2F3A"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B0B0B0"/>
+
+        <!-- Загалоўкі -->
+        <Style x:Key="TBL_Title" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Тэкставыя палі -->
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="MinWidth" Value="60"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#383C47"/>
+            <Setter Property="BorderBrush" Value="#505562"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="30000"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ScrollViewer Margin="0" x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="Orange"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="BorderBrush" Value="Red"/>
+                    <Setter Property="ToolTip"
+                        Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--Кнопка вместо текстового поля-->
+        <Style x:Key="BTN_HeaderText" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <!-- Пры навядзенні можна зрабіць лёгкае падсвятленне -->
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FFD8D8D8"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Foreground" Value="#FFB0B0B0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Кнопкі: агульная база -->
+        <Style TargetType="Button" x:Key="BTN_Base">
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Padding" Value="5,3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.9"/>
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.05" ScaleY="1.05"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Кнопка Удалить -->
+        <Style x:Key="BTN_Del" BasedOn="{StaticResource BTN_Base}" TargetType="Button">
+            <Setter Property="Background" Value="#C84C4C"/>
+            <Setter Property="ToolTip" Value="Удалить тип квартир"/>
+        </Style>
+
+        <!-- Основные кнопки -->
+        <Style x:Key="BTN_Main" BasedOn="{StaticResource BTN_Base}" TargetType="Button">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="MinWidth" Value="40"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!--Экспандер коэффициентов и парамтеров-->
+        <Expander 
+            Header="Общие настройки"
+            Foreground="White">
+            <Border 
+                Background="{StaticResource PanelBrush}" 
+                Padding="5" 
+                Margin="5" 
+                CornerRadius="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock 
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Коэф. уменьшения квартир"/>
+                    <TextBox 
+                        Grid.Column="1" 
+                        Style="{StaticResource TXTBX}" 
+                        Width="100"
+                        Text="{Binding ARPG_TZ_MainData.FlatAreaCoeff, 
+                            UpdateSourceTrigger=PropertyChanged, 
+                            ValidatesOnDataErrors=True, 
+                            NotifyOnValidationError=True}"/>
+                    
+                    
+                    <TextBlock 
+                        Grid.Row="1"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Коэф. уменьшения балконов"/>
+                    <TextBox 
+                        Grid.Row="1"
+                        Grid.Column="1" 
+                        Style="{StaticResource TXTBX}" 
+                        Width="100"
+                        Text="{Binding ARPG_TZ_MainData.BalkAreaCoeff, 
+                            UpdateSourceTrigger=PropertyChanged,
+                            ValidatesOnDataErrors=True, 
+                            NotifyOnValidationError=True}"/>
+                    
+                    
+                    <TextBlock 
+                        Grid.Row="2"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Коэф. уменьшения лоджий"/>
+                    <TextBox 
+                        Grid.Row="2"
+                        Grid.Column="1" 
+                        Style="{StaticResource TXTBX}" 
+                        Width="100"
+                        Text="{Binding ARPG_TZ_MainData.LogAreaCoeff, 
+                            UpdateSourceTrigger=PropertyChanged, 
+                            ValidatesOnDataErrors=True, 
+                            NotifyOnValidationError=True}"/>
+
+                    
+                    <TextBlock 
+                        Grid.Row="3"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="По какой категории считаем?"/>
+
+
+                    <TextBlock 
+                        Grid.Row="4"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Параметры для определения уникальности квартиры"/>
+                    <Grid
+                        Grid.Row="4"
+                        Grid.Column="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition MinHeight="30"/>
+                            <RowDefinition MinHeight="30"/>
+                            <RowDefinition MinHeight="30"/>
+                            <RowDefinition MinHeight="30"/>
+                            <RowDefinition MinHeight="30"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock 
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Имя кв.:"/>
+                        <TextBox 
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding ARPG_TZ_MainData.FlatNameParamName, 
+                                UpdateSourceTrigger=PropertyChanged, 
+                                ValidatesOnDataErrors=True, 
+                                NotifyOnValidationError=True}"/>
+                        
+                        <TextBlock 
+                            Grid.Row="1"
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Номер кв.:"/>
+                        <TextBox 
+                            Grid.Row="1"
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding ARPG_TZ_MainData.FlatNumbParamName, 
+                                UpdateSourceTrigger=PropertyChanged, 
+                                ValidatesOnDataErrors=True, 
+                                NotifyOnValidationError=True}"/>
+                        
+                        <TextBlock 
+                            Grid.Row="2"
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Номер эт:"/>
+                        <TextBox 
+                            Grid.Row="2"
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding ARPG_TZ_MainData.FlatLvlNumbParamName, 
+                                UpdateSourceTrigger=PropertyChanged, 
+                                ValidatesOnDataErrors=True, 
+                                NotifyOnValidationError=True}"/>
+
+
+                        <TextBlock 
+                            Grid.Row="3"
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Захватка 1:"/>
+                        <TextBox 
+                            Grid.Row="3"
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding ARPG_TZ_MainData.GripParamName1, 
+                                UpdateSourceTrigger=PropertyChanged, 
+                                ValidatesOnDataErrors=True, 
+                                NotifyOnValidationError=True}"/>
+                        
+                        <TextBlock 
+                            Grid.Row="4"
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Захватка 2:"/>
+                        <TextBox 
+                            Grid.Row="4"
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            Text="{Binding ARPG_TZ_MainData.GripParamName2, 
+                                UpdateSourceTrigger=PropertyChanged, 
+                                ValidatesOnDataErrors=True, 
+                                NotifyOnValidationError=True}"/>
+                    </Grid>
+
+                </Grid>
+            </Border>
+        </Expander>
+        
+        <!--Загаловок таблицы площадей-->
+        <Border 
+            Grid.Row="1" 
+            Background="{StaticResource PanelBrush}" 
+            Padding="5" 
+            Margin="5" 
+            CornerRadius="6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="40"/>
+                </Grid.ColumnDefinitions>
+                <Button
+                    Content="Имя диапазона"
+                    Style="{StaticResource BTN_HeaderText}"
+                    Command="{Binding SortByRangeNameCommand}" />
+                <Button 
+                    Grid.Column="1"
+                    Content="Код квартиры"
+                    Style="{StaticResource BTN_HeaderText}"
+                    Command="{Binding SortByFlatCodeCommand}" />
+                <TextBlock 
+                    Grid.Column="2" 
+                    Style="{StaticResource TBL_Title}" 
+                    Text="% по ТЗ"/>
+                <TextBlock 
+                    Grid.Column="3" 
+                    Grid.ColumnSpan="2" 
+                    Style="{StaticResource TBL_Title}" 
+                    Text="Диапазон по ТЗ"/>
+            </Grid>
+        </Border>
+
+        <!-- Спіс элементаў -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="5">
+            <StackPanel>
+                <ItemsControl 
+                    x:Name="FlatDatas"
+                    ItemsSource="{Binding ARPG_TZ_FlatDataColl, 
+                        Mode=TwoWay, 
+                        UpdateSourceTrigger=PropertyChanged}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border 
+                                Background="#2E323C" 
+                                Margin="0,2" 
+                                Padding="3" 
+                                CornerRadius="6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="40"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox 
+                                        Grid.Column="0" 
+                                        Style="{StaticResource TXTBX}" 
+                                        Width="100"
+                                        Text="{Binding TZRangeName, 
+                                            UpdateSourceTrigger=PropertyChanged, 
+                                            ValidatesOnDataErrors=True, 
+                                            NotifyOnValidationError=True}"/>
+
+                                    <TextBox 
+                                        Grid.Column="1" 
+                                        Style="{StaticResource TXTBX}" 
+                                        Width="120"
+                                        Text="{Binding TZCode, 
+                                            UpdateSourceTrigger=PropertyChanged, 
+                                            ValidatesOnDataErrors=True, 
+                                            NotifyOnValidationError=True}"/>
+
+                                    <TextBox 
+                                        Grid.Column="2" 
+                                        Style="{StaticResource TXTBX}" 
+                                        Width="80"
+                                        Text="{Binding TZPercent, 
+                                            UpdateSourceTrigger=PropertyChanged, 
+                                            ValidatesOnDataErrors=True, 
+                                            NotifyOnValidationError=True}"/>
+
+                                    <TextBox 
+                                        Grid.Column="3" 
+                                        Style="{StaticResource TXTBX}"
+                                        Width="80"
+                                        Text="{Binding TZAreaMin,
+                                            UpdateSourceTrigger=PropertyChanged,
+                                            ValidatesOnDataErrors=True, 
+                                            NotifyOnValidationError=True}"/>
+
+                                    <TextBox 
+                                        Grid.Column="4" 
+                                        Style="{StaticResource TXTBX}" 
+                                        Width="80"
+                                        Text="{Binding TZAreaMax, 
+                                            UpdateSourceTrigger=PropertyChanged, 
+                                            ValidatesOnDataErrors=True, 
+                                            NotifyOnValidationError=True}"/>
+
+                                    <Button 
+                                        Grid.Column="5" 
+                                        Style="{StaticResource BTN_Del}" 
+                                        Content="🗑" 
+                                        Command="{Binding DataContext.DeleteFlatDataCommand, 
+                                            RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Кнопка дадання -->
+        <Grid
+            Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="40"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="2"
+                Style="{StaticResource TBL_Title}"
+                Foreground="{Binding SumPercentColor}"
+                Text="{Binding SumPercent, StringFormat=Σ: {0:F1}%}">
+            </TextBlock>
+
+            <DockPanel 
+                Grid.Row="3" 
+                Grid.Column="3"
+                Grid.ColumnSpan="3"
+                Margin="5" 
+                HorizontalAlignment="Right">
+                <Button 
+                    Style="{StaticResource BTN_Main}" 
+                    Content="🖬"
+                    ToolTip="Сохранить/перезаписать данные конфигурации для проекта"
+                    Background ="Orange"
+                    Command="{Binding SaveConfigCommand}"/>
+                <Button 
+                    Style="{StaticResource BTN_Main}" 
+                    Content="▶"
+                    ToolTip="Выполнить рассчёт"
+                    Background ="Green"
+                    Command="{Binding RunCommand}"
+                    IsEnabled="{Binding CanRun}"/>
+                <Button 
+                    Style="{StaticResource BTN_Main}" 
+                    Background ="#3FA9F5"
+                    Content="➕"
+                    ToolTip="Добавить новый тип квартир"
+                    Command="{Binding AddNewFlatDataCommand}"/>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>

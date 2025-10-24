@@ -34,7 +34,7 @@ namespace KPLN_Tools.Forms
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
             // Файл конфига присутсвует
-            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(doc, _configType, _cofigName) is DuctThicknessEntity ductThicknessEntity)
+            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(ModuleData.RevitVersion, doc, _configType, _cofigName) is DuctThicknessEntity ductThicknessEntity)
                 CurrentDuctThicknessEntity = ductThicknessEntity;
             else
             {
@@ -84,6 +84,6 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Сериализация и сохранение файла-конфигурации
         /// </summary>
-        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(_doc, _configType, CurrentDuctThicknessEntity, _cofigName);
+        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(ModuleData.RevitVersion, _doc, _configType, CurrentDuctThicknessEntity, _cofigName);
     }
 }

@@ -36,7 +36,7 @@ namespace KPLN_Tools.Forms
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
             // Файл конфига присутсвует
-            object obj = ConfigService.ReadConfigFile<List<PipeThicknessEntity>>(_doc, _configType, _cofigName);
+            object obj = ConfigService.ReadConfigFile<List<PipeThicknessEntity>>(ModuleData.RevitVersion, _doc, _configType, _cofigName);
             if (obj is IEnumerable<PipeThicknessEntity> configItems && configItems.Any())
             {
                 PipeThicknessEntities = configItems.ToList();
@@ -137,7 +137,7 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            ConfigService.SaveConfig<PipeThicknessEntity>(_doc, _configType, PipeThicknessEntities, _cofigName);
+            ConfigService.SaveConfig<PipeThicknessEntity>(ModuleData.RevitVersion, _doc, _configType, PipeThicknessEntities, _cofigName);
 
             MessageBox.Show("Конфигурации для проектов из этой папки сохранены успешно!");
         }
