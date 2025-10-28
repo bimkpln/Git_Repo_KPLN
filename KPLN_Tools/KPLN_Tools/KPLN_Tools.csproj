@@ -265,9 +265,13 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\ARPG_Flat.cs" />
-    <Compile Include="Common\ARPG_Room.cs" />
+    <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
+    <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
+    <Compile Include="Common\AR_PyatnGraph\ARPG_Room.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
+    <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
+      <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\Models\Core\ARPG_TZ_Config.cs" />
     <Compile Include="Forms\Models\Core\ARPG_TZ_MainData.cs" />
     <Compile Include="Forms\Models\Core\ARPG_TZ_FlatData.cs" />
@@ -496,6 +500,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\AR_PyatnGraph_SelectDO.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\AR_PyatnGraph_Main.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

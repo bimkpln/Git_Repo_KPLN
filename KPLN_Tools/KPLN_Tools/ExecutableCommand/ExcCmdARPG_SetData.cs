@@ -2,7 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
-using KPLN_Tools.Common;
+using KPLN_Tools.Common.AR_PyatnGraph;
 using KPLN_Tools.Forms.Models.Core;
 using System.Windows.Forms;
 
@@ -11,13 +11,15 @@ namespace KPLN_Tools.ExecutableCommand
     internal class ExcCmdARPG_SetData : IExecutableCommand
     {
         private readonly Document _doc;
+        private readonly ARPG_TZ_MainData _aRPGTZMainData;
         private readonly ARPG_Room[] _aRPGRooms;
         private readonly ARPG_Flat[] _aRPGFlats;
         private readonly ARPG_TZ_FlatData[] _arpgTZFlatDatas;
 
-        public ExcCmdARPG_SetData(Document doc, ARPG_Room[] aRPGRooms, ARPG_Flat[] aRPGFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
+        public ExcCmdARPG_SetData(Document doc, ARPG_TZ_MainData tzData, ARPG_Room[] aRPGRooms, ARPG_Flat[] aRPGFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
         {
             _doc = doc;
+            _aRPGTZMainData = tzData;
             _aRPGRooms = aRPGRooms;
             _aRPGFlats = aRPGFlats;
             _arpgTZFlatDatas = arpgTZFlatDatas;
@@ -29,7 +31,7 @@ namespace KPLN_Tools.ExecutableCommand
             {
                 trans.Start();
 
-                ARPG_Flat.SetMainFlatData(_aRPGFlats, _arpgTZFlatDatas);
+                ARPG_Flat.SetMainFlatData(_aRPGTZMainData, _aRPGFlats, _arpgTZFlatDatas);
                 if (ARPG_Flat.ErrorDict_Flat.Keys.Count != 0)
                 {
                     HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, ARPG_Flat.ErrorDict_Flat);

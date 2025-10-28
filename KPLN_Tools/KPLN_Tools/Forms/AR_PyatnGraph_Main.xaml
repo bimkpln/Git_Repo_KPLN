@@ -69,7 +69,114 @@
                     <Setter Property="ToolTip"
                         Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}"/>
                 </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="Gray"/>
+                    <Setter Property="Background" Value="#2F323A"/>
+                    <Setter Property="BorderBrush" Value="#40444F"/>
+                </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <!-- Комбобокс -->
+        <Style x:Key="CB" TargetType="ComboBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="MinHeight" Value="25"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#383C47"/>
+            <Setter Property="BorderBrush" Value="#505562"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="30000"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid Width="{TemplateBinding ActualWidth}">
+                            <!-- Асноўная рамка -->
+                            <Border 
+                                Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="4">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Змест (тэкст выбранага элемента) -->
+                                    <ContentPresenter 
+                                        Content="{TemplateBinding SelectionBoxItem}"
+                                        ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Stretch"/>
+
+                                    <!-- Кнопка раскрыцця -->
+                                    <ToggleButton 
+                                        Name="ToggleButton"
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Stretch"
+                                        Focusable="False"
+                                        IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Background="Transparent"
+                                        BorderThickness="0">
+                                        <Path 
+                                            Data="M 0 0 L 4 4 L 8 0 Z"
+                                            Fill="White"
+                                            Stretch="Uniform"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"/>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <!-- Выпадальны спіс -->
+                            <Popup 
+                                Name="PART_Popup"
+                                Placement="Bottom"
+                                AllowsTransparency="True"
+                                Focusable="False"
+                                IsOpen="{TemplateBinding IsDropDownOpen}"
+                                PopupAnimation="Slide">
+                                <Border 
+                                    Background="#2C2F38"
+                                    BorderBrush="#505562"
+                                    BorderThickness="1"
+                                    CornerRadius="5">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="Orange"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Чекбоксы -->
+        <Style x:Key="ChB" TargetType="CheckBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#505562"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="30000"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         </Style>
 
         <!--Кнопка вместо текстового поля-->
@@ -168,7 +275,7 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
-                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="350"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition MinHeight="30"/>
@@ -176,48 +283,128 @@
                         <RowDefinition MinHeight="30"/>
                         <RowDefinition MinHeight="30"/>
                         <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
                     </Grid.RowDefinitions>
                     
+                    <!--<TextBlock 
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Допустимая погрешность площадей, %"/>
+                    <TextBox 
+                        Grid.Column="1" 
+                        Style="{StaticResource TXTBX}" 
+                        Width="125"
+                        ToolTip="Процент допустимой погрешности, при присвоении кода квартиры. 
+                            Происходит при округлении, напр. диапазон 20-25 м², а фактическая площадь 19,6 м², погрешность составит 2%"
+                        Text="{Binding ARPG_TZ_MainData.FlatAreaTolerance, 
+                            UpdateSourceTrigger=PropertyChanged, 
+                            ValidatesOnDataErrors=True, 
+                            NotifyOnValidationError=True}"/>-->
+                    
+                    
                     <TextBlock 
+                        Grid.Row="0"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="По какой категории считаем?"/>
+                    <ComboBox
+                        Grid.Column="1"
+                        Grid.Row="0"
+                        Style="{StaticResource CB}"
+                        SelectedValue ="{Binding ARPG_TZ_MainData.FlatType}"
+                        SelectedValuePath="Tag">
+                            <ComboBoxItem 
+                                Content="Помещения" 
+                                Tag="Room" 
+                                IsSelected="True"/>
+                            <ComboBoxItem 
+                                Content="Цветовые области" 
+                                Tag="FilledRegion"/>
+                    </ComboBox>
+                    
+                    
+                    <TextBlock 
+                        Grid.Row="1"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Коэф. уменьшения квартир"/>
                     <TextBox 
+                        Grid.Row="1"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
-                        Width="100"
+                        Width="125"
                         Text="{Binding ARPG_TZ_MainData.FlatAreaCoeff, 
-                            UpdateSourceTrigger=PropertyChanged, 
+                            UpdateSourceTrigger=PropertyChanged,
                             ValidatesOnDataErrors=True, 
                             NotifyOnValidationError=True}"/>
-                    
+
                     
                     <TextBlock 
-                        Grid.Row="1"
+                        Grid.Row="2"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
-                        Text="Коэф. уменьшения балконов"/>
+                        Text="В проекте есть балконы/лоджии/террасы?"
+                        ToolTip="Если галка стоит, то обязательно нужно заполнить параметры для определения уникальности квартир"/>
+                    <CheckBox 
+                        Grid.Row="2"
+                        Grid.Column="1" 
+                        Style="{StaticResource ChB}" 
+                        IsChecked="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                            UpdateSourceTrigger=PropertyChanged}"/>
+
+                    
+                    <TextBlock 
+                        Grid.Row="3"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Коэф. уменьшения балконов"
+                        ToolTip="В параметр имени - укажи 'Балкон'"/>
                     <TextBox 
-                        Grid.Row="1"
+                        Grid.Row="3"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
-                        Width="100"
+                        Width="125"
+                        IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                            UpdateSourceTrigger=PropertyChanged}"
                         Text="{Binding ARPG_TZ_MainData.BalkAreaCoeff, 
+                            UpdateSourceTrigger=PropertyChanged,
+                            ValidatesOnDataErrors=True, 
+                            NotifyOnValidationError=True}"/>
+
+                    
+                    <TextBlock 
+                        Grid.Row="4"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
+                        Text="Коэф. уменьшения террас"
+                        ToolTip="В параметр имени - укажи 'Терраса'"/>
+                    <TextBox 
+                        Grid.Row="4"
+                        Grid.Column="1" 
+                        Style="{StaticResource TXTBX}" 
+                        Width="125"
+                        IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                            UpdateSourceTrigger=PropertyChanged}"
+                        Text="{Binding ARPG_TZ_MainData.TerraceAreaCoeff, 
                             UpdateSourceTrigger=PropertyChanged,
                             ValidatesOnDataErrors=True, 
                             NotifyOnValidationError=True}"/>
                     
                     
                     <TextBlock 
-                        Grid.Row="2"
+                        Grid.Row="5"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
-                        Text="Коэф. уменьшения лоджий"/>
+                        Text="Коэф. уменьшения лоджий"
+                        ToolTip="В параметр имени - укажи 'Лоджия'"/>
                     <TextBox 
-                        Grid.Row="2"
+                        Grid.Row="5"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
-                        Width="100"
+                        Width="125"
+                        IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                            UpdateSourceTrigger=PropertyChanged}"
                         Text="{Binding ARPG_TZ_MainData.LogAreaCoeff, 
                             UpdateSourceTrigger=PropertyChanged, 
                             ValidatesOnDataErrors=True, 
@@ -225,22 +412,15 @@
 
                     
                     <TextBlock 
-                        Grid.Row="3"
-                        Style="{StaticResource TBL_Title}" 
-                        HorizontalAlignment="Left"
-                        Text="По какой категории считаем?"/>
-
-
-                    <TextBlock 
-                        Grid.Row="4"
+                        Grid.Row="6"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Параметры для определения уникальности квартиры"/>
                     <Grid
-                        Grid.Row="4"
+                        Grid.Row="6"
                         Grid.Column="1">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="125"/>
                             <ColumnDefinition/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
@@ -254,11 +434,14 @@
                         <TextBlock 
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
-                            Text="Имя кв.:"/>
+                            Text="Балкон/лоджия/терраса:"
+                            ToolTip="Параметр, для нахождения балконов,террас или лоджий среди остальных элементов"/>
                         <TextBox 
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                                UpdateSourceTrigger=PropertyChanged}"
                             Text="{Binding ARPG_TZ_MainData.FlatNameParamName, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
@@ -274,6 +457,8 @@
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                                UpdateSourceTrigger=PropertyChanged}"
                             Text="{Binding ARPG_TZ_MainData.FlatNumbParamName, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
@@ -289,6 +474,8 @@
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                                UpdateSourceTrigger=PropertyChanged}"
                             Text="{Binding ARPG_TZ_MainData.FlatLvlNumbParamName, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
@@ -305,6 +492,8 @@
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                                UpdateSourceTrigger=PropertyChanged}"
                             Text="{Binding ARPG_TZ_MainData.GripParamName1, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
@@ -320,12 +509,13 @@
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
+                                UpdateSourceTrigger=PropertyChanged}"
                             Text="{Binding ARPG_TZ_MainData.GripParamName2, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
                                 NotifyOnValidationError=True}"/>
                     </Grid>
-
                 </Grid>
             </Border>
         </Expander>

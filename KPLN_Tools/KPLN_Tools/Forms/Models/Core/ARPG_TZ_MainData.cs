@@ -11,8 +11,10 @@ namespace KPLN_Tools.Forms.Models.Core
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _flatAreaCoeff = "0,95";
-        private string _balkAreaCoeff = "0,3";
+        private bool _heatingRoomsInPrj = true;
         private string _logAreaCoeff = "0,5";
+        private string _balkAreaCoeff = "0,3";
+        private string _terraceAreaCoeff = "0,3";
         private string _flatNameParamName = "Имя";
         private string _flatNumbParamName = "ПОМ_Номер квартиры";
         private string _flatLvlNumbParamName = "ПОМ_Номер этажа";
@@ -22,6 +24,10 @@ namespace KPLN_Tools.Forms.Models.Core
 
         public ARPG_TZ_MainData() { }
 
+        /// <summary>
+        /// Погрешность при назначении кода квартиры в м2 (ВОЗМОЖНО БУДЕТ ПЕРЕВОД НА КОЭФФИЦИЕНТ)
+        /// </summary>
+        public string FlatAreaTolerance { get; set; } = "1";
 
         /// <summary>
         /// Коэф. уменьшения квартир
@@ -40,6 +46,23 @@ namespace KPLN_Tools.Forms.Models.Core
         }
 
         /// <summary>
+        /// В проекте есть неотапливаемые помещения? 
+        /// (влияет на необходимость привязки сепарированных помещений к основному)
+        /// </summary>
+        public bool HeatingRoomsInPrj
+        {
+            get => _heatingRoomsInPrj;
+            set
+            {
+                if (_heatingRoomsInPrj != value)
+                {
+                    _heatingRoomsInPrj = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
         /// Коэф. уменьшения лоджий
         /// </summary>
         public string BalkAreaCoeff
@@ -50,6 +73,22 @@ namespace KPLN_Tools.Forms.Models.Core
                 if (_balkAreaCoeff != value)
                 {
                     _balkAreaCoeff = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Коэф. уменьшения терасс
+        /// </summary>
+        public string TerraceAreaCoeff
+        {
+            get => _terraceAreaCoeff;
+            set
+            {
+                if (_terraceAreaCoeff != value)
+                {
+                    _terraceAreaCoeff = value;
                     NotifyPropertyChanged();
                 }
             }
@@ -180,7 +219,7 @@ namespace KPLN_Tools.Forms.Models.Core
         /// <summary>
         /// Имя параметра для кода квартиры по ТЗ
         /// </summary>
-        public string TZCodeParamName { get; } = "КВ_Код";
+        public string TZCodeParamName { get; } = "КВ_Диапазон_Тип квартиры";
 
         /// <summary>
         /// Имя параметра для имя диапазона по ТЗ
@@ -220,6 +259,8 @@ namespace KPLN_Tools.Forms.Models.Core
             {
                 switch (columnName)
                 {
+                    case nameof(FlatAreaTolerance):
+                        return ValidateTolerance(FlatAreaTolerance);
                     case nameof(FlatAreaCoeff):
                         return ValidateCoeff(FlatAreaCoeff);
                     case nameof(BalkAreaCoeff):
@@ -235,6 +276,16 @@ namespace KPLN_Tools.Forms.Models.Core
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private string ValidateTolerance(string value)
+        {
+            if (!string.IsNullOrEmpty(value)
+                && double.TryParse(value, out double res)
+                && (res >= 0 && res <= 100))
+                return null;
+
+            return $"Коэффициент выбираем из диапазона 0...100, в формате \"0,0\"";
         }
 
         private string ValidateCoeff(string value)

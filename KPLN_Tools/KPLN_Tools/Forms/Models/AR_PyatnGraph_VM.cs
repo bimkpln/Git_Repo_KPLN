@@ -1,11 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker;
-using KPLN_Library_ConfigWorker.Core;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Tools.Common;
-using KPLN_Tools.Common.OVVK_System;
+using KPLN_Tools.Common.AR_PyatnGraph;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.Forms.Models.Core;
 using Newtonsoft.Json;
@@ -41,7 +39,7 @@ namespace KPLN_Tools.Forms.Models
         private Brush _sumPercentColor = Brushes.White;
 
         [JsonConstructor]
-        public AR_PyatnGraph_VM() {  }
+        public AR_PyatnGraph_VM() { }
 
 
         public AR_PyatnGraph_VM(UIApplication uiapp)
@@ -55,6 +53,8 @@ namespace KPLN_Tools.Forms.Models
                 _collection = config.Config_ARPG_TZ_FlatDataList;
                 ARPG_TZ_MainData = config.Config_ARPG_TZ_MainData;
             }
+            else
+                ARPG_TZ_MainData = new ARPG_TZ_MainData();
 
             ARPG_TZ_FlatDataColl = CollectionViewSource.GetDefaultView(_collection);
             #endregion
@@ -208,7 +208,7 @@ namespace KPLN_Tools.Forms.Models
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 HtmlOutput.PrintError(ex);
             }
@@ -222,7 +222,24 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
-                ARPG_Room[] arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData);
+                FilteredElementCollector collector = new FilteredElementCollector(_doc);
+                DesignOption[] designOptions = collector
+                    .OfClass(typeof(DesignOption))
+                    .Cast<DesignOption>()
+                    .ToArray();
+
+                ARPG_Room[] arpgRooms;
+                if (designOptions.Any())
+                {
+                    AR_PyatnGraph_SelectDO selDO = new AR_PyatnGraph_SelectDO(designOptions);
+                    if ((bool)selDO.ShowDialog())
+                        arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, selDO.SelARPGDesignOpt);
+                    else
+                        return;
+                }
+                else
+                    arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, new ARPG_DesOptEntity() { ARPG_DesignOptionId = -1 });
+
                 if (ARPG_Room.ErrorDict_Room.Keys.Count != 0)
                 {
                     HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, ARPG_Room.ErrorDict_Room);
@@ -236,9 +253,9 @@ namespace KPLN_Tools.Forms.Models
                     return;
                 }
 
-                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(arpgRooms);
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, arpgRooms, aRPGFlats, _collection.ToArray()));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
             }
             catch (Exception ex)
             {
