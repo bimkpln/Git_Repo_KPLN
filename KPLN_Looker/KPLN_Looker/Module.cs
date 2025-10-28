@@ -1023,12 +1023,16 @@ namespace KPLN_Looker
                 bool isMTRS = doc.PathName.Contains("МТРС_");
                 if (isMTRS)
                 {
-                    if (doc.PathName.Contains("_КР_") && doc.PathName.Contains("МТРС_С2."))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ_ТМ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ_АТМ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(GetFileFullName(doc));
+                    if (mPath.ServerPath)
+                    {
+                        if (doc.PathName.Contains("_КР_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_ТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_АТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    }
                 }
 
                 // Проект Матросская тишина
