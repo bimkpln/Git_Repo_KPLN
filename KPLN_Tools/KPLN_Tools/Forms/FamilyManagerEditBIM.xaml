@@ -125,7 +125,7 @@
             <ToggleButton x:Name="FavoriteToggle" Grid.ColumnSpan="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-18,-5,0"    
                 Style="{StaticResource StarToggleStyle}" Click="FavoriteToggle_Click"/>
 
-                <StackPanel Grid.Column="0">
+            <StackPanel Grid.Column="0">
                 <Border BorderBrush="#DDD" BorderThickness="1" Padding="8" HorizontalAlignment="Left">
                     <Grid Width="200" Height="200">
                         <Image x:Name="PreviewImage" Stretch="Uniform"/>
@@ -136,14 +136,24 @@
                     <Button Content="Загрузить из RFA" Margin="0,4,0,0" Width="102" Height="22" HorizontalAlignment="Left" FontSize="11" Click="ButtonRFAPic_Click"/>
                 </StackPanel>
             </StackPanel>
-            
+
             <StackPanel Grid.Column="1" Margin="16,0,0,20" VerticalAlignment="Top">
 
                 <TextBlock x:Name="FamilyName" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" Margin="0,22,0,4" MaxWidth="800" FontSize="15" FontWeight="Bold"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                    <Button Content="📂" Width="24" Height="22" Margin="0,0,6,0" Padding="0.3,0,0,0.8" ToolTip="Открыть папку" Click="BtnOpenFolder_Click" Background="#FFFFC72C"/>
-                    <TextBlock Text="{Binding FULLPATH}" ToolTip="{Binding FULLPATH}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" MaxWidth="770" VerticalAlignment="Center"/>
-                </StackPanel>
+
+
+                <Grid Margin="0,0,0,3" Cursor="">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Content="📂" Width="24" Height="22" Margin="0" Padding="0.3,0,0,0.8" ToolTip="Открыть папку" VerticalAlignment="Top" Click="BtnOpenFolder_Click" Background="#FFFFC72C"/>
+                    <TextBlock Grid.Column="2" Text="{Binding FULLPATH}" ToolTip="{Binding FULLPATH}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top"/>
+                </Grid>
+
+
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,6">
                     <TextBlock Text="Статус:" FontWeight="Bold" Width="90"/>

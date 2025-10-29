@@ -3514,6 +3514,35 @@ namespace KPLN_Tools.Forms
             };
             textStack.Children.Add(title);
 
+
+
+            
+            var pathBlock = new TextBlock
+            {
+                Text = rec.FullPath ?? "—",
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"), // моноширинный — пути читаемее
+                FontSize = 12,
+                Opacity = 0.8,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 0, 0, 8),
+                ToolTip = rec.FullPath // наводишь — видно полный путь целиком
+            };
+            // Контекстное меню: копировать путь
+            var cm = new ContextMenu();
+            var miCopy = new MenuItem { Header = "Копировать путь" };
+            miCopy.Click += (s, e2) =>
+            {
+                try { Clipboard.SetText(rec.FullPath ?? ""); } catch { }
+            };
+            cm.Items.Add(miCopy);
+            pathBlock.ContextMenu = cm;
+
+            textStack.Children.Add(pathBlock);
+
+
+
+
             void AddRow(string label, string value)
             {
                 var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
