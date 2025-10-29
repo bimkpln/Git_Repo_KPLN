@@ -512,6 +512,67 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+        private void OnButtonImportStatus(object sender, RoutedEventArgs args)
+        {
+            if (DBMainService.CurrentUserDBSubDepartment.Id != 8) return;
+
+            if (sender is System.Windows.Controls.Button btn && btn.DataContext is ReportGroup sourceGroup)
+            {
+                // Подтягиваем группы из БД
+                var allGroups = _sqliteService_MainDB
+                    .GetReportGroups_ByDBProject(_project)
+                    .OrderBy(gr => gr.Status != KPItemStatus.Closed)
+                    .ThenBy(gr => gr.Id)
+                    .ToList();
+
+                // Открываем пикер
+                var picker = new ReportGroupPickerForm(allGroups, sourceGroup.Id);
+                var result = picker.ShowDialog();
+
+                if (result == true && picker.SelectedGroup != null)
+                {
+                    ReportGroup targetGroup = picker.SelectedGroup;
+
+                    KPTaskDialog info = new KPTaskDialog(
+                        this,
+                        "Перенос статусов",
+                        "Группа выбрана",
+                        $"Источник: {sourceGroup.Name}\nЦель: {targetGroup.Name}",
+                        KPTaskDialogIcon.Ooo,
+                        false);
+                    info.ShowDialog();
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
             if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
