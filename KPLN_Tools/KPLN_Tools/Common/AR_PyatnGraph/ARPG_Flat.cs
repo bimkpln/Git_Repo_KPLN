@@ -104,20 +104,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
 #else
                 double flatSumArea_SqM = UnitUtils.ConvertFromInternalUnits(flatSumArea, UnitTypeId.SquareMeters);
 #endif
-                //// Получаю квартиру по условиям ТЗ по площади
-                //ARPG_TZ_FlatData arpgTZFlatDataByTZ = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZAreaMin_Double <= flatSumArea_SqM && tz.TZAreaMax_Double >= flatSumArea_SqM);
-                //if (arpgTZFlatDataByTZ == null)
-                //{
-                //    foreach (ARPG_Room arpgRoom in arpgRooms)
-                //    {
-                //        HtmlOutput.SetMsgDict_ByMsg(
-                //            $"Помещения из квартиры {arpgFlat.FlatNumbData_Flat} " +
-                //                $"на этаже {arpgFlat.FlatLvlNumbData_Flat} по захватке {arpgFlat.GripData1_Flat} " +
-                //                $"ВНЕ диапазонов из ТЗ. Сейчас суммарная площадь: {Math.Round(flatSumArea_SqM, 3)} м2",
-                //            arpgRoom.Elem_Room.Id, ErrorDict_Flat);
-                //    }
-                //}
-
                 // Проверяю и получаю квартиру по условиям ТЗ по коду (если нужно)
                 ARPG_TZ_FlatData arpgTZFlatDataByTZ = null;
                 if (arpgTZMainData.HeatingRoomsInPrj)
@@ -208,6 +194,58 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                     // Площади
                     arpgRoom.AreaCoeffParam_Room.Set(arpgRoom.AreaCoeffData_Room);
                     arpgRoom.SumAreaCoeffParam_Room.Set(flatSumArea);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Задать код квартиры из ТЗ
+        /// </summary>
+        internal static void SetFlatCodeData(ARPG_TZ_MainData arpgTZMainData, ARPG_Flat[] arpgFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
+        {
+            ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
+
+            foreach (ARPG_Flat arpgFlat in arpgFlats)
+            {
+                ARPG_Room[] arpgRooms = arpgFlat.ARPG_Rooms_Flat;
+
+                // Рассчёт площади с коэф
+                double flatSumArea = arpgRooms.Sum(x => x.AreaCoeffData_Room);
+#if Debug2020 || Revit2020
+                double flatSumArea_SqM = UnitUtils.ConvertFromInternalUnits(flatSumArea, DisplayUnitType.DUT_SQUARE_METERS);
+#else
+                double flatSumArea_SqM = UnitUtils.ConvertFromInternalUnits(flatSumArea, UnitTypeId.SquareMeters);
+#endif
+                // Получаю квартиру по условиям ТЗ по площади
+                ARPG_TZ_FlatData arpgTZFlatDataBySumArea = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZAreaMin_Double <= flatSumArea_SqM && tz.TZAreaMax_Double >= flatSumArea_SqM);
+                if (arpgTZFlatDataBySumArea == null)
+                {
+                    foreach (ARPG_Room arpgRoom in arpgRooms)
+                    {
+                        HtmlOutput.SetMsgDict_ByMsg(
+                            $"Помещения из квартиры {arpgFlat.FlatNumbData_Flat} " +
+                                $"на этаже {arpgFlat.FlatLvlNumbData_Flat} по захватке {arpgFlat.GripData1_Flat} " +
+                                $"ВНЕ диапазонов из ТЗ. Сейчас суммарная площадь: {Math.Round(flatSumArea_SqM, 3)} м2",
+                            arpgRoom.Elem_Room.Id, ErrorDict_Flat);
+                    }
+                }
+                // Если есть в списке замечаний - пропускаем
+                if (ErrorDict_Flat.Values.SelectMany(v => v).Intersect(arpgRooms.Select(ar => ar.Elem_Room.Id)).Any())
+                    continue;
+
+
+                // Заполняю значения
+                foreach (ARPG_Room arpgRoom in arpgRooms)
+                {
+                    // Данные из ТЗ 
+                    arpgRoom.TZCodeParam_Room.Set(arpgTZFlatDataBySumArea.TZCode);
+                    arpgRoom.TZRangeNameParam_Room.Set(arpgTZFlatDataBySumArea.TZRangeName);
+
+
+                    if (double.TryParse(arpgTZFlatDataBySumArea.TZPercent, out double tzPercent))
+                        arpgRoom.TZPercentParam_Room.Set(tzPercent);
+                    else
+                        throw new Exception($"Отправь разработчику - в анализ попали данные, которые нельзя преобразовать в double: {arpgTZFlatDataBySumArea.TZPercent}");
                 }
             }
         }

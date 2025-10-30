@@ -59,6 +59,7 @@ namespace KPLN_Tools.Forms.Models
             ARPG_TZ_FlatDataColl = CollectionViewSource.GetDefaultView(_collection);
             #endregion
 
+            PresetFlatCodeCommand = new RelayCommand<object>(_ => PresetFlatCode());
             SaveConfigCommand = new RelayCommand<object>(_ => SaveConfig());
             RunCommand = new RelayCommand<object>(_ => Run());
             AddNewFlatDataCommand = new RelayCommand<object>(_ => AddNewFlatData());
@@ -166,6 +167,11 @@ namespace KPLN_Tools.Forms.Models
         public ICommand SortByFlatCodeCommand { get; }
 
         /// <summary>
+        /// Комманда: Предварительное назначение кода квартиры
+        /// </summary>
+        public ICommand PresetFlatCodeCommand { get; }
+
+        /// <summary>
         /// Комманда: Добавить новый тип квартир
         /// </summary>
         public ICommand AddNewFlatDataCommand { get; }
@@ -187,6 +193,25 @@ namespace KPLN_Tools.Forms.Models
         #endregion
 
         #region Реализация команд
+        /// <summary>
+        /// Реализация: Предварительное назначение кода квартиры
+        /// </summary>
+        private void PresetFlatCode()
+        {
+            try
+            {
+                ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(true);
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms);
+                
+                if(arpgRooms != null && aRPGFlats != null)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
+            }
+            catch (Exception ex)
+            {
+                HtmlOutput.PrintError(ex);
+            }
+        }
+
         /// <summary>
         /// Реализация: Сохранить конфиг
         /// </summary>
@@ -214,7 +239,6 @@ namespace KPLN_Tools.Forms.Models
             }
         }
 
-
         /// <summary>
         /// Реализация: Запуск рассчёта
         /// </summary>
@@ -222,40 +246,11 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
-                FilteredElementCollector collector = new FilteredElementCollector(_doc);
-                DesignOption[] designOptions = collector
-                    .OfClass(typeof(DesignOption))
-                    .Cast<DesignOption>()
-                    .ToArray();
-
-                ARPG_Room[] arpgRooms;
-                if (designOptions.Any())
-                {
-                    AR_PyatnGraph_SelectDO selDO = new AR_PyatnGraph_SelectDO(designOptions);
-                    if ((bool)selDO.ShowDialog())
-                        arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, selDO.SelARPGDesignOpt);
-                    else
-                        return;
-                }
-                else
-                    arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, new ARPG_DesOptEntity() { ARPG_DesignOptionId = -1 });
-
-                if (ARPG_Room.ErrorDict_Room.Keys.Count != 0)
-                {
-                    HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, ARPG_Room.ErrorDict_Room);
-
-                    MessageBox.Show(
-                        $"Запуск невозможен. Список критических ошибок - выведен отдельным окном",
-                        "Ошибка",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    return;
-                }
-
+                ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(false);
                 ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
+                if (arpgRooms != null && aRPGFlats != null)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
             }
             catch (Exception ex)
             {
@@ -291,6 +286,46 @@ namespace KPLN_Tools.Forms.Models
                 _collection.Remove(item);
         }
         #endregion
+
+        /// <summary>
+        /// Получить коллекцию ARPG_Room для проекта
+        /// </summary>
+        /// <returns></returns>
+        private ARPG_Room[] ARPG_RoomsFromDoc(bool presetFlatCode)
+        {
+            FilteredElementCollector collector = new FilteredElementCollector(_doc);
+            DesignOption[] designOptions = collector
+                .OfClass(typeof(DesignOption))
+                .Cast<DesignOption>()
+                .ToArray();
+
+            ARPG_Room[] arpgRooms;
+            if (designOptions.Any())
+            {
+                AR_PyatnGraph_SelectDO selDO = new AR_PyatnGraph_SelectDO(designOptions);
+                if ((bool)selDO.ShowDialog())
+                    arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, selDO.SelARPGDesignOpt, presetFlatCode);
+                else
+                    return null;
+            }
+            else
+                arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, new ARPG_DesOptEntity() { ARPG_DesignOptionId = -1 }, presetFlatCode);
+
+            if (ARPG_Room.ErrorDict_Room.Keys.Count != 0)
+            {
+                HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, ARPG_Room.ErrorDict_Room);
+
+                MessageBox.Show(
+                    $"Запуск невозможен. Список критических ошибок - выведен отдельным окном",
+                    "Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                return null;
+            }
+
+            return arpgRooms;
+        }
 
         private void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {

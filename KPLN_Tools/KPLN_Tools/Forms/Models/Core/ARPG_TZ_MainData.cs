@@ -11,11 +11,13 @@ namespace KPLN_Tools.Forms.Models.Core
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _flatAreaCoeff = "0,95";
+        private bool _flatsFilter = false;
         private bool _heatingRoomsInPrj = true;
         private string _logAreaCoeff = "0,5";
         private string _balkAreaCoeff = "0,3";
         private string _terraceAreaCoeff = "0,3";
         private string _flatNameParamName = "Имя";
+        private string _balkTerLogNameParamName = "Имя";
         private string _flatNumbParamName = "ПОМ_Номер квартиры";
         private string _flatLvlNumbParamName = "ПОМ_Номер этажа";
         private string _gripParamName1 = "ПОМ_Корпус";
@@ -40,6 +42,23 @@ namespace KPLN_Tools.Forms.Models.Core
                 if (_flatAreaCoeff != value)
                 {
                     _flatAreaCoeff = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Применить дополнительную фильтрацию помещений квартир? 
+        /// (влияет на список анализируемых элементов)
+        /// </summary>
+        public bool FlatsFilter
+        {
+            get => _flatsFilter;
+            set
+            {
+                if (_flatsFilter != value)
+                {
+                    _flatsFilter = value;
                     NotifyPropertyChanged();
                 }
             }
@@ -121,6 +140,22 @@ namespace KPLN_Tools.Forms.Models.Core
                 if (_flatNameParamName != value)
                 {
                     _flatNameParamName = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Имя параметра для Имя балкона\лоджии\террасы
+        /// </summary>
+        public string BalkTerLogNameParamName
+        {
+            get => _balkTerLogNameParamName;
+            set
+            {
+                if (_balkTerLogNameParamName != value)
+                {
+                    _balkTerLogNameParamName = value;
                     NotifyPropertyChanged();
                 }
             }
@@ -219,7 +254,7 @@ namespace KPLN_Tools.Forms.Models.Core
         /// <summary>
         /// Имя параметра для кода квартиры по ТЗ
         /// </summary>
-        public string TZCodeParamName { get; } = "КВ_Диапазон_Тип квартиры";
+        public string TZCodeParamName { get; } = "КВ_Код";
 
         /// <summary>
         /// Имя параметра для имя диапазона по ТЗ

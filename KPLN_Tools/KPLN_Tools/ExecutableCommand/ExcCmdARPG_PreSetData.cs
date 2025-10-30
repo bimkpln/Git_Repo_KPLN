@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace KPLN_Tools.ExecutableCommand
 {
-    internal class ExcCmdARPG_SetData : IExecutableCommand
+    internal class ExcCmdARPG_PreSetData : IExecutableCommand
     {
         private readonly Document _doc;
         private readonly ARPG_TZ_MainData _aRPGTZMainData;
@@ -16,7 +16,7 @@ namespace KPLN_Tools.ExecutableCommand
         private readonly ARPG_Flat[] _aRPGFlats;
         private readonly ARPG_TZ_FlatData[] _arpgTZFlatDatas;
 
-        public ExcCmdARPG_SetData(Document doc, ARPG_TZ_MainData tzData, ARPG_Room[] aRPGRooms, ARPG_Flat[] aRPGFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
+        public ExcCmdARPG_PreSetData(Document doc, ARPG_TZ_MainData tzData, ARPG_Room[] aRPGRooms, ARPG_Flat[] aRPGFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
         {
             _doc = doc;
             _aRPGTZMainData = tzData;
@@ -27,11 +27,11 @@ namespace KPLN_Tools.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            using (Transaction trans = new Transaction(_doc, "KPLN: Пятнография_Рассчёт"))
+            using (Transaction trans = new Transaction(_doc, "KPLN: Пятнография_Предустановка"))
             {
                 trans.Start();
 
-                ARPG_Flat.SetMainFlatData(_aRPGTZMainData, _aRPGFlats, _arpgTZFlatDatas);
+                ARPG_Flat.SetFlatCodeData(_aRPGTZMainData, _aRPGFlats, _arpgTZFlatDatas);
                 if (ARPG_Flat.ErrorDict_Flat.Keys.Count != 0)
                 {
                     HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, ARPG_Flat.ErrorDict_Flat);
@@ -47,12 +47,8 @@ namespace KPLN_Tools.ExecutableCommand
                     return Result.Cancelled;
                 }
 
-                _doc.Regenerate();
-
-                ARPG_Room.SetCountedRoomData(_aRPGRooms);
-
                 MessageBox.Show(
-                        $"Плагин успешно завершил рассчёт",
+                        $"Плагин успешно завершил предустановку кодов квартир",
                         "Результат",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);

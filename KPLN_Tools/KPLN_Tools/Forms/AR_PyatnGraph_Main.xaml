@@ -285,6 +285,7 @@
                         <RowDefinition MinHeight="30"/>
                         <RowDefinition MinHeight="30"/>
                         <RowDefinition MinHeight="30"/>
+                        <RowDefinition MinHeight="30"/>
                     </Grid.RowDefinitions>
                     
                     <!--<TextBlock 
@@ -344,10 +345,31 @@
                         Grid.Row="2"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
+                        Text="Применить фильтрацию квартир?">
+                        <TextBlock.ToolTip>
+                            <StackPanel MaxWidth="400">
+                                <TextBlock>Дополнительная фильтрация помещений квартир</TextBlock>
+                                <TextBlock><Bold>ВАЖНО1: </Bold>В параметр "Имя" укажи "Квартира"</TextBlock>
+                                <TextBlock><Bold>ВАЖНО2: </Bold>Балконы, лоджии, террасы - тоже попадут</TextBlock>
+                            </StackPanel>
+                        </TextBlock.ToolTip>
+                    </TextBlock>
+                    <CheckBox 
+                        Grid.Row="2"
+                        Grid.Column="1" 
+                        Style="{StaticResource ChB}" 
+                        IsChecked="{Binding ARPG_TZ_MainData.FlatsFilter, 
+                            UpdateSourceTrigger=PropertyChanged}"/>
+                    
+                    
+                    <TextBlock 
+                        Grid.Row="3"
+                        Style="{StaticResource TBL_Title}" 
+                        HorizontalAlignment="Left"
                         Text="В проекте есть балконы/лоджии/террасы?"
                         ToolTip="Если галка стоит, то обязательно нужно заполнить параметры для определения уникальности квартир"/>
                     <CheckBox 
-                        Grid.Row="2"
+                        Grid.Row="3"
                         Grid.Column="1" 
                         Style="{StaticResource ChB}" 
                         IsChecked="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
@@ -355,13 +377,13 @@
 
                     
                     <TextBlock 
-                        Grid.Row="3"
+                        Grid.Row="4"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Коэф. уменьшения балконов"
                         ToolTip="В параметр имени - укажи 'Балкон'"/>
                     <TextBox 
-                        Grid.Row="3"
+                        Grid.Row="4"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
                         Width="125"
@@ -374,13 +396,13 @@
 
                     
                     <TextBlock 
-                        Grid.Row="4"
+                        Grid.Row="5"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Коэф. уменьшения террас"
                         ToolTip="В параметр имени - укажи 'Терраса'"/>
                     <TextBox 
-                        Grid.Row="4"
+                        Grid.Row="5"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
                         Width="125"
@@ -393,13 +415,13 @@
                     
                     
                     <TextBlock 
-                        Grid.Row="5"
+                        Grid.Row="6"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Коэф. уменьшения лоджий"
                         ToolTip="В параметр имени - укажи 'Лоджия'"/>
                     <TextBox 
-                        Grid.Row="5"
+                        Grid.Row="6"
                         Grid.Column="1" 
                         Style="{StaticResource TXTBX}" 
                         Width="125"
@@ -412,12 +434,12 @@
 
                     
                     <TextBlock 
-                        Grid.Row="6"
+                        Grid.Row="7"
                         Style="{StaticResource TBL_Title}" 
                         HorizontalAlignment="Left"
                         Text="Параметры для определения уникальности квартиры"/>
                     <Grid
-                        Grid.Row="6"
+                        Grid.Row="7"
                         Grid.Column="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="125"/>
@@ -429,31 +451,55 @@
                             <RowDefinition MinHeight="30"/>
                             <RowDefinition MinHeight="30"/>
                             <RowDefinition MinHeight="30"/>
+                            <RowDefinition MinHeight="30"/>
                         </Grid.RowDefinitions>
-                        
+
                         <TextBlock 
+                            Style="{StaticResource TBL_Title}" 
+                            HorizontalAlignment="Left"
+                            Text="Квартира:">
+                            <TextBlock.ToolTip>
+                                <StackPanel MaxWidth="400">
+                                    <TextBlock>Параметр, для нахождения квартир среди остальных элементов</TextBlock>
+                                    <TextBlock><Bold>ВАЖНО: </Bold>оставь пустым, если все помещения - это квартиры</TextBlock>
+                                </StackPanel>
+                            </TextBlock.ToolTip>
+                        </TextBlock>
+                        <TextBox 
+                            Grid.Column="1" 
+                            Style="{StaticResource TXTBX}" 
+                            HorizontalAlignment="Stretch"
+                            IsEnabled="{Binding ARPG_TZ_MainData.FlatsFilter, 
+                                UpdateSourceTrigger=PropertyChanged}"
+                            Text="{Binding ARPG_TZ_MainData.FlatNameParamName, 
+                                UpdateSourceTrigger=PropertyChanged}"/>
+
+
+                        <TextBlock 
+                            Grid.Row="1"
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
                             Text="Балкон/лоджия/терраса:"
                             ToolTip="Параметр, для нахождения балконов,террас или лоджий среди остальных элементов"/>
                         <TextBox 
+                            Grid.Row="1"
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
                             IsEnabled="{Binding ARPG_TZ_MainData.HeatingRoomsInPrj, 
                                 UpdateSourceTrigger=PropertyChanged}"
-                            Text="{Binding ARPG_TZ_MainData.FlatNameParamName, 
+                            Text="{Binding ARPG_TZ_MainData.BalkTerLogNameParamName, 
                                 UpdateSourceTrigger=PropertyChanged, 
                                 ValidatesOnDataErrors=True, 
                                 NotifyOnValidationError=True}"/>
                         
                         <TextBlock 
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
                             Text="Номер кв.:"/>
                         <TextBox 
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
@@ -465,12 +511,12 @@
                                 NotifyOnValidationError=True}"/>
                         
                         <TextBlock 
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
                             Text="Номер эт:"/>
                         <TextBox 
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
@@ -483,12 +529,12 @@
 
 
                         <TextBlock 
-                            Grid.Row="3"
+                            Grid.Row="4"
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
                             Text="Захватка 1:"/>
                         <TextBox 
-                            Grid.Row="3"
+                            Grid.Row="4"
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
@@ -500,12 +546,12 @@
                                 NotifyOnValidationError=True}"/>
                         
                         <TextBlock 
-                            Grid.Row="4"
+                            Grid.Row="5"
                             Style="{StaticResource TBL_Title}" 
                             HorizontalAlignment="Left"
                             Text="Захватка 2:"/>
                         <TextBox 
-                            Grid.Row="4"
+                            Grid.Row="5"
                             Grid.Column="1" 
                             Style="{StaticResource TXTBX}" 
                             HorizontalAlignment="Stretch"
@@ -653,6 +699,28 @@
                 <ColumnDefinition/>
                 <ColumnDefinition Width="40"/>
             </Grid.ColumnDefinitions>
+
+            
+            <DockPanel 
+                Grid.Row="3" 
+                Margin="5" 
+                HorizontalAlignment="Left">
+                <Button 
+                    Style="{StaticResource BTN_Main}" 
+                    HorizontalAlignment="Left"
+                    Content="🏠"
+                    Background ="MediumPurple"
+                    Command="{Binding PresetFlatCodeCommand}">
+                    <Button.ToolTip>
+                        <StackPanel MaxWidth="400">
+                            <TextBlock>Назначить код квартиры и имя диапазона автоматически</TextBlock>
+                            <TextBlock ><Bold>ВАЖНО: </Bold>обязательно проверь результат, особенно для ТЗ, в которых диапазоны квартир пересекаются</TextBlock>
+                        </StackPanel>
+                    </Button.ToolTip>
+                </Button>
+            </DockPanel>
+            
+            
 
             <TextBlock
                 Grid.Column="2"
