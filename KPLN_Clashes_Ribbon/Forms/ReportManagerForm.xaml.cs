@@ -524,39 +524,130 @@ namespace KPLN_Clashes_Ribbon.Forms
 
 
 
+
+
+
         private void OnButtonImportStatus(object sender, RoutedEventArgs args)
         {
             if (DBMainService.CurrentUserDBSubDepartment.Id != 8) return;
 
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is ReportGroup sourceGroup)
+            var btn = sender as System.Windows.Controls.Button;
+            var sourceGroup = btn != null ? btn.DataContext as ReportGroup : null;
+            if (sourceGroup == null) return;
+
+            List<ReportGroup> allGroups = _sqliteService_MainDB
+                .GetReportGroups_ByDBProject(_project)
+                .OrderBy(gr => gr.Status != KPItemStatus.Closed)
+                .ThenBy(gr => gr.Id)
+                .ToList();
+
+            var picker = new ReportGroupPickerForm(allGroups, sourceGroup.Id);
+            var result = picker.ShowDialog();
+
+            if (result == true && picker.SelectedGroup != null)
             {
-                // Подтягиваем группы из БД
-                var allGroups = _sqliteService_MainDB
-                    .GetReportGroups_ByDBProject(_project)
-                    .OrderBy(gr => gr.Status != KPItemStatus.Closed)
-                    .ThenBy(gr => gr.Id)
-                    .ToList();
+                var targetGroup = picker.SelectedGroup;
+                int userNumber = picker.SelectedNumber;
 
-                // Открываем пикер
-                var picker = new ReportGroupPickerForm(allGroups, sourceGroup.Id);
-                var result = picker.ShowDialog();
+                var srcReports = _sqliteService_MainDB.GetReports_ByReportGroupId(sourceGroup.Id)
+                                 ?? new System.Collections.ObjectModel.ObservableCollection<Report>();
+                var dstReports = _sqliteService_MainDB.GetReports_ByReportGroupId(targetGroup.Id)
+                                 ?? new System.Collections.ObjectModel.ObservableCollection<Report>();
 
-                if (result == true && picker.SelectedGroup != null)
+                var srcByName = BuildReportNameDict(srcReports);
+                var dstByName = BuildReportNameDict(dstReports);
+
+                var commonKeys = srcByName.Keys.Intersect(dstByName.Keys).ToList();
+                commonKeys.Sort(StringComparer.Ordinal);
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("Источник: " + (sourceGroup.Name ?? ("ID " + sourceGroup.Id)));
+                sb.AppendLine("Цель: " + (targetGroup.Name ?? ("ID " + targetGroup.Id)));
+                sb.AppendLine("Значение (0–300): " + userNumber);
+                sb.AppendLine();
+
+                if (commonKeys.Count == 0)
                 {
-                    ReportGroup targetGroup = picker.SelectedGroup;
-
-                    KPTaskDialog info = new KPTaskDialog(
-                        this,
-                        "Перенос статусов",
-                        "Группа выбрана",
-                        $"Источник: {sourceGroup.Name}\nЦель: {targetGroup.Name}",
-                        KPTaskDialogIcon.Ooo,
-                        false);
-                    info.ShowDialog();
+                    sb.AppendLine("Совпадающих имён отчётов не найдено.");
                 }
+                else
+                {
+                    sb.AppendLine("Совпадения (" + commonKeys.Count + "):");
+                    int shown = 0, limit = 200; 
+                    foreach (var key in commonKeys)
+                    {
+                        string display = PickDisplayName(srcByName[key], dstByName[key]);
+                        int srcCount = srcByName[key].Count;
+                        int dstCount = dstByName[key].Count;
+
+                        sb.AppendLine(" • " + display + "  [источник: " + srcCount + ", цель: " + dstCount + "]");
+                        shown++;
+                        if (shown >= limit)
+                        {
+                            sb.AppendLine(" ... и ещё " + (commonKeys.Count - shown));
+                            break;
+                        }
+                    }
+                }
+
+                KPTaskDialog info = new KPTaskDialog(this, "Перенос статусов", "Совпадающие имена отчётов", sb.ToString(), Core.ClashesMainCollection.KPTaskDialogIcon.Happy, false);
+                info.ShowDialog();
             }
         }
 
+        private static Dictionary<string, List<Report>> BuildReportNameDict(System.Collections.Generic.IEnumerable<Report> reports)
+        {
+            var dict = new Dictionary<string, List<Report>>();
+            if (reports == null) return dict;
+
+            foreach (var r in reports)
+            {
+                if (r == null || string.IsNullOrEmpty(r.Name)) continue;
+                string key = NormalizeReportName(r.Name);
+                if (string.IsNullOrEmpty(key)) continue;
+
+                List<Report> list;
+                if (!dict.TryGetValue(key, out list))
+                {
+                    list = new List<Report>();
+                    dict[key] = list;
+                }
+                list.Add(r);
+            }
+            return dict;
+        }
+
+        private static string PickDisplayName(List<Report> srcList, List<Report> dstList)
+        {
+            if (srcList != null && srcList.Count > 0 && !string.IsNullOrEmpty(srcList[0].Name))
+                return srcList[0].Name;
+            if (dstList != null && dstList.Count > 0 && !string.IsNullOrEmpty(dstList[0].Name))
+                return dstList[0].Name;
+            return "(без имени)";
+        }
+
+        private static string NormalizeReportName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            string s = name.Trim().ToLowerInvariant();
+
+            var sb = new System.Text.StringBuilder(s.Length);
+            bool prevSpace = false;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (char.IsWhiteSpace(c))
+                {
+                    if (!prevSpace) { sb.Append(' '); prevSpace = true; }
+                }
+                else
+                {
+                    sb.Append(c);
+                    prevSpace = false;
+                }
+            }
+            return sb.ToString();
+        }
 
 
 
