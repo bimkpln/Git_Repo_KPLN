@@ -165,7 +165,31 @@ namespace KPLN_Tools.Forms
             _originalStatus = record.STATUS?.Trim();
             SetupStatusCombo(_originalStatus); // Статусы
 
-            ProjectCombo.ItemsSource = _projects;
+
+
+
+            var first = _projects.FirstOrDefault();
+            if (first != null)
+            {
+                var sorted = new List<ProjectItem> { first };
+
+                sorted.AddRange(
+                    _projects
+                        .Skip(1) 
+                        .OrderBy(p => p.NAME, StringComparer.OrdinalIgnoreCase) 
+                );
+
+                ProjectCombo.ItemsSource = sorted;
+            }
+            else
+            {
+                ProjectCombo.ItemsSource = _projects; 
+            }
+
+
+
+
+
             ProjectCombo.DisplayMemberPath = "NAME";
             ProjectCombo.SelectedValuePath = "ID";
             ProjectCombo.SelectedValue = record.PROJECT;
