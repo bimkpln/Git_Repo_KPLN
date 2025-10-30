@@ -201,7 +201,11 @@ namespace KPLN_Tools.Forms.Models
             try
             {
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(true);
-                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms);
+                if (arpgRooms == null)
+                    return;
+                
+                bool hasHeatingRooms = arpgRooms.Any(arr => arr.ARPG_RoomType != RoomType.Flat);
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
                 
                 if(arpgRooms != null && aRPGFlats != null)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
@@ -247,7 +251,11 @@ namespace KPLN_Tools.Forms.Models
             try
             {
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(false);
-                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms);
+                if (arpgRooms == null)
+                    return;
+
+                bool hasHeatingRooms = arpgRooms.Any(arr => arr.ARPG_RoomType != RoomType.Flat);
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
 
                 if (arpgRooms != null && aRPGFlats != null)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));

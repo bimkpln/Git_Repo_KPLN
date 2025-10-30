@@ -45,38 +45,107 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         public string GripData2_Flat { get; private set; }
 
         /// <summary>
+        /// Метка того, что в квартире есть неотапливаемые помещения
+        /// </summary>
+        public bool HasNoHeatingRooms { get; set; } = false;
+
+        /// <summary>
         /// Получить коллекцию квартир
         /// </summary>
-        internal static ARPG_Flat[] Get_ARPG_Flats(ARPG_TZ_MainData tzData, ARPG_Room[] arpgRooms)
+        internal static ARPG_Flat[] Get_ARPG_Flats(ARPG_TZ_MainData tzMainData, ARPG_Room[] arpgRooms, bool hasHeatingRooms)
         {
             if (arpgRooms == null || arpgRooms.Length == 0)
                 return new ARPG_Flat[0];
 
-            if (tzData.HeatingRoomsInPrj)
+            if (hasHeatingRooms)
             {
-                var flats = arpgRooms
-                    .OrderBy(r => r.GripData1_Room)
-                    .ThenBy(r => r.GripData2_Room)
-                    .ThenBy(r => r.FlatLvlNumbData_Room)
+                if (tzMainData.IsGripCorpParam && tzMainData.IsGripSectParam)
+                {
+                    return arpgRooms
+                        .OrderBy(r => r.GripCorpData_Room)
+                        .ThenBy(r => r.GripSectData_Room)
+                        .ThenBy(r => r.FlatLvlNumbData_Room)
+                        .ThenBy(r => r.FlatNumbData_Room)
+                        .GroupBy(r => new
+                        {
+                            r.GripCorpData_Room,
+                            r.GripSectData_Room,
+                            r.FlatLvlNumbData_Room,
+                            r.FlatNumbData_Room
+                        })
+                        .Select(g => new ARPG_Flat
+                        {
+                            GripData1_Flat = g.Key.GripCorpData_Room,
+                            GripData2_Flat = g.Key.GripSectData_Room,
+                            FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
+                            FlatNumbData_Flat = g.Key.FlatNumbData_Room,
+                            ARPG_Rooms_Flat = g.ToArray(),
+                            HasNoHeatingRooms = true,
+                        })
+                        .ToArray();
+                }
+                else if (tzMainData.IsGripCorpParam)
+                {
+                    return arpgRooms
+                        .OrderBy(r => r.GripCorpData_Room)
+                        .ThenBy(r => r.FlatLvlNumbData_Room)
+                        .ThenBy(r => r.FlatNumbData_Room)
+                        .GroupBy(r => new
+                        {
+                            r.GripCorpData_Room,
+                            r.FlatLvlNumbData_Room,
+                            r.FlatNumbData_Room
+                        })
+                        .Select(g => new ARPG_Flat
+                        {
+                            GripData1_Flat = g.Key.GripCorpData_Room,
+                            FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
+                            FlatNumbData_Flat = g.Key.FlatNumbData_Room,
+                            ARPG_Rooms_Flat = g.ToArray(),
+                            HasNoHeatingRooms = true,
+                        })
+                        .ToArray();
+                }
+                else if (tzMainData.IsGripSectParam)
+                {
+                    return arpgRooms
+                        .OrderBy(r => r.GripSectData_Room)
+                        .ThenBy(r => r.FlatLvlNumbData_Room)
+                        .ThenBy(r => r.FlatNumbData_Room)
+                        .GroupBy(r => new
+                        {
+                            r.GripSectData_Room,
+                            r.FlatLvlNumbData_Room,
+                            r.FlatNumbData_Room
+                        })
+                        .Select(g => new ARPG_Flat
+                        {
+                            GripData2_Flat = g.Key.GripSectData_Room,
+                            FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
+                            FlatNumbData_Flat = g.Key.FlatNumbData_Room,
+                            ARPG_Rooms_Flat = g.ToArray(),
+                            HasNoHeatingRooms = true,
+                        })
+                        .ToArray();
+                }
+
+                return arpgRooms
+                    .OrderBy(r => r.FlatLvlNumbData_Room)
                     .ThenBy(r => r.FlatNumbData_Room)
                     .GroupBy(r => new
                     {
-                        r.GripData1_Room,
-                        r.GripData2_Room,
                         r.FlatLvlNumbData_Room,
                         r.FlatNumbData_Room
                     })
                     .Select(g => new ARPG_Flat
                     {
-                        GripData1_Flat = g.Key.GripData1_Room,
-                        GripData2_Flat = g.Key.GripData2_Room,
                         FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
                         FlatNumbData_Flat = g.Key.FlatNumbData_Room,
-                        ARPG_Rooms_Flat = g.ToArray()
+                        ARPG_Rooms_Flat = g.ToArray(),
+                        HasNoHeatingRooms = true,
                     })
                     .ToArray();
 
-                return flats;
             }
             else
             {
@@ -106,7 +175,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
 #endif
                 // Проверяю и получаю квартиру по условиям ТЗ по коду (если нужно)
                 ARPG_TZ_FlatData arpgTZFlatDataByTZ = null;
-                if (arpgTZMainData.HeatingRoomsInPrj)
+                if (arpgFlat.HasNoHeatingRooms)
                 {
                     HashSet<string> arpgRoomTZCodeDataColl = arpgRooms.Select(ar => ar.TZCodeParam_Room.AsString()).ToHashSet();
                     if (arpgRoomTZCodeDataColl.Count != 1)

@@ -17,6 +17,12 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         Terrace
     }
 
+    public struct LittleRoomData
+    {
+        public Element LRDElement { get; set; }
+        public RoomType LRDRoomType { get; set; }
+    }
+
     /// <summary>
     /// Контейнер данных из модели по ОТДЕЛЬНЫМ помещениям
     /// </summary>
@@ -26,6 +32,14 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         private static readonly string _balkName = "Балкон";
         private static readonly string _logName = "Лоджия";
         private static readonly string _terName = "Терраса";
+
+        private static readonly string[] _roomNames = new string[]
+        {
+            _roomName,
+            _balkName,
+            _logName,
+            _terName,
+        };
 
         private ARPG_Room() { }
 
@@ -45,14 +59,9 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         public double AreaData_Room { get; private set; }
 
         /// <summary>
-        /// Имя помещения
+        /// Имя квартиры\балкона\лоджии\террасы
         /// </summary>
         public string FlatNameData_Room { get; private set; }
-
-        /// <summary>
-        /// Имя балкона\лоджии\террасы
-        /// </summary>
-        public string BalkTerLogNameData_Room { get; private set; }
 
         /// <summary>
         /// Номер квартиры
@@ -67,12 +76,12 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Захватка 1 (напр: корпус)
         /// </summary>
-        public string GripData1_Room { get; private set; }
+        public string GripCorpData_Room { get; private set; }
 
         /// <summary>
         /// Захватка 2 (напр: секция)
         /// </summary>
-        public string GripData2_Room { get; private set; }
+        public string GripSectData_Room { get; private set; }
 
         /// <summary>
         /// Значение допуска в м2
@@ -145,9 +154,15 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         internal static ARPG_Room[] Get_ARPG_Rooms(Document doc, ARPG_TZ_MainData tzData, ARPG_DesOptEntity arpg_desOpt, bool presetFlatCode)
         {
             if (tzData.FlatType == nameof(FilledRegion))
+            {
+                tzData.FlatAreaParam = BuiltInParameter.ROOM_AREA;
                 return GetFromFilledRegions(doc, tzData, arpg_desOpt);
+            }
             else if (tzData.FlatType == nameof(Room))
+            {
+                tzData.FlatAreaParam = BuiltInParameter.ROOM_AREA;
                 return GetFromRooms(doc, tzData, arpg_desOpt, presetFlatCode);
+            }
             else
                 throw new NotSupportedException(
                     string.Format("Тип элементов \"{0}\" не поддерживается.", tzData.FlatType));
@@ -226,6 +241,8 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         #region Помещения
         private static ARPG_Room[] GetFromRooms(Document doc, ARPG_TZ_MainData tzData, ARPG_DesOptEntity arpg_desOpt, bool presetFlatCode)
         {
+            ErrorDict_Room = new Dictionary<string, List<ElementId>>();
+
             Room[] rooms = new FilteredElementCollector(doc)
                 .OfClass(typeof(SpatialElement))
                 .WhereElementIsNotElementType()
@@ -234,290 +251,451 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                 {
                     bool validArea = r.Area > 0;
                     bool isSelectedDO = r.get_Parameter(BuiltInParameter.DESIGN_OPTION_ID).AsValueString().Equals(arpg_desOpt.ARPG_DesignOptionId.ToString());
-                    
+
                     return validArea && isSelectedDO;
                 })
                 .ToArray();
 
-
-            return Create_ARPGRooms(rooms, tzData, presetFlatCode);
-        }
-
-
-        private static ARPG_Room[] Create_ARPGRooms(IEnumerable<Element> elemsToCreate, ARPG_TZ_MainData tzData, bool presetFlatCode)
-        {
-            ErrorDict_Room = new Dictionary<string, List<ElementId>>();
-
-            List<ARPG_Room> result = new List<ARPG_Room>();
-            foreach (Element elem in elemsToCreate)
+            List<LittleRoomData> lrdColl = new List<LittleRoomData>();
+            foreach (Room r in rooms)
             {
-                if (tzData.FlatsFilter)
+                RoomType rt = GetRoomType(tzData, r);
+                if (rt == RoomType.Other)
+                    continue;
+
+                lrdColl.Add(new LittleRoomData()
                 {
-                    RoomType roomRoomType = GetRoomType(tzData, elem, true);
-                    if (roomRoomType == RoomType.Other)
-                        continue;
-
-                    List<Parameter> paramsToCheck = new List<Parameter>();
-                    // Если в проекте есть лоджии/балконы/террасы - нужно делать биндинг по помещениям
-                    Parameter balkTerLogNameParam = null;
-                    Parameter flatNumbParam = null;
-                    Parameter flatLvlNumbParam = null;
-                    Parameter gripParam1 = null;
-                    Parameter gripParam2 = null;
-
-                    // Забираю доп. параметры 
-                    if (tzData.HeatingRoomsInPrj)
-                    {
-                        balkTerLogNameParam = elem.LookupParameter(tzData.BalkTerLogNameParamName);
-                        paramsToCheck.Add(balkTerLogNameParam);
-                        flatNumbParam = elem.LookupParameter(tzData.FlatNumbParamName);
-                        paramsToCheck.Add(flatNumbParam);
-                        flatLvlNumbParam = elem.LookupParameter(tzData.FlatLvlNumbParamName);
-                        paramsToCheck.Add(flatLvlNumbParam);
-                        gripParam1 = elem.LookupParameter(tzData.GripParamName1);
-                        paramsToCheck.Add(gripParam1);
-                        if (!string.IsNullOrEmpty(tzData.GripParamName2))
-                        {
-                            gripParam2 = elem.LookupParameter(tzData.GripParamName2);
-                            paramsToCheck.Add(gripParam2);
-                        }
-
-                        // Проверка на пропущенные параметры
-                        CheckMissingParam(elem, balkTerLogNameParam, tzData.BalkTerLogNameParamName);
-                        CheckMissingParam(elem, flatNumbParam, tzData.FlatNumbParamName);
-                        CheckMissingParam(elem, flatLvlNumbParam, tzData.FlatLvlNumbParamName);
-                        CheckMissingParam(elem, gripParam1, tzData.GripParamName1);
-                        if (gripParam2 != null)
-                            CheckMissingParam(elem, gripParam2, tzData.GripParamName1);
-                    }
-
-                    // Забираю основные параметры
-                    Parameter flatNameParam = elem.LookupParameter(tzData.FlatNameParamName);
-                    Parameter areaParam = elem.get_Parameter(BuiltInParameter.ROOM_AREA);
-                    paramsToCheck.Add(areaParam);
-                    Parameter areaCoeffParam = elem.LookupParameter(tzData.AreaCoeffParamName);
-                    paramsToCheck.Add(areaCoeffParam);
-                    Parameter sumAreaCoeffParam = elem.LookupParameter(tzData.SumAreaCoeffParamName);
-                    paramsToCheck.Add(sumAreaCoeffParam);
-                    Parameter tzCodeNameParam = elem.LookupParameter(tzData.TZCodeParamName);
-                    paramsToCheck.Add(tzCodeNameParam);
-                    Parameter tzRangeNameParam = elem.LookupParameter(tzData.TZRangeNameParamName);
-                    paramsToCheck.Add(tzRangeNameParam);
-                    Parameter tzPercentParam = elem.LookupParameter(tzData.TZPercentParamName);
-                    paramsToCheck.Add(tzPercentParam);
-                    Parameter tzAreaMinParam = elem.LookupParameter(tzData.TZAreaMinParamName);
-                    paramsToCheck.Add(tzAreaMinParam);
-                    Parameter tzAreaMaxParam = elem.LookupParameter(tzData.TZAreaMaxParamName);
-                    paramsToCheck.Add(tzAreaMaxParam);
-                    Parameter modelPercentParamName = elem.LookupParameter(tzData.ModelPercentParamName);
-                    paramsToCheck.Add(modelPercentParamName);
-                    Parameter modelPercentToleranceParamName = elem.LookupParameter(tzData.ModelPercentToleranceParamName);
-                    paramsToCheck.Add(modelPercentToleranceParamName);
-
-
-                    // Проверка на пропущенные параметры
-                    CheckMissingParam(elem, flatNameParam, tzData.FlatNameParamName);
-                    CheckMissingParam(elem, areaParam, elem.get_Parameter(BuiltInParameter.ROOM_AREA).Definition.Name);
-                    CheckMissingParam(elem, areaCoeffParam, tzData.AreaCoeffParamName);
-                    CheckMissingParam(elem, sumAreaCoeffParam, tzData.SumAreaCoeffParamName);
-                    CheckMissingParam(elem, tzCodeNameParam, tzData.TZCodeParamName);
-                    CheckMissingParam(elem, tzRangeNameParam, tzData.TZRangeNameParamName);
-                    CheckMissingParam(elem, tzPercentParam, tzData.TZPercentParamName);
-                    CheckMissingParam(elem, tzAreaMinParam, tzData.TZAreaMinParamName);
-                    CheckMissingParam(elem, tzAreaMaxParam, tzData.TZAreaMaxParamName);
-                    CheckMissingParam(elem, modelPercentParamName, tzData.ModelPercentParamName);
-                    CheckMissingParam(elem, modelPercentToleranceParamName, tzData.ModelPercentToleranceParamName);
-
-                    // Общая сумма по проверяемым параметрам
-                    if (HasMissing(paramsToCheck))
-                        continue;
-
-                    // Получаю значения
-                    string flatNameData = GetParamValue(flatNameParam);
-                    double areaData = areaParam.AsDouble();
-                    string balkTerLogNameData = GetParamValue(balkTerLogNameParam);
-                    string flatNumbData = GetParamValue(flatNumbParam);
-                    string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
-                    string gripData1 = GetParamValue(gripParam1);
-                    string gripData2 = GetParamValue(gripParam2);
-                    string tzCodeNameData = GetParamValue(tzCodeNameParam);
-
-                    // Проверка пустых значений
-                    CheckEmptyValue(elem, tzData.FlatNameParamName, flatNameData);
-                    if (!presetFlatCode)
-                        CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
-
-                    if (tzData.HeatingRoomsInPrj)
-                    {
-                        CheckEmptyValue(elem, tzData.BalkTerLogNameParamName, balkTerLogNameData);
-                        CheckEmptyValue(elem, tzData.FlatNumbParamName, flatNumbData);
-                        CheckEmptyValue(elem, tzData.FlatLvlNumbParamName, flatLvlNumbData);
-                        CheckEmptyValue(elem, tzData.GripParamName1, gripData1);
-                        if (!string.IsNullOrEmpty(tzData.GripParamName2))
-                            CheckEmptyValue(elem, tzData.GripParamName2, gripData2);
-                    }
-
-                    if (ErrorDict_Room.Values.Any(v => v.Contains(elem.Id)))
-                        continue;
-
-                    ARPG_Room aRPG_Room = new ARPG_Room()
-                    {
-                        Elem_Room = elem,
-                        AreaData_Room = areaData,
-                        ARPG_RoomType = roomRoomType,
-                        FlatNameData_Room = flatNameData,
-                        BalkTerLogNameData_Room = balkTerLogNameData,
-                        FlatNumbData_Room = flatNumbData,
-                        FlatLvlNumbData_Room = flatLvlNumbData,
-                        GripData1_Room = gripData1,
-                        GripData2_Room = gripData2,
-                        AreaCoeffParam_Room = areaCoeffParam,
-                        SumAreaCoeffParam_Room = sumAreaCoeffParam,
-                        TZCodeParam_Room = tzCodeNameParam,
-                        TZRangeNameParam_Room = tzRangeNameParam,
-                        TZPercentParam_Room = tzPercentParam,
-                        TZAreaMinParam_Room = tzAreaMinParam,
-                        TZAreaMaxParam_Room = tzAreaMaxParam,
-                        ModelPercentParam_Room = modelPercentParamName,
-                        ModelPercentToleranceParam_Room = modelPercentToleranceParamName,
-                    };
-
-                    aRPG_Room.Set_AreaCoeffAndFlatArea(tzData);
-                    
-                    result.Add(aRPG_Room);
-                }
-                else
-                {
-                    RoomType roomRoomType = GetRoomType(tzData, elem, false);
-
-                    List<Parameter> paramsToCheck = new List<Parameter>();
-                    // Если в проекте есть лоджии/балконы/террасы - нужно делать биндинг по помещениям
-                    Parameter balkTerLogNameParam = null;
-                    Parameter flatNumbParam = null;
-                    Parameter flatLvlNumbParam = null;
-                    Parameter gripParam1 = null;
-                    Parameter gripParam2 = null;
-
-                    // Забираю доп. параметры 
-                    if (tzData.HeatingRoomsInPrj)
-                    {
-                        balkTerLogNameParam = elem.LookupParameter(tzData.BalkTerLogNameParamName);
-                        paramsToCheck.Add(balkTerLogNameParam);
-                        flatNumbParam = elem.LookupParameter(tzData.FlatNumbParamName);
-                        paramsToCheck.Add(flatNumbParam);
-                        flatLvlNumbParam = elem.LookupParameter(tzData.FlatLvlNumbParamName);
-                        paramsToCheck.Add(flatLvlNumbParam);
-                        gripParam1 = elem.LookupParameter(tzData.GripParamName1);
-                        paramsToCheck.Add(gripParam1);
-                        if (!string.IsNullOrEmpty(tzData.GripParamName2))
-                        {
-                            gripParam2 = elem.LookupParameter(tzData.GripParamName2);
-                            paramsToCheck.Add(gripParam2);
-                        }
-
-                        // Проверка на пропущенные параметры
-                        CheckMissingParam(elem, balkTerLogNameParam, tzData.BalkTerLogNameParamName);
-                        CheckMissingParam(elem, flatNumbParam, tzData.FlatNumbParamName);
-                        CheckMissingParam(elem, flatLvlNumbParam, tzData.FlatLvlNumbParamName);
-                        CheckMissingParam(elem, gripParam1, tzData.GripParamName1);
-                        if (gripParam2 != null)
-                            CheckMissingParam(elem, gripParam2, tzData.GripParamName1);
-                    }
-
-                    // Забираю основные параметры
-                    Parameter areaParam = elem.get_Parameter(BuiltInParameter.ROOM_AREA);
-                    paramsToCheck.Add(areaParam);
-                    Parameter areaCoeffParam = elem.LookupParameter(tzData.AreaCoeffParamName);
-                    paramsToCheck.Add(areaCoeffParam);
-                    Parameter sumAreaCoeffParam = elem.LookupParameter(tzData.SumAreaCoeffParamName);
-                    paramsToCheck.Add(sumAreaCoeffParam);
-                    Parameter tzCodeNameParam = elem.LookupParameter(tzData.TZCodeParamName);
-                    paramsToCheck.Add(tzCodeNameParam);
-                    Parameter tzRangeNameParam = elem.LookupParameter(tzData.TZRangeNameParamName);
-                    paramsToCheck.Add(tzRangeNameParam);
-                    Parameter tzPercentParam = elem.LookupParameter(tzData.TZPercentParamName);
-                    paramsToCheck.Add(tzPercentParam);
-                    Parameter tzAreaMinParam = elem.LookupParameter(tzData.TZAreaMinParamName);
-                    paramsToCheck.Add(tzAreaMinParam);
-                    Parameter tzAreaMaxParam = elem.LookupParameter(tzData.TZAreaMaxParamName);
-                    paramsToCheck.Add(tzAreaMaxParam);
-                    Parameter modelPercentParamName = elem.LookupParameter(tzData.ModelPercentParamName);
-                    paramsToCheck.Add(modelPercentParamName);
-                    Parameter modelPercentToleranceParamName = elem.LookupParameter(tzData.ModelPercentToleranceParamName);
-                    paramsToCheck.Add(modelPercentToleranceParamName);
-
-
-                    // Проверка на пропущенные параметры
-                    CheckMissingParam(elem, areaParam, elem.get_Parameter(BuiltInParameter.ROOM_AREA).Definition.Name);
-                    CheckMissingParam(elem, areaCoeffParam, tzData.AreaCoeffParamName);
-                    CheckMissingParam(elem, sumAreaCoeffParam, tzData.SumAreaCoeffParamName);
-                    CheckMissingParam(elem, tzCodeNameParam, tzData.TZCodeParamName);
-                    CheckMissingParam(elem, tzRangeNameParam, tzData.TZRangeNameParamName);
-                    CheckMissingParam(elem, tzPercentParam, tzData.TZPercentParamName);
-                    CheckMissingParam(elem, tzAreaMinParam, tzData.TZAreaMinParamName);
-                    CheckMissingParam(elem, tzAreaMaxParam, tzData.TZAreaMaxParamName);
-                    CheckMissingParam(elem, modelPercentParamName, tzData.ModelPercentParamName);
-                    CheckMissingParam(elem, modelPercentToleranceParamName, tzData.ModelPercentToleranceParamName);
-
-                    // Общая сумма по проверяемым параметрам
-                    if (HasMissing(paramsToCheck))
-                        continue;
-
-                    // Получаю значения
-                    double areaData = areaParam.AsDouble();
-                    string balkTerLogNameData = GetParamValue(balkTerLogNameParam);
-                    string flatNumbData = GetParamValue(flatNumbParam);
-                    string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
-                    string gripData1 = GetParamValue(gripParam1);
-                    string gripData2 = GetParamValue(gripParam2);
-                    string tzCodeNameData = GetParamValue(tzCodeNameParam);
-
-                    // Проверка пустых значений
-                    if (!presetFlatCode)
-                        CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
-
-                    if (tzData.HeatingRoomsInPrj)
-                    {
-                        CheckEmptyValue(elem, tzData.BalkTerLogNameParamName, balkTerLogNameData);
-                        CheckEmptyValue(elem, tzData.FlatNumbParamName, flatNumbData);
-                        CheckEmptyValue(elem, tzData.FlatLvlNumbParamName, flatLvlNumbData);
-                        CheckEmptyValue(elem, tzData.GripParamName1, gripData1);
-                        if (!string.IsNullOrEmpty(tzData.GripParamName2))
-                            CheckEmptyValue(elem, tzData.GripParamName2, gripData2);
-                    }
-
-                    if (ErrorDict_Room.Values.Any(v => v.Contains(elem.Id)))
-                        continue;
-
-                    ARPG_Room aRPG_Room = new ARPG_Room()
-                    {
-                        Elem_Room = elem,
-                        AreaData_Room = areaData,
-                        ARPG_RoomType = roomRoomType,
-                        BalkTerLogNameData_Room = balkTerLogNameData,
-                        FlatNumbData_Room = flatNumbData,
-                        FlatLvlNumbData_Room = flatLvlNumbData,
-                        GripData1_Room = gripData1,
-                        GripData2_Room = gripData2,
-                        AreaCoeffParam_Room = areaCoeffParam,
-                        SumAreaCoeffParam_Room = sumAreaCoeffParam,
-                        TZCodeParam_Room = tzCodeNameParam,
-                        TZRangeNameParam_Room = tzRangeNameParam,
-                        TZPercentParam_Room = tzPercentParam,
-                        TZAreaMinParam_Room = tzAreaMinParam,
-                        TZAreaMaxParam_Room = tzAreaMaxParam,
-                        ModelPercentParam_Room = modelPercentParamName,
-                        ModelPercentToleranceParam_Room = modelPercentToleranceParamName,
-                    };
-
-                    aRPG_Room.Set_AreaCoeffAndFlatArea(tzData);
-
-                    result.Add(aRPG_Room);
-                }
+                    LRDElement = r,
+                    LRDRoomType = rt,
+                });
             }
 
-            return result.ToArray();
+            if (ErrorDict_Room.Any())
+                return null;
+
+            return Create_ARPGRooms(lrdColl, tzData, presetFlatCode);
         }
+
+        private static ARPG_Room[] Create_ARPGRooms(IEnumerable<LittleRoomData> lrdColl, ARPG_TZ_MainData tzData, bool presetFlatCode)
+        {
+            List<ARPG_Room> result = new List<ARPG_Room>();
+
+            bool isNoHeatingRoom = lrdColl.Any(lrd => lrd.LRDRoomType != RoomType.Flat);
+            foreach (LittleRoomData lrd in lrdColl)
+            {
+                Element elem = lrd.LRDElement;
+                if (lrd.LRDRoomType == RoomType.Other)
+                {
+                    HtmlOutput.SetMsgDict_ByMsg($"Отправь разработчику - не удалось определить помещение", elem.Id, ErrorDict_Room);
+                    continue;
+                }
+
+                List<Parameter> paramsToCheck = new List<Parameter>();
+
+                Parameter flatNumbParam = null;
+                Parameter flatLvlNumbParam = null;
+                Parameter gripCorpParam = null;
+                Parameter gripSectParam = null;
+
+                // Забираю доп. параметры 
+                if (isNoHeatingRoom)
+                {
+                    flatNumbParam = elem.LookupParameter(tzData.FlatNumbParamName);
+                    paramsToCheck.Add(flatNumbParam);
+                    flatLvlNumbParam = elem.LookupParameter(tzData.FlatLvlNumbParamName);
+                    paramsToCheck.Add(flatLvlNumbParam);
+                    gripCorpParam = elem.LookupParameter(tzData.GripCorpParamName);
+                    paramsToCheck.Add(gripCorpParam);
+                    if (!string.IsNullOrEmpty(tzData.GripSectParamName))
+                    {
+                        gripSectParam = elem.LookupParameter(tzData.GripSectParamName);
+                        paramsToCheck.Add(gripSectParam);
+                    }
+
+                    // Проверка на пропущенные параметры
+                    CheckMissingParam(elem, flatNumbParam, tzData.FlatNumbParamName);
+                    CheckMissingParam(elem, flatLvlNumbParam, tzData.FlatLvlNumbParamName);
+                    CheckMissingParam(elem, gripCorpParam, tzData.GripCorpParamName);
+                    if (gripSectParam != null)
+                        CheckMissingParam(elem, gripSectParam, tzData.GripCorpParamName);
+                }
+
+                // Забираю основные параметры
+                Parameter flatNameParam = elem.LookupParameter(tzData.FlatNameParamName);
+                Parameter areaParam = elem.get_Parameter(BuiltInParameter.ROOM_AREA);
+                paramsToCheck.Add(areaParam);
+                Parameter areaCoeffParam = elem.LookupParameter(tzData.AreaCoeffParamName);
+                paramsToCheck.Add(areaCoeffParam);
+                Parameter sumAreaCoeffParam = elem.LookupParameter(tzData.SumAreaCoeffParamName);
+                paramsToCheck.Add(sumAreaCoeffParam);
+                Parameter tzCodeNameParam = elem.LookupParameter(tzData.TZCodeParamName);
+                paramsToCheck.Add(tzCodeNameParam);
+                Parameter tzRangeNameParam = elem.LookupParameter(tzData.TZRangeNameParamName);
+                paramsToCheck.Add(tzRangeNameParam);
+                Parameter tzPercentParam = elem.LookupParameter(tzData.TZPercentParamName);
+                paramsToCheck.Add(tzPercentParam);
+                Parameter tzAreaMinParam = elem.LookupParameter(tzData.TZAreaMinParamName);
+                paramsToCheck.Add(tzAreaMinParam);
+                Parameter tzAreaMaxParam = elem.LookupParameter(tzData.TZAreaMaxParamName);
+                paramsToCheck.Add(tzAreaMaxParam);
+                Parameter modelPercentParamName = elem.LookupParameter(tzData.ModelPercentParamName);
+                paramsToCheck.Add(modelPercentParamName);
+                Parameter modelPercentToleranceParamName = elem.LookupParameter(tzData.ModelPercentToleranceParamName);
+                paramsToCheck.Add(modelPercentToleranceParamName);
+
+
+                // Проверка на пропущенные параметры
+                CheckMissingParam(elem, flatNameParam, tzData.FlatNameParamName);
+                CheckMissingParam(elem, areaParam, elem.get_Parameter(tzData.FlatAreaParam).Definition.Name);
+                CheckMissingParam(elem, areaCoeffParam, tzData.AreaCoeffParamName);
+                CheckMissingParam(elem, sumAreaCoeffParam, tzData.SumAreaCoeffParamName);
+                CheckMissingParam(elem, tzCodeNameParam, tzData.TZCodeParamName);
+                CheckMissingParam(elem, tzRangeNameParam, tzData.TZRangeNameParamName);
+                CheckMissingParam(elem, tzPercentParam, tzData.TZPercentParamName);
+                CheckMissingParam(elem, tzAreaMinParam, tzData.TZAreaMinParamName);
+                CheckMissingParam(elem, tzAreaMaxParam, tzData.TZAreaMaxParamName);
+                CheckMissingParam(elem, modelPercentParamName, tzData.ModelPercentParamName);
+                CheckMissingParam(elem, modelPercentToleranceParamName, tzData.ModelPercentToleranceParamName);
+
+                // Общая сумма по проверяемым параметрам
+                if (HasMissing(paramsToCheck))
+                    continue;
+
+                // Получаю значения
+                string flatNameData = GetParamValue(flatNameParam);
+                double areaData = areaParam.AsDouble();
+                string flatNumbData = GetParamValue(flatNumbParam);
+                string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
+                string gripCorpData = GetParamValue(gripCorpParam);
+                string gripSectData = GetParamValue(gripSectParam);
+                string tzCodeNameData = GetParamValue(tzCodeNameParam);
+
+                // Проверка пустых значений
+                CheckEmptyValue(elem, tzData.FlatNameParamName, flatNameData);
+                if (!presetFlatCode)
+                    CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
+
+                if (isNoHeatingRoom)
+                {
+                    CheckEmptyValue(elem, tzData.FlatNumbParamName, flatNumbData);
+                    CheckEmptyValue(elem, tzData.FlatLvlNumbParamName, flatLvlNumbData);
+                    
+                    if (tzData.IsGripCorpParam && tzData.IsGripSectParam)
+                    {
+                        CheckEmptyValue(elem, tzData.GripCorpParamName, gripCorpData);
+                        CheckEmptyValue(elem, tzData.GripSectParamName, gripSectData);
+                    }
+                    else if (tzData.IsGripCorpParam)
+                        CheckEmptyValue(elem, tzData.GripCorpParamName, gripCorpData);
+                    else if (tzData.IsGripSectParam)
+                        CheckEmptyValue(elem, tzData.GripSectParamName, gripSectData);
+                }
+
+                if (ErrorDict_Room.Values.Any(v => v.Contains(elem.Id)))
+                    continue;
+
+                ARPG_Room aRPG_Room = new ARPG_Room()
+                {
+                    Elem_Room = elem,
+                    AreaData_Room = areaData,
+                    ARPG_RoomType = lrd.LRDRoomType,
+                    FlatNameData_Room = flatNameData,
+                    FlatNumbData_Room = flatNumbData,
+                    FlatLvlNumbData_Room = flatLvlNumbData,
+                    GripCorpData_Room = gripCorpData,
+                    GripSectData_Room = gripSectData,
+                    AreaCoeffParam_Room = areaCoeffParam,
+                    SumAreaCoeffParam_Room = sumAreaCoeffParam,
+                    TZCodeParam_Room = tzCodeNameParam,
+                    TZRangeNameParam_Room = tzRangeNameParam,
+                    TZPercentParam_Room = tzPercentParam,
+                    TZAreaMinParam_Room = tzAreaMinParam,
+                    TZAreaMaxParam_Room = tzAreaMaxParam,
+                    ModelPercentParam_Room = modelPercentParamName,
+                    ModelPercentToleranceParam_Room = modelPercentToleranceParamName,
+                };
+
+                aRPG_Room.Set_AreaCoeffAndFlatArea(tzData);
+
+                result.Add(aRPG_Room);
+            }
+
+            return result.ToArray(); ;
+        }
+
+
+        //private static ARPG_Room[] Create_ARPGRooms1(IEnumerable<Element> elemsToCreate, ARPG_TZ_MainData tzData, bool presetFlatCode)
+        //{
+        //    List<ARPG_Room> result = new List<ARPG_Room>();
+        //    foreach (Element elem in elemsToCreate)
+        //    {
+        //        if (tzData.FlatsFilter)
+        //        {
+        //            RoomType roomRoomType = GetRoomType(tzData, elem, true);
+        //            if (roomRoomType == RoomType.Other)
+        //                continue;
+
+        //            List<Parameter> paramsToCheck = new List<Parameter>();
+        //            // Если в проекте есть лоджии/балконы/террасы - нужно делать биндинг по помещениям
+        //            Parameter balkTerLogNameParam = null;
+        //            Parameter flatNumbParam = null;
+        //            Parameter flatLvlNumbParam = null;
+        //            Parameter gripParam1 = null;
+        //            Parameter gripParam2 = null;
+
+        //            // Забираю доп. параметры 
+        //            if (tzData.HeatingRoomsInPrj)
+        //            {
+        //                balkTerLogNameParam = elem.LookupParameter(tzData.BalkTerLogNameParamName);
+        //                paramsToCheck.Add(balkTerLogNameParam);
+        //                flatNumbParam = elem.LookupParameter(tzData.FlatNumbParamName);
+        //                paramsToCheck.Add(flatNumbParam);
+        //                flatLvlNumbParam = elem.LookupParameter(tzData.FlatLvlNumbParamName);
+        //                paramsToCheck.Add(flatLvlNumbParam);
+        //                gripParam1 = elem.LookupParameter(tzData.GripParamName1);
+        //                paramsToCheck.Add(gripParam1);
+        //                if (!string.IsNullOrEmpty(tzData.GripParamName2))
+        //                {
+        //                    gripParam2 = elem.LookupParameter(tzData.GripParamName2);
+        //                    paramsToCheck.Add(gripParam2);
+        //                }
+
+        //                // Проверка на пропущенные параметры
+        //                CheckMissingParam(elem, balkTerLogNameParam, tzData.BalkTerLogNameParamName);
+        //                CheckMissingParam(elem, flatNumbParam, tzData.FlatNumbParamName);
+        //                CheckMissingParam(elem, flatLvlNumbParam, tzData.FlatLvlNumbParamName);
+        //                CheckMissingParam(elem, gripParam1, tzData.GripParamName1);
+        //                if (gripParam2 != null)
+        //                    CheckMissingParam(elem, gripParam2, tzData.GripParamName1);
+        //            }
+
+        //            // Забираю основные параметры
+        //            Parameter flatNameParam = elem.LookupParameter(tzData.FlatNameParamName);
+        //            Parameter areaParam = elem.get_Parameter(BuiltInParameter.ROOM_AREA);
+        //            paramsToCheck.Add(areaParam);
+        //            Parameter areaCoeffParam = elem.LookupParameter(tzData.AreaCoeffParamName);
+        //            paramsToCheck.Add(areaCoeffParam);
+        //            Parameter sumAreaCoeffParam = elem.LookupParameter(tzData.SumAreaCoeffParamName);
+        //            paramsToCheck.Add(sumAreaCoeffParam);
+        //            Parameter tzCodeNameParam = elem.LookupParameter(tzData.TZCodeParamName);
+        //            paramsToCheck.Add(tzCodeNameParam);
+        //            Parameter tzRangeNameParam = elem.LookupParameter(tzData.TZRangeNameParamName);
+        //            paramsToCheck.Add(tzRangeNameParam);
+        //            Parameter tzPercentParam = elem.LookupParameter(tzData.TZPercentParamName);
+        //            paramsToCheck.Add(tzPercentParam);
+        //            Parameter tzAreaMinParam = elem.LookupParameter(tzData.TZAreaMinParamName);
+        //            paramsToCheck.Add(tzAreaMinParam);
+        //            Parameter tzAreaMaxParam = elem.LookupParameter(tzData.TZAreaMaxParamName);
+        //            paramsToCheck.Add(tzAreaMaxParam);
+        //            Parameter modelPercentParamName = elem.LookupParameter(tzData.ModelPercentParamName);
+        //            paramsToCheck.Add(modelPercentParamName);
+        //            Parameter modelPercentToleranceParamName = elem.LookupParameter(tzData.ModelPercentToleranceParamName);
+        //            paramsToCheck.Add(modelPercentToleranceParamName);
+
+
+        //            // Проверка на пропущенные параметры
+        //            CheckMissingParam(elem, flatNameParam, tzData.FlatNameParamName);
+        //            CheckMissingParam(elem, areaParam, elem.get_Parameter(BuiltInParameter.ROOM_AREA).Definition.Name);
+        //            CheckMissingParam(elem, areaCoeffParam, tzData.AreaCoeffParamName);
+        //            CheckMissingParam(elem, sumAreaCoeffParam, tzData.SumAreaCoeffParamName);
+        //            CheckMissingParam(elem, tzCodeNameParam, tzData.TZCodeParamName);
+        //            CheckMissingParam(elem, tzRangeNameParam, tzData.TZRangeNameParamName);
+        //            CheckMissingParam(elem, tzPercentParam, tzData.TZPercentParamName);
+        //            CheckMissingParam(elem, tzAreaMinParam, tzData.TZAreaMinParamName);
+        //            CheckMissingParam(elem, tzAreaMaxParam, tzData.TZAreaMaxParamName);
+        //            CheckMissingParam(elem, modelPercentParamName, tzData.ModelPercentParamName);
+        //            CheckMissingParam(elem, modelPercentToleranceParamName, tzData.ModelPercentToleranceParamName);
+
+        //            // Общая сумма по проверяемым параметрам
+        //            if (HasMissing(paramsToCheck))
+        //                continue;
+
+        //            // Получаю значения
+        //            string flatNameData = GetParamValue(flatNameParam);
+        //            double areaData = areaParam.AsDouble();
+        //            string balkTerLogNameData = GetParamValue(balkTerLogNameParam);
+        //            string flatNumbData = GetParamValue(flatNumbParam);
+        //            string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
+        //            string gripData1 = GetParamValue(gripParam1);
+        //            string gripData2 = GetParamValue(gripParam2);
+        //            string tzCodeNameData = GetParamValue(tzCodeNameParam);
+
+        //            // Проверка пустых значений
+        //            CheckEmptyValue(elem, tzData.FlatNameParamName, flatNameData);
+        //            if (!presetFlatCode)
+        //                CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
+
+        //            if (tzData.HeatingRoomsInPrj)
+        //            {
+        //                CheckEmptyValue(elem, tzData.BalkTerLogNameParamName, balkTerLogNameData);
+        //                CheckEmptyValue(elem, tzData.FlatNumbParamName, flatNumbData);
+        //                CheckEmptyValue(elem, tzData.FlatLvlNumbParamName, flatLvlNumbData);
+        //                CheckEmptyValue(elem, tzData.GripParamName1, gripData1);
+        //                if (!string.IsNullOrEmpty(tzData.GripParamName2))
+        //                    CheckEmptyValue(elem, tzData.GripParamName2, gripData2);
+        //            }
+
+        //            if (ErrorDict_Room.Values.Any(v => v.Contains(elem.Id)))
+        //                continue;
+
+        //            ARPG_Room aRPG_Room = new ARPG_Room()
+        //            {
+        //                Elem_Room = elem,
+        //                AreaData_Room = areaData,
+        //                ARPG_RoomType = roomRoomType,
+        //                FlatNameData_Room = flatNameData,
+        //                BalkTerLogNameData_Room = balkTerLogNameData,
+        //                FlatNumbData_Room = flatNumbData,
+        //                FlatLvlNumbData_Room = flatLvlNumbData,
+        //                GripData1_Room = gripData1,
+        //                GripData2_Room = gripData2,
+        //                AreaCoeffParam_Room = areaCoeffParam,
+        //                SumAreaCoeffParam_Room = sumAreaCoeffParam,
+        //                TZCodeParam_Room = tzCodeNameParam,
+        //                TZRangeNameParam_Room = tzRangeNameParam,
+        //                TZPercentParam_Room = tzPercentParam,
+        //                TZAreaMinParam_Room = tzAreaMinParam,
+        //                TZAreaMaxParam_Room = tzAreaMaxParam,
+        //                ModelPercentParam_Room = modelPercentParamName,
+        //                ModelPercentToleranceParam_Room = modelPercentToleranceParamName,
+        //            };
+
+        //            aRPG_Room.Set_AreaCoeffAndFlatArea(tzData);
+                    
+        //            result.Add(aRPG_Room);
+        //        }
+        //        else
+        //        {
+        //            RoomType roomRoomType = GetRoomType(tzData, elem, false);
+
+        //            List<Parameter> paramsToCheck = new List<Parameter>();
+        //            // Если в проекте есть лоджии/балконы/террасы - нужно делать биндинг по помещениям
+        //            Parameter balkTerLogNameParam = null;
+        //            Parameter flatNumbParam = null;
+        //            Parameter flatLvlNumbParam = null;
+        //            Parameter gripParam1 = null;
+        //            Parameter gripParam2 = null;
+
+        //            // Забираю доп. параметры 
+        //            if (tzData.HeatingRoomsInPrj)
+        //            {
+        //                balkTerLogNameParam = elem.LookupParameter(tzData.BalkTerLogNameParamName);
+        //                paramsToCheck.Add(balkTerLogNameParam);
+        //                flatNumbParam = elem.LookupParameter(tzData.FlatNumbParamName);
+        //                paramsToCheck.Add(flatNumbParam);
+        //                flatLvlNumbParam = elem.LookupParameter(tzData.FlatLvlNumbParamName);
+        //                paramsToCheck.Add(flatLvlNumbParam);
+        //                gripParam1 = elem.LookupParameter(tzData.GripParamName1);
+        //                paramsToCheck.Add(gripParam1);
+        //                if (!string.IsNullOrEmpty(tzData.GripParamName2))
+        //                {
+        //                    gripParam2 = elem.LookupParameter(tzData.GripParamName2);
+        //                    paramsToCheck.Add(gripParam2);
+        //                }
+
+        //                // Проверка на пропущенные параметры
+        //                CheckMissingParam(elem, balkTerLogNameParam, tzData.BalkTerLogNameParamName);
+        //                CheckMissingParam(elem, flatNumbParam, tzData.FlatNumbParamName);
+        //                CheckMissingParam(elem, flatLvlNumbParam, tzData.FlatLvlNumbParamName);
+        //                CheckMissingParam(elem, gripParam1, tzData.GripParamName1);
+        //                if (gripParam2 != null)
+        //                    CheckMissingParam(elem, gripParam2, tzData.GripParamName1);
+        //            }
+
+        //            // Забираю основные параметры
+        //            Parameter areaParam = elem.get_Parameter(BuiltInParameter.ROOM_AREA);
+        //            paramsToCheck.Add(areaParam);
+        //            Parameter areaCoeffParam = elem.LookupParameter(tzData.AreaCoeffParamName);
+        //            paramsToCheck.Add(areaCoeffParam);
+        //            Parameter sumAreaCoeffParam = elem.LookupParameter(tzData.SumAreaCoeffParamName);
+        //            paramsToCheck.Add(sumAreaCoeffParam);
+        //            Parameter tzCodeNameParam = elem.LookupParameter(tzData.TZCodeParamName);
+        //            paramsToCheck.Add(tzCodeNameParam);
+        //            Parameter tzRangeNameParam = elem.LookupParameter(tzData.TZRangeNameParamName);
+        //            paramsToCheck.Add(tzRangeNameParam);
+        //            Parameter tzPercentParam = elem.LookupParameter(tzData.TZPercentParamName);
+        //            paramsToCheck.Add(tzPercentParam);
+        //            Parameter tzAreaMinParam = elem.LookupParameter(tzData.TZAreaMinParamName);
+        //            paramsToCheck.Add(tzAreaMinParam);
+        //            Parameter tzAreaMaxParam = elem.LookupParameter(tzData.TZAreaMaxParamName);
+        //            paramsToCheck.Add(tzAreaMaxParam);
+        //            Parameter modelPercentParamName = elem.LookupParameter(tzData.ModelPercentParamName);
+        //            paramsToCheck.Add(modelPercentParamName);
+        //            Parameter modelPercentToleranceParamName = elem.LookupParameter(tzData.ModelPercentToleranceParamName);
+        //            paramsToCheck.Add(modelPercentToleranceParamName);
+
+
+        //            // Проверка на пропущенные параметры
+        //            CheckMissingParam(elem, areaParam, elem.get_Parameter(BuiltInParameter.ROOM_AREA).Definition.Name);
+        //            CheckMissingParam(elem, areaCoeffParam, tzData.AreaCoeffParamName);
+        //            CheckMissingParam(elem, sumAreaCoeffParam, tzData.SumAreaCoeffParamName);
+        //            CheckMissingParam(elem, tzCodeNameParam, tzData.TZCodeParamName);
+        //            CheckMissingParam(elem, tzRangeNameParam, tzData.TZRangeNameParamName);
+        //            CheckMissingParam(elem, tzPercentParam, tzData.TZPercentParamName);
+        //            CheckMissingParam(elem, tzAreaMinParam, tzData.TZAreaMinParamName);
+        //            CheckMissingParam(elem, tzAreaMaxParam, tzData.TZAreaMaxParamName);
+        //            CheckMissingParam(elem, modelPercentParamName, tzData.ModelPercentParamName);
+        //            CheckMissingParam(elem, modelPercentToleranceParamName, tzData.ModelPercentToleranceParamName);
+
+        //            // Общая сумма по проверяемым параметрам
+        //            if (HasMissing(paramsToCheck))
+        //                continue;
+
+        //            // Получаю значения
+        //            double areaData = areaParam.AsDouble();
+        //            string balkTerLogNameData = GetParamValue(balkTerLogNameParam);
+        //            string flatNumbData = GetParamValue(flatNumbParam);
+        //            string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
+        //            string gripData1 = GetParamValue(gripParam1);
+        //            string gripData2 = GetParamValue(gripParam2);
+        //            string tzCodeNameData = GetParamValue(tzCodeNameParam);
+
+        //            // Проверка пустых значений
+        //            if (!presetFlatCode)
+        //                CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
+
+        //            if (tzData.HeatingRoomsInPrj)
+        //            {
+        //                CheckEmptyValue(elem, tzData.BalkTerLogNameParamName, balkTerLogNameData);
+        //                CheckEmptyValue(elem, tzData.FlatNumbParamName, flatNumbData);
+        //                CheckEmptyValue(elem, tzData.FlatLvlNumbParamName, flatLvlNumbData);
+        //                CheckEmptyValue(elem, tzData.GripParamName1, gripData1);
+        //                if (!string.IsNullOrEmpty(tzData.GripParamName2))
+        //                    CheckEmptyValue(elem, tzData.GripParamName2, gripData2);
+        //            }
+
+        //            if (ErrorDict_Room.Values.Any(v => v.Contains(elem.Id)))
+        //                continue;
+
+        //            ARPG_Room aRPG_Room = new ARPG_Room()
+        //            {
+        //                Elem_Room = elem,
+        //                AreaData_Room = areaData,
+        //                ARPG_RoomType = roomRoomType,
+        //                BalkTerLogNameData_Room = balkTerLogNameData,
+        //                FlatNumbData_Room = flatNumbData,
+        //                FlatLvlNumbData_Room = flatLvlNumbData,
+        //                GripData1_Room = gripData1,
+        //                GripData2_Room = gripData2,
+        //                AreaCoeffParam_Room = areaCoeffParam,
+        //                SumAreaCoeffParam_Room = sumAreaCoeffParam,
+        //                TZCodeParam_Room = tzCodeNameParam,
+        //                TZRangeNameParam_Room = tzRangeNameParam,
+        //                TZPercentParam_Room = tzPercentParam,
+        //                TZAreaMinParam_Room = tzAreaMinParam,
+        //                TZAreaMaxParam_Room = tzAreaMaxParam,
+        //                ModelPercentParam_Room = modelPercentParamName,
+        //                ModelPercentToleranceParam_Room = modelPercentToleranceParamName,
+        //            };
+
+        //            aRPG_Room.Set_AreaCoeffAndFlatArea(tzData);
+
+        //            result.Add(aRPG_Room);
+        //        }
+        //    }
+
+        //    return result.ToArray();
+        //}
 
         private static void CheckMissingParam(Element elem, Parameter param, string paramName)
         {
@@ -565,37 +743,25 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Установить тип помещения 
         /// </summary>
-        private static RoomType GetRoomType(ARPG_TZ_MainData tzData, Element elem, bool setDataToFlat)
+        private static RoomType GetRoomType(ARPG_TZ_MainData tzData, Element elem)
         {
             bool IsMatch(string a, string b) => DamerauLevenshteinDistance(a, b) <= 2;
 
-            if (setDataToFlat)
+            Parameter flatParam = elem.LookupParameter(tzData.FlatNameParamName);
+            if (flatParam != null)
             {
-                Parameter flatParam = elem.LookupParameter(tzData.FlatNameParamName);
-                if (flatParam != null)
-                {
-                    string flatData = flatParam.AsValueString();
-                    if (!string.IsNullOrEmpty(flatData) && IsMatch(flatParam.AsValueString(), _roomName))
-                       return RoomType.Flat;
-                }
+                string flatData = flatParam.AsValueString();
+                if (IsMatch(flatParam.AsValueString(), _roomName))
+                    return RoomType.Flat;
+                else if (IsMatch(flatData, _balkName))
+                    return RoomType.Balkon;
+                else if (IsMatch(flatData, _logName))
+                    return RoomType.Loggia;
+                else if (IsMatch(flatData, _terName))
+                    return RoomType.Terrace;
             }
 
-            Parameter balkTerLogParam = elem.LookupParameter(tzData.BalkTerLogNameParamName);
-            if (balkTerLogParam != null)
-            {
-                string balkTerLogData = balkTerLogParam.AsValueString();
-                if (!string.IsNullOrEmpty(balkTerLogData))
-                {
-                    if (IsMatch(balkTerLogData, _balkName))
-                        return RoomType.Balkon;
-                    else if (IsMatch(balkTerLogData, _logName))
-                        return RoomType.Loggia;
-                    else if (IsMatch(balkTerLogData, _terName))
-                        return RoomType.Terrace;
-                }
-            }
-
-            return setDataToFlat ? RoomType.Other : RoomType.Flat;
+            return RoomType.Other;
         }
 
         /// <summary>
