@@ -570,15 +570,20 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 
                 for (int i = 1; i < columns; i++)
                 {
-                    FamilySizeTableColumn columnHeader = selectedSizeTable.GetColumnHeader(i);
+                    string resultForgeType = string.Empty;
+                    string resultUnitType = string.Empty;
 
+                    FamilySizeTableColumn columnHeader = selectedSizeTable.GetColumnHeader(i);
 #if Revit2020 || Debug2020
                     if (versionNumber <= 2020)
                     {
-                        returnedHeader.AppendFormat("{0}##{1}##{2};",
-                            columnHeader.Name,
-                            columnHeader.UnitType.ToString().Replace("UT_", ""),
-                            columnHeader.DisplayUnitType.ToString().Replace("DUT_", ""));
+                        resultForgeType = columnHeader.UnitType.ToString().Replace("UT_", "");
+                        if (resultForgeType.Equals("Undefined"))
+                            resultForgeType = "OTHER";
+                        
+                        resultUnitType = columnHeader.DisplayUnitType.ToString().Replace("DUT_", "");
+                        if (resultUnitType.Equals("UNDEFINED"))
+                            resultUnitType = string.Empty;
                     }
 #endif
 
@@ -587,13 +592,17 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     {
                         try
                         {
-                            string forgeTypeFromDict = GetValueFromDict_ByKeyStartWith(_forgeTypeIdDict, columnHeader.GetSpecTypeId().TypeId);
-                            string unitTypeFromDict = GetValueFromDict_ByKeyStartWith(_unitTypeIdDict, columnHeader.GetUnitTypeId().TypeId);
-
-                            returnedHeader.AppendFormat("{0}##{1}##{2};",
-                                columnHeader.Name,
-                                forgeTypeFromDict,
-                                unitTypeFromDict);
+                            string typeId = columnHeader.GetSpecTypeId().TypeId;
+                            if (string.IsNullOrEmpty(typeId))
+                            {
+                                resultForgeType = "OTHER";
+                                resultUnitType = string.Empty;
+                            }
+                            else
+                            {
+                                resultForgeType = GetValueFromDict_ByKeyStartWith(_forgeTypeIdDict, columnHeader.GetSpecTypeId().TypeId);
+                                resultUnitType = GetValueFromDict_ByKeyStartWith(_unitTypeIdDict, columnHeader.GetUnitTypeId().TypeId);
+                            }
                         }
                         catch
                         {
@@ -601,7 +610,13 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                         }
                     }
 #endif
+                    returnedHeader.AppendFormat(
+                        "{0}##{1}##{2};",
+                        columnHeader.Name,
+                        resultForgeType,
+                        resultUnitType);
                 }
+
 
                 returnedHeader.Length--; 
                 returnedHeader.AppendLine();
