@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Tools.Forms.Models;
 using KPLN_Tools.Forms.Models.Core;
 using System;
 using System.Collections.Generic;
@@ -46,7 +47,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Словарь ОШИБОК элементов, где ключ - текст ошибки, значения - список элементов
         /// </summary>
-        public static Dictionary<string, List<ElementId>> ErrorDict_Room;
+        public static Dictionary<string, List<ElementId>> ErrorDict_Room = new Dictionary<string, List<ElementId>>();
 
         /// <summary>
         /// Ссылка на элемент ревит
@@ -173,8 +174,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// </summary>
         internal static void SetCountedRoomData(ARPG_Room[] arpgRooms)
         {
-            ErrorDict_Room = new Dictionary<string, List<ElementId>>();
-
             double arpgRooms_SummArea = arpgRooms.Sum(ar => ar.AreaCoeffData_Room);
 
             // Заполняю значения
@@ -205,6 +204,34 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
             }
         }
 
+        /// <summary>
+        /// Проверка использования всех кодов из ТЗ
+        /// </summary>
+        internal static bool CheckRoomCodesByTZMain(AR_PyatnGraph_VM pg_VM, ARPG_Room[] arpgRooms)
+        {
+            HashSet<string> tzCodes = new HashSet<string>();
+            foreach(object obj in pg_VM.ARPG_TZ_FlatDataColl)
+            {
+                if (obj is ARPG_TZ_FlatData tzFlatData)
+                    tzCodes.Add(tzFlatData.TZCode);
+            }
+
+            HashSet<string> roomCodes = new HashSet<string>();
+            foreach (ARPG_Room arpgRoom in arpgRooms)
+            {
+                roomCodes.Add(arpgRoom.TZCodeParam_Room.AsValueString());
+            }
+
+            string[] exceptColl = tzCodes.Except(roomCodes).ToArray();
+            if (exceptColl.Length > 0)
+            {
+                HtmlOutput.Print($"В проекте НЕ использованы диапазоны из ТЗ: {string.Join(", ", exceptColl)}", MessageType.Error);
+                return false;
+            }
+
+            return true;
+        }
+
         private static void SetCountedRoomData_Percents(ARPG_Room arpgRoom, double factPercent)
         {
             double tzPercent = arpgRoom.TZPercentParam_Room.AsDouble();
@@ -217,8 +244,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         #region Цветовая область
         private static ARPG_Room[] GetFromFilledRegions(Document doc, ARPG_TZ_MainData tzData, ARPG_DesOptEntity arpg_desOpt)
         {
-            ErrorDict_Room = new Dictionary<string, List<ElementId>>();
-
             FilledRegion[] filledRegions = new FilteredElementCollector(doc)
                 .OfClass(typeof(FilledRegion))
                 .WhereElementIsNotElementType()
@@ -241,8 +266,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         #region Помещения
         private static ARPG_Room[] GetFromRooms(Document doc, ARPG_TZ_MainData tzData, ARPG_DesOptEntity arpg_desOpt, bool presetFlatCode)
         {
-            ErrorDict_Room = new Dictionary<string, List<ElementId>>();
-
             Room[] rooms = new FilteredElementCollector(doc)
                 .OfClass(typeof(SpatialElement))
                 .WhereElementIsNotElementType()
@@ -272,6 +295,14 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
 
             if (ErrorDict_Room.Any())
                 return null;
+
+            if (lrdColl.Count == 0)
+            {
+                HtmlOutput.Print("В модели не найдены помещения для анализа. Проверь, корректно ли заполнены параметры по требованиям",
+                    MessageType.Error);
+
+                return null;
+            }
 
             return Create_ARPGRooms(lrdColl, tzData, presetFlatCode);
         }

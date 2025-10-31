@@ -200,6 +200,8 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
+                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
+                ARPG_Flat.ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(true);
                 if (arpgRooms == null)
                     return;
@@ -208,7 +210,7 @@ namespace KPLN_Tools.Forms.Models
                 ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
                 
                 if(arpgRooms != null && aRPGFlats != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, this, arpgRooms, aRPGFlats, _collection.ToArray()));
             }
             catch (Exception ex)
             {
@@ -258,7 +260,7 @@ namespace KPLN_Tools.Forms.Models
                 ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
 
                 if (arpgRooms != null && aRPGFlats != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, ARPG_TZ_MainData, arpgRooms, aRPGFlats, _collection.ToArray()));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, this, arpgRooms, aRPGFlats, _collection.ToArray()));
             }
             catch (Exception ex)
             {

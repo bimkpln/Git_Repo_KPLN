@@ -15,7 +15,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Словарь ОШИБОК элементов, где ключ - текст ошибки, значения - список элементов
         /// </summary>
-        public static Dictionary<string, List<ElementId>> ErrorDict_Flat;
+        public static Dictionary<string, List<ElementId>> ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
 
         private ARPG_Flat() { }
 
@@ -57,11 +57,12 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
             if (arpgRooms == null || arpgRooms.Length == 0)
                 return new ARPG_Flat[0];
 
+            ARPG_Flat[] result = null;
             if (hasHeatingRooms)
             {
                 if (tzMainData.IsGripCorpParam && tzMainData.IsGripSectParam)
                 {
-                    return arpgRooms
+                    result = arpgRooms
                         .OrderBy(r => r.GripCorpData_Room)
                         .ThenBy(r => r.GripSectData_Room)
                         .ThenBy(r => r.FlatLvlNumbData_Room)
@@ -86,7 +87,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                 }
                 else if (tzMainData.IsGripCorpParam)
                 {
-                    return arpgRooms
+                    result = arpgRooms
                         .OrderBy(r => r.GripCorpData_Room)
                         .ThenBy(r => r.FlatLvlNumbData_Room)
                         .ThenBy(r => r.FlatNumbData_Room)
@@ -108,7 +109,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                 }
                 else if (tzMainData.IsGripSectParam)
                 {
-                    return arpgRooms
+                    result = arpgRooms
                         .OrderBy(r => r.GripSectData_Room)
                         .ThenBy(r => r.FlatLvlNumbData_Room)
                         .ThenBy(r => r.FlatNumbData_Room)
@@ -128,31 +129,52 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                         })
                         .ToArray();
                 }
-
-                return arpgRooms
-                    .OrderBy(r => r.FlatLvlNumbData_Room)
-                    .ThenBy(r => r.FlatNumbData_Room)
-                    .GroupBy(r => new
-                    {
-                        r.FlatLvlNumbData_Room,
-                        r.FlatNumbData_Room
-                    })
-                    .Select(g => new ARPG_Flat
-                    {
-                        FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
-                        FlatNumbData_Flat = g.Key.FlatNumbData_Room,
-                        ARPG_Rooms_Flat = g.ToArray(),
-                        HasNoHeatingRooms = true,
-                    })
-                    .ToArray();
-
+                else
+                {
+                    result = arpgRooms
+                        .OrderBy(r => r.FlatLvlNumbData_Room)
+                        .ThenBy(r => r.FlatNumbData_Room)
+                        .GroupBy(r => new
+                        {
+                            r.FlatLvlNumbData_Room,
+                            r.FlatNumbData_Room
+                        })
+                        .Select(g => new ARPG_Flat
+                        {
+                            FlatLvlNumbData_Flat = g.Key.FlatLvlNumbData_Room,
+                            FlatNumbData_Flat = g.Key.FlatNumbData_Room,
+                            ARPG_Rooms_Flat = g.ToArray(),
+                            HasNoHeatingRooms = true,
+                        })
+                        .ToArray();
+                }
             }
             else
             {
-                return arpgRooms
+                result = arpgRooms
                     .Select(ar => new ARPG_Flat { ARPG_Rooms_Flat = new ARPG_Room[] { ar } })
                     .ToArray();
             }
+
+
+            foreach(ARPG_Flat flat in result)
+            {
+                ARPG_Room[] aRPG_Rooms = flat.ARPG_Rooms_Flat;
+                if (aRPG_Rooms.Length > 1)
+                {
+                    HashSet<string> roomCodeInFlat = aRPG_Rooms.Select(ar => ar.TZCodeParam_Room.AsValueString()).ToHashSet();
+                    if (roomCodeInFlat.Count() > 1)
+                    {
+                        foreach(ARPG_Room aRPG_Room in aRPG_Rooms)
+                        {
+                            HtmlOutput.SetMsgDict_ByMsg($"В одной квартире приняты несколько типов: {string.Join(", ", roomCodeInFlat)}", aRPG_Room.Elem_Room.Id, ErrorDict_Flat);
+                        }
+                    }
+                }
+            }
+            
+            
+            return result;
         }
 
         /// <summary>
@@ -160,8 +182,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// </summary>
         internal static void SetMainFlatData(ARPG_TZ_MainData arpgTZMainData, ARPG_Flat[] arpgFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
         {
-            ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
-
             foreach (ARPG_Flat arpgFlat in arpgFlats)
             {
                 ARPG_Room[] arpgRooms = arpgFlat.ARPG_Rooms_Flat;
@@ -272,8 +292,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// </summary>
         internal static void SetFlatCodeData(ARPG_TZ_MainData arpgTZMainData, ARPG_Flat[] arpgFlats, ARPG_TZ_FlatData[] arpgTZFlatDatas)
         {
-            ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
-
             foreach (ARPG_Flat arpgFlat in arpgFlats)
             {
                 ARPG_Room[] arpgRooms = arpgFlat.ARPG_Rooms_Flat;
@@ -286,7 +304,10 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                 double flatSumArea_SqM = UnitUtils.ConvertFromInternalUnits(flatSumArea, UnitTypeId.SquareMeters);
 #endif
                 // Получаю квартиру по условиям ТЗ по площади
-                ARPG_TZ_FlatData arpgTZFlatDataBySumArea = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZAreaMin_Double <= flatSumArea_SqM && tz.TZAreaMax_Double >= flatSumArea_SqM);
+                double areaTolerance = arpgRooms.FirstOrDefault().FlatAreaTolerance_Room;
+                ARPG_TZ_FlatData arpgTZFlatDataBySumArea = arpgTZFlatDatas.FirstOrDefault(tz =>
+                    tz.TZAreaMin_Double - areaTolerance <= flatSumArea_SqM
+                    && tz.TZAreaMax_Double + areaTolerance >= flatSumArea_SqM);
                 if (arpgTZFlatDataBySumArea == null)
                 {
                     foreach (ARPG_Room arpgRoom in arpgRooms)
@@ -317,6 +338,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                         throw new Exception($"Отправь разработчику - в анализ попали данные, которые нельзя преобразовать в double: {arpgTZFlatDataBySumArea.TZPercent}");
                 }
             }
-        }
+        }        
     }
 }
