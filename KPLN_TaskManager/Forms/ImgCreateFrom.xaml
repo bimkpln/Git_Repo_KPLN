@@ -9,6 +9,7 @@
     Width="500"
     Height="Auto"
     SizeToContent="Height"
+    Topmost="True"
     Background="White">
 
     <Window.Resources>
