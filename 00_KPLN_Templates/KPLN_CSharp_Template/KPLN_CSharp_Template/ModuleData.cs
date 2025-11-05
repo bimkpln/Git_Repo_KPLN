@@ -23,6 +23,16 @@ namespace KPLN_CSharp_Template
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
+        /// <summary>
+        /// Версия Revit, в которой запускается плагин
+        /// </summary>
+        public static int RevitVersion { get; set; }
+
+        /// <summary>
+        /// Ссылка на основное окно Revit 
+        /// </summary>
+        public static System.IntPtr RevitMainWindowHandle { get; set; }
+
         private static string GetModuleFileCreationDate()
         {
             string filePath = Assembly.GetExecutingAssembly().Location;
