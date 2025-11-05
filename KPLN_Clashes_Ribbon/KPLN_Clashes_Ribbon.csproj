@@ -291,6 +291,9 @@
       <DependentUpon>ConfirmDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\KPTaskDialog.cs" />
+    <Compile Include="Forms\ReportGroupPickerForm.xaml.cs">
+      <DependentUpon>ReportGroupPickerForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ReportManagerCreateGroupForm.xaml.cs">
       <DependentUpon>ReportManagerCreateGroupForm.xaml</DependentUpon>
     </Compile>
@@ -343,6 +346,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\ConfirmDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ReportGroupPickerForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
