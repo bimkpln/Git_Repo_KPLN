@@ -1,0 +1,48 @@
+﻿<Window x:Class="KPLN_Tools.Forms.KR_WSofLinks"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:KPLN_Tools.Forms"
+             Title="Отключение рабочего набора"
+             Height="200" Width="420"
+             WindowStartupLocation="CenterScreen"
+             ResizeMode="NoResize"
+             FontFamily="Consolas"
+             FontSize="16">
+    <Border>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="Введите имя набора для отключения:" 
+                    Margin="8,8,8,4" Grid.Row="0"/>
+            <TextBox x:Name="tbWorksetName" 
+                
+                 Margin="8,4,8,8" 
+                 FontSize="18" 
+                 Grid.Row="1"/>
+
+            <StackPanel Grid.Row="2" Margin="8,4,8,8">
+                <CheckBox x:Name="chkOpenClose"
+                Content="Открыть/Закрыть"
+                FontSize="16"/>
+                <TextBlock Text="(включенная галка значит открыть)"
+                FontSize="12"                   
+                Foreground="Gray"
+                Margin="0,2,0,0"/>
+            </StackPanel>
+
+            <Button Content="OK" 
+                Width="80" Height="28"
+                HorizontalAlignment="Right" 
+                Margin="8" 
+                Grid.Row="3"
+                Click="OkButton_Click"/>
+        </Grid>
+    </Border>
+</Window>
