@@ -144,6 +144,8 @@
                     <StackPanel MaxWidth="400">
                         <TextBlock TextWrapping="Wrap">Объединить несколько отверстий в одно 
                             (БЕЗ учёта правил на зазоры и max/min размеры отверстий, но соблюдая шаг в 50 мм)</TextBlock>
+                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в 
+                            границах одной стены</TextBlock>
                     </StackPanel>
                 </Button.ToolTip>
             </Button>
@@ -152,13 +154,15 @@
                 Style="{StaticResource BTN}"
                 Command="{Binding SetOpenHoleByTaskCommand}">
                 <TextBlock
-                    Text="Поставить отверстие по заданию"
+                    Text="Отверстие по заданию"
                     TextWrapping="Wrap"
                     MaxWidth="250"
                     TextAlignment="Center"/>
                 <Button.ToolTip>
                     <StackPanel MaxWidth="400">
                         <TextBlock TextWrapping="Wrap">Потсавить отверстие по заданию от ИОС</TextBlock>
+                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в 
+                            границах одной стены</TextBlock>
                     </StackPanel>
                 </Button.ToolTip>
             </Button>

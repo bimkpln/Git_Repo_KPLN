@@ -112,7 +112,7 @@ namespace KPLN_OpeningHoleManager.Services
         /// <summary>
         /// Создать Outline по указанному BoundingBoxXYZ и расширению
         /// </summary>
-        internal static Outline CreateOutline_ByBBoxANDExpand(BoundingBoxXYZ bbox, double expandValue)
+        internal static Outline CreateOutline_ByBBoxANDExpand(BoundingBoxXYZ bbox, XYZ expandXYZ)
         {
             Outline resultOutlie;
 
@@ -124,8 +124,8 @@ namespace KPLN_OpeningHoleManager.Services
             // Подготовка расширенного BoundingBoxXYZ, чтобы не упустить эл-ты
             BoundingBoxXYZ expandedCropBB = new BoundingBoxXYZ()
             {
-                Max = bboxMax + new XYZ(expandValue, expandValue, expandValue),
-                Min = bboxMin - new XYZ(expandValue, expandValue, expandValue),
+                Max = bboxMax + expandXYZ,
+                Min = bboxMin - expandXYZ,
             };
 
             resultOutlie = new Outline(expandedCropBB.Min, expandedCropBB.Max);

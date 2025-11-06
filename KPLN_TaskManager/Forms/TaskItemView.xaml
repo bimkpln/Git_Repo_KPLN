@@ -9,7 +9,7 @@
     MinWidth="400"
     MaxWidth="700"
     Height="Auto"
-    MaxHeight="1000"
+    MaxHeight="1050"
     SizeToContent="Height"
     Topmost="True"
     ResizeMode="CanResizeWithGrip"
@@ -44,6 +44,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.5"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -354,14 +355,70 @@
             IsEnabled="False"
             IsExpanded="False">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="15"/>
+                </Grid.RowDefinitions>
+                
                 <Image 
                     Name="BodyImg"
                     Width="200" 
                     Height="200" 
                     VerticalAlignment="Top" 
-                    ToolTip="Нажми ЛМК, чтобы открытьизображение в большем формате"
-                    Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="Нажми ЛМК, чтобы открыть изображение в большем формате"
+                    Source="{Binding TaskImageSource,UpdateSourceTrigger=PropertyChanged}"
                     MouseLeftButtonDown="BodyImg_MouseLeftButtonDown"/>
+
+                <DockPanel 
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    LastChildFill="False">
+                    <Button
+                        Width="25"
+                        Style="{StaticResource RunBTN}"
+                        ToolTip="Показать предыдущий рисунок"
+                        Click="ImgLeft_Click">
+                        <Button.Content>
+                            <TextBlock
+                                Text="←"
+                                FontSize="14"/>
+                        </Button.Content>
+                    </Button>
+                    
+                    <Button
+                        Width="25"
+                        Style="{StaticResource RunBTN}"
+                        ToolTip="Показать следующий рисунок"
+                        Click="ImgRight_Click">
+                        <Button.Content>
+                            <TextBlock
+                                Text="→"
+                                FontSize="14"/>
+                        </Button.Content>
+                    </Button>
+                    
+                    <Button
+                        x:Name="DeleteBtn"
+                        Width="25"
+                        Style="{StaticResource RunBTN}"
+                        IsEnabled="False"
+                        ToolTip="Удалить текущий"
+                        Click="ImgDelete_Click">
+                        <Button.Content>
+                            <TextBlock
+                                Text="🗑️"
+                                FontSize="14"/>
+                        </Button.Content>
+                    </Button>
+                    
+                </DockPanel>
+                
+                <TextBlock
+                    Grid.Row="2"
+                    FontSize="10"
+                    HorizontalAlignment="Center"
+                    Text="{Binding CurrentImgSpecialFormat, UpdateSourceTrigger=PropertyChanged}"/>
 
             </Grid>
         </Expander>
@@ -437,11 +494,11 @@
                     Grid.Column="1">
                     <Button
                         Name="ImgLoad"
-                        Content="Загрузить/обновить изображение"
+                        Content="Загрузить новое изображение"
                         Style="{StaticResource RunBTN}" 
                         IsEnabled="False"
                         Background="{Binding TaskBackground}"
-                        ToolTip="Нажми, чтобы добавить/обновить изображение из буфера обмена (предварительно создай его любым удобным способом)"
+                        ToolTip="Нажми, чтобы добавить НОВОЕ изображение из буфера обмена (предварительно создай его любым удобным способом)"
                         Click="ImgLoad_Click"/>
                     
                     <Button

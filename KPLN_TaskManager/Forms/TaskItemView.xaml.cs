@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
 using KPLN_TaskManager.Common;
@@ -30,16 +31,17 @@ namespace KPLN_TaskManager.Forms
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
 
             CurrentTaskItemEntity = taskItemEntity;
+            
             DataContext = CurrentTaskItemEntity;
 
-            CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TaskManagerDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
+            CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TMDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
             TaskItem_Comments.ItemsSource = CurrentTaskComments;
 
             // Видимость поля с задачей в битрикс
             if (CurrentTaskItemEntity.BitrixTaskId == 0 || CurrentTaskItemEntity.BitrixTaskId == -1)
                 BtnBitrixTask.Visibility = System.Windows.Visibility.Collapsed;
 
-            // Видимость и нажемаемость кнопки выбора эл-в
+            // Видимость и нажимаемость кнопки выбора эл-в
             if (CurrentTaskItemEntity.ElementIds != null && string.IsNullOrEmpty(CurrentTaskItemEntity.ElementIds) && CurrentTaskItemEntity.ModelName.Equals(Module.CurrentDoc))
             {
                 ModelElemsContTBl.Visibility = System.Windows.Visibility.Collapsed;
@@ -61,6 +63,11 @@ namespace KPLN_TaskManager.Forms
 
         public ObservableCollection<TaskItemEntity_Comment> CurrentTaskComments { get; set; }
 
+        /// <summary>
+        /// Таска редактируется создателем?
+        /// </summary>
+        public bool IsCreatorEditable { get; set; } = false;
+
         private static string GetCurrentData() => DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
@@ -73,7 +80,7 @@ namespace KPLN_TaskManager.Forms
         /// </summary>
         private void RefreshFromDatabase()
         {
-            TaskItemEntity freshTIE = TaskManagerDBService.GetEntity_ByEntityId(CurrentTaskItemEntity.Id);
+            TaskItemEntity freshTIE = TMDBService.GetEntity_ByEntityId(CurrentTaskItemEntity.Id);
 
             if (freshTIE == null)
                 return;
@@ -82,7 +89,7 @@ namespace KPLN_TaskManager.Forms
             CurrentTaskItemEntity.DelegatedDepartmentId = freshTIE.DelegatedDepartmentId;
             CurrentTaskItemEntity.BitrixTaskId = freshTIE.BitrixTaskId;
             CurrentTaskItemEntity.TaskBody = freshTIE.TaskBody;
-            CurrentTaskItemEntity.ImageBuffer = freshTIE.ImageBuffer;
+            CurrentTaskItemEntity.PathToImageBufferDB = freshTIE.PathToImageBufferDB;
             CurrentTaskItemEntity.ModelName = freshTIE.ModelName;
             CurrentTaskItemEntity.ModelViewId = freshTIE.ModelViewId;
             CurrentTaskItemEntity.ElementIds = freshTIE.ElementIds;
@@ -90,7 +97,7 @@ namespace KPLN_TaskManager.Forms
             CurrentTaskItemEntity.LastChangeData = freshTIE.LastChangeData;
 
             CurrentTaskComments?.Clear();
-            foreach (var c in TaskManagerDBService.GetComments_ByTaskItem(CurrentTaskItemEntity))
+            foreach (var c in TMDBService.GetComments_ByTaskItem(CurrentTaskItemEntity))
                 CurrentTaskComments.Add(c);
         }
 
@@ -105,19 +112,20 @@ namespace KPLN_TaskManager.Forms
             CreateDepCBox.IsEnabled = isDepSubDep;
 
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
-            bool isCreatorEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
+            IsCreatorEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
             bool isFullEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
                 || DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
                 || isDepSubDep;
 
-            HeaderTBox.IsEnabled = isCreatorEditable;
-            DelegateDepCBox.IsEnabled = isCreatorEditable;
-            BodyTBox.IsReadOnly = !isCreatorEditable;
-            ModelBindingCBox.IsEnabled = isCreatorEditable;
-            ImgLoad.IsEnabled = isCreatorEditable;
-            AddElementIdsBtn.IsEnabled = isCreatorEditable;
-            RemoveElementIdsBtn.IsEnabled = isCreatorEditable;
-            AddChangeTaskBtn.IsEnabled = isCreatorEditable;
+            HeaderTBox.IsEnabled = IsCreatorEditable;
+            DelegateDepCBox.IsEnabled = IsCreatorEditable;
+            BodyTBox.IsReadOnly = !IsCreatorEditable;
+            ModelBindingCBox.IsEnabled = IsCreatorEditable;
+            DeleteBtn.IsEnabled = IsCreatorEditable;
+            ImgLoad.IsEnabled = IsCreatorEditable;
+            AddElementIdsBtn.IsEnabled = IsCreatorEditable;
+            RemoveElementIdsBtn.IsEnabled = IsCreatorEditable;
+            AddChangeTaskBtn.IsEnabled = IsCreatorEditable;
 
             DelegateUserCBox.IsEnabled = isFullEditable;
             BitrixParentTaskIdTBox.IsEnabled = isFullEditable;
@@ -260,8 +268,6 @@ namespace KPLN_TaskManager.Forms
         /// <summary>
         /// Создать/изменить задачу
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void AddChangeTaskBtn_Click(object sender, RoutedEventArgs e)
         {
             if (!VerifyMainFields())
@@ -270,10 +276,21 @@ namespace KPLN_TaskManager.Forms
             // Если id = 0 - это новая задача
             if (CurrentTaskItemEntity.Id == 0)
             {
+                int nextIdFromDB = TMDBService.GetNextId();
+                
                 CurrentTaskItemEntity.CreatedTaskData = GetCurrentData();
                 CurrentTaskItemEntity.LastChangeData = GetCurrentData();
+                CurrentTaskItemEntity.Id = nextIdFromDB;
+                CurrentTaskItemEntity.PathToImageBufferDB = TM_IBDBService.GenerateNewPath_DBForTMIB(CurrentTaskItemEntity).FullName;
 
-                TaskManagerDBService.CreateDBTaskItem(CurrentTaskItemEntity);
+                Task createItemTask = Task.Run(() =>
+                {
+                    TMDBService.CreateDBTaskItem(CurrentTaskItemEntity);
+                    TM_IBDBService.CreateDbFile_ByTaskItem(CurrentTaskItemEntity);
+                });
+                createItemTask.Wait();
+
+                TM_IBDBService.CreateDBTaskEntity_ImageBufferItem(CurrentTaskItemEntity);
 
                 Module.MainMenuViewer.LoadTaskData();
             }
@@ -281,7 +298,20 @@ namespace KPLN_TaskManager.Forms
             else
             {
                 CurrentTaskItemEntity.LastChangeData = GetCurrentData();
-                TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
+
+                // Создаю БД, если ранее не было (связано со старыми замечаниями, где картинки хранились в одной БД). !!!УДАЛИТЬ 01.10.2026!!!
+                if (string.IsNullOrEmpty(CurrentTaskItemEntity.PathToImageBufferDB))
+                {
+                    CurrentTaskItemEntity.PathToImageBufferDB = TM_IBDBService.GenerateNewPath_DBForTMIB(CurrentTaskItemEntity).FullName;
+                    TM_IBDBService.CreateDbFile_ByTaskItem(CurrentTaskItemEntity);
+                }
+
+                Task updateItemTask = Task.Run(() =>
+                {
+                    TMDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
+                    TM_IBDBService.UpSetTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
+                });
+                updateItemTask.Wait();
 
                 LogToCommentSender("Отредактировано");
             }
@@ -330,7 +360,7 @@ namespace KPLN_TaskManager.Forms
                     }
 
                     CurrentTaskItemEntity.LastChangeData = GetCurrentData();
-                    TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
+                    TMDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
 
                     LogToCommentSender($"{commetnStatus}: {userTextInput.UserInput}");
                 }
@@ -349,7 +379,7 @@ namespace KPLN_TaskManager.Forms
                 logMsg,
                 GetCurrentData());
 
-            TaskManagerDBService.CreateDBTaskItemComment(logComment);
+            TMDBService.CreateDBTaskItemComment(logComment);
 
             CurrentTaskComments.Insert(0, logComment);
         }
@@ -364,7 +394,7 @@ namespace KPLN_TaskManager.Forms
                 BitmapSource image = Clipboard.GetImage();
                 if (image != null)
                 {
-                    CurrentTaskItemEntity.ImageBuffer = ConvertToByteArray(image);
+                    SetImageBuffer(image);
                     SetImgExpander();
 
                     MessageBox.Show(
@@ -385,12 +415,63 @@ namespace KPLN_TaskManager.Forms
             }
         }
 
-        private void BodyImg_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        public void ImgLeft_Click(object sender, RoutedEventArgs e)
         {
-            ImgLargeFrom imgLargeFrom = new ImgLargeFrom(CurrentTaskItemEntity);
-            bool? imgLargeFromResult = imgLargeFrom.ShowDialog();
+            if (CurrentTaskItemEntity.TE_ImageBuffer_Current == 0)
+                CurrentTaskItemEntity.TE_ImageBuffer_Current = CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1;
+            else
+                CurrentTaskItemEntity.TE_ImageBuffer_Current--;
+
+            Button btn = (Button)sender;
+            if (btn.DataContext is ImgLargeFrom imgForm)
+                imgForm.ILF_TaskImageSource = CurrentTaskItemEntity.TaskImageSource;
         }
 
+        public void ImgRight_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrentTaskItemEntity.TE_ImageBuffer_Current == CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1)
+                CurrentTaskItemEntity.TE_ImageBuffer_Current = 0;
+            else
+                CurrentTaskItemEntity.TE_ImageBuffer_Current++;
+            
+            
+            Button btn = (Button)sender;
+            if (btn.DataContext is ImgLargeFrom imgForm)
+                imgForm.ILF_TaskImageSource = CurrentTaskItemEntity.TaskImageSource;
+        }
+
+        public void ImgDelete_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxResult astericsResult = MessageBox.Show(
+                $"Удалить текущий рисунок?",
+                "Внимание",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Asterisk);
+
+            if (astericsResult == MessageBoxResult.No)
+                return;
+
+            DeleteCurrentImageBuffer();
+
+            Button btn = (Button)sender;
+            if (btn.DataContext is ImgLargeFrom imgForm)
+            {
+                imgForm.ILF_TaskImageSource = CurrentTaskItemEntity.TaskImageSource;
+                imgForm.ILF_TE_ImageBufferColl = CurrentTaskItemEntity.TE_ImageBufferColl;
+            }
+        }
+
+        private void BodyImg_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            ImgLargeFrom imgLargeFrom = new ImgLargeFrom(this, CurrentTaskItemEntity);
+            WindowHandleSearch.MainWindowHandle.SetAsOwner(imgLargeFrom);
+
+            this.Hide();
+            imgLargeFrom.ShowDialog();
+            this.Show();
+        }
+
+        [Obsolete("!!!НУЖНО ПРОТЕСТИРОВАТЬ!!!")]
         private void SendToBitrix_Click(object sender, RoutedEventArgs e)
         {
             this.Hide();
@@ -491,51 +572,71 @@ namespace KPLN_TaskManager.Forms
             CurrentTaskItemEntity.BitrixTaskId = bitrTaskId;
             CurrentTaskItemEntity.LastChangeData = GetCurrentData();
             BtnBitrixTask.Visibility = System.Windows.Visibility.Visible;
-            TaskManagerDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
+            TMDBService.UpdateTaskItem_ByTaskItemEntity(CurrentTaskItemEntity);
 
             LogToCommentSender($"Создана задача с ID: {bitrTaskId}");
             #endregion
 
             #region Загрузка рисунка в задачу
-            if (CurrentTaskItemEntity.ImageBuffer == null || CurrentTaskItemEntity.ImageBuffer.Length < 2)
+            if (CurrentTaskItemEntity.TE_ImageBufferColl == null 
+                || CurrentTaskItemEntity.TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
             {
                 this.Show();
                 return;
             }
 
-            string fileName = $"TaskManager_ImgForTask_{bitrTaskId}";
-            Task<string> loadImgToBitrDisk = Task<string>.Run(() =>
-            {
-                return BitrixMessageSender.UploadFile(groupId, CurrentTaskItemEntity.ImageBuffer, fileName);
-            });
 
-            if (loadImgToBitrDisk.Result != null
-                && !string.IsNullOrEmpty(loadImgToBitrDisk.Result)
-                && int.TryParse(loadImgToBitrDisk.Result, out int imgIdFromBirt))
+            // Гружу картинки в битрикс
+            Task<string>[] bitrUploadTasks = new Task<string>[CurrentTaskItemEntity.TE_ImageBufferColl.Count];
+            for (int i = 0; i < CurrentTaskItemEntity.TE_ImageBufferColl.Count; i++)
             {
-                Task<bool> loadImgToBitixTask = Task<bool>.Run(() =>
+                string fileName = $"TaskManager_ImgForTask_{bitrTaskId}_{i}";
+
+                byte[] imgBuff = CurrentTaskItemEntity.TE_ImageBufferColl[i].ImageBuffer;
+                if (imgBuff.Length < 2)
+                    continue;
+
+                bitrUploadTasks[i] = Task<string>.Run(() =>
                 {
-                    return BitrixMessageSender.UpdateTask_LoadImg(bitrTaskId, imgIdFromBirt);
+                    return BitrixMessageSender.UploadFile(groupId, imgBuff, fileName);
                 });
 
-                if (loadImgToBitixTask.Result)
-                    LogToCommentSender($"Рисунок к задаче с ID: {bitrTaskId} - успешно добавлен!");
+            }
+            Task.WaitAll(bitrUploadTasks);
+
+
+            // Привязывю картинки с задачей
+            foreach(Task<string> bitrUploadTask in bitrUploadTasks)
+            {
+                string loadImgToBitrDisk = bitrUploadTask.Result;
+                if (loadImgToBitrDisk != null
+                    && !string.IsNullOrEmpty(loadImgToBitrDisk)
+                    && int.TryParse(loadImgToBitrDisk, out int imgIdFromBirt))
+                {
+                    Task<bool> loadImgToBitixTask = Task<bool>.Run(() =>
+                    {
+                        return BitrixMessageSender.UpdateTask_LoadImg(bitrTaskId, imgIdFromBirt);
+                    });
+
+                    if (loadImgToBitixTask.Result)
+                        LogToCommentSender($"Рисунок к задаче с ID: {bitrTaskId} - успешно добавлен!");
+                    else
+                    {
+                        MessageBox.Show(
+                            $"Рисунок не удалось прикрепить к задаче! Отправь разработчику - не удалось прикрепить файл к задаче Битрикс",
+                            "Отправка в Bitrix",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+                }
                 else
                 {
                     MessageBox.Show(
-                        $"Рисунок не удалось прикрепить к задаче! Отправь разработчику - не удалось прикрепить файл к задаче Битрикс",
+                        $"Рисунок не удалось прикрепить к задаче! Отправь разработчику - не удалось получить ID файла из диска Битрикс",
                         "Отправка в Bitrix",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
-            }
-            else
-            {
-                MessageBox.Show(
-                    $"Рисунок не удалось прикрепить к задаче! Отправь разработчику - не удалось получить ID файла из диска Битрикс",
-                    "Отправка в Bitrix",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
             }
             #endregion
 
@@ -562,12 +663,17 @@ namespace KPLN_TaskManager.Forms
             }
         }
 
-        private byte[] ConvertToByteArray(BitmapSource image)
+        /// <summary>
+        /// Установить ImageBuffer
+        /// </summary>
+        private void SetImageBuffer(BitmapSource image)
         {
             byte[] resultBit;
+            JpegBitmapEncoder encoder = new JpegBitmapEncoder
+            {
+                QualityLevel = 100
+            };
 
-            JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-            encoder.QualityLevel = 100;
             using (MemoryStream stream = new MemoryStream())
             {
                 encoder.Frames.Add(BitmapFrame.Create(image));
@@ -576,7 +682,18 @@ namespace KPLN_TaskManager.Forms
                 stream.Close();
             }
 
-            return resultBit;
+            CurrentTaskItemEntity.TE_ImageBufferColl.Add(new TaskEntity_ImageBuffer(CurrentTaskItemEntity.TE_ImageBufferColl.Count, CurrentTaskItemEntity.Id, resultBit));
+            CurrentTaskItemEntity.TE_ImageBuffer_Current = CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1;
+        }
+
+        /// <summary>
+        /// Удалить текущий ImageBuffer
+        /// </summary>
+        private void DeleteCurrentImageBuffer()
+        {
+            TaskEntity_ImageBuffer currentIB = CurrentTaskItemEntity.TE_ImageBufferColl[CurrentTaskItemEntity.TE_ImageBuffer_Current];
+            CurrentTaskItemEntity.TE_ImageBufferColl.Remove(currentIB);
+            CurrentTaskItemEntity.TE_ImageBuffer_Current = CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1;
         }
 
         /// <summary>
@@ -607,7 +724,7 @@ namespace KPLN_TaskManager.Forms
         /// </summary>
         private void SetImgExpander()
         {
-            if (CurrentTaskItemEntity.ImageSource != null)
+            if (CurrentTaskItemEntity.TaskImageSource != null)
             {
                 ImgExpander.IsEnabled = true;
                 ImgExpander.IsExpanded = true;
@@ -617,6 +734,6 @@ namespace KPLN_TaskManager.Forms
                 ImgExpander.IsEnabled= false;
                 ImgExpander.IsExpanded = false;
             }
-        }
+        }        
     }
 }

@@ -503,7 +503,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             // Подготовка Outline для глобальной фильтрации элементов линков
             BoundingBoxXYZ filterBBox = GeometryCurrentWorker.CreateOverallBBox(arHostElems);
-            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 2);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, new XYZ(2, 2, 2));
 
 
             // Фильтры
@@ -858,6 +858,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                         .SetTransform(linkInstance as Instance)
                         as IOSOpeningHoleTaskEntity;
 
+
                     iosTask.SetGeomParams();
                     iosTask.SetGeomParamsData();
                     iosTasks.Add(iosTask);
@@ -910,10 +911,10 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             List<Element> result = new List<Element>();
 
             BoundingBoxXYZ filterBBox = GeometryCurrentWorker.CreateOverallBBox(iosTasks);
-            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, 3);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, new XYZ(3, 3, 1));
 
-            BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
-            BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);
+            BoundingBoxIntersectsFilter bboxIntersectFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.5);
+            BoundingBoxIsInsideFilter bboxInsideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.5);
 
             // Коллекция ВСЕХ возможнных основ (лучше брать заново, т.к. кэш может протухнуть из-за правок модели)
             Element[] allHostFromDocumentColl = new FilteredElementCollector(doc)
@@ -921,11 +922,16 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 .ToArray();
 
             // Подготовка коллекции эл-в пересекаемых и внутри расширенного BoundingBoxXYZ
-            result.AddRange(allHostFromDocumentColl
-                .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRHostElemExtraFilterFunc(e)));
+            Element[] mainFilteredColl = allHostFromDocumentColl
+                .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e)
+                && ARKRElemsWorker.ARKRHostElemExtraFilterFunc(e))
+                .ToArray();
 
-            result.AddRange(allHostFromDocumentColl
-                .Where(e => ARKRElemsWorker.HostElemCatLogicalOrFilter.PassesFilter(e) && ARKRElemsWorker.ARKRHostElemExtraFilterFunc(e)));
+            result.AddRange(mainFilteredColl
+                .Where(e => bboxIntersectFilter.PassesFilter(e)));
+
+            result.AddRange(mainFilteredColl
+                .Where(e => bboxInsideFilter.PassesFilter(e)));
 
             return result.ToArray();
         }
@@ -938,10 +944,11 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         {
             Element host = null;
             double maxIntersection = 0;
+            Solid iosTaskTransSolid = SolidUtils.CreateTransformed(iosTask.IGDSolid, iosTask.OHE_LinkTransform);
             foreach (Element arPotHost in arPotentialHosts)
             {
                 Solid arPotHostSolid = GeometryWorker.GetRevitElemUniontSolid(arPotHost);
-                Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arPotHostSolid, iosTask.IGDSolid, BooleanOperationsType.Intersect);
+                Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(arPotHostSolid, iosTaskTransSolid, BooleanOperationsType.Intersect);
                 if (intersectionSolid != null && intersectionSolid.Volume > maxIntersection)
                 {
                     maxIntersection = intersectionSolid.Volume;

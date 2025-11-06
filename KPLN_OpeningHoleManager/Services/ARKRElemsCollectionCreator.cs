@@ -40,7 +40,7 @@ namespace KPLN_OpeningHoleManager.Services
             IDictionary<RevitLinkInstance, ICollection<Element>> prefilteredLinkElems = null)
         {
             // Генерация Outline для быстрого поиска (QuickFilter)
-            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(arkrEntity.IGDSolid.GetBoundingBox(), 0.5);
+            Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(arkrEntity.IGDSolid.GetBoundingBox(), new XYZ(0.5, 0.5, 0.5));
 
             foreach (RevitLinkInstance iosLinkInst in iosLinkInsts)
             {

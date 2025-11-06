@@ -481,6 +481,24 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         private static int OnlyNumber(string number)
         {
             char[] charArray = number.ToCharArray();
+            if (number.Contains('/'))
+            {
+                string[] splitedNumber = number.Split('/');
+                string lastPartSplNumber = splitedNumber[splitedNumber.Length - 1];
+                charArray = lastPartSplNumber.ToCharArray();
+                
+                foreach (char c in charArray)
+                {
+                    if (c.Equals('.'))
+                    {
+                        number = number.Split('.')[0];
+                        break;
+                    }
+                }
+
+                return Int32.Parse(new String(lastPartSplNumber.Where(Char.IsDigit).ToArray()));
+            }
+
             foreach (char c in charArray)
             {
                 if (c.Equals('.'))
@@ -489,6 +507,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                     break;
                 }
             }
+
             return Int32.Parse(new String(number.Where(Char.IsDigit).ToArray()));
         }
 
@@ -536,17 +555,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
                 string sheetNumber = curVSheet.SheetNumber;
                 var matchNumberByPrefix = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)/");
-                var matchNumberByPrefixWithNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)\d/");
+                var matchNumberByPrefixWithIntNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)\d/");
+                var matchNumberByPrefixWithDoubleNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)(\d?)\.(\d?)/");
                 var matchByZeroPrefix = Regex.Match(sheetNumber, @"(/[0]?)");
-                var matchBySubNumber = Regex.Match(sheetNumber, @"(\d?)\.(\d?)");
+                var matchBySubNumber = Regex.Match(sheetNumber, @"/(\d?)\.(\d?)");
 
                 if (matchNumberByPrefix.Success)
                     textPrefix = matchNumberByPrefix.Value;
+                else if (matchNumberByPrefixWithIntNumb.Success)
+                    textPrefix = matchNumberByPrefixWithIntNumb.Value;
+                else if (matchNumberByPrefixWithDoubleNumb.Success)
+                    textPrefix = matchNumberByPrefixWithDoubleNumb.Value;
 
-                if (matchNumberByPrefixWithNumb.Success)
-                    textPrefix = matchNumberByPrefixWithNumb.Value;
-
-                if (matchByZeroPrefix.Success)
+                if (matchByZeroPrefix.Success && matchByZeroPrefix.Value.Contains("0"))
                 {
                     if (number < 10)
                         zeroNumberPrefix = "00";

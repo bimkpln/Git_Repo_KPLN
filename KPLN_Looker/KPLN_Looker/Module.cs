@@ -259,7 +259,7 @@ namespace KPLN_Looker
             string docPath = MonitoredDocFilePath_ExceptARKon(document);
             if (docPath != null)
             {
-                CheckAndSendError_FamilyInstanceUserHided(args);
+                CheckAndSendError_FamilyInstanceUserHided(args, document.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
@@ -273,7 +273,7 @@ namespace KPLN_Looker
             string docPath = MonitoredDocFilePath_ExceptARKon(document);
             if (docPath != null)
             {
-                CheckAndSendError_FamilyInstanceUserHided(args);
+                CheckAndSendError_FamilyInstanceUserHided(args, document.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
@@ -433,10 +433,13 @@ namespace KPLN_Looker
         /// <summary>
         /// Поиск ошибки скрытия элементов запрещенными действиями. При наличии - отправка пользователю в битрикс
         /// </summary>
-        private static void CheckAndSendError_FamilyInstanceUserHided(DocumentChangedEventArgs args)
+        private static void CheckAndSendError_FamilyInstanceUserHided(DocumentChangedEventArgs args, Autodesk.Revit.DB.View activeView)
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
-            if (transName == null)
+            if (transName == null 
+                || activeView == null 
+                // Игнор чертёжных видов
+                || activeView.ViewType == ViewType.DraftingView)
                 return;
 
             string lowerTransName = transName.ToLower();
@@ -1020,12 +1023,16 @@ namespace KPLN_Looker
                 bool isMTRS = doc.PathName.Contains("МТРС_");
                 if (isMTRS)
                 {
-                    if (doc.PathName.Contains("_КР_") && doc.PathName.Contains("МТРС_С2."))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ_ТМ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ_АТМ_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(GetFileFullName(doc));
+                    if (mPath.ServerPath)
+                    {
+                        if (doc.PathName.Contains("_КР_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_ТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_АТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    }
                 }
 
                 // Проект Матросская тишина

@@ -64,7 +64,7 @@ namespace KPLN_OpeningHoleManager.Core
             if (dBProject != null)
                 _configType = ConfigType.Shared;
 
-            object obj = ConfigService.ReadConfigFile<MainConfig>(doc, _configType, _cofigName);
+            object obj = ConfigService.ReadConfigFile<MainConfig>(int.Parse(ModuleData.Version), doc, _configType, _cofigName);
             if (obj is MainConfig configItem)
             {
                 return new MainConfig()
@@ -93,7 +93,7 @@ namespace KPLN_OpeningHoleManager.Core
 
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, Module.RevitVersion);
+            DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
             if (dBProject != null)
                 _configType = ConfigType.Shared;
 
@@ -110,7 +110,7 @@ namespace KPLN_OpeningHoleManager.Core
                 KR_OpenHoleMinWidthValue = vm.KR_OpenHoleMinWidthValue,
             };
 
-            ConfigService.SaveConfig<MainConfig>(doc, _configType, mainConfig, _cofigName);
+            ConfigService.SaveConfig<MainConfig>(int.Parse(ModuleData.Version), doc, _configType, mainConfig, _cofigName);
         }
 
         public object ToJson()

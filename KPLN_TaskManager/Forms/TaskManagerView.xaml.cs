@@ -15,14 +15,14 @@ using System.Windows.Data;
 
 namespace KPLN_TaskManager.Forms
 {
-    public partial class TaskManagerView : System.Windows.Controls.Page, IDockablePaneProvider, INotifyPropertyChanged
+    public partial class TaskManagerView : Page, IDockablePaneProvider, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
         private ObservableCollection<TaskItemEntity> _collection;
 
         // Подотделы для отдела пользователя
-        private DBSubDepartment[] _subDepsForUser;
+        private readonly DBSubDepartment[] _subDepsForUser;
         private string _searchHeader;
         private string _selectedOpenStausTasks = "Open";
         private bool _fullTaskCollection = false;
@@ -109,7 +109,7 @@ namespace KPLN_TaskManager.Forms
             if (Module.CurrentDBProject == null)
                 return null;
 
-            _collection = new ObservableCollection<TaskItemEntity>(TaskManagerDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
+            _collection = new ObservableCollection<TaskItemEntity>(TMDBService.GetEntities_ByDBProject(Module.CurrentDBProject));
 
             FilteredTasks = CollectionViewSource.GetDefaultView(_collection);
             FilteredTasks.Filter = FilterTasks;

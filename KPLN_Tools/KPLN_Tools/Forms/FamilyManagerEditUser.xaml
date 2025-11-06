@@ -137,21 +137,22 @@
                            FontSize="15"
                            FontWeight="Bold"/>
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <Button Content="📂"
-                            Width="24" Height="22"
-                            Margin="0,0,6,0"
-                            Padding="0.3,0,0,0.8"
-                            ToolTip="Открыть папку"
-                            Click="BtnOpenFolder_Click"
-                            Background="#FFFFC72C"/>
-                    <TextBlock Text="{Binding FULLPATH}"
-                               ToolTip="{Binding FULLPATH}"
-                               TextTrimming="CharacterEllipsis"
-                               HorizontalAlignment="Left"
-                               MaxWidth="770"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
+
+
+
+                <Grid Margin="0,0,0,3" Cursor="">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Content="📂" Width="24" Height="22" Margin="0" Padding="0.3,0,0,0.8" ToolTip="Открыть папку" VerticalAlignment="Top" Click="BtnOpenFolder_Click" Background="#FFFFC72C"/>
+                    <TextBlock Grid.Column="2" Text="{Binding FULLPATH}" ToolTip="{Binding FULLPATH}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top"/>
+                </Grid>
+
+
+
 
                 <StackPanel Orientation="Horizontal" Margin="0,20,0,8">
                     <TextBlock Text="Отдел:" FontWeight="Bold" Width="90"/>

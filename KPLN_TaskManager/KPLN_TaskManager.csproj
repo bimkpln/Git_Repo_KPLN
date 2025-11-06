@@ -264,8 +264,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\DBService.cs" />
     <Compile Include="Services\ExportToExcelService.cs" />
-    <Compile Include="Services\TaskManagerDBService.cs" />
+    <Compile Include="Services\TM_IBDBService.cs" />
+    <Compile Include="Services\TMDBService.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\showMenu.png" />

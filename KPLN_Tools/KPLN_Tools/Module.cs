@@ -253,9 +253,24 @@ namespace KPLN_Tools
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
-                    typeof(Command_AR_GNSBound).FullName,
+                    typeof(ExtCmd_AR_GNSBound).FullName,
                     "KPLN_Tools.Imagens.gnsAreaBig.png",
                     "KPLN_Tools.Imagens.gnsAreaSmall.png",
+                    "http://moodle");
+
+                PushButtonData arPyatnGraph = CreateBtnData(
+                    "Пятнография: Экспликация",
+                    "Пятнография: Экспликация",
+                    "Проверяет помещения/цветовые облости на соответсвие ТЗ и позволяет сформировать итоговую спецификацю",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExtCmd_AR_PyatnGraph).FullName,
+                    "KPLN_Tools.Imagens.arPyatnGraphBig.png",
+                    "KPLN_Tools.Imagens.arPyatnGraphSmall.png",
                     "http://moodle");
 
                 PushButtonData TEPDesign = CreateBtnData(
@@ -275,6 +290,7 @@ namespace KPLN_Tools
 
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
 #if Debug2023 || Revit2023
+                arToolsPullDownBtn.AddPushButton(arPyatnGraph);
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
 #endif
             }

@@ -16,7 +16,7 @@ namespace KPLN_Library_ConfigWorker
         Memory,
         // Хранится на диске C:\\
         Local,
-        // Хранится на диске Z:\\
+        // Хранится на в корне папки на сервере, или на диске Z:\\ для модлей с RS
         Shared,
     }
 
@@ -36,11 +36,12 @@ namespace KPLN_Library_ConfigWorker
         /// <summary>
         /// Запись данных в файл конфига
         /// </summary>
+        /// <param name="revitVersion">Версия ревит</param>
         /// <param name="doc">Ревит-файл</param>
         /// <param name="data">Данные для записи (один объект или коллекция объектов)</param>
         /// <param name="configType">Тип конфигурации для сохранения</param>
         /// <param name="configName">Имя конфигурации</param>
-        public static void SaveConfig<T>(Document doc, ConfigType configType, object data, string configName = "") where T : IJsonSerializable
+        public static void SaveConfig<T>(int revitVersion, Document doc, ConfigType configType, object data, string configName = "") where T : IJsonSerializable
         {
             string jsonEntity;
 
@@ -55,7 +56,7 @@ namespace KPLN_Library_ConfigWorker
                 MemoryConfigData = data;
             else
             {
-                string configPath = CreateConfigPath(doc, configName, configType);
+                string configPath = CreateConfigPath(revitVersion, doc, configName, configType);
 
                 if (!new FileInfo(configPath).Exists)
                 {
@@ -74,10 +75,11 @@ namespace KPLN_Library_ConfigWorker
         /// <summary>
         /// Десереилизация конфига с получением результата
         /// </summary>
+        /// <param name="revitVersion">Версия ревит</param>
         /// <param name="doc">Ревит-файл</param>
         /// <param name="configType">Тип конфигурации для сохранения</param>
         /// <param name="configName">Имя конфигурации</param>
-        public static object ReadConfigFile<T>(Document doc, ConfigType configType, string configName="")
+        public static object ReadConfigFile<T>(int revitVersion, Document doc, ConfigType configType, string configName = "")
         {
             string json = string.Empty;
 
@@ -88,7 +90,7 @@ namespace KPLN_Library_ConfigWorker
                 case ConfigType.Local:
                     goto case ConfigType.Shared;
                 case ConfigType.Shared:
-                    string configPath = CreateConfigPath(doc, configName, configType);
+                    string configPath = CreateConfigPath(revitVersion, doc, configName, configType);
                     if (new FileInfo(configPath).Exists)
                     {
                         using (StreamReader streamReader = new StreamReader(configPath))
@@ -100,8 +102,8 @@ namespace KPLN_Library_ConfigWorker
                     {
                         if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(IEnumerable<>))
                             return JsonConvert.DeserializeObject<IEnumerable<T>>(json);
-                        else
-                            return JsonConvert.DeserializeObject<T>(json);
+
+                        return JsonConvert.DeserializeObject<T>(json);
                     }
                     catch (JsonException ex)
                     {
@@ -115,10 +117,11 @@ namespace KPLN_Library_ConfigWorker
         /// <summary>
         /// Генерация пути к файлу-конфигурации
         /// </summary>
+        /// /// <param name="revitVersion">Версия ревит</param>
         /// <param name="doc">Ревит-файл</param>
         /// <param name="configName">Имя конфигурации</param>
         /// <param name="configType">Тип конфигурации для сохранения</param>
-        private static string CreateConfigPath(Document doc, string configName, ConfigType configType)
+        private static string CreateConfigPath(int revitVersion, Document doc, string configName, ConfigType configType)
         {
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
@@ -136,7 +139,7 @@ namespace KPLN_Library_ConfigWorker
                     string resultPath;
                     if (strDocModelPath.Contains("RSN:"))
                     {
-                        DBProject dBProject = _projectDbService.GetDBProject_ByRevitDocFileName(strDocModelPath);
+                        DBProject dBProject = _projectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, revitVersion);
                         resultPath = $"Z:\\KPLN_Temp\\KPLN_Config\\{dBProject.Code}\\{configName}.json";
                     }
                     else

@@ -23,6 +23,11 @@ namespace KPLN_OpeningHoleManager
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
+        /// <summary>
+        /// Версия Revit, в которой запускается плагин
+        /// </summary>
+        public static int RevitVersion { get; set; }
+
         private static string GetModuleFileCreationDate()
         {
             string filePath = Assembly.GetExecutingAssembly().Location;

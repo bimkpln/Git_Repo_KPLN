@@ -19,6 +19,10 @@ namespace KPLN_CSharp_Template
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            // Установка основных полей модуля
+            ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
+            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Панель шаблон");
 

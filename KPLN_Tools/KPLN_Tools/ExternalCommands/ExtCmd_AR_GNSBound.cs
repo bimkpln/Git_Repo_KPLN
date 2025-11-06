@@ -14,7 +14,7 @@ namespace KPLN_Tools.ExternalCommands
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class Command_AR_GNSBound : IExternalCommand
+    internal class ExtCmd_AR_GNSBound : IExternalCommand
     {
         private ModelCurveArray _exteriorModelCurveArr;
         private Room _exteriorRoom;
