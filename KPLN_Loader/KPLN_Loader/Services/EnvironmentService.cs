@@ -1,5 +1,4 @@
-﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Core;
 using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms;
@@ -19,8 +18,11 @@ namespace KPLN_Loader.Services
     /// <summary>
     /// Сервис для подготовки окружения для копируемых плагинов (директории, папки и т.п.)
     /// </summary>
-    internal sealed class EnvironmentService
+    public sealed class EnvironmentService
     {
+        private static Bitrix_Config[] _bitrixConfigs;
+        private static DB_Config[] _databaseConfigs;
+
         ///<summary>
         ///Путь до локальной папки пользователя
         ///</summary>
@@ -39,9 +41,6 @@ namespace KPLN_Loader.Services
         private readonly string _revitVersion;
         private readonly Logger _logger;
         private readonly LoaderStatusForm _loaderStatusForm;
-
-        private DB_Config[] _databaseConfigs;
-        private Bitrix_Config[] _bitrixConfigs;
 
         internal EnvironmentService(Logger logger, LoaderStatusForm loaderStatusForm, string revitVersion, string diteTime)
         {
@@ -64,23 +63,9 @@ namespace KPLN_Loader.Services
         public static string BitrixConfigs_MainWebHookName { get; } = "MainWebHook";
 
         /// <summary>
-        /// Коллекция десерилизованныйх данных по БД
-        /// </summary>
-        public DB_Config[] DatabaseConfigs 
-        { 
-            get 
-            { 
-                if(_databaseConfigs == null )
-                    _databaseConfigs = GetDBCongigs();
-
-                return _databaseConfigs;
-            } 
-        }
-
-        /// <summary>
         /// Коллекция десерилизованныйх данных по настройкам Bitrix
         /// </summary>
-        public Bitrix_Config[] BitrixConfigs
+        public static Bitrix_Config[] BitrixConfigs
         {
             get
             {
@@ -88,6 +73,20 @@ namespace KPLN_Loader.Services
                     _bitrixConfigs = GetBitrixCongigs();
 
                 return _bitrixConfigs;
+            }
+        }
+
+        /// <summary>
+        /// Коллекция десерилизованныйх данных по БД
+        /// </summary>
+        public static DB_Config[] DatabaseConfigs
+        {
+            get
+            {
+                if (_databaseConfigs == null)
+                    _databaseConfigs = GetDBCongigs();
+
+                return _databaseConfigs;
             }
         }
 
@@ -104,7 +103,7 @@ namespace KPLN_Loader.Services
         internal async Task<int> GetUserBitrixId_ByNameAndSurname(string name, string surname)
         {
             int id = -1;
-            string webHookUrl = BitrixConfigs.FirstOrDefault(d => d.Name == EnvironmentService.BitrixConfigs_MainWebHookName).URL;
+            string webHookUrl = BitrixConfigs.FirstOrDefault(d => d.Name == BitrixConfigs_MainWebHookName).URL;
             using (HttpClient client = new HttpClient())
             {
                 // Выполнение GET - запроса к странице
@@ -130,7 +129,7 @@ namespace KPLN_Loader.Services
                 throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
 
             return id;
-        }        
+        }
 
         /// <summary>
         /// Проверка наличия файла конфигурации и необходимых БД
@@ -151,8 +150,8 @@ namespace KPLN_Loader.Services
                 }
 
                 // Проверка инициализации вебхуков
-                foreach (Bitrix_Config bitr in BitrixConfigs) 
-                { 
+                foreach (Bitrix_Config bitr in BitrixConfigs)
+                {
                     if (string.IsNullOrEmpty(bitr.Name) || string.IsNullOrEmpty(bitr.URL))
                         stringBuilder.Append($"Не все вебхуки активированы. Отправь разработчику\r\n");
                 }
@@ -238,6 +237,53 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
+        /// Получить коллекцию Bitrix_Config
+        /// </summary>
+        /// <returns></returns>
+        private static Bitrix_Config[] GetBitrixCongigs()
+        {
+            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var bitrixSection = root["BitrixConfig"]?["WEBHooks"];
+            var bitrixList = new List<Bitrix_Config>();
+
+            if (bitrixSection != null)
+            {
+                var bitrixObj = bitrixSection.ToObject<Bitrix_Config>();
+                if (bitrixObj != null)
+                    bitrixList.Add(bitrixObj);
+            }
+
+            return bitrixList.ToArray();
+        }
+
+        /// <summary>
+        /// Получить коллекцию DB_Config
+        /// </summary>
+        /// <returns></returns>
+        private static DB_Config[] GetDBCongigs()
+        {
+            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var dbSection = root["DatabaseConfig"]?["DBConnections"] as JObject;
+            var dbList = new List<DB_Config>();
+
+            if (dbSection != null)
+            {
+                foreach (var prop in dbSection.Properties())
+                {
+                    var dbObj = prop.Value.ToObject<DB_Config>();
+                    if (dbObj != null)
+                        dbList.Add(dbObj);
+                }
+            }
+
+            return dbList.ToArray();
+        }
+
+        /// <summary>
         /// Очистка (по возможности) указанной директории
         /// </summary>
         /// <param name="directoryPath">Путь для удаления</param>
@@ -246,7 +292,7 @@ namespace KPLN_Loader.Services
             int count = 0;
             try
             {
-                foreach(var dirPath in Directory.GetDirectories(directoryPath))
+                foreach (var dirPath in Directory.GetDirectories(directoryPath))
                 {
                     if (!IsDirLocked(dirPath))
                     {
@@ -288,7 +334,7 @@ namespace KPLN_Loader.Services
                 {
                     return true;
                 }
-                
+
             }
 
             // Все файлы свободны
@@ -318,45 +364,6 @@ namespace KPLN_Loader.Services
                 string targetSubDir = Path.Combine(destDir, dirName);
                 CopyDirectory(sourceSubDir, targetSubDir);
             }
-        }
-
-        private DB_Config[] GetDBCongigs()
-        {
-            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
-            JObject root = JObject.Parse(jsonConfig);
-
-            var dbSection = root["DatabaseConfig"]?["DBConnections"] as JObject;
-            var dbList = new List<DB_Config>();
-
-            if (dbSection != null)
-            {
-                foreach (var prop in dbSection.Properties())
-                {
-                    var dbObj = prop.Value.ToObject<DB_Config>();
-                    if (dbObj != null)
-                        dbList.Add(dbObj);
-                }
-            }
-
-            return dbList.ToArray();
-        }
-
-        private Bitrix_Config[] GetBitrixCongigs()
-        {
-            string jsonConfig = File.ReadAllText(Application.MainConfigPath);
-            JObject root = JObject.Parse(jsonConfig);
-            
-            var bitrixSection = root["BitrixConfig"]?["WEBHooks"];
-            var bitrixList = new List<Bitrix_Config>();
-
-            if (bitrixSection != null)
-            {
-                var bitrixObj = bitrixSection.ToObject<Bitrix_Config>();
-                if (bitrixObj != null)
-                    bitrixList.Add(bitrixObj);
-            }
-
-            return bitrixList.ToArray();
         }
     }
 }

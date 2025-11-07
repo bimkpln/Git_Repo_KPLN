@@ -147,7 +147,7 @@ namespace KPLN_Loader
 
                     #region Подготовка/создание пользователя
                     
-                    string mainDBPath = _envService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
+                    string mainDBPath = EnvironmentService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
                     _dbService = new SQLiteService(_logger, mainDBPath);
                     CurrentRevitUser = _dbService.Authorization(_envService);
                     if (CurrentRevitUser == null)
