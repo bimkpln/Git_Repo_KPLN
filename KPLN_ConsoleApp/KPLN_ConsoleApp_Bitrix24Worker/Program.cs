@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -12,19 +14,25 @@ namespace KPLN_ConsoleApp_Bitrix24Worker
     /// </summary>
     internal class Program
     {
-        private static readonly string _webhookUrl = "https://kpln.bitrix24.ru/rest/152/x02w3tyiv3rgtis0/";
+        private readonly static string _mainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+        private readonly static string _bitrixConfigs_MainWebHookName = "MainWebHook";
+        private static string _webhookUrl;
 
         static async Task Main(string[] args)
         {
+            // Подготовка
+            Bitrix_Config[] bitrixConfigs = GetBitrixCongigs();
+
+            _webhookUrl = bitrixConfigs.FirstOrDefault(d => d.Name == _bitrixConfigs_MainWebHookName).URL;
+
+            // Основной блок
             Console.WriteLine("Введи имя чата для его очистки, или ID (если чатов много): ");
             string userInput = Console.ReadLine();
             Console.WriteLine();
 
             string chatId;
             if (int.TryParse(userInput, out int _))
-            {
-
-            }
+                Console.WriteLine($"Оошибка ввода: Похоже, что это не id: \"{userInput}\". Нужно вводить ТОЛЬКО числа");
             else
             {
                 chatId = await GetChatId_ByName(userInput);
@@ -75,7 +83,7 @@ namespace KPLN_ConsoleApp_Bitrix24Worker
             using (HttpClient client = new HttpClient())
             {
                 HttpResponseMessage response = await client
-                    .GetAsync($"{_webhookUrl}im.search.chat.list.json?FIND={chatName}");
+                    .GetAsync($"{_webhookUrl}/im.search.chat.list.json?FIND={chatName}");
                 string jsonResponse = await response.Content.ReadAsStringAsync();
 
                 using (JsonDocument doc = JsonDocument.Parse(jsonResponse))
@@ -110,7 +118,7 @@ namespace KPLN_ConsoleApp_Bitrix24Worker
             using (HttpClient client = new HttpClient())
             {
                 HttpResponseMessage response = await client
-                    .GetAsync($"{_webhookUrl}im.chat.user.list.json?CHAT_ID={chatId}");
+                    .GetAsync($"{_webhookUrl}/im.chat.user.list.json?CHAT_ID={chatId}");
                 string jsonResponse = await response.Content.ReadAsStringAsync();
 
                 using (JsonDocument doc = JsonDocument.Parse(jsonResponse))
@@ -190,6 +198,28 @@ namespace KPLN_ConsoleApp_Bitrix24Worker
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Получить коллекцию Bitrix_Config
+        /// </summary>
+        /// <returns></returns>
+        private static Bitrix_Config[] GetBitrixCongigs()
+        {
+            string jsonConfig = File.ReadAllText(_mainConfigPath);
+            JObject root = JObject.Parse(jsonConfig);
+
+            var bitrixSection = root["BitrixConfig"]?["WEBHooks"];
+            var bitrixList = new List<Bitrix_Config>();
+
+            if (bitrixSection != null)
+            {
+                var bitrixObj = bitrixSection.ToObject<Bitrix_Config>();
+                if (bitrixObj != null)
+                    bitrixList.Add(bitrixObj);
+            }
+
+            return bitrixList.ToArray();
         }
     }
 }
