@@ -252,6 +252,9 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
+                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
+                ARPG_Flat.ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
+
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(false);
                 if (arpgRooms == null)
                     return;

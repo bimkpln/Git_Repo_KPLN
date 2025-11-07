@@ -132,7 +132,7 @@ namespace KPLN_Tools.Forms.Models.Core
         /// <summary>
         /// Имя параметра для Имя помещения (квартира\балкон\лоджия\терраса)
         /// </summary>
-        public string FlatNameParamName { get; } = "Имя";
+        public string FlatNameParamName { get; } = "Назначение";
 
         /// <summary>
         /// Имя параметра для Номера квартиры

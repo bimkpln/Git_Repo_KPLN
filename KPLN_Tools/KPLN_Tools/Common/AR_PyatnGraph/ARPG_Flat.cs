@@ -234,11 +234,12 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
 
                 // Проверяю на совпадение диапазона квартиры с диапазоном ТЗ и с принятым допуском (допуск у всех одинаковый)
                 double areaTolerance = arpgRooms.FirstOrDefault().FlatAreaTolerance_Room;
-                ARPG_TZ_FlatData arpgTZFlatDataBySumArea = arpgTZFlatDatas.FirstOrDefault(tz => 
+                IEnumerable<ARPG_TZ_FlatData> arpgTZFlatDatasBySumArea = arpgTZFlatDatas.Where(tz => 
                     tz.TZAreaMin_Double - areaTolerance <= flatSumArea_SqM 
                     && tz.TZAreaMax_Double + areaTolerance >= flatSumArea_SqM);
-                
-                if (arpgTZFlatDataBySumArea == null || arpgTZFlatDataByTZ.TZCode != arpgTZFlatDataBySumArea.TZCode)
+
+                ARPG_TZ_FlatData arpgTZFlatDataBySumArea = arpgTZFlatDatasBySumArea?.FirstOrDefault(ar => ar.TZCode == arpgTZFlatDataByTZ.TZCode);
+                if (arpgTZFlatDatasBySumArea == null || arpgTZFlatDataBySumArea == null)
                 {
                     foreach (ARPG_Room arpgRoom in arpgRooms)
                     {
