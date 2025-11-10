@@ -3,16 +3,12 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Common;
-using KPLN_ExtraFilter.Entities.SelectionByClick;
 using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
-using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace KPLN_ExtraFilter.ExternalCommands
@@ -51,7 +47,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
 
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class SetParamsByFrameExtCommand : IExternalCommand
+    internal class SetParamsByFrameExtCmd : IExternalCommand
     {
         internal const string PluginName = "Выбрать/заполнить рамкой";
 
@@ -106,7 +102,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 #endregion
 
                 // Чтение конфигурации последнего запуска
-                object lastRunConfigObj = ConfigService.ReadConfigFile<List<MainItem>>(doc, ConfigType.Memory);
+                object lastRunConfigObj = ConfigService.ReadConfigFile<List<MainItem>>(ModuleData.RevitVersion, doc, ConfigType.Memory);
 
                 // Подготовка ViewModel для старта окна
                 SetParamsByFrameForm form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities, lastRunConfigObj);

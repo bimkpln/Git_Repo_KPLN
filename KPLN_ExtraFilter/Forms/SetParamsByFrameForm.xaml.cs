@@ -40,7 +40,7 @@ namespace KPLN_ExtraFilter.Forms
         {
             DialogResult = true;
             KPLN_Loader.Application.OnIdling_CommandQueue
-                .Enqueue(new SetParamsByFrameExcCommandStart(CurrentSetParamsByFrameEntity));
+                .Enqueue(new SetParamsByFrameExcCmd(CurrentSetParamsByFrameEntity));
 
             Close();
         }
@@ -72,9 +72,9 @@ namespace KPLN_ExtraFilter.Forms
 
             UserDialog ud = new UserDialog("ВНИМАНИЕ",
                 $"Сейчас будут удален параметр \"{entity.UserSelectedParamEntity.CurrentParamName}\". Продолжить?");
-            ud.ShowDialog();
-
-            if (ud.IsRun)
+            
+            
+            if((bool)ud.ShowDialog())
             {
                 CurrentSetParamsByFrameEntity.MainItems.Remove(entity);
                 CurrentSetParamsByFrameEntity.RunButtonContext();

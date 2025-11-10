@@ -11,37 +11,66 @@
         Topmost="True"
         FontFamily="Monaco, Consolas, 'DejaVu Sans Mono', monospace"
         Title="KPLN: Выбрать/заполнить рамкой" 
-        Background="#FF292D36">
+        Background="#2B2F38">
     <Window.Resources>
 
-        <Style TargetType="Rectangle" x:Key="RCTG">
-            <Setter Property="RadiusX" Value="2"/>
-            <Setter Property="RadiusY" Value="2"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Fill" Value="AliceBlue"/>
-            <Setter Property="Opacity" Value="0.1"/>
+        <Style TargetType="Border" x:Key="CardBorder">
+            <Setter Property="Background" Value="#333840" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="8" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#60000000" />
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="Button" x:Key="BTN">
-            <Setter Property="Background" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="White"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="5,5,5,5"/>
-            <Setter Property="Padding" Value="5,0,5,0"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="#3F8CFF" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#3F8CFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="Margin" Value="6" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#5FAEFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3380CC" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#555555" />
+                                <Setter Property="Foreground" Value="#AAAAAA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        
+
         <Style TargetType="TextBlock" x:Key="TXT">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
-            <Setter Property="Margin" Value="5,5,5,5"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#EDEDED" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxWidth" Value="400" />
+            <Setter Property="Margin" Value="5" />
+            <Setter Property="FontSize" Value="16" />
         </Style>
-        
+
         <Style TargetType="TextBox" x:Key="TXB">
-            <Setter Property="Margin" Value="5,5,5,5"/>
+            <Setter Property="Margin" Value="5"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
@@ -49,75 +78,79 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="350"/>
+            <ColumnDefinition Width="500"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition MinHeight="25"/>
             <RowDefinition Height="35"/>
         </Grid.RowDefinitions>
 
-        <Rectangle
-            Grid.Row="0"
-            Style="{StaticResource RCTG}"/>
-        <StackPanel 
-            Grid.Row="0">
-            <TextBlock 
-                Style="{StaticResource TXT}"
-                Text="Добавь параметры и укажи их значения:"/>
+        <Border Grid.Row="0" Style="{StaticResource CardBorder}">
+            <StackPanel 
+                Grid.Row="0">
+                <TextBlock 
+                    Style="{StaticResource TXT}"
+                    Text="Добавь параметры и укажи их значения:"/>
 
-            <ItemsControl
-                Name="IcParams"
-                ItemsSource="{Binding MainItems}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel
-                            Orientation="Vertical">
-                            <TextBlock
-                                Style="{StaticResource TXT}"
-                                Margin="5,0,5,0"
-                                Text="Параметр:"/>
-                            <ComboBox 
-                                Name="IcParamsCBox"
-                                ItemsSource="{Binding DataContext.AllParamEntities, 
-                                    RelativeSource={RelativeSource AncestorType=Window}}"
-                                SelectedItem="{Binding UserSelectedParamEntity, 
-                                    UpdateSourceTrigger=PropertyChanged}"
-                                HorizontalAlignment="Stretch"
-                                Margin="5,5,5,5"
-                                ToolTip="Выбери параметр для заполнения">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock 
-                                            Text="{Binding CurrentParamName}" 
-                                            ToolTip="{Binding CurrentToolTip, 
-                                                UpdateSourceTrigger=PropertyChanged}"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <TextBlock
-                                Style="{StaticResource TXT}"
-                                Margin="5,0,5,0"
-                                Text="Значение:"/>
-                            <TextBox 
-                                Text="{Binding UserInputParamValue}"
-                                Style="{StaticResource TXB}"
-                                ToolTip="Введи значение параметра, или оставь пустым для обнуления"/>
-                            <Separator
-                                HorizontalAlignment="Stretch"
-                                Background="White"
-                                FontWeight="Bold"/>
-                            <StackPanel.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem 
-                                        Header="Удалить" 
-                                        Click="MenuItem_Delete_Click"/>
-                                </ContextMenu>
-                            </StackPanel.ContextMenu>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
+                <ItemsControl
+                    Name="IcParams"
+                    ItemsSource="{Binding MainItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border 
+                                Grid.Row="0" 
+                                Style="{StaticResource CardBorder}"
+                                Background="#FF4C5158">
+                                <StackPanel
+                                    Orientation="Vertical">
+                                    
+                                    <TextBlock
+                                        Style="{StaticResource TXT}"
+                                        Margin="10,5,5,5"
+                                        Text="Параметр:"/>
+                                    <ComboBox 
+                                        Name="IcParamsCBox"
+                                        ItemsSource="{Binding DataContext.AllParamEntities, 
+                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                        SelectedItem="{Binding UserSelectedParamEntity, 
+                                            UpdateSourceTrigger=PropertyChanged}"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="10,5,5,5"
+                                        ToolTip="Выбери параметр для заполнения">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock 
+                                                    Text="{Binding CurrentParamName}" 
+                                                    ToolTip="{Binding CurrentToolTip, 
+                                                        UpdateSourceTrigger=PropertyChanged}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    
+                                    <TextBlock
+                                        Style="{StaticResource TXT}"
+                                        Margin="10,5,5,5"
+                                        Text="Значение:"/>
+                                    <TextBox 
+                                        Text="{Binding UserInputParamValue}"
+                                        Style="{StaticResource TXB}"
+                                        Margin="10,5,5,5"
+                                        ToolTip="Введи значение параметра, или оставь пустым для обнуления"/>
+                                    
+                                    <StackPanel.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem 
+                                                Header="Удалить" 
+                                                Click="MenuItem_Delete_Click"/>
+                                        </ContextMenu>
+                                    </StackPanel.ContextMenu>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
 
         <StackPanel
             Grid.Row="1"
@@ -127,6 +160,7 @@
             <Button
                 x:Name="AddBtn"
                 Style="{StaticResource BTN}"
+                Width="150" 
                 ToolTip="Добавить новый параметр в список"
                 Click="AddBtn_Click">
                 <Button.Content>
@@ -139,6 +173,7 @@
             <Button
                 x:Name="ClearBtn"
                 Style="{StaticResource BTN}"
+                Width="100" 
                 ToolTip="Очистить ВЕСЬ список параметров (выборочно можно удалить через ПКМ)"
                 Click="ClearBtn_Click">
                 <Button.Content>
@@ -151,7 +186,8 @@
             <Button
                 x:Name="RunBtn"
                 Style="{StaticResource BTN}"
-                BorderBrush="Green"
+                Background="#FF33AE53"
+                Width="150" 
                 Content="{Binding RunButtonName, UpdateSourceTrigger=PropertyChanged}"
                 ToolTip="{Binding RunButtonTooltip, UpdateSourceTrigger=PropertyChanged}"
                 Click="RunBtn_Click"/>
