@@ -60,7 +60,7 @@ namespace KPLN_Tools
                 IFCRebars = TempIFCRebars;
 
                 IFCRebarIDs = IFCRebars.Select(it => it.Id).ToList();   //список ID стержней IFC арматуры
-
+              
                 foreach (ElementId elid in IFCRebarIDs)
                 {
                     Element el = doc.GetElement(elid);
@@ -134,7 +134,7 @@ namespace KPLN_Tools
                         //элементы видимые на виде, исключая текущий стержень/с-во, из списка разрешенных категорий, пересекающие BoundingBox арматуры
                         collElem = collector.Excluding(idsExclude).WherePasses(filterCat).WherePasses(filterColl).ToElements().ToList();
                     }
-
+                  
                     if (collElem.Count > 1)
                     {
 
@@ -146,7 +146,7 @@ namespace KPLN_Tools
                         //Солиды арматуры
                         List<Solid> rebarSolids = GetElementSolids(rebar);
                         // Игнор родительских пустых семейств
-                        if (rebarSolids.All(s => s.Volume == 0)) break;
+                        if (rebarSolids.All(s => s.Volume == 0)) continue;
 
 
                         foreach (Element elem in collElem)
@@ -154,7 +154,7 @@ namespace KPLN_Tools
                             //Солиды опалубок
                             List<Solid> elemSolids = GetElementSolids(elem);
                             // Игнор пустых основ
-                            if (elemSolids.All(s => s.Volume == 0)) break;
+                            if (elemSolids.All(s => s.Volume == 0)) continue;
 
                             try
                             {
@@ -187,7 +187,7 @@ namespace KPLN_Tools
                     collElemID = collElem.Select(a => a.Id).ToList();
                 }
                 #endregion
-
+                
                 #region Транзакция
                 using (Transaction tr = new Transaction(doc, "Маркировка IFC-арматуры"))
                 {
