@@ -100,6 +100,7 @@
       <HintPath>..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\lib\net46\System.Data.SQLite.dll</HintPath>
     </Reference>
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Transactions" />
     <Reference Include="System.Windows" />
     <Reference Include="System.Windows.Forms" />
@@ -269,8 +270,18 @@
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Room.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
+    <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ChangeCategoryWindowNodeManager.xaml.cs">
+      <DependentUpon>ChangeCategoryWindowNodeManager.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FilterByTagsWindowNodeManager.xaml.cs">
+      <DependentUpon>FilterByTagsWindowNodeManager.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\MainWindowNodeManager.xaml.cs">
+      <DependentUpon>MainWindowNodeManager.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Models\Core\ARPG_TZ_Config.cs" />
     <Compile Include="Forms\Models\Core\ARPG_TZ_MainData.cs" />
@@ -392,6 +403,12 @@
     <Compile Include="Forms\RLinkLoadContent.xaml.cs">
       <DependentUpon>RLinkLoadContent.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SettingsWindowNodeManager.xaml.cs">
+      <DependentUpon>SettingsWindowNodeManager.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SettingsWindowNodeManagerCategory.xaml.cs">
+      <DependentUpon>SettingsWindowNodeManagerCategory.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
     </Compile>
@@ -487,6 +504,7 @@
     <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
+    <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -497,6 +515,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -513,6 +532,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\AR_TEPDesign_paramNameSelect.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ChangeCategoryWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -536,11 +559,19 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\FilterByTagsWindowNodeManager.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\FormChageLevel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\FamilyManagerSettingsDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\MainWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -563,6 +594,14 @@
     <Page Include="Forms\RLinkLoadContent.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SettingsWindowNodeManager.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SettingsWindowNodeManagerCategory.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml">
       <Generator>MSBuild:Compile</Generator>

@@ -1,0 +1,249 @@
+﻿<Window x:Class="KPLN_Tools.Forms.MainWindowNodeManager"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        Title="KPLN. Менеджер узлов"
+        Height="770"
+        Width="1425"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True"
+        ShowInTaskbar="True">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <local:BoolToVisibilityInverseConverter x:Key="BoolToVisibilityInverse"/>
+        <local:TagsToListConverter x:Key="TagsToListConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="425"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ЛЕВЫЙ СТОЛБЕЦ -->
+        <Grid x:Name="Col1Grid" Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="365"/>
+                <RowDefinition Height="340"/>
+            </Grid.RowDefinitions>
+
+            <!-- Категории -->
+            <Border Grid.Row="0" Margin="0,0,10,10" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FAFAFA">
+                <DockPanel>
+                    <TextBlock Text="Выбор категории:" FontWeight="SemiBold" Margin="0,0,0,8" DockPanel.Dock="Top"/>
+                    <TreeView x:Name="CategoriesTree" ItemsSource="{Binding CategoryTree}" SelectedItemChanged="CategoriesTree_SelectedItemChanged" PreviewMouseLeftButtonDown="CategoriesTree_PreviewMouseLeftButtonDown">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type local:NodeCategoryUi}"
+                                  ItemsSource="{Binding Children}">
+                                <TextBlock Text="{Binding DisplayTitle}"/>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                </DockPanel>
+            </Border>
+
+            <!-- Свойства узла -->
+            <Border Grid.Row="1" Margin="0,0,10,0" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#F3F6FB">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" >
+                    <Grid>
+                        <Grid.DataContext>
+                            <Binding ElementName="ElementsList" Path="SelectedItem"/>
+                        </Grid.DataContext>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="ПАРАМЕТРЫ УЗЛА:" Grid.Row="0" FontWeight="SemiBold" FontSize="14" TextDecorations="Underline"/>
+
+                        <StackPanel Grid.Row="1" Margin="0,8,0,0">
+
+                            <!-- Имя -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBox x:Name="TxtName" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="280"/>
+                                <Button x:Name="BtnSaveName" Content="Сохранить" Width="80" Margin="8,0,0,0"
+                            Click="BtnSaveName_Click"/>
+                            </StackPanel>
+
+                            <!-- Категория / подкатегория -->
+                            <StackPanel Orientation="Horizontal" Margin="0,5,0,4">
+                                <TextBlock Text="Категория:" Width="80" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding CategoryPath}" VerticalAlignment="Center" Width="200" TextWrapping="Wrap"/>
+                                <Button x:Name="BtnChangeCategory" Content="Изменить" Width="80" Margin="8,0,0,0" Click="BtnChangeCategory_Click"/>
+                            </StackPanel>
+
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            <!-- Теги -->
+                            <StackPanel Margin="0,5,0,4">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="Теги:" Width="40" VerticalAlignment="Top"/>
+                                    <Grid Width="300">
+                                        <ItemsControl Visibility="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=IsEditTagsMode, Converter={StaticResource BoolToVisibilityInverse}}">
+                                            <ItemsControl.ItemsSource>
+                                                <Binding Path="Tags" Converter="{StaticResource TagsToListConverter}"/>
+                                            </ItemsControl.ItemsSource>
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,4,4" Padding="4,2" CornerRadius="6" BorderThickness="1" BorderBrush="#CCCCCC" Background="#EEEEEE">
+                                                        <TextBlock Text="{Binding}" FontSize="11"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <TextBox x:Name="TxtTags" Text="{Binding Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding RelativeSource={RelativeSource AncestorType=Window},
+                                          Path=IsEditTagsMode, Converter={StaticResource BoolToVisibility}}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+
+
+                            <!-- Заменить теги -->
+                            <Button x:Name="BtnSaveTags" Content="✏️ Изменить теги" Width="360" Height="24" Margin="4,6,0,4" HorizontalAlignment="Left" Click="BtnSaveTags_Click"/>
+                            
+                            <!-- Заменить превью -->                           
+                            <Button x:Name="BtnReplacePreview" Content="📸 Заменить изображение на превью узла" Width="360" Height="24" Margin="4,4,0,4" HorizontalAlignment="Left" Click="BtnReplacePreview_Click"/>
+
+                            <!-- Параметры PROP -->
+                            <TextBlock Text="СВОЙСТВА ВИДА:" Margin="0,8,0,8" FontWeight="SemiBold" FontSize="14" TextDecorations="Underline"/>
+                            
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
+                                <ItemsControl ItemsSource="{Binding PropParameters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="SemiBold" Margin="0,0,4,0"/>
+
+                                                <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+
+        <!-- ПРАВЫЙ СТОЛБЕЦ -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- === ПОИСК ПО NAME === -->
+            <Border Grid.Row="0" Margin="10,0,0,10" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
+                <DockPanel>
+                    <TextBlock Text="Поиск:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="SearchTextBox" Width="570" Margin="0,0,8,0" Padding="3"/>
+                    <Button x:Name="BtnSearch" Content="Поиск  🔍" Width="140" Margin="0,0,8,0" Click="BtnSearch_Click"/>
+                    <Button x:Name="BtnFilter" Content="Фильтры  🔍" Width="120" Margin="0,0,10,0" Click="BtnFilter_Click"/>
+                    <Button x:Name="BtnClearSearch" Content="X" Width="25" MinHeight="26" Click="BtnClearSearch_Click"/>
+                </DockPanel>
+            </Border>
+
+            <!-- === КНОПКИ === -->
+            <Border Grid.Row="1" Margin="10,0,0,10" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button x:Name="BtnCopyInView" Content="Копировать вид с узлом в документ   📝"  Width="270" MinHeight="26" Margin="4" IsEnabled="False" Click="BtnCopyInView_Click"/>
+                    <Button x:Name="BtnCopyElements"   Content="Копировать узел на открытый вид/лист   📋"  Width="270" MinHeight="26"  Margin="4" IsEnabled="False" Click="BtnCopyElements_Click"/>
+                    <Button x:Name="BtnSettings" IsEnabled="False" Content="Настройки  ⚙️"  Width="120" MinHeight="26" Margin="245, 4, 4, 4" Click="BtnSettings_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- === СОРТИРОВКА === -->
+            <Border Grid.Row="2" Margin="10,0,0,0" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="Сортировка по имени: " VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="SortCombo" Width="150" Margin="0,0,25,0" SelectedIndex="0" SelectionChanged="SortCombo_SelectionChanged">
+                            <ComboBoxItem Content="По-умолчанию" Tag="none"/>
+                            <ComboBoxItem Content="А → Я" Tag="asc"/>
+                            <ComboBoxItem Content="Я → А" Tag="desc"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Сортировка по масштабу: " VerticalAlignment="Center" Margin="8,0,4,0"/>
+                        <ComboBox x:Name="ScaleSortCombo" Width="170" SelectedIndex="0" SelectionChanged="ScaleSortCombo_SelectionChanged">
+                            <ComboBoxItem Content="По-умолчанию" Tag="none"/>
+                            <ComboBoxItem Content="Крупный → мелкий" Tag="smallFirst"/>
+                            <ComboBoxItem Content="Мелкий → крупный" Tag="bigFirst"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Список + "Элементов нет" -->
+                    <Grid Grid.Row="1">
+                        <ListBox x:Name="ElementsList" ItemsSource="{Binding ElementsView}" SelectionChanged="ElementsList_SelectionChanged">
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="4">
+                                        <Border Width="250" Height="200" Margin="0,0,8,0" BorderBrush="#DDD" BorderThickness="1">
+                                            <Image Source="{Binding Image}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
+
+                                       
+                                                <Image.ToolTip>
+                                                    <Border Padding="6" Background="#FDFDFD" CornerRadius="6" BorderBrush="#CCC" BorderThickness="1" SnapsToDevicePixels="True">
+                                                        <Image Source="{Binding Image}"  Width="500" Height="400" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Border>
+                                                </Image.ToolTip>
+                                            </Image>
+                                        </Border>
+
+                                        <StackPanel Orientation="Vertical" VerticalAlignment="Center" Width="600">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Margin="0,4,0,0" Opacity="0.7">
+                                                <Run Text="Масштаб: " FontWeight="Bold"/>
+                                                <Run Text="{Binding ScaleText}"/>
+                                            </TextBlock>
+                                            <TextBlock Margin="0,2,0,0" Opacity="0.7" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
+                                                <Run Text="Теги: " FontWeight="Bold"/>
+                                                <Run Text="{Binding Tags}" FontStyle="Italic"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        
+                        <TextBlock x:Name="NoElementsText" Text="Элементов нет" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" Visibility="Collapsed"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
