@@ -1,6 +1,5 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ExtraFilter.Entities.SelectionByClick;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
@@ -8,14 +7,13 @@ using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
 namespace KPLN_ExtraFilter.ExecutableCommand
 {
-    internal class SetParamsByFrameExcCommandStart : IExecutableCommand
+    internal class SetParamsByFrameExcCmd : IExecutableCommand
     {
         private readonly Element[] _elemsToSet;
         private readonly MainItem[] _currentParamEntities;
@@ -24,7 +22,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
         /// </summary>
         private Dictionary<string, List<Element>> _warningsElementColl = new Dictionary<string, List<Element>>();
 
-        public SetParamsByFrameExcCommandStart(SetParamsByFrameEntity formEntity)
+        public SetParamsByFrameExcCmd(SetParamsByFrameEntity formEntity)
         {
             _elemsToSet = formEntity.SelectedElems;
             _currentParamEntities = formEntity.MainItems.ToArray();
@@ -36,10 +34,10 @@ namespace KPLN_ExtraFilter.ExecutableCommand
             Document doc = uidoc.Document;
 
             // Запись конфигурации последнего запуска
-            ConfigService.SaveConfig<MainItem>(doc, ConfigType.Memory, _currentParamEntities);
+            ConfigService.SaveConfig<MainItem>(ModuleData.RevitVersion, doc, ConfigType.Memory, _currentParamEntities);
 
             // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCommand.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction trans = new Transaction(doc, "KPLN: Параметризация"))
             {

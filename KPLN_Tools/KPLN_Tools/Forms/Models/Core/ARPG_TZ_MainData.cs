@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Autodesk.Revit.DB;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace KPLN_Tools.Forms.Models.Core
@@ -10,24 +11,31 @@ namespace KPLN_Tools.Forms.Models.Core
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        private string _flatType = "Room";
         private string _flatAreaCoeff = "0,95";
-        private bool _heatingRoomsInPrj = true;
         private string _logAreaCoeff = "0,5";
         private string _balkAreaCoeff = "0,3";
         private string _terraceAreaCoeff = "0,3";
-        private string _flatNameParamName = "Имя";
-        private string _flatNumbParamName = "ПОМ_Номер квартиры";
-        private string _flatLvlNumbParamName = "ПОМ_Номер этажа";
-        private string _gripParamName1 = "ПОМ_Корпус";
-        private string _gripParamName2;
-        private string _flatType = "Room";
+        private bool _gripCorpParam = false;
+        private bool _gripSectParam = false;
 
         public ARPG_TZ_MainData() { }
 
         /// <summary>
-        /// Погрешность при назначении кода квартиры в м2 (ВОЗМОЖНО БУДЕТ ПЕРЕВОД НА КОЭФФИЦИЕНТ)
+        /// Выбранный тип для рассчёта
         /// </summary>
-        public string FlatAreaTolerance { get; set; } = "1";
+        public string FlatType
+        {
+            get => _flatType;
+            set
+            {
+                if (_flatType != value)
+                {
+                    _flatType = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
 
         /// <summary>
         /// Коэф. уменьшения квартир
@@ -40,23 +48,6 @@ namespace KPLN_Tools.Forms.Models.Core
                 if (_flatAreaCoeff != value)
                 {
                     _flatAreaCoeff = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
-
-        /// <summary>
-        /// В проекте есть неотапливаемые помещения? 
-        /// (влияет на необходимость привязки сепарированных помещений к основному)
-        /// </summary>
-        public bool HeatingRoomsInPrj
-        {
-            get => _heatingRoomsInPrj;
-            set
-            {
-                if (_heatingRoomsInPrj != value)
-                {
-                    _heatingRoomsInPrj = value;
                     NotifyPropertyChanged();
                 }
             }
@@ -111,100 +102,62 @@ namespace KPLN_Tools.Forms.Models.Core
         }
 
         /// <summary>
-        /// Имя параметра для Имя квартиры
+        /// Группировать помещения по корпусу
         /// </summary>
-        public string FlatNameParamName
+        public bool IsGripCorpParam
         {
-            get => _flatNameParamName;
+            get => _gripCorpParam;
             set
             {
-                if (_flatNameParamName != value)
-                {
-                    _flatNameParamName = value;
-                    NotifyPropertyChanged();
-                }
+                _gripCorpParam = value;
+                NotifyPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// Группировать помещения по секции
+        /// </summary>
+        public bool IsGripSectParam
+        {
+            get => _gripSectParam;
+            set
+            {
+                _gripSectParam = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public BuiltInParameter FlatAreaParam { get; set; }
+
+        /// <summary>
+        /// Имя параметра для Имя помещения (квартира\балкон\лоджия\терраса)
+        /// </summary>
+        public string FlatNameParamName { get; } = "Назначение";
 
         /// <summary>
         /// Имя параметра для Номера квартиры
         /// </summary>
-        public string FlatNumbParamName
-        {
-            get => _flatNumbParamName;
-            set
-            {
-                if (_flatNumbParamName != value)
-                {
-                    _flatNumbParamName = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
+        public string FlatNumbParamName { get; } = "ПОМ_Номер квартиры";
 
         /// <summary>
         /// Имя параметра для Номера этажа
         /// </summary>
-        public string FlatLvlNumbParamName
-        {
-            get => _flatLvlNumbParamName;
-            set
-            {
-                if (_flatLvlNumbParamName != value)
-                {
-                    _flatLvlNumbParamName = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
+        public string FlatLvlNumbParamName { get; } = "ПОМ_Номер этажа";
 
         /// <summary>
         /// Имя параметра для захваток (старт)
         /// </summary>
-        public string GripParamName1
-        {
-            get => _gripParamName1;
-            set
-            {
-                if (_gripParamName1 != value)
-                {
-                    _gripParamName1 = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
+        public string GripCorpParamName { get; } = "ПОМ_Корпус";
 
         /// <summary>
         /// Имя параметра для захваток (после 1)
         /// </summary>
-        public string GripParamName2
-        {
-            get => _gripParamName2;
-            set
-            {
-                if (_gripParamName2 != value)
-                {
-                    _gripParamName2 = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
+        public string GripSectParamName { get; } = "ПОМ_Секция";
 
         /// <summary>
-        /// Выбранный тип для рассчёта
+        /// Погрешность при назначении кода квартиры в м2 (ВОЗМОЖНО БУДЕТ ПЕРЕВОД НА КОЭФФИЦИЕНТ)
         /// </summary>
-        public string FlatType
-        {
-            get => _flatType;
-            set
-            {
-                if (_flatType != value)
-                {
-                    _flatType = value;
-                    NotifyPropertyChanged();
-                }
-            }
-        }
+        public string FlatAreaTolerance { get; set; } = "1";
 
         /// <summary>
         /// Имя параметра для площади с коэффициентом
@@ -219,7 +172,7 @@ namespace KPLN_Tools.Forms.Models.Core
         /// <summary>
         /// Имя параметра для кода квартиры по ТЗ
         /// </summary>
-        public string TZCodeParamName { get; } = "КВ_Диапазон_Тип квартиры";
+        public string TZCodeParamName { get; } = "КВ_Код";
 
         /// <summary>
         /// Имя параметра для имя диапазона по ТЗ

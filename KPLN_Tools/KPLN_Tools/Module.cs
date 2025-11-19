@@ -177,6 +177,25 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.linkChangeSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
+            PushButtonData ws_Links = CreateBtnData(
+                    Command_KR_WSofLinks.PluginName,
+                    Command_KR_WSofLinks.PluginName,
+                    "Позволяет включить/выключить рабочий набор, имя которого вы ввели, в связях",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_KR_WSofLinks).FullName,
+                    "KPLN_Tools.Imagens.wsLinksSmall.png",
+                    "KPLN_Tools.Imagens.wsLinksSmall.png",
+                    "http://moodle");
+
+
+            
+
+
 #if Revit2020 || Debug2020
             PushButtonData set_ChangeRSLinks = CreateBtnData(
                 "СЕТ: Обновить связи",
@@ -195,12 +214,16 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
 #endif
 
+            
+
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
+            sharedPullDownBtn.AddPushButton(ws_Links);
+            
             #endregion
 
             #region Инструменты АР
@@ -309,7 +332,24 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.wipeSmall.png",
                     "http://moodle");
 
+                PushButtonData kr_IFCRebarMark = CreateBtnData(
+                    Command_KR_IFCRebarMark.PluginName,
+                    Command_KR_IFCRebarMark.PluginName,
+                    "Автоматически заполняет IFC-арматуре значение параметра Мрк.МаркаКонструкции",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_KR_IFCRebarMark).FullName,
+                    "KPLN_Tools.Imagens.IFCRebarMarkSmall.png",
+                    "KPLN_Tools.Imagens.IFCRebarMarkSmall.png",
+                    "http://moodle");
+
+
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
+                krToolsPullDownBtn.AddPushButton(kr_IFCRebarMark);
             }
             #endregion
 

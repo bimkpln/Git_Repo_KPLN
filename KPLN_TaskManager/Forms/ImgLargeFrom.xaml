@@ -8,10 +8,110 @@
     mc:Ignorable="d" 
     Background="White">
 
+    <Window.Resources>
+
+        <Style x:Key="TXTBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,0,5,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MinWidth" Value="400"/>
+        </Style>
+
+        <Style x:Key="RunBTN" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,2,5,2"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                        CornerRadius="3" 
+                        Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                x:Name="MyContentPresenter" 
+                                Content="{TemplateBinding Content}" 
+                                HorizontalAlignment="Center" 
+                                VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CHCBX" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+    </Window.Resources>
+
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="25"/>
+            <RowDefinition Height="15"/>
+        </Grid.RowDefinitions>
         <Image 
             Name="BodyImg"
             VerticalAlignment="Top" 
-            Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+            Source="{Binding ILF_TaskImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+
+        <DockPanel 
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            LastChildFill="False">
+            <Button
+                Width="25"
+                Style="{StaticResource RunBTN}"
+                ToolTip="Показать предыдущий рисунок"
+                Click="ImgLeft_Click">
+                <Button.Content>
+                    <TextBlock
+                        Text="←"
+                        FontSize="14"/>
+                </Button.Content>
+
+            </Button>
+            <Button
+                Width="25"
+                Style="{StaticResource RunBTN}"
+                ToolTip="Показать следующий рисунок"
+                Click="ImgRight_Click">
+                <Button.Content>
+                    <TextBlock
+                        Text="→"
+                        FontSize="14"/>
+                </Button.Content>
+            </Button>
+            
+            <Button
+                x:Name="ILF_DeleteBtn"
+                Width="25"
+                Style="{StaticResource RunBTN}"
+                ToolTip="Удалить текущий"
+                IsEnabled="False"
+                Click="ImgDelete_Click">
+                <Button.Content>
+                    <TextBlock
+                        Text="🗑️"
+                        FontSize="14"/>
+                </Button.Content>
+            </Button>
+        </DockPanel>
+
+        <TextBlock
+            Grid.Row="2"
+            FontSize="10"
+            HorizontalAlignment="Center"
+            Text="{Binding ILF_ImgSpecialFormat, 
+                UpdateSourceTrigger=PropertyChanged,
+                Mode=TwoWay}"/>
     </Grid>
 </Window>

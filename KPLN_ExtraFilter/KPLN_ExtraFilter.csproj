@@ -159,20 +159,31 @@
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
     <Compile Include="Common\ParamWorker.cs" />
-    <Compile Include="Forms\Entities\SelectionByClick\SelectionByClickEntity.cs" />
+    <Compile Include="ExecutableCommand\SelectionByClickExcCmd.cs" />
+    <Compile Include="ExternalEventHandler\SelectionChangedHandler.cs" />
+    <Compile Include="ExternalEventHandler\UnsubscribeHandler.cs" />
+    <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
-    <Compile Include="ExecutableCommand\SetParamsByFrameExcCommandStart.cs" />
-    <Compile Include="ExternalCommands\SetParamsByFrameExtCommand.cs" />
-    <Compile Include="ExternalCommands\SelectionByClickExtCommand.cs" />
+    <Compile Include="ExecutableCommand\SetParamsByFrameExcCmd.cs" />
+    <Compile Include="ExternalCommands\SetParamsByFrameExtCmd.cs" />
+    <Compile Include="ExternalCommands\SelectionByClickExtCmd.cs" />
     <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
     <Compile Include="Forms\Entities\ParamEntity.cs" />
     <Compile Include="Forms\Entities\SetParamsByFrame\SetParamsByFrameEntity.cs" />
+    <Compile Include="Forms\SelectionOptions_MainControl.xaml.cs">
+      <DependentUpon>SelectionOptions_MainControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SelectionByModel.xaml.cs">
+      <DependentUpon>SelectionByModel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SetParamsByFrameForm.xaml.cs">
       <DependentUpon>SetParamsByFrameForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SelectionByClickForm.xaml.cs">
       <DependentUpon>SelectionByClickForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ViewModels\SelectionByClickVM.cs" />
+    <Compile Include="Forms\Entities\SelectionByClickM.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -193,6 +204,14 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\SelectionOptions_MainControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\SelectionByModel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\SetParamsByFrameForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -208,6 +227,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Forms\Styles.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

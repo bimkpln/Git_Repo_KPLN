@@ -24,6 +24,7 @@
     <Optimize>true</Optimize>
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
     <ErrorReport>none</ErrorReport>
+    <WarningLevel>3</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2023\</OutputPath>
@@ -124,10 +125,6 @@
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
@@ -266,9 +263,11 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Room.cs" />
+    <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
@@ -329,6 +328,7 @@
     <Compile Include="ExternalCommands\ExtCmd_AR_PyatnGraph.cs" />
     <Compile Include="ExternalCommands\CommandFamilyManager.cs" />
     <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
+    <Compile Include="ExternalCommands\Command_KR_WSofLinks.cs" />
     <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
     <Compile Include="ExternalCommands\CommandChangeLevel.cs" />
     <Compile Include="ExternalCommands\CommandRLinkManager.cs" />
@@ -380,6 +380,9 @@
     </Compile>
     <Compile Include="Forms\FamilyManagerSettingsDialog.xaml.cs">
       <DependentUpon>FamilyManagerSettingsDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\KR_WSofLinks.xaml.cs">
+      <DependentUpon>KR_WSofLinks.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Models\AR_PyatnGraph_VM.cs" />
     <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
@@ -502,6 +505,10 @@
     <EmbeddedResource Include="Imagens\FamilyManager\bim_ok.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\favorites.png" />
     <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
+    <EmbeddedResource Include="Imagens\wsLinksBig.png" />
+    <EmbeddedResource Include="Imagens\wsLinksSmall.png" />
+    <EmbeddedResource Include="Imagens\IFCRebarMarkBig.png" />
+    <EmbeddedResource Include="Imagens\IFCRebarMarkSmall.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
@@ -572,6 +579,7 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\MainWindowNodeManager.xaml">
+    <Page Include="Forms\KR_WSofLinks.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -640,7 +648,12 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\KPLN_Library_PluginActivityWorker.csproj">
+      <Project>{5acffdf4-72d4-40e6-8c7b-a66d3b8763a1}</Project>
+      <Name>KPLN_Library_PluginActivityWorker</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

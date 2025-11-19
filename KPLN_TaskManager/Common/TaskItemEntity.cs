@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_TaskManager.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -32,7 +33,7 @@ namespace KPLN_TaskManager.Common
         private int _delegatedDepartmentId = -1;
         public int _delegatedTaskUserId = -1;
         public int _bitrixParentTaskId = -1;
-        private byte[] _imageBuffer;
+        public string _pathToImageBufferDB;
         private int _bitrixTaskId;
         private string _modelName;
         private int _modelViewId;
@@ -40,9 +41,13 @@ namespace KPLN_TaskManager.Common
         private TaskStatusEnum _taskStatus;
         private string _createdTaskData;
         private string _lastChangeData;
-
-        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 190, 104));
         private ImageSource _imageSource;
+
+        
+        private int _te_ImageBuffer_Current = 0;
+        private string _currentImgSpecialFormat = "0/0";
+        private List<TaskEntity_ImageBuffer> _teImageBuffer = new List<TaskEntity_ImageBuffer>();
+        private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 190, 104));
 
         /// <summary>
         /// Конструктор для Dapper (он по-умолчанию использует его, когда мапит данные из БД)
@@ -56,12 +61,6 @@ namespace KPLN_TaskManager.Common
             ProjectId = prjId;
             CreatedTaskUserId = createdUseId;
             CreatedTaskDepartmentId = createdUserDepId;
-        }
-
-        public TaskItemEntity(int prjId, int createdUseId, int createdUserDepId, string header, string body) : this(prjId, createdUseId, createdUserDepId)
-        {
-            TaskHeader = header;
-            TaskBody = body;
         }
 
         #region Данные из БД
@@ -218,20 +217,15 @@ namespace KPLN_TaskManager.Common
         }
 
         /// <summary>
-        /// Изображение элемента (массив байтов (BLOB))
+        /// Ссылка на БД отчетов
         /// </summary>
-        public byte[] ImageBuffer
+        public string PathToImageBufferDB
         {
-            get => _imageBuffer;
+            get => _pathToImageBufferDB;
             set
             {
-                if (value != _imageBuffer)
-                {
-                    _imageBuffer = value;
-
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(ImageSource));
-                }
+                _pathToImageBufferDB = value;
+                OnPropertyChanged();
             }
         }
 
@@ -330,9 +324,53 @@ namespace KPLN_TaskManager.Common
                 }
             }
         }
+
+        /// <summary>
+        /// Изображение элемента
+        /// </summary>
+        public ImageSource TaskImageSource
+        {
+            get
+            {
+                if (TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
+                    return null;
+
+                using (MemoryStream ms = new MemoryStream(TE_ImageBufferColl[TE_ImageBuffer_Current].ImageBuffer))
+                {
+                    BitmapImage bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.StreamSource = ms;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.EndInit();
+                    _imageSource = bitmapImage;
+
+                    return _imageSource;
+                }
+            }
+            set
+            {
+                _imageSource = value;
+                OnPropertyChanged();
+            }
+        }
         #endregion
 
         #region Дополнительная визуализация
+        /// <summary>
+        /// Индекс текущего TE_ImageBuffer
+        /// </summary>
+        public int TE_ImageBuffer_Current
+        {
+            get => _te_ImageBuffer_Current;
+            set
+            {
+                _te_ImageBuffer_Current = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(TaskImageSource));
+                OnPropertyChanged(nameof(CurrentImgSpecialFormat));
+            }
+        }
+
         /// <summary>
         /// Заголовок замечания
         /// </summary>
@@ -401,37 +439,50 @@ namespace KPLN_TaskManager.Common
             }
         }
 
+        public string CurrentImgSpecialFormat
+        {
+            get => $"{TE_ImageBuffer_Current + 1}/{TE_ImageBufferColl.Count}";
+        }
+        #endregion
+
+        #region Дополнительные данные
         /// <summary>
-        /// Изображение элемента
+        /// Контейнер изображений для замечания (спец-класс)
         /// </summary>
-        public ImageSource ImageSource
+        public List<TaskEntity_ImageBuffer> TE_ImageBufferColl
         {
             get
             {
-                if (ImageBuffer == null || ImageBuffer.Length == 0)
-                    return null;
+                if (_teImageBuffer.Count() > 0)
+                    return _teImageBuffer;
 
-                using (MemoryStream ms = new MemoryStream(ImageBuffer))
+                if (this.Id == 0)
+                    _teImageBuffer = new List<TaskEntity_ImageBuffer>() { new TaskEntity_ImageBuffer() };
+                else
+                    _teImageBuffer = TM_IBDBService.GetEntity_ByEntityId(this)
+                        ?? new List<TaskEntity_ImageBuffer>() { new TaskEntity_ImageBuffer() };
+
+                return _teImageBuffer;
+            }
+            set
+            {
+                _teImageBuffer = value;
+
+                // Обновляю изображение в окне
+                using (MemoryStream ms = new MemoryStream(_teImageBuffer[TE_ImageBuffer_Current].ImageBuffer))
                 {
                     BitmapImage bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.StreamSource = ms;
                     bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
                     bitmapImage.EndInit();
-                    _imageSource = bitmapImage;
-
-                    return _imageSource;
+                    TaskImageSource = bitmapImage;
                 }
-            }
-            set
-            {
-                _imageSource = value;
-                OnPropertyChanged();
+
+                OnPropertyChanged(nameof(CurrentImgSpecialFormat));
             }
         }
-        #endregion
 
-        #region Дополнительные данные
         /// <summary>
         /// Коллекция отделов КПЛН  ОТ
         /// </summary>
@@ -439,12 +490,12 @@ namespace KPLN_TaskManager.Common
         {
             get
             {
-               return DBMainService
-                .DBSubDepartmentColl
-                .Where(sd =>
-                    sd.Id == DBMainService.CurrentUserDBSubDepartment.Id
-                    || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
-                .ToArray();
+                return DBMainService
+                 .DBSubDepartmentColl
+                 .Where(sd =>
+                     sd.Id == DBMainService.CurrentUserDBSubDepartment.Id
+                     || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
+                 .ToArray();
             }
         }
 

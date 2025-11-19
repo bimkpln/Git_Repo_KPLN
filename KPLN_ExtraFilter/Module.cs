@@ -1,5 +1,4 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
@@ -21,30 +20,32 @@ namespace KPLN_ExtraFilter
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Выбор элементов");
 
             PushButtonData btnSelectByClick = new PushButtonData(
-                SelectionByClickExtCommand.PluginName,
-                SelectionByClickExtCommand.PluginName,
+                SelectionByClickExtCmd.PluginName,
+                SelectionByClickExtCmd.PluginName,
                 _assemblyPath,
-                typeof(SelectionByClickExtCommand).FullName)
+                typeof(SelectionByClickExtCmd).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.ClickLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.ClickSmall.png"),
-                ToolTip = "Для выбора элементов в проекте, которые похожи/связаны с выбранным.\nВАЖНО: Сначала выдели 1 эл-т.",
+                ToolTip = "Для выбора элементов в проекте, которые похожи/связаны с выбранным.",
                 LongDescription = "Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов" +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                AvailabilityClassName = typeof(ButtonAvailable).FullName,
             };
             btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
 
 
             PushButtonData btnSetPramsByFrame = new PushButtonData(
-                SetParamsByFrameExtCommand.PluginName,
-                SetParamsByFrameExtCommand.PluginName,
+                SetParamsByFrameExtCmd.PluginName,
+                SetParamsByFrameExtCmd.PluginName,
                 _assemblyPath,
-                typeof(SetParamsByFrameExtCommand).FullName)
+                typeof(SetParamsByFrameExtCmd).FullName)
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.FrameLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.FrameSmall.png"),
@@ -58,8 +59,8 @@ namespace KPLN_ExtraFilter
 
             IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
             // Скрываю текстовое название кнопок
-            foreach (RibbonItem item in stackedGroup) 
-            { 
+            foreach (RibbonItem item in stackedGroup)
+            {
                 var parentId = typeof(RibbonItem)
                     .GetField("m_parentId", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?.GetValue(item) ?? string.Empty;

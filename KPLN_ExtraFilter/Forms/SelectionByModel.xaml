@@ -1,0 +1,115 @@
+﻿<Window x:Class="KPLN_ExtraFilter.Forms.SelectionByModel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:KPLN_ExtraFilter.Forms"
+        mc:Ignorable="d"
+        Title="KPLN: Фильтр деревом"
+        WindowStartupLocation="CenterOwner"
+        Width="1000"
+        Height="750"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="300" />
+        </Grid.ColumnDefinitions>
+
+        <!-- TreeView элементов -->
+        <TreeView 
+            Grid.Column="0" 
+            Margin="5"
+                ItemsSource="{Binding Elements}">
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate 
+                    ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox 
+                            IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                        <TextBlock 
+                            Text="{Binding Name}" />
+                        <TextBlock 
+                            Text=" " />
+                        <TextBlock 
+                            Text="{Binding Count}" 
+                            Foreground="Gray" />
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <StackPanel
+            Grid.Column="1">
+            
+            <Border
+                Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock 
+                        Text="Откуда выводим?" 
+                        Style="{StaticResource TXT}"/>
+                    <StackPanel>
+                        <RadioButton 
+                            GroupName="ViewFilter"
+                            Content="Элементы на виде" 
+                            Style="{StaticResource RB}"
+                            IsChecked="{Binding SelectInView}" />
+                        <RadioButton 
+                            GroupName="ViewFilter"
+                            Content="Элементы в модели" 
+                            Style="{StaticResource RB}"
+                            IsChecked="{Binding SelectAll}" />
+                        <CheckBox 
+                            Content="Только с 3D-геометрией" 
+                            Style="{StaticResource CHB}"
+                            IsChecked="{Binding Only3D}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            
+            <Border 
+                Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock 
+                        Text="Как выделить?" 
+                        Style="{StaticResource TXT}"/>
+                    <RadioButton 
+                        GroupName="HowSelect"
+                        Style="{StaticResource RB}"
+                        IsChecked="{Binding HowAddCurrent}"
+                        Content="Добавить к текущей" />
+                    <RadioButton 
+                        GroupName="HowSelect"
+                        Style="{StaticResource RB}"
+                        IsChecked="{Binding HowCreateNew}"
+                        Content="Создать новую" />
+                </StackPanel>
+            </Border>
+
+
+            <!-- Кнопка -->
+            <Button 
+                Content="Сформируй дерево" 
+                Style="{StaticResource BTN}"
+                Command="{Binding FilterMoreCommand}" 
+                Height="30"/>
+            
+            
+            <!-- Кол-во выбранных элементов -->
+            <TextBlock 
+                Text="{Binding SelectedCount, StringFormat={}{0} elements checked in current selection}" 
+                Style="{StaticResource TXT}"
+                FontSize="12"/>
+        </StackPanel>
+    </Grid>
+</Window>

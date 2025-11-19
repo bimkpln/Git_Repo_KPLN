@@ -25,6 +25,9 @@ namespace KPLN_ExtraFilter.Common
         /// <returns></returns>
         internal static IEnumerable<Parameter> GetParamsFromElems(Document doc, Element[] elemsToFind)
         {
+            if (elemsToFind.All(el => el == null))
+                return null;
+
             // Основной блок
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
@@ -57,7 +60,7 @@ namespace KPLN_ExtraFilter.Common
             }
 
             if (commonInstParameters.Count == 0 && commonTypeParameters.Count == 0)
-                throw new Exception("Ошибка в поиске парамеров для элементов Revit");
+                return null;
 
             return new HashSet<Parameter>(commonInstParameters.Union(commonTypeParameters),
                 new ParameterComparer());
@@ -70,6 +73,9 @@ namespace KPLN_ExtraFilter.Common
         /// <param name="setToAdd">Коллекция для добавления</param>
         private static void AddParam(Element elem, HashSet<Parameter> setToAdd)
         {
+            if (elem == null)
+                return;
+
             foreach (Parameter param in elem.Parameters)
             {
                 StorageType paramST = param.StorageType;

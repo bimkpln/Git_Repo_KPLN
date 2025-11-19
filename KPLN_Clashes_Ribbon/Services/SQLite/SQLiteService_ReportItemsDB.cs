@@ -1,5 +1,6 @@
 ﻿using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -172,8 +173,62 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 $"UPDATE {_dbTableName} " +
                 $"SET {nameof(ReportItem.Comments)}='{decorateMsg}'" +
                 $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
-
         }
+
+
+
+        /// <summary>
+        /// Добавляет комментарий в начало (верх) списка для ReportItem, перезаписывает дату на текущую. Формат encodedLine: user~dept~dd.MM.yyyy HH:mm:ss~dept2~text
+        /// </summary>
+        public void PrependEncodedComment_ByReportItem(string encodedLine, ReportItem reportItem, bool overrideDateToNow)
+        {
+            if (reportItem == null || string.IsNullOrWhiteSpace(encodedLine))
+                return;
+
+            string finalLine = encodedLine;
+            if (overrideDateToNow)
+            {
+                var parts = encodedLine.Split('~');
+                if (parts.Length >= 5)
+                {
+                    parts[2] = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+                    finalLine = string.Join("~", parts);
+                }
+            }
+
+            string EscapeSql(string s) => s?.Replace("'", "''") ?? string.Empty;
+
+            var value_parts = new List<string>
+            {
+                EscapeSql(finalLine)
+            };
+
+            _ = reportItem.Comments;
+            foreach (ReportItemComment comment in (reportItem.CommentCollection ?? new System.Collections.ObjectModel.ObservableCollection<ReportItemComment>()))
+            {
+                value_parts.Add(EscapeSql(comment.ToString()));
+            }
+
+            string decorateMsg = string.Join(ClashesMainCollection.StringSeparatorItem, value_parts);
+
+            ExecuteNonQuery(
+                $"UPDATE {_dbTableName} " +
+                $"SET {nameof(ReportItem.Comments)}='{decorateMsg}' " +
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
+        }
+
+        /// <summary>
+        /// Обновляет делегированный отдел и статус айтема одной командой UPDATE.
+        /// </summary>
+        public void UpdateDelegationAndStatus_ByReportItem(ReportItem reportItem, int delegatedDeptId, int statusId)
+        {
+            if (reportItem == null) return;
+            ExecuteNonQuery(
+                $"UPDATE {_dbTableName} " +
+                $"SET {nameof(ReportItem.DelegatedDepartmentId)}={delegatedDeptId}, {nameof(ReportItem.StatusId)}={statusId} " +
+                $"WHERE {nameof(ReportItem.Id)}={reportItem.Id}");
+        }
+
         #endregion
 
         #region Delete

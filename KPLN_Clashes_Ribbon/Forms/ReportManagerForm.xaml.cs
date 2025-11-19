@@ -11,8 +11,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -477,6 +479,10 @@ namespace KPLN_Clashes_Ribbon.Forms
             return null;
         }
 
+
+
+
+
         private void OnButtonCloseReportGroup(object sender, RoutedEventArgs args)
         {
             KPTaskDialog dialog = new KPTaskDialog(
@@ -511,6 +517,467 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        private void OnButtonImportStatus(object sender, RoutedEventArgs args)
+        {
+            if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
+
+            string NormalizeTitle(string s)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+                s = s.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+                var sbNorm = new System.Text.StringBuilder(s.Length);
+                bool prevSpace = false;
+                foreach (char ch in s)
+                {
+                    if (char.IsLetterOrDigit(ch)) { sbNorm.Append(ch); prevSpace = false; }
+                    else if (char.IsWhiteSpace(ch)) { if (!prevSpace) { sbNorm.Append(' '); prevSpace = true; } }
+                }
+                return sbNorm.ToString().Trim();
+            }
+
+            string PairKey(int a, int b)
+            {
+                if (a > b) { var t = a; a = b; b = t; }
+                return $"{a}|{b}";
+            }
+
+            bool IsGroupHeader(ReportItem r) => r != null && r.ParentGroupId == -1 && r.Element_1_Id < 0 && r.Element_2_Id < 0;
+            bool IsSingle(ReportItem r) => r != null && r.ParentGroupId == -1 && r.Element_1_Id >= 0 && r.Element_2_Id >= 0;
+
+            List<ReportItem> LoadReportItemsSafely(Report rep)
+            {
+                try
+                {
+                    var svc = new Services.SQLite.SQLiteService_ReportItemsDB(rep.PathToReportInstance);
+                    var arr = svc.GetAllReporItems();
+                    return arr != null ? arr.ToList() : new List<ReportItem>();
+                }
+                catch { return new List<ReportItem>(); }
+            }
+
+            Dictionary<string, List<Report>> BuildReportNameDict(IEnumerable<Report> reports)
+            {
+                var dict = new Dictionary<string, List<Report>>(StringComparer.Ordinal);
+                foreach (var r in reports ?? Enumerable.Empty<Report>())
+                {
+                    if (r == null || string.IsNullOrWhiteSpace(r.Name)) continue;
+                    string key = NormalizeTitle(r.Name);
+                    if (!dict.TryGetValue(key, out var list)) { list = new List<Report>(); dict[key] = list; }
+                    list.Add(r);
+                }
+                return dict;
+            }
+
+            List<ReportItemComment> GetCommentsAsList(ReportItem ri)
+            {
+                if (ri == null) return new List<ReportItemComment>();
+                _ = ri.Comments;
+                return (ri.CommentCollection ?? new ObservableCollection<ReportItemComment>()).ToList();
+            }
+
+            List<string> ToStringList(IEnumerable<ReportItemComment> comments) =>
+                (comments ?? Enumerable.Empty<ReportItemComment>()).Select(c => c?.ToString() ?? string.Empty).ToList();
+
+            // Разбор даты из закодированной строки user~dept~dd.MM.yyyy HH:mm:ss~dept2~text
+            DateTime? TryParseCommentDate(string encoded)
+            {
+                if (string.IsNullOrWhiteSpace(encoded)) return null;
+                var parts = encoded.Split('~');
+                if (parts.Length < 3) return null;
+                if (DateTime.TryParseExact(parts[2].Trim(), "dd.MM.yyyy HH:mm:ss", new CultureInfo("ru-RU"), DateTimeStyles.None, out var dt))
+                    return dt;
+                return null;
+            }
+
+            // Сортировка по дате убывания (новые сверху);
+            // Строки без даты — вниз
+            List<string> SortCommentsDescByDate(IEnumerable<string> all)
+            {
+                var withIdx = (all ?? Enumerable.Empty<string>()).Select((s, i) => new { s, i, dt = TryParseCommentDate(s) }).ToList();
+                return withIdx.OrderByDescending(x => x.dt ?? DateTime.MinValue)
+                    .ThenBy(x => x.dt.HasValue ? 0 : 1).ThenBy(x => x.i).Select(x => x.s).ToList();
+            }
+
+            List<string> TakeTopNByVisualOrder(IEnumerable<string> all, int n)
+            {
+                if (n <= 0) return new List<string>();
+                return (all ?? Enumerable.Empty<string>()).Where(s => !string.IsNullOrWhiteSpace(s)).Take(n).ToList();
+            }
+
+            bool HasEligibleCommentsDst(ReportItem dstItem)
+            {
+                var list = ToStringList(GetCommentsAsList(dstItem));
+                if (list.Count == 0) return false;
+                if (!list.Any(s => s.IndexOf("<Делегирована отделу", StringComparison.OrdinalIgnoreCase) >= 0)) return false;
+                var top = list.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? string.Empty;
+                if (top.IndexOf("Статус изменен: <Устранено>", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+                return true;
+            }
+
+            // Преобразование одной закодированной строки:
+            // ДАТА  = NOW, а ТЕКСТ = "ИМПОРТ [<origDate>]: <origText>"
+            string TransformEncodedForImport(string encoded, DateTime now)
+            {
+                if (string.IsNullOrWhiteSpace(encoded)) return string.Empty;
+                var parts = encoded.Split('~');
+                if (parts.Length < 5) return encoded; 
+
+                string origDate = parts[2];
+                string origText = parts[4];
+
+                parts[2] = now.ToString("dd.MM.yyyy HH:mm:ss");
+                parts[4] = $"ПРЕДЫДУЩАЯ ИТЕРАЦИЯ [{origDate}]: {origText}"; 
+
+                return string.Join("~", parts);
+            }
+
+            string PairView(int a, int b) => $"({a},{b})";
+
+            // ВЫБОР ГРУПП И КОЛ-ВА КОММЕНТАРИЕВ
+            var btn = sender as System.Windows.Controls.Button;
+            ReportGroup sourceGroup = btn != null ? btn.DataContext as ReportGroup : null;
+            if (sourceGroup == null) return;
+
+            var allGroups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project).OrderBy(gr => gr.Status != KPItemStatus.Closed).ThenBy(gr => gr.Id).ToList();
+
+            var picker = new ReportGroupPickerForm(allGroups, sourceGroup.Id);
+            bool? pickRes = picker.ShowDialog();
+            if (pickRes != true || picker.SelectedGroup == null) return;
+
+            ReportGroup targetGroup = picker.SelectedGroup;
+            int userNumber = picker.SelectedNumber;
+
+            var srcReports = _sqliteService_MainDB.GetReports_ByReportGroupId(sourceGroup.Id) ?? new ObservableCollection<Report>();
+            var dstReports = _sqliteService_MainDB.GetReports_ByReportGroupId(targetGroup.Id) ?? new ObservableCollection<Report>();
+            var srcByName = BuildReportNameDict(srcReports);
+            var dstByName = BuildReportNameDict(dstReports);
+            var commonReportKeys = srcByName.Keys.Intersect(dstByName.Keys, StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToList();
+
+            var writePlan = new Dictionary<Report, List<(ReportItem item, List<string> transformedLines)>>();
+
+            var reportBuilder = new System.Text.StringBuilder();
+            reportBuilder.AppendLine($"SOURCE ReportGroup: {sourceGroup.GroupName}");
+            reportBuilder.AppendLine($"TARGET ReportGroup: {targetGroup.GroupName}");
+            reportBuilder.AppendLine($"Берём верхние из DST: {userNumber} шт.");
+            reportBuilder.AppendLine("Текст переносимых комментариев преобразуется в: \"ИМПОРТ [<ориг.дата>]: <ориг.текст>\", дата становится текущей.");
+            reportBuilder.AppendLine(new string('-', 100));
+            reportBuilder.AppendLine();
+
+            if (commonReportKeys.Count == 0)
+            {
+                reportBuilder.AppendLine("Совпадающих отчётов не найдено.");
+            }
+            else
+            {
+                foreach (var repKey in commonReportKeys)
+                {
+                    var srcRep = srcByName[repKey].FirstOrDefault();
+                    var dstRep = dstByName[repKey].FirstOrDefault();
+                    if (srcRep == null || dstRep == null) continue;
+
+                    var srcItems = LoadReportItemsSafely(srcRep);
+                    var dstItems = LoadReportItemsSafely(dstRep);
+
+                    // ОДИНОЧНЫЕ: матч по имени + паре ID
+                    var srcSingles = srcItems.Where(IsSingle).ToList();
+                    var dstSingles = dstItems.Where(IsSingle).ToList();
+                    var dstSinglesIndex = new Dictionary<(string name, string pair), ReportItem>();
+                    foreach (var d in dstSingles)
+                        dstSinglesIndex[(NormalizeTitle(d.Name), PairKey(d.Element_1_Id, d.Element_2_Id))] = d;
+
+                    var matchedSingles = new List<(ReportItem src, ReportItem dst)>();
+                    foreach (var sItem in srcSingles)
+                    {
+                        var key = (NormalizeTitle(sItem.Name), PairKey(sItem.Element_1_Id, sItem.Element_2_Id));
+                        if (dstSinglesIndex.TryGetValue(key, out var dMatch) && HasEligibleCommentsDst(dMatch))
+                            matchedSingles.Add((sItem, dMatch));
+                    }
+
+                    // ГРУППЫ: матч по имени заголовка
+                    var srcHdrs = srcItems.Where(IsGroupHeader).ToList();
+                    var dstHdrs = dstItems.Where(IsGroupHeader).ToList();
+                    var dstHdrsByName = dstHdrs.GroupBy(h => NormalizeTitle(h.Name)).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+                    var matchedGroups = new List<(ReportItem srcHdr, ReportItem dstHdr)>();
+                    foreach (var sHdr in srcHdrs)
+                    {
+                        string key = NormalizeTitle(sHdr.Name);
+                        if (dstHdrsByName.TryGetValue(key, out var dHdrList))
+                        {
+                            var dCandidate = dHdrList.FirstOrDefault(h => HasEligibleCommentsDst(h));
+                            if (dCandidate != null)
+                                matchedGroups.Add((sHdr, dCandidate));
+                        }
+                    }
+
+                    // Заголовок блока
+                    reportBuilder.AppendLine($"Report (Navis): {srcRep.Name}");
+                    if (matchedGroups.Count > 0)
+                    {
+                        reportBuilder.AppendLine("  Групповые:");
+                        foreach (var (srcHdr, _) in matchedGroups) reportBuilder.AppendLine($"    - {srcHdr.Name}");
+                    }
+                    if (matchedSingles.Count > 0)
+                    {
+                        reportBuilder.AppendLine("  Одиночные:");
+                        foreach (var (srcS, _) in matchedSingles) reportBuilder.AppendLine($"    - {srcS.Name}");
+                    }
+                    if (matchedGroups.Count == 0 && matchedSingles.Count == 0)
+                        reportBuilder.AppendLine("  (Нет подходящих элементов по условиям комментариев)");
+                    reportBuilder.AppendLine();
+
+                    DateTime now = DateTime.Now;
+
+                    // ГРУППЫ
+                    foreach (var (srcHdr, dstHdr) in matchedGroups)
+                    {
+                        var srcCur = ToStringList(GetCommentsAsList(srcHdr));
+                        var dstAll = ToStringList(GetCommentsAsList(dstHdr));
+
+                        var dstTopVisual = TakeTopNByVisualOrder(dstAll, userNumber);
+                        var transformed = dstTopVisual.Select(s => TransformEncodedForImport(s, now)).ToList();
+
+                        var finalPreview = SortCommentsDescByDate(transformed.Concat(srcCur).ToList());
+                        reportBuilder.AppendLine($"[GROUP] {srcHdr.Name}");
+                        reportBuilder.AppendLine($"  SRC: БУДЕТ ПОСЛЕ ПЕРЕНОСА (новые сверху) — всего {finalPreview.Count}");
+                        foreach (var line in finalPreview) reportBuilder.AppendLine($"    • {line}");
+                        reportBuilder.AppendLine();
+
+                        if (!writePlan.TryGetValue(srcRep, out var bucket))
+                        {
+                            bucket = new List<(ReportItem, List<string>)>();
+                            writePlan[srcRep] = bucket;
+                        }
+                        bucket.Add((srcHdr, transformed));
+                    }
+
+                    // ОДИНОЧНЫЕ
+                    foreach (var (srcS, dstS) in matchedSingles)
+                    {
+                        var srcCur = ToStringList(GetCommentsAsList(srcS));
+                        var dstAll = ToStringList(GetCommentsAsList(dstS));
+
+                        var dstTopVisual = TakeTopNByVisualOrder(dstAll, userNumber);
+                        var transformed = dstTopVisual.Select(s => TransformEncodedForImport(s, DateTime.Now)).ToList();
+
+                        var finalPreview = SortCommentsDescByDate(transformed.Concat(srcCur).ToList());
+                        reportBuilder.AppendLine($"[SINGLE] {srcS.Name} {PairView(srcS.Element_1_Id, srcS.Element_2_Id)}");
+                        reportBuilder.AppendLine($"  SRC: БУДЕТ ПОСЛЕ ПЕРЕНОСА (новые сверху) — всего {finalPreview.Count}");
+                        foreach (var line in finalPreview) reportBuilder.AppendLine($"    • {line}");
+                        reportBuilder.AppendLine();
+
+                        if (!writePlan.TryGetValue(srcRep, out var bucket))
+                        {
+                            bucket = new List<(ReportItem, List<string>)>();
+                            writePlan[srcRep] = bucket;
+                        }
+                        bucket.Add((srcS, transformed));
+                    }
+
+                    reportBuilder.AppendLine(new string('-', 100));
+                    reportBuilder.AppendLine();
+                }
+            }
+
+            // Отладчик
+            void SavePreview(string text)
+            {
+                try
+                {
+                    var dlg = new Microsoft.Win32.SaveFileDialog
+                    {
+                        Title = "Сохранить отчёт по импорту комментариев",
+                        Filter = "Text file (*.txt)|*.txt",
+                        FileName = $"ImportComments_PREVIEW_{DateTime.Now:yyyyMMdd_HHmm}.txt"
+                    };
+                    if (dlg.ShowDialog() == true)
+                        System.IO.File.WriteAllText(dlg.FileName, text, System.Text.Encoding.UTF8);
+                }
+                catch {}
+            }
+
+            // Сохранение в БД
+            void ApplyWritePlan(Dictionary<Report, List<(ReportItem item, List<string> transformedLines)>> plan)
+            {
+                if (plan == null || plan.Count == 0) return;
+
+                var applyDialog = new KPTaskDialog(this, "Импорт комментариев", "Подтверждение", "Применить перенос комментариев?\n",
+                    KPTaskDialogIcon.Question, true, "Отката нет. При необходимости сделайте резервную копию.");
+                applyDialog.ShowDialog();
+                if (applyDialog.DialogResult != KPTaskDialogResult.Ok) return;
+
+                foreach (var kv in plan)
+                {
+                    Report srcRep = kv.Key;
+                    var changes = kv.Value;
+
+                    var svc = new Services.SQLite.SQLiteService_ReportItemsDB(srcRep.PathToReportInstance);
+
+                    foreach (var (srcItem, transformedLines) in changes)
+                    {
+                        if (transformedLines == null || transformedLines.Count == 0) continue;
+
+                        for (int i = transformedLines.Count - 1; i >= 0; i--)
+                        {
+                            string encoded = transformedLines[i];
+                            if (string.IsNullOrWhiteSpace(encoded)) continue;
+
+                            svc.PrependEncodedComment_ByReportItem(encoded, srcItem, overrideDateToNow: false);
+
+                            var existing = srcItem.CommentCollection?.Select(c => c.ToString()) ?? Enumerable.Empty<string>();
+                            var updated = new[] { encoded }.Concat(existing);
+                            srcItem.Comments = string.Join(ClashesMainCollection.StringSeparatorItem, updated);
+                        }
+
+                        bool enableAutoDelegation = true; // Автоделегирование
+                        if (enableAutoDelegation)
+                        {
+                            foreach (var encoded in transformedLines)
+                            {
+                                string deptCode = TryExtractDeptCode(encoded);
+                                int deptId = MapDeptCodeToId(deptCode);
+
+                                if (deptId > 0)
+                                {
+                                    int statusId = (int)KPItemStatus.Delegated;
+                                    svc.UpdateDelegationAndStatus_ByReportItem(srcItem, deptId, statusId);
+
+                                    srcItem.DelegatedDepartmentId = deptId;
+                                    srcItem.Status = KPItemStatus.Delegated;
+
+                                    break; 
+                                }
+                            }
+                        }
+                    }
+                }
+
+                UpdateSelectedReportGroup(sourceGroup);
+            }
+         
+            //SavePreview(reportBuilder.ToString());    // Отладчик
+            ApplyWritePlan(writePlan);                // Сохранение в БД
+        }
+
+
+        /// <summary>
+        /// Код отдела из текста комментария
+        /// </summary>
+        string TryExtractDeptCode(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            const string marker = "<Делегирована отделу";
+            int i = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) return null;
+
+            int start = i + marker.Length;
+            while (start < text.Length && char.IsWhiteSpace(text[start])) start++;
+
+            var sb = new System.Text.StringBuilder();
+            while (start < text.Length && text[start] != '>')
+            {
+                sb.Append(text[start]);
+                start++;
+            }
+            string code = sb.ToString().Trim();
+
+            if (string.IsNullOrEmpty(code)) return null;
+            return code.ToUpperInvariant(); 
+        }
+
+        /// <summary>
+        /// Маппинг кода отдела
+        /// </summary>
+        int MapDeptCodeToId(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return -1;
+            switch (code.Trim().ToUpperInvariant())
+            {
+                case "АР": return 2;
+                case "КР": return 3;
+                case "ОВ": return 4;
+                case "ВК": return 5;
+                case "ЭОМ": return 6;
+                case "СС": return 7;
+                case "ИТП": return 20;
+                case "ПТ": return 21;
+                case "АВ": return 22;
+                default: return -1;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
