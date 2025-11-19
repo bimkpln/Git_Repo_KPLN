@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -950,20 +951,32 @@ namespace KPLN_Tools.Forms
         // Статистический метод записи данных в БД
         public static void SaveRecordToDatabase(FamilyManagerRecord rec)
         {
-            if (rec == null) throw new ArgumentNullException(nameof(rec));
+            if (rec == null)
+                throw new ArgumentNullException(nameof(rec));
 
-            // NB: тут важно Read Only = False
-            var cs = $"Data Source={DB_PATH};Version=3;Read Only=False;Foreign Keys=True;";
+            const int maxAttempts = 3;
+            const int delayMs = 2000;
 
-            using (var conn = new SQLiteConnection(cs))
+            int attempt = 0;
+
+            while (true)
             {
-                conn.Open();
-                using (var tr = conn.BeginTransaction())
-                using (var cmd = conn.CreateCommand())
+                try
                 {
-                    cmd.Transaction = tr;
+                    attempt++;
 
-                    cmd.CommandText = @"
+                    var cs = $"Data Source={DB_PATH};Version=3;Read Only=False;Foreign Keys=True;";
+
+                    using (var conn = new SQLiteConnection(cs))
+                    {
+                        conn.Open();
+
+                        using (var tr = conn.BeginTransaction())
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = tr;
+
+                            cmd.CommandText = @"
                         UPDATE FamilyManager
                         SET
                             STATUS = @status,
@@ -978,28 +991,42 @@ namespace KPLN_Tools.Forms
                             IMAGE = @image
                         WHERE ID = @id;";
 
-                    cmd.Parameters.AddWithValue("@id", rec.ID);
-                    cmd.Parameters.AddWithValue("@status", (object)(rec.STATUS ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@fullpath", (object)(rec.FULLPATH ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@lmdate", (object)(rec.LM_DATE ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@category", rec.CATEGORY);
-                    cmd.Parameters.AddWithValue("@subcat", rec.SUB_CATEGORY);
-                    cmd.Parameters.AddWithValue("@project", rec.PROJECT);
-                    cmd.Parameters.AddWithValue("@stage", rec.STAGE);
-                    cmd.Parameters.AddWithValue("@dept", (object)(rec.DEPARTAMENT ?? string.Empty));
-                    cmd.Parameters.AddWithValue("@import", (object)(rec.IMPORT_INFO ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@id", rec.ID);
+                            cmd.Parameters.AddWithValue("@status", (object)(rec.STATUS ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@fullpath", (object)(rec.FULLPATH ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@lmdate", (object)(rec.LM_DATE ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@category", rec.CATEGORY);
+                            cmd.Parameters.AddWithValue("@subcat", rec.SUB_CATEGORY);
+                            cmd.Parameters.AddWithValue("@project", rec.PROJECT);
+                            cmd.Parameters.AddWithValue("@stage", rec.STAGE);
+                            cmd.Parameters.AddWithValue("@dept", (object)(rec.DEPARTAMENT ?? string.Empty));
+                            cmd.Parameters.AddWithValue("@import", (object)(rec.IMPORT_INFO ?? string.Empty));
 
-                    var pImage = cmd.CreateParameter();
-                    pImage.ParameterName = "@image";
-                    pImage.DbType = System.Data.DbType.Binary;
-                    pImage.Value = (object)rec.IMAGE ?? DBNull.Value;
-                    cmd.Parameters.Add(pImage);
+                            var pImage = cmd.CreateParameter();
+                            pImage.ParameterName = "@image";
+                            pImage.DbType = System.Data.DbType.Binary;
+                            pImage.Value = (object)rec.IMAGE ?? DBNull.Value;
+                            cmd.Parameters.Add(pImage);
 
-                    var affected = cmd.ExecuteNonQuery();
-                    tr.Commit();
+                            cmd.ExecuteNonQuery();
+                            tr.Commit();
+                        }
+                    }
+
+                    return;
+                }
+                catch (SQLiteException ex) when (
+                    ex.ErrorCode == (int)SQLiteErrorCode.Locked ||
+                    ex.ErrorCode == (int)SQLiteErrorCode.Busy)
+                {
+                    if (attempt >= maxAttempts)
+                        throw; 
+
+                    Thread.Sleep(delayMs); 
                 }
             }
         }
+
 
         // XAML. Открытие папки с семейством
         private void BtnOpenFolder_Click(object sender, RoutedEventArgs e)

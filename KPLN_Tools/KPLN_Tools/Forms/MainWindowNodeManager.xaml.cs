@@ -1,0 +1,3465 @@
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
+using Autodesk.Revit.UI.Selection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SQLite;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+
+namespace KPLN_Tools.Forms
+{
+    // СТРУКТУРА КАТЕГОРИИ УЗЛОВ
+    public class NodeCategoryUi : INotifyPropertyChanged
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public int CatId { get; set; }
+
+        public ObservableCollection<NodeCategoryUi> Children { get; } = new ObservableCollection<NodeCategoryUi>();
+
+        public NodeCategoryUi Parent { get; set; }
+
+        public int Depth
+        {
+            get
+            {
+                int d = 1;
+                var p = Parent;
+                while (p != null) { d++; p = p.Parent; }
+                return d;
+            }
+        }
+
+        public bool IsNonCatRoot => Id == "0";
+
+        private int _directCount;
+        public int DirectCount
+        {
+            get => _directCount;
+            set
+            {
+                if (_directCount != value)
+                {
+                    _directCount = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayTitle));
+                }
+            }
+        }
+
+        private int _totalCount;
+        public int TotalCount
+        {
+            get => _totalCount;
+            set
+            {
+                if (_totalCount != value)
+                {
+                    _totalCount = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayTitle));
+                }
+            }
+        }
+
+        public string DisplayTitle => $"{Title} ({TotalCount})";
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+    }
+
+    // СТРУКТУРА УЗЛА
+    public class NodeElementUi
+    {
+        public long Id { get; set; }   
+        public string Name { get; set; }  
+        public ImageSource Image { get; set; }
+
+        public string ScaleText { get; set; }
+        public double? ScaleValue { get; set; }
+
+
+        public int? CatId { get; set; }  
+        public string SubcatId { get; set; }  
+        public string CategoryPath { get; set; } 
+
+        public string Tags { get; set; }  
+
+        public ObservableCollection<KeyValuePair<string, string>> PropParameters { get; set; } = new ObservableCollection<KeyValuePair<string, string>>();
+    }
+
+    // КОНВЕКТОРЫ ТЕГОВ
+    public class TagsToListConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var s = value as string;
+            if (string.IsNullOrWhiteSpace(s))
+                return Array.Empty<string>();
+
+            return s
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class BoolToVisibilityInverseConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool flag = value is bool b && b;
+            return flag ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // ОСНОВНОЕ ОКНО
+    public partial class MainWindowNodeManager : Window
+    {
+        private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NodeManager.db";
+        const string RvtPath1 = @"Z:\Отдел BIM\Куцко Тимофей\04_Модели для теста\Для тестирования плагинов\2023\КР_База узлов.rvt";
+
+        public bool IsSuperUser { get; }
+
+        private readonly UIApplication _uiapp;
+        private readonly UIDocument _uidoc;
+        private readonly Document _doc;
+
+        private readonly CopyNodeToViewHandler _copyHandler = new CopyNodeToViewHandler();
+        private readonly ExternalEvent _copyEvent;
+
+        private readonly PlaceDraftingViewOnSheetHandler _placeViewHandler;
+        private readonly ExternalEvent _placeViewEvent;
+
+        private static string MakeKey(int catId, string subId)
+        {
+            return $"{catId}|{subId ?? "0"}";
+        }
+
+        private class NodeCategoryRow
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
+            public string SubcatJson { get; set; }
+        }
+
+        private class NodeElementRow
+        {
+            public int CatId { get; set; }
+            public string SubcatId { get; set; }
+        }
+
+        private class SubcatDto
+        {
+            [JsonProperty("ID")]
+            public string Id { get; set; }
+
+            [JsonProperty("EL")]
+            public string Name { get; set; }
+
+            [JsonProperty("CH")]
+            public List<SubcatDto> Children { get; set; }
+        }
+
+        public ObservableCollection<NodeCategoryUi> CategoryTree { get; } = new ObservableCollection<NodeCategoryUi>();
+        public ObservableCollection<NodeElementUi> Elements { get; } = new ObservableCollection<NodeElementUi>();
+
+        private NodeElementUi _currentElement;
+        private readonly Dictionary<string, NodeCategoryUi> _nodeIndex = new Dictionary<string, NodeCategoryUi>();      
+
+        public ICollectionView ElementsView { get; }
+        private NodeCategoryUi _currentSelectedNode;
+        private bool _isSearchActive;
+
+        public bool IsEditTagsMode
+        {
+            get => (bool)GetValue(IsEditTagsModeProperty);
+            set => SetValue(IsEditTagsModeProperty, value);
+        }
+
+        public static readonly DependencyProperty IsEditTagsModeProperty =
+            DependencyProperty.Register(
+                nameof(IsEditTagsMode),
+                typeof(bool),
+                typeof(MainWindowNodeManager),
+                new PropertyMetadata(false));
+
+        public MainWindowNodeManager(UIApplication uiapp, UIDocument uidoc)
+        {
+            InitializeComponent();
+
+            IsSuperUser = IsUserInTestList();
+            BtnSettings.IsEnabled = IsSuperUser;
+
+            BtnCopyInView.IsEnabled = false;
+            BtnCopyElements.IsEnabled = false;
+            TxtName.IsEnabled = false;
+            BtnSaveName.IsEnabled = false;
+            TxtTags.IsEnabled = false;
+            BtnSaveTags.IsEnabled = false;
+            BtnChangeCategory.IsEnabled = false;
+            BtnReplacePreview.IsEnabled = false;
+
+            _uiapp = uiapp;
+            _uidoc = uidoc;
+            _doc = uidoc.Document;
+
+            _copyEvent = ExternalEvent.Create(_copyHandler);
+            _placeViewHandler = new PlaceDraftingViewOnSheetHandler();
+            _placeViewEvent = ExternalEvent.Create(_placeViewHandler);
+
+            ElementsView = CollectionViewSource.GetDefaultView(Elements);
+            DataContext = this;
+
+            LoadCategoriesTree();
+            LoadElementCounts();
+        }
+
+        private bool IsUserInTestList()
+        {
+            try
+            {
+                var currentUser = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser;
+
+                if (currentUser == null)
+                {
+                    return false;
+                }
+
+                int[] allowedIds = { 1, 2, 8, 177, 212, 208, 114, 65, 43 };
+
+                return allowedIds.Contains(currentUser.Id);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        //////////////////////////////// КАТЕГОРИИ УЗЛОВ
+        private List<NodeCategoryRow> LoadNodeCategories()
+        {
+            var result = new List<NodeCategoryRow>();
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT ID, NAME, SUBCAT_JSON FROM nodeCategory ORDER BY ID;";
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            var row = new NodeCategoryRow
+                            {
+                                Id = r.GetInt32(0),
+                                Name = r.IsDBNull(1) ? string.Empty : r.GetString(1),
+                                SubcatJson = r.IsDBNull(2) ? null : r.GetString(2)
+                            };
+                            result.Add(row);
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            return result;
+        }
+
+        private void LoadCategoriesTree()
+        {
+            CategoryTree.Clear();
+            _nodeIndex.Clear();
+
+            var categories = LoadNodeCategories();
+
+            var globalNoCat = new NodeCategoryUi
+            {
+                CatId = 0,
+                Id = "0",
+                Title = "Без категории"
+            };
+            CategoryTree.Add(globalNoCat);
+            _nodeIndex[MakeKey(0, "0")] = globalNoCat;
+
+            foreach (var cat in categories)
+            {
+                var rootNode = new NodeCategoryUi
+                {
+                    CatId = cat.Id,
+                    Id = cat.Id.ToString(CultureInfo.InvariantCulture),
+                    Title = cat.Name
+                };
+
+                CategoryTree.Add(rootNode);
+
+                if (!string.IsNullOrWhiteSpace(cat.SubcatJson))
+                {
+                    try
+                    {
+                        var subList = JsonConvert.DeserializeObject<List<SubcatDto>>(cat.SubcatJson);
+                        if (subList != null)
+                        {
+                            foreach (var s in subList)
+                            {
+                                AttachSubtree(cat.Id, rootNode, s);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Ошибка при разборе SUBCAT_JSON для категории '{cat.Name}':\n{ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void AttachSubtree(int catId, NodeCategoryUi parent, SubcatDto dto)
+        {
+            var node = new NodeCategoryUi
+            {
+                CatId = catId,
+                Id = dto.Id,
+                Title = dto.Name,
+                Parent = parent
+            };
+
+            parent.Children.Add(node);
+            _nodeIndex[MakeKey(catId, dto.Id)] = node;
+
+            if (dto.Children != null)
+            {
+                foreach (var child in dto.Children)
+                {
+                    AttachSubtree(catId, node, child);
+                }
+            }
+        }
+        private List<NodeElementRow> LoadNodeElements()
+        {
+            var result = new List<NodeElementRow>();
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT CAT, SUBCAT FROM nodeManager;";
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            int cat = r.IsDBNull(0) ? 0 : r.GetInt32(0);
+                            string subcat = r.IsDBNull(1) ? null : r.GetString(1);
+
+                            result.Add(new NodeElementRow
+                            {
+                                CatId = cat,
+                                SubcatId = subcat
+                            });
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            return result;
+        }
+
+        private List<string> GetSubcatIdsRecursive(NodeCategoryUi node)
+        {
+            var list = new List<string>();
+            CollectSubcatIds(node, list);
+            return list;
+        }
+
+        private void CollectSubcatIds(NodeCategoryUi node, List<string> list)
+        {
+            if (!string.IsNullOrEmpty(node.Id))
+                list.Add(node.Id);
+
+            foreach (var child in node.Children)
+                CollectSubcatIds(child, list);
+        }
+
+        private void LoadElementCounts()
+        {
+            foreach (var node in _nodeIndex.Values)
+            {
+                node.DirectCount = 0;
+                node.TotalCount = 0;
+            }
+
+            var elements = LoadNodeElements();
+
+            foreach (var el in elements)
+            {
+                int catId = el.CatId;
+                string subId = string.IsNullOrWhiteSpace(el.SubcatId)
+                    ? "0"
+                    : el.SubcatId.Trim();
+
+                if (!_nodeIndex.TryGetValue(MakeKey(catId, subId), out var node))
+                {
+                    if (!_nodeIndex.TryGetValue(MakeKey(catId, "0"), out node))
+                    {
+                        _nodeIndex.TryGetValue(MakeKey(0, "0"), out node);
+                    }
+                }
+
+                if (node != null)
+                {
+                    node.DirectCount++;
+                }
+            }
+
+            foreach (var root in CategoryTree)
+            {
+                RecalculateTotals(root);
+            }
+        }
+
+        private int RecalculateTotals(NodeCategoryUi node)
+        {
+            int sum = node.DirectCount;
+
+            foreach (var child in node.Children)
+            {
+                sum += RecalculateTotals(child);
+            }
+
+            node.TotalCount = sum;
+            return sum;
+        }
+
+        private void CategoriesTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (_isSearchActive)
+                return; 
+
+            _currentSelectedNode = e.NewValue as NodeCategoryUi;
+
+            if (_currentSelectedNode != null)
+            {
+                LoadElementsForNode(_currentSelectedNode);
+            }
+        }
+
+        private static T VisualUpwardSearch<T>(DependencyObject source) where T : DependencyObject
+        {
+            while (source != null && !(source is T))
+            {
+                source = VisualTreeHelper.GetParent(source);
+            }
+            return source as T;
+        }
+
+        private void CategoriesTree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isSearchActive)
+                return;
+
+            var clickedItem = VisualUpwardSearch<TreeViewItem>(e.OriginalSource as DependencyObject);
+            if (clickedItem == null)
+                return;
+
+            var node = clickedItem.DataContext as NodeCategoryUi;
+            if (node == null)
+                return;
+
+            _isSearchActive = false;
+            SearchTextBox.Text = string.Empty;
+
+            _currentSelectedNode = node;
+            LoadElementsForNode(node);
+        }
+
+        //////////////////////////////// УЗЛЫ
+        private void LoadElementsForNode(NodeCategoryUi node)
+        {
+            Elements.Clear();
+
+            if (node == null)
+            {
+                NoElementsText.Visibility = System.Windows.Visibility.Visible;
+                ElementsView.Refresh();
+                return;
+            }
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    if (node.CatId == 0 && node.Parent == null)
+                    {
+                        cmd.CommandText = @"
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            FROM nodeManager
+                            WHERE CAT IS NULL OR CAT = 0;";
+                    }
+                    else if (node.Parent == null)
+                    {
+                        cmd.CommandText = @"
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            FROM nodeManager
+                            WHERE CAT = @cat;";
+
+                        cmd.Parameters.AddWithValue("@cat", node.CatId);
+                    }
+                    else
+                    {
+                        int catId = node.CatId;
+                        var subIds = GetSubcatIdsRecursive(node); 
+
+                        if (subIds.Count == 0)
+                        {
+                            NoElementsText.Visibility = System.Windows.Visibility.Visible;
+                            ElementsView.Refresh();
+                            return;
+                        }
+
+                        var paramNames = new List<string>();
+                        for (int i = 0; i < subIds.Count; i++)
+                        {
+                            string pName = "@s" + i;
+                            paramNames.Add(pName);
+                        }
+
+                        cmd.CommandText = $@"
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            FROM nodeManager
+                            WHERE CAT = @cat
+                              AND SUBCAT IN ({string.Join(", ", paramNames)});";
+
+                        cmd.Parameters.AddWithValue("@cat", catId);
+                        for (int i = 0; i < subIds.Count; i++)
+                        {
+                            cmd.Parameters.AddWithValue("@s" + i, subIds[i]);
+                        }
+                    }
+
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            long id = r.GetInt64(0);
+                            string name = r.IsDBNull(1) ? string.Empty : r.GetString(1);
+                            byte[] picBytes = null;
+                            if (!r.IsDBNull(2))
+                                picBytes = (byte[])r[2];
+                            string propJson = r.IsDBNull(3) ? null : r.GetString(3);
+                            int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
+                            string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
+                            string tags = r.IsDBNull(6) ? null : r.GetString(6);
+
+                            string scaleText = null;
+                            double? scaleValue = null;
+
+                            var propParams = new ObservableCollection<KeyValuePair<string, string>>();
+
+                            if (!string.IsNullOrWhiteSpace(propJson))
+                            {
+                                try
+                                {
+                                    var jo = JObject.Parse(propJson);
+
+                                    foreach (var p in jo.Properties())
+                                    {
+                                        propParams.Add(new KeyValuePair<string, string>(
+                                            p.Name,
+                                            p.Value?.ToString()
+                                        ));
+                                    }
+
+                                    var scale = jo["МАСШТАБ"]?.ToString();
+                                    if (!string.IsNullOrWhiteSpace(scale))
+                                    {
+                                        scaleText = scale;
+
+                                        var parts = scale.Split(':');
+                                        if (parts.Length == 2 &&
+                                            double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double denom))
+                                        {
+                                            scaleValue = denom;
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
+
+                            string categoryPath = GetCategoryPath(catId, subcatId);
+
+                            var element = new NodeElementUi
+                            {
+                                Id = id,
+                                Name = name,
+                                Image = LoadImageFromBytes(picBytes),
+                                ScaleText = scaleText,
+                                ScaleValue = scaleValue,
+                                CatId = catId,
+                                SubcatId = subcatId,
+                                Tags = tags,
+                                CategoryPath = categoryPath,
+                                PropParameters = propParams
+                            };
+
+                            Elements.Add(element);
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            NoElementsText.Visibility = Elements.Count == 0
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+
+            ApplySorting();
+        }
+
+
+        //////////////////////////////// ДЕЙСТВИЯ + РЕЗУЛЬТАТЫ ВЫВОДА
+        private void BtnSearch_Click(object sender, RoutedEventArgs e)
+        {
+            string term = SearchTextBox.Text?.Trim();
+
+            if (string.IsNullOrEmpty(term))
+            {
+                _isSearchActive = false;
+                LoadElementsForNode(_currentSelectedNode);
+            }
+            else
+            {
+                _isSearchActive = true;
+                SearchElementsByName(term);
+            }
+        }
+
+        private void SearchElementsByName(string term)
+        {
+            Elements.Clear();
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                        FROM nodeManager;";
+
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            long id = r.GetInt64(0);
+                            string name = r.IsDBNull(1) ? string.Empty : r.GetString(1);
+
+                            if (string.IsNullOrEmpty(name) ||
+                                name.IndexOf(term, StringComparison.OrdinalIgnoreCase) < 0)
+                            {
+                                continue;
+                            }
+
+                            byte[] picBytes = null;
+                            if (!r.IsDBNull(2))
+                                picBytes = (byte[])r[2];
+
+                            string propJson = r.IsDBNull(3) ? null : r.GetString(3);
+                            int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
+                            string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
+                            string tags = r.IsDBNull(6) ? null : r.GetString(6);
+
+                            string scaleText = null;
+                            double? scaleValue = null;
+
+                            var propParams = new ObservableCollection<KeyValuePair<string, string>>();
+
+                            if (!string.IsNullOrWhiteSpace(propJson))
+                            {
+                                try
+                                {
+                                    var jo = JObject.Parse(propJson);
+
+                                    foreach (var p in jo.Properties())
+                                    {
+                                        propParams.Add(new KeyValuePair<string, string>(
+                                            p.Name,
+                                            p.Value?.ToString()
+                                        ));
+                                    }
+
+                                    var scale = jo["МАСШТАБ"]?.ToString();
+                                    if (!string.IsNullOrWhiteSpace(scale))
+                                    {
+                                        scaleText = scale;
+
+                                        var parts = scale.Split(':');
+                                        if (parts.Length == 2 &&
+                                            double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double denom))
+                                        {
+                                            scaleValue = denom;
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                }
+                            }
+
+                            string categoryPath = GetCategoryPath(catId, subcatId);
+
+                            var element = new NodeElementUi
+                            {
+                                Id = id,
+                                Name = name,
+                                Image = LoadImageFromBytes(picBytes),
+                                ScaleText = scaleText,
+                                ScaleValue = scaleValue,
+                                CatId = catId,
+                                SubcatId = subcatId,
+                                Tags = tags,
+                                CategoryPath = categoryPath,
+                                PropParameters = propParams
+                            };
+
+                            Elements.Add(element);
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            NoElementsText.Visibility = Elements.Count == 0
+                ? System.Windows.Visibility.Visible
+                : System.Windows.Visibility.Collapsed;
+
+            ElementsView.Refresh();
+        }
+
+        private void BtnFilter_Click(object sender, RoutedEventArgs e)
+        {
+            List<string> allTags;
+            try
+            {
+                allTags = GetAllTagsFromDb();
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при чтении тегов из БД:\n" + ex.Message);
+                return;
+            }
+
+            if (allTags == null || allTags.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "В БД нет тегов для фильтрации.");
+                return;
+            }
+
+            var dlg = new FilterByTagsWindowNodeManager(allTags)
+            {
+                Owner = this
+            };
+
+            var result = dlg.ShowDialog();
+            if (result == true)
+            {
+                var selectedTags = dlg.ResultTags;
+                if (selectedTags != null && selectedTags.Count > 0)
+                {
+                    _isSearchActive = true;
+                    SearchTextBox.Text = string.Empty;
+
+                    SearchElementsByTags(selectedTags);
+                }
+            }
+        }
+
+        private List<string> GetAllTagsFromDb()
+        {
+            var result = new List<string>();
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT TAGS FROM nodeManager WHERE TAGS IS NOT NULL AND TRIM(TAGS) <> '';";
+
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            if (r.IsDBNull(0))
+                                continue;
+
+                            var tagsStr = r.GetString(0);
+                            if (string.IsNullOrWhiteSpace(tagsStr))
+                                continue;
+
+                            var parts = tagsStr
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(t => t.Trim())
+                                .Where(t => !string.IsNullOrWhiteSpace(t));
+
+                            result.AddRange(parts);
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            return result
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
+        }
+
+        private void SearchElementsByTags(List<string> tagsToFind)
+        {
+            Elements.Clear();
+
+            if (tagsToFind == null || tagsToFind.Count == 0)
+            {
+                NoElementsText.Visibility = System.Windows.Visibility.Visible;
+                ElementsView.Refresh();
+                return;
+            }
+
+
+            var selectedTagsNorm = tagsToFind
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Select(t => t.Trim())
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
+
+            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                        FROM nodeManager
+                        WHERE TAGS IS NOT NULL AND TRIM(TAGS) <> '';";
+
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            long id = r.GetInt64(0);
+                            string name = r.IsDBNull(1) ? string.Empty : r.GetString(1);
+                            byte[] picBytes = null;
+                            if (!r.IsDBNull(2))
+                                picBytes = (byte[])r[2];
+                            string propJson = r.IsDBNull(3) ? null : r.GetString(3);
+                            int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
+                            string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
+                            string tagsStr = r.IsDBNull(6) ? null : r.GetString(6);
+
+                            if (string.IsNullOrWhiteSpace(tagsStr))
+                                continue;
+
+                            var rowTags = tagsStr.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).
+                                Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.InvariantCultureIgnoreCase).ToList();
+
+                            if (rowTags.Count == 0)
+                                continue;
+
+                            var rowSet = new HashSet<string>(rowTags, StringComparer.InvariantCultureIgnoreCase);
+
+                            bool containsAll = selectedTagsNorm.All(t => rowSet.Contains(t));
+                            if (!containsAll)
+                                continue;
+
+                            string scaleText = null;
+                            double? scaleValue = null;
+
+                            var propParams = new ObservableCollection<KeyValuePair<string, string>>();
+
+                            if (!string.IsNullOrWhiteSpace(propJson))
+                            {
+                                try
+                                {
+                                    var jo = JObject.Parse(propJson);
+
+                                    foreach (var p in jo.Properties())
+                                    {
+                                        propParams.Add(new KeyValuePair<string, string>(
+                                            p.Name,
+                                            p.Value?.ToString()
+                                        ));
+                                    }
+
+                                    var scale = jo["МАСШТАБ"]?.ToString();
+                                    if (!string.IsNullOrWhiteSpace(scale))
+                                    {
+                                        scaleText = scale;
+
+                                        var parts = scale.Split(':');
+                                        if (parts.Length == 2 &&
+                                            double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double denom))
+                                        {
+                                            scaleValue = denom;
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                }
+                            }
+
+                            string categoryPath = GetCategoryPath(catId, subcatId);
+
+                            var element = new NodeElementUi
+                            {
+                                Id = id,
+                                Name = name,
+                                Image = LoadImageFromBytes(picBytes),
+                                ScaleText = scaleText,
+                                ScaleValue = scaleValue,
+                                CatId = catId,
+                                SubcatId = subcatId,
+                                Tags = tagsStr,
+                                CategoryPath = categoryPath,
+                                PropParameters = propParams
+                            };
+
+                            Elements.Add(element);
+                        }
+                    }
+                }
+                conn.Close();
+            }
+
+            NoElementsText.Visibility = Elements.Count == 0
+                ? System.Windows.Visibility.Visible
+                : System.Windows.Visibility.Collapsed;
+
+            ElementsView.Refresh();
+        }
+
+        private void BtnClearSearch_Click(object sender, RoutedEventArgs e)
+        {
+            SearchTextBox.Text = string.Empty;
+            _isSearchActive = false;
+
+            LoadElementsForNode(_currentSelectedNode);
+        }
+     
+        private void SortCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (SortCombo == null)
+                return;
+
+            if (SortCombo.SelectedIndex != 0 && ScaleSortCombo != null && ScaleSortCombo.SelectedIndex != 0)
+            {
+                ScaleSortCombo.SelectedIndex = 0;
+            }
+
+            ApplySorting();
+        }
+
+        private void ScaleSortCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (ScaleSortCombo == null)
+                return;
+
+            if (ScaleSortCombo.SelectedIndex != 0 && SortCombo != null && SortCombo.SelectedIndex != 0)
+            {
+                SortCombo.SelectedIndex = 0;
+            }
+
+            ApplySorting();
+        }
+
+        private void ApplySorting()
+        {
+            if (ElementsView == null)
+                return;
+
+            ElementsView.SortDescriptions.Clear();
+
+            ComboBoxItem scaleItem = null;
+            string scaleTag = null;
+
+            if (ScaleSortCombo != null)
+            {
+                scaleItem = ScaleSortCombo.SelectedItem as ComboBoxItem;
+                scaleTag = scaleItem?.Tag as string;
+            }
+
+            if (scaleTag == "bigFirst")
+            {
+                ElementsView.SortDescriptions.Add(new SortDescription(nameof(NodeElementUi.ScaleValue), ListSortDirection.Ascending));
+            }
+            else if (scaleTag == "smallFirst")
+            {
+                ElementsView.SortDescriptions.Add(new SortDescription(nameof(NodeElementUi.ScaleValue), ListSortDirection.Descending));
+            }
+
+            ComboBoxItem nameItem = null;
+            string nameTag = null;
+
+            if (SortCombo != null)
+            {
+                nameItem = SortCombo.SelectedItem as ComboBoxItem;
+                nameTag = nameItem?.Tag as string;
+            }
+
+            if (nameTag == "asc")
+            {
+                ElementsView.SortDescriptions.Add(new SortDescription(nameof(NodeElementUi.Name), ListSortDirection.Ascending));
+            }
+            else if (nameTag == "desc")
+            {
+                ElementsView.SortDescriptions.Add(new SortDescription(nameof(NodeElementUi.Name), ListSortDirection.Descending));
+            }
+
+            ElementsView.Refresh();
+        }
+
+        private void ElementsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            _currentElement = ElementsList.SelectedItem as NodeElementUi;
+            bool hasSelection = _currentElement != null;
+
+            BtnCopyInView.IsEnabled = hasSelection;
+            BtnCopyElements.IsEnabled = hasSelection;
+
+            bool canEdit = hasSelection && IsSuperUser;
+            TxtName.IsEnabled = canEdit;
+            BtnSaveName.IsEnabled = canEdit;
+            TxtTags.IsEnabled = canEdit;
+            BtnSaveTags.IsEnabled = canEdit;
+            BtnChangeCategory.IsEnabled = canEdit;
+            BtnReplacePreview.IsEnabled = canEdit;
+
+            IsEditTagsMode = false;
+            BtnSaveTags.Content = "✏️ Изменить теги";
+        }
+
+        //////////////////////////////// СВОЙСТВА УЗЛА
+        private string GetCategoryPath(int? catId, string subcatId)
+        {
+            if (!catId.HasValue || catId.Value == 0)
+                return "Без категории";
+
+            string subNorm = string.IsNullOrEmpty(subcatId) ? "0" : subcatId;
+
+            if (!_nodeIndex.TryGetValue(MakeKey(catId.Value, subNorm), out var node))
+                return $"Категория {catId}, подкатегория {subcatId ?? "—"}";
+
+            var stack = new Stack<string>();
+            var cur = node;
+            while (cur != null)
+            {
+                stack.Push(cur.Title);
+                cur = cur.Parent;
+            }
+
+            return string.Join(" > ", stack);
+        }
+
+        private void BtnSaveName_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSuperUser)
+                return;
+
+            var element = ElementsList.SelectedItem as NodeElementUi;
+            if (element == null)
+                return;
+
+            this.Topmost = false;
+
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "UPDATE nodeManager SET NAME = @name WHERE ID = @id;";
+                        cmd.Parameters.AddWithValue("@name", element.Name ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@id", element.Id);
+                        cmd.ExecuteNonQuery();
+                    }
+                    conn.Close();
+                }
+
+                TaskDialog.Show("KPLN. Менеджер узлов", "Имя узла успешно обновлено.");
+                ApplySorting();
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении имени:\n" + ex.Message);
+            }
+
+            this.Topmost = true;
+        }
+
+
+
+
+
+
+        private void BtnSaveTags_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSuperUser)
+                return;
+
+            var element = ElementsList.SelectedItem as NodeElementUi;
+            if (element == null)
+                return;
+
+            if (!IsEditTagsMode)
+            {
+                IsEditTagsMode = true;
+                BtnSaveTags.Content = "💾 Сохранить теги";
+
+                TxtTags.Focus();
+                TxtTags.CaretIndex = TxtTags.Text?.Length ?? 0;
+                return;
+            }
+
+            this.Topmost = false;
+
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "UPDATE nodeManager SET TAGS = @tags WHERE ID = @id;";
+                        cmd.Parameters.AddWithValue("@tags", element.Tags ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@id", element.Id);
+                        cmd.ExecuteNonQuery();
+                    }
+                    conn.Close();
+                }
+
+                var sel = ElementsList.SelectedItem;
+                ElementsList.SelectedItem = null;
+                ElementsList.SelectedItem = sel;
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении тегов:\n" + ex.Message);
+            }
+
+            this.Topmost = true;
+
+            IsEditTagsMode = false;
+            BtnSaveTags.Content = "✏️ Изменить";
+        }
+
+
+
+
+
+        private void BtnChangeCategory_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSuperUser)
+                return;
+
+            if (_currentElement == null)
+                return;
+
+            try
+            {
+                var dlg = new ChangeCategoryWindowNodeManager(CategoryTree,  _currentElement.CatId, _currentElement.SubcatId, _currentElement.Name);
+                dlg.Owner = this;
+
+                if (dlg.ShowDialog() == true)
+                {
+                    int? newCatId = dlg.SelectedCatId;
+                    string newSubcatId = dlg.SelectedSubcatId;
+
+                    if (newCatId.HasValue)
+                    {
+                        try
+                        {
+                            using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                            {
+                                conn.Open();
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = "UPDATE nodeManager SET CAT = @cat, SUBCAT = @sub WHERE ID = @id;";
+                                    cmd.Parameters.AddWithValue("@cat", newCatId.Value);
+                                    cmd.Parameters.AddWithValue("@sub", (object)newSubcatId ?? DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@id", _currentElement.Id);
+                                    cmd.ExecuteNonQuery();
+                                }
+                                conn.Close();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении категории:\n" + ex.Message);
+                            return;
+                        }
+
+                        _currentElement.CatId = newCatId;
+                        _currentElement.SubcatId = newSubcatId;
+                        _currentElement.CategoryPath = GetCategoryPath(newCatId, newSubcatId);
+
+                        LoadElementCounts();
+
+                        if (_currentSelectedNode != null)
+                        {
+                            LoadElementsForNode(_currentSelectedNode);
+                        }
+                    }
+                }
+
+            }
+            finally { }
+        }
+
+        private void BtnReplacePreview_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentElement == null)
+                return;
+
+            View targetView = null;
+            bool openedTargetViewHere = false;
+
+            try
+            {
+                this.Topmost = false;
+                this.Hide();
+
+                string rvtPath = null;
+                string propJson = null;
+
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT RVT_PATH, PROP FROM nodeManager WHERE ID = @id;";
+                        cmd.Parameters.AddWithValue("@id", _currentElement.Id);
+
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                if (!r.IsDBNull(0))
+                                    rvtPath = r.GetString(0);
+                                if (!r.IsDBNull(1))
+                                    propJson = r.GetString(1);
+                            }
+                        }
+                    }
+                    conn.Close();
+                }
+
+                if (string.IsNullOrWhiteSpace(rvtPath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла в базе не заполнен путь к модели (RVT_PATH).\nОбновите БД, чтобы заполнить это поле.");
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(propJson))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла в базе отсутствует PROP.\nбновите БД, чтобы заполнить это поле.");
+                    return;
+                }
+
+                string viewName = null;
+                try
+                {
+                    var jo = JObject.Parse(propJson);
+                    viewName = jo["ИМЯ ВИДА"]?.ToString();
+                }
+                catch
+                {
+                }
+
+                if (string.IsNullOrWhiteSpace(viewName))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "В PROP для выбранного узла не найден ключ \"ИМЯ ВИДА\".\nОбновите БД, чтобы корректно заполнить параметры вида.");
+                    return;
+                }
+
+                var app = _uiapp.Application;
+                Document targetDoc = null;
+                string targetFull;
+
+                try
+                {
+                    targetFull = Path.GetFullPath(rvtPath);
+                }
+                catch
+                {
+                    targetFull = rvtPath;
+                }
+
+                foreach (Document d in app.Documents)
+                {
+                    try
+                    {
+                        if (string.IsNullOrEmpty(d.PathName))
+                            continue;
+
+                        string dFull;
+                        try
+                        {
+                            dFull = Path.GetFullPath(d.PathName);
+                        }
+                        catch
+                        {
+                            dFull = d.PathName;
+                        }
+
+                        if (!string.IsNullOrEmpty(dFull) &&
+                            string.Equals(dFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            targetDoc = d;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (targetDoc == null)
+                {
+                    if (!File.Exists(targetFull))
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Файл модели, указанный в RVT_PATH, не найден:\n" +
+                            targetFull);
+                        return;
+                    }
+
+                    try
+                    {
+                        UIDocument uiDoc = _uiapp.OpenAndActivateDocument(targetFull);
+                        targetDoc = uiDoc.Document;
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось открыть файл модели:\n" + targetFull + "\n\n" + ex.Message);
+                        return;
+                    }
+                }
+
+                UIDocument udoc = _uiapp.ActiveUIDocument;
+                if (udoc == null || udoc.Document != targetDoc)
+                {
+                    try
+                    {
+                        udoc = _uiapp.OpenAndActivateDocument(targetFull);
+                    }
+                    catch { }
+                }
+               
+                try
+                {
+                    targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, viewName, StringComparison.InvariantCultureIgnoreCase));
+                }
+                catch
+                {
+                }
+
+                if (targetView == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "В документе\n" + (targetDoc.PathName ?? targetDoc.Title) + "\nне найден вид с именем:\n\"" + viewName + "\".\nВозможно, он был удалён или переименован.");
+                    return;
+                }
+
+                bool viewIsOpen = false;
+
+                try
+                {
+                    if (udoc == null || udoc.Document != targetDoc)
+                    {
+                        udoc = _uiapp.OpenAndActivateDocument(targetFull);
+                    }
+
+                    var uiViews = udoc.GetOpenUIViews();
+                    foreach (var uv in uiViews)
+                    {
+                        if (uv.ViewId == targetView.Id)
+                        {
+                            viewIsOpen = true;
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    viewIsOpen = false;
+                }
+
+                if (!viewIsOpen)
+                {
+                    try
+                    {
+                        udoc.ActiveView = targetView;
+                        openedTargetViewHere = true;
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                var captureWindow = new ScreenCaptureWindow(1000, 800); 
+                captureWindow.Owner = this; 
+
+                var dialogResult = captureWindow.ShowDialog();
+                if (dialogResult != true || captureWindow.CapturedBytes == null || captureWindow.CapturedBytes.Length == 0)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Изображение не было захвачено. Повторите попытку.");
+                    return;
+                }
+
+                byte[] previewBytes = captureWindow.CapturedBytes;
+
+                if (previewBytes == null || previewBytes.Length == 0)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "В буфере обмена не найдено изображение.\nУбедитесь, что вы сделали скриншот ножницами и попробуйте ещё раз.");
+                    return;
+                }
+
+                try
+                {
+                    using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                    {
+                        conn.Open();
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = "UPDATE nodeManager SET PIC = @pic WHERE ID = @id;";
+                            var pPic = cmd.CreateParameter();
+                            pPic.ParameterName = "@pic";
+                            pPic.DbType = DbType.Binary;
+                            pPic.Value = (object)previewBytes ?? DBNull.Value;
+                            cmd.Parameters.Add(pPic);
+
+                            cmd.Parameters.AddWithValue("@id", _currentElement.Id);
+
+                            cmd.ExecuteNonQuery();
+                        }
+                        conn.Close();
+                    }
+
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Миниатюра успешно сохранена в БД.");
+                }
+                catch (Exception ex)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при сохранении миниатюры в базу данных:\n" + ex.Message);
+                    return;
+                }
+
+                if (_currentSelectedNode != null)
+                {
+                    var savedId = _currentElement.Id;
+                    LoadElementsForNode(_currentSelectedNode);
+
+                    var newSel = Elements.FirstOrDefault(el => el.Id == savedId);
+                    if (newSel != null)
+                    {
+                        ElementsList.SelectedItem = newSel;
+                        _currentElement = newSel;
+                    }
+                }
+            }
+            finally
+            {
+                try
+                {
+                    if (openedTargetViewHere && targetView != null)
+                    {
+                        var udoc2 = _uiapp.ActiveUIDocument;
+                        var uv = udoc2?.GetOpenUIViews() ?.FirstOrDefault(v => v.ViewId == targetView.Id);
+                        uv?.Close();
+                    }
+                }
+                catch { }
+
+                this.Topmost = true;
+                this.Show();
+            }
+        }
+
+        private ImageSource LoadImageFromBytes(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return null;
+
+            try
+            {
+                var bmp = new BitmapImage();
+                using (var ms = new MemoryStream(data))
+                {
+                    bmp.BeginInit();
+                    bmp.CacheOption = BitmapCacheOption.OnLoad;
+                    bmp.StreamSource = ms;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                }
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        ////////////////////// НАСТРОЙКИ
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new SettingsWindowNodeManager
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            if (dlg.ShowDialog() == true)
+            {
+                this.Topmost = false;
+
+                switch (dlg.SelectedAction)
+                {
+                    case SettingsAction.UpdateDb:
+                        string run = Guid.NewGuid().ToString();
+                        HandleAction_UpdateDb(_uiapp, RvtPath1, run);
+                        FinalizeUpdateDb(run);
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Опперация завершена");
+                        break;
+
+                    case SettingsAction.AddDelCategory:
+                        var w = new SettingsWindowNodeManagerCategory();
+                        w.Owner = this;
+                        w.ShowDialog();
+                        break;
+                }
+
+                this.Topmost = true;
+            }
+        }
+
+        public static void HandleAction_UpdateDb(UIApplication uiapp, string rvtPath, string runToken)
+        {
+            Document doc = null;
+            bool docOpenedHere = false;
+
+            try
+            {
+                var app = uiapp.Application;
+                if (string.IsNullOrWhiteSpace(rvtPath) || !File.Exists(rvtPath))
+                    throw new FileNotFoundException("Не найден файл модели для сканирования.", rvtPath);
+
+                string targetFull = Path.GetFullPath(rvtPath);
+                string targetFileNoExt = Path.GetFileNameWithoutExtension(targetFull);
+                string targetFileName = Path.GetFileName(targetFull);
+                string targetCentral = null;
+                try
+                {
+                    var bi = BasicFileInfo.Extract(targetFull);
+                    if (bi != null && bi.IsWorkshared) targetCentral = bi.CentralPath;
+                }
+                catch { }
+
+                foreach (Document d in app.Documents)
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(d.PathName))
+                        {
+                            string dFull = Path.GetFullPath(d.PathName);
+                            if (string.Equals(dFull, targetFull, StringComparison.InvariantCultureIgnoreCase)) { doc = d; break; }
+                            string dName = Path.GetFileName(d.PathName);
+                            if (!string.IsNullOrEmpty(dName) &&
+                                string.Equals(dName, targetFileName, StringComparison.InvariantCultureIgnoreCase)) { doc = d; break; }
+                        }
+                        if (!string.IsNullOrEmpty(d.Title) &&
+                            string.Equals(d.Title, targetFileNoExt, StringComparison.InvariantCultureIgnoreCase)) { doc = d; break; }
+
+                        if (!string.IsNullOrEmpty(targetCentral) && d.IsWorkshared)
+                        {
+                            string dCentral = null;
+                            try
+                            {
+                                var mp = d.GetWorksharingCentralModelPath();
+                                if (mp != null) dCentral = ModelPathUtils.ConvertModelPathToUserVisiblePath(mp);
+                            }
+                            catch { }
+                            if (!string.IsNullOrEmpty(dCentral) &&
+                                string.Equals(dCentral, targetCentral, StringComparison.InvariantCultureIgnoreCase)) { doc = d; break; }
+                        }
+                    }
+                    catch { }
+                }
+
+                if (doc == null)
+                {
+                    var mp = ModelPathUtils.ConvertUserVisiblePathToModelPath(rvtPath);
+                    var openOpts = new OpenOptions();
+                    doc = app.OpenDocumentFile(mp, openOpts);
+                    docOpenedHere = true;
+                }
+
+                if (doc == null)
+                    throw new InvalidOperationException("Не удалось получить документ Revit.");
+
+                var views = new FilteredElementCollector(doc).OfClass(typeof(ViewDrafting)).ToElements();
+                var draftingViews = new List<ViewDrafting>();
+                foreach (var e in views)
+                {
+                    var vd = e as ViewDrafting;
+                    if (vd != null && !vd.IsTemplate) draftingViews.Add(vd);
+                }
+
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    EnsureSchema(conn);      
+                    var existing = LoadExistingByPropViewName(conn); 
+
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        foreach (var v in draftingViews)
+                        {
+                            string viewName = v.Name ?? string.Empty;
+                            string scaleStr = "1:" + Math.Max(1, v.Scale);
+
+                            var jo = new JObject
+                            {
+                                ["ИМЯ ВИДА"] = viewName,
+                                ["МАСШТАБ"] = scaleStr
+                            };
+                            string json = JsonConvert.SerializeObject(jo, Formatting.None);
+
+                            long id;
+                            if (existing.TryGetValue(viewName, out id))
+                            {
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText =
+                                        "UPDATE nodeManager " +
+                                        "SET PROP=@prop, LAST_SEEN=@run, RVT_PATH=@rvt " +
+                                        "WHERE ID=@id;";
+
+                                    cmd.Parameters.AddWithValue("@prop", json);
+                                    cmd.Parameters.AddWithValue("@run", runToken);
+                                    cmd.Parameters.AddWithValue("@rvt", targetFull);
+                                    cmd.Parameters.AddWithValue("@id", id);
+
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                            else
+                            {
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText =
+                                        "INSERT INTO nodeManager (NAME, PROP, LAST_SEEN, RVT_PATH) " +
+                                        "VALUES (@name, @prop, @run, @rvt);";
+
+                                    cmd.Parameters.AddWithValue("@name", viewName);
+                                    cmd.Parameters.AddWithValue("@prop", json);
+                                    cmd.Parameters.AddWithValue("@run", runToken);
+                                    cmd.Parameters.AddWithValue("@rvt", targetFull);
+
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
+                        tx.Commit();
+                    }
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("UpdateDb", "Ошибка при обновлении базы:\n" + ex.Message);
+            }
+            finally
+            {
+                if (docOpenedHere && doc != null)
+                {
+                    try { doc.Close(false); } catch { }
+                }
+            }
+        }
+
+        public static void FinalizeUpdateDb(string runToken)
+        {
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    EnsureSchema(conn);
+
+                    using (var tx = conn.BeginTransaction())
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "DELETE FROM " + "nodeManager" + " WHERE LAST_SEEN IS NULL OR LAST_SEEN <> @run;";
+                        cmd.Parameters.AddWithValue("@run", runToken);
+                        cmd.ExecuteNonQuery();
+                        tx.Commit();
+                    }
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("UpdateDb", "Ошибка при финализации базы:\n" + ex.Message);
+            }
+        }
+
+        private static void EnsureSchema(SQLiteConnection conn)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText =
+                    "CREATE TABLE IF NOT EXISTS " + "nodeManager" + " (" +
+                    "ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "NAME TEXT NOT NULL," +
+                    "PROP TEXT NOT NULL" +
+                    ");";
+                cmd.ExecuteNonQuery();
+            }
+
+            bool hasLastSeen = false;
+            bool hasRvtPath = false;
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA table_info(" + "nodeManager" + ");";
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        string col = r.GetString(1);
+                        if (string.Equals(col, "LAST_SEEN", StringComparison.InvariantCultureIgnoreCase))
+                            hasLastSeen = true;
+                        else if (string.Equals(col, "RVT_PATH", StringComparison.InvariantCultureIgnoreCase))
+                            hasRvtPath = true;
+                    }
+                }
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                if (!hasLastSeen)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN LAST_SEEN TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+                if (!hasRvtPath)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN RVT_PATH TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static Dictionary<string, long> LoadExistingByPropViewName(SQLiteConnection conn)
+        {
+            var map = new Dictionary<string, long>(StringComparer.InvariantCultureIgnoreCase);
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT ID, PROP FROM " + "nodeManager" + ";";
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        try
+                        {
+                            long id = r.GetInt64(0);
+                            string propJson = r.GetString(1);
+                            var jo = JObject.Parse(propJson);
+                            string viewName = jo["ИМЯ ВИДА"]?.ToString();
+                            if (!string.IsNullOrEmpty(viewName))
+                                map[viewName] = id;
+                        }
+                        catch {}
+                    }
+                }
+            }
+            return map;
+        }
+
+        private void BtnCopyInView_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentElement == null)
+                return;
+
+            var uidoc = _uiapp?.ActiveUIDocument;
+
+            this.Topmost = false;
+
+            _copyHandler.Init(_uiapp, DbPath, _currentElement.Id,  this);
+            _copyEvent.Raise();
+        }
+
+        private void BtnCopyElements_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentElement == null)
+                return;
+
+            var uidoc = _uiapp?.ActiveUIDocument;
+            if (uidoc == null)
+                return;
+
+            var doc = uidoc.Document;
+            if (doc == null)
+                return;
+
+            string propJson = null;
+            string rvtPath = null;
+
+
+            this.Topmost = false;
+
+            try
+            {
+                using (var conn = new System.Data.SQLite.SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT PROP, RVT_PATH FROM nodeManager WHERE ID = @id;";
+                        cmd.Parameters.AddWithValue("@id", _currentElement.Id);
+
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                if (!r.IsDBNull(0))
+                                    propJson = r.GetString(0);
+
+                                if (!r.IsDBNull(1))
+                                    rvtPath = r.GetString(1);
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при чтении базы данных:\n" + ex.Message);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(propJson))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла отсутствует PROP.");
+                return;
+            }
+
+            string sourceViewName = null;
+            try
+            {
+                var jo = Newtonsoft.Json.Linq.JObject.Parse(propJson);
+                sourceViewName = jo["ИМЯ ВИДА"]?.ToString();
+            }
+            catch { }
+
+            if (string.IsNullOrWhiteSpace(sourceViewName))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "В PROP нет ключа \"ИМЯ ВИДА\".");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(rvtPath))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла отсутствует RVT_PATH.");
+                return;
+            }
+
+            var activeView = uidoc.ActiveView;
+            if (!(activeView is ViewSheet) && !(activeView is ViewDrafting))
+            {
+                TaskDialog.Show( "KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
+                return;
+            }
+
+            _placeViewHandler.Init(_uiapp, rvtPath, sourceViewName, this);
+            _placeViewEvent.Raise();
+        }
+    }
+
+    /////////////////////////////// КОПИРОВАНИЕ ВИДОВ
+    internal sealed class UseDestinationTypesHandler : IDuplicateTypeNamesHandler
+    {
+        public DuplicateTypeAction OnDuplicateTypeNamesFound(DuplicateTypeNamesHandlerArgs args)
+            => DuplicateTypeAction.UseDestinationTypes;
+    }
+
+    internal sealed class CopyNodeToViewHandler : IExternalEventHandler
+    {
+        private UIApplication _uiapp;
+        private string _dbPath;
+        private long _nodeId;
+        
+        private Window _ownerWindow;
+
+        public void Init(UIApplication uiapp, string dbPath, long nodeId, Window ownerWindow)
+        {
+            _uiapp = uiapp;
+            _dbPath = dbPath;
+            _nodeId = nodeId;
+  
+            _ownerWindow = ownerWindow;
+        }
+
+        public string GetName() => "KPLN. Копирование узла";
+
+        private static string TryGetDwgPathFromInstance(Document doc, ImportInstance inst)
+        {
+            var linkType = doc.GetElement(inst.GetTypeId()) as CADLinkType;
+            if (linkType == null)
+                return null; 
+
+            var extRef = ExternalFileUtils.GetExternalFileReference(doc, linkType.Id);
+            if (extRef == null)
+                return null;
+
+            var modelPath = extRef.GetPath();
+            if (modelPath == null)
+                return null;
+
+            string userPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath);
+            return userPath;
+        }
+
+        private static string MakeSafeFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "DWG";
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(name.Length);
+            foreach (var ch in name)
+            {
+                sb.Append(invalid.Contains(ch) ? '_' : ch);
+            }
+            return sb.ToString();
+        }
+
+        public void Execute(UIApplication app)
+        {
+            try
+            {
+                var uidoc = _uiapp?.ActiveUIDocument ?? throw new InvalidOperationException("Нет активного документа.");
+                var targetDoc = uidoc.Document;
+
+                string rvtPath = null, propJson = null;
+                using (var conn = new System.Data.SQLite.SQLiteConnection("Data Source=" + _dbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT RVT_PATH, PROP FROM nodeManager WHERE ID = @id;";
+                        cmd.Parameters.AddWithValue("@id", _nodeId);
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                if (!r.IsDBNull(0)) rvtPath = r.GetString(0);
+                                if (!r.IsDBNull(1)) propJson = r.GetString(1);
+                            }
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(rvtPath) || !File.Exists(rvtPath))
+                    throw new FileNotFoundException("RVT_PATH не найден.", rvtPath ?? "");
+                if (string.IsNullOrWhiteSpace(propJson))
+                    throw new InvalidOperationException("PROP отсутствует.");
+
+                string sourceViewName = null;
+                try
+                {
+                    var jo = Newtonsoft.Json.Linq.JObject.Parse(propJson);
+                    sourceViewName = jo["ИМЯ ВИДА"]?.ToString();
+                }
+                catch { }
+                if (string.IsNullOrWhiteSpace(sourceViewName))
+                    throw new InvalidOperationException("В PROP нет ключа \"ИМЯ ВИДА\".");
+
+                Document sourceDoc = _uiapp.Application.Documents
+                    .Cast<Document>()
+                    .FirstOrDefault(d =>
+                    {
+                        try
+                        {
+                            if (string.IsNullOrEmpty(d.PathName)) return false;
+                            return string.Equals(Path.GetFullPath(d.PathName), Path.GetFullPath(rvtPath), StringComparison.InvariantCultureIgnoreCase);
+                        }
+                        catch { return false; }
+                    });
+
+                bool openedSourceHere = false;
+                if (sourceDoc == null)
+                {
+                    sourceDoc = _uiapp.Application.OpenDocumentFile(rvtPath);
+                    openedSourceHere = true;
+                }
+
+                try
+                {
+                    if (string.Equals(Path.GetFullPath(sourceDoc.PathName), Path.GetFullPath(targetDoc.PathName), StringComparison.InvariantCultureIgnoreCase))
+                        throw new InvalidOperationException("Нельзя копировать в тот же документ.");
+                }
+                catch { }
+
+
+                var sourceView = new FilteredElementCollector(sourceDoc)
+                    .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase))
+                    ?? throw new InvalidOperationException($"В документе-источнике не найден вид \"{sourceViewName}\".");
+
+                var allInView = new FilteredElementCollector(sourceDoc, sourceView.Id).WhereElementIsNotElementType().ToElements();
+
+                // DWG
+                bool hasAnyDwg = allInView.OfType<ImportInstance>().Any();
+                if (hasAnyDwg)
+                {
+                    var dwgInstances = allInView.OfType<ImportInstance>().ToList();
+                    var dwgPaths = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+
+                    foreach (var inst in dwgInstances)
+                    {
+                        string path = TryGetDwgPathFromInstance(sourceDoc, inst);
+                        if (string.IsNullOrEmpty(path))
+                            continue;
+
+                        try
+                        {
+                            path = Path.GetFullPath(path);
+                        }
+                        catch { }
+
+                        if (File.Exists(path))
+                            dwgPaths.Add(path);
+                    }
+
+                    if (dwgPaths.Count == 0)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "На исходном виде обнаружен DWG, но это, вероятно, импорт без живой ссылки. Перенос такого DWG в другой документ не поддерживается Revit API.");
+
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+
+                        return;
+                    }
+
+                    string baseModelPath = null;
+                    try
+                    {
+                        if (targetDoc.IsWorkshared)
+                        {
+                            var centralMp = targetDoc.GetWorksharingCentralModelPath();
+                            if (centralMp != null)
+                            {
+                                baseModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(centralMp);
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(baseModelPath))
+                        {
+                            baseModelPath = targetDoc.PathName;
+                        }
+                    }
+                    catch
+                    {
+                        baseModelPath = targetDoc.PathName;
+                    }
+
+                    if (string.IsNullOrEmpty(baseModelPath) || !File.Exists(baseModelPath))
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к файлу модели для создания папки \"DWG_Менеджер узлов\".\nСохраните модель на диск и повторите попытку.");
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+                        return;
+                    }
+
+                    string modelDir = Path.GetDirectoryName(baseModelPath);
+                    string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
+
+                    try
+                    {
+                        if (!Directory.Exists(dwgFolder))
+                        {
+                            Directory.CreateDirectory(dwgFolder);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать папку для DWG:\n" + dwgFolder + "\n\n" + ex.Message);
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+                        return;
+                    }
+
+                    string baseSafeName = MakeSafeFileName(sourceViewName);
+                    string mainFileName = baseSafeName + ".dwg";
+                    string mainLocalCopyPath = Path.Combine(dwgFolder, mainFileName);
+
+                    if (File.Exists(mainLocalCopyPath))
+                    {
+                        var msg =
+                            $"Файл DWG с именем \"{mainFileName}\" уже существует в папке проекта:\n" +
+                            $"{dwgFolder}\n\n" +
+                            "Да — перезаписать данный файл и перезаписать содержимое соответствующего вида узла.\n" +
+                            "Нет — открыть существующий вид с этим узлом.\n" +
+                            "Отмена — ничего не менять.";
+
+                        var result = System.Windows.MessageBox.Show(msg, "KPLN. Менеджер узлов", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+                        if (result == MessageBoxResult.Cancel)
+                        {
+                            if (openedSourceHere)
+                            {
+                                try { sourceDoc.Close(false); } catch { }
+                            }
+                            return;
+                        }
+
+                        else if (result == MessageBoxResult.No)
+                        {
+                  
+                            var existingView = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(ViewDrafting))
+                                .Cast<ViewDrafting>().FirstOrDefault(v =>
+                                    !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                            if (existingView != null)
+                            {
+                                uidoc.ActiveView = existingView;
+
+                                if (openedSourceHere)
+                                {
+                                    try { sourceDoc.Close(false); } catch { }
+                                }
+                                return;
+                            }
+                            else
+                            {
+                                var ask = System.Windows.MessageBox.Show(
+                                    $"Файл DWG уже существует в папке,\nно вид \"{sourceViewName}\" в документе не найден.\n\n" +
+                                    "Создать новый чертёжный вид с этим именем\nи залинковать на него существующий DWG?",
+                                    "KPLN. Менеджер узлов", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                                if (ask == MessageBoxResult.No)
+                                {
+                                    if (openedSourceHere)
+                                    {
+                                        try { sourceDoc.Close(false); } catch { }
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+
+                        try
+                        {
+                            File.Copy(dwgPaths.First(), mainLocalCopyPath, true);
+                        }
+                        catch (Exception copyEx)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось перезаписать DWG:\n" + dwgPaths.First() + "\n→ " + mainLocalCopyPath + "\n\n" + copyEx.Message);
+
+                            if (openedSourceHere)
+                            {
+                                try { sourceDoc.Close(false); } catch { }
+                            }
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            File.Copy(dwgPaths.First(), mainLocalCopyPath, false);
+                        }
+                        catch (Exception copyEx)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось скопировать DWG в папку менеджера узлов:\n" + dwgPaths.First() + "\n→ " + mainLocalCopyPath + "\n\n" + copyEx.Message);
+
+                            if (openedSourceHere)
+                            {
+                                try { sourceDoc.Close(false); } catch { }
+                            }
+                            return;
+                        }
+                    }
+
+                    ViewDrafting targetView;
+                    using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание вида узла (DWG)"))
+                    {
+                        t.Start();
+
+                        targetView = new FilteredElementCollector(targetDoc)
+                            .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>().FirstOrDefault(v =>
+                                !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                        if (targetView == null)
+                        {
+                            var draftingTypeId = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().First(vft => vft.ViewFamily == ViewFamily.Drafting).Id;
+
+                            targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
+                            targetView.Name = sourceViewName;
+                        }
+
+                        t.Commit();
+                    }
+
+                    using (var t = new Transaction(targetDoc, "KPLN. Очистка старых DWG на виде узла"))
+                    {
+                        t.Start();
+
+                        var oldDwgs = new FilteredElementCollector(targetDoc, targetView.Id)
+                            .OfClass(typeof(ImportInstance))
+                            .ToElementIds();
+
+                        if (oldDwgs.Count > 0)
+                        {
+                            targetDoc.Delete(oldDwgs);
+                        }
+
+                        t.Commit();
+                    }
+
+                    using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG на вид узла"))
+                    {
+                        t.Start();
+
+                        try
+                        {
+                            var opts = new DWGImportOptions
+                            {
+                                Placement = ImportPlacement.Origin,
+                                OrientToView = true,
+                                ColorMode = ImportColorMode.BlackAndWhite,
+                                VisibleLayersOnly = true,
+                            };
+
+                            ElementId linkInstanceId;
+                            bool ok = targetDoc.Link(mainLocalCopyPath, opts, targetView, out linkInstanceId);
+                            if (!ok)
+                            {
+                                TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось залинковать DWG из файла:\n{mainLocalCopyPath}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при линковке DWG:\n" + ex.Message);
+                        }
+
+                        t.Commit();
+                    }
+
+                    if (openedSourceHere)
+                    {
+                        try { sourceDoc.Close(false); } catch { }
+                    }
+
+                    uidoc.ActiveView = targetView;
+
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder}\"\nи залинкован(ы) на вид в активном документе.");
+
+                    return;
+                }
+                // ВСЁ ОСТАЛЬНОЕ
+                else
+                {
+                    ViewDrafting targetView;
+                    using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла"))
+                    {
+                        t.Start();
+
+                        var draftingTypeId = new FilteredElementCollector(targetDoc)
+                            .OfClass(typeof(ViewFamilyType))
+                            .Cast<ViewFamilyType>()
+                            .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                            .Id;
+
+                        targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
+                        targetView.Name = "_tempViewForPlugin0517";
+
+                        t.Commit();
+                    }
+
+                    var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+
+                    if (elementsToCopy.Count == 0)
+                    {
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+
+                        _uiapp.ActiveUIDocument.ActiveView = targetView;
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Создан вид \"{targetView.Name}\", но на исходном виде нет элементов для копирования.");
+                        return;
+                    }
+
+                    var options = new CopyPasteOptions();
+                    options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                    using (var t = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
+                    {
+                        t.Start();
+
+                        ElementTransformUtils.CopyElements(sourceView, elementsToCopy, targetView, Autodesk.Revit.DB.Transform.Identity, options);
+
+                        t.Commit();
+                    }
+
+                    bool hasElemsOnTempView = new FilteredElementCollector(targetDoc, targetView.Id).WhereElementIsNotElementType().Any(e => e.ViewSpecific);
+
+                    using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла"))
+                    {
+                        t.Start();                      
+                        targetDoc.Delete(targetView.Id);
+                        targetView = null;                    
+                        t.Commit();
+                    }
+
+                    if (openedSourceHere)
+                    {
+                        try { sourceDoc.Close(false); } catch { }
+                    }
+
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"Вид с узлом ``{sourceViewName}`` скопирован в активный документ.");
+                }
+            }
+
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка:\n" + ex.Message);
+            }
+            finally
+            {
+                try { _ownerWindow?.Dispatcher.Invoke(() => _ownerWindow.Topmost = true); } catch { }
+            }
+        }
+    }
+
+
+    ////////////////////// КОПИРОВАНИЕ НА ВИД
+    internal sealed class PlaceDraftingViewOnSheetHandler : IExternalEventHandler
+    {
+        private UIApplication _uiapp;
+        private string _sourceRvtPath;
+        private string _sourceViewName;
+        private Window _ownerWindow;
+
+        private enum DwgChoice
+        {
+            ExportOverwriteAndUse,
+            UseExisting,
+            Cancel
+        }
+
+        public void Init(UIApplication uiapp, string sourceRvtPath, string sourceViewName, Window ownerWindow)
+        {
+            _uiapp = uiapp;
+            _sourceRvtPath = sourceRvtPath;
+            _sourceViewName = sourceViewName;
+            _ownerWindow = ownerWindow;
+        }
+
+        public string GetName() => "KPLN. Размещение узла";
+
+        public void Execute(UIApplication app)
+        {
+            var uidoc = app.ActiveUIDocument;
+            if (uidoc == null)
+                return;
+
+            var doc = uidoc.Document;
+            if (doc == null)
+                return;
+
+            var av = uidoc.ActiveView;
+            if (!(av is ViewSheet) && !(av is ViewDrafting))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_sourceRvtPath) || string.IsNullOrWhiteSpace(_sourceViewName))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не заданы путь к донорской модели или имя вида-донора.");
+                return;
+            }
+
+            if (av is ViewSheet sheet)
+            {
+                HandleSheetCase(app, uidoc, doc, sheet);
+            }
+            else if (av is ViewDrafting draftingView)
+            {
+                HandleDraftingCase(app, uidoc, doc, draftingView);
+            }
+
+            _ownerWindow.Topmost = true;
+        }
+
+        /// <summary>
+        /// Проверка, есть ли на виде DWG.
+        /// </summary>
+        private bool ViewContainsDwg(Document donorDoc, ViewDrafting donorView)
+        {
+            var imports = new FilteredElementCollector(donorDoc, donorView.Id)
+                .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
+
+            foreach (var imp in imports)
+            {
+                var type = donorDoc.GetElement(imp.GetTypeId()) as ElementType;
+                if (type == null) continue;
+
+                var name = type.Name ?? string.Empty;
+                if (name.EndsWith(".dwg", StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// ЛИСТ
+        /// </summary>
+        private void HandleSheetCase(UIApplication app, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        {
+            Document donorDoc = null;
+            bool donorOpenedHere = false;
+
+            try
+            {
+                donorDoc = app.Application.Documents.Cast<Document>()
+                    .FirstOrDefault(d => !string.IsNullOrEmpty(d.PathName) && string.Equals(d.PathName, _sourceRvtPath, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorDoc == null)
+                {
+                    var modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(_sourceRvtPath);
+                    var openOpts = new OpenOptions
+                    {
+                        DetachFromCentralOption = DetachFromCentralOption.DoNotDetach
+                    };
+                    donorDoc = app.Application.OpenDocumentFile(modelPath, openOpts);
+                    donorOpenedHere = true;
+                }
+
+                if (donorDoc == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов. Ошибка", "Не удалось открыть модель-донора");
+                    return;
+                }
+
+                var donorView = new FilteredElementCollector(donorDoc).OfClass(typeof(ViewDrafting))
+                    .Cast<ViewDrafting>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorView == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"В файле-донора не найден чертёжный вид с именем:\n\"{_sourceViewName}\".");
+                    return;
+                }
+
+                bool hasDwg = ViewContainsDwg(donorDoc, donorView);
+
+
+                // DWG
+                if (hasDwg)
+                {
+                    HandleDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet);
+                }
+                // Без DWG
+                else
+                {
+                    HandleNonDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet);
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при размещении узла:\n" + ex.Message);
+            }
+            finally
+            {
+                if (donorOpenedHere && donorDoc != null && donorDoc.IsValidObject)
+                {
+                    try { donorDoc.Close(false); }
+                    catch { }
+                }
+            }
+        }
+
+        /// <summary>
+        /// ЛИСТ. На донорском виде есть DWG.
+        /// </summary>
+        private void HandleDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        {
+            var centralDir = Path.GetDirectoryName(_sourceRvtPath);
+            if (string.IsNullOrEmpty(centralDir))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к центральной модели для поиска DWG.");
+                return;
+            }
+
+            var dwgFolder = Path.Combine(centralDir, "DWG_Менеджер узлов");
+            if (!Directory.Exists(dwgFolder))
+                Directory.CreateDirectory(dwgFolder);
+
+            var dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+            bool dwgExists = File.Exists(dwgFilePath);
+
+            DwgChoice choice;
+
+            if (dwgExists)
+            {
+                var td = new TaskDialog("KPLN. Менеджер узлов");
+                td.MainInstruction = $"Найден DWG с именем \"{_sourceViewName}.dwg\" в папке:\n{dwgFolder}";
+                td.MainContent = "Выберите, что сделать с DWG:";
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
+                    "Перезаписать DWG и использовать его");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
+                    "Использовать существующий DWG из папки");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
+                    "Отмена");
+                td.CommonButtons = TaskDialogCommonButtons.Close;
+                td.DefaultButton = TaskDialogResult.Close;
+
+                var res = td.Show();
+                switch (res)
+                {
+                    case TaskDialogResult.CommandLink1:
+                        choice = DwgChoice.ExportOverwriteAndUse;
+                        break;
+                    case TaskDialogResult.CommandLink2:
+                        choice = DwgChoice.UseExisting;
+                        break;
+                    default:
+                        choice = DwgChoice.Cancel;
+                        break;
+                }
+            }
+            else
+            {
+                choice = DwgChoice.ExportOverwriteAndUse;
+            }
+
+            if (choice == DwgChoice.Cancel)
+                return;
+
+            if (choice == DwgChoice.ExportOverwriteAndUse)
+            {
+                if (File.Exists(dwgFilePath))
+                {
+                    try { File.Delete(dwgFilePath); }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось удалить существующий DWG:\n" + ex.Message);
+                        return;
+                    }
+                }
+
+                var dwgExportOptions = new DWGExportOptions();
+                var viewIds = new List<ElementId> { donorView.Id };
+
+                bool exported = donorDoc.Export(dwgFolder, _sourceViewName, viewIds, dwgExportOptions);
+                if (!exported || !File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать DWG из вида-донора.");
+                    return;
+                }
+            }
+            else
+            {
+                if (!File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "Файл DWG из папки не найден, хотя должен быть. Операция прервана.");
+                    return;
+                }
+            }
+
+            ViewDrafting draftingView = null;
+
+            using (var t = new Transaction(targetDoc, "KPLN. Обновление вида узла (DWG)"))
+            {
+                t.Start();
+
+                draftingView = new FilteredElementCollector(targetDoc)
+                    .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                    .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (draftingView == null)
+                {
+                    var draftingType = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
+
+                    if (draftingType == null)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
+                        t.RollBack();
+                        return;
+                    }
+
+                    draftingView = ViewDrafting.Create(targetDoc, draftingType.Id);
+                    draftingView.Name = _sourceViewName; 
+                }
+
+                var oldImports = new FilteredElementCollector(targetDoc, draftingView.Id)
+                    .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
+
+                foreach (var imp in oldImports)
+                {
+                    try { targetDoc.Delete(imp.Id); }
+                    catch { }
+                }
+
+                var dwgImportOptions = new DWGImportOptions
+                {
+                    ThisViewOnly = true
+                };
+
+                ElementId importedId;
+                bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, draftingView, out importedId);
+                if (!imported)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "Не удалось импортировать/залинковать DWG в вид узла.");
+                    t.RollBack();
+                    return;
+                }
+
+                t.Commit();
+            }
+
+            if (draftingView == null)
+                return;
+
+            PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, draftingView);
+        }
+
+        /// <summary>
+        /// ЛИСТ. На донорском виде нет DWG.
+        /// </summary>
+        private void HandleNonDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        {
+            var existingView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting))
+                .Cast<ViewDrafting>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+            if (existingView != null)
+            {
+                var td = new TaskDialog("KPLN. Менеджер узлов");
+                td.MainInstruction = $"Вид узла \"{_sourceViewName}\" уже существует в текущем файле.";
+                td.MainContent = "Выберите, что сделать:";
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
+                    "Использовать существующий вид для размещения");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
+                    "Пересоздать существующий вид из файла-донора");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
+                    "Отмена");
+                td.CommonButtons = TaskDialogCommonButtons.Close;
+                td.DefaultButton = TaskDialogResult.Close;
+
+                var res = td.Show();
+                if (res == TaskDialogResult.CommandLink1)
+                {
+                    uidoc.ActiveView = targetSheet;
+                    PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, existingView);
+                    return;
+                }
+                else if (res == TaskDialogResult.CommandLink2)
+                {
+                    using (var tDel = new Transaction(targetDoc, "KPLN. Удаление существующего вида узла"))
+                    {
+                        tDel.Start();
+
+                        var vpToDelete = new FilteredElementCollector(targetDoc).OfClass(typeof(Viewport))
+                            .Cast<Viewport>().Where(vp => vp.ViewId == existingView.Id).Select(vp => vp.Id).ToList();
+
+                        if (vpToDelete.Count > 0)
+                            targetDoc.Delete(vpToDelete);
+
+                        targetDoc.Delete(existingView.Id);
+
+                        tDel.Commit();
+                    }
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            var allInView = new FilteredElementCollector(donorDoc, donorView.Id).WhereElementIsNotElementType().ToList();
+            var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+
+            if (elementsToCopy.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", $"На исходном виде \"{donorView.Name}\" нет элементов для копирования.");
+                return;
+            }
+
+            ViewDrafting targetView = null;
+            bool targetViewWasCreatedHere = false;
+
+            using (var t = new Transaction(targetDoc, "KPLN. Подготовка вида узла"))
+            {
+                t.Start();
+
+                targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                    .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (targetView == null)
+                {
+                    var draftingType = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewFamilyType))
+                        .Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
+
+                    if (draftingType == null)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
+                        t.RollBack();
+                        return;
+                    }
+
+                    targetView = ViewDrafting.Create(targetDoc, draftingType.Id);
+                    targetView.Name = _sourceViewName;
+                    targetViewWasCreatedHere = true;
+                }
+                else
+                {
+                    var toDelete = new FilteredElementCollector(targetDoc, targetView.Id)
+                        .WhereElementIsNotElementType().Where(e => e.ViewSpecific && !(e is ImportInstance))
+                        .Select(e => e.Id).ToList();
+
+                    if (toDelete.Count > 0)
+                        targetDoc.Delete(toDelete);
+                }
+
+                t.Commit();
+            }
+
+            if (targetView == null)
+                return;
+            using (var t2 = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
+            {
+                t2.Start();
+
+                var options = new CopyPasteOptions();
+                options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                var draftingIdsBefore = new FilteredElementCollector(targetDoc)
+                    .OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                try
+                {
+                    ElementTransformUtils.CopyElements(donorView, elementsToCopy, targetView, Autodesk.Revit.DB.Transform.Identity, options);
+                }
+                catch (Exception ex)
+                {
+                    t2.RollBack();
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при копировании элементов узла:\n" + ex.Message);
+                    return;
+                }
+
+                var draftingIdsAfter = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                var newIds = draftingIdsAfter.Where(id => !draftingIdsBefore.Contains(id)).ToList();
+
+                if (newIds.Count > 0)
+                {
+                    var realView = targetDoc.GetElement(newIds[0]) as ViewDrafting;
+                    if (realView != null)
+                    {
+                        if (targetViewWasCreatedHere && targetView.Id != realView.Id)
+                        {
+                            try { targetDoc.Delete(targetView.Id); } catch { }
+                        }
+
+                        targetView = realView;
+
+                        if (!string.Equals(targetView.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            try { targetView.Name = _sourceViewName; } catch { }
+                        }
+                    }
+                }
+
+                t2.Commit();
+            }
+
+            uidoc.ActiveView = targetSheet;
+            TaskDialog.Show("KPLN. Менеджер узлов", "Сейчас вас перекинет на ранее ативный вид, и вам нужно будет указать точку для размещения узла на листе.");
+            PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, targetView);
+        }
+
+        /// <summary>
+        /// Выбор точки на листе и создание/перемещение viewport.
+        /// </summary>
+        private void PlaceViewportOnSheet(UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, View view)
+        {
+            uidoc.ActiveView = targetSheet;
+
+            XYZ point;
+            try
+            {
+                point = uidoc.Selection.PickPoint("Выберите точку для размещения узла на листе");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return; 
+            }
+
+            using (var t = new Transaction(targetDoc, "KPLN. Размещение узла на листе"))
+            {
+                t.Start();
+
+                var existingVp = new FilteredElementCollector(targetDoc)
+                    .OfClass(typeof(Viewport)).Cast<Viewport>().FirstOrDefault(vp => vp.ViewId == view.Id);
+
+                if (existingVp != null)
+                {
+                    if (existingVp.SheetId == targetSheet.Id)
+                    {
+                        XYZ currentCenter = existingVp.GetBoxCenter();
+                        XYZ delta = point - currentCenter;
+                        ElementTransformUtils.MoveElement(targetDoc, existingVp.Id, delta);
+                    }
+                    else
+                    {
+                        var otherSheet = targetDoc.GetElement(existingVp.SheetId) as ViewSheet;
+                        string sheetName = otherSheet != null ? otherSheet.SheetNumber + " " + otherSheet.Name : "<неизвестно>";
+
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Вид \"{view.Name}\" уже размещён на листе:\n{sheetName}\n\n" +
+                            "Один и тот же вид нельзя добавить на несколько листов. Создайте дубликат вида, если нужно разместить узел на другом листе.");
+
+                    }
+
+                    t.Commit();
+                    return;
+                }
+
+                Viewport.Create(targetDoc, targetSheet.Id, view.Id, point);
+
+                var titleParam = view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
+                if (titleParam != null && !titleParam.IsReadOnly)
+                {
+                    titleParam.Set("\u200B");
+                }
+
+                t.Commit();
+            }
+        }
+
+        /// <summary>
+        /// ЧЕРТЁЖНЫЙ ВИД
+        /// </summary>
+        private void HandleDraftingCase(UIApplication app, UIDocument uidoc, Document targetDoc, ViewDrafting targetDraftingView)
+        {
+            Document donorDoc = null;
+            bool donorOpenedHere = false;
+
+            try
+            {
+                donorDoc = app.Application.Documents.Cast<Document>()
+                    .FirstOrDefault(d => !string.IsNullOrEmpty(d.PathName) && string.Equals(d.PathName, _sourceRvtPath, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorDoc == null)
+                {
+                    var modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(_sourceRvtPath);
+                    var openOpts = new OpenOptions
+                    {
+                        DetachFromCentralOption = DetachFromCentralOption.DoNotDetach
+                    };
+                    donorDoc = app.Application.OpenDocumentFile(modelPath, openOpts);
+                    donorOpenedHere = true;
+                }
+
+                if (donorDoc == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось открыть модель-донора:\n{_sourceRvtPath}");
+                    return;
+                }
+
+                var donorView = new FilteredElementCollector(donorDoc).OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                    .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorView == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"В файле-донора\n{_sourceRvtPath}\nне найден чертёжный вид с именем:\n\"{_sourceViewName}\".");
+                    return;
+                }
+
+                bool hasDwg = ViewContainsDwg(donorDoc, donorView);
+
+                // DWG
+                if (hasDwg)
+                {
+                    XYZ pickPoint;
+                    try
+                    {
+                        pickPoint = uidoc.Selection.PickPoint("Выберите точку для размещения DWG");
+                    }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                    {
+                        return;
+                    }
+
+                    HandleDwgOnDrafting(donorDoc, donorView, targetDoc, targetDraftingView, pickPoint);
+                }
+                // Без DWG
+                else
+                {
+                    HandleNonDwgOnDrafting(uidoc, donorDoc, donorView, targetDoc, targetDraftingView);
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при размещении узла на чертёжном виде:\n" + ex.Message);
+            }
+            finally
+            {
+                if (donorOpenedHere && donorDoc != null && donorDoc.IsValidObject)
+                {
+                    try { donorDoc.Close(false); } catch { }
+                }
+            }
+        }
+
+        /// <summary>
+        /// ЧЕРТЁЖНЫЙ ВИД. На донорском виде есть DWG.
+        /// </summary>
+        private void HandleDwgOnDrafting(Document donorDoc, ViewDrafting donorView, Document targetDoc, ViewDrafting targetDraftingView, XYZ pickPoint)
+        {
+            var centralDir = Path.GetDirectoryName(_sourceRvtPath);
+            if (string.IsNullOrEmpty(centralDir))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к центральной модели для поиска DWG.");
+                return;
+            }
+
+            var dwgFolder = Path.Combine(centralDir, "DWG_Менеджер узлов");
+            if (!Directory.Exists(dwgFolder))
+                Directory.CreateDirectory(dwgFolder);
+
+            var dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+            bool dwgExists = File.Exists(dwgFilePath);
+
+            DwgChoice choice;
+
+            if (dwgExists)
+            {
+                var td = new TaskDialog("KPLN. Менеджер узлов");
+                td.MainInstruction = $"Найден DWG \"{_sourceViewName}.dwg\" в папке:\n{dwgFolder}";
+                td.MainContent = "Выберите источник DWG:";
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
+                    "Перезаписать DWG текущим и использовать его");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
+                    "Использовать существующий DWG из папки");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
+                    "Отмена");
+                td.CommonButtons = TaskDialogCommonButtons.Close;
+                td.DefaultButton = TaskDialogResult.Close;
+
+                var res = td.Show();
+                switch (res)
+                {
+                    case TaskDialogResult.CommandLink1:
+                        choice = DwgChoice.ExportOverwriteAndUse;
+                        break;
+                    case TaskDialogResult.CommandLink2:
+                        choice = DwgChoice.UseExisting;
+                        break;
+                    default:
+                        choice = DwgChoice.Cancel;
+                        break;
+                }
+            }
+            else
+            {
+                choice = DwgChoice.ExportOverwriteAndUse;
+            }
+
+            if (choice == DwgChoice.Cancel)
+                return;
+
+            if (choice == DwgChoice.ExportOverwriteAndUse)
+            {
+                if (File.Exists(dwgFilePath))
+                {
+                    try { File.Delete(dwgFilePath); } catch { }
+                }
+
+                var dwgExportOptions = new DWGExportOptions();
+                var viewIds = new List<ElementId> { donorView.Id };
+
+                bool exported = donorDoc.Export(dwgFolder, _sourceViewName, viewIds, dwgExportOptions);
+                if (!exported || !File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать DWG из вида-донора.");
+                    return;
+                }
+            }
+            else
+            {
+                if (!File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Файл DWG из папки не найден, хотя должен быть. Операция прервана.");
+                    return;
+                }
+            }
+
+            using (var t = new Transaction(targetDoc, "KPLN. Обновление DWG на чертёжном виде"))
+            {
+                t.Start();
+
+                var oldImports = new FilteredElementCollector(targetDoc, targetDraftingView.Id).OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
+
+                foreach (var imp in oldImports)
+                {
+                    try { targetDoc.Delete(imp.Id); } catch { }
+                }
+
+                var dwgImportOptions = new DWGImportOptions
+                {
+                    ThisViewOnly = true,
+                    Placement = ImportPlacement.Origin
+                };
+
+                ElementId importedId;
+                bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, targetDraftingView, out importedId);
+                if (!imported)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось импортировать/залинковать DWG на чертёжный вид.");
+                    t.RollBack();
+                    return;
+                }
+
+                var dwgInstance = targetDoc.GetElement(importedId) as ImportInstance;
+                if (dwgInstance != null)
+                {
+                    if (dwgInstance.Pinned)
+                        dwgInstance.Pinned = false;
+
+                    var bb = dwgInstance.get_BoundingBox(targetDraftingView);
+                    if (bb != null)
+                    {
+                        XYZ center = (bb.Min + bb.Max) * 0.5;
+                        XYZ delta = pickPoint - center;
+                        ElementTransformUtils.MoveElement(targetDoc, importedId, delta);
+                    }
+                }
+
+                t.Commit();
+            }
+        }
+
+        /// <summary>
+        /// ЧЕРТЁЖНЫЙ ВИД. На донорском виде нет DWG.
+        /// </summary>
+        private void HandleNonDwgOnDrafting(UIDocument uidoc, Document donorDoc, ViewDrafting donorView, Document targetDoc, ViewDrafting targetDraftingView)
+        {
+
+            var allInView = new FilteredElementCollector(donorDoc, donorView.Id).WhereElementIsNotElementType().ToList();
+
+            var elementsToCopy = allInView
+                .Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+
+            if (allInView.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", $"На исходном виде \"{donorView.Name}\" нет элементов для копирования.");
+                return;
+            }
+
+            ElementId tempViewId = null;
+            List<ElementId> draftingBefore;
+            List<ElementId> draftingAfter;
+
+            using (var t = new Transaction(targetDoc, "KPLN. Копирование узла на активный чертёжный вид"))
+            {
+                t.Start();
+
+                var options = new CopyPasteOptions();
+                options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                draftingBefore = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                try
+                {
+                    ElementTransformUtils.CopyElements(donorView, elementsToCopy, targetDraftingView, Autodesk.Revit.DB.Transform.Identity, options);
+                }
+                catch (Exception ex)
+                {
+                    t.RollBack();
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при копировании элементов узла на чертёжный вид:\n" + ex.Message);
+                    return;
+                }
+
+                draftingAfter = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                t.Commit();
+            }
+
+            var newIds = draftingAfter.Where(id => !draftingBefore.Contains(id)).ToList();
+            if (newIds.Count > 0) tempViewId = newIds[0];
+
+            var tempView = targetDoc.GetElement(tempViewId) as ViewDrafting;
+            if (tempView == null)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось получить временный чертёжный вид. Операция прервана.");
+                return;
+            }
+
+            TaskDialog.Show("KPLN. Менеджер узлов", "Сейчас вид будет переключен на раннее активный. После этого выбирите точку, куда будет вставлены элементы чертёжного вида.");
+            uidoc.ActiveView = targetDraftingView;
+
+            XYZ pickPoint;
+            try
+            {
+                pickPoint = uidoc.Selection.PickPoint("Выберите точку вставки узла на чертёжном виде");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                using (var tDel = new Transaction(targetDoc, "KPLN. Удаление временного вида узла"))
+                {
+                    tDel.Start();
+                    try { targetDoc.Delete(tempViewId); } catch { }
+                    tDel.Commit();
+                }
+                return;
+            }
+
+            // Жёсткая сортировка
+            var elemsOnTemp = new FilteredElementCollector(targetDoc, tempView.Id)
+                .WhereElementIsNotElementType()
+                .Where(e => e.ViewSpecific && !(e is ImportInstance) && !(e is View) &&  !(e is Group) && e.Category != null && e.OwnerViewId == tempView.Id)
+                .Select(e => e.Id).ToList();
+
+            if (elemsOnTemp.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Во временном виде не найдено элементов для копирования.");
+                using (var tDel = new Transaction(targetDoc, "KPLN. Удаление временного вида узла"))
+                {
+                    tDel.Start();
+                    try { targetDoc.Delete(tempViewId); } catch { }
+                    tDel.Commit();
+                }
+                return;
+            }
+               
+            XYZ center;
+            {
+                BoundingBoxXYZ bb = null;
+
+                foreach (var id in elemsOnTemp)
+                {
+                    var el = targetDoc.GetElement(id);
+                    if (el == null) continue;
+
+                    var elBb = el.get_BoundingBox(tempView);
+                    if (elBb == null) continue;
+
+                    if (bb == null)
+                    {
+                        bb = new BoundingBoxXYZ
+                        {
+                            Min = elBb.Min,
+                            Max = elBb.Max
+                        };
+                    }
+                    else
+                    {
+                        bb.Min = new XYZ(
+                            Math.Min(bb.Min.X, elBb.Min.X),
+                            Math.Min(bb.Min.Y, elBb.Min.Y),
+                            Math.Min(bb.Min.Z, elBb.Min.Z));
+                        bb.Max = new XYZ(
+                            Math.Max(bb.Max.X, elBb.Max.X),
+                            Math.Max(bb.Max.Y, elBb.Max.Y),
+                            Math.Max(bb.Max.Z, elBb.Max.Z));
+                    }
+                }
+
+                if (bb == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить границы узла на временном виде.");
+                    using (var tDel = new Transaction(targetDoc, "KPLN. Удаление временного вида узла"))
+                    {
+                        tDel.Start();
+                        try { targetDoc.Delete(tempViewId); } catch { }
+                        tDel.Commit();
+                    }
+                    return;
+                }
+
+                center = (bb.Min + bb.Max) * 0.5;
+            }
+
+            using (var t2 = new Transaction(targetDoc, "KPLN. Вставка узла на чертёжный вид"))
+            {
+                t2.Start();
+
+                var options2 = new CopyPasteOptions();
+                options2.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                var delta = pickPoint - center;
+                var transform = Autodesk.Revit.DB.Transform.CreateTranslation(delta);
+
+                try
+                {
+                    ElementTransformUtils.CopyElements(tempView, elemsOnTemp, targetDraftingView, transform, options2);
+                }
+                catch (Exception ex)
+                {
+                    t2.RollBack();
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при вставке узла на чертёжный вид:\n" + ex.Message);
+                    return;
+                }
+
+                t2.Commit();
+            }
+
+            using (var t3 = new Transaction(targetDoc, "KPLN. Удаление временного вида узла"))
+            {
+                t3.Start();
+                try { targetDoc.Delete(tempViewId); } catch { }
+                t3.Commit();
+            }
+        }
+    }
+
+    // НОЖНИЦЫ
+    public class ScreenCaptureWindow : Window
+    {
+        private readonly int _maxWidth;
+        private readonly int _maxHeight;
+
+        private System.Windows.Controls.Canvas _canvas;
+        private System.Windows.Shapes.Rectangle _selectionRectShape;
+        private System.Windows.Point _startPoint;
+        private bool _isDragging;
+
+        public byte[] CapturedBytes { get; private set; }
+
+        public ScreenCaptureWindow(int maxWidth, int maxHeight)
+        {
+            _maxWidth = maxWidth;
+            _maxHeight = maxHeight;
+
+            InitWindow();
+        }
+
+        private void InitWindow()
+        {
+            this.WindowStyle = WindowStyle.None;
+            this.AllowsTransparency = true;
+            this.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(10, 0, 0, 0));
+            this.Topmost = true;
+            this.ResizeMode = ResizeMode.NoResize;
+            this.ShowInTaskbar = false;
+
+            this.Left = SystemParameters.VirtualScreenLeft;
+            this.Top = SystemParameters.VirtualScreenTop;
+            this.Width = SystemParameters.VirtualScreenWidth;
+            this.Height = SystemParameters.VirtualScreenHeight;
+
+            this.Cursor = Cursors.Cross;
+
+            _canvas = new System.Windows.Controls.Canvas();
+            this.Content = _canvas;
+
+            _selectionRectShape = new System.Windows.Shapes.Rectangle
+            {
+                Stroke = System.Windows.Media.Brushes.Red,
+                StrokeThickness = 1,
+                Fill = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(50, 255, 255, 255)),
+                Visibility = System.Windows.Visibility.Collapsed
+            };
+            _canvas.Children.Add(_selectionRectShape);
+
+            this.MouseDown += OnMouseDown;
+            this.MouseMove += OnMouseMove;
+            this.MouseUp += OnMouseUp;
+            this.KeyDown += OnKeyDown;
+        }
+
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+  
+            if (e.Key == Key.Escape)
+            {
+                this.DialogResult = false;
+                this.Close();
+            }
+        }
+
+        private void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+                return;
+
+            _isDragging = true;
+            _startPoint = e.GetPosition(this);
+
+            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, _startPoint.X);
+            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, _startPoint.Y);
+            _selectionRectShape.Width = 0;
+            _selectionRectShape.Height = 0;
+            _selectionRectShape.Visibility = System.Windows.Visibility.Visible;
+        }
+
+        private void OnMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            System.Windows.Point pos = e.GetPosition(this);
+
+            double x = Math.Min(pos.X, _startPoint.X);
+            double y = Math.Min(pos.Y, _startPoint.Y);
+            double w = Math.Abs(pos.X - _startPoint.X);
+            double h = Math.Abs(pos.Y - _startPoint.Y);
+
+            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, x);
+            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, y);
+            _selectionRectShape.Width = w;
+            _selectionRectShape.Height = h;
+        }
+
+        private void OnMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            _isDragging = false;
+
+            double x = System.Windows.Controls.Canvas.GetLeft(_selectionRectShape);
+            double y = System.Windows.Controls.Canvas.GetTop(_selectionRectShape);
+            double w = _selectionRectShape.Width;
+            double h = _selectionRectShape.Height;
+
+            if (w < 5 || h < 5)
+            {
+                this.DialogResult = false;
+                this.Close();
+                return;
+            }
+
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+            int leftPx = (int)Math.Round((this.Left + x) * dpi.DpiScaleX);
+            int topPx = (int)Math.Round((this.Top + y) * dpi.DpiScaleY);
+            int widthPx = (int)Math.Round(w * dpi.DpiScaleX);
+            int heightPx = (int)Math.Round(h * dpi.DpiScaleY);
+
+            try
+            {
+                CapturedBytes = CaptureAndScale(leftPx, topPx, widthPx, heightPx,
+                    _maxWidth, _maxHeight);
+                this.DialogResult = CapturedBytes != null;
+            }
+            catch
+            {
+                this.DialogResult = false;
+            }
+            finally
+            {
+                this.Close();
+            }
+        }
+
+        private static byte[] CaptureAndScale(
+            int left, int top, int width, int height,
+            int maxWidth, int maxHeight)
+        {
+            using (var bmp = new System.Drawing.Bitmap(width, height))
+            {
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(left, top, 0, 0,
+                        new System.Drawing.Size(width, height));
+                }
+
+                double scaleW = (double)maxWidth / width;
+                double scaleH = (double)maxHeight / height;
+                double scale = Math.Min(Math.Min(scaleW, scaleH), 1.0);
+
+                int newW = (int)Math.Round(width * scale);
+                int newH = (int)Math.Round(height * scale);
+
+                System.Drawing.Bitmap resultBmp = bmp;
+
+                if (scale < 1.0)
+                {
+                    resultBmp = new System.Drawing.Bitmap(newW, newH);
+                    using (var g2 = System.Drawing.Graphics.FromImage(resultBmp))
+                    {
+                        g2.InterpolationMode =
+                            System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g2.SmoothingMode =
+                            System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                        g2.PixelOffsetMode =
+                            System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                        g2.CompositingQuality =
+                            System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+
+                        g2.Clear(System.Drawing.Color.White);
+                        g2.DrawImage(bmp, 0, 0, newW, newH);
+                    }
+                }
+
+                try
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        resultBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        return ms.ToArray();
+                    }
+                }
+                finally
+                {
+                    if (!object.ReferenceEquals(resultBmp, bmp))
+                        resultBmp.Dispose();
+                }
+            }
+        }
+    }
+}

@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -2044,25 +2045,50 @@ namespace KPLN_Tools.Forms
         // Удаление записи из БД
         public static void DeleteRecordFromDatabase(int id)
         {
-            if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+            if (id <= 0)
+                throw new ArgumentOutOfRangeException(nameof(id));
 
-            var cs = $"Data Source={DB_PATH};Version=3;Read Only=False;Foreign Keys=True;";
+            const int maxAttempts = 3;
+            const int delayMs = 2000;
 
-            using (var conn = new SQLiteConnection(cs))
+            int attempt = 0;
+
+            while (true)
             {
-                conn.Open();
-                using (var tr = conn.BeginTransaction())
-                using (var cmd = conn.CreateCommand())
+                try
                 {
-                    cmd.Transaction = tr;
-                    cmd.CommandText = "DELETE FROM FamilyManager WHERE ID = @id;";
-                    cmd.Parameters.AddWithValue("@id", id);
+                    attempt++;
 
-                    var affected = cmd.ExecuteNonQuery();
-                    tr.Commit();
+                    var cs = $"Data Source={DB_PATH};Version=3;Read Only=False;Foreign Keys=True;";
+
+                    using (var conn = new SQLiteConnection(cs))
+                    {
+                        conn.Open();
+                        using (var tr = conn.BeginTransaction())
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = tr;
+                            cmd.CommandText = "DELETE FROM FamilyManager WHERE ID = @id;";
+                            cmd.Parameters.AddWithValue("@id", id);
+
+                            cmd.ExecuteNonQuery();
+                            tr.Commit();
+                        }
+                    }
+
+                    return;
+                }
+                catch (SQLiteException ex) when (ex.ErrorCode == (int)SQLiteErrorCode.Locked ||
+                                                 ex.ErrorCode == (int)SQLiteErrorCode.Busy)
+                {
+                    if (attempt >= maxAttempts)
+                        throw;
+
+                    Thread.Sleep(delayMs);
                 }
             }
         }
+
 
         // Интерфейс для BIM-отдела. Сохраняем стейт
         private void CaptureBimUiState()

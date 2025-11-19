@@ -638,9 +638,26 @@ namespace KPLN_Tools
                 panel.AddItem(familyManagerPanel);
             }
 
+            PushButtonData nodeManager = CreateBtnData(
+                    CommandNodeManager.PluginName,
+                    CommandNodeManager.PluginName,
+                    "Каталог узлов KPLN",
+                    string.Format(
+                        "Каталог узлов KPLN.\n" +
+                        "\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(CommandNodeManager).FullName,
+                    "KPLN_Tools.Imagens.nodeManagerBig.png",
+                    "KPLN_Tools.Imagens.nodeManagerBig.png",
+                    "http://moodle");
+            panel.AddItem(nodeManager);
+
             panel.AddItem(sendMsgToBitrix);
             #endregion
-
 
             return Result.Succeeded;
         }
