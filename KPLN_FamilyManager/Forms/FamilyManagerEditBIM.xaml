@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Tools.Forms.FamilyManagerEditBIM"
+﻿<Window x:Class="KPLN_FamilyManager.Forms.FamilyManagerEditBIM"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title=""

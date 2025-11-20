@@ -287,7 +287,6 @@
     <Compile Include="Forms\Models\Core\ARPG_TZ_FlatData.cs" />
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
     <Compile Include="Common\DBWorkerService.cs" />
-    <Compile Include="Common\FamilyManagerDock.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
     <Compile Include="Common\LinkManager\EntityStatus.cs" />
     <Compile Include="Common\LinkManager\LinkManagerUpdateEntity.cs" />
@@ -326,7 +325,6 @@
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AR_PyatnGraph.cs" />
-    <Compile Include="ExternalCommands\CommandFamilyManager.cs" />
     <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
     <Compile Include="ExternalCommands\Command_KR_WSofLinks.cs" />
     <Compile Include="ExternalCommands\Command_SET_EOMParams.cs" />
@@ -360,26 +358,8 @@
     </Compile>
     <Compile Include="Forms\Converters\EmptyStringToDashConverter.cs" />
     <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
-    <Compile Include="Forms\FamilyManager.xaml.cs">
-      <DependentUpon>FamilyManager.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FamilyManagerEditBIM.xaml.cs">
-      <DependentUpon>FamilyManagerEditBIM.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FamilyManagerEditUser.xaml.cs">
-      <DependentUpon>FamilyManagerEditUser.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FamilyManagerSettingDB.xaml.cs">
-      <DependentUpon>FamilyManagerSettingDB.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FamilyManagerSettingsImport.xaml.cs">
-      <DependentUpon>FamilyManagerSettingsImport.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormChageLevel.xaml.cs">
       <DependentUpon>FormChageLevel.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FamilyManagerSettingsDialog.xaml.cs">
-      <DependentUpon>FamilyManagerSettingsDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\KR_WSofLinks.xaml.cs">
       <DependentUpon>KR_WSofLinks.xaml</DependentUpon>
@@ -496,15 +476,6 @@
     <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
     <EmbeddedResource Include="Imagens\TEPDesignBig.png" />
     <EmbeddedResource Include="Imagens\TEPDesignSmall.png" />
-    <EmbeddedResource Include="Imagens\familyManagerBig.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_caution.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_error.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_new.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_update.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_ignore.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\bim_ok.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\favorites.png" />
-    <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
     <EmbeddedResource Include="Imagens\wsLinksBig.png" />
     <EmbeddedResource Include="Imagens\wsLinksSmall.png" />
     <EmbeddedResource Include="Imagens\IFCRebarMarkBig.png" />
@@ -546,26 +517,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\FamilyManager.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FamilyManagerEditBIM.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FamilyManagerEditUser.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FamilyManagerSettingDB.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\FamilyManagerSettingsImport.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Forms\FilterByTagsWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -574,11 +525,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\FamilyManagerSettingsDialog.xaml">
+    <Page Include="Forms\MainWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\MainWindowNodeManager.xaml">
     <Page Include="Forms\KR_WSofLinks.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

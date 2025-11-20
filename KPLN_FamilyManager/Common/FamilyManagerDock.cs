@@ -1,9 +1,9 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker;       
-using KPLN_Tools.Forms;
+using KPLN_Library_SQLiteWorker;
+using KPLN_FamilyManager.Forms;
 using System;
 
-namespace KPLN_Tools.Docking
+namespace KPLN_FamilyManager.Docking
 {
     internal sealed class FamilyManagerPaneProvider : IDockablePaneProvider
     {
@@ -20,7 +20,7 @@ namespace KPLN_Tools.Docking
             var state = new DockablePaneState
             {
                 DockPosition = DockPosition.Tabbed,
-                TabBehind = DockablePanes.BuiltInDockablePanes.ProjectBrowser 
+                TabBehind = DockablePanes.BuiltInDockablePanes.ProjectBrowser
             };
 
             data.InitialState = state;
@@ -45,7 +45,7 @@ namespace KPLN_Tools.Docking
 
             var provider = new FamilyManagerPaneProvider(_paneInstance);
             app.RegisterDockablePane(PaneId, "KPLN. Менеджер семейств", provider);
-          
+
             app.ViewActivated += (s, e) =>
             {
                 var uiapp = new UIApplication(e.Document.Application);
@@ -61,7 +61,7 @@ namespace KPLN_Tools.Docking
             var pane = uiapp.GetDockablePane(PaneId);
 
             if (pane.IsShown())
-            { 
+            {
                 pane.Hide();
             }
             else

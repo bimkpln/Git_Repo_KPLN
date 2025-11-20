@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SQLite; 
+using System.Data.SQLite;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Text.RegularExpressions;
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     public partial class FamilyManagerSettingDB : Window
     {
@@ -30,8 +30,8 @@ namespace KPLN_Tools.Forms
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                DialogResult = false; 
-                Close();       
+                DialogResult = false;
+                Close();
             }
         }
 
@@ -62,7 +62,7 @@ namespace KPLN_Tools.Forms
                 MessageBox.Show("Удаление выполнено.", "Готово",
                                 MessageBoxButton.OK, MessageBoxImage.Information);
 
-                DialogResult = true; 
+                DialogResult = true;
                 Close();
             }
             catch (Exception ex)
@@ -121,6 +121,6 @@ namespace KPLN_Tools.Forms
         {
             DialogResult = false;
             Close();
-        }      
+        }
     }
 }

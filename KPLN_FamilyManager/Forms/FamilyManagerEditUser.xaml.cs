@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Autodesk.Revit.DB;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 using Window = System.Windows.Window;
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     public partial class FamilyManagerEditUser : Window
     {
@@ -336,14 +337,14 @@ namespace KPLN_Tools.Forms
 
             if (!string.IsNullOrWhiteSpace(subName))
             {
-                CategorySep.Visibility = Visibility.Visible;
-                SubCategoryValue.Visibility = Visibility.Visible;
+                CategorySep.Visibility = System.Windows.Visibility.Visible;
+                SubCategoryValue.Visibility = System.Windows.Visibility.Visible;
                 SubCategoryValue.Text = subName;
             }
             else
             {
-                CategorySep.Visibility = Visibility.Collapsed;
-                SubCategoryValue.Visibility = Visibility.Collapsed;
+                CategorySep.Visibility = System.Windows.Visibility.Collapsed;
+                SubCategoryValue.Visibility = System.Windows.Visibility.Collapsed;
                 SubCategoryValue.Text = "";
             }
 

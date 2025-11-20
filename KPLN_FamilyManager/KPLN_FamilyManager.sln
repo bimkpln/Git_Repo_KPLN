@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36310.24 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_FamilyManager", "KPLN_FamilyManager.csproj", "{5255FF9A-47A2-4979-A7BB-26E2221026CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Debug2020|x64.Build.0 = Debug2020|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Debug2023|x64.Build.0 = Debug2023|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Revit2020|x64.Build.0 = Revit2020|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{5255FF9A-47A2-4979-A7BB-26E2221026CB}.Revit2023|x64.Build.0 = Revit2023|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CC98E3A5-C224-41E7-B22E-C10F2230F576}
+	EndGlobalSection
+EndGlobal

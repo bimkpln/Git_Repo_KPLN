@@ -22,7 +22,7 @@ using Style = System.Windows.Style;
 using Window = System.Windows.Window;
 
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     public partial class FamilyManagerEditBIM : Window
     {
@@ -33,8 +33,8 @@ namespace KPLN_Tools.Forms
         private const string DEPT_MAIN = "MAIN";
         private const int DEFAULT_CATEGORY_ID = 1;
 
-        private const int TARGET_MAX_SIDE = 512;   
-        private const long JPEG_QUALITY = 85L; 
+        private const int TARGET_MAX_SIDE = 512;
+        private const long JPEG_QUALITY = 85L;
         private byte[] _preparedImageBytes;
 
         private bool _isEditingImportInfo = false;
@@ -55,7 +55,7 @@ namespace KPLN_Tools.Forms
         public bool IsFavorite { get; set; } = false;
 
         // Класс БД. Общее
-        public class FamilyManagerRecord 
+        public class FamilyManagerRecord
         {
             public int ID { get; set; }
             public string STATUS { get; set; }
@@ -133,10 +133,10 @@ namespace KPLN_Tools.Forms
             try
             {
                 var fav = IsFavoriteId(record.ID);
-                IsFavorite = fav;    
+                IsFavorite = fav;
                 if (FavoriteToggle != null) FavoriteToggle.IsChecked = fav;
             }
-            catch {}
+            catch { }
 
             BuildDepartmentUI(record);
             RenderImportInfo(record.IMPORT_INFO);
@@ -176,15 +176,15 @@ namespace KPLN_Tools.Forms
 
                 sorted.AddRange(
                     _projects
-                        .Skip(1) 
-                        .OrderBy(p => p.NAME, StringComparer.OrdinalIgnoreCase) 
+                        .Skip(1)
+                        .OrderBy(p => p.NAME, StringComparer.OrdinalIgnoreCase)
                 );
 
                 ProjectCombo.ItemsSource = sorted;
             }
             else
             {
-                ProjectCombo.ItemsSource = _projects; 
+                ProjectCombo.ItemsSource = _projects;
             }
 
 
@@ -408,7 +408,7 @@ namespace KPLN_Tools.Forms
 
             UpdateDeptToggleVisual();
         }
-      
+
         // Категории, прошедшие фильтр по отделам
         private static List<CategoryItem> FilterCategoriesByDepartments(
             IEnumerable<CategoryItem> all, string selectedDepartments)
@@ -431,7 +431,7 @@ namespace KPLN_Tools.Forms
 
                 return sel.All(s => cdeps.Contains(s));
             })
-            .OrderBy(c => IsDefaultCategory(c) ? 0 : 1)                             
+            .OrderBy(c => IsDefaultCategory(c) ? 0 : 1)
             .ThenBy(c => c.NAME, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
         }
@@ -1020,9 +1020,9 @@ namespace KPLN_Tools.Forms
                     ex.ErrorCode == (int)SQLiteErrorCode.Busy)
                 {
                     if (attempt >= maxAttempts)
-                        throw; 
+                        throw;
 
-                    Thread.Sleep(delayMs); 
+                    Thread.Sleep(delayMs);
                 }
             }
         }
@@ -1267,13 +1267,13 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
-                _importInfoBackup = record.IMPORT_INFO;     
-                ShowRawJsonInEditor(record.IMPORT_INFO);        
-                ImportInfoBox.IsReadOnly = false;      
+                _importInfoBackup = record.IMPORT_INFO;
+                ShowRawJsonInEditor(record.IMPORT_INFO);
+                ImportInfoBox.IsReadOnly = false;
                 ImportInfoBox.Focusable = true;
                 ImportInfoBox.Focus();
 
-                ButtonEditFamilyInfo.Content = "💾";  
+                ButtonEditFamilyInfo.Content = "💾";
                 ButtonEditFamilyInfo.ToolTip = "Сохранить IMPORT_INFO";
 
                 _isEditingImportInfo = true;
@@ -1283,22 +1283,22 @@ namespace KPLN_Tools.Forms
             try
             {
                 var raw = GetRtbText(ImportInfoBox);
-                var normalized = ValidateAndNormalizeJson(raw);  
+                var normalized = ValidateAndNormalizeJson(raw);
 
-                record.IMPORT_INFO = normalized;     
+                record.IMPORT_INFO = normalized;
 
-                ImportInfoBox.IsReadOnly = true;      
-                ImportInfoBox.Focusable = true;           
-                RenderImportInfo(record.IMPORT_INFO);   
+                ImportInfoBox.IsReadOnly = true;
+                ImportInfoBox.Focusable = true;
+                RenderImportInfo(record.IMPORT_INFO);
 
-                ButtonEditFamilyInfo.Content = "✏️";   
+                ButtonEditFamilyInfo.Content = "✏️";
                 ButtonEditFamilyInfo.ToolTip = "Редактировать IMPORT_INFO";
 
                 _isEditingImportInfo = false;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("JSON невалиден:\n" + ex.Message,  "Проверка JSON", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("JSON невалиден:\n" + ex.Message, "Проверка JSON", MessageBoxButton.OK, MessageBoxImage.Warning);
 
             }
         }
@@ -1360,7 +1360,7 @@ namespace KPLN_Tools.Forms
                     {
                         string msg = "Были допущены ошибки:\n" + string.Join("\n", errors);
                         MessageBox.Show(msg, "Проверка данных", MessageBoxButton.OK, MessageBoxImage.Information);
-                        return; 
+                        return;
                     }
                 }
 
@@ -1372,8 +1372,8 @@ namespace KPLN_Tools.Forms
                     LM_DATE = record.LM_DATE,
                     CATEGORY = selectedCategoryId,
                     SUB_CATEGORY = record.SUB_CATEGORY,
-                    PROJECT = selectedProjectId, 
-                    STAGE = selectedStageId,   
+                    PROJECT = selectedProjectId,
+                    STAGE = selectedStageId,
                     DEPARTAMENT = record.DEPARTAMENT,
                     IMPORT_INFO = record.IMPORT_INFO,
                     IMAGE = imgBytes
@@ -1433,10 +1433,10 @@ namespace KPLN_Tools.Forms
                 if (!File.Exists(path))
                 {
                     using (var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
-                    using (var sw = new StreamWriter(fs, Encoding.UTF8)) {}
+                    using (var sw = new StreamWriter(fs, Encoding.UTF8)) { }
                 }
             }
-            catch{}
+            catch { }
         }
 
         // Кнопка избранное. Чтение ИЗЮРАНОЕ
