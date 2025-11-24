@@ -61,8 +61,8 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                         double sillHeight = GetSillHeight(arEnt);
 
-                        SetParamValue(arEnt, upParam, arEnt.UpFloorDistance, _warningArEntities_UpLvl, "сверху");
-                        SetParamValue(arEnt, downParam, Math.Abs(arEnt.DownFloorDistance + sillHeight), _warningArEntities_DownLvl, "снизу");
+                        SetParamValue(arEnt, upParam, arEnt.UpFloorDistance + sillHeight, _warningArEntities_UpLvl, "сверху");
+                        SetParamValue(arEnt, downParam, arEnt.DownFloorDistance, _warningArEntities_DownLvl, "снизу");
 
                         UpdateProgress();
                     }
