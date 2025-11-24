@@ -50,6 +50,11 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         public static Dictionary<string, List<ElementId>> ErrorDict_Room = new Dictionary<string, List<ElementId>>();
 
         /// <summary>
+        /// Словарь ЗАМЕЧАНИЙ элементов, где ключ - текст ошибки, значения - список элементов
+        /// </summary>
+        public static Dictionary<string, List<ElementId>> WarnDict_Room = new Dictionary<string, List<ElementId>>();
+
+        /// <summary>
         /// Ссылка на элемент ревит
         /// </summary>
         public Element Elem_Room { get; private set; }
@@ -115,9 +120,19 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         public Parameter TZCodeParam_Room { get; private set; }
 
         /// <summary>
+        /// Значение параметра кода квартиры по ТЗ
+        /// </summary>
+        public string TZCodeData_Room { get; private set; }
+
+        /// <summary>
         /// Параметр для имя диапазона по ТЗ
         /// </summary>
         public Parameter TZRangeNameParam_Room { get; private set; }
+
+        /// <summary>
+        /// Значение параметра имя диапазона по ТЗ
+        /// </summary>
+        public string TZRangeNameData_Room { get; private set; }
 
         /// <summary>
         /// Параметр для процент диапазона по ТЗ 
@@ -148,6 +163,11 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// Тип помещения
         /// </summary>
         public RoomType ARPG_RoomType { get; private set; }
+
+        /// <summary>
+        /// Метка, что элемент подвергся анализу
+        /// </summary>
+        public bool IsAnalyzed { get; private set; } = false;
 
         /// <summary>
         /// Получить коллекцию помещений в зависимости от анализируемого типа
@@ -207,29 +227,26 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Проверка использования всех кодов из ТЗ
         /// </summary>
-        internal static bool CheckRoomCodesByTZMain(AR_PyatnGraph_VM pg_VM, ARPG_Room[] arpgRooms)
+        internal static string CheckRoomCodesByTZMain(AR_PyatnGraph_VM pg_VM, ARPG_Room[] arpgRooms)
         {
-            HashSet<string> tzCodes = new HashSet<string>();
+            HashSet<string> tzCodeRanges = new HashSet<string>();
             foreach(object obj in pg_VM.ARPG_TZ_FlatDataColl)
             {
                 if (obj is ARPG_TZ_FlatData tzFlatData)
-                    tzCodes.Add(tzFlatData.TZCode);
+                    tzCodeRanges.Add($"{tzFlatData.TZRangeName} - {tzFlatData.TZCode}");
             }
 
-            HashSet<string> roomCodes = new HashSet<string>();
+            HashSet<string> codeRangeNames = new HashSet<string>();
             foreach (ARPG_Room arpgRoom in arpgRooms)
             {
-                roomCodes.Add(arpgRoom.TZCodeParam_Room.AsValueString());
+                codeRangeNames.Add($"{arpgRoom.TZRangeNameParam_Room.AsValueString()} - {arpgRoom.TZCodeParam_Room.AsValueString()}");
             }
 
-            string[] exceptColl = tzCodes.Except(roomCodes).ToArray();
+            string[] exceptColl = tzCodeRanges.Except(codeRangeNames).ToArray();
             if (exceptColl.Length > 0)
-            {
-                HtmlOutput.Print($"В проекте НЕ использованы диапазоны из ТЗ: {string.Join(", ", exceptColl)}", MessageType.Error);
-                return false;
-            }
+                return $"ПРЕДУПРЕЖДЕНИЕ: В проекте НЕ использованы диапазоны из ТЗ (Имя диапазона - Код квартиры): {string.Join(", ", exceptColl)}";
 
-            return true;
+            return string.Empty;
         }
 
         private static void SetCountedRoomData_Percents(ARPG_Room arpgRoom, double factPercent)
@@ -393,18 +410,22 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                     continue;
 
                 // Получаю значения
+                string tzCodeNameData = GetParamValue(tzCodeNameParam);
+                string tzRangeNameData = GetParamValue(tzRangeNameParam);
                 string flatNameData = GetParamValue(flatNameParam);
                 double areaData = areaParam.AsDouble();
                 string flatNumbData = GetParamValue(flatNumbParam);
                 string flatLvlNumbData = GetParamValue(flatLvlNumbParam);
                 string gripCorpData = GetParamValue(gripCorpParam);
                 string gripSectData = GetParamValue(gripSectParam);
-                string tzCodeNameData = GetParamValue(tzCodeNameParam);
 
                 // Проверка пустых значений
                 CheckEmptyValue(elem, tzData.FlatNameParamName, flatNameData);
                 if (!presetFlatCode)
+                {
                     CheckEmptyValue(elem, tzData.TZCodeParamName, tzCodeNameData);
+                    CheckEmptyValue(elem, tzData.TZRangeNameParamName, tzRangeNameData);
+                }
 
                 if (isNoHeatingRoom)
                 {
@@ -438,7 +459,9 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                     AreaCoeffParam_Room = areaCoeffParam,
                     SumAreaCoeffParam_Room = sumAreaCoeffParam,
                     TZCodeParam_Room = tzCodeNameParam,
+                    TZCodeData_Room = tzCodeNameData,
                     TZRangeNameParam_Room = tzRangeNameParam,
+                    TZRangeNameData_Room = tzRangeNameData,
                     TZPercentParam_Room = tzPercentParam,
                     TZAreaMinParam_Room = tzAreaMinParam,
                     TZAreaMaxParam_Room = tzAreaMaxParam,
@@ -451,7 +474,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                 result.Add(aRPG_Room);
             }
 
-            return result.ToArray(); ;
+            return result.ToArray();
         }
 
 
@@ -832,6 +855,9 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// </summary>
         private static int DamerauLevenshteinDistance(string firstText, string secondText)
         {
+            if (string.IsNullOrEmpty(firstText) || string.IsNullOrEmpty(secondText))
+                return 99;
+
             var n = firstText.Length + 1;
             var m = secondText.Length + 1;
             var arrayD = new int[n, m];

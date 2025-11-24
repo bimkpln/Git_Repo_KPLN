@@ -51,11 +51,15 @@ namespace KPLN_Tools.ExecutableCommand
                 _doc.Regenerate();
 
                 ARPG_Room.SetCountedRoomData(_aRPGRooms);
-                
-                if(ARPG_Room.CheckRoomCodesByTZMain(_pgVM, _aRPGRooms))
+
+                string checkRoomCodesByTZ = ARPG_Room.CheckRoomCodesByTZMain(_pgVM, _aRPGRooms);
+                bool checkWarningDict_Room = ARPG_Room.WarnDict_Room.Keys.Count != 0;
+                bool checkWarningDict_Flat = ARPG_Flat.WarnDict_Flat.Keys.Count != 0;
+
+                if (string.IsNullOrEmpty(checkRoomCodesByTZ) && !checkWarningDict_Room && !checkWarningDict_Flat)
                 {
                     MessageBox.Show(
-                            $"Плагин успешно завершил рассчёт",
+                            $"Плагин завершил рассчёт БЕЗ ошибок",
                             "Результат",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Information);
@@ -63,10 +67,16 @@ namespace KPLN_Tools.ExecutableCommand
                 else
                 {
                     MessageBox.Show(
-                        $"Плагин завершил рассчёт с ПРЕДУПРЕЖДЕНИЯМИ. Они появились отдельным окном",
+                        $"Плагин завершил рассчёт с ПРЕДУПРЕЖДЕНИЯМИ. Они будут выведены отдельным окном",
                         "Результат",
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                        MessageBoxIcon.Warning);
+
+                    if (!string.IsNullOrEmpty(checkRoomCodesByTZ))
+                        HtmlOutput.Print(checkRoomCodesByTZ, MessageType.Warning);
+                    
+                    HtmlOutput.PrintMsgDict("ПРЕДУПРЕЖДЕНИЕ", MessageType.Warning, ARPG_Flat.WarnDict_Flat);
+                    HtmlOutput.PrintMsgDict("ПРЕДУПРЕЖДЕНИЕ", MessageType.Warning, ARPG_Room.WarnDict_Room);
                 }
 
                 trans.Commit();

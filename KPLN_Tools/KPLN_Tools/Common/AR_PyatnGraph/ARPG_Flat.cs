@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Tools.Forms.Models.Core;
 using System;
@@ -16,6 +17,11 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// Словарь ОШИБОК элементов, где ключ - текст ошибки, значения - список элементов
         /// </summary>
         public static Dictionary<string, List<ElementId>> ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
+
+        /// <summary>
+        /// Словарь ЗАМЕЧАНИЙ элементов, где ключ - текст ошибки, значения - список элементов
+        /// </summary>
+        public static Dictionary<string, List<ElementId>> WarnDict_Flat = new Dictionary<string, List<ElementId>>();
 
         private ARPG_Flat() { }
 
@@ -52,7 +58,7 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
         /// <summary>
         /// Получить коллекцию квартир
         /// </summary>
-        internal static ARPG_Flat[] Get_ARPG_Flats(ARPG_TZ_MainData tzMainData, ARPG_Room[] arpgRooms, bool hasHeatingRooms)
+        internal static ARPG_Flat[] Get_ARPG_Flats(ARPG_TZ_MainData tzMainData, ARPG_TZ_FlatData[] arpgTZFlatDatas, ARPG_Room[] arpgRooms, bool hasHeatingRooms)
         {
             if (arpgRooms == null || arpgRooms.Length == 0)
                 return new ARPG_Flat[0];
@@ -156,24 +162,6 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                     .ToArray();
             }
 
-
-            foreach(ARPG_Flat flat in result)
-            {
-                ARPG_Room[] aRPG_Rooms = flat.ARPG_Rooms_Flat;
-                if (aRPG_Rooms.Length > 1)
-                {
-                    HashSet<string> roomCodeInFlat = aRPG_Rooms.Select(ar => ar.TZCodeParam_Room.AsValueString()).ToHashSet();
-                    if (roomCodeInFlat.Count() > 1)
-                    {
-                        foreach(ARPG_Room aRPG_Room in aRPG_Rooms)
-                        {
-                            HtmlOutput.SetMsgDict_ByMsg($"В одной квартире приняты несколько типов: {string.Join(", ", roomCodeInFlat)}", aRPG_Room.Elem_Room.Id, ErrorDict_Flat);
-                        }
-                    }
-                }
-            }
-            
-            
             return result;
         }
 
@@ -186,6 +174,46 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
             {
                 ARPG_Room[] arpgRooms = arpgFlat.ARPG_Rooms_Flat;
 
+                #region Проверка привязки помещений в квартирах
+                HashSet<string> roomCodeInFlat = arpgRooms.Select(ar => ar.TZCodeData_Room).ToHashSet();
+                HashSet<string> roomRangeNameInFlat = arpgRooms.Select(ar => ar.TZRangeNameData_Room).ToHashSet();
+
+                // Проверка нескольких помещений на одинаковые данные коды
+                if (roomCodeInFlat.Count() > 1)
+                {
+                    foreach (ARPG_Room aRPG_Room in arpgRooms)
+                    {
+                        HtmlOutput.SetMsgDict_ByMsg($"В одной квартире приняты разные коды квратир: {string.Join(", ", roomCodeInFlat)}", aRPG_Room.Elem_Room.Id, ErrorDict_Flat);
+                    }
+                }
+
+                // Проверка нескольких помещений на одинаковые данные диапазоны
+                if (roomRangeNameInFlat.Count() > 1)
+                {
+                    foreach (ARPG_Room aRPG_Room in arpgRooms)
+                    {
+                        HtmlOutput.SetMsgDict_ByMsg($"В одной квартире приняты разные диапазоны квартир: {string.Join(", ", roomCodeInFlat)}", aRPG_Room.Elem_Room.Id, ErrorDict_Flat);
+                    }
+                }
+
+                // Проверка на соответсвие данных в помещениях на данные из тз
+                if (!arpgTZFlatDatas.Any(tz => tz.TZCode == roomCodeInFlat.FirstOrDefault() && tz.TZRangeName == roomRangeNameInFlat.FirstOrDefault()))
+                {
+                    foreach (ARPG_Room aRPG_Room in arpgRooms)
+                    {
+                        HtmlOutput.SetMsgDict_ByMsg(
+                            $"Помещения имеют несовпадения в данных по квартире из ТЗ - \"Имя диапазона\" не соответсует выбранному \"Код квартиры\": " +
+                                $"Имя диапазона: \"{string.Join(", ", roomCodeInFlat)}\" - Код квартиры: \"{string.Join(", ", roomRangeNameInFlat)}\"",
+                            aRPG_Room.Elem_Room.Id, ErrorDict_Flat);
+                    }
+                }
+
+                // Если есть в списке замечаний - пропускаем
+                if (ErrorDict_Flat.Values.SelectMany(v => v).Intersect(arpgRooms.Select(ar => ar.Elem_Room.Id)).Any())
+                    continue;
+                #endregion
+
+
                 // Рассчёт площади с коэф
                 double flatSumArea = arpgRooms.Sum(x => x.AreaCoeffData_Room);
 #if Debug2020 || Revit2020
@@ -193,45 +221,10 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
 #else
                 double flatSumArea_SqM = UnitUtils.ConvertFromInternalUnits(flatSumArea, UnitTypeId.SquareMeters);
 #endif
-                // Проверяю и получаю квартиру по условиям ТЗ по коду (если нужно)
-                ARPG_TZ_FlatData arpgTZFlatDataByTZ = null;
-                if (arpgFlat.HasNoHeatingRooms)
-                {
-                    HashSet<string> arpgRoomTZCodeDataColl = arpgRooms.Select(ar => ar.TZCodeParam_Room.AsString()).ToHashSet();
-                    if (arpgRoomTZCodeDataColl.Count != 1)
-                    {
-                        foreach (ARPG_Room arpgRoom in arpgRooms)
-                        {
-                            HtmlOutput.SetMsgDict_ByMsg(
-                                $"Помещения из квартиры {arpgFlat.FlatNumbData_Flat} " +
-                                    $"на этаже {arpgFlat.FlatLvlNumbData_Flat} по захватке {arpgFlat.GripData1_Flat} " +
-                                    $"попали в одну квартиру, но при этом - должны быть в разных квартирах (см. параметр кода квартиры).",
-                                arpgRoom.Elem_Room.Id, ErrorDict_Flat);
-                        }
+                // Получаю квартиру по условиям ТЗ по коду (если нужно)
+                ARPG_TZ_FlatData arpgTZFlatDataByTZ = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZCode == arpgRooms.FirstOrDefault().TZCodeData_Room && tz.TZRangeName == arpgRooms.FirstOrDefault().TZRangeNameData_Room); ;
 
-                        continue;
-                    }
-
-                    // Проверяю код квартиры с кодом из ТЗ
-                    arpgTZFlatDataByTZ = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZCode == arpgRoomTZCodeDataColl.FirstOrDefault());
-                    if (arpgTZFlatDataByTZ == null)
-                    {
-                        foreach (ARPG_Room arpgRoom in arpgRooms)
-                        {
-                            HtmlOutput.SetMsgDict_ByMsg(
-                                $"Помещения из квартиры {arpgFlat.FlatNumbData_Flat} " +
-                                    $"на этаже {arpgFlat.FlatLvlNumbData_Flat} по захватке {arpgFlat.GripData1_Flat} " +
-                                    $"НЕ соответсвуют принятому коду из ТЗ, сейчас заполнено \"{arpgRoomTZCodeDataColl.FirstOrDefault()}\"",
-                                arpgRoom.Elem_Room.Id, ErrorDict_Flat);
-                        }
-                    
-                        continue;
-                    }
-                }
-                else
-                    arpgTZFlatDataByTZ = arpgTZFlatDatas.FirstOrDefault(tz => tz.TZCode == arpgRooms[0].TZCodeParam_Room.AsString());
-
-
+                
                 // Проверяю на совпадение диапазона квартиры с диапазоном ТЗ и с принятым допуском (допуск у всех одинаковый)
                 double areaTolerance = arpgRooms.FirstOrDefault().FlatAreaTolerance_Room;
                 IEnumerable<ARPG_TZ_FlatData> arpgTZFlatDatasBySumArea = arpgTZFlatDatas.Where(tz => 
@@ -247,38 +240,25 @@ namespace KPLN_Tools.Common.AR_PyatnGraph
                             $"Помещения из квартиры {arpgFlat.FlatNumbData_Flat} " +
                                 $"на этаже {arpgFlat.FlatLvlNumbData_Flat} по захватке {arpgFlat.GripData1_Flat} " +
                                 $"ВНЕ диапазонов из ТЗ (напомню - допуск составляет \"{areaTolerance}\" м2." +
-                                $"Сейчас суммарная площадь: {Math.Round(flatSumArea_SqM, 3)} м2, выбранный тип квартиры: {arpgTZFlatDataByTZ.TZCode}",
-                            arpgRoom.Elem_Room.Id, ErrorDict_Flat);
+                                $"Сейчас суммарная площадь: {Math.Round(flatSumArea_SqM, 3)} м2, выбранный из ТЗ Имя диапазона - Код квартиры: {arpgTZFlatDataByTZ.TZRangeName} - {arpgTZFlatDataByTZ.TZCode}",
+                            arpgRoom.Elem_Room.Id, WarnDict_Flat);
                     }
-
-                    continue;
                 }
-
-
-                // Если есть в списке замечаний - пропускаем
-                if (ErrorDict_Flat.Values.SelectMany(v => v).Intersect(arpgRooms.Select(ar => ar.Elem_Room.Id)).Any())
-                    continue;
-
 
                 // Заполняю значения
                 foreach (ARPG_Room arpgRoom in arpgRooms)
                 {
-                    // Данные из ТЗ 
-                    arpgRoom.TZCodeParam_Room.Set(arpgTZFlatDataBySumArea.TZCode);
-                    arpgRoom.TZRangeNameParam_Room.Set(arpgTZFlatDataBySumArea.TZRangeName);
-
-
-                    if (double.TryParse(arpgTZFlatDataBySumArea.TZPercent, out double tzPercent))
+                    if (double.TryParse(arpgTZFlatDataByTZ.TZPercent, out double tzPercent))
                         arpgRoom.TZPercentParam_Room.Set(tzPercent);
                     else
                         throw new Exception($"Отправь разработчику - в анализ попали данные, которые нельзя преобразовать в double: {arpgTZFlatDataByTZ.TZPercent}");
 
 #if Debug2020 || Revit2020
-                    arpgRoom.TZAreaMinParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataBySumArea.TZAreaMin_Double, DisplayUnitType.DUT_SQUARE_METERS));
-                    arpgRoom.TZAreaMaxParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataBySumArea.TZAreaMax_Double, DisplayUnitType.DUT_SQUARE_METERS));
+                    arpgRoom.TZAreaMinParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataByTZ.TZAreaMin_Double, DisplayUnitType.DUT_SQUARE_METERS));
+                    arpgRoom.TZAreaMaxParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataByTZ.TZAreaMax_Double, DisplayUnitType.DUT_SQUARE_METERS));
 #else
-                    arpgRoom.TZAreaMinParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataBySumArea.TZAreaMin_Double, UnitTypeId.SquareMeters));
-                    arpgRoom.TZAreaMaxParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataBySumArea.TZAreaMax_Double, UnitTypeId.SquareMeters));
+                    arpgRoom.TZAreaMinParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataByTZ.TZAreaMin_Double, UnitTypeId.SquareMeters));
+                    arpgRoom.TZAreaMaxParam_Room.Set(UnitUtils.ConvertToInternalUnits(arpgTZFlatDataByTZ.TZAreaMax_Double, UnitTypeId.SquareMeters));
 #endif
 
                     // Площади
