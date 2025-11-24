@@ -552,9 +552,8 @@ namespace KPLN_Tools
 
             #endregion
 
-
-            #region Отверстия
-            // Наполняю плагинами в зависимости от отдела
+            #region Отдельные кнопки
+            // Отверстия только для ИОС
             if (DBWorkerService.CurrentDBUserSubDepartment.Id != 2 && DBWorkerService.CurrentDBUserSubDepartment.Id != 3)
             {
                 PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon(
@@ -591,9 +590,7 @@ namespace KPLN_Tools
 
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }
-            #endregion
 
-            #region Отдельные кнопки
             PushButtonData sendMsgToBitrix = CreateBtnData(
                 CommandSendMsgToBitrix.PluginName,
                 CommandSendMsgToBitrix.PluginName,
@@ -628,9 +625,9 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.nodeManagerBig.png",
                     "KPLN_Tools.Imagens.nodeManagerBig.png",
                     "http://moodle");
-            panel.AddItem(nodeManager);
 
             panel.AddItem(sendMsgToBitrix);
+            panel.AddItem(nodeManager);
             #endregion
 
             return Result.Succeeded;
