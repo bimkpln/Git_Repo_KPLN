@@ -84,7 +84,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                     .Select(gr => gr.FirstOrDefault())
                     .ToArray();
 
-                Parameter[] elemsParams = ParamWorker.GetParamsFromElems(doc, clearedElemsToFind).ToArray();
+                Parameter[] elemsParams = DocWorker.GetUnionParamsFromElems(doc, clearedElemsToFind).ToArray();
 
                 List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
                 foreach (Parameter param in elemsParams)

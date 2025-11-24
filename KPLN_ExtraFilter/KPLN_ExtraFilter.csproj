@@ -23,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
@@ -34,6 +35,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
@@ -158,18 +160,30 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
-    <Compile Include="Common\ParamWorker.cs" />
+    <Compile Include="Common\DocWorker.cs" />
+    <Compile Include="ExecutableCommand\SelectionByModelExcCmd.cs" />
     <Compile Include="ExecutableCommand\SelectionByClickExcCmd.cs" />
+    <Compile Include="ExternalCommands\SelectionByModelExtCmd.cs" />
+    <Compile Include="ExternalEventHandler\UnsubViewActHandler.cs" />
+    <Compile Include="ExternalEventHandler\ViewActivatedHandler.cs" />
     <Compile Include="ExternalEventHandler\SelectionChangedHandler.cs" />
-    <Compile Include="ExternalEventHandler\UnsubscribeHandler.cs" />
+    <Compile Include="ExternalEventHandler\UnsubSelChHandler.cs" />
     <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
     <Compile Include="ExecutableCommand\SetParamsByFrameExcCmd.cs" />
     <Compile Include="ExternalCommands\SetParamsByFrameExtCmd.cs" />
     <Compile Include="ExternalCommands\SelectionByClickExtCmd.cs" />
+    <Compile Include="Forms\Entities\CategoryEntity.cs" />
+    <Compile Include="Forms\Entities\SelectionByModelM.cs" />
+    <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_ParamM.cs" />
+    <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_CategoryM.cs" />
     <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
     <Compile Include="Forms\Entities\ParamEntity.cs" />
     <Compile Include="Forms\Entities\SetParamsByFrame\SetParamsByFrameEntity.cs" />
+    <Compile Include="Forms\Entities\TreeElementEntity.cs" />
+    <Compile Include="Forms\Entities\CollectionFilter.cs" />
+    <Compile Include="Forms\Entities\WSEntity.cs" />
+    <Compile Include="Forms\Converters\EnumToBooleanConverter.cs" />
     <Compile Include="Forms\SelectionOptions_MainControl.xaml.cs">
       <DependentUpon>SelectionOptions_MainControl.xaml</DependentUpon>
     </Compile>
@@ -182,6 +196,7 @@
     <Compile Include="Forms\SelectionByClickForm.xaml.cs">
       <DependentUpon>SelectionByClickForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ViewModels\SelectionByModelVM.cs" />
     <Compile Include="Forms\ViewModels\SelectionByClickVM.cs" />
     <Compile Include="Forms\Entities\SelectionByClickM.cs" />
     <Compile Include="Module.cs" />
@@ -232,6 +247,10 @@
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\TreeModelLarge.png" />
+    <EmbeddedResource Include="Imagens\TreeModelSmall.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

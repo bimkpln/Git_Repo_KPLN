@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace KPLN_ExtraFilter.Forms.Entities
 {
@@ -23,6 +25,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private bool _sameType;
         private bool _sameWorkset;
         private bool _sameParamData;
+        private string _searchParamText;
+        private ICollectionView _filteredParamsView;
         private bool _currentView = true;
         private bool _model;
         private bool _belongGroup;
@@ -37,7 +41,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public SelectionByClickM(Document doc)
         {
             UserSelDoc = doc;
-            IsWorkshared = doc.IsWorkshared || doc.IsDetached;
+            IsWorkshared = doc.IsWorkshared || doc.IsDetached;            
         }
 
         public Document UserSelDoc { get; set; }
@@ -55,6 +59,9 @@ namespace KPLN_ExtraFilter.Forms.Entities
             }
         }
 
+        /// <summary>
+        /// Пользовательский выбор из модели
+        /// </summary>
         public Element UserSelElem
         {
             get => _userSelElem;
@@ -65,6 +72,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 UpdateUserHelp();
                 NotifyPropertyChanged();
                 NotifyPropertyChanged(nameof(SelectedElemParams));
+                NotifyPropertyChanged(nameof(FilteredParamsView));
                 NotifyPropertyChanged(nameof(CanRun));
             }
         }
@@ -135,7 +143,24 @@ namespace KPLN_ExtraFilter.Forms.Entities
             {
                 _sameParamData = value;
                 NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(SelectedElemParams));
+                NotifyPropertyChanged(nameof(FilteredParamsView));
                 NotifyPropertyChanged(nameof(CanRun));
+            }
+        }
+
+        /// <summary>
+        /// Пользовательский ввод для поиска
+        /// </summary>
+        public string SearchParamText
+        {
+            get => _searchParamText;
+            set
+            {
+                _searchParamText = value;
+                NotifyPropertyChanged();
+
+                _filteredParamsView.Refresh();
             }
         }
 
@@ -202,26 +227,34 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 if (UserSelElem == null)
                     return null;
                 
-                IEnumerable<Parameter> elemsParams = ParamWorker.GetParamsFromElems(UserSelDoc, new Element[] { UserSelElem });
+                IEnumerable<Parameter> elemsParams = DocWorker.GetUnionParamsFromElems(UserSelDoc, new Element[] { UserSelElem });
                 if (elemsParams == null)
                     return null;
 
                 List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
                 foreach (Parameter param in elemsParams)
                 {
-                    string paramValue;
-                    if (param.StorageType == StorageType.String)
-                        paramValue = param.AsString();
-                    else
-                        paramValue = param.AsValueString();
-
+                    string paramValue = DocWorker.GetParamValueInSI(UserSelDoc, param); ;
                     string toolTip = $"Значение: {paramValue}";
                     allParamsEntities.Add(new ParamEntity(param, toolTip));
                 }
 
-                return allParamsEntities.OrderBy(pe => pe.CurrentParamName).ToArray();
+                return allParamsEntities.OrderBy(pe => pe.RevitParamName).ToArray(); ;
             }
+        }
 
+        public ICollectionView FilteredParamsView
+        {
+            get
+            {
+                if (UserSelElem != null && What_ParameterData)
+                {
+                    _filteredParamsView = CollectionViewSource.GetDefaultView(SelectedElemParams);
+                    _filteredParamsView.Filter = FilterMethod;
+                }
+
+                return _filteredParamsView;
+            }
         }
 
         /// <summary>
@@ -330,6 +363,16 @@ namespace KPLN_ExtraFilter.Forms.Entities
             }
 
             UserHelp = string.Empty;
+        }
+
+        private bool FilterMethod(object obj)
+        {
+            if (!(obj is ParamEntity p)) 
+                return false;
+            if (string.IsNullOrWhiteSpace(SearchParamText)) 
+                return true;
+            
+            return p.RevitParamName.ToLower().Contains(SearchParamText.ToLower());
         }
     }
 }

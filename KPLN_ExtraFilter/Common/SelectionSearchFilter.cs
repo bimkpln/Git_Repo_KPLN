@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_ExtraFilter.Forms.Entities;
 using System;
 using System.Linq;
 
@@ -21,6 +22,8 @@ namespace KPLN_ExtraFilter.Common
 
             return resultFilter;
         }
+
+        internal static ElementCategoryFilter SearchByCategoryEntity(CategoryEntity catEntity) => new ElementCategoryFilter((BuiltInCategory)catEntity.RevitCat.Id.IntegerValue);
 
         internal static ElementParameterFilter SearchByElemBuiltInParam(Element userSelElem, BuiltInParameter bip)
         {
@@ -59,6 +62,10 @@ namespace KPLN_ExtraFilter.Common
                 FilterRule rule = null;
                 switch (userSelParam.StorageType)
                 {
+                    case StorageType.ElementId:
+                        rule = ParameterFilterRuleFactory
+                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsElementId());
+                        break;
                     case StorageType.String:
 #if Debug2020 || Revit2020
                         rule = ParameterFilterRuleFactory
@@ -86,7 +93,7 @@ namespace KPLN_ExtraFilter.Common
             return resultFilter;
         }
 
-        internal static ElementWorksetFilter SearchByWorkset(Element userSelElem)
+        internal static ElementWorksetFilter SearchByElemWorkset(Element userSelElem)
         {
             ElementWorksetFilter resultFilter;
 
@@ -106,5 +113,7 @@ namespace KPLN_ExtraFilter.Common
 
             return resultFilter;
         }
+
+        internal static ElementWorksetFilter SearchByWSEntity(WSEntity ws) => new ElementWorksetFilter(ws.RevitWSId);
     }
 }

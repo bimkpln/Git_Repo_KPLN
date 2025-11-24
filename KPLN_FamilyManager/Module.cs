@@ -29,8 +29,7 @@ namespace KPLN_FamilyManager
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
-                FamilyManagerDock.Register(application);
+            FamilyManagerDock.Register(application);
 
             //Ищу или создаю панель инструменты
             string panelName = "Инструменты";

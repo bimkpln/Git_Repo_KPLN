@@ -4,11 +4,15 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:KPLN_ExtraFilter.Forms"
+        xmlns:local2="clr-namespace:KPLN_ExtraFilter.Forms.Entities"
+        xmlns:conv="clr-namespace:KPLN_ExtraFilter.Forms.Converters"
         mc:Ignorable="d"
-        Title="KPLN: Фильтр деревом"
+        Title="KPLN: Дерево элементов"
         WindowStartupLocation="CenterOwner"
+        SizeToContent="Height"
         Width="1000"
-        Height="750"
+        Height="850"
+        MaxHeight="950"
         FontFamily="Consolas, 'Segoe UI', monospace"
         Background="#2B2F38">
 
@@ -17,9 +21,11 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
         </ResourceDictionary>
     </Window.Resources>
 
+    
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -30,86 +36,329 @@
         <TreeView 
             Grid.Column="0" 
             Margin="5"
-                ItemsSource="{Binding Elements}">
-            <TreeView.ItemTemplate>
+            ItemsSource="{Binding CurrentSelectionByModelM.TreeElemEntities}">
+            <TreeView.Resources>
                 <HierarchicalDataTemplate 
-                    ItemsSource="{Binding Children}">
-                    <StackPanel Orientation="Horizontal">
+                    DataType="{x:Type local2:TreeElementEntity}"
+                    ItemsSource="{Binding TEE_ChildrenColl}">
+                    <StackPanel 
+                        Orientation="Horizontal" 
+                        VerticalAlignment="Center">
                         <CheckBox 
-                            IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                            IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                            Margin="3,0,5,0"/>
                         <TextBlock 
-                            Text="{Binding Name}" />
-                        <TextBlock 
-                            Text=" " />
-                        <TextBlock 
-                            Text="{Binding Count}" 
-                            Foreground="Gray" />
+                            VerticalAlignment="Center">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0}{1}">
+                                    <Binding Path="TEE_Name"/>
+                                    <Binding Path="TEE_ChildrensCount"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
                     </StackPanel>
                 </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
+            </TreeView.Resources>
         </TreeView>
 
         <StackPanel
             Grid.Column="1">
+            <StackPanel
+                DataContext="{Binding CurrentSelectionByModelM}">
             
-            <Border
-                Style="{StaticResource RCTG}">
-                <StackPanel>
-                    <TextBlock 
-                        Text="Откуда выводим?" 
-                        Style="{StaticResource TXT}"/>
+                <Border
+                    Style="{StaticResource RCTG}">
                     <StackPanel>
-                        <RadioButton 
-                            GroupName="ViewFilter"
-                            Content="Элементы на виде" 
-                            Style="{StaticResource RB}"
-                            IsChecked="{Binding SelectInView}" />
-                        <RadioButton 
-                            GroupName="ViewFilter"
-                            Content="Элементы в модели" 
-                            Style="{StaticResource RB}"
-                            IsChecked="{Binding SelectAll}" />
-                        <CheckBox 
-                            Content="Только с 3D-геометрией" 
-                            Style="{StaticResource CHB}"
-                            IsChecked="{Binding Only3D}" />
+                        <TextBlock 
+                            Text="Откуда анализ?" 
+                            Style="{StaticResource TXT}"/>
+                        <StackPanel>
+            
+                            <RadioButton 
+                                GroupName="ViewFilter"
+                                Content="Элементы на виде" 
+                                Style="{StaticResource RB}"
+                                IsChecked="{Binding Where_ViewDocFilterMode, 
+                                    Converter={StaticResource EnumToBooleanConverter}, 
+                                    ConverterParameter=CurrentView}" />
+            
+                            <RadioButton 
+                                GroupName="ViewFilter"
+                                Content="Элементы в модели" 
+                                Style="{StaticResource RB}"
+                                IsChecked="{Binding Where_ViewDocFilterMode, 
+                                    Converter={StaticResource EnumToBooleanConverter}, 
+                                    ConverterParameter=Model}" />
+            
+                            <CheckBox 
+                                Content="Только с 3D-геометрией" 
+                                Style="{StaticResource CHB}"
+                                IsChecked="{Binding Where_Only3D}" />
+
+                            <!-- Фильтр по РН -->
+                            <CheckBox
+                                Content="Только этого рабочего набора:"
+                                Style="{StaticResource CHB}"
+                                IsChecked="{Binding Where_Workset}"
+                                Checked="CHB_Where_Workset_Checked"/>
+                            <ComboBox
+                                Name="CB_FilterWS"
+                                Style="{StaticResource CBX}"
+                                ItemsSource="{Binding FilteredWSView}"
+                                SelectedItem="{Binding Where_SelectedWorkset}"
+                                HorizontalAlignment="Stretch"
+                                IsEditable="True"
+                                IsEnabled="{Binding Where_Workset}"
+                                IsTextSearchEnabled="False"
+                                StaysOpenOnEdit="True"
+                                Text="{Binding SearchWSText, UpdateSourceTrigger=PropertyChanged}"
+                                TextSearch.TextPath="RevitWSName">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock 
+                                            Text="{Binding RevitWSName}"
+                                            Style="{StaticResource TXT}"
+                                            Foreground="Black"
+                                            FontSize="12"
+                                            Margin="5,0,0,5"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <!-- Фильтр по категориям -->
+                            <Border
+                                Style="{StaticResource RCTG}">
+                                <StackPanel>
+                                    <CheckBox
+                                        Content="Только этой/-их категории/-ий:"
+                                        Style="{StaticResource CHB}"
+                                        IsChecked="{Binding Where_Category}" />
+                                    <ItemsControl
+                                        x:Name="IC_Categories"
+                                        ItemsSource="{Binding Where_SelectedCategories}"
+                                        Margin="0,5,0,0"
+                                        IsEnabled="{Binding Where_Category}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
+                                                    <!-- ComboBox категорий -->
+                                                    <ComboBox
+                                                        Width="180"
+                                                        Style="{StaticResource CBX}"
+                                                        ItemsSource="{Binding CatM_FilteredCategoryView}"
+                                                        SelectedItem="{Binding CatM_SelectedCategory}"
+                                                        HorizontalAlignment="Stretch"
+                                                        IsEditable="True"
+                                                        IsEnabled="{Binding Where_Category}"
+                                                        IsTextSearchEnabled="False"
+                                                        StaysOpenOnEdit="True"
+                                                        Text="{Binding SearchCategoryText, UpdateSourceTrigger=PropertyChanged}"
+                                                        TextSearch.TextPath="RevitCatName">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock 
+                                                                    Text="{Binding RevitCatName}"
+                                                                    Style="{StaticResource TXT}"
+                                                                    Foreground="Black"
+                                                                    FontSize="12"
+                                                                    Margin="5,0,0,5"/>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+
+                                                    </ComboBox>
+                                                    <!-- "-" -->
+                                                    <Button
+                                                        Content="-"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="5,0,0,0"
+                                                        Command="{Binding 
+                                                            DataContext.RemoveCategoryCmd,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                                    <!-- "+" на последнем элементе -->
+                                                    <Button
+                                                        Content="+"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="5,0,0,0"
+                                                        Command="{Binding 
+                                                            DataContext.AddCategoryCmd,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+
+                        <!-- Исключения -->
+                        <Border 
+                            Style="{StaticResource RCTG}">
+                            <StackPanel>
+                                <TextBlock 
+                                    Style="{StaticResource TXT}" 
+                                    Text="Исключения?" />
+                                <CheckBox 
+                                    Style="{StaticResource CHB}" 
+                                    IsChecked="{Binding Belong_Group, 
+                                        UpdateSourceTrigger=PropertyChanged}" 
+                                    Content="Эл-ты групп" />
+                            </StackPanel>
+                        </Border>
+                        
+                        <!--Статистика-->
+                        <TextBlock 
+                            Text="{Binding Where_UserSelCount}" 
+                            Style="{StaticResource TXT}"
+                            FontSize="12"/>
                     </StackPanel>
-                </StackPanel>
-            </Border>
-            
-            <Border 
-                Style="{StaticResource RCTG}">
-                <StackPanel>
-                    <TextBlock 
-                        Text="Как выделить?" 
-                        Style="{StaticResource TXT}"/>
-                    <RadioButton 
-                        GroupName="HowSelect"
-                        Style="{StaticResource RB}"
-                        IsChecked="{Binding HowAddCurrent}"
-                        Content="Добавить к текущей" />
-                    <RadioButton 
-                        GroupName="HowSelect"
-                        Style="{StaticResource RB}"
-                        IsChecked="{Binding HowCreateNew}"
-                        Content="Создать новую" />
-                </StackPanel>
-            </Border>
+                </Border>
 
 
-            <!-- Кнопка -->
-            <Button 
-                Content="Сформируй дерево" 
-                Style="{StaticResource BTN}"
-                Command="{Binding FilterMoreCommand}" 
-                Height="30"/>
-            
-            
-            <!-- Кол-во выбранных элементов -->
-            <TextBlock 
-                Text="{Binding SelectedCount, StringFormat={}{0} elements checked in current selection}" 
-                Style="{StaticResource TXT}"
-                FontSize="12"/>
+                <Border
+                    Style="{StaticResource RCTG}">
+                    <StackPanel>
+                        <TextBlock 
+                            Text="Дополнительно группировать?" 
+                            Style="{StaticResource TXT}"/>
+                        <StackPanel>
+
+                            <!-- Группировка по параметрам -->
+                            <Border
+                                Style="{StaticResource RCTG}">
+                                <StackPanel>
+                                    <CheckBox
+                                        Style="{StaticResource CHB}"
+                                        IsChecked="{Binding What_ParameterData}">
+                                        <TextBlock 
+                                            Text="Одинакового значения пар-ра" 
+                                            TextWrapping="Wrap" />
+                                    </CheckBox>
+                                    <ItemsControl
+                                        x:Name="IC_Parameters"
+                                        ItemsSource="{Binding What_SelectedParameters}"
+                                        Margin="0,5,0,0"
+                                        IsEnabled="{Binding What_ParameterData}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
+                                                    <!-- ComboBox категорий -->
+                                                    <ComboBox
+                                                        Width="180"
+                                                        Style="{StaticResource CBX}"
+                                                        ItemsSource="{Binding ParamM_FilteredCategoryView}"
+                                                        SelectedItem="{Binding ParamM_SelectedParameter}"
+                                                        HorizontalAlignment="Stretch"
+                                                        IsEditable="True"
+                                                        IsEnabled="{Binding What_ParameterData}"
+                                                        IsTextSearchEnabled="False"
+                                                        StaysOpenOnEdit="True"
+                                                        Text="{Binding SearchParamText, UpdateSourceTrigger=PropertyChanged}"
+                                                        TextSearch.TextPath="RevitParamName">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock 
+                                                                    Text="{Binding RevitParamName}"
+                                                                    Style="{StaticResource TXT}"
+                                                                    Foreground="Black"
+                                                                    FontSize="12"
+                                                                    Margin="5,0,0,5"/>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+
+                                                    </ComboBox>
+                                                    <!-- "-" -->
+                                                    <Button
+                                                        Content="-"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="5,0,0,0"
+                                                        Command="{Binding 
+                                                            DataContext.RemoveParameterCmd,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                                    <!-- "+" на последнем элементе -->
+                                                    <Button
+                                                        Content="+"
+                                                        Width="28"
+                                                        Height="28"
+                                                        Margin="5,0,0,0"
+                                                        Command="{Binding 
+                                                            DataContext.AddParameterCmd,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border 
+                    Style="{StaticResource RCTG}">
+                    <StackPanel>
+                        <TextBlock 
+                            Text="Как выделить?" 
+                            Style="{StaticResource TXT}"/>
+                        <RadioButton 
+                            GroupName="HowSelect"
+                            Name="CreateNew"
+                            Style="{StaticResource RB}"
+                            IsChecked="{Binding How_SelectFilterMode, 
+                                Converter={StaticResource EnumToBooleanConverter}, 
+                                ConverterParameter=CreateNew}"
+                            Content="Создать новую" />
+                        <RadioButton 
+                            GroupName="HowSelect"
+                            Name="AddToCurrent"
+                            Style="{StaticResource RB}"
+                            IsChecked="{Binding How_SelectFilterMode, 
+                                Converter={StaticResource EnumToBooleanConverter}, 
+                                ConverterParameter=AddCurrent}"
+                            Content="Добавить к текущей" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        
+            <!-- Кнопки -->
+            <StackPanel>
+
+                 <Button 
+                     Style="{StaticResource BTN}"
+                     Content="Выбрать в модели" 
+                     Command="{Binding ModelSelectionCmd}"  
+                     ToolTip="Выделяет элементы из дерева выбора в модели, в зависимости от способа выбора (блок 'Как выделить?')"
+                     IsEnabled="{Binding CurrentSelectionByModelM.CanRun}" 
+                     Height="30"/>
+                
+                <Button 
+                    Style="{StaticResource BTN}"
+                    Content="Сбросить настройки окна" 
+                    Command="{Binding DropUserParamCmd}"  
+                    ToolTip="Сбросить конфигурацию запуска до значений по умолчанию"
+                    Height="30"/>
+
+                <Button 
+                    Style="{StaticResource BTN}"
+                    Content="Обновить элементы дереве" 
+                    Command="{Binding UpdateTreeElemsCmd}"  
+                    ToolTip="Пересобирает элементы в дереве. Полезно, если была группировка по значению параметра, и это значение изменили с момента создания дерева"
+                    Height="30"/>
+
+
+                <!-- Текстовые пометки -->
+                 <TextBlock
+                     Style="{StaticResource TXT}"
+                     FontSize="10"
+                     Foreground="Red"
+                     MinHeight="50"
+                     Text="{Binding CurrentSelectionByModelM.UserHelp}"/>
+            </StackPanel>
         </StackPanel>
     </Grid>
 </Window>

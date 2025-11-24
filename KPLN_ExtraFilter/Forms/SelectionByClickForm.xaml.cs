@@ -31,13 +31,10 @@ namespace KPLN_ExtraFilter.Forms
         {
             _externalEvent = externalEvent;
             _handler = handler;
-            _handler.ViewModel = CurrentSelectionByClickVM;
+            _handler.CurrentSelByClickVM = CurrentSelectionByClickVM;
         }
 
-        public void RaiseUpdate()
-        {
-            _externalEvent?.Raise();
-        }
+        public void RaiseUpdate() => _externalEvent?.Raise();
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
@@ -46,5 +43,7 @@ namespace KPLN_ExtraFilter.Forms
             else if (e.Key == Key.Enter)
                 CurrentSelectionByClickVM.RunSelection();
         }
+
+        private void CHB_WhatParamData_Checked(object sender, RoutedEventArgs e) => this.CB_FilterParams.Focus();
     }
 }

@@ -3,18 +3,12 @@ using KPLN_ExtraFilter.ExecutableCommand;
 using KPLN_ExtraFilter.Forms.Commands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_ConfigWorker;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms.ViewModels
 {
-    public class SelectionByClickVM : INotifyPropertyChanged
+    public class SelectionByClickVM
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        private SelectionByClickM _currentSelectionByClickM;
-
         public SelectionByClickVM(Document doc)
         {
             // Чтение конфигурации последнего запуска
@@ -30,15 +24,7 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         }
 
 
-        public SelectionByClickM CurrentSelectionByClickM
-        {
-            get => _currentSelectionByClickM;
-            set
-            {
-                _currentSelectionByClickM = value;
-                NotifyPropertyChanged();
-            }
-        }
+        public SelectionByClickM CurrentSelectionByClickM { get; set; }
 
         /// <summary>
         /// Комманда: Запуск выбора
@@ -59,8 +45,5 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         }
 
         public void DropSelection() => CurrentSelectionByClickM.DropToDefault();
-
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

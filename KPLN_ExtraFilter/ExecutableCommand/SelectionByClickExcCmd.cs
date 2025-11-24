@@ -14,16 +14,16 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 {
     internal class SelectionByClickExcCmd : IExecutableCommand
     {
-        private readonly SelectionByClickM _soEntity;
+        private readonly SelectionByClickM _entity;
 
         /// <summary>
         /// Итоговая коллекция, которую нужно выделить в модели
         /// </summary>
         private readonly List<ElementId> _resultColl = new List<ElementId>();
 
-        public SelectionByClickExcCmd(SelectionByClickM soEntity)
+        public SelectionByClickExcCmd(SelectionByClickM entity)
         {
-            _soEntity = soEntity;
+            _entity = entity;
         }
 
         public Result Execute(UIApplication app)
@@ -35,7 +35,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
             Document doc = uiDoc.Document;
 
             // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SelectionByClickExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SelectionByModelExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             try
             {
                 // Поиск элементов комбинированием фильтров
@@ -43,9 +43,9 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
                 #region Определяю коллекцию для анализа
                 FilteredElementCollector mainFIC = null;
-                if (_soEntity.Where_Model)
+                if (_entity.Where_Model)
                     mainFIC = new FilteredElementCollector(doc).WhereElementIsNotElementType();
-                else if (_soEntity.Where_CurrentView)
+                else if (_entity.Where_CurrentView)
                 {
                     View currentView = doc.ActiveView
                         ?? throw new System.Exception("Отправь разработчику: Не удалось определить открытый вид");
@@ -56,41 +56,41 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
                 #region Генерирую фильтры
                 // Поиск одинаковых категорий
-                if (_soEntity.What_SameCategory)
+                if (_entity.What_SameCategory)
                 {
-                    ElementCategoryFilter sameCatFilter = SelectionSearchFilter.SearchByCategory(_soEntity.UserSelElem);
+                    ElementCategoryFilter sameCatFilter = SelectionSearchFilter.SearchByCategory(_entity.UserSelElem);
                     filters.Add(sameCatFilter);
                 }
 
                 // Поиск одинаковых семейств
-                if (_soEntity.What_SameFamily)
+                if (_entity.What_SameFamily)
                 {
                     ElementParameterFilter sameFamFilter = SelectionSearchFilter
-                        .SearchByElemBuiltInParam(_soEntity.UserSelElem, BuiltInParameter.ELEM_FAMILY_PARAM);
+                        .SearchByElemBuiltInParam(_entity.UserSelElem, BuiltInParameter.ELEM_FAMILY_PARAM);
 
                     filters.Add(sameFamFilter);
                 }
 
                 // Поиск одинаковых типов
-                if (_soEntity.What_SameType)
+                if (_entity.What_SameType)
                 {
                     ElementParameterFilter sameTypeFilter = SelectionSearchFilter
-                        .SearchByElemBuiltInParam(_soEntity.UserSelElem, BuiltInParameter.ELEM_TYPE_PARAM);
+                        .SearchByElemBuiltInParam(_entity.UserSelElem, BuiltInParameter.ELEM_TYPE_PARAM);
 
                     filters.Add(sameTypeFilter);
                 }
 
                 // Поиск по рабочему набору
-                if (_soEntity.What_Workset)
+                if (_entity.What_Workset)
                 {
-                    ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByWorkset(_soEntity.UserSelElem);
+                    ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByElemWorkset(_entity.UserSelElem);
                     filters.Add(sameTypeFilter);
                 }
 
                 // Поиск по значению параметра
-                if (_soEntity.What_ParameterData && _soEntity.What_SelectedParam != null)
+                if (_entity.What_ParameterData && _entity.What_SelectedParam != null)
                 {
-                    ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByParamName(doc, _soEntity.UserSelElem, _soEntity.What_SelectedParam.CurrentParamName);
+                    ElementFilter sameTypeFilter = SelectionSearchFilter.SearchByParamName(doc, _entity.UserSelElem, _entity.What_SelectedParam.RevitParamName);
                     filters.Add(sameTypeFilter);
                 }
 
@@ -98,7 +98,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
                 LogicalAndFilter combinedFilter = new LogicalAndFilter(filters);
                 // Исключаю элементы в группах
-                if (_soEntity.Belong_Group)
+                if (_entity.Belong_Group)
                     _resultColl
                         .AddRange(mainFIC.WherePasses(combinedFilter).Where(el => el.GroupId.IntegerValue == -1)
                         .Select(el => el.Id));

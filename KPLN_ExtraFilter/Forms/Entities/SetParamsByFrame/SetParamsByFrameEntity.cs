@@ -33,12 +33,12 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
         {
             // Если такой пар-р есть в общей коллекции, значит добавляю его в форму. Иначе - нет
             IEnumerable<MainItem> userSelectedViewModels = mainItems
-                .Where(entity => AllParamEntities.Count(ent => ent.CurrentParamIntId == entity.UserSelectedParamEntity.CurrentParamIntId) == 1)
+                .Where(entity => AllParamEntities.Count(ent => ent.RevitParamIntId == entity.UserSelectedParamEntity.RevitParamIntId) == 1)
                 .Select(entity =>
                 {
-                    entity.UserSelectedParamEntity.CurrentParamName = AllParamEntities
-                    .First(ent => ent.CurrentParamIntId == entity.UserSelectedParamEntity.CurrentParamIntId)
-                    .CurrentParamName;
+                    entity.UserSelectedParamEntity.RevitParamName = AllParamEntities
+                    .First(ent => ent.RevitParamIntId == entity.UserSelectedParamEntity.RevitParamIntId)
+                    .RevitParamName;
 
                     return entity;
                 });

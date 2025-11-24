@@ -47,7 +47,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 {
                     foreach (MainItem mainItem in _currentParamEntities)
                     {
-                        string paramName = mainItem.UserSelectedParamEntity.CurrentParamName;
+                        string paramName = mainItem.UserSelectedParamEntity.RevitParamName;
                         string newValue = mainItem.UserInputParamValue;
 
                         Parameter currentParam = elem.LookupParameter(paramName)

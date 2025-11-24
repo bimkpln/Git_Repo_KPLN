@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
@@ -22,10 +23,28 @@ namespace KPLN_ExtraFilter
         {
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
-
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Выбор элементов");
 
+            // Отдельная кнопка
+            AddPushButtonDataInPanel(
+                string.Join("\n", SelectionByModelExtCmd.PluginName.Split(' ')),
+                string.Join("\n", SelectionByModelExtCmd.PluginName.Split(' ')),
+                "Генерация древовидной структуры из элементов модели",
+                string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(SelectionByModelExtCmd).FullName,
+                panel,
+                "KPLN_ExtraFilter.Imagens.TreeModelSmall.png",
+                "KPLN_ExtraFilter.Imagens.TreeModelLarge.png",
+                "http://moodle.stinproject.local"
+            );
+
+
+            // Кнопки в стэк
             PushButtonData btnSelectByClick = new PushButtonData(
                 SelectionByClickExtCmd.PluginName,
                 SelectionByClickExtCmd.PluginName,
@@ -37,6 +56,9 @@ namespace KPLN_ExtraFilter
                 ToolTip = "Для выбора элементов в проекте, которые похожи/связаны с выбранным.",
                 LongDescription = "Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов" +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+#if Debug2020 || Revit2020
+                AvailabilityClassName = typeof(ButtonAvailable).FullName,
+#endif
             };
             btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
 
@@ -74,6 +96,29 @@ namespace KPLN_ExtraFilter
             }
 
             return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Метод для добавления отдельной кнопки в панель
+        /// </summary>
+        /// <param name="name">Внутреннее имя кнопки</param>
+        /// <param name="text">Имя, видимое пользователю</param>
+        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
+        /// <param name="className">Имя класса, содержащего реализацию команды</param>
+        /// <param name="panel">Панель, в которую добавляем кнопку</param>
+        /// <param name="imageName">Имя иконки, как ресурса</param>
+        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
+        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string bigImageName, string contextualHelp)
+        {
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
+            PushButton button = panel.AddItem(data) as PushButton;
+            button.ToolTip = shortDescription;
+            button.LongDescription = longDescription;
+            button.ItemText = text;
+            button.Image = PngImageSource(imageName);
+            button.LargeImage = PngImageSource(bigImageName);
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
         }
 
         /// <summary>

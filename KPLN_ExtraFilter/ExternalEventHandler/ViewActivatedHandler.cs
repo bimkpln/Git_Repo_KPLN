@@ -6,18 +6,16 @@ using System.Linq;
 
 namespace KPLN_ExtraFilter.ExternalEventHandler
 {
-    public sealed class SelectionChangedHandler : IExternalEventHandler
+    public sealed class ViewActivatedHandler : IExternalEventHandler
     {
-        public SelectionByClickVM CurrentSelByClickVM { get; set; }
-        
         public SelectionByModelVM CurrentSelByModelVM { get; set; }
-
+        
         public void Execute(UIApplication app)
         {
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null)
                 return;
-            
+
             Document doc = uidoc.Document;
 
             // Пользовательский элемент
@@ -25,18 +23,14 @@ namespace KPLN_ExtraFilter.ExternalEventHandler
             
             // Основные данные для поиска
             IEnumerable<Element> userSelElems = selectedIds.Select(id => doc.GetElement(id));
-            if (CurrentSelByClickVM != null)
-            {
-                CurrentSelByClickVM.CurrentSelectionByClickM.UserSelDoc = doc;
-                CurrentSelByClickVM.CurrentSelectionByClickM.UserSelElems = userSelElems;
-            }
 
             if (CurrentSelByModelVM != null)
             {
-                CurrentSelByModelVM.CurrentSelectionByModelM.UserSelElems = userSelElems;
+                CurrentSelByModelVM.CurrentSelectionByModelM.Doc = doc;
+                CurrentSelByModelVM.CurrentSelectionByModelM.DocActiveView = doc.ActiveView;
             }
         }
 
-        public string GetName() => "SelectionChangedHandler";
+        public string GetName() => "ViewActivatedHandler";
     }
 }

@@ -61,17 +61,21 @@
                         Content="Одного рабочего набора" />
                     <CheckBox
                         Style="{StaticResource CHB}"
-                        IsChecked="{Binding What_ParameterData}">
+                        IsChecked="{Binding What_ParameterData}"
+                        Checked="CHB_WhatParamData_Checked">
                         <TextBlock 
                             Text="Одинакового значения пар-ра" 
                             TextWrapping="Wrap" />
                     </CheckBox>
                     <ComboBox
+                        Name="CB_FilterParams"
                         Style="{StaticResource CBX}"
-                        ItemsSource="{Binding SelectedElemParams}"
+                        ItemsSource="{Binding FilteredParamsView}"
                         SelectedItem="{Binding What_SelectedParam}"
                         HorizontalAlignment="Stretch"
-                        IsEnabled="{Binding What_ParameterData}">
+                        IsEditable="True"
+                        IsEnabled="{Binding What_ParameterData}"
+                        TextSearch.TextPath="CurrentParamName">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock 
@@ -140,7 +144,7 @@
                     x:Name="RunBtn" 
                     Width="150" 
                     Style="{StaticResource BTN}" 
-                    Content="Выбрать!" 
+                    Content="Выбрать" 
                     IsEnabled="{Binding CurrentSelectionByClickM.CanRun}" 
                     Command="{Binding RunSelectionCmd}" 
                     CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
@@ -149,9 +153,9 @@
                     x:Name="CleareConfigBtn" 
                     Width="150"
                     Style="{StaticResource BTN}" 
-                    Content="Сбросить!" 
+                    Content="Сбросить" 
                     Command="{Binding DropSelectionCmd}"  
-                    ToolTip="Сбросить конфигурацию последнего запука" />
+                    ToolTip="Сбросить конфигурацию запуска до значений по умолчанию" />
             </DockPanel>
         </StackPanel>
     </Grid>

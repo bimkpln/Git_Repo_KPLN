@@ -130,4 +130,10 @@
   <data name="FrameSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\FrameSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="TreeModelLarge" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\TreeModelLarge.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="TreeModelSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\TreeModelSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
 </root>

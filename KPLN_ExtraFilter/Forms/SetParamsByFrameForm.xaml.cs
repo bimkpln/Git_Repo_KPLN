@@ -18,9 +18,9 @@ namespace KPLN_ExtraFilter.Forms
             InitializeComponent();
 
             if (lastRunConfigObj != null && lastRunConfigObj is IEnumerable<MainItem> mainEntites)
-                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.CurrentParamName), mainEntites);
+                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.RevitParamName), mainEntites);
             else
-                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.CurrentParamName));
+                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.RevitParamName));
 
             DataContext = CurrentSetParamsByFrameEntity;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
@@ -71,7 +71,7 @@ namespace KPLN_ExtraFilter.Forms
                 return;
 
             UserDialog ud = new UserDialog("ВНИМАНИЕ",
-                $"Сейчас будут удален параметр \"{entity.UserSelectedParamEntity.CurrentParamName}\". Продолжить?");
+                $"Сейчас будут удален параметр \"{entity.UserSelectedParamEntity.RevitParamName}\". Продолжить?");
             
             
             if((bool)ud.ShowDialog())
