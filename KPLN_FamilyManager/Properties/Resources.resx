@@ -118,10 +118,31 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="pushPin" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\pushPin.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="bim_caution" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_caution.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="temp" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\temp.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="bim_error" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_error.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bim_ignore" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_ignore.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bim_new" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_new.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bim_ok" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_ok.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="bim_update" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\bim_update.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="familyManagerBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\familyManagerBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="favorites" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\favorites.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="nongroup" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Imagens\FamilyManager\nongroup.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

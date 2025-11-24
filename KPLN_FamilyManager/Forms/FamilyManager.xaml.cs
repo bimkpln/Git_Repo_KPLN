@@ -556,7 +556,6 @@ namespace KPLN_FamilyManager.Forms
         private const string SEARCH_WATERMARK = "Поиск по названию и параметрам";
         private bool _isWatermarkActive = false;
         private bool _isApplyingWatermark = false;
-        private bool _depsTried = false;
         private bool _depsLoaded = false;
         private Dictionary<int, string> _searchIndex = new Dictionary<int, string>();
         private DispatcherTimer _searchDebounceTimer;
@@ -659,7 +658,6 @@ namespace KPLN_FamilyManager.Forms
         // Список отделов. Сброс состояния
         private void ResetDeptCacheAndUi()
         {
-            _depsTried = false;
             _depsLoaded = false;
 
             if (CmbDepartment != null)

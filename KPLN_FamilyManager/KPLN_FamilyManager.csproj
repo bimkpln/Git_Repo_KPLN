@@ -20,9 +20,8 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_FamilyManager\Debug\2020\</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
+    <OutputPath>C:\KPLN_Debug\KPLN_FamilyManager\Debug\2020\</OutputPath>
+    <DefineConstants>Debug2020</DefineConstants>
     <ErrorReport>none</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
@@ -32,9 +31,8 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_FamilyManager\Debug\2023\</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
+    <OutputPath>C:\KPLN_Debug\KPLN_FamilyManager\Debug\2023\</OutputPath>
+    <DefineConstants>Debug2023</DefineConstants>
     <ErrorReport>none</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
@@ -43,16 +41,16 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\2020\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\FamilyManager\2020\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
     <ErrorReport>none</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
-    <OutputPath>bin\2023\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\FamilyManager\2023\</OutputPath>
+    <DefineConstants>Revit2023</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>none</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -63,12 +61,15 @@
   <ItemGroup>
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\obj\Revit2022\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -76,6 +77,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data.SQLite, Version=1.0.118.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\lib\net46\System.Data.SQLite.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Transactions" />
@@ -184,8 +186,6 @@
     <EmbeddedResource Include="Imagens\FamilyManager\nongroup.png" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\pushPin.png" />
-    <EmbeddedResource Include="Imagens\temp.png" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
