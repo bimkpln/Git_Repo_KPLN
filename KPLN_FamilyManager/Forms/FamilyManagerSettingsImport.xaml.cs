@@ -1,10 +1,10 @@
 ﻿using System.Windows;
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     public partial class FamilyManagerSettingsImport : Window
     {
-        private bool _updating; 
+        private bool _updating;
 
         public FamilyManagerSettingsImport()
         {

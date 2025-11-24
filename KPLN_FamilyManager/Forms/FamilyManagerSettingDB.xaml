@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Tools.Forms.FamilyManagerSettingDB"
+﻿<Window x:Class="KPLN_FamilyManager.Forms.FamilyManagerSettingDB"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Менеджер семейств. Панель администратора" Height="230" Width="420"

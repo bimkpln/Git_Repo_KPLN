@@ -5,7 +5,9 @@ using Autodesk.Revit.UI.Events;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+
 using System.Data.SQLite;
+
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -19,6 +21,8 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Xml.Linq;
+
 using Action = System.Action;
 using Application = System.Windows.Application;
 using Button = System.Windows.Controls.Button;
@@ -28,7 +32,7 @@ using TextBox = System.Windows.Controls.TextBox;
 using Window = System.Windows.Window;
 
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     // ExternalEventsHost
     internal static class ExternalEventsHost
@@ -186,7 +190,7 @@ namespace KPLN_Tools.Forms
                     if (failedNames.Count > 0)
                     {
                         sb.AppendLine("Не добавлены:");
-                        foreach (var n in failedNames) 
+                        foreach (var n in failedNames)
                             sb.AppendLine(EllipsisEnd(n, 37));
                     }
                     TaskDialog.Show("Загрузка семейств", sb.ToString());
@@ -252,20 +256,20 @@ namespace KPLN_Tools.Forms
 
     internal class ReloadFamilyLoadOptions : IFamilyLoadOptions
     {
-        private const bool OVERWRITE_PARAMS = true; 
+        private const bool OVERWRITE_PARAMS = true;
 
         public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
         {
             overwriteParameterValues = OVERWRITE_PARAMS;
-            return true; 
+            return true;
         }
 
         public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse,
             out FamilySource source, out bool overwriteParameterValues)
         {
-            source = FamilySource.Family; 
+            source = FamilySource.Family;
             overwriteParameterValues = OVERWRITE_PARAMS;
-            return true; 
+            return true;
         }
     }
 
@@ -293,7 +297,7 @@ namespace KPLN_Tools.Forms
             {
                 ErrorLog.Add(new ErrorEntry { Id = id, FullPath = fullPath, Message = message });
             }
-            catch {}
+            catch { }
         }
 
         public void Execute(UIApplication app)
@@ -347,7 +351,7 @@ namespace KPLN_Tools.Forms
                                 lastId = id;
 
                                 string status = null;
-                                string full = null; 
+                                string full = null;
                                 string dep = null;
 
                                 try
@@ -364,28 +368,28 @@ namespace KPLN_Tools.Forms
                                     if (string.Equals(status, "ABSENT", StringComparison.OrdinalIgnoreCase) ||
                                         string.Equals(status, "ERROR", StringComparison.OrdinalIgnoreCase) ||
                                         string.Equals(status, "IGNORE", StringComparison.OrdinalIgnoreCase))
-                                    { 
+                                    {
                                         Skipped++;
-                                        continue; 
+                                        continue;
                                     }
 
-                                    if (string.IsNullOrWhiteSpace(dep)) 
-                                    { 
-                                        Skipped++; 
-                                        continue; 
+                                    if (string.IsNullOrWhiteSpace(dep))
+                                    {
+                                        Skipped++;
+                                        continue;
                                     }
                                     if (string.IsNullOrWhiteSpace(full) || !File.Exists(full))
-                                    { 
+                                    {
                                         Errors++;
                                         AddError(id, full, "Файл семейства не найден по пути FULLPATH.");
-                                        continue; 
+                                        continue;
                                     }
 
                                     string json = FamilyManager.ReadImportInfoFromFamily(app, full, dep);
-                                    if (string.IsNullOrWhiteSpace(json)) 
-                                    { 
-                                        Skipped++; 
-                                        continue; 
+                                    if (string.IsNullOrWhiteSpace(json))
+                                    {
+                                        Skipped++;
+                                        continue;
                                     }
 
                                     pIdUpd.Value = id;
@@ -511,7 +515,7 @@ namespace KPLN_Tools.Forms
             => string.Equals(dep?.Trim(), BIM_ADMIN, StringComparison.OrdinalIgnoreCase);
         private static string DepForDb(string dep)
             => IsBimAdmin(dep) ? BIM : (dep ?? "").Trim();
-     
+
         private StackPanel _bimRootPanel;
         private Dictionary<string, bool> _bimExpandState = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private double _bimScrollOffset = 0;
@@ -543,7 +547,7 @@ namespace KPLN_Tools.Forms
         private Dictionary<int, string> _projectsById = new Dictionary<int, string>();
         private Dictionary<string, int> _projectIdByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly Dictionary<string, HashSet<int>> _selectedByDept  = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, HashSet<int>> _selectedByDept = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
         private string GetDeptKey() => DepForDb(_universalDepartment ?? GetCurrentDepartment()) ?? "";
 
         private FrameworkElement _scenarioContent;
@@ -557,7 +561,7 @@ namespace KPLN_Tools.Forms
         private Dictionary<int, string> _searchIndex = new Dictionary<int, string>();
         private DispatcherTimer _searchDebounceTimer;
 
-        private Button _btnOpenInRevit;   
+        private Button _btnOpenInRevit;
         private Button _btnLoadIntoProject;
 
         public void SetUIApplication(UIApplication uiapp)
@@ -655,7 +659,7 @@ namespace KPLN_Tools.Forms
         // Список отделов. Сброс состояния
         private void ResetDeptCacheAndUi()
         {
-            _depsTried = false;    
+            _depsTried = false;
             _depsLoaded = false;
 
             if (CmbDepartment != null)
@@ -690,7 +694,7 @@ namespace KPLN_Tools.Forms
 
             CmbDepartment.IsEnabled = string.Equals(_currentSubDep, BIM, StringComparison.OrdinalIgnoreCase);
             BtnReload.IsEnabled = !isError;
-            BtnSettings.IsEnabled = IsBimAdmin(dep); 
+            BtnSettings.IsEnabled = IsBimAdmin(dep);
         }
 
         // Данные БД. Семейства.
@@ -769,7 +773,7 @@ namespace KPLN_Tools.Forms
                                 Project = rd.IsDBNull(5) ? 0 : rd.GetInt32(5),
                                 Stage = rd.IsDBNull(6) ? 0 : rd.GetInt32(6),
                                 Departament = rd.IsDBNull(7) ? null : rd.GetString(7),
-                                ImportInfo = rd.IsDBNull(8) ? null : rd.GetString(8),                              
+                                ImportInfo = rd.IsDBNull(8) ? null : rd.GetString(8),
                                 ImageBytes = rd.IsDBNull(9) ? null : (byte[])rd[9],
                             };
                             result.Add(rec);
@@ -851,7 +855,7 @@ namespace KPLN_Tools.Forms
             if (string.IsNullOrWhiteSpace(json)) return result;
 
             string s = json.Trim();
-            if (!s.StartsWith("[")) return result; 
+            if (!s.StartsWith("[")) return result;
 
             try
             {
@@ -871,7 +875,7 @@ namespace KPLN_Tools.Forms
                         result[subId] = name;
                 }
             }
-            catch{}
+            catch { }
             return result;
         }
 
@@ -932,7 +936,7 @@ namespace KPLN_Tools.Forms
             LoadFavoritesFromFile();
             StartFavoritesWatcher();
 
-            _suppressAutoReload = false; 
+            _suppressAutoReload = false;
             ReloadData();
         }
 
@@ -1151,12 +1155,12 @@ namespace KPLN_Tools.Forms
                         Margin = new Thickness(0, 0, 0, 8),
                         HorizontalAlignment = HorizontalAlignment.Stretch,
                         VerticalAlignment = VerticalAlignment.Top,
-                        IsEditable = false 
+                        IsEditable = false
                     };
                     BindStageCombo_DefaultId1(_cbStage);
                     _cbStage.SelectionChanged += (s, e) =>
                     {
-                        ClearCurrentDeptSelection(); 
+                        ClearCurrentDeptSelection();
                         RefreshScenario();
                         UpdateSelectionButtonsState();
                     };
@@ -1302,10 +1306,10 @@ namespace KPLN_Tools.Forms
                 var panel = new StackPanel { Margin = new Thickness(0) };
                 scroll.Content = panel;
 
-                _universalRootPanel = panel;  
-                _universalDepartment = dep;    
+                _universalRootPanel = panel;
+                _universalDepartment = dep;
 
-                RebuildUniversalContent();  
+                RebuildUniversalContent();
                 return scroll;
             }
         }
@@ -1470,7 +1474,7 @@ namespace KPLN_Tools.Forms
 
             while (true)
             {
-                var win = new KPLN_Tools.Forms.FamilyManagerEditBIM(idText)
+                var win = new KPLN_FamilyManager.Forms.FamilyManagerEditBIM(idText)
                 {
                     Owner = owner,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -1594,7 +1598,7 @@ namespace KPLN_Tools.Forms
 
             while (true)
             {
-                var win = new KPLN_Tools.Forms.FamilyManagerEditUser(idText)
+                var win = new KPLN_FamilyManager.Forms.FamilyManagerEditUser(idText)
                 {
                     Owner = owner,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -1641,7 +1645,7 @@ namespace KPLN_Tools.Forms
                     }
 
                     break;
-                }            
+                }
             }
         }
 
@@ -1939,7 +1943,7 @@ namespace KPLN_Tools.Forms
                     if (g == guid)
                         return fp;
                 }
-                catch{}
+                catch { }
             }
 
             return null;
@@ -2132,7 +2136,7 @@ namespace KPLN_Tools.Forms
                 }
 
                 RebuildSearchIndex();
-                BuildMainArea(depUi); 
+                BuildMainArea(depUi);
             }
             catch (Exception ex)
             {
@@ -2269,7 +2273,7 @@ namespace KPLN_Tools.Forms
                                                     {
                                                         string id = er.Id.ToString();
                                                         string msg = er.Message?.Replace("\r", " ").Replace("\n", " ");
-                                                        string full = string.IsNullOrWhiteSpace(er.FullPath) ? "(нет пути)" : er.FullPath;                                                        
+                                                        string full = string.IsNullOrWhiteSpace(er.FullPath) ? "(нет пути)" : er.FullPath;
                                                         lines.Add($"{id}\t{msg}\t{full}");
                                                     }
 
@@ -2874,7 +2878,7 @@ namespace KPLN_Tools.Forms
                 var favIcon = GetEmbeddedIconCached(favRes);
 
                 var favExp = CreateUniversalExpander(
-                    "Избранное", favorites.Count,     
+                    "Избранное", favorites.Count,
                     "cat:favorites",
                     favPanel, favIcon,
                     forceExpanded: isSearching ? true : (bool?)null,
@@ -2976,7 +2980,7 @@ namespace KPLN_Tools.Forms
                             subPanel, subIcon,
                             forceExpanded: isSearching ? true : (bool?)null,
                             persistState: !isSearching,
-                            iconSize: 32 
+                            iconSize: 32
                         );
                         subExp.Margin = new Thickness(12, 4, 0, 0);
                         catStack.Children.Add(subExp);
@@ -2999,7 +3003,7 @@ namespace KPLN_Tools.Forms
                         catStack, catIcon,
                         forceExpanded: isSearching ? true : (bool?)null,
                         persistState: !isSearching,
-                        iconSize: 32 
+                        iconSize: 32
                     );
                     _universalRootPanel.Children.Add(catExp);
                 }
@@ -3024,7 +3028,7 @@ namespace KPLN_Tools.Forms
                     var tb = sp.Children.OfType<TextBlock>().FirstOrDefault();
                     if (tb != null && tb.Tag is string tkey && !string.IsNullOrEmpty(tkey)) return tkey;
                 }
-                return ""; 
+                return "";
             }, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -3056,7 +3060,7 @@ namespace KPLN_Tools.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = -1; 
+            cb.SelectedValue = -1;
         }
 
         // Интерфейс универсального отдела. Биндер для ComboBox - Проект
@@ -3064,12 +3068,12 @@ namespace KPLN_Tools.Forms
         {
             var items = new List<KeyValuePair<int, string>>
     {
-        new KeyValuePair<int, string>(-1, "Для всех проектов (без фильтра)")
+        new KeyValuePair<int, string>(-1, "Универсальные (без фильтра)")
     };
 
             items.AddRange(
                 _projectsById
-                    .Where(kv => !string.Equals(kv.Value, "Для всех проектов", StringComparison.OrdinalIgnoreCase))
+                    .Where(kv => !string.Equals(kv.Value, "Универсальные", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase)
                     .Select(kv => new KeyValuePair<int, string>(kv.Key, kv.Value))
             );
@@ -3117,7 +3121,7 @@ namespace KPLN_Tools.Forms
             {
                 Margin = new Thickness(0)
             };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); 
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             border.Child = grid;
@@ -3131,7 +3135,7 @@ namespace KPLN_Tools.Forms
 
             cb.Click += (s, e) =>
             {
-                e.Handled = true; 
+                e.Handled = true;
             };
 
             var deptKey = GetDeptKey();
@@ -3144,7 +3148,7 @@ namespace KPLN_Tools.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Add(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario(); 
+                RefreshScenario();
                 e.Handled = true;
             };
             cb.Unchecked += (s, e) =>
@@ -3153,7 +3157,7 @@ namespace KPLN_Tools.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Remove(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario(); 
+                RefreshScenario();
                 e.Handled = true;
             };
 
@@ -3542,11 +3546,11 @@ namespace KPLN_Tools.Forms
 
 
 
-            
+
             var pathBlock = new TextBlock
             {
                 Text = rec.FullPath ?? "—",
-                FontFamily = new System.Windows.Media.FontFamily("Consolas"), 
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                 FontSize = 12,
                 Opacity = 0.8,
                 TextWrapping = TextWrapping.Wrap,
@@ -3554,7 +3558,7 @@ namespace KPLN_Tools.Forms
                 Margin = new Thickness(0, 0, 0, 8),
                 ToolTip = rec.FullPath
             };
- 
+
             var cm = new ContextMenu();
             var miCopy = new MenuItem { Header = "Копировать путь" };
             miCopy.Click += (s, e2) =>
@@ -3764,7 +3768,7 @@ namespace KPLN_Tools.Forms
                     while (rd.Read())
                     {
                         int catId = rd.IsDBNull(0) ? 0 : Convert.ToInt32(rd.GetValue(0));
-                        int subId = rd.IsDBNull(1) ? 0 : Convert.ToInt32(rd.GetValue(1)); 
+                        int subId = rd.IsDBNull(1) ? 0 : Convert.ToInt32(rd.GetValue(1));
                         byte[] bytes = rd.IsDBNull(2) ? null : (byte[])rd[2];
 
                         if (catId > 0 && bytes != null && bytes.Length > 0)
@@ -3821,7 +3825,7 @@ namespace KPLN_Tools.Forms
                 }
                 catch { }
             }
-            _categoryIconCache[(catId, subId)] = null; 
+            _categoryIconCache[(catId, subId)] = null;
             return null;
         }
     }

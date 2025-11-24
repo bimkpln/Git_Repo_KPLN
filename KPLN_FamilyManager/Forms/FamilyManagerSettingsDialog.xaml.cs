@@ -1,6 +1,7 @@
 ﻿using System.Windows;
+using System.Windows.Forms;
 
-namespace KPLN_Tools.Forms
+namespace KPLN_FamilyManager.Forms
 {
     public partial class SettingsDialog : Window
     {
@@ -14,7 +15,7 @@ namespace KPLN_Tools.Forms
         private void BtnUpdateFileBD_Click(object sender, RoutedEventArgs e)
         {
             Result = 1;
-            DialogResult = true; 
+            DialogResult = true;
         }
 
         private void BtnUpdateSettingBD_Click(object sender, RoutedEventArgs e)
@@ -26,7 +27,7 @@ namespace KPLN_Tools.Forms
         private void BtnDebug_Click(object sender, RoutedEventArgs e)
         {
             Result = 3;
-            DialogResult = true; 
+            DialogResult = true;
         }
     }
 }
