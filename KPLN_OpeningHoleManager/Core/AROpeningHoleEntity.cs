@@ -472,6 +472,10 @@ namespace KPLN_OpeningHoleManager.Core
             foreach (var rli in linkInstances)
             {
                 Document lDoc = rli.GetLinkDocument();
+                // Проверка на открытый линк
+                if (lDoc == null)
+                    continue;
+
                 Transform lTrans = rli.GetTotalTransform();
                 List<Element> linkFloors = GetFloorsFromDocument(lDoc, lTrans);
                 if (!linkFloors.Any())

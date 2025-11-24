@@ -24,13 +24,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
     public sealed class ListRenumberVM : INotifyPropertyChanged
     {
-
         /// <summary>
         /// Имя транзакции для анализа на наличие
         /// </summary>
         public static readonly string PluginName = "Перенумеровать листы";
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private static string _sysPref;
 
         private readonly UIApplication _uiapp;
         private readonly ViewSheet[] _shetsToRenumber;
@@ -61,6 +62,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         {
             _uiapp = uiapp;
             _shetsToRenumber = shetsToRenumber.ToArray();
+            _sysPref = $"{DateTime.Now:h_m_s}_";
 
             Unicode_UnicodeList = new ObservableCollection<UniEntity>()
             {
@@ -327,6 +329,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                             break;
                     }
 
+                    doc.Regenerate();
+
+                    DropSysPrefix(_shetsToRenumber);
+
                 }
                 catch (Exception ex)
                 {
@@ -539,18 +545,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         /// </example>
         private static void ClearRenumber(ViewSheet[] sortedSheets, int startNumber)
         {
-            // Получаю стартовую разницу между номерами
-            int startVSheetNumber = OnlyNumber(sortedSheets[0].SheetNumber);
-            int deltaNumber = startNumber - startVSheetNumber;
-
-            ViewSheet[] reversedSheets = sortedSheets.Reverse().ToArray();
             // Задаю нумерацию с учетом стартовой разницы
-            foreach (ViewSheet curVSheet in reversedSheets)
+            foreach (ViewSheet curVSheet in sortedSheets)
             {
+                int number = startNumber;
+                startNumber++;
+
                 string uniCode = string.Empty;
                 string textPrefix = string.Empty;
                 string zeroNumberPrefix = string.Empty;
-                int number = OnlyNumber(curVSheet.SheetNumber) + deltaNumber;
                 string subNumberOfNumber = string.Empty;
 
                 string sheetNumber = curVSheet.SheetNumber;
@@ -578,7 +581,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                 if (matchBySubNumber.Success)
                     subNumberOfNumber = $".{matchBySubNumber.Value.Split('.')[1]}";
 
-                curVSheet.SheetNumber = $"{textPrefix}{zeroNumberPrefix}{number}{subNumberOfNumber}";
+                curVSheet.SheetNumber = $"{_sysPref}{textPrefix}{zeroNumberPrefix}{number}{subNumberOfNumber}";
             }
         }
 
@@ -594,6 +597,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                 Parameter uniCodeParam = vs.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e"));
                 if (uniCodeParam != null)
                     vs.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set(string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Очистка номера от технической приставки
+        /// </summary>
+        /// <param name="sheets"></param>
+        private static void DropSysPrefix(ViewSheet[] sheets)
+        {
+            foreach (ViewSheet curVSheet in sheets)
+            {
+                string durtyNumb = curVSheet.SheetNumber;
+                string clearNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None)[1];
+                curVSheet.SheetNumber = clearNumb;
             }
         }
 

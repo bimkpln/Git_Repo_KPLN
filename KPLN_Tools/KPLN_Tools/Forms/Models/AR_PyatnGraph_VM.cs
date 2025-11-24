@@ -29,7 +29,7 @@ namespace KPLN_Tools.Forms.Models
         public event PropertyChangedEventHandler PropertyChanged;
 
         private readonly Document _doc;
-        private readonly ObservableCollection<ARPG_TZ_FlatData> _collection = new ObservableCollection<ARPG_TZ_FlatData>();
+        private readonly ObservableCollection<ARPG_TZ_FlatData> _arpg_TZ_FlatDatas = new ObservableCollection<ARPG_TZ_FlatData>();
         private readonly HashSet<ARPG_TZ_FlatData> _subscribedItems = new HashSet<ARPG_TZ_FlatData>();
         private readonly string _cofigName = "AR_PyatnGraph";
         private readonly ConfigType _configType = ConfigType.Shared;
@@ -50,13 +50,13 @@ namespace KPLN_Tools.Forms.Models
             // Файл конфига присутсвует
             if (ConfigService.ReadConfigFile<ARPG_TZ_Config>(ModuleData.RevitVersion, _doc, _configType, _cofigName) is ARPG_TZ_Config config)
             {
-                _collection = config.Config_ARPG_TZ_FlatDataList;
+                _arpg_TZ_FlatDatas = config.Config_ARPG_TZ_FlatDataList;
                 ARPG_TZ_MainData = config.Config_ARPG_TZ_MainData;
             }
             else
                 ARPG_TZ_MainData = new ARPG_TZ_MainData();
 
-            ARPG_TZ_FlatDataColl = CollectionViewSource.GetDefaultView(_collection);
+            ARPG_TZ_FlatDataColl = CollectionViewSource.GetDefaultView(_arpg_TZ_FlatDatas);
             #endregion
 
             PresetFlatCodeCommand = new RelayCommand<object>(_ => PresetFlatCode());
@@ -68,13 +68,13 @@ namespace KPLN_Tools.Forms.Models
             DeleteFlatDataCommand = new RelayCommand<ARPG_TZ_FlatData>(DeleteFlatData);
 
             // 1) Подписаться на уже существующие элементы (если они есть)
-            foreach (var item in _collection)
+            foreach (var item in _arpg_TZ_FlatDatas)
             {
                 SubscribeToItem(item);
             }
 
             // 2) Подписаться на изменения самой коллекции
-            _collection.CollectionChanged += OnCollectionChanged;
+            _arpg_TZ_FlatDatas.CollectionChanged += OnCollectionChanged;
 
             UpdateSumPercent();
         }
@@ -200,17 +200,22 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
-                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
                 ARPG_Flat.ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
+                ARPG_Flat.WarnDict_Flat = new Dictionary<string, List<ElementId>>();
+
+                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
+                ARPG_Room.WarnDict_Room = new Dictionary<string, List<ElementId>>();
+                
+                
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(true);
                 if (arpgRooms == null)
                     return;
                 
                 bool hasHeatingRooms = arpgRooms.Any(arr => arr.ARPG_RoomType != RoomType.Flat);
-                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
-                
-                if(arpgRooms != null && aRPGFlats != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, this, arpgRooms, aRPGFlats, _collection.ToArray()));
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, _arpg_TZ_FlatDatas.ToArray(), arpgRooms, hasHeatingRooms);
+
+                if (arpgRooms != null && aRPGFlats != null)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_PreSetData(_doc, this, arpgRooms, aRPGFlats, _arpg_TZ_FlatDatas.ToArray()));
             }
             catch (Exception ex)
             {
@@ -225,7 +230,7 @@ namespace KPLN_Tools.Forms.Models
         {
             ARPG_TZ_Config = new ARPG_TZ_Config
             {
-                Config_ARPG_TZ_FlatDataList = _collection,
+                Config_ARPG_TZ_FlatDataList = _arpg_TZ_FlatDatas,
                 Config_ARPG_TZ_MainData = ARPG_TZ_MainData
             };
 
@@ -252,18 +257,22 @@ namespace KPLN_Tools.Forms.Models
         {
             try
             {
-                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
                 ARPG_Flat.ErrorDict_Flat = new Dictionary<string, List<ElementId>>();
+                ARPG_Flat.WarnDict_Flat = new Dictionary<string, List<ElementId>>();
+                
+                ARPG_Room.ErrorDict_Room = new Dictionary<string, List<ElementId>>();
+                ARPG_Room.WarnDict_Room = new Dictionary<string, List<ElementId>>();
+
 
                 ARPG_Room[] arpgRooms = ARPG_RoomsFromDoc(false);
                 if (arpgRooms == null)
                     return;
 
                 bool hasHeatingRooms = arpgRooms.Any(arr => arr.ARPG_RoomType != RoomType.Flat);
-                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, arpgRooms, hasHeatingRooms);
+                ARPG_Flat[] aRPGFlats = ARPG_Flat.Get_ARPG_Flats(ARPG_TZ_MainData, _arpg_TZ_FlatDatas.ToArray(), arpgRooms, hasHeatingRooms);
 
                 if (arpgRooms != null && aRPGFlats != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, this, arpgRooms, aRPGFlats, _collection.ToArray()));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdARPG_SetData(_doc, this, arpgRooms, aRPGFlats, _arpg_TZ_FlatDatas.ToArray()));
             }
             catch (Exception ex)
             {
@@ -274,7 +283,7 @@ namespace KPLN_Tools.Forms.Models
         /// <summary>
         /// Реализация: Добавить новый тип квартир
         /// </summary>
-        private void AddNewFlatData() => _collection.Add(new ARPG_TZ_FlatData());
+        private void AddNewFlatData() => _arpg_TZ_FlatDatas.Add(new ARPG_TZ_FlatData());
 
         /// <summary>
         /// Реализация: Сортировать по тексту
@@ -295,8 +304,8 @@ namespace KPLN_Tools.Forms.Models
         {
             UserDialog td = new UserDialog("KPLN: Подтверди действие", $"Подтверди удаление диапазона \"{item.TZRangeName}\"?");
 
-            if ((bool)td.ShowDialog() && item != null && _collection.Contains(item))
-                _collection.Remove(item);
+            if ((bool)td.ShowDialog() && item != null && _arpg_TZ_FlatDatas.Contains(item))
+                _arpg_TZ_FlatDatas.Remove(item);
         }
         #endregion
 
@@ -365,7 +374,7 @@ namespace KPLN_Tools.Forms.Models
                 foreach (var it in _subscribedItems.ToArray())
                     UnsubscribeFromItem(it);
 
-                foreach (var it in _collection) // возможно новые элементы уже в _collection
+                foreach (var it in _arpg_TZ_FlatDatas) // возможно новые элементы уже в _collection
                     SubscribeToItem(it);
             }
 
@@ -401,7 +410,7 @@ namespace KPLN_Tools.Forms.Models
         private void UpdateSumPercent()
         {
             double tempSum = 0;
-            foreach (var item in _collection)
+            foreach (var item in _arpg_TZ_FlatDatas)
             {
                 if (double.TryParse(item.TZPercent, out double val))
                     tempSum += val;

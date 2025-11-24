@@ -122,23 +122,32 @@ namespace KPLN_Publication.ExternalCommands.Print
                                 listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
 
                             // Добавляю в коллекцию проверенных элементов
-                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Max, boxXYZ.Min));
+                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Min, boxXYZ.Max));
                         }
 
                         // Проверяю на смещение
-                        int tBlocksCount = tBlockLocations.Count();
-                        if (tBlocksCount > 1)
-                        {
-                            int cnt = 0;
-                            int cntXShift = 0;
-                            while (cnt < tBlocksCount)
-                            {
-                                cntXShift += tBlockLocations.Where(tbl => new XYZ(tbl.Item1.X, tbl.Item2.Y, tbl.Item2.Z).IsAlmostEqualTo(tBlockLocations[cnt].Item2, 0.02)).Count();
-                                cnt++;
-                            }
+                        var blocks = tBlockLocations
+                            .OrderBy(b => b.Item2.X)
+                            .ToList();
 
-                            if (cntXShift != tBlocksCount - 1)
-                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Рамки выставлены со смещением. Необходимо выронять в последовательную цепь без зазоров");
+                        double tol = 0.001;
+                        for (int i = 1; i < blocks.Count - 1; i++)
+                        {
+                            bool errorXShift = Math.Abs(blocks[i].Item1.X) - Math.Abs(blocks[i - 1].Item2.X) > tol;
+
+                            bool errorY1 = Math.Abs(blocks[i].Item1.Y) - Math.Abs(blocks[i - 1].Item1.Y) > tol;
+                            bool errorY2 = Math.Abs(blocks[i].Item2.Y) - Math.Abs(blocks[i - 1].Item2.Y) > tol;
+                            
+                            bool errorZ1 = Math.Abs(blocks[i].Item1.Z) - Math.Abs(blocks[i - 1].Item1.Z) > tol;
+                            bool errorZ2 = Math.Abs(blocks[i].Item2.Z) - Math.Abs(blocks[i - 1].Item2.Z) > tol;
+
+                            if (errorXShift || errorY1 || errorY2 || errorZ1 || errorZ2)
+                            {
+                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: " +
+                                               $"Рамка №{i + 1} не стыкуется с рамкой №{i + 2}. " +
+                                               $"Необходимо выровнять без зазоров");
+                                break;
+                            }
                         }
                     }
                 }
