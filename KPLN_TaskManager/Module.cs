@@ -6,7 +6,6 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_TaskManager.ExternalCommands;
 using KPLN_TaskManager.Forms;
-using KPLN_TaskManager.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,15 +24,15 @@ namespace KPLN_TaskManager
         private static UIControlledApplication _uiContrApp;
 
         internal static UIApplication CurrentUIApplication { get; private set; }
-        
-        internal static string CurrentFileName {  get; private set; }
-        
+
+        internal static string CurrentFileName { get; private set; }
+
         internal static DBProject CurrentDBProject { get; private set; }
-        
+
         internal static Document CurrentDoc { get; private set; }
-        
+
         internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
-        
+
         internal static int RevitVersion { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -62,7 +61,7 @@ namespace KPLN_TaskManager
                 "Менеджер\nзадач",
                 "Менеджер\nзадач",
                 "Запускает отдельное меню менеджера задач",
-                string.Format(
+                string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -87,15 +86,15 @@ namespace KPLN_TaskManager
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
             if (args.Document == null || args.Document.IsFamilyDocument)
                 return;
-            
+
             CurrentDoc = args.Document;
 
             CurrentUIApplication = new UIApplication(CurrentDoc.Application);
-            
+
             CurrentFileName = CurrentDoc.IsWorkshared
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
                 : CurrentDoc.PathName;
-            
+
             CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
             CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
@@ -112,7 +111,7 @@ namespace KPLN_TaskManager
             // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
             if (args.Document == null || args.Document.IsFamilyDocument)
                 return;
-            
+
             CurrentDoc = args.Document;
 
             string openViewFileName = CurrentDoc.IsWorkshared
@@ -130,7 +129,7 @@ namespace KPLN_TaskManager
                 return;
 
             CurrentDBProject = openViewDBProject;
-            
+
             CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
             // Возможно стоит заблочить, нужен дальнейший анализ. Оно конечно удобно, но при переключениях между видами, когда будет много тасок - будет лишний оверхед. Достаточно обновить список вручную,
