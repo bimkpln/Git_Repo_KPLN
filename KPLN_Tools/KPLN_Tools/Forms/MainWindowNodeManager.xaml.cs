@@ -1,8 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
-using Autodesk.Revit.UI.Selection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -11,7 +8,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SQLite;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -23,6 +19,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Xml.Linq;
 
 
 namespace KPLN_Tools.Forms
@@ -89,19 +86,27 @@ namespace KPLN_Tools.Forms
     // СТРУКТУРА УЗЛА
     public class NodeElementUi
     {
-        public long Id { get; set; }   
-        public string Name { get; set; }  
+        public long Id { get; set; }
+        public string Name { get; set; }
         public ImageSource Image { get; set; }
 
         public string ScaleText { get; set; }
         public double? ScaleValue { get; set; }
 
 
-        public int? CatId { get; set; }  
-        public string SubcatId { get; set; }  
-        public string CategoryPath { get; set; } 
+        public int? CatId { get; set; }
+        public string SubcatId { get; set; }
+        public string CategoryPath { get; set; }
 
-        public string Tags { get; set; }  
+        public string Tags { get; set; }
+        public string Comment { get; set; }
+
+        public string TimeCreate { get; set; }
+        public string TimeUpdate { get; set; }
+        public string UserCreate { get; set; }
+        public string UserUpdate { get; set; }
+
+        public string RvtFileName { get; set; }
 
         public ObservableCollection<KeyValuePair<string, string>> PropParameters { get; set; } = new ObservableCollection<KeyValuePair<string, string>>();
     }
@@ -146,9 +151,8 @@ namespace KPLN_Tools.Forms
     public partial class MainWindowNodeManager : Window
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NodeManager.db";
-        const string RvtPath1 = @"Z:\Отдел BIM\Куцко Тимофей\04_Модели для теста\Для тестирования плагинов\2023\КР_База узлов.rvt";
-
         public bool IsSuperUser { get; }
+        private readonly string _userName;
 
         private readonly UIApplication _uiapp;
         private readonly UIDocument _uidoc;
@@ -194,7 +198,7 @@ namespace KPLN_Tools.Forms
         public ObservableCollection<NodeElementUi> Elements { get; } = new ObservableCollection<NodeElementUi>();
 
         private NodeElementUi _currentElement;
-        private readonly Dictionary<string, NodeCategoryUi> _nodeIndex = new Dictionary<string, NodeCategoryUi>();      
+        private readonly Dictionary<string, NodeCategoryUi> _nodeIndex = new Dictionary<string, NodeCategoryUi>();
 
         public ICollectionView ElementsView { get; }
         private NodeCategoryUi _currentSelectedNode;
@@ -220,10 +224,18 @@ namespace KPLN_Tools.Forms
             IsSuperUser = IsUserInTestList();
             BtnSettings.IsEnabled = IsSuperUser;
 
+            var currentUser = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser;
+            if (currentUser != null)
+            {
+                _userName = GetUserNameFromMainDb(currentUser.Id);
+            }
+
             BtnCopyInView.IsEnabled = false;
             BtnCopyElements.IsEnabled = false;
             TxtName.IsEnabled = false;
             BtnSaveName.IsEnabled = false;
+            TxtComment.IsEnabled = false;
+            BtnSaveComment.IsEnabled = false;
             TxtTags.IsEnabled = false;
             BtnSaveTags.IsEnabled = false;
             BtnChangeCategory.IsEnabled = false;
@@ -244,18 +256,26 @@ namespace KPLN_Tools.Forms
             LoadElementCounts();
         }
 
+
+
+
+
+
+
         private bool IsUserInTestList()
         {
+#if !Revit2020 && !Debug2020
+            return false;
+#else
             try
             {
                 var currentUser = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser;
-
                 if (currentUser == null)
-                {
                     return false;
-                }
 
-                int[] allowedIds = { 1, 2, 8, 177, 212, 208, 114, 65, 43 };
+                var allowedIds = GetAllowedUserIdsFromDb();
+                if (allowedIds == null || allowedIds.Count == 0)
+                    return false;
 
                 return allowedIds.Contains(currentUser.Id);
             }
@@ -263,6 +283,152 @@ namespace KPLN_Tools.Forms
             {
                 return false;
             }
+#endif
+        }
+
+
+        private List<int> GetAllowedUserIdsFromDb()
+        {
+            var result = new List<int>();
+
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT LIST FROM userAccess LIMIT 1;";
+                        var obj = cmd.ExecuteScalar();
+                        if (obj == null || obj == DBNull.Value)
+                            return result;
+
+                        var listStr = Convert.ToString(obj);
+                        if (string.IsNullOrWhiteSpace(listStr))
+                            return result;
+
+                        var parts = listStr
+                            .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(p => p.Trim());
+
+                        foreach (var part in parts)
+                        {
+                            if (int.TryParse(part, out int id))
+                            {
+                                result.Add(id);
+                            }
+                        }
+                    }
+                    conn.Close();
+                }
+            }
+            catch
+            {
+            }
+
+            return result.Distinct().ToList();
+        }
+
+        private string GetUserNameFromMainDb(int userId)
+        {
+            string path = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+
+            const int maxAttempts = 3;
+            const int delayMs = 3000;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    using (var conn = new SQLiteConnection($"Data Source={path};Version=3;FailIfMissing=False;"))
+                    {
+                        conn.Open();
+
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = @"
+                        SELECT Surname, Name
+                        FROM Users
+                        WHERE ID = @id
+                        LIMIT 1;";
+
+                            cmd.Parameters.AddWithValue("@id", userId);
+
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    string surname = reader["Surname"]?.ToString() ?? "";
+                                    string name = reader["Name"]?.ToString() ?? "";
+
+                                    return $"{surname} {name}".Trim();
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (attempt == maxAttempts)
+                    {
+                        TaskDialog.Show("Ошибка чтения Users",
+                            $"Не удалось получить имя пользователя после {maxAttempts} попыток.\nОшибка:\n{ex.Message}");
+                    }
+                }
+
+                if (attempt < maxAttempts)
+                {
+                    System.Threading.Thread.Sleep(delayMs);
+                }
+            }
+
+            return null;
+        }
+
+
+
+
+
+
+        private List<string> LoadRvtPathsFromDb()
+        {
+            var result = new List<string>();
+
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT PATH 
+                    FROM RVTPath 
+                    WHERE PATH IS NOT NULL AND TRIM(PATH) <> '';";
+
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            while (r.Read())
+                            {
+                                if (r.IsDBNull(0))
+                                    continue;
+
+                                var path = r.GetString(0);
+                                if (string.IsNullOrWhiteSpace(path))
+                                    continue;
+
+                                result.Add(path.Trim());
+                            }
+                        }
+                    }
+                    conn.Close();
+                }
+            }
+            catch { }
+
+            return result
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
         }
 
         //////////////////////////////// КАТЕГОРИИ УЗЛОВ
@@ -296,6 +462,15 @@ namespace KPLN_Tools.Forms
             return result;
         }
 
+
+
+
+
+
+
+
+
+
         private void LoadCategoriesTree()
         {
             CategoryTree.Clear();
@@ -323,6 +498,8 @@ namespace KPLN_Tools.Forms
 
                 CategoryTree.Add(rootNode);
 
+                _nodeIndex[MakeKey(cat.Id, "0")] = rootNode;
+
                 if (!string.IsNullOrWhiteSpace(cat.SubcatJson))
                 {
                     try
@@ -343,6 +520,15 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
+
+
+
+
+
+
+
+
+
 
         private void AttachSubtree(int catId, NodeCategoryUi parent, SubcatDto dto)
         {
@@ -465,7 +651,7 @@ namespace KPLN_Tools.Forms
         private void CategoriesTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (_isSearchActive)
-                return; 
+                return;
 
             _currentSelectedNode = e.NewValue as NodeCategoryUi;
 
@@ -524,14 +710,14 @@ namespace KPLN_Tools.Forms
                     if (node.CatId == 0 && node.Parent == null)
                     {
                         cmd.CommandText = @"
-                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS, COMMENT, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE, RVT_PATH
                             FROM nodeManager
                             WHERE CAT IS NULL OR CAT = 0;";
                     }
                     else if (node.Parent == null)
                     {
                         cmd.CommandText = @"
-                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS, COMMENT, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE, RVT_PATH
                             FROM nodeManager
                             WHERE CAT = @cat;";
 
@@ -540,7 +726,7 @@ namespace KPLN_Tools.Forms
                     else
                     {
                         int catId = node.CatId;
-                        var subIds = GetSubcatIdsRecursive(node); 
+                        var subIds = GetSubcatIdsRecursive(node);
 
                         if (subIds.Count == 0)
                         {
@@ -557,7 +743,7 @@ namespace KPLN_Tools.Forms
                         }
 
                         cmd.CommandText = $@"
-                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                            SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS, COMMENT, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE, RVT_PATH
                             FROM nodeManager
                             WHERE CAT = @cat
                               AND SUBCAT IN ({string.Join(", ", paramNames)});";
@@ -582,6 +768,24 @@ namespace KPLN_Tools.Forms
                             int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
                             string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
                             string tags = r.IsDBNull(6) ? null : r.GetString(6);
+                            string comment = r.IsDBNull(7) ? null : r.GetString(7);
+
+                            string timeCr = r.IsDBNull(8) ? null : r.GetString(8);
+                            string timeUpd = r.IsDBNull(9) ? null : r.GetString(9);
+                            string userCr = r.IsDBNull(10) ? null : r.GetString(10);
+                            string userUpd = r.IsDBNull(11) ? null : r.GetString(11);
+
+                            string rvtPath = r.IsDBNull(12) ? null : r.GetString(12);
+
+                            string fileName = null;
+                            if (!string.IsNullOrWhiteSpace(rvtPath))
+                            {
+                                try
+                                {
+                                    fileName = System.IO.Path.GetFileName(rvtPath);
+                                }
+                                catch { }
+                            }
 
                             string scaleText = null;
                             double? scaleValue = null;
@@ -630,7 +834,13 @@ namespace KPLN_Tools.Forms
                                 CatId = catId,
                                 SubcatId = subcatId,
                                 Tags = tags,
+                                Comment = comment,
+                                TimeCreate = timeCr,
+                                TimeUpdate = timeUpd,
+                                UserCreate = userCr,
+                                UserUpdate = userUpd,
                                 CategoryPath = categoryPath,
+                                RvtFileName = fileName,
                                 PropParameters = propParams
                             };
 
@@ -676,7 +886,7 @@ namespace KPLN_Tools.Forms
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS, COMMENT, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE, RVT_PATH
                         FROM nodeManager;";
 
                     using (var r = cmd.ExecuteReader())
@@ -700,6 +910,20 @@ namespace KPLN_Tools.Forms
                             int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
                             string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
                             string tags = r.IsDBNull(6) ? null : r.GetString(6);
+                            string comment = r.IsDBNull(7) ? null : r.GetString(7);
+
+                            string timeCr = r.IsDBNull(8) ? null : r.GetString(8);
+                            string timeUpd = r.IsDBNull(9) ? null : r.GetString(9);
+                            string userCr = r.IsDBNull(10) ? null : r.GetString(10);
+                            string userUpd = r.IsDBNull(11) ? null : r.GetString(11);
+
+                            string rvtPath = r.IsDBNull(12) ? null : r.GetString(12);
+
+                            string fileName = null;
+                            if (!string.IsNullOrWhiteSpace(rvtPath))
+                            {
+                                try { fileName = System.IO.Path.GetFileName(rvtPath); } catch { }
+                            }
 
                             string scaleText = null;
                             double? scaleValue = null;
@@ -750,7 +974,13 @@ namespace KPLN_Tools.Forms
                                 CatId = catId,
                                 SubcatId = subcatId,
                                 Tags = tags,
+                                Comment = comment,
+                                TimeCreate = timeCr,
+                                TimeUpdate = timeUpd,
+                                UserCreate = userCr,
+                                UserUpdate = userUpd,
                                 CategoryPath = categoryPath,
+                                RvtFileName = fileName,
                                 PropParameters = propParams
                             };
 
@@ -869,7 +1099,7 @@ namespace KPLN_Tools.Forms
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS
+                        SELECT ID, NAME, PIC, PROP, CAT, SUBCAT, TAGS, COMMENT, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE, RVT_PATH
                         FROM nodeManager
                         WHERE TAGS IS NOT NULL AND TRIM(TAGS) <> '';";
 
@@ -886,6 +1116,20 @@ namespace KPLN_Tools.Forms
                             int? catId = r.IsDBNull(4) ? (int?)null : r.GetInt32(4);
                             string subcatId = r.IsDBNull(5) ? null : r.GetString(5);
                             string tagsStr = r.IsDBNull(6) ? null : r.GetString(6);
+                            string comment = r.IsDBNull(7) ? null : r.GetString(7);
+
+                            string timeCr = r.IsDBNull(8) ? null : r.GetString(8);
+                            string timeUpd = r.IsDBNull(9) ? null : r.GetString(9);
+                            string userCr = r.IsDBNull(10) ? null : r.GetString(10);
+                            string userUpd = r.IsDBNull(11) ? null : r.GetString(11);
+
+                            string rvtPath = r.IsDBNull(12) ? null : r.GetString(12);
+
+                            string fileName = null;
+                            if (!string.IsNullOrWhiteSpace(rvtPath))
+                            {
+                                try { fileName = System.IO.Path.GetFileName(rvtPath); } catch { }
+                            }
 
                             if (string.IsNullOrWhiteSpace(tagsStr))
                                 continue;
@@ -951,7 +1195,13 @@ namespace KPLN_Tools.Forms
                                 CatId = catId,
                                 SubcatId = subcatId,
                                 Tags = tagsStr,
+                                Comment = comment,
+                                TimeCreate = timeCr,
+                                TimeUpdate = timeUpd,
+                                UserCreate = userCr,
+                                UserUpdate = userUpd,
                                 CategoryPath = categoryPath,
+                                RvtFileName = fileName,
                                 PropParameters = propParams
                             };
 
@@ -976,7 +1226,7 @@ namespace KPLN_Tools.Forms
 
             LoadElementsForNode(_currentSelectedNode);
         }
-     
+
         private void SortCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (SortCombo == null)
@@ -1065,6 +1315,9 @@ namespace KPLN_Tools.Forms
             BtnChangeCategory.IsEnabled = canEdit;
             BtnReplacePreview.IsEnabled = canEdit;
 
+            TxtComment.IsEnabled = canEdit;
+            BtnSaveComment.IsEnabled = canEdit;
+
             IsEditTagsMode = false;
             BtnSaveTags.Content = "✏️ Изменить теги";
         }
@@ -1109,9 +1362,21 @@ namespace KPLN_Tools.Forms
                     conn.Open();
                     using (var cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = "UPDATE nodeManager SET NAME = @name WHERE ID = @id;";
+                        string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                        string uName = _userName ?? string.Empty;
+
+                        cmd.CommandText = @"
+                            UPDATE nodeManager 
+                            SET NAME = @name,
+                                TIME_UPDATE = @timeUpd,
+                                USER_UPDATE = @userUpd
+                            WHERE ID = @id;";
+
                         cmd.Parameters.AddWithValue("@name", element.Name ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@timeUpd", now);
+                        cmd.Parameters.AddWithValue("@userUpd", uName);
                         cmd.Parameters.AddWithValue("@id", element.Id);
+
                         cmd.ExecuteNonQuery();
                     }
                     conn.Close();
@@ -1119,6 +1384,7 @@ namespace KPLN_Tools.Forms
 
                 TaskDialog.Show("KPLN. Менеджер узлов", "Имя узла успешно обновлено.");
                 ApplySorting();
+                ReloadCurrentElement(element.Id);
             }
             catch (Exception ex)
             {
@@ -1128,10 +1394,54 @@ namespace KPLN_Tools.Forms
             this.Topmost = true;
         }
 
+        private void BtnSaveComment_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSuperUser)
+                return;
 
+            var element = ElementsList.SelectedItem as NodeElementUi;
+            if (element == null)
+                return;
 
+            this.Topmost = false;
 
+            try
+            {
+                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                        string uName = _userName ?? string.Empty;
 
+                        cmd.CommandText = @"
+                            UPDATE nodeManager 
+                            SET COMMENT = @comment,
+                                TIME_UPDATE = @timeUpd,
+                                USER_UPDATE = @userUpd
+                            WHERE ID = @id;";
+
+                        cmd.Parameters.AddWithValue("@comment", element.Comment ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@timeUpd", now);
+                        cmd.Parameters.AddWithValue("@userUpd", uName);
+                        cmd.Parameters.AddWithValue("@id", element.Id);
+
+                        cmd.ExecuteNonQuery();
+                    }
+                    conn.Close();
+                }
+
+                ReloadCurrentElement(element.Id);
+                TaskDialog.Show("KPLN. Менеджер узлов", "Комментарий успешно обновлён.");
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении комментария:\n" + ex.Message);
+            }
+
+            this.Topmost = true;
+        }
 
         private void BtnSaveTags_Click(object sender, RoutedEventArgs e)
         {
@@ -1161,9 +1471,21 @@ namespace KPLN_Tools.Forms
                     conn.Open();
                     using (var cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = "UPDATE nodeManager SET TAGS = @tags WHERE ID = @id;";
+                        string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                        string uName = _userName ?? string.Empty;
+
+                        cmd.CommandText = @"
+                            UPDATE nodeManager 
+                            SET TAGS = @tags,
+                                TIME_UPDATE = @timeUpd,
+                                USER_UPDATE = @userUpd
+                            WHERE ID = @id;";
+
                         cmd.Parameters.AddWithValue("@tags", element.Tags ?? string.Empty);
+                        cmd.Parameters.AddWithValue("@timeUpd", now);
+                        cmd.Parameters.AddWithValue("@userUpd", uName);
                         cmd.Parameters.AddWithValue("@id", element.Id);
+
                         cmd.ExecuteNonQuery();
                     }
                     conn.Close();
@@ -1172,6 +1494,8 @@ namespace KPLN_Tools.Forms
                 var sel = ElementsList.SelectedItem;
                 ElementsList.SelectedItem = null;
                 ElementsList.SelectedItem = sel;
+
+                ReloadCurrentElement(element.Id);
             }
             catch (Exception ex)
             {
@@ -1184,10 +1508,6 @@ namespace KPLN_Tools.Forms
             BtnSaveTags.Content = "✏️ Изменить";
         }
 
-
-
-
-
         private void BtnChangeCategory_Click(object sender, RoutedEventArgs e)
         {
             if (!IsSuperUser)
@@ -1198,7 +1518,7 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                var dlg = new ChangeCategoryWindowNodeManager(CategoryTree,  _currentElement.CatId, _currentElement.SubcatId, _currentElement.Name);
+                var dlg = new ChangeCategoryWindowNodeManager(CategoryTree, _currentElement.CatId, _currentElement.SubcatId, _currentElement.Name);
                 dlg.Owner = this;
 
                 if (dlg.ShowDialog() == true)
@@ -1215,10 +1535,23 @@ namespace KPLN_Tools.Forms
                                 conn.Open();
                                 using (var cmd = conn.CreateCommand())
                                 {
-                                    cmd.CommandText = "UPDATE nodeManager SET CAT = @cat, SUBCAT = @sub WHERE ID = @id;";
+                                    string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                                    string uName = _userName ?? string.Empty;
+
+                                    cmd.CommandText = @"
+                                        UPDATE nodeManager 
+                                        SET CAT = @cat,
+                                            SUBCAT = @sub,
+                                            TIME_UPDATE = @timeUpd,
+                                            USER_UPDATE = @userUpd
+                                        WHERE ID = @id;";
+
                                     cmd.Parameters.AddWithValue("@cat", newCatId.Value);
                                     cmd.Parameters.AddWithValue("@sub", (object)newSubcatId ?? DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@timeUpd", now);
+                                    cmd.Parameters.AddWithValue("@userUpd", uName);
                                     cmd.Parameters.AddWithValue("@id", _currentElement.Id);
+
                                     cmd.ExecuteNonQuery();
                                 }
                                 conn.Close();
@@ -1242,7 +1575,6 @@ namespace KPLN_Tools.Forms
                         }
                     }
                 }
-
             }
             finally { }
         }
@@ -1383,7 +1715,7 @@ namespace KPLN_Tools.Forms
                     }
                     catch { }
                 }
-               
+
                 try
                 {
                     targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, viewName, StringComparison.InvariantCultureIgnoreCase));
@@ -1434,8 +1766,8 @@ namespace KPLN_Tools.Forms
                     }
                 }
 
-                var captureWindow = new ScreenCaptureWindow(1000, 800); 
-                captureWindow.Owner = this; 
+                var captureWindow = new ScreenCaptureWindow(1000, 800);
+                captureWindow.Owner = this;
 
                 var dialogResult = captureWindow.ShowDialog();
                 if (dialogResult != true || captureWindow.CapturedBytes == null || captureWindow.CapturedBytes.Length == 0)
@@ -1459,13 +1791,24 @@ namespace KPLN_Tools.Forms
                         conn.Open();
                         using (var cmd = conn.CreateCommand())
                         {
-                            cmd.CommandText = "UPDATE nodeManager SET PIC = @pic WHERE ID = @id;";
+                            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                            string uName = _userName ?? string.Empty;
+
+                            cmd.CommandText = @"
+                                UPDATE nodeManager 
+                                SET PIC = @pic,
+                                    TIME_UPDATE = @timeUpd,
+                                    USER_UPDATE = @userUpd
+                                WHERE ID = @id;";
+
                             var pPic = cmd.CreateParameter();
                             pPic.ParameterName = "@pic";
                             pPic.DbType = DbType.Binary;
                             pPic.Value = (object)previewBytes ?? DBNull.Value;
                             cmd.Parameters.Add(pPic);
 
+                            cmd.Parameters.AddWithValue("@timeUpd", now);
+                            cmd.Parameters.AddWithValue("@userUpd", uName);
                             cmd.Parameters.AddWithValue("@id", _currentElement.Id);
 
                             cmd.ExecuteNonQuery();
@@ -1492,6 +1835,8 @@ namespace KPLN_Tools.Forms
                         ElementsList.SelectedItem = newSel;
                         _currentElement = newSel;
                     }
+
+                    ReloadCurrentElement(savedId);
                 }
             }
             finally
@@ -1501,7 +1846,7 @@ namespace KPLN_Tools.Forms
                     if (openedTargetViewHere && targetView != null)
                     {
                         var udoc2 = _uiapp.ActiveUIDocument;
-                        var uv = udoc2?.GetOpenUIViews() ?.FirstOrDefault(v => v.ViewId == targetView.Id);
+                        var uv = udoc2?.GetOpenUIViews()?.FirstOrDefault(v => v.ViewId == targetView.Id);
                         uv?.Close();
                     }
                 }
@@ -1509,6 +1854,23 @@ namespace KPLN_Tools.Forms
 
                 this.Topmost = true;
                 this.Show();
+            }
+        }
+
+
+        private void ReloadCurrentElement(long elementId)
+        {
+            if (_currentSelectedNode == null)
+                return;
+            LoadElementCounts();
+
+            LoadElementsForNode(_currentSelectedNode);
+
+            var newSel = Elements.FirstOrDefault(el => el.Id == elementId);
+            if (newSel != null)
+            {
+                ElementsList.SelectedItem = newSel;
+                _currentElement = newSel;
             }
         }
 
@@ -1553,9 +1915,20 @@ namespace KPLN_Tools.Forms
                 {
                     case SettingsAction.UpdateDb:
                         string run = Guid.NewGuid().ToString();
-                        HandleAction_UpdateDb(_uiapp, RvtPath1, run);
+
+                        var rvtPaths = LoadRvtPathsFromDb();
+                        if (rvtPaths == null || rvtPaths.Count == 0)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "В таблице RVTPath нет ни одного пути. Добавьт,tе пути к моделям и повторите попытку.");
+                            break;
+                        }
+                        foreach (var path in rvtPaths)
+                        {
+                            HandleAction_UpdateDb(_uiapp, path, run, _userName);
+                        }
+
                         FinalizeUpdateDb(run);
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Опперация завершена");
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Операция завершена");
                         break;
 
                     case SettingsAction.AddDelCategory:
@@ -1566,10 +1939,45 @@ namespace KPLN_Tools.Forms
                 }
 
                 this.Topmost = true;
+
+                LoadCategoriesTree();
+                LoadElementCounts();
             }
         }
 
-        public static void HandleAction_UpdateDb(UIApplication uiapp, string rvtPath, string runToken)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        public static void HandleAction_UpdateDb(UIApplication uiapp, string rvtPath, string runToken, string userName)
         {
             Document doc = null;
             bool docOpenedHere = false;
@@ -1578,7 +1986,7 @@ namespace KPLN_Tools.Forms
             {
                 var app = uiapp.Application;
                 if (string.IsNullOrWhiteSpace(rvtPath) || !File.Exists(rvtPath))
-                    throw new FileNotFoundException("Не найден файл модели для сканирования.", rvtPath);
+                    return;
 
                 string targetFull = Path.GetFullPath(rvtPath);
                 string targetFileNoExt = Path.GetFileNameWithoutExtension(targetFull);
@@ -1626,6 +2034,12 @@ namespace KPLN_Tools.Forms
                 {
                     var mp = ModelPathUtils.ConvertUserVisiblePathToModelPath(rvtPath);
                     var openOpts = new OpenOptions();
+
+                    if (!string.IsNullOrEmpty(targetCentral))
+                    {
+                        openOpts.DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets;
+                    }
+
                     doc = app.OpenDocumentFile(mp, openOpts);
                     docOpenedHere = true;
                 }
@@ -1644,8 +2058,10 @@ namespace KPLN_Tools.Forms
                 using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
                 {
                     conn.Open();
-                    EnsureSchema(conn);      
-                    var existing = LoadExistingByPropViewName(conn); 
+                    EnsureSchema(conn);
+
+                    // загружаем уже существующие пары "вид + файл"
+                    var existing = LoadExistingByViewAndPath(conn);
 
                     using (var tx = conn.BeginTransaction())
                     {
@@ -1661,15 +2077,22 @@ namespace KPLN_Tools.Forms
                             };
                             string json = JsonConvert.SerializeObject(jo, Formatting.None);
 
-                            long id;
-                            if (existing.TryGetValue(viewName, out id))
+                            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                            string uName = userName ?? string.Empty;
+
+                            // 🔹 ключ по имени вида + пути к модели
+                            string key = MakeViewKey(viewName, targetFull);
+
+                            if (existing.TryGetValue(key, out long id))
                             {
                                 using (var cmd = conn.CreateCommand())
                                 {
                                     cmd.CommandText =
                                         "UPDATE nodeManager " +
-                                        "SET PROP=@prop, LAST_SEEN=@run, RVT_PATH=@rvt " +
-                                        "WHERE ID=@id;";
+                                        "SET PROP = @prop, " +
+                                        "    LAST_SEEN = @run, " +
+                                        "    RVT_PATH = @rvt " +
+                                        "WHERE ID = @id;";
 
                                     cmd.Parameters.AddWithValue("@prop", json);
                                     cmd.Parameters.AddWithValue("@run", runToken);
@@ -1684,17 +2107,24 @@ namespace KPLN_Tools.Forms
                                 using (var cmd = conn.CreateCommand())
                                 {
                                     cmd.CommandText =
-                                        "INSERT INTO nodeManager (NAME, PROP, LAST_SEEN, RVT_PATH) " +
-                                        "VALUES (@name, @prop, @run, @rvt);";
+                                        "INSERT INTO nodeManager " +
+                                        "(NAME, PROP, LAST_SEEN, RVT_PATH, TIME_CREATE, TIME_UPDATE, USER_CREATE, USER_UPDATE) " +
+                                        "VALUES " +
+                                        "(@name, @prop, @run, @rvt, @timeCr, @timeUpd, @userCr, @userUpd);";
 
                                     cmd.Parameters.AddWithValue("@name", viewName);
                                     cmd.Parameters.AddWithValue("@prop", json);
                                     cmd.Parameters.AddWithValue("@run", runToken);
                                     cmd.Parameters.AddWithValue("@rvt", targetFull);
+                                    cmd.Parameters.AddWithValue("@timeCr", now);
+                                    cmd.Parameters.AddWithValue("@timeUpd", now);
+                                    cmd.Parameters.AddWithValue("@userCr", uName);
+                                    cmd.Parameters.AddWithValue("@userUpd", uName);
 
                                     cmd.ExecuteNonQuery();
                                 }
                             }
+
                         }
 
                         tx.Commit();
@@ -1746,7 +2176,7 @@ namespace KPLN_Tools.Forms
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText =
-                    "CREATE TABLE IF NOT EXISTS " + "nodeManager" + " (" +
+                    "CREATE TABLE IF NOT EXISTS nodeManager (" +
                     "ID INTEGER PRIMARY KEY AUTOINCREMENT," +
                     "NAME TEXT NOT NULL," +
                     "PROP TEXT NOT NULL" +
@@ -1756,10 +2186,15 @@ namespace KPLN_Tools.Forms
 
             bool hasLastSeen = false;
             bool hasRvtPath = false;
+            bool hasComment = false;
+            bool hasTimeCreate = false;
+            bool hasTimeUpdate = false;
+            bool hasUserCreate = false;
+            bool hasUserUpdate = false;
 
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "PRAGMA table_info(" + "nodeManager" + ");";
+                cmd.CommandText = "PRAGMA table_info(nodeManager);";
                 using (var r = cmd.ExecuteReader())
                 {
                     while (r.Read())
@@ -1769,6 +2204,16 @@ namespace KPLN_Tools.Forms
                             hasLastSeen = true;
                         else if (string.Equals(col, "RVT_PATH", StringComparison.InvariantCultureIgnoreCase))
                             hasRvtPath = true;
+                        else if (string.Equals(col, "COMMENT", StringComparison.InvariantCultureIgnoreCase))
+                            hasComment = true;
+                        else if (string.Equals(col, "TIME_CREATE", StringComparison.InvariantCultureIgnoreCase))
+                            hasTimeCreate = true;
+                        else if (string.Equals(col, "TIME_UPDATE", StringComparison.InvariantCultureIgnoreCase))
+                            hasTimeUpdate = true;
+                        else if (string.Equals(col, "USER_CREATE", StringComparison.InvariantCultureIgnoreCase))
+                            hasUserCreate = true;
+                        else if (string.Equals(col, "USER_UPDATE", StringComparison.InvariantCultureIgnoreCase))
+                            hasUserUpdate = true;
                     }
                 }
             }
@@ -1785,15 +2230,42 @@ namespace KPLN_Tools.Forms
                     cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN RVT_PATH TEXT;";
                     cmd.ExecuteNonQuery();
                 }
+                if (!hasComment)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN COMMENT TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+                if (!hasTimeCreate)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN TIME_CREATE TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+                if (!hasTimeUpdate)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN TIME_UPDATE TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+                if (!hasUserCreate)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN USER_CREATE TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
+                if (!hasUserUpdate)
+                {
+                    cmd.CommandText = "ALTER TABLE nodeManager ADD COLUMN USER_UPDATE TEXT;";
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
 
-        private static Dictionary<string, long> LoadExistingByPropViewName(SQLiteConnection conn)
+
+        private static Dictionary<string, long> LoadExistingByViewAndPath(SQLiteConnection conn)
         {
             var map = new Dictionary<string, long>(StringComparer.InvariantCultureIgnoreCase);
+
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT ID, PROP FROM " + "nodeManager" + ";";
+                cmd.CommandText = "SELECT ID, PROP, RVT_PATH FROM nodeManager;";
                 using (var r = cmd.ExecuteReader())
                 {
                     while (r.Read())
@@ -1801,18 +2273,63 @@ namespace KPLN_Tools.Forms
                         try
                         {
                             long id = r.GetInt64(0);
-                            string propJson = r.GetString(1);
+                            string propJson = r.IsDBNull(1) ? null : r.GetString(1);
+                            string rvtPath = r.IsDBNull(2) ? null : r.GetString(2);
+
+                            if (string.IsNullOrWhiteSpace(propJson))
+                                continue;
+
                             var jo = JObject.Parse(propJson);
                             string viewName = jo["ИМЯ ВИДА"]?.ToString();
-                            if (!string.IsNullOrEmpty(viewName))
-                                map[viewName] = id;
+
+                            if (string.IsNullOrWhiteSpace(viewName))
+                                continue;
+
+                            string key = MakeViewKey(viewName, rvtPath);
+                            if (!map.ContainsKey(key))
+                                map[key] = id;
                         }
-                        catch {}
+                        catch
+                        {
+                        }
                     }
                 }
             }
+
             return map;
         }
+
+
+        private static string MakeViewKey(string viewName, string rvtPath)
+        {
+            string vn = (viewName ?? string.Empty).Trim();
+            string path;
+
+            try
+            {
+                path = string.IsNullOrWhiteSpace(rvtPath)
+                    ? string.Empty
+                    : System.IO.Path.GetFullPath(rvtPath);
+            }
+            catch
+            {
+                path = rvtPath ?? string.Empty;
+            }
+
+            return vn + "||" + path;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void BtnCopyInView_Click(object sender, RoutedEventArgs e)
         {
@@ -1823,7 +2340,7 @@ namespace KPLN_Tools.Forms
 
             this.Topmost = false;
 
-            _copyHandler.Init(_uiapp, DbPath, _currentElement.Id,  this);
+            _copyHandler.Init(_uiapp, DbPath, _currentElement.Id, this);
             _copyEvent.Raise();
         }
 
@@ -1907,7 +2424,7 @@ namespace KPLN_Tools.Forms
             var activeView = uidoc.ActiveView;
             if (!(activeView is ViewSheet) && !(activeView is ViewDrafting))
             {
-                TaskDialog.Show( "KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
                 return;
             }
 
@@ -1915,6 +2432,31 @@ namespace KPLN_Tools.Forms
             _placeViewEvent.Raise();
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /////////////////////////////// КОПИРОВАНИЕ ВИДОВ
     internal sealed class UseDestinationTypesHandler : IDuplicateTypeNamesHandler
@@ -1928,7 +2470,7 @@ namespace KPLN_Tools.Forms
         private UIApplication _uiapp;
         private string _dbPath;
         private long _nodeId;
-        
+
         private Window _ownerWindow;
 
         public void Init(UIApplication uiapp, string dbPath, long nodeId, Window ownerWindow)
@@ -1936,7 +2478,7 @@ namespace KPLN_Tools.Forms
             _uiapp = uiapp;
             _dbPath = dbPath;
             _nodeId = nodeId;
-  
+
             _ownerWindow = ownerWindow;
         }
 
@@ -1946,7 +2488,7 @@ namespace KPLN_Tools.Forms
         {
             var linkType = doc.GetElement(inst.GetTypeId()) as CADLinkType;
             if (linkType == null)
-                return null; 
+                return null;
 
             var extRef = ExternalFileUtils.GetExternalFileReference(doc, linkType.Id);
             if (extRef == null)
@@ -2161,7 +2703,7 @@ namespace KPLN_Tools.Forms
 
                         else if (result == MessageBoxResult.No)
                         {
-                  
+
                             var existingView = new FilteredElementCollector(targetDoc)
                                 .OfClass(typeof(ViewDrafting))
                                 .Cast<ViewDrafting>().FirstOrDefault(v =>
@@ -2355,9 +2897,9 @@ namespace KPLN_Tools.Forms
 
                     using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла"))
                     {
-                        t.Start();                      
+                        t.Start();
                         targetDoc.Delete(targetView.Id);
-                        targetView = null;                    
+                        targetView = null;
                         t.Commit();
                     }
 
@@ -2641,7 +3183,7 @@ namespace KPLN_Tools.Forms
                     }
 
                     draftingView = ViewDrafting.Create(targetDoc, draftingType.Id);
-                    draftingView.Name = _sourceViewName; 
+                    draftingView.Name = _sourceViewName;
                 }
 
                 var oldImports = new FilteredElementCollector(targetDoc, draftingView.Id)
@@ -2845,7 +3387,7 @@ namespace KPLN_Tools.Forms
             }
             catch (Autodesk.Revit.Exceptions.OperationCanceledException)
             {
-                return; 
+                return;
             }
 
             using (var t = new Transaction(targetDoc, "KPLN. Размещение узла на листе"))
@@ -3170,7 +3712,7 @@ namespace KPLN_Tools.Forms
             // Жёсткая сортировка
             var elemsOnTemp = new FilteredElementCollector(targetDoc, tempView.Id)
                 .WhereElementIsNotElementType()
-                .Where(e => e.ViewSpecific && !(e is ImportInstance) && !(e is View) &&  !(e is Group) && e.Category != null && e.OwnerViewId == tempView.Id)
+                .Where(e => e.ViewSpecific && !(e is ImportInstance) && !(e is View) && !(e is Group) && e.Category != null && e.OwnerViewId == tempView.Id)
                 .Select(e => e.Id).ToList();
 
             if (elemsOnTemp.Count == 0)
@@ -3184,7 +3726,7 @@ namespace KPLN_Tools.Forms
                 }
                 return;
             }
-               
+
             XYZ center;
             {
                 BoundingBoxXYZ bb = null;
@@ -3324,7 +3866,7 @@ namespace KPLN_Tools.Forms
 
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
-  
+
             if (e.Key == Key.Escape)
             {
                 this.DialogResult = false;

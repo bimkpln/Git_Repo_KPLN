@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         Title="KPLN. Менеджер узлов"
-        Height="770"
+        Height="850"
         Width="1425"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -25,8 +25,8 @@
         <!-- ЛЕВЫЙ СТОЛБЕЦ -->
         <Grid x:Name="Col1Grid" Grid.Column="0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="365"/>
-                <RowDefinition Height="340"/>
+                <RowDefinition Height="345"/>
+                <RowDefinition Height="440"/>
             </Grid.RowDefinitions>
 
             <!-- Категории -->
@@ -64,8 +64,7 @@
                             <!-- Имя -->
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                 <TextBox x:Name="TxtName" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="280"/>
-                                <Button x:Name="BtnSaveName" Content="Сохранить" Width="80" Margin="8,0,0,0"
-                            Click="BtnSaveName_Click"/>
+                                <Button x:Name="BtnSaveName" Content="Сохранить" Width="80" Margin="8,0,0,0" Click="BtnSaveName_Click"/>
                             </StackPanel>
 
                             <!-- Категория / подкатегория -->
@@ -75,16 +74,22 @@
                                 <Button x:Name="BtnChangeCategory" Content="Изменить" Width="80" Margin="8,0,0,0" Click="BtnChangeCategory_Click"/>
                             </StackPanel>
 
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
+
+
+
+                            <!-- Комментарии -->
+                            <StackPanel Margin="0,5,0,4">
+                                <TextBlock Text="Комментарий:" Margin="0,0,0,4"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="TxtComment" Text="{Binding Comment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="320" Height="45" AcceptsReturn="True" TextWrapping="Wrap"/>
+                                    <Button x:Name="BtnSaveComment"  Content="💾" Width="40" Margin="8,0,0,0" Click="BtnSaveComment_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+
+
+
+
+
                             <!-- Теги -->
                             <StackPanel Margin="0,5,0,4">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -119,13 +124,13 @@
 
                             <!-- Заменить теги -->
                             <Button x:Name="BtnSaveTags" Content="✏️ Изменить теги" Width="360" Height="24" Margin="4,6,0,4" HorizontalAlignment="Left" Click="BtnSaveTags_Click"/>
-                            
-                            <!-- Заменить превью -->                           
+
+                            <!-- Заменить превью -->
                             <Button x:Name="BtnReplacePreview" Content="📸 Заменить изображение на превью узла" Width="360" Height="24" Margin="4,4,0,4" HorizontalAlignment="Left" Click="BtnReplacePreview_Click"/>
 
                             <!-- Параметры PROP -->
                             <TextBlock Text="СВОЙСТВА ВИДА:" Margin="0,8,0,8" FontWeight="SemiBold" FontSize="14" TextDecorations="Underline"/>
-                            
+
                             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
                                 <ItemsControl ItemsSource="{Binding PropParameters}">
                                     <ItemsControl.ItemTemplate>
@@ -137,7 +142,6 @@
                                                 </Grid.ColumnDefinitions>
 
                                                 <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="SemiBold" Margin="0,0,4,0"/>
-
                                                 <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
                                             </Grid>
                                         </DataTemplate>
@@ -145,11 +149,34 @@
                                 </ItemsControl>
                             </ScrollViewer>
 
+
+                            <TextBlock Margin="0,6,0,2">
+                                <Run Text="Файл: " FontWeight="Bold"/>
+                                <Run Text="{Binding RvtFileName}"/>
+                            </TextBlock>
+
+                            <TextBlock Margin="0,0,0,2">
+                                <Run Text="Добавлено в БД: " FontWeight="Bold"/>
+                                <Run Text="{Binding TimeCreate}"/>
+                                <Run Text=" ("/>
+                                <Run Text="{Binding UserCreate}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+
+                            <TextBlock>
+                                <Run Text="Изменено в БД: " FontWeight="Bold"/>
+                                <Run Text="{Binding TimeUpdate}"/>
+                                <Run Text=" ("/>
+                                <Run Text="{Binding UserUpdate}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+
+
+
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
             </Border>
-
         </Grid>
 
         <!-- ПРАВЫЙ СТОЛБЕЦ -->
@@ -215,7 +242,7 @@
                                         <Border Width="250" Height="200" Margin="0,0,8,0" BorderBrush="#DDD" BorderThickness="1">
                                             <Image Source="{Binding Image}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
 
-                                       
+
                                                 <Image.ToolTip>
                                                     <Border Padding="6" Background="#FDFDFD" CornerRadius="6" BorderBrush="#CCC" BorderThickness="1" SnapsToDevicePixels="True">
                                                         <Image Source="{Binding Image}"  Width="500" Height="400" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -230,16 +257,47 @@
                                                 <Run Text="Масштаб: " FontWeight="Bold"/>
                                                 <Run Text="{Binding ScaleText}"/>
                                             </TextBlock>
+
+
+                                            <TextBlock Margin="0,2,0,0" Opacity="0.7" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left" Visibility="{Binding Comment, Converter={StaticResource BoolToVisibilityInverse}}">
+                                                <Run Text="Комментарий: " FontWeight="Bold"/>
+                                                <Run Text="{Binding Comment}" FontStyle="Italic"/>
+                                            </TextBlock>
+
                                             <TextBlock Margin="0,2,0,0" Opacity="0.7" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
                                                 <Run Text="Теги: " FontWeight="Bold"/>
                                                 <Run Text="{Binding Tags}" FontStyle="Italic"/>
                                             </TextBlock>
+
+
+                                            <TextBlock Margin="0,6,0,0" Opacity="0.6" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
+                                                 <Run Text="Файл: " FontWeight="Bold"/>
+                                                 <Run Text="{Binding RvtFileName}" FontStyle="Italic" FontSize="11"/>
+                                            </TextBlock>
+
+                                            <TextBlock Margin="0,2,0,0" Opacity="0.6" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
+                                                <Run Text="Добавлено: " FontWeight="Bold"/>
+                                                <Run Text="{Binding TimeCreate}" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text=" (" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text="{Binding UserCreate}" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text=")" FontStyle="Italic" FontSize="11"/>
+                                            </TextBlock>
+
+                                            <TextBlock Margin="0,2,0,0" Opacity="0.6" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
+                                                <Run Text="Изменено: " FontWeight="Bold"/>
+                                                <Run Text="{Binding TimeUpdate}" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text=" (" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text="{Binding UserUpdate}" FontStyle="Italic" FontSize="11"/>
+                                                <Run Text=")" FontStyle="Italic" FontSize="11"/>
+                                            </TextBlock>
+
+
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        
+
                         <TextBlock x:Name="NoElementsText" Text="Элементов нет" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" Visibility="Collapsed"/>
                     </Grid>
                 </Grid>
