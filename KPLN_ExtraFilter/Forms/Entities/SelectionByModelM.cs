@@ -137,7 +137,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 if (Where_Category)
                     ReloadCategories();
                 if (What_ParameterData)
-                    ReloadParameters();
+                    ReloadParams();
 
                 SetUserSelElems();
                 UpdateCanRunANDUserHelp();
@@ -475,15 +475,6 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             List<Element> elemsNoCat = fic.Where(el => el.Category != null).ToList();
 
-            
-
-
-            
-            //НЕТ ОБНОВЛЕНИЯ СПИСКА КАТЕГОРИЙ, КОГДА ПЕРЕКЛЮЧАЮСЬ МЕЖДУ ВИДОМ И ДОКОМ
-
-
-
-
 
             // Поиск по значению параметра
             IEnumerable<Element> elemsWithCat = elemsNoCat;
@@ -567,17 +558,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 foreach (var catM in Where_SelectedCategories)
                 {
                     var tempOldSelCatM = catM.CatM_SelectedCategory;
-
-                    catM.CatM_Doc = Doc;
                     catM.CatM_UserSelElems = Cahce_UserSelElemsWithoutCatFilter;
 
-                    // Взвожу старую категорию
-                    if (tempOldSelCatM != null && catM.CatM_DocCategories != null)
-                    {
-                        var tempNewSelCatM = catM.CatM_DocCategories.FirstOrDefault(dc => dc.RevitCatName == tempOldSelCatM.RevitCatName);
-                        if (tempNewSelCatM != null)
-                            catM.CatM_SelectedCategory = tempNewSelCatM;
-                    }
+                    if (tempOldSelCatM != null)
+                        catM.RestoreSelectedCategoryByName(tempOldSelCatM.RevitCatName);
                 }
             }
         }
@@ -585,24 +569,17 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Перезагружает список параметров
         /// </summary>
-        private void ReloadParameters()
+        private void ReloadParams()
         {
             if (What_ParameterData)
             {
                 foreach (var paramM in What_SelectedParameters)
                 {
                     var tempOldSelParamM = paramM.ParamM_SelectedParameter;
+                    paramM.ParamM_UserSelElems = UserSelElems.ToArray();
 
-                    paramM.ParamM_Doc = Doc;
-                    paramM.ParamM_UserSelElems = Where_UserSelElems;
-
-                    // Взвожу старый параметр
                     if (tempOldSelParamM != null)
-                    {
-                        var tempNewSelParamM = paramM.ParamtM_DocCategories.FirstOrDefault(dp => dp.RevitParamIntId == tempOldSelParamM.RevitParamIntId);
-                        if (tempNewSelParamM != null)
-                            paramM.ParamM_SelectedParameter = tempNewSelParamM;
-                    }
+                        paramM.RestoreSelectedParamById(tempOldSelParamM.RevitParamIntId);
                 }
             }
         }

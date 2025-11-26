@@ -249,7 +249,7 @@
                                                     <ComboBox
                                                         Width="180"
                                                         Style="{StaticResource CBX}"
-                                                        ItemsSource="{Binding ParamM_FilteredCategoryView}"
+                                                        ItemsSource="{Binding ParamM_FilteredParamView}"
                                                         SelectedItem="{Binding ParamM_SelectedParameter}"
                                                         HorizontalAlignment="Stretch"
                                                         IsEditable="True"

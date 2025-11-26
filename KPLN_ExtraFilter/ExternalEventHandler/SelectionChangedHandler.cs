@@ -12,6 +12,8 @@ namespace KPLN_ExtraFilter.ExternalEventHandler
         
         public SelectionByModelVM CurrentSelByModelVM { get; set; }
 
+        public SetParamsByFrameVM CurrentSetParamsByFrameVM { get; set; }
+
         public void Execute(UIApplication app)
         {
             UIDocument uidoc = app.ActiveUIDocument;
@@ -34,6 +36,12 @@ namespace KPLN_ExtraFilter.ExternalEventHandler
             if (CurrentSelByModelVM != null)
             {
                 CurrentSelByModelVM.CurrentSelectionByModelM.UserSelElems = userSelElems;
+            }
+
+            if (CurrentSetParamsByFrameVM != null)
+            {
+                CurrentSetParamsByFrameVM.CurrentSetParamsByFrameM.Doc = doc;
+                CurrentSetParamsByFrameVM.CurrentSetParamsByFrameM.UserSelElems = userSelElems;
             }
         }
 

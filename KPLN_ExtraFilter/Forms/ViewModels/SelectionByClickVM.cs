@@ -7,7 +7,7 @@ using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms.ViewModels
 {
-    public class SelectionByClickVM
+    public sealed class SelectionByClickVM
     {
         public SelectionByClickVM(Document doc)
         {

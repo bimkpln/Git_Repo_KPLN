@@ -22,6 +22,11 @@ namespace KPLN_ExtraFilter.Forms.Entities
             get => _searchText;
             set
             {
+                //// При указании T вручную (например - конфиг) - срабатывает изменение SearchText,
+                //// НО без обёртки условиями wpf, т.е. падает просто ИМЯ класса
+                if (value.StartsWith("KPLN_ExtraFilter"))
+                    return;
+
                 _searchText = value;
                 NotifyPropertyChanged();
                 _view?.Refresh();

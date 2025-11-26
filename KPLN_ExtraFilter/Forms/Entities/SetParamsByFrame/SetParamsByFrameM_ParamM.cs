@@ -1,31 +1,42 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_ExtraFilter.Common;
+using KPLN_Library_ConfigWorker.Core;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace KPLN_ExtraFilter.Forms.Entities
+namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
 {
-    public sealed class SelectionByModelM_ParamM : INotifyPropertyChanged
+    /// <summary>
+    /// Класс-сущность для WPF окна. Им комплектуется ItemsControl
+    /// </summary>
+    public sealed class SetParamsByFrameM_ParamM : INotifyPropertyChanged, IJsonSerializable
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private readonly SelectionByModelM _modelM;
-        private Element[] _paramM_UserSelElems;
+        private readonly SetParamsByFrameM _modelM;
+        private IEnumerable<Element> _paramM_UserSelElems;
         private ParamEntity _paramM_SelectedParameter;
+        private string _paramM_InputValue;
 
-        public SelectionByModelM_ParamM(SelectionByModelM modelM)
+        [JsonConstructor]
+        public SetParamsByFrameM_ParamM()
+        {
+        }
+
+        public SetParamsByFrameM_ParamM(SetParamsByFrameM modelM)
         {
             _modelM = modelM;
 
             ParamM_Doc = modelM.Doc;
-            ParamM_UserSelElems = modelM.Where_UserSelElems;
+            ParamM_UserSelElems = modelM.UserSelElems.ToArray();
         }
 
         public Document ParamM_Doc { get; set; }
 
-        public Element[] ParamM_UserSelElems
+        public IEnumerable<Element> ParamM_UserSelElems
         {
             get => _paramM_UserSelElems;
             set
@@ -67,15 +78,24 @@ namespace KPLN_ExtraFilter.Forms.Entities
         {
             get
             {
-                IEnumerable<Parameter> elemsParams = DocWorker.GetAllParamsFromElems(ParamM_Doc, ParamM_UserSelElems, false);
+                IEnumerable<Parameter> elemsParams = DocWorker.GetAllParamsFromElems(ParamM_Doc, ParamM_UserSelElems, true);
                 if (elemsParams == null)
                     return null;
 
                 List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
                 foreach (Parameter param in elemsParams)
                 {
-                    allParamsEntities.Add(new ParamEntity(param));
+                    string toolTip = string.Empty;
+                    if (param.IsShared)
+                        toolTip = $"Id: {param.Id}, GUID: {param.GUID}";
+                    else if (param.Id.IntegerValue < 0)
+                        toolTip = $"Id: {param.Id}, это СИСТЕМНЫЙ параметр проекта";
+                    else
+                        toolTip = $"Id: {param.Id}, это ПОЛЬЗОВАТЕЛЬСКИЙ параметр проекта";
+
+                    allParamsEntities.Add(new ParamEntity(param, toolTip));
                 }
+
 
                 return allParamsEntities.OrderBy(pe => pe.RevitParamName).ToArray();
             }
@@ -91,9 +111,34 @@ namespace KPLN_ExtraFilter.Forms.Entities
             {
                 _paramM_SelectedParameter = value;
                 NotifyPropertyChanged();
+
+                _modelM.UpdateCanRunANDUserHelp();
+                _modelM.RunButtonContext();
+            }
+        }
+
+        /// <summary>
+        /// Введенное пользователем значение
+        /// </summary>
+        public string ParamM_InputValue
+        {
+            get => _paramM_InputValue;
+            set
+            {
+                _paramM_InputValue = value;
+                NotifyPropertyChanged();
+
                 _modelM.UpdateCanRunANDUserHelp();
             }
         }
+
+        public object ToJson() => new
+        {
+            // Parameter - не стоит добавлять в JSON, переваривается плохо.
+            // Нужно на чтении JSON уточнять значения по CurrentParam
+            this.ParamM_SelectedParameter,
+            this.ParamM_InputValue,
+        };
 
         /// <summary>
         /// Восстанавливает выбранный параметр, если в текущем View есть параметр с тем же id.

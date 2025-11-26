@@ -33,7 +33,7 @@ namespace KPLN_ExtraFilter.Common
         /// <param name="doc">Ревит-файл</param>
         /// <param name="elemsToFind">Коллекция элементов для анализа</param>
         /// <returns></returns>
-        internal static IEnumerable<Category> GetAllCatsFromElems(Element[] elemsToFind)
+        internal static IEnumerable<Category> GetAllCatsFromElems(IEnumerable<Element> elemsToFind)
         {
             if (elemsToFind.All(el => el == null))
                 return null;
@@ -53,7 +53,7 @@ namespace KPLN_ExtraFilter.Common
         /// <param name="doc">Ревит-файл</param>
         /// <param name="elemsToFind">Коллекция элементов для анализа</param>
         /// <returns></returns>
-        internal static IEnumerable<Parameter> GetAllParamsFromElems(Document doc, Element[] elemsToFind)
+        internal static IEnumerable<Parameter> GetAllParamsFromElems(Document doc, IEnumerable<Element> elemsToFind, bool exceptReadOnly)
         {
             if (elemsToFind.All(el => el == null))
                 return null;
@@ -62,11 +62,11 @@ namespace KPLN_ExtraFilter.Common
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
             Element firstElement = elemsToFind.FirstOrDefault();
-            AddParam(firstElement, commonInstParameters);
+            AddParam(firstElement, commonInstParameters, exceptReadOnly);
 
             // Не у всех элементов есть возможность выбрать тип. Например - помещения
             if (doc.GetElement(firstElement.GetTypeId()) is Element typeElem)
-                AddParam(typeElem, commonTypeParameters);
+                AddParam(typeElem, commonTypeParameters, exceptReadOnly);
 
             int countElemsToFind = elemsToFind.Count();
             foreach (Element currentElement in elemsToFind)
@@ -77,14 +77,14 @@ namespace KPLN_ExtraFilter.Common
                     continue;
 
                 HashSet<Parameter> currentInstParameters = new HashSet<Parameter>(new ParameterComparer());
-                AddParam(currentElement, currentInstParameters);
+                AddParam(currentElement, currentInstParameters, exceptReadOnly);
                 commonInstParameters.UnionWith(currentInstParameters);
 
                 // Не у всех элементов есть возможность выбрать тип. Например - помещения
                 if (doc.GetElement(firstElement.GetTypeId()) is Element currentTypeElem)
                 {
                     HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-                    AddParam(currentTypeElem, currentTypeParameters);
+                    AddParam(currentTypeElem, currentTypeParameters, exceptReadOnly);
                     commonTypeParameters.UnionWith(currentTypeParameters);
                 }
             }
@@ -103,7 +103,7 @@ namespace KPLN_ExtraFilter.Common
         /// <param name="doc">Ревит-файл</param>
         /// <param name="elemsToFind">Коллекция элементов для анализа</param>
         /// <returns></returns>
-        internal static IEnumerable<Parameter> GetUnionParamsFromElems(Document doc, Element[] elemsToFind)
+        internal static IEnumerable<Parameter> GetUnionParamsFromElems(Document doc, Element[] elemsToFind, bool exceptReadOnly)
         {
             if (elemsToFind.All(el => el == null))
                 return null;
@@ -112,11 +112,11 @@ namespace KPLN_ExtraFilter.Common
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
             Element firstElement = elemsToFind.FirstOrDefault();
-            AddParam(firstElement, commonInstParameters);
+            AddParam(firstElement, commonInstParameters, exceptReadOnly);
 
             // Не у всех элементов есть возможность выбрать тип. Например - помещения
             if (doc.GetElement(firstElement.GetTypeId()) is Element typeElem)
-                AddParam(typeElem, commonTypeParameters);
+                AddParam(typeElem, commonTypeParameters, exceptReadOnly);
 
             int countElemsToFind = elemsToFind.Count();
             foreach (Element currentElement in elemsToFind)
@@ -127,14 +127,14 @@ namespace KPLN_ExtraFilter.Common
                     continue;
 
                 HashSet<Parameter> currentInstParameters = new HashSet<Parameter>(new ParameterComparer());
-                AddParam(currentElement, currentInstParameters);
+                AddParam(currentElement, currentInstParameters, exceptReadOnly);
                 commonInstParameters.IntersectWith(currentInstParameters);
 
                 // Не у всех элементов есть возможность выбрать тип. Например - помещения
                 if (doc.GetElement(firstElement.GetTypeId()) is Element currentTypeElem)
                 {
                     HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-                    AddParam(currentTypeElem, currentTypeParameters);
+                    AddParam(currentTypeElem, currentTypeParameters, exceptReadOnly);
                     commonTypeParameters.IntersectWith(currentTypeParameters);
                 }
             }
@@ -199,13 +199,16 @@ namespace KPLN_ExtraFilter.Common
         /// </summary>
         /// <param name="elem">Елемент для аналища</param>
         /// <param name="setToAdd">Коллекция для добавления</param>
-        private static void AddParam(Element elem, HashSet<Parameter> setToAdd)
+        private static void AddParam(Element elem, HashSet<Parameter> setToAdd, bool exceptReadOnly)
         {
             if (elem == null)
                 return;
 
             foreach (Parameter param in elem.Parameters)
             {
+                if (exceptReadOnly && param.IsReadOnly)
+                    continue;
+                
                 if (param.Definition == null)
                     continue;
 

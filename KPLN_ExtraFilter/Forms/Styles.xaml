@@ -4,20 +4,20 @@
   xmlns:local="clr-namespace:KPLN_ExtraFilter.Forms">
 
   
-  <Style x:Key="RCTG" TargetType="Border">
+    <Style x:Key="RCTG" TargetType="Border">
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Margin" Value="4" />
     <Setter Property="Padding" Value="8" />
     <Setter Property="Background" Value="#333840" />
     <Setter Property="Effect">
-      <Setter.Value>
+        <Setter.Value>
         <DropShadowEffect ShadowDepth="0" BlurRadius="8" Color="#60000000" />
-      </Setter.Value>
+        </Setter.Value>
     </Setter>
-  </Style>
+    </Style>
 
   
-  <Style x:Key="BTN" TargetType="Button">
+    <Style x:Key="BTN" TargetType="Button">
     <Setter Property="Background" Value="#3F8CFF" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderBrush" Value="#3F8CFF" />
@@ -28,41 +28,50 @@
     <Setter Property="Cursor" Value="Hand" />
 
     <Setter Property="Template">
-      <Setter.Value>
+        <Setter.Value>
         <ControlTemplate TargetType="Button">
-          <Border x:Name="border"
-                  Background="{TemplateBinding Background}"
-                  CornerRadius="3">
+            <Border x:Name="border"
+                    Background="{TemplateBinding Background}"
+                    CornerRadius="3">
             <ContentPresenter HorizontalAlignment="Center"
-                              VerticalAlignment="Center" />
-          </Border>
-          <ControlTemplate.Triggers>
+                                VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
 
             <!-- Кнопка выключана -->
             <Trigger Property="IsEnabled" Value="False">
-              <Setter TargetName="border" Property="Background" Value="#BFBFBF"/>
-              <Setter Property="Foreground" Value="#6E6E6E"/>
-              <Setter Property="Cursor" Value="Arrow"/>
+                <Setter TargetName="border" Property="Background" Value="#BFBFBF"/>
+                <Setter Property="Foreground" Value="#6E6E6E"/>
+                <Setter Property="Cursor" Value="Arrow"/>
             </Trigger>
 
-          </ControlTemplate.Triggers>
+            </ControlTemplate.Triggers>
         </ControlTemplate>
-      </Setter.Value>
+        </Setter.Value>
     </Setter>
-  </Style>
+    </Style>
 
 
-  <Style x:Key="TXT" TargetType="TextBlock">
+    <Style x:Key="TXT" TargetType="TextBlock">
     <Setter Property="Foreground" Value="#EDEDED" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="TextWrapping" Value="Wrap" />
     <Setter Property="MaxWidth" Value="400" />
     <Setter Property="Margin" Value="5" />
     <Setter Property="FontSize" Value="16" />
-  </Style>
+    </Style>
 
-  
-  <Style x:Key="CHB" TargetType="CheckBox">
+
+    <Style x:Key="TXB" TargetType="TextBox">
+        <Setter Property="Foreground" Value="#EDEDED" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="5" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+
+
+    <Style x:Key="CHB" TargetType="CheckBox">
     <Setter Property="Foreground" Value="#EDEDED" />
     <Setter Property="Margin" Value="5" />
     <Setter Property="FontSize" Value="14" />

@@ -9,7 +9,7 @@ using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms.ViewModels
 {
-    public class SelectionByModelVM
+    public sealed class SelectionByModelVM
     {
         private readonly SelectionByModel _mainWindow;
 

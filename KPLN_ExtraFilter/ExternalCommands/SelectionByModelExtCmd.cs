@@ -65,7 +65,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
 
 
             // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SelectionByClickExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             return Result.Succeeded;
         }
