@@ -290,7 +290,8 @@ namespace KPLN_TaskManager.Forms
                 });
                 createItemTask.Wait();
 
-                TM_IBDBService.CreateDBTaskEntity_ImageBufferItem(CurrentTaskItemEntity);
+                if(!CurrentTaskItemEntity.TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
+                    TM_IBDBService.CreateDBTaskEntity_ImageBufferItem(CurrentTaskItemEntity);
 
                 Module.MainMenuViewer.LoadTaskData();
             }
@@ -682,7 +683,8 @@ namespace KPLN_TaskManager.Forms
                 stream.Close();
             }
 
-            CurrentTaskItemEntity.TE_ImageBufferColl.Add(new TaskEntity_ImageBuffer(CurrentTaskItemEntity.TE_ImageBufferColl.Count, CurrentTaskItemEntity.Id, resultBit));
+            TaskEntity_ImageBuffer newTE_IMB = new TaskEntity_ImageBuffer(CurrentTaskItemEntity.TE_ImageBufferColl.Count, CurrentTaskItemEntity.Id, resultBit);
+            CurrentTaskItemEntity.TE_ImageBufferColl.Add(newTE_IMB);
             CurrentTaskItemEntity.TE_ImageBuffer_Current = CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1;
         }
 

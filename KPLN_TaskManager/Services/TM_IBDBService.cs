@@ -122,7 +122,5 @@ namespace KPLN_TaskManager.Services
 
         #region Delete
         #endregion
-
-
     }
 }
