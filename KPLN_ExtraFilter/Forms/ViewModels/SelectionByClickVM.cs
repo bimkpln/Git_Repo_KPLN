@@ -3,6 +3,7 @@ using KPLN_ExtraFilter.ExecutableCommand;
 using KPLN_ExtraFilter.Forms.Commands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_ConfigWorker;
+using System.Windows;
 using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms.ViewModels
@@ -21,6 +22,7 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
 
             RunSelectionCmd = new RelayCommand<object>(_ => RunSelection());
             DropSelectionCmd = new RelayCommand<object>(_ => DropSelection());
+            CloseWindowCmd = new RelayCommand<object>(CloseWindow);
         }
 
 
@@ -36,14 +38,26 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// </summary>
         public ICommand DropSelectionCmd { get; }
 
+        /// <summary>
+        /// Комманда: Закрыть окно
+        /// </summary>
+        public ICommand CloseWindowCmd { get; }
+
         public void RunSelection()
         {
             // Запись конфигурации последнего запуска
             ConfigService.SaveConfig<SelectionByClickM>(ModuleData.RevitVersion, CurrentSelectionByClickM.UserSelDoc, ConfigType.Memory, CurrentSelectionByClickM);
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new SelectionByClickExcCmd(CurrentSelectionByClickM));
+            if (CurrentSelectionByClickM.CanRun)
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new SelectionByClickExcCmd(CurrentSelectionByClickM));
         }
 
         public void DropSelection() => CurrentSelectionByClickM.DropToDefault();
+
+        public void CloseWindow(object windObj)
+        {
+            if (windObj is Window window)
+                window.Close();
+        }
     }
 }

@@ -16,6 +16,13 @@
         FontFamily="Consolas, 'Segoe UI', monospace"
         Background="#2B2F38">
 
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -25,7 +32,6 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />

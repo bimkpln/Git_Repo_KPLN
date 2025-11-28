@@ -184,9 +184,6 @@
     <Compile Include="Forms\Entities\CollectionFilter.cs" />
     <Compile Include="Forms\Entities\WSEntity.cs" />
     <Compile Include="Forms\Converters\EnumToBooleanConverter.cs" />
-    <Compile Include="Forms\SelectionOptions_MainControl.xaml.cs">
-      <DependentUpon>SelectionOptions_MainControl.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\SelectionByModel.xaml.cs">
       <DependentUpon>SelectionByModel.xaml</DependentUpon>
     </Compile>
@@ -220,10 +217,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Forms\SelectionOptions_MainControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Forms\SelectionByModel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

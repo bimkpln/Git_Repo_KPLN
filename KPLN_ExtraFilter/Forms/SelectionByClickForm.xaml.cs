@@ -3,7 +3,6 @@ using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.ViewModels;
 using System.Windows;
-using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
@@ -19,7 +18,6 @@ namespace KPLN_ExtraFilter.Forms
             InitializeComponent();
 
             DataContext = CurrentSelectionByClickVM;
-            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
         /// <summary>
@@ -36,14 +34,11 @@ namespace KPLN_ExtraFilter.Forms
 
         public void RaiseUpdate() => _externalEvent?.Raise();
 
-        private void HandlePressBtn(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-                Close();
-            else if (e.Key == Key.Enter)
-                CurrentSelectionByClickVM.RunSelection();
-        }
-
+        /// <summary>
+        /// Метод для фокуса на нужном CB. Триггер усложняет жизнь, для его обслуживания нужен доп. класс
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void CHB_WhatParamData_Checked(object sender, RoutedEventArgs e) => this.CB_FilterParams.Focus();
     }
 }

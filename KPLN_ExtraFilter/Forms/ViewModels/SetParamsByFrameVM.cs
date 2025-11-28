@@ -45,6 +45,8 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             ClearingParamCmd = new RelayCommand<object>(_ => ClearingParam());
             RemoveParamCmd = new RelayCommand<SetParamsByFrameM_ParamM>(RemoveParam);
             SelectANDSetElemsParamCmd = new RelayCommand<object>(_ => SelectANDSetElemsParam());
+
+            CloseWindowCmd = new RelayCommand<object>(CloseWindow);
         }
 
         public SetParamsByFrameM CurrentSetParamsByFrameM { get; set; }
@@ -68,6 +70,11 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// Комманда: Выбрать элементы в модели
         /// </summary>
         public ICommand SelectANDSetElemsParamCmd { get; }
+
+        /// <summary>
+        /// Комманда: Закрыть окно
+        /// </summary>
+        public ICommand CloseWindowCmd { get; }
 
         public void AddNewParam()
         {
@@ -106,6 +113,12 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
 #if Debug2020 || Revit2020
                 _mainWindow.Close();
 #endif
+        }
+
+        public void CloseWindow(object windObj)
+        {
+            if (windObj is Window window)
+                window.Close();
         }
     }
 }

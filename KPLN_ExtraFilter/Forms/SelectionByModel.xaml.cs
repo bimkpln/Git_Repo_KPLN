@@ -3,7 +3,6 @@ using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.ViewModels;
 using System.Windows;
-using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
@@ -22,7 +21,6 @@ namespace KPLN_ExtraFilter.Forms
             InitializeComponent();
 
             DataContext = CurrentSelectionByModelVM;
-            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
 
 #if Debug2020 || Revit2020
             // Нет метода в API для отслеживания изменний в выборке юзера
@@ -49,12 +47,6 @@ namespace KPLN_ExtraFilter.Forms
         public void RaiseUpdateSelChanged() => _selExtEv?.Raise();
 
         public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
-
-        private void HandlePressBtn(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-                Close();
-        }
 
         private void CHB_Where_Workset_Checked(object sender, RoutedEventArgs e) => this.CB_FilterWS.Focus();
     }

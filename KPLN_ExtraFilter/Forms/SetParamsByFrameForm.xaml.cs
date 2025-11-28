@@ -4,7 +4,6 @@ using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.ViewModels;
 using System.Collections.Generic;
 using System.Windows;
-using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
@@ -23,7 +22,6 @@ namespace KPLN_ExtraFilter.Forms
             InitializeComponent();
 
             DataContext = CurrentSetParamsByFrameVM;
-            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
         /// <summary>
@@ -45,13 +43,5 @@ namespace KPLN_ExtraFilter.Forms
         public void RaiseUpdateSelChanged() => _selExtEv?.Raise();
 
         public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
-
-        private void HandlePressBtn(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-                Close();
-            else if (e.Key == Key.Enter && CurrentSetParamsByFrameVM.CurrentSetParamsByFrameM.CanRun) { }
-                CurrentSetParamsByFrameVM.SelectANDSetElemsParam();
-        }
     }
 }

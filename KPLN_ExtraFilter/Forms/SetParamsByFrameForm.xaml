@@ -9,11 +9,23 @@
         ResizeMode="NoResize" 
         SizeToContent="Height"
         Width="500"
-        Height="175"
+        Height="260"
         MaxHeight="650"
         FontFamily="Monaco, Consolas, 'DejaVu Sans Mono', monospace"
         Title="KPLN: Выбрать/заполнить рамкой" 
         Background="#2B2F38">
+
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Enter"
+            Command="{Binding SelectANDSetElemsParamCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
 
     <Window.Resources>
         <ResourceDictionary>
