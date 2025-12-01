@@ -1,11 +1,11 @@
 ﻿using KPLN_Library_Forms.Common;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
@@ -14,6 +14,7 @@ namespace KPLN_Library_Forms.UI
         private readonly ObservableCollection<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
+        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
         public ElementMultiPick(IEnumerable<ElementEntity> collection)
         {
             _collection = new ObservableCollection<ElementEntity>(collection);
@@ -25,7 +26,25 @@ namespace KPLN_Library_Forms.UI
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
         }
 
+        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
         public ElementMultiPick(IEnumerable<ElementEntity> collection, string title) : this(collection)
+        {
+            this.Title = $"KPLN: {title}";
+        }
+
+        public ElementMultiPick(Window owner, IEnumerable<ElementEntity> collection)
+        {
+            _collection = new ObservableCollection<ElementEntity>(collection);
+            _showCollection = new ObservableCollection<ElementEntity>(_collection);
+            InitializeComponent();
+
+            this.Title = $"KPLN: Выбери нужный элемент/ы";
+            this.Owner = owner;
+            Elements.ItemsSource = _showCollection;
+            PreviewKeyDown += new KeyEventHandler(HandleEsc);
+        }
+
+        public ElementMultiPick(Window owner, IEnumerable<ElementEntity> collection, string title) : this(owner, collection)
         {
             this.Title = $"KPLN: {title}";
         }
@@ -33,10 +52,7 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Выбранная коллекция элементов
         /// </summary>
-        public List<ElementEntity> SelectedElements
-        {
-            get => _collection.Where(ee => ee.IsSelected).ToList();
-        }
+        public List<ElementEntity> SelectedElements => _collection.Where(ee => ee.IsSelected).ToList();
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {

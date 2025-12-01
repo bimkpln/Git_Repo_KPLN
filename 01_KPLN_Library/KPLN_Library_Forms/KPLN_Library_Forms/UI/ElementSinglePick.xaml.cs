@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,6 +13,7 @@ namespace KPLN_Library_Forms.UI
         private readonly IEnumerable<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
+        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
         public ElementSinglePick(IEnumerable<ElementEntity> collection)
         {
             _collection = collection;
@@ -25,7 +25,25 @@ namespace KPLN_Library_Forms.UI
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
         }
 
+        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
         public ElementSinglePick(IEnumerable<ElementEntity> collection, string title) : this(collection)
+        {
+            this.Title = $"KPLN: {title}";
+        }
+
+        public ElementSinglePick(Window owner, IEnumerable<ElementEntity> collection)
+        {
+            _collection = collection;
+            _showCollection = new ObservableCollection<ElementEntity>(_collection);
+            InitializeComponent();
+
+            this.Title = $"KPLN: Выбери нужный элемент";
+            this.Owner = owner;
+            Elements.ItemsSource = _showCollection;
+            PreviewKeyDown += new KeyEventHandler(HandleEsc);
+        }
+
+        public ElementSinglePick(Window owner, IEnumerable<ElementEntity> collection, string title) : this(owner, collection)
         {
             this.Title = $"KPLN: {title}";
         }
