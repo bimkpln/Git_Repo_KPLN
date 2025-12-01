@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
     <DebugSymbols>true</DebugSymbols>
@@ -35,6 +36,7 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
     <DebugType>none</DebugType>
@@ -59,10 +61,6 @@
   <ItemGroup>
     <Reference Include="KPLN_Library_Bitrix24Worker">
       <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
@@ -129,6 +127,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
@@ -155,6 +157,10 @@
         </Reference>
         <Reference Include="KPLN_Library_OpenDocHandler">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2023\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -185,6 +191,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
@@ -211,6 +221,10 @@
         </Reference>
         <Reference Include="KPLN_Library_OpenDocHandler">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

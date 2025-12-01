@@ -12,6 +12,7 @@ using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
 using Microsoft.Win32;
+using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -20,6 +21,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 
@@ -52,14 +54,17 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         /// </summary>
         private static string _initialDirectoryForOpenFileDialog = @"Y:\";
 
+        private readonly BatchManager _batchManagerWindow;
         private readonly UIApplication _uiapp;
         private string _worksetToCloseNamesStartWith = string.Empty;
         public string _selectedPresets;
 
-        public BatchManagerModel(NLog.Logger currentLogger, UIApplication uiapp)
+        public BatchManagerModel(BatchManager batchManagerWindow, NLog.Logger currentLogger, UIApplication uiapp)
         {
-            CurrentLogger = currentLogger;
             _uiapp = uiapp;
+            _batchManagerWindow = batchManagerWindow;
+
+            CurrentLogger = currentLogger;
 
             СheckEntities = CollectionViewSource.GetDefaultView(_checkEntitiesList);
 
@@ -198,20 +203,16 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             if (parameter is System.Collections.IList list)
             {
                 if (list.Count != 1)
-                {
-                    UserDialog cd = new UserDialog("Предупреждение", $"Информацию можно смотерть только по отдельным файлам");
-                    cd.ShowDialog();
-                }
+                    MessageBox.Show(_batchManagerWindow, "Информацию можно смотерть только по отдельным файлам", "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                 else
                 {
-                    var itemsToDelete = list.Cast<FileEntity>().ToList();
-                    foreach (var item in itemsToDelete)
+                    var itemsToInfo = list.Cast<FileEntity>().ToList();
+                    foreach (var item in itemsToInfo)
                     {
                         UserStringInfo userStringInput = new UserStringInfo(true, item.Name, item.Path);
                         userStringInput.ShowDialog();
                     }
                 }
-
             }
         }
 
@@ -220,8 +221,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             // Получаем выбранные элементы
             if (parameter is System.Collections.IList list)
             {
-                UserDialog cd = new UserDialog("Предупреждение", $"Сейчас будет удалены элементы в количестве {list.Count} шт.");
-                if ((bool)cd.ShowDialog())
+                var td = MessageBox.Show(_batchManagerWindow, $"Сейчас будет удалены элементы в количестве \"{list.Count}\" шт.", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (td == MessageBoxResult.Yes)
                 {
                     var itemsToDelete = list.Cast<FileEntity>().ToList();
                     // Удаляем каждый выбранный элемент из коллекции
@@ -249,14 +250,16 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 foreach (string filePath in openFileDialog.FileNames)
                 {
                     string fileName = Path.GetFileName(filePath);
-                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath));
+                    string fileSize = (new FileInfo(filePath).Length / 1024 / 1024).ToString();
+
+                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath, fileSize));
                 }
             }
         }
 
         private void AddRSFile(object parameter)
         {
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_batchManagerWindow, ModuleData.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 
@@ -264,7 +267,13 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             {
                 foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
                 {
-                    AddToFileEntitiesWithCheck(new FileEntity(formEntity.Name, $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}"));
+                    RevitServer revitServer = SelectFilesFromRevitServer.CurrentRevitServer;
+
+                    string fileName = formEntity.Name.Split('\\').LastOrDefault();
+                    string filePath = $"RSN:\\\\{revitServer.Host}{formEntity.Name}";
+                    string fileSize = (revitServer.GetModelInfo(formEntity.Name).ModelSize / 1024 / 1024).ToString();
+
+                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath, fileSize));
                 }
             }
         }
@@ -277,10 +286,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             if (!FileEntitiesList.Any(listEnt => listEnt.Path.Equals(entity.Path) || listEnt.Name.Equals(entity.Name)))
                 FileEntitiesList.Add(entity);
             else
-            {
-                UserDialog cd = new UserDialog("Предупреждение", $"Файл по указнному пути или с тем же именем уже есть в списке. В добавлении отказано");
-                cd.ShowDialog();
-            }
+                MessageBox.Show(_batchManagerWindow, "Файл по указнному пути или с тем же именем уже есть в списке. В добавлении отказано", "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private void Run(object parameter)
@@ -301,13 +307,15 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 {
                     CurrentLogger.Info($"Начинаю проверку файла: \"{file.Name}\"");
 
+
                     ExcelDataEntity excelEnt = new ExcelDataEntity()
                     {
                         CheckRunData = DateTime.Now.ToString("G"),
                         FileName = file.Name,
-                        FileSize = (new FileInfo(file.Path).Length / 1024 / 1024).ToString(),
+                        FileSize = file.FileSize,
                         ChecksData = new List<CheckData>(),
                     };
+
 
                     #region Открытие документа
                     ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);

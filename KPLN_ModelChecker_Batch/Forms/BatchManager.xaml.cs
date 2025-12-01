@@ -13,7 +13,7 @@ namespace KPLN_ModelChecker_Batch.Forms
         {
             InitializeComponent();
 
-            CurrentModel =  new BatchManagerModel(currentLogger, uiapp);
+            CurrentModel =  new BatchManagerModel(this, currentLogger, uiapp);
 
             DataContext = CurrentModel;
 
