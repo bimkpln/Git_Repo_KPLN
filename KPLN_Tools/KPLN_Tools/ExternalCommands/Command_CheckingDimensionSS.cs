@@ -22,7 +22,7 @@ namespace KPLN_Tools.ExternalCommands
             UIDocument _uidoc = _uiapp.ActiveUIDocument;
             Document _doc = _uidoc.Document;
 
-            TaskDialog td = new TaskDialog("Проверка элементов узлов");
+            TaskDialog td = new TaskDialog("Проверка габаритов электрооборудования и элементов узлов");
             td.MainInstruction = "Что будем проверять?";
             td.MainContent = "Выберите одно из действий ниже.";
             td.CommonButtons = TaskDialogCommonButtons.Close;
