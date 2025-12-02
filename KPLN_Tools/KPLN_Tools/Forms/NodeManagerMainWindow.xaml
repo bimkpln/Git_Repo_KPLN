@@ -123,7 +123,9 @@
 
 
                             <!-- Заменить теги -->
-                            <Button x:Name="BtnSaveTags" Content="✏️ Изменить теги" Width="360" Height="24" Margin="4,6,0,4" HorizontalAlignment="Left" Click="BtnSaveTags_Click"/>
+                            <StackPanel Orientation="Horizontal" Margin="4,6,0,4" HorizontalAlignment="Left">
+                                <Button x:Name="BtnAddTag" Content="📄  Добавить / удалить теги" Width="360" Height="24" Margin="0,0,8,0" Click="BtnAddTag_Click"/>
+                            </StackPanel>
 
                             <!-- Заменить превью -->
                             <Button x:Name="BtnReplacePreview" Content="📸 Заменить изображение на превью узла" Width="360" Height="24" Margin="4,4,0,4" HorizontalAlignment="Left" Click="BtnReplacePreview_Click"/>
@@ -266,7 +268,7 @@
 
                                             <TextBlock Margin="0,2,0,0" Opacity="0.7" Width="570" TextWrapping="Wrap" HorizontalAlignment="Left">
                                                 <Run Text="Теги: " FontWeight="Bold"/>
-                                                <Run Text="{Binding Tags}" FontStyle="Italic"/>
+                                                <Run Text="{Binding TagsNormalized}" FontStyle="Italic"/>
                                             </TextBlock>
 
 

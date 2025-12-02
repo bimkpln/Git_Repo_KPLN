@@ -93,12 +93,29 @@ namespace KPLN_Tools.Forms
         public string ScaleText { get; set; }
         public double? ScaleValue { get; set; }
 
-
         public int? CatId { get; set; }
         public string SubcatId { get; set; }
         public string CategoryPath { get; set; }
 
-        public string Tags { get; set; }
+        private string _tags;
+        public string Tags
+        {
+            get => _tags;
+            set => _tags = value;
+        }
+
+        // Нормализованная строка тегов: DWG первым, алфавит, без дублей
+        public string TagsNormalized
+        {
+            get => TagHelper.NormalizeTagsString(_tags);
+            set
+            {
+                // Если вдруг кто-то привяжется TwoWay к TagsNormalized —
+                // просто кладём значение в Tags.
+                _tags = value;
+            }
+        }
+
         public string Comment { get; set; }
 
         public string TimeCreate { get; set; }
@@ -108,7 +125,8 @@ namespace KPLN_Tools.Forms
 
         public string RvtFileName { get; set; }
 
-        public ObservableCollection<KeyValuePair<string, string>> PropParameters { get; set; } = new ObservableCollection<KeyValuePair<string, string>>();
+        public ObservableCollection<KeyValuePair<string, string>> PropParameters { get; set; }
+            = new ObservableCollection<KeyValuePair<string, string>>();
     }
 
     // КОНВЕКТОРЫ ТЕГОВ
@@ -120,11 +138,7 @@ namespace KPLN_Tools.Forms
             if (string.IsNullOrWhiteSpace(s))
                 return Array.Empty<string>();
 
-            return s
-                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim())
-                .Where(t => !string.IsNullOrWhiteSpace(t))
-                .ToList();
+            return TagHelper.SplitAndSortTags(s);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -146,6 +160,35 @@ namespace KPLN_Tools.Forms
             throw new NotImplementedException();
         }
     }
+
+    // ТЕГИ
+    public static class TagHelper
+    {
+        public static List<string> SplitAndSortTags(string tags)
+        {
+            if (string.IsNullOrWhiteSpace(tags))
+                return new List<string>();
+
+            var list = tags
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                .ToList();
+
+            return list
+                .OrderBy(t => t.Equals("DWG", StringComparison.InvariantCultureIgnoreCase) ? 0 : 1)
+                .ThenBy(t => t, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        public static string NormalizeTagsString(string tags)
+        {
+            var list = SplitAndSortTags(tags);
+            return list.Count == 0 ? string.Empty : string.Join(", ", list);
+        }
+    }
+
 
     // ОСНОВНОЕ ОКНО
     public partial class MainWindowNodeManager : Window
@@ -237,7 +280,7 @@ namespace KPLN_Tools.Forms
             TxtComment.IsEnabled = false;
             BtnSaveComment.IsEnabled = false;
             TxtTags.IsEnabled = false;
-            BtnSaveTags.IsEnabled = false;
+            BtnAddTag.IsEnabled = false;
             BtnChangeCategory.IsEnabled = false;
             BtnReplacePreview.IsEnabled = false;
 
@@ -1311,7 +1354,7 @@ namespace KPLN_Tools.Forms
             TxtName.IsEnabled = canEdit;
             BtnSaveName.IsEnabled = canEdit;
             TxtTags.IsEnabled = canEdit;
-            BtnSaveTags.IsEnabled = canEdit;
+            BtnAddTag.IsEnabled = canEdit;
             BtnChangeCategory.IsEnabled = canEdit;
             BtnReplacePreview.IsEnabled = canEdit;
 
@@ -1319,7 +1362,6 @@ namespace KPLN_Tools.Forms
             BtnSaveComment.IsEnabled = canEdit;
 
             IsEditTagsMode = false;
-            BtnSaveTags.Content = "✏️ Изменить теги";
         }
 
         //////////////////////////////// СВОЙСТВА УЗЛА
@@ -1452,18 +1494,31 @@ namespace KPLN_Tools.Forms
             if (element == null)
                 return;
 
-            if (!IsEditTagsMode)
+            var dlg = new NodeManagerInputTagWindow
             {
-                IsEditTagsMode = true;
-                BtnSaveTags.Content = "💾 Сохранить теги";
+                Owner = this
+            };
 
-                TxtTags.Focus();
-                TxtTags.CaretIndex = TxtTags.Text?.Length ?? 0;
+            if (dlg.ShowDialog() != true)
                 return;
-            }
 
-            this.Topmost = false;
+            var newTag = dlg.TagText;
+            if (string.IsNullOrWhiteSpace(newTag))
+                return;
 
+            var currentList = TagHelper.SplitAndSortTags(element.Tags);
+
+            currentList.Add(newTag.Trim());
+
+            element.Tags = TagHelper.NormalizeTagsString(string.Join(", ", currentList));
+
+            SaveTagsToDb(element);
+            ReloadCurrentElement(element.Id);
+        }
+
+
+        private void SaveTagsToDb(NodeElementUi element)
+        {
             try
             {
                 using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
@@ -1475,11 +1530,11 @@ namespace KPLN_Tools.Forms
                         string uName = _userName ?? string.Empty;
 
                         cmd.CommandText = @"
-                            UPDATE nodeManager 
-                            SET TAGS = @tags,
-                                TIME_UPDATE = @timeUpd,
-                                USER_UPDATE = @userUpd
-                            WHERE ID = @id;";
+                    UPDATE nodeManager 
+                    SET TAGS = @tags,
+                        TIME_UPDATE = @timeUpd,
+                        USER_UPDATE = @userUpd
+                    WHERE ID = @id;";
 
                         cmd.Parameters.AddWithValue("@tags", element.Tags ?? string.Empty);
                         cmd.Parameters.AddWithValue("@timeUpd", now);
@@ -1490,23 +1545,59 @@ namespace KPLN_Tools.Forms
                     }
                     conn.Close();
                 }
-
-                var sel = ElementsList.SelectedItem;
-                ElementsList.SelectedItem = null;
-                ElementsList.SelectedItem = sel;
-
-                ReloadCurrentElement(element.Id);
             }
             catch (Exception ex)
             {
                 TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении тегов:\n" + ex.Message);
             }
-
-            this.Topmost = true;
-
-            IsEditTagsMode = false;
-            BtnSaveTags.Content = "✏️ Изменить";
         }
+
+        private void BtnAddTag_Click(object sender, RoutedEventArgs e)
+        {
+            if (!IsSuperUser)
+                return;
+
+            var element = ElementsList.SelectedItem as NodeElementUi;
+            if (element == null)
+                return;
+
+            List<string> allTags;
+            try
+            {
+                allTags = GetAllTagsFromDb(); 
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при чтении тегов из БД:\n" + ex.Message);
+                return;
+            }
+
+            if (allTags == null || allTags.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "В БД пока нет тегов для выбора.");
+                return;
+            }
+
+            var currentTags = TagHelper.SplitAndSortTags(element.Tags);
+
+            var dlg = new NodeManagerManageTagsWindow(allTags, currentTags)
+            {
+                Owner = this
+            };
+
+            if (dlg.ShowDialog() == true)
+            {
+                var resultTags = dlg.ResultTags ?? new List<string>();
+
+                element.Tags = TagHelper.NormalizeTagsString(
+                    string.Join(", ", resultTags));
+
+                SaveTagsToDb(element); 
+                ReloadCurrentElement(element.Id);
+            }
+        }
+
+
 
         private void BtnChangeCategory_Click(object sender, RoutedEventArgs e)
         {

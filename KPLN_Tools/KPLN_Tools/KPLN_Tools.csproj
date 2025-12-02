@@ -277,14 +277,17 @@
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ChangeCategoryWindowNodeManager.xaml.cs">
-      <DependentUpon>ChangeCategoryWindowNodeManager.xaml</DependentUpon>
+    <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
+      <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FilterByTagsWindowNodeManager.xaml.cs">
-      <DependentUpon>FilterByTagsWindowNodeManager.xaml</DependentUpon>
+    <Compile Include="Forms\NodeManagerFilterByTagsWindow.xaml.cs">
+      <DependentUpon>NodeManagerFilterByTagsWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\MainWindowNodeManager.xaml.cs">
-      <DependentUpon>MainWindowNodeManager.xaml</DependentUpon>
+    <Compile Include="Forms\NodeManagerInputTagWindow.xaml.cs">
+      <DependentUpon>NodeManagerInputTagWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\NodeManagerMainWindow.xaml.cs">
+      <DependentUpon>NodeManagerMainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Models\Core\ARPG_TZ_Config.cs" />
     <Compile Include="Forms\Models\Core\ARPG_TZ_MainData.cs" />
@@ -375,6 +378,9 @@
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
+    <Compile Include="Forms\NodeManagerManageTagsWindow.xaml.cs">
+      <DependentUpon>NodeManagerManageTagsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\OVVK_MergeSystemsForm.xaml.cs">
       <DependentUpon>OVVK_MergeSystemsForm.xaml</DependentUpon>
     </Compile>
@@ -390,11 +396,11 @@
     <Compile Include="Forms\RLinkLoadContent.xaml.cs">
       <DependentUpon>RLinkLoadContent.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\SettingsWindowNodeManager.xaml.cs">
-      <DependentUpon>SettingsWindowNodeManager.xaml</DependentUpon>
+    <Compile Include="Forms\NodeManagerSettingsWindow.xaml.cs">
+      <DependentUpon>NodeManagerSettingsWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\SettingsWindowNodeManagerCategory.xaml.cs">
-      <DependentUpon>SettingsWindowNodeManagerCategory.xaml</DependentUpon>
+    <Compile Include="Forms\NodeManagerSettingsCategoryWindow.xaml.cs">
+      <DependentUpon>NodeManagerSettingsCategoryWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
@@ -517,11 +523,11 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ChangeCategoryWindowNodeManager.xaml">
+    <Page Include="Forms\NodeManagerChangeCategoryWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\FilterByTagsWindowNodeManager.xaml">
+    <Page Include="Forms\NodeManagerFilterByTagsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -529,11 +535,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\MainWindowNodeManager.xaml">
+    <Page Include="Forms\NodeManagerInputTagWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\NodeManagerMainWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\KR_WSofLinks.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\NodeManagerManageTagsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -557,11 +571,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Forms\SettingsWindowNodeManager.xaml">
+    <Page Include="Forms\NodeManagerSettingsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\SettingsWindowNodeManagerCategory.xaml">
+    <Page Include="Forms\NodeManagerSettingsCategoryWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
