@@ -263,6 +263,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
@@ -272,6 +273,9 @@
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CabinetMismatchWindow.xaml.cs">
+      <DependentUpon>CabinetMismatchWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ChangeCategoryWindowNodeManager.xaml.cs">
       <DependentUpon>ChangeCategoryWindowNodeManager.xaml</DependentUpon>
@@ -391,6 +395,9 @@
     </Compile>
     <Compile Include="Forms\SettingsWindowNodeManagerCategory.xaml.cs">
       <DependentUpon>SettingsWindowNodeManagerCategory.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SizeMismatchWindow.xaml.cs">
+      <DependentUpon>SizeMismatchWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
@@ -513,6 +520,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\CabinetMismatchWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\ChangeCategoryWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -558,6 +569,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\SettingsWindowNodeManagerCategory.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SizeMismatchWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

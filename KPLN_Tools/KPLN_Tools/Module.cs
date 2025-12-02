@@ -507,8 +507,25 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1319");
 
+                PushButtonData ssCheckingDimension = CreateBtnData(
+                    "Проверка габаритов ЭУ",
+                    "Проверка габаритов ЭУ",
+                    "Проверка габаритов ЭУ",
+                    string.Format("Задача 1. Проверка параметра ``КП_О_Группирование`` у семейств Элементов узлов и сравнение его с параметром семейств шкафа ``Имя панели``.\n" +
+                    "Задача 2. Проверка габаритов у семейств элементов узлов и семейств шкафа, в случае если параметр КП_О_Группирование = Имя панели\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_CheckingDimensionSS).FullName,
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "KPLN_Tools.Imagens.FillInParamSmall.png",
+                    "http://moodle/");
+
                 ssToolsPullDownBtn.AddPushButton(ssSystems);
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
+                ssToolsPullDownBtn.AddPushButton(ssCheckingDimension);
             }
             #endregion
 
