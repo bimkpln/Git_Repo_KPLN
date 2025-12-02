@@ -86,41 +86,54 @@ namespace KPLN_ExtraFilter.Forms.Entities
             }
         }
 
-        public static TreeElementEntity[] CreateTreeElEnt_ByCategory(IEnumerable<Element> userSelElems)
+        /// <summary>
+        /// Создаю дерево с группировкой Категория-Семейство-Тип
+        /// </summary>
+        public static TreeElementEntity[] CreateTreeElEnt_ByCatANDFamANDType(IEnumerable<Element> userSelElems)
         {
             List<TreeElementEntity> result = new List<TreeElementEntity>();
 
             string noFamName = "<Без семейства>";
-            // Группирую по категории
+            string noTypeName = "<Без типа>";
+
+            // Уровень 1: КАТЕГОРИЯ
             var groupedByCat = userSelElems
+                .Where(el => el.Category != null)
                 .GroupBy(el => el.Category.Name)
                 .OrderBy(g => g.Key);
 
-
             foreach (IGrouping<string, Element> catGroup in groupedByCat)
             {
-                // Уровень 1: КАТЕГОРИЯ
-                TreeElementEntity catNode = new TreeElementEntity()
+                TreeElementEntity catNode = new TreeElementEntity
                 {
-                    TEE_Name = catGroup.Key,
+                    TEE_Name = catGroup.Key
                 };
 
-                // Группирую по семейству
+                // Уровень 2: СЕМЕЙСТВО
                 var groupedByFamily = catGroup
                     .GroupBy(el =>
                     {
                         string famName = null;
+
                         if (el is Family family)
-                            famName = family.FamilyCategory.Name;
+                            famName = family.Name;
                         else if (el is ElementType elType)
                             famName = elType.FamilyName;
                         else if (el is FamilyInstance fi)
                             famName = fi.Symbol?.FamilyName;
                         else
-                            famName = el.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM)?.AsValueString();
+                        {
+                            // "Семейство : Тип"
+                            string famAndType = el.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM)?.AsValueString();
+                            if (!string.IsNullOrEmpty(famAndType))
+                            {
+                                int idx = famAndType.IndexOf(':');
+                                famName = idx > 0 ? famAndType.Substring(0, idx).Trim() : famAndType;
+                            }
+                        }
 
                         if (string.IsNullOrEmpty(famName))
-                            return noFamName;
+                            famName = noFamName;
 
                         return famName;
                     })
@@ -128,23 +141,76 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
                 foreach (IGrouping<string, Element> famGroup in groupedByFamily)
                 {
-                    // Уровень 2: СЕМЕЙСТВА
-                    TreeElementEntity famNode = new TreeElementEntity()
+                    TreeElementEntity famNode = new TreeElementEntity
                     {
                         TEE_Name = famGroup.Key,
                         TEE_Parent = catNode
                     };
 
-                    // Узровень 3: ЭЛЕМЕНТЫ
-                    foreach (Element el in famGroup)
-                    {
-                        TreeElementEntity elNode = new TreeElementEntity()
+                    // Уровень 3: ТИП
+                    var groupedByType = famGroup
+                        .GroupBy(el =>
                         {
-                            TEE_Name = $"{el.Name}, id: {el.Id}",
-                            TEE_Element = el,
+                            string typeName = null;
+
+                            if (el is ElementType elType)
+                            {
+                                typeName = elType.Name;
+                            }
+                            else if (el is FamilyInstance fi)
+                            {
+                                typeName = fi.Symbol?.Name;
+                            }
+                            else
+                            {
+                                // Пробуем взять имя типа параметрами
+                                Parameter typeParam =
+                                    el.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM) ??
+                                    el.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM);
+
+                                if (typeParam != null)
+                                {
+                                    string val = typeParam.AsValueString();
+                                    if (!string.IsNullOrEmpty(val))
+                                    {
+                                        // Для "Семейство : Тип" откусываем часть после двоеточия
+                                        int idx = val.IndexOf(':');
+                                        typeName = idx >= 0 && idx < val.Length - 1
+                                            ? val.Substring(idx + 1).Trim()
+                                            : val;
+                                    }
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(typeName))
+                                typeName = noTypeName;
+
+                            return typeName;
+                        })
+                        .OrderBy(g => g.Key);
+
+                    foreach (IGrouping<string, Element> typeGroup in groupedByType)
+                    {
+                        TreeElementEntity typeNode = new TreeElementEntity
+                        {
+                            TEE_Name = typeGroup.Key,
                             TEE_Parent = famNode
                         };
-                        famNode.TEE_ChildrenColl.Add(elNode);
+
+                        // Уровень 4: ЭЛЕМЕНТЫ
+                        foreach (Element el in typeGroup)
+                        {
+                            TreeElementEntity elNode = new TreeElementEntity
+                            {
+                                TEE_Name = $"{el.Name}, id: {el.Id}",
+                                TEE_Element = el,
+                                TEE_Parent = typeNode
+                            };
+
+                            typeNode.TEE_ChildrenColl.Add(elNode);
+                        }
+
+                        famNode.TEE_ChildrenColl.Add(typeNode);
                     }
 
                     catNode.TEE_ChildrenColl.Add(famNode);
@@ -156,7 +222,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
             return result.ToArray();
         }
 
-        public static TreeElementEntity[] SortTreeElEnt_ByParameter(Document doc, IEnumerable<Element> elements, IEnumerable<SelectionByModelM_ParamM> paramMColl)
+        /// <summary>
+        /// Создаю дерево с группировкой Значение параметра-Категория-Семейство-Тип
+        /// </summary>
+        public static TreeElementEntity[] CreateTreeElEnt_ByParamANDCatANDFamANDType(Document doc, IEnumerable<Element> elements, IEnumerable<SelectionByModelM_ParamM> paramMColl)
         {
             List<TreeElementEntity> result = new List<TreeElementEntity>();
 
@@ -173,21 +242,26 @@ namespace KPLN_ExtraFilter.Forms.Entities
                     foreach (var pEntity in paramEntities)
                     {
                         string paramName = pEntity.RevitParamName;
-                        Parameter p = e.LookupParameter(paramName);
+                        Parameter param = e.LookupParameter(paramName);
 
-                        if (p == null && doc.GetElement(e.GetTypeId()) is Element typeElem)
-                            p = typeElem.LookupParameter(paramName);
+                        if (param == null && doc.GetElement(e.GetTypeId()) is Element typeElem)
+                            param = typeElem.LookupParameter(paramName);
 
                         string value;
 
-                        if (p == null)
+                        if (param == null)
                             value = noParamData;
-                        else if (!p.HasValue)
+                        else if (!param.HasValue)
                             value = emptyParamData;
                         else
-                            value = DocWorker.GetParamValueInSI(doc, p);
+                            value = DocWorker.GetParamValueInSI(doc, param);
 
-                        keyParts.Add($"{paramName}: {value}");
+                        // Добивка по пустым значениям пар-в
+                        if (string.IsNullOrEmpty(value))
+                            value = emptyParamData;
+
+
+                        keyParts.Add($"{paramName}: \"{value}\"");
                     }
 
                     // Формируем ключ:
@@ -196,7 +270,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 })
                 .OrderBy(g => g.Key);
 
-            // --- СТВАРЭННЕ ДРЭВА ---
+            // Создаём дерево
             foreach (var pGroup in paramGroups)
             {
                 var topNode = new TreeElementEntity
@@ -204,8 +278,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
                     TEE_Name = pGroup.Key,
                 };
 
-                // катэгорыі як падузлы
-                var catTree = CreateTreeElEnt_ByCategory(pGroup);
+                // Категорийное дерево - это подкатегория
+                var catTree = CreateTreeElEnt_ByCatANDFamANDType(pGroup);
 
                 foreach (var catEntity in catTree)
                 {

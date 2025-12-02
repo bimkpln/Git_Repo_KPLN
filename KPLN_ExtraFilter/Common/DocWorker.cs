@@ -159,7 +159,7 @@ namespace KPLN_ExtraFilter.Common
             switch (userSelParam.StorageType)
             {
                 case StorageType.ElementId:
-                    paramData = userSelParam.AsElementId().IntegerValue.ToString();
+                    paramData = userSelParam.AsValueString();
                     break;
 
                 case StorageType.String:

@@ -9,7 +9,7 @@
         ResizeMode="NoResize" 
         SizeToContent="Height"
         Width="500"
-        Height="260"
+        Height="230"
         MaxHeight="650"
         FontFamily="Monaco, Consolas, 'DejaVu Sans Mono', monospace"
         Title="KPLN: Выбрать/заполнить рамкой" 
@@ -42,13 +42,15 @@
                 <StackPanel >
                     <TextBlock 
                         Style="{StaticResource TXT}" 
+                        MaxWidth="600"
                         HorizontalAlignment="Left">
                         <Bold>1.</Bold> Если нужно только выделить вложенные семейства, изоляцию возд./труб - нажми кнопку "Выделить!"
                     </TextBlock>
                     <TextBlock 
                         Style="{StaticResource TXT}" 
+                        MaxWidth="600"
                         HorizontalAlignment="Left">
-                        <Bold>2.</Bold> Если нужно заполнить параметры с учётом вложенные семейства, изоляцию возд./труб - добавь нужные параметры, укажи значения и нажми "Заполнить!"
+                        <Bold>2.</Bold> Если нужно заполнить параметры с учётом вложенных семейств, изоляцию возд./труб - добавь нужные параметры, укажи значения и нажми "Заполнить!"
                     </TextBlock>
 
                     <ScrollViewer 

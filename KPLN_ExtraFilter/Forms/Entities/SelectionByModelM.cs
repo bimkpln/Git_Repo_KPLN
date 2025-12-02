@@ -74,7 +74,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             get => _docActiveView;
             set
             {
-                if (value != _docActiveView)
+                if (value != _docActiveView && Where_ViewDocFilterMode == ViewFilterMode.CurrentView)
                 {
                     _docActiveView = value;
                     
@@ -87,20 +87,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Пользовательский выбор из модели
         /// </summary>
-        public IEnumerable<Element> UserSelElems
-        {
-            get => _userSelElems;
-            set
-            {
-                if (value != _docActiveView)
-                {
-                    _userSelElems = value;
-
-                    SetUserSelElems();
-                    UpdateCanRunANDUserHelp();
-                }
-            }
-        }
+        public IEnumerable<Element> UserSelElems { get => _userSelElems; set => _userSelElems = value; }
 
         /// <summary>
         /// Коллекция элементов согласно пользовательскому выбору
@@ -525,10 +512,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
         {
             //Группировка по параметру
             if (What_ParameterData && What_SelectedParameters.All(paramM => paramM.ParamM_SelectedParameter != null))
-                TreeElemEntities = TreeElementEntity.SortTreeElEnt_ByParameter(Doc, Where_UserSelElems, What_SelectedParameters);
+                TreeElemEntities = TreeElementEntity.CreateTreeElEnt_ByParamANDCatANDFamANDType(Doc, Where_UserSelElems, What_SelectedParameters);
             // Группировка по категории
             else
-                TreeElemEntities = TreeElementEntity.CreateTreeElEnt_ByCategory(Where_UserSelElems);
+                TreeElemEntities = TreeElementEntity.CreateTreeElEnt_ByCatANDFamANDType(Where_UserSelElems);
         }
 
         /// <summary>
@@ -571,6 +558,9 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// </summary>
         private void ReloadParams()
         {
+            if (UserSelElems == null)
+                return;
+            
             if (What_ParameterData)
             {
                 foreach (var paramM in What_SelectedParameters)

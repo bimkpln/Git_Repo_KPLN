@@ -135,7 +135,7 @@
                         Style="{StaticResource CHB}" 
                         IsChecked="{Binding Belong_Group, 
                             UpdateSourceTrigger=PropertyChanged}" 
-                        Content="Эл-ты групп" />
+                        Content="Элементы групп" />
                 </StackPanel>
             </Border>
         </StackPanel>
