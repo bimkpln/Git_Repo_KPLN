@@ -216,7 +216,7 @@ namespace KPLN_ModelChecker_Lib.Commands
             }
 
             bool isKRDoc = false;
-            string fileFullName = KPLN_Looker.Module.GetFileFullName(CheckDocument);
+            string fileFullName = GetFileFullName(CheckDocument);
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
             if (prjDBSubDepartment != null)
                 isKRDoc = prjDBSubDepartment.Code == "КР";
@@ -226,6 +226,16 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             return CheckResultStatus.Succeeded;
         }
+
+        /// <summary>
+        /// Получить полное имя открытого файла
+        /// </summary>
+        /// <param name="doc">Документ Ревит для анализа</param>
+        /// <returns></returns>
+        private string GetFileFullName(Document doc) =>
+            doc.IsWorkshared && !doc.IsDetached
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
+                : doc.PathName;
 
         /// <summary>
         /// Получить список ошибок по отверстиям, которые не видны ни на одном виде

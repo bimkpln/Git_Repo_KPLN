@@ -52,7 +52,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return choiceWindow.CheckingValueOfAParameter(comboBox, textBox, paramTypeName);
         }
 
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
         public string GetParamTypeName(ExternalDefinition def, ForgeTypeId value)
         {
             batchAddingParametersWindowСhoice choiceWindow = new batchAddingParametersWindowСhoice(uiapp, activeFamilyName);
@@ -574,9 +574,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
 #if Revit2020 || Debug2020
                         ParameterType paramType = def.ParameterType;
-#endif
-
-#if Revit2023 || Debug2023
+#else
                         ForgeTypeId paramTypeId = def.GetDataType();
                         string paramType = GetParamTypeName(def, paramTypeId);
 #endif
@@ -918,8 +916,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
 #if Revit2020 || Debug2020
                             ParameterType paramType = def.ParameterType;
-#endif
-#if Revit2023 || Debug2023
+#else
                             ForgeTypeId paramTypeId = def.GetDataType();
                             string paramType = GetParamTypeName(def, paramTypeId);
 #endif

@@ -89,8 +89,12 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
                             int conCount = 2;
                             foreach (CheckMEPHeightMEPData mepData in finallyCheckColl)
                             {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                                 if (mepData.MEPElement.Id.IntegerValue == elemToCheck.Id.IntegerValue)
-                                    continue;
+# else 
+                                if (mepData.MEPElement.Id.Value == elemToCheck.Id.Value)
+#endif
+                                continue;
 
                                 if (mepData.MEPElement is FamilyInstance famInst)
                                 {

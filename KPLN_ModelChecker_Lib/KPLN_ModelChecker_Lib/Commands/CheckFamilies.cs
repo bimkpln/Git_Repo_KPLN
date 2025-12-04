@@ -357,8 +357,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                 typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
                     DisplayUnitType.DUT_MILLIMETERS);
 #endif
-#if Revit2023 || Debug2023
-                typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
+#if !Revit2020 && !Debug2020
+            typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
                         new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif
             else if (elemType is WallType wallType)
@@ -370,7 +370,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
                     DisplayUnitType.DUT_MILLIMETERS);
 #endif
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
                 typeThickness = UnitUtils.ConvertFromInternalUnits(widthParam.AsDouble(),
                     new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif

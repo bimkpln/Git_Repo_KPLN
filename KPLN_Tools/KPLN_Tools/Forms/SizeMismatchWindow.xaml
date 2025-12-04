@@ -1,0 +1,49 @@
+﻿<Window x:Class="KPLN_Tools.Forms.SizeMismatchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Несоответствия габаритов"
+        Height="500" Width="750"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="10">
+
+        <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" TextWrapping="Wrap" FontWeight="Bold">Найдены элементы, у которых габариты не совпадают</TextBlock>
+
+        <Grid Grid.IsSharedSizeScope="True">
+            <ListBox x:Name="ListBoxItems"
+         HorizontalContentAlignment="Stretch">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,2" Padding="4"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="#33000000">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ButtonsColumn" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                               Text="{Binding DisplayName}"
+                               TextWrapping="Wrap" />
+
+                                <StackPanel Grid.Column="1"
+                                Orientation="Vertical"
+                                HorizontalAlignment="Right">
+                                    <Button Content="К ЭлУзлу"
+                                Margin="8,0,0,2"
+                                Padding="10,2"
+                                Click="GoToNode_Click" />
+                                    <Button Content="К Шкафу"
+                                Margin="8,0,0,0"
+                                Padding="10,2"
+                                Click="GoToCabinet_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+    </DockPanel>
+</Window>

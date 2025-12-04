@@ -12,8 +12,7 @@
         Background="#FF292D36" 
         ResizeMode="NoResize" 
         WindowStyle="ToolWindow" 
-        Topmost="True" 
-        Closing="Window_Closing">
+        Topmost="True">
     <Window.Resources>
         <Style TargetType="Button" x:Key="BTN">
             <Setter Property="Background" Value="{x:Null}"/>

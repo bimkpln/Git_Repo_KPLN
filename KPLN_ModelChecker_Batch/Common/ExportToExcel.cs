@@ -97,7 +97,17 @@ namespace KPLN_ModelChecker_Batch.Common
                 ExcelDataEntity excelEnt = excelEntities[i];
 
                 Excel.Worksheet worksheet = workbook.Sheets[i + 1];
-                worksheet.Name = excelEnt.FileName;
+
+                string wsName;
+                // max 31 символ
+                if (excelEnt.FileName.Length > 31)
+                {
+                    wsName = excelEnt.FileName.Remove(28);
+                    wsName = $"{wsName}...";
+                }
+                else
+                    wsName = excelEnt.FileName;
+                worksheet.Name = wsName;
 
                 // Настройки общего внешнего вида таблицы
                 worksheet.Cells.WrapText = true;

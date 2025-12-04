@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_SQLiteWorker.Core;
+using KPLN_Loader.Core;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -8,19 +9,6 @@ using System.Text;
 
 namespace KPLN_Library_SQLiteWorker.FactoryParts.Common
 {
-    /// <summary>
-    /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
-    /// </summary>
-    [Obsolete("Удалить - читай описание класса")]
-    public sealed class DB_Config
-    {
-        public string Name { get; set; }
-
-        public string Path { get; set; }
-
-        public string Description { get; set; }
-    }
-
     /// <summary>
     /// Абстрактный создатель сервисов работы с БД
     /// </summary>

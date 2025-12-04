@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Mechanical;
+using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
@@ -7,6 +9,7 @@ using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -15,106 +18,143 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 {
     internal class SetParamsByFrameExcCmd : IExecutableCommand
     {
-        private readonly Element[] _elemsToSet;
-        private readonly MainItem[] _currentParamEntities;
-        /// <summary>
-        /// Коллекция элементов с проблемами в назначении систем
-        /// </summary>
-        private Dictionary<string, List<Element>> _warningsElementColl = new Dictionary<string, List<Element>>();
+        private readonly SetParamsByFrameM _entity;
+        private readonly Dictionary<string, List<ElementId>> _warningsElementColl = new Dictionary<string, List<ElementId>>();
 
-        public SetParamsByFrameExcCmd(SetParamsByFrameEntity formEntity)
+        public SetParamsByFrameExcCmd(SetParamsByFrameM entity)
         {
-            _elemsToSet = formEntity.SelectedElems;
-            _currentParamEntities = formEntity.MainItems.ToArray();
+            _entity = entity;
         }
 
         public Result Execute(UIApplication app)
         {
             UIDocument uidoc = app.ActiveUIDocument;
+            if (uidoc == null)
+                return Result.Cancelled;
+
             Document doc = uidoc.Document;
 
             // Запись конфигурации последнего запуска
-            ConfigService.SaveConfig<MainItem>(ModuleData.RevitVersion, doc, ConfigType.Memory, _currentParamEntities);
+            ConfigService.SaveConfig<SetParamsByFrameM_ParamM>(ModuleData.RevitVersion, doc, ConfigType.Memory, _entity.ParamItems);
 
             // Счетчик факта запуска
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
-            using (Transaction trans = new Transaction(doc, "KPLN: Параметризация"))
+            try
             {
-                trans.Start();
+                // Получаю коллекцию экстравыбора
+                IEnumerable<Element> extraSel = ExtraSelection(_entity.Doc, _entity.UserSelElems);
 
-                foreach (Element elem in _elemsToSet)
+                using (Transaction trans = new Transaction(doc, "KPLN: Выбрать/заполнить рамкой"))
                 {
-                    foreach (MainItem mainItem in _currentParamEntities)
+                    trans.Start();
+
+                    foreach (Element elem in extraSel)
                     {
-                        string paramName = mainItem.UserSelectedParamEntity.RevitParamName;
-                        string newValue = mainItem.UserInputParamValue;
-
-                        Parameter currentParam = elem.LookupParameter(paramName)
-                            ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
-                        if (currentParam == null)
+                        foreach (SetParamsByFrameM_ParamM paramM in _entity.ParamItems)
                         {
-                            AddToWarnings($"Отсутствует параметр {paramName} (как в типе, так и в экземпляре)", elem);
-                            continue;
-                        }
+                            string paramName = paramM.ParamM_SelectedParameter.RevitParamName;
+                            string newValue = paramM.ParamM_InputValue;
 
-                        switch (currentParam.StorageType)
-                        {
-                            case StorageType.Double:
-                                if (double.TryParse(newValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dValue))
-                                {
+                            Parameter currentParam = elem.LookupParameter(paramName)
+                                ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(paramName);
+                            if (currentParam == null)
+                            {
+                                HtmlOutput.SetMsgDict_ByMsg($"Отсутствует параметр {paramName} (как в типе, так и в экземпляре)", elem.Id, _warningsElementColl);
+                                continue;
+                            }
+
+                            switch (currentParam.StorageType)
+                            {
+                                case StorageType.Double:
+                                    if (double.TryParse(newValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dValue))
+                                    {
 #if Debug2020 || Revit2020
-                                    DisplayUnitType unitType = currentParam.DisplayUnitType;
-                                    double prjData = UnitUtils.ConvertToInternalUnits(dValue, unitType);
+                                        DisplayUnitType unitType = currentParam.DisplayUnitType;
+                                        double prjData = UnitUtils.ConvertToInternalUnits(dValue, unitType);
 #else
-                                    ForgeTypeId forgeTypeId = currentParam.GetUnitTypeId();
-                                    double prjData = UnitUtils.ConvertToInternalUnits(dValue, forgeTypeId);
+                                        ForgeTypeId forgeTypeId = currentParam.GetUnitTypeId();
+                                        double prjData = UnitUtils.ConvertToInternalUnits(dValue, forgeTypeId);
 #endif
-                                    currentParam.Set(prjData);
+                                        currentParam.Set(prjData);
+                                        break;
+                                    }
+                                    goto case StorageType.Integer;
+                                case StorageType.Integer:
+                                    if (int.TryParse(newValue, out int iValue))
+                                    {
+                                        currentParam.Set(iValue);
+                                        break;
+                                    }
+                                    goto case StorageType.String;
+                                case StorageType.String:
+                                    currentParam.Set(newValue);
                                     break;
-                                }
-                                goto case StorageType.Integer;
-                            case StorageType.Integer:
-                                if (int.TryParse(newValue, out int iValue))
-                                {
-                                    currentParam.Set(iValue);
+                                default:
+                                    HtmlOutput.SetMsgDict_ByMsg($"Для параметра {paramName} был выбран не верный тип ввода (вместо цифры - текст)", elem.Id, _warningsElementColl);
                                     break;
-                                }
-                                goto case StorageType.String;
-                            case StorageType.String:
-                                currentParam.Set(newValue);
-                                break;
-                            default:
-                                AddToWarnings($"Для параметра {paramName} был выбран не верный тип ввода (вместо цифры - текст)", elem);
-                                break;
+                            }
                         }
                     }
+
+                    trans.Commit();
                 }
 
-                trans.Commit();
+                // Отправляю экстровыбор пользователю
+                app.ActiveUIDocument.Selection.SetElementIds(extraSel.Select(e => e.Id).ToList());
+
+                HtmlOutput.PrintMsgDict("Выполнено с замечаниями", MessageType.Warning, _warningsElementColl);
+
+                return Result.Succeeded;
             }
-
-            // Оставляю экстровыбор пользователю
-            app.ActiveUIDocument.Selection.SetElementIds(_elemsToSet.Select(e => e.Id).ToList());
-
-            if (_warningsElementColl.Count > 0)
+            catch (Exception ex)
             {
-                foreach (KeyValuePair<string, List<Element>> kvp in _warningsElementColl)
-                {
-                    HtmlOutput.Print($"{kvp.Key}. Id эл-в с ошибкой: {string.Join(", ", kvp.Value.Select(elem => elem.Id.IntegerValue))}", MessageType.Warning);
-                }
-            }
+                HtmlOutput.Print($"Ошибка попытки выбора подобных. Отправь разработчику: {ex.Message}",
+                    MessageType.Error);
 
-            return Result.Succeeded;
+                return Result.Cancelled;
+            }
         }
 
-        private void AddToWarnings(string msg, Element elem)
+        /// <summary>
+        /// Расширенное выделение элементов модели
+        /// </summary>
+        /// <param name="doc">Ревит-док</param>
+        /// <param name="selectedElems">Коллекция выделенных в ревит эл-в</param>
+        /// <returns></returns>
+        private static IEnumerable<Element> ExtraSelection(Document doc, IEnumerable<Element> selectedElems)
         {
-            if (_warningsElementColl.ContainsKey(msg))
-                _warningsElementColl[msg].Add(elem);
-            else
-                _warningsElementColl[msg] = new List<Element>() { elem };
+            List<Element> result = new List<Element>(selectedElems);
 
+            ElementClassFilter famIsntFilter = new ElementClassFilter(typeof(FamilyInstance));
+            ElementClassFilter ductInsulFilter = new ElementClassFilter(typeof(DuctInsulation));
+            ElementClassFilter pipeInsulFilter = new ElementClassFilter(typeof(PipeInsulation));
+
+            List<ElementFilter> filters = new List<ElementFilter>() { famIsntFilter, ductInsulFilter, pipeInsulFilter };
+            LogicalOrFilter resultFilter = new LogicalOrFilter(filters);
+
+            foreach (Element elem in selectedElems)
+            {
+                IList<ElementId> depElems = elem.GetDependentElements(resultFilter);
+                foreach (ElementId id in depElems)
+                {
+                    Element currentElem = doc.GetElement(id);
+                    if (currentElem.Id.IntegerValue == elem.Id.IntegerValue)
+                        continue;
+
+                    // Игнорирую балясины (отдельно в спеки не идут)
+                    if (currentElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster)
+                        continue;
+
+                    // Предварительно фильтрую общие вложенные семейства
+                    if (currentElem is FamilyInstance famInst && famInst.SuperComponent != null)
+                        result.Add(famInst);
+                    // Добавляю ВСЕ остальное
+                    else
+                        result.Add(currentElem);
+                }
+            }
+
+            return result;
         }
     }
 }

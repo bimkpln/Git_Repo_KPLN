@@ -227,7 +227,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 if (UserSelElem == null)
                     return null;
                 
-                IEnumerable<Parameter> elemsParams = DocWorker.GetUnionParamsFromElems(UserSelDoc, new Element[] { UserSelElem });
+                IEnumerable<Parameter> elemsParams = DocWorker.GetUnionParamsFromElems(UserSelDoc, new Element[] { UserSelElem }, false);
                 if (elemsParams == null)
                     return null;
 

@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 
 namespace KPLN_Tools.Forms.Models
 {
-    public class OVVK_SystemManager_ViewModel : INotifyPropertyChanged
+    public class OVVK_SystemManager_VM : INotifyPropertyChanged
     {
         /// <summary>
         /// Коллекция BuiltInCategory используемых в моделях ОВВК типа FamilyInstance
@@ -56,7 +56,7 @@ namespace KPLN_Tools.Forms.Models
         private string _parameterName = "!!!<ВЫБЕРИ ПАРАМЕТР СИСТЕМЫ>!!!";
         private string _sysNameSeparator = "/";
 
-        public OVVK_SystemManager_ViewModel(Document doc)
+        public OVVK_SystemManager_VM(Document doc)
         {
             CurrentDoc = doc;
 

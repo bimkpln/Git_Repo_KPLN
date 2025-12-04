@@ -9,7 +9,7 @@ using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms.ViewModels
 {
-    public class SelectionByModelVM
+    public sealed class SelectionByModelVM
     {
         private readonly SelectionByModel _mainWindow;
 
@@ -37,6 +37,8 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             RemoveCategoryCmd = new RelayCommand<SelectionByModelM_CategoryM>(RemoveCategory);
             AddParameterCmd = new RelayCommand<object>(_ => AddParameter());
             RemoveParameterCmd = new RelayCommand<SelectionByModelM_ParamM>(RemoveParameter);
+
+            CloseWindowCmd = new RelayCommand<object>(CloseWindow);
         }
 
         public SelectionByModelM CurrentSelectionByModelM { get; set; }
@@ -80,6 +82,11 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// Комманда: Добавить выборку к уже существующей выборке в модели
         /// </summary>
         public ICommand AddModelSelectionCmd { get; }
+
+        /// <summary>
+        /// Комманда: Закрыть окно
+        /// </summary>
+        public ICommand CloseWindowCmd { get; }
 
         public void DropUserParam() => CurrentSelectionByModelM.DropToDefault();
 
@@ -155,6 +162,12 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
                     CurrentSelectionByModelM.UpdateCanRunANDUserHelp();
                 }
             }
+        }
+
+        public void CloseWindow(object windObj)
+        {
+            if (windObj is Window window)
+                window.Close();
         }
     }
 }

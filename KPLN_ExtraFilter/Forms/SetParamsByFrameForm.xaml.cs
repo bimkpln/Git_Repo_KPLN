@@ -1,86 +1,47 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ExtraFilter.ExecutableCommand;
-using KPLN_ExtraFilter.Forms.Entities;
-using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
-using KPLN_Library_Forms.UI;
+using Autodesk.Revit.UI;
+using KPLN_ExtraFilter.ExternalEventHandler;
+using KPLN_ExtraFilter.Forms.ViewModels;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
 
 namespace KPLN_ExtraFilter.Forms
 {
     public partial class SetParamsByFrameForm : Window
     {
-        public SetParamsByFrameForm(IEnumerable<Element> elemsToSet, IEnumerable<ParamEntity> paramsEntities, object lastRunConfigObj)
+        private ExternalEvent _viewExtEv;
+        private ViewActivatedHandler _viewHandler;
+
+        private ExternalEvent _selExtEv;
+        private SelectionChangedHandler _selHandler;
+
+        public SetParamsByFrameForm(Document doc, IEnumerable<Element> userSelElems)
         {
+            CurrentSetParamsByFrameVM = new SetParamsByFrameVM(this, doc, userSelElems);
+
             InitializeComponent();
 
-            if (lastRunConfigObj != null && lastRunConfigObj is IEnumerable<MainItem> mainEntites)
-                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.RevitParamName), mainEntites);
-            else
-                CurrentSetParamsByFrameEntity = new SetParamsByFrameEntity(elemsToSet, paramsEntities.OrderBy(ent => ent.RevitParamName));
-
-            DataContext = CurrentSetParamsByFrameEntity;
-            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
+            DataContext = CurrentSetParamsByFrameVM;
         }
 
-        public SetParamsByFrameEntity CurrentSetParamsByFrameEntity { get; private set; }
+        /// <summary>
+        /// VM для окна
+        /// </summary>
+        public SetParamsByFrameVM CurrentSetParamsByFrameVM { get; set; }
 
-        private void HandlePressBtn(object sender, KeyEventArgs e)
+        public void SetExternalEvent(ExternalEvent viewExtEv, ViewActivatedHandler viewHandler, ExternalEvent selExtEv, SelectionChangedHandler selHandler)
         {
-            if (e.Key == Key.Escape)
-                Close();
-            else if (e.Key == Key.Enter)
-                RunBtn_Click(sender, e);
+            _viewExtEv = viewExtEv;
+            _viewHandler = viewHandler;
+            _viewHandler.CurrentSetParamsByFrameVM = CurrentSetParamsByFrameVM;
+
+            _selExtEv = selExtEv;
+            _selHandler = selHandler;
+            _selHandler.CurrentSetParamsByFrameVM = CurrentSetParamsByFrameVM;
         }
 
-        private void RunBtn_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = true;
-            KPLN_Loader.Application.OnIdling_CommandQueue
-                .Enqueue(new SetParamsByFrameExcCmd(CurrentSetParamsByFrameEntity));
+        public void RaiseUpdateSelChanged() => _selExtEv?.Raise();
 
-            Close();
-        }
-
-        private void AddBtn_Click(object sender, RoutedEventArgs e)
-        {
-            MainItem defaultMI = new MainItem(CurrentSetParamsByFrameEntity.AllParamEntities.FirstOrDefault());
-            CurrentSetParamsByFrameEntity.MainItems.Add(defaultMI);
-            CurrentSetParamsByFrameEntity.RunButtonContext();
-
-            DataContext = CurrentSetParamsByFrameEntity;
-        }
-
-        private void ClearBtn_Click(object sender, RoutedEventArgs e)
-        {
-            CurrentSetParamsByFrameEntity.MainItems.Clear();
-            CurrentSetParamsByFrameEntity.RunButtonContext();
-
-            DataContext = CurrentSetParamsByFrameEntity;
-        }
-
-        private void MenuItem_Delete_Click(object sender, RoutedEventArgs e)
-        {
-            if (!((MenuItem)e.Source is MenuItem menuItem))
-                return;
-
-            if (!(menuItem.DataContext is MainItem entity))
-                return;
-
-            UserDialog ud = new UserDialog("ВНИМАНИЕ",
-                $"Сейчас будут удален параметр \"{entity.UserSelectedParamEntity.RevitParamName}\". Продолжить?");
-            
-            
-            if((bool)ud.ShowDialog())
-            {
-                CurrentSetParamsByFrameEntity.MainItems.Remove(entity);
-                CurrentSetParamsByFrameEntity.RunButtonContext();
-            }
-
-            DataContext = CurrentSetParamsByFrameEntity;
-        }
+        public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
     }
 }

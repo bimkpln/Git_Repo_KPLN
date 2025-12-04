@@ -16,6 +16,13 @@
         FontFamily="Consolas, 'Segoe UI', monospace"
         Background="#2B2F38">
 
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -25,7 +32,6 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -46,6 +52,7 @@
                         VerticalAlignment="Center">
                         <CheckBox 
                             IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                            Click="TreeElementCheckBox_Click"
                             Margin="3,0,5,0"/>
                         <TextBlock 
                             VerticalAlignment="Center">
@@ -130,9 +137,10 @@
                                 Style="{StaticResource RCTG}">
                                 <StackPanel>
                                     <CheckBox
-                                        Content="Только этой/-их категории/-ий:"
+                                        Content="Выбрать по категории:"
                                         Style="{StaticResource CHB}"
-                                        IsChecked="{Binding Where_Category}" />
+                                        IsChecked="{Binding Where_Category}" 
+                                        ToolTip="В дереве отобразятся только элементы указанных категорий"/>
                                     <ItemsControl
                                         x:Name="IC_Categories"
                                         ItemsSource="{Binding Where_SelectedCategories}"
@@ -200,12 +208,24 @@
                             <StackPanel>
                                 <TextBlock 
                                     Style="{StaticResource TXT}" 
-                                    Text="Исключения?" />
+                                    Text="Исключения?" 
+                                    ToolTip="Дополнительная фильтрация результата"/>
                                 <CheckBox 
                                     Style="{StaticResource CHB}" 
                                     IsChecked="{Binding Belong_Group, 
                                         UpdateSourceTrigger=PropertyChanged}" 
-                                    Content="Эл-ты групп" />
+                                    Content="Элементы групп">
+                                    <CheckBox.ToolTip>
+                                        <StackPanel>
+                                            <TextBlock>
+                                                Поставь галку, если нужно <Bold>исключить</Bold> элементы групп из дерева
+                                            </TextBlock>
+                                            <TextBlock>
+                                                <Bold>Пример:</Bold> Элементы выделяются для заполнения параметров, которые нельзя менять между экземплярами групп
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </CheckBox.ToolTip>
+                                </CheckBox>
                             </StackPanel>
                         </Border>
                         
@@ -249,7 +269,7 @@
                                                     <ComboBox
                                                         Width="180"
                                                         Style="{StaticResource CBX}"
-                                                        ItemsSource="{Binding ParamM_FilteredCategoryView}"
+                                                        ItemsSource="{Binding ParamM_FilteredParamView}"
                                                         SelectedItem="{Binding ParamM_SelectedParameter}"
                                                         HorizontalAlignment="Stretch"
                                                         IsEditable="True"
@@ -345,7 +365,7 @@
 
                 <Button 
                     Style="{StaticResource BTN}"
-                    Content="Обновить элементы дереве" 
+                    Content="Обновить элементы в дереве" 
                     Command="{Binding UpdateTreeElemsCmd}"  
                     ToolTip="Пересобирает элементы в дереве. Полезно, если была группировка по значению параметра, и это значение изменили с момента создания дерева"
                     Height="30"/>

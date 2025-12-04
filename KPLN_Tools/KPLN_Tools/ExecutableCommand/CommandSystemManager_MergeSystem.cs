@@ -13,7 +13,7 @@ namespace KPLN_Tools.ExecutableCommand
 {
     internal class CommandSystemManager_MergeSystem : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_ViewModel _viewModel;
+        private readonly OVVK_SystemManager_VM _viewModel;
         private readonly OVVK_MergeSystem[] _sysDataToMerge;
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_MergeSystem(OVVK_SystemManager_ViewModel viewModel, OVVK_MergeSystem[] sysDataToMerge)
+        public CommandSystemManager_MergeSystem(OVVK_SystemManager_VM viewModel, OVVK_MergeSystem[] sysDataToMerge)
         {
             _viewModel = viewModel;
             _sysDataToMerge = sysDataToMerge;

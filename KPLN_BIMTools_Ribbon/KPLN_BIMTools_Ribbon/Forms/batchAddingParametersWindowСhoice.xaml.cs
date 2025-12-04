@@ -201,9 +201,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 default: return ParameterType.Text;
             }
         }
-#endif
-
-#if Revit2023 || Debug2023
+#else
         /// <summary>
         /// Получение ForgeTypeId типа данных из string
         /// </summary>
@@ -672,7 +670,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 { "Электросети - Нагрузки", BuiltInParameterGroup.PG_ELECTRICAL_LOADS },
                 { "Электросети - Освещение", BuiltInParameterGroup.PG_ELECTRICAL_LIGHTING },
                 { "Электросети - Создание цепей", BuiltInParameterGroup.PG_ELECTRICAL_CIRCUITING },
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
                 { "R23. Анализ электросетей", BuiltInParameterGroup.INVALID },
                 { "R23. Силы жизнеобеспечения", BuiltInParameterGroup.INVALID },
                 { "R23. Электротехника", BuiltInParameterGroup.INVALID },
@@ -682,7 +680,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return groupingDict;
         }
 
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
         /// <summary>
         /// Получение ForgeTypeId группирования из string
         /// </summary>
@@ -817,8 +815,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         familyManager.Set(familyParam, convertedValue);
                     }
                     break;
-#endif
-#if Revit2023 || Debug2023
+#else
                 case "Image":
                 case "Изображение":
                     string imagePath = parameterValue;

@@ -1,6 +1,5 @@
 ﻿using System.Windows;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
@@ -9,11 +8,6 @@ namespace KPLN_Library_Forms.UI
     /// </summary>
     public partial class CustomMessageBox : Window
     {
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        private bool _isRun = false;
-
         public CustomMessageBox(string tbHeader, string tblMainContent)
         {
             InitializeComponent();
@@ -23,11 +17,6 @@ namespace KPLN_Library_Forms.UI
 
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
-
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; }
 
         /// <summary>
         /// Показать окно с учетом родительского
@@ -52,24 +41,14 @@ namespace KPLN_Library_Forms.UI
         {
             if (e.Key == Key.Escape)
             {
-                Status = RunStatus.Close;
+                DialogResult = false;
                 Close();
-            }
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if (!_isRun)
-            {
-                Status = RunStatus.Close;
             }
         }
 
         private void BtnOk_Click(object sender, RoutedEventArgs e)
         {
-            _isRun = true;
-            Status = RunStatus.Run;
-
+            DialogResult = true;
             Close();
         }
     }

@@ -1,5 +1,6 @@
 ﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Loader.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -14,18 +15,6 @@ using System.Windows.Forms;
 
 namespace KPLN_Library_Bitrix24Worker
 {
-    /// <summary>
-    /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
-    /// </summary>
-    [Obsolete("Удалить - читай описание класса")]
-    public sealed class Bitrix_Config
-    {
-        public string Name { get; set; }
-
-        public string URL { get; set; }
-    }
-
-
     /// <summary>
     /// Сервис по отправке сообщений в Битрикс
     /// </summary>
@@ -147,7 +136,7 @@ namespace KPLN_Library_Bitrix24Worker
         /// <param name="dBUser">Пользователь из БД КПЛН для отправки</param>
         /// <param name="wh">Вебхук подготовленный в Битрикс</param>
         /// <param name="strJSON">Сообщение, которое будет отправлено в формате JSON</param>
-        public static async void SendMsg_ToUser_ByWebhookKeyANDJSONRequest(string url, string json)
+        public static async void SendMsg_ToUser_ByJSONRequest(string json)
         {
             try
             {
@@ -160,7 +149,7 @@ namespace KPLN_Library_Bitrix24Worker
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     // Адпраўка POST-запыту
-                    HttpResponseMessage response = await client.PostAsync(url, content);
+                    HttpResponseMessage response = await client.PostAsync($"{WebHookUrl}/im.message.add", content);
                     if (response.IsSuccessStatusCode)
                     {
                         string responseContent = await response.Content.ReadAsStringAsync();

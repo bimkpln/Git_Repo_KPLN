@@ -8,7 +8,7 @@ using System.Windows.Data;
 
 namespace KPLN_Tools.Forms.Models
 {
-    public class SendMsgToBitrix_ViewModel : INotifyPropertyChanged
+    public class SendMsgToBitrix_VM : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -21,7 +21,7 @@ namespace KPLN_Tools.Forms.Models
         private string _messageToSend_MainData;
         private string _messageToSend_UserComment;
 
-        public SendMsgToBitrix_ViewModel(ObservableCollection<SendMsgToBitrix_UserEntity> userEntitysCollection)
+        public SendMsgToBitrix_VM(ObservableCollection<SendMsgToBitrix_UserEntity> userEntitysCollection)
         {
             UserEntitysCollection = userEntitysCollection;
 

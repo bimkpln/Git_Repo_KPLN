@@ -585,9 +585,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                         if (resultUnitType.Equals("UNDEFINED"))
                             resultUnitType = string.Empty;
                     }
-#endif
-
-#if Revit2023 || Debug2023
+#else
                     if (versionNumber >= 2021)
                     {
                         try

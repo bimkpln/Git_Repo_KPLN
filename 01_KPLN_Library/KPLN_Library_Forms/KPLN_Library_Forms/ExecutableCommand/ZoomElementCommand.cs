@@ -152,9 +152,14 @@ namespace KPLN_Library_Forms.ExecutableCommand
                     ViewOrientation3D orientation = new ViewOrientation3D(bboxCenterPnt, up_direction, forward_direction);
                     activeView.SetOrientation(orientation);
 
+
                     UIView uiView = uidoc
                         .GetOpenUIViews()
+#if !Debug2020 && !Debug2023 && !Revit2020 && !Revit2023
+                        .Where(view => view.ViewId.Value == activeView.Id.Value)
+#else
                         .Where(view => view.ViewId.IntegerValue == activeView.Id.IntegerValue)
+#endif
                         .FirstOrDefault();
                     uiView.ZoomAndCenterRectangle(sectionBox.Min, sectionBox.Max);
                     return;

@@ -15,9 +15,9 @@ namespace KPLN_Tools.Forms
 {
     public partial class OVVK_MergeSystemsForm : Window
     {
-        private readonly OVVK_SystemManager_ViewModel _ovvk_ViewModel;
+        private readonly OVVK_SystemManager_VM _ovvk_ViewModel;
 
-        public OVVK_MergeSystemsForm(OVVK_SystemManager_ViewModel ovvk_ViewModel)
+        public OVVK_MergeSystemsForm(OVVK_SystemManager_VM ovvk_ViewModel)
         {
             _ovvk_ViewModel = ovvk_ViewModel;
 

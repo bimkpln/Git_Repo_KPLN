@@ -6,11 +6,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 
 namespace KPLN_Library_Forms.UIFactory
 {
     /// <summary>
-    // Инициализация загрузки окна выбора файлов Revit-Server
+    /// Инициализация загрузки окна выбора файлов Revit-Server
     /// </summary>
     public static class SelectFilesFromRevitServer
     {
@@ -19,10 +20,10 @@ namespace KPLN_Library_Forms.UIFactory
         /// </summary>
         public static RevitServer CurrentRevitServer { get; private set; }
 
-        public static ElementMultiPick CreateForm(int revitVersion)
+        public static ElementMultiPick CreateForm(Window owner, int revitVersion)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(revitVersion);
-            
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(owner,revitVersion);
+
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 #region Выбор РС
@@ -42,7 +43,7 @@ namespace KPLN_Library_Forms.UIFactory
 
                     IEnumerable<ElementEntity> activeEntitiesForForm = activeModelsFromMainDir.Select(e => new ElementEntity(e.Path));
 
-                    ElementMultiPick pickForm = new ElementMultiPick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери файлы");
+                    ElementMultiPick pickForm = new ElementMultiPick(owner, activeEntitiesForForm.OrderBy(p => p.Name), "Выбери файлы");
 
                     return pickForm;
                 }

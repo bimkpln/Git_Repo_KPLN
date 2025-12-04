@@ -40,7 +40,7 @@ namespace KPLN_ExtraFilter
                 panel,
                 "KPLN_ExtraFilter.Imagens.TreeModelSmall.png",
                 "KPLN_ExtraFilter.Imagens.TreeModelLarge.png",
-                "http://moodle.stinproject.local"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1341"
             );
 
 
@@ -54,13 +54,16 @@ namespace KPLN_ExtraFilter
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.ClickLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.ClickSmall.png"),
                 ToolTip = "Для выбора элементов в проекте, которые похожи/связаны с выбранным.",
-                LongDescription = "Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов" +
+                LongDescription = string.Format("Выделяешь элемент в проекте, и выбираешь сценарий, по которому будет осуществлен поиск подобных элементов" +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
 #if Debug2020 || Revit2020
                 AvailabilityClassName = typeof(ButtonAvailable).FullName,
 #endif
             };
-            btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+            btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/mod/book/view.php?id=502&chapterid=1341"));
 
 
             PushButtonData btnSetPramsByFrame = new PushButtonData(
@@ -71,13 +74,20 @@ namespace KPLN_ExtraFilter
             {
                 LargeImage = PngImageSource("KPLN_ExtraFilter.Imagens.FrameLarge.png"),
                 Image = PngImageSource("KPLN_ExtraFilter.Imagens.FrameSmall.png"),
-                ToolTip = "Позволяет выбрать элементы рамкой с расширенным функционалом и задать параметры",
-                LongDescription = "Можно добавлять несколько параметров. При выделении дополнительно выделятся:" +
+                ToolTip = "Добавляет к выбранным элементам ВСЕ вложенности, а также может заполнить параметры для ВСЕХ вложенностей",
+                LongDescription = string.Format("При выделении дополнительно выделятся:" +
                     "\n  1. Вложенные элементы семейств." +
-                    "\n  2. Отдельные элементы групп (важно, чтобы параметр мог меняться по экземплярам групп." +
+                    "\n  2. Изоляция воздуховодов/труб." +
+                    "\n  3. Отдельные элементы групп (важно, чтобы параметр мог меняться по экземплярам групп)." +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+#if Debug2020 || Revit2020
+                AvailabilityClassName = typeof(ButtonAvailable).FullName,
+#endif
             };
-            btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+            btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/mod/book/view.php?id=502&chapterid=1341"));
 
             IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
             // Скрываю текстовое название кнопок

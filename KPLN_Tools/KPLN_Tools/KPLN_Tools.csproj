@@ -41,6 +41,7 @@
     <DefineConstants>Debug2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -48,6 +49,7 @@
     <DefineConstants>Debug2023</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -267,6 +269,9 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
+    <Compile Include="Common\ScheduleHelper.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
@@ -274,11 +279,17 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
+    <Compile Include="Forms\CabinetMismatchWindow.xaml.cs">
+      <DependentUpon>CabinetMismatchWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ChangeCategoryWindowNodeManager.xaml.cs">
+      <DependentUpon>ChangeCategoryWindowNodeManager.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerFilterByTagsWindow.xaml.cs">
       <DependentUpon>NodeManagerFilterByTagsWindow.xaml</DependentUpon>
@@ -374,9 +385,12 @@
     <Compile Include="Forms\Models\AR_PyatnGraph_VM.cs" />
     <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
     <Compile Include="Forms\Models\Core\RelayCommand.cs" />
-    <Compile Include="Forms\Models\OVVK_SystemManager_ViewModel.cs" />
+    <Compile Include="Forms\Models\OVVK_SystemManager_VM.cs" />
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
-    <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
+    <Compile Include="Forms\Models\ScheduleFormM.cs" />
+    <Compile Include="Forms\Models\ScheduleFormVM.cs" />
+    <Compile Include="Forms\Models\ScheduleSubFormVM.cs" />
+    <Compile Include="Forms\Models\SendMsgToBitrix_VM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\NodeManagerManageTagsWindow.xaml.cs">
       <DependentUpon>NodeManagerManageTagsWindow.xaml</DependentUpon>
@@ -390,6 +404,12 @@
     <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
       <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ScheduleSubForm.xaml.cs">
+      <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ScheduleMainForm.xaml.cs">
+      <DependentUpon>ScheduleMainForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\RLinkUpdateContent.xaml.cs">
       <DependentUpon>RLinkUpdateContent.xaml</DependentUpon>
     </Compile>
@@ -401,6 +421,9 @@
     </Compile>
     <Compile Include="Forms\NodeManagerSettingsCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerSettingsCategoryWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SizeMismatchWindow.xaml.cs">
+      <DependentUpon>SizeMismatchWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
       <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
@@ -493,6 +516,9 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\Styles.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -524,6 +550,11 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\NodeManagerChangeCategoryWindow.xaml">
+    <Page Include="Forms\CabinetMismatchWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ChangeCategoryWindowNodeManager.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -563,6 +594,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\ScheduleSubForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ScheduleMainForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\RLinkUpdateContent.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -576,6 +615,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\NodeManagerSettingsCategoryWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SizeMismatchWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

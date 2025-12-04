@@ -20,8 +20,6 @@ namespace KPLN_ExtraFilter.Forms.Entities
             
             CatM_Doc = modelM.Doc;
             CatM_UserSelElems = modelM.Cahce_UserSelElemsWithoutCatFilter;
-
-            CatM_CategoryFilter.LoadCollection(CatM_DocCategories);
         }
 
         public Document CatM_Doc { get; set; }
@@ -90,13 +88,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
             }
         }
 
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         /// <summary>
         /// Восстанавливает выбранную категорию, если в текущем View есть категория с тем же именем.
         /// </summary>
-        private void RestoreSelectedCategoryByName(string prevRevitCatName)
+        public void RestoreSelectedCategoryByName(string prevRevitCatName)
         {
             // если нет предыдущего выбора или View — просто ничего не делаем
             if (string.IsNullOrWhiteSpace(prevRevitCatName) || CatM_CategoryFilter?.View == null)
@@ -115,5 +110,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             else
                 CatM_SelectedCategory = null;
         }
+
+        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
