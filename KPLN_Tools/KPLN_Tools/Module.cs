@@ -47,7 +47,6 @@ namespace KPLN_Tools
                 panel,
                 false);
 
-#if Debug2020 || Revit2020
             PushButtonData autonumber = CreateBtnData(
                 CommandAutonumber.PluginName,
                 CommandAutonumber.PluginName,
@@ -65,26 +64,6 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
-#else
-
-            PushButtonData autonumber = CreateBtnData(
-                ExtCmd_ScheduleIncrementor.PluginName,
-                ExtCmd_ScheduleIncrementor.PluginName,
-                "Нумерация позици в спецификации на +1 от начального значения",
-                string.Format(
-                    "Алгоритм запуска:\n" +
-                        "1. Выделяем стартовую ячейку спецификации;\n" +
-                        "2. Вводим данные, которые указаны в окне.\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExtCmd_ScheduleIncrementor).FullName,
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle/");
-#endif
 
             PushButtonData searchUser = CreateBtnData(
                 CommandSearchRevitUser.PluginName,
@@ -471,10 +450,29 @@ namespace KPLN_Tools
                 ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
 #endif
 
+                PushButtonData ovvk_autonumber = CreateBtnData(
+                ExtCmd_ScheduleIncrementor.PluginName,
+                ExtCmd_ScheduleIncrementor.PluginName,
+                "Нумерация позици в спецификации на +1 от начального значения",
+                string.Format(
+                    "Алгоритм запуска:\n" +
+                        "1. Открываем спецификацию;\n" +
+                        "2. Запускаем и находим нужный столбец..\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExtCmd_ScheduleIncrementor).FullName,
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "http://moodle/mod/book/view.php?id=502&chapterid=687");
+
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
+                ovvkToolsPullDownBtn.AddPushButton(ovvk_autonumber);
             }
             #endregion
 

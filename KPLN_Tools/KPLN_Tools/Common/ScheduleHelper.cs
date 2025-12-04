@@ -5,6 +5,12 @@ using System.Collections.Generic;
 
 namespace KPLN_Tools.Common
 {
+    public sealed class ScheduleEntity
+    {
+        public ViewSchedule SE_ViewSchedule { get; set; }
+        public List<ScheduleFieldId> SE_HiddenFieldIds { get; set; } = new List<ScheduleFieldId>();
+    }
+
     internal sealed class GroupFieldInfo
     {
         /// <summary>
@@ -20,47 +26,49 @@ namespace KPLN_Tools.Common
 
     internal static class ScheduleHelper
     {
-        public static ScheduleFormM ReadSchedule(ViewSchedule viewSchedule)
+        public static ScheduleFormM ReadSchedule(ScheduleEntity se)
         {
-            if (viewSchedule == null)
-                throw new ArgumentNullException(nameof(viewSchedule));
-
-            TableData tableData = viewSchedule.GetTableData();
+            TableData tableData = se.SE_ViewSchedule.GetTableData();
             TableSectionData body = tableData.GetSectionData(SectionType.Body);
+            ScheduleDefinition def = se.SE_ViewSchedule.Definition;
 
             int rows = body.NumberOfRows;
             int cols = body.NumberOfColumns;
+            int allCols = def.GetFieldCount();
 
             var model = new ScheduleFormM
             {
-                CurrentSchedule = viewSchedule
+                SE_Schedule = se
             };
 
-            // 1) Загалоўкі слупкоў
-            // Часта загалоўкі ў першай радку (0), але можна асобна браць Header-секцыю.
-            for (int col = 0; col < cols; col++)
+
+            // 1) Заголовки столбцов
+            for (int i = 0; i < allCols; i++)
             {
-                string headerText = body.GetCellText(0, col);
+                ScheduleField field = def.GetField(i);
+                if (field.IsHidden)
+                    continue;
+
+                string headerText = field.GetName();
                 if (string.IsNullOrEmpty(headerText))
-                    headerText = $"Col {col + 1}";
+                    headerText = $"Col {i + 1}";
 
                 model.ColumnHeaders.Add(new CellData(headerText, false));
             }
 
-            // 2) Радкі табліцы
-            // Прапускаем радок загалоўкаў (0), ідзём з 1 да rows-1
+            // 2) Ряды таблицы
             for (int row = 0; row < rows; row++)
             {
-                CellType cellType = body.GetCellType(row, 0);
-                bool isElementRow = (cellType == CellType.Parameter || cellType == CellType.CombinedParameter);
-                
                 var rowData = new List<CellData>();
                 for (int col = 0; col < cols; col++)
                 {
-                    string cellText = viewSchedule.GetCellText(SectionType.Body, row, col);
+                    CellType cellType = body.GetCellType(row, col);
+                    bool isElementRow = (cellType == CellType.Parameter || cellType == CellType.CombinedParameter);
+                    string cellText = se.SE_ViewSchedule.GetCellText(SectionType.Body, row, col);
+                    cellText = DoubleWithoutCulture(cellText);
+
                     rowData.Add(new CellData(cellText, isElementRow));
                 }
-
 
                 model.Rows.Add(rowData);
             }
@@ -84,7 +92,7 @@ namespace KPLN_Tools.Common
                 result.Add(new GroupFieldInfo
                 {
                     Field = field,
-                    ColumnIndex = i
+                    ColumnIndex = field.FieldIndex
                 });
             }
 
@@ -94,18 +102,39 @@ namespace KPLN_Tools.Common
         /// <summary>
         /// Вяртае значэнне поля для элемента, як максімальна падобнае да таго, што ў спецыфікацыі.
         /// </summary>
-        public static string GetFieldValueForElement(Element el, ScheduleField field)
+        public static string GetFieldValueForElement(Document doc, Element el, ScheduleField field)
         {
             Parameter p = null;
 
+            // Параметр экз.
             if (field.ParameterId != ElementId.InvalidElementId)
                 p = el.get_Parameter((BuiltInParameter)field.ParameterId.IntegerValue);
-
-            // Если не нашли по id
-            if (p == null)
+            else
                 p = el.LookupParameter(field.GetName());
 
+            // Параметр типа
+            if (!p.HasValue )
+            {
+                var typeElem = doc.GetElement(el.GetTypeId());
+                if (typeElem is ElementType et)
+                {
+                    Parameter tp;
+                    if (field.ParameterId != ElementId.InvalidElementId)
+                        tp = et.get_Parameter((BuiltInParameter)field.ParameterId.IntegerValue);
+                    else
+                        tp = et.LookupParameter(field.GetName());
+
+                    if (tp != null)
+                        p = tp;
+                }
+            }
+
+            // Ошибка
             if (p == null)
+                throw new Exception("Ошибка поиска параметра. Отправь разработчику!");
+
+
+            if (!p.HasValue)
                 return string.Empty;
 
             if (p.StorageType == StorageType.String)
@@ -113,7 +142,7 @@ namespace KPLN_Tools.Common
 
             string vs = p.AsValueString();
             if (!string.IsNullOrEmpty(vs))
-                return vs;
+                return DoubleWithoutCulture(vs);
 
             return p.AsString() ?? string.Empty;
         }
@@ -121,15 +150,16 @@ namespace KPLN_Tools.Common
         /// <summary>
         /// Стварае ключ групы для элемента (па sort/group палях).
         /// </summary>
-        public static string BuildGroupKeyForElement(Element el, IList<GroupFieldInfo> groupFields)
+        public static string BuildGroupKeyForElement(Document doc, Element el, IList<GroupFieldInfo> groupFields)
         {
             var parts = new List<string>(groupFields.Count);
             foreach (var gf in groupFields)
             {
-                string v = GetFieldValueForElement(el, gf.Field) ?? string.Empty;
+                string v = GetFieldValueForElement(doc, el, gf.Field) ?? string.Empty;
                 parts.Add(v);
             }
-            return string.Join("|", parts);
+
+            return string.Join("~", parts);
         }
 
         /// <summary>
@@ -146,7 +176,7 @@ namespace KPLN_Tools.Common
                 parts.Add(v ?? string.Empty);
             }
 
-            return string.Join("|", parts);
+            return string.Join("~", parts);
         }
 
         /// <summary>
@@ -162,7 +192,7 @@ namespace KPLN_Tools.Common
 
             foreach (Element el in elems)
             {
-                string key = BuildGroupKeyForElement(el, groupFields);
+                string key = BuildGroupKeyForElement(doc, el, groupFields);
 
                 if (!dict.TryGetValue(key, out var list))
                 {
@@ -176,17 +206,12 @@ namespace KPLN_Tools.Common
             return dict;
         }
 
-        private static int FindColumnIndexByHeader(TableSectionData body, int headerRow, string heading)
+        private static string DoubleWithoutCulture(string input)
         {
-            int cols = body.NumberOfColumns;
-            for (int c = 0; c < cols; c++)
-            {
-                string text = body.GetCellText(headerRow, c);
-                if (string.Equals(text, heading, StringComparison.OrdinalIgnoreCase))
-                    return c;
-            }
+            if (double.TryParse(input.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double value))
+                return value.ToString();
 
-            return -1;
+            return input;
         }
     }
 }

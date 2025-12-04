@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Tools.Common;
 using System.Collections.Generic;
 
 namespace KPLN_Tools.Forms.Models
@@ -33,11 +34,11 @@ namespace KPLN_Tools.Forms.Models
     }
 
     public sealed class ScheduleFormM
-    {        
+    {
         /// <summary>
         /// Ссылка на спецификацию ревит
         /// </summary>
-        public ViewSchedule CurrentSchedule { get; set; }
+        public ScheduleEntity SE_Schedule { get; set; }
 
         /// <summary>
         /// Заголовки столбцов (0..ColumnCount-1)

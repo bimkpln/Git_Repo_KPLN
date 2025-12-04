@@ -4,6 +4,7 @@ using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Windows;
 using UIFramework;
 
@@ -27,7 +28,7 @@ namespace KPLN_Tools.ExecutableCommand
             Document doc = uiDoc.Document;
 
             ScheduleFormM model = _scheduleForm.SFModel;
-            ViewSchedule vs = model.CurrentSchedule;
+            ViewSchedule vs = model.SE_Schedule.SE_ViewSchedule;
 
             // 1. Атрымаем sort/group палі і калонкі
             List<GroupFieldInfo> groupFields = ScheduleHelper.GetGroupFields(vs);
@@ -47,7 +48,6 @@ namespace KPLN_Tools.ExecutableCommand
             using (Transaction t = new Transaction(doc, "KPLN: Нумерация спецификаций"))
             {
                 t.Start();
-
 
                 // Забираю ID параметра для внесения измов и индекс столбца который отредактировал юзер
                 ElementId targetParamId = null;
@@ -113,6 +113,29 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
                 t.Commit();
+            }
+
+            // Закрываю все скрытые столбцы в спеке
+            if (model.SE_Schedule.SE_HiddenFieldIds.Count > 0)
+            {
+                ScheduleDefinition def = model.SE_Schedule.SE_ViewSchedule.Definition;
+
+                using (Transaction t = new Transaction(doc, "KPLN: Спецификация показать скрытые"))
+                {
+                    t.Start();
+
+                    foreach (ScheduleFieldId fieldId in model.SE_Schedule.SE_HiddenFieldIds)
+                    {
+                        if (!def.IsValidFieldId(fieldId))
+                            continue;
+
+                        ScheduleField field = def.GetField(fieldId);
+                        field.IsHidden = true;
+                    }
+
+                    model.SE_Schedule.SE_ViewSchedule.RefreshData();
+                    t.Commit();
+                }
             }
 
             return Result.Succeeded;
