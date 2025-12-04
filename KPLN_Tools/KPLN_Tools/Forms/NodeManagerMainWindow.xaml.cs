@@ -1670,6 +1670,14 @@ namespace KPLN_Tools.Forms
             finally { }
         }
 
+
+
+
+
+
+
+
+
         private void BtnReplacePreview_Click(object sender, RoutedEventArgs e)
         {
             if (_currentElement == null)
@@ -1749,31 +1757,69 @@ namespace KPLN_Tools.Forms
                     targetFull = rvtPath;
                 }
 
+                Document localDoc = null;
+                Document centralDoc = null;
+
                 foreach (Document d in app.Documents)
                 {
                     try
                     {
-                        if (string.IsNullOrEmpty(d.PathName))
-                            continue;
+                        if (d.IsWorkshared)
+                        {
+                            ModelPath centralPathMp = d.GetWorksharingCentralModelPath();
+                            if (centralPathMp == null)
+                                continue;
 
-                        string dFull;
-                        try
-                        {
-                            dFull = Path.GetFullPath(d.PathName);
-                        }
-                        catch
-                        {
-                            dFull = d.PathName;
-                        }
+                            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(centralPathMp);
 
-                        if (!string.IsNullOrEmpty(dFull) &&
-                            string.Equals(dFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
+                            string centralFull;
+                            try { centralFull = Path.GetFullPath(centralPath); }
+                            catch { centralFull = centralPath; }
+
+                            if (string.IsNullOrEmpty(centralFull) ||
+                                !string.Equals(centralFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            string docFull;
+                            try { docFull = Path.GetFullPath(d.PathName); }
+                            catch { docFull = d.PathName; }
+
+                            if (string.Equals(docFull, centralFull, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                centralDoc = d;
+                            }
+                            else
+                            {
+                                localDoc = d;
+                            }
+                        }
+                        else
                         {
-                            targetDoc = d;
-                            break;
+                            if (string.IsNullOrEmpty(d.PathName))
+                                continue;
+
+                            string dFull;
+                            try { dFull = Path.GetFullPath(d.PathName); }
+                            catch { dFull = d.PathName; }
+
+                            if (!string.IsNullOrEmpty(dFull) &&
+                                string.Equals(dFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                centralDoc = d;
+                            }
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                    }
+                }
+
+                targetDoc = localDoc ?? centralDoc;
+                if (targetDoc != null)
+                {
+                    targetFull = targetDoc.PathName;
                 }
 
                 if (targetDoc == null)
@@ -1796,6 +1842,8 @@ namespace KPLN_Tools.Forms
                         return;
                     }
                 }
+
+
 
                 UIDocument udoc = _uiapp.ActiveUIDocument;
                 if (udoc == null || udoc.Document != targetDoc)
@@ -1930,6 +1978,7 @@ namespace KPLN_Tools.Forms
                     ReloadCurrentElement(savedId);
                 }
             }
+
             finally
             {
                 try
@@ -1937,8 +1986,12 @@ namespace KPLN_Tools.Forms
                     if (openedTargetViewHere && targetView != null)
                     {
                         var udoc2 = _uiapp.ActiveUIDocument;
-                        var uv = udoc2?.GetOpenUIViews()?.FirstOrDefault(v => v.ViewId == targetView.Id);
-                        uv?.Close();
+                        if (udoc2 != null && udoc2.Document == targetView.Document)
+                        {
+                            var uv = udoc2.GetOpenUIViews()
+                                          ?.FirstOrDefault(v => v.ViewId == targetView.Id);
+                            uv?.Close();
+                        }
                     }
                 }
                 catch { }
@@ -1947,6 +2000,13 @@ namespace KPLN_Tools.Forms
                 this.Show();
             }
         }
+
+
+
+
+
+
+
 
 
         private void ReloadCurrentElement(long elementId)
