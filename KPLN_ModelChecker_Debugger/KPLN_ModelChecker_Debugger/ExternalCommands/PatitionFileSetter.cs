@@ -167,8 +167,13 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                 foreach (Definition def in defsToAdd)
                 {
                     var newBind = app.Create.NewInstanceBinding(catSet);
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                     if (!(bindingMap.Insert(def, newBind, BuiltInParameterGroup.PG_TEXT)))
                         bindingMap.ReInsert(def, newBind, BuiltInParameterGroup.PG_TEXT);
+#else
+                    if (!(bindingMap.Insert(def, newBind, GroupTypeId.Text)))
+                        bindingMap.ReInsert(def, newBind, GroupTypeId.Text);
+#endif
                 }
 
                 t.Commit();

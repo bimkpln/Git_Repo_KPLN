@@ -136,15 +136,20 @@ namespace KPLN_ModelChecker_Lib.Commands
                     }
 
                     //Анализ моделируемых элементов
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    BuiltInCategory bic = (BuiltInCategory)element.Category.Id.IntegerValue;
+#else
+                    BuiltInCategory bic = (BuiltInCategory)element.Category.Id.Value;
+#endif
                     if (element.Category.CategoryType == CategoryType.Model
                         // Есть внутренняя ошибка Revit, когда появляются компоненты легенды, которые нигде не размещены, и у них редактируемый рабочий набор. Вручную такой элемент - создать НЕВОЗМОЖНО
-                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_PreviewLegendComponents
+                        && bic != BuiltInCategory.OST_PreviewLegendComponents
                         // Игнор зон ОВК
-                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_HVAC_Zones
+                        && bic != BuiltInCategory.OST_HVAC_Zones
                         // Игнор набора характеристик материалов
-                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_PropertySet
+                        && bic != BuiltInCategory.OST_PropertySet
                         // Игнор эскизов
-                        && (BuiltInCategory)element.Category.Id.IntegerValue != BuiltInCategory.OST_SketchLines)
+                        && bic != BuiltInCategory.OST_SketchLines)
                     {
                         // Игнор элементов с РН не из списка пользовательских
                         string elemWSName = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString();

@@ -1,5 +1,4 @@
 ﻿using KPLN_Library_Forms.Common;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -12,24 +11,6 @@ namespace KPLN_Library_Forms.UI
     {
         private readonly IEnumerable<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
-
-        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
-        public ElementSinglePick(IEnumerable<ElementEntity> collection)
-        {
-            _collection = collection;
-            _showCollection = new ObservableCollection<ElementEntity>(_collection);
-            InitializeComponent();
-
-            this.Title = $"KPLN: Выбери нужный элемент";
-            Elements.ItemsSource = _showCollection;
-            PreviewKeyDown += new KeyEventHandler(HandleEsc);
-        }
-
-        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
-        public ElementSinglePick(IEnumerable<ElementEntity> collection, string title) : this(collection)
-        {
-            this.Title = $"KPLN: {title}";
-        }
 
         public ElementSinglePick(Window owner, IEnumerable<ElementEntity> collection)
         {
@@ -56,7 +37,10 @@ namespace KPLN_Library_Forms.UI
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                DialogResult = false;
                 Close();
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchText);
@@ -64,7 +48,7 @@ namespace KPLN_Library_Forms.UI
         private void OnElementClick(object sender, RoutedEventArgs e)
         {
             SelectedElement = (sender as Button).DataContext as ElementEntity;
-            this.DialogResult = true;
+            DialogResult = true;
 
             Close();
         }
@@ -83,18 +67,6 @@ namespace KPLN_Library_Forms.UI
                 if (elemnt.Name.ToLower().Contains(_searchName))
                     _showCollection.Add(elemnt);
             }
-        }
-
-        /// <summary>
-        /// Запуск без фильтрации
-        /// </summary>
-        [Obsolete("Данная кнопка не имеет смысла. Если нужен множественный выбор используй ElementMultiPick")]
-        private void OnRunWithoutFilterClick(object sender, RoutedEventArgs e)
-        {
-            SelectedElement = null;
-            this.DialogResult = true;
-
-            Close();
         }
     }
 }

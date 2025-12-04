@@ -84,13 +84,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 var isShared = param.IsShared;
 
                 Brush colorString = IsSharedParameterExistsInFile(_uiApp, param);
-             
+
 #if (Debug2020 || Revit2020)
                 var group = param.Definition.ParameterGroup; 
-var typeInfo = param.Definition.ParameterType.ToString();
-#endif
-
-#if (Debug2023 || Revit2023)
+                var typeInfo = param.Definition.ParameterType.ToString();
+#else
                 var group = param.Definition.GetGroupTypeId(); 
                 var typeInfo = param.Definition.GetDataType().TypeId;
 #endif
@@ -108,8 +106,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
 
 #if (Debug2020 || Revit2020)
                     ToolTip = $"Тип данных: {param.Definition.ParameterType}",
-#endif
-#if (Debug2023 || Revit2023)
+#else
                     ToolTip = $"Тип данных: {param.Definition.GetDataType().TypeId}",
 #endif
 
@@ -126,8 +123,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
                     Text = GetFamilyParamValue(_uiApp.ActiveUIDocument?.Document, currentType, param),
 #if (Debug2020 || Revit2020)
                     Tag = param.Definition.ParameterType,
-#endif
-#if (Debug2023 || Revit2023)
+#else
                     Tag = param.Definition.GetDataType().TypeId,
 #endif
                     FontSize = 12,
@@ -234,8 +230,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
                 {
                     return Brushes.Yellow;
                 }
-#endif
-#if (Debug2023 || Revit2023)
+#else
                 if (param.Definition.GetDataType() == SpecTypeId.Reference.Image ||
                     param.Definition.GetDataType() == SpecTypeId.Reference.LoadClassification)
                 {
@@ -254,8 +249,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
                                 && extDef.Name == param.Definition.Name
 #if (Debug2020 || Revit2020)
                         && extDef.ParameterType == param.Definition.ParameterType
-#endif
-#if (Debug2023 || Revit2023)
+#else
                         && extDef.GetDataType().TypeId == param.Definition.GetDataType().TypeId
 #endif
                                 )
@@ -304,8 +298,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
                         UnitType unitType = param.Definition.UnitType;
                         string formatted = UnitFormatUtils.Format(doc.GetUnits(), unitType, val, false, false);
                         return Regex.Match(formatted, @"[\d\.,\-]+").Value;
-#endif
-#if (Debug2023 || Revit2023)
+#else
                         ForgeTypeId spec = param.Definition.GetDataType();
                         if (UnitUtils.IsMeasurableSpec(spec))
                         {
@@ -368,8 +361,7 @@ var typeInfo = param.Definition.ParameterType.ToString();
 #if (Debug2020 || Revit2020)
                 var group = (BuiltInParameterGroup)tag.Group;
                 var paramType = param.Definition.ParameterType; 
-#endif
-#if (Debug2023 || Revit2023)
+#else
                 var group = (Autodesk.Revit.DB.ForgeTypeId)tag.Group;
                 var paramType = param.Definition.GetDataType();
 #endif

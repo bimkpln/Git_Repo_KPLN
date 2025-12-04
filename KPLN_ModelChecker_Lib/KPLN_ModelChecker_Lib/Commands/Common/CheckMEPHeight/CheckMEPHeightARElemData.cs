@@ -199,9 +199,13 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckMEPHeight
         public override bool Equals(object obj)
         {
             if (obj is CheckMEPHeightARElemData item)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 return this.ARElement.Id.IntegerValue == item.ARElement.Id.IntegerValue;
+#else
+                return this.ARElement.Id.Value == item.ARElement.Id.Value;
+#endif
 
-            return false;
+                return false;
         }
 
         public override int GetHashCode() => this.ARElement.Id.GetHashCode();

@@ -3,16 +3,11 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
     public partial class ButtonToRun : Window
     {
-        /// <summary>
-        /// Флаг для идентификации запуска приложения, а не закрытия через Х (любое закрытие окна связано с Window_Closing, поэтому нужен доп. флаг)
-        /// </summary>
-        private bool _isRun = false;
         private readonly string _mainDescription = string.Empty;
 
         private readonly IEnumerable<ButtonToRunEntity> _collection;
@@ -38,25 +33,12 @@ namespace KPLN_Library_Forms.UI
         /// </summary>
         public ButtonToRunEntity SelectedButton { get; private set; }
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        public RunStatus Status { get; private set; }
-
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                Status = RunStatus.Close;
+                DialogResult = false;
                 Close();
-            }
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if (!_isRun)
-            {
-                Status = RunStatus.Close;
             }
         }
 
@@ -64,8 +46,7 @@ namespace KPLN_Library_Forms.UI
         {
             SelectedButton = (sender as Button).DataContext as ButtonToRunEntity;
 
-            _isRun = true;
-            Status = RunStatus.Run;
+            DialogResult = true;
             Close();
         }
     }

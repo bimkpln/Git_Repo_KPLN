@@ -34,6 +34,16 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\2024\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>bin\2020\</OutputPath>
     <DefineConstants>Revit2020</DefineConstants>
@@ -47,6 +57,16 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
     <OutputPath>bin\2023\</OutputPath>
     <DefineConstants>Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2024|x64' ">
+    <OutputPath>bin\2024\</OutputPath>
+    <DefineConstants>Revit2024</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>none</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -116,6 +136,22 @@
         </Reference>
       </ItemGroup>
     </When>
+        <When Condition=" '$(Configuration)'=='Debug2024' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
         <Reference Include="RevitAPI">
@@ -144,6 +180,22 @@
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2024' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

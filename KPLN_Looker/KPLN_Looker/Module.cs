@@ -21,8 +21,6 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
-        private static readonly string _webHookUrl = "https://kpln.bitrix24.ru/rest/1310/uemokhg11u78vdvs";
-
         /// <summary>
         /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
         /// </summary>
@@ -95,7 +93,7 @@ namespace KPLN_Looker
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
 
-#if Debug2020 || Debug2023
+#if DEBUG
                 application.ControlledApplication.FamilyLoadingIntoDocument += OnFamilyLoadingIntoDocument;
                 application.ControlledApplication.DocumentSaved += OnDocumentSaved;
 #else
@@ -162,10 +160,10 @@ namespace KPLN_Looker
             string fileFullName = GetFileFullName(doc);
 
             if (!doc.IsFamilyDocument
-#if Revit2020 || Revit2023
-                && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
-#elif Debug2020 || Debug2023
+#if DEBUG
                 && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("fs01\\lib\\отдел bim\\") || fileFullName.ToLower().Contains("rsn"))
+#else
+                && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
 #endif
                 && !fileFullName.EndsWith("rte")
                 // Офис КПЛН
@@ -203,7 +201,7 @@ namespace KPLN_Looker
             Document doc = args.Document;
             UIDocument uidoc = new UIDocument(doc);
 
-#if Revit2020 || Revit2023
+#if REVIT
             // Игнор НЕ мониторинговых моделей
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
@@ -254,7 +252,7 @@ namespace KPLN_Looker
         {
             Document document = args.GetDocument();
 
-#if Debug2020 || Debug2023
+#if DEBUG
             // Фильтрация по имени проекта
             string docPath = MonitoredDocFilePath_ExceptARKon(document);
             if (docPath != null)
@@ -324,7 +322,11 @@ namespace KPLN_Looker
                 {
                     Family family = doc.OwnerFamily;
                     Category famCat = family.FamilyCategory;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                     BuiltInCategory bic = (BuiltInCategory)famCat.Id.IntegerValue;
+#else
+                    BuiltInCategory bic = (BuiltInCategory)famCat.Id.Value;
+#endif
 
                     if (!IsFamilyMonitoredError(prjDoc, bic, familyName, familyPath))
                         return;
@@ -491,15 +493,23 @@ namespace KPLN_Looker
                 .GetAddedElementIds(_resultFamInstFilter)
                 .Select(id => doc.GetElement(id))
                 .Cast<FamilyInstance>()
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 .Where(fi => IsFamilyMonitoredError(doc, (BuiltInCategory)fi.Category.Id.IntegerValue, fi.Symbol.FamilyName))
+#else
+                .Where(fi => IsFamilyMonitoredError(doc, (BuiltInCategory)fi.Category.Id.Value, fi.Symbol.FamilyName))
+#endif
                 .ToArray();
 
             if (!monitoredFamInsts.Any())
                 return;
 
             // Есть возможность копировать листы через буфер обмена. Ревит автоматом добавляет инкременту номеру, имя остаётся тем же
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             if (monitoredFamInsts.All(fi => fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks))
-                return;
+#else
+            if (monitoredFamInsts.All(fi => fi.Category.Id.Value == (int)BuiltInCategory.OST_TitleBlocks))
+#endif
+            return;
 
             string fileFullName = GetFileFullName(doc);
             DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
@@ -830,9 +840,7 @@ namespace KPLN_Looker
                                     ]
                                 }}";
 
-                        BitrixMessageSender.SendMsg_ToUser_ByWebhookKeyANDJSONRequest(
-                            $"{_webHookUrl}/im.message.add.json",
-                            jsonRequestToUser);
+                        BitrixMessageSender.SendMsg_ToUser_ByJSONRequest(jsonRequestToUser);
                     }
                     #endregion
 
@@ -903,7 +911,7 @@ namespace KPLN_Looker
 
             ARKonFileSendMsg(doc);
 
-#if Revit2020 || Revit2023
+#if REVIT
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif

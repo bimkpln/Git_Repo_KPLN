@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 
 namespace KPLN_Library_Forms.UIFactory
 {
@@ -18,7 +19,7 @@ namespace KPLN_Library_Forms.UIFactory
         /// Запуск окна выбора проекта
         /// </summary>
         /// <returns>Возвращает выбранный проект</returns>
-        public static ElementSinglePick CreateForm(int rVersion, bool showClosedProjects = false)
+        public static ElementSinglePick CreateForm(Window owner, int rVersion, bool showClosedProjects = false)
         {
             ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
 
@@ -43,7 +44,7 @@ namespace KPLN_Library_Forms.UIFactory
                     projects.Add(new ElementEntity(prj, prj.MainPath));
             }
 
-            ElementSinglePick pickForm = new ElementSinglePick(projects.OrderBy(p => p.Name), "Выбери проект");
+            ElementSinglePick pickForm = new ElementSinglePick(owner, projects.OrderBy(p => p.Name), "Выбери проект");
 
             return pickForm;
         }

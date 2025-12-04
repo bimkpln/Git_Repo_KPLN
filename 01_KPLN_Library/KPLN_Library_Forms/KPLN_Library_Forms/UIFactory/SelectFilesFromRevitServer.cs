@@ -20,51 +20,6 @@ namespace KPLN_Library_Forms.UIFactory
         /// </summary>
         public static RevitServer CurrentRevitServer { get; private set; }
 
-        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
-        public static ElementMultiPick CreateForm(int revitVersion)
-        {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(revitVersion);
-            
-            if ((bool)selectedRevitServerMainDirForm.ShowDialog())
-            {
-                #region Выбор РС
-                string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
-                string selectedRSHostName = selectedRSMainDirFullPath.Split('\\')[0];
-                string selectedRSMainDir = selectedRSMainDirFullPath.TrimStart(selectedRSHostName.ToCharArray());
-                #endregion
-
-                #region Выбор элементов с РС
-                try
-                {
-                    ObservableCollection<ElementEntity> projects = new ObservableCollection<ElementEntity>();
-
-                    CurrentRevitServer = new RevitServer(selectedRSHostName, revitVersion);
-                    FolderContents folderContents = CurrentRevitServer.GetFolderContents(selectedRSMainDir);
-                    List<Model> activeModelsFromMainDir = GetModelsFromMainDir(folderContents);
-
-                    IEnumerable<ElementEntity> activeEntitiesForForm = activeModelsFromMainDir.Select(e => new ElementEntity(e.Path));
-
-                    ElementMultiPick pickForm = new ElementMultiPick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери файлы");
-
-                    return pickForm;
-                }
-                catch (Exception ex)
-                {
-                    TaskDialog td = new TaskDialog("KPLN: Ошибка")
-                    {
-                        MainContent = $"При обращении к Revit-Server возникла ошибка:\n{ex.Message}",
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    };
-                    td.Show();
-
-                    return null;
-                }
-                #endregion
-            }
-
-            return null;
-        }
-
         public static ElementMultiPick CreateForm(Window owner, int revitVersion)
         {
             ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(owner,revitVersion);

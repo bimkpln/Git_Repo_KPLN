@@ -548,7 +548,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 #if (Debug2020 || Revit2020)
                     double off = UnitUtils.ConvertToInternalUnits(2.0, DisplayUnitType.DUT_METERS);
 #endif
-#if (Debug2023 || Revit2023)
+#if (!Debug2020 && !Revit2020)
                     double off = UnitUtils.ConvertToInternalUnits(2.0, UnitTypeId.Meters);
 #endif
 

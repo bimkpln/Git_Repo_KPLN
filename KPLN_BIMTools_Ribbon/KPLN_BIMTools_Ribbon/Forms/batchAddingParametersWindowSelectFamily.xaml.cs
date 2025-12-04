@@ -41,8 +41,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 #if (Debug2020 || Revit2020)
             ParameterType paramType20 = (ParameterType)parameterValueDataType;
             parameterValueDataTypeValue = paramType20.ToString();
-#endif
-#if (Debug2023 || Revit2023)
+#else
             ForgeTypeId paramType23 = (ForgeTypeId)parameterValueDataType;
             parameterValueDataTypeValue = paramType23.TypeId;
 #endif
@@ -78,8 +77,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     DisplayUnitType displayUnitType = _uiApp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(unitType).DisplayUnits;
                     double convertedValue = UnitUtils.ConvertToInternalUnits(dValue, displayUnitType);
                     familyManager.Set(familyParam, convertedValue);
-#endif
-#if Revit2023 || Debug2023
+#else
                     ForgeTypeId forgeTypeId = familyParam.Definition.GetDataType();
                     FormatOptions formatOptions = _uiApp.ActiveUIDocument.Document.GetUnits().GetFormatOptions(forgeTypeId);
                     double convertedValue = UnitUtils.ConvertToInternalUnits(dValue, formatOptions.GetUnitTypeId());
@@ -189,8 +187,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
 #if (Debug2020 || Revit2020)
                         if (existingParam != null && existingParam.Definition.ParameterType == (ParameterType)paramType && copyValue == false)
-#endif
-#if (Debug2023 || Revit2023)
+#else
                         if (existingParam != null && existingParam.Definition.GetDataType() == (ForgeTypeId)paramType && copyValue == false)
 #endif
                         {
@@ -200,8 +197,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         FamilyParameter familyParameter = null;
 #if (Debug2020 || Revit2020)
                         if (existingParam != null && existingParam.Definition.ParameterType == (ParameterType)paramType)
-#endif
-#if (Debug2023 || Revit2023)
+#else
                         if (existingParam != null && existingParam.Definition.GetDataType() == (ForgeTypeId)paramType)
 #endif
                         {
@@ -212,8 +208,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 #if (Debug2020 || Revit2020)
                             if (existingParam != null && existingParam.Definition.ParameterType != (ParameterType)paramType)
                             {
-#endif
-#if (Debug2023 || Revit2023)
+#else
                             if (existingParam != null && existingParam.Definition.GetDataType() != (ForgeTypeId)paramType)
                             {
 #endif
@@ -260,8 +255,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 {
 #if (Debug2020 || Revit2020)
                                     familyParameter = famMgr.AddParameter(externalDef, (BuiltInParameterGroup)group, isInstance);
-#endif
-#if (Debug2023 || Revit2023)
+#else
                                     familyParameter = famMgr.AddParameter(externalDef, (ForgeTypeId)group, isInstance);
 #endif
                                 }
@@ -279,8 +273,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                     BuiltInParameterGroup group20 = (BuiltInParameterGroup)group;
                                     ParameterType paramType20 = (ParameterType)paramType;
                                     familyParameter = famMgr.AddParameter(paramName, group20, paramType20, isInstance);
-#endif
-#if (Debug2023 || Revit2023)
+#else
                                     ForgeTypeId group23 = (ForgeTypeId)group;
                                     ForgeTypeId paramType23 = (ForgeTypeId)paramType;
                                     familyParameter = famMgr.AddParameter(param.Definition.Name, group23, paramType23, isInstance);

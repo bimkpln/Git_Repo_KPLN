@@ -1,5 +1,4 @@
 ﻿using KPLN_Library_Forms.Common;
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -13,24 +12,6 @@ namespace KPLN_Library_Forms.UI
     {
         private readonly ObservableCollection<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
-
-        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
-        public ElementMultiPick(IEnumerable<ElementEntity> collection)
-        {
-            _collection = new ObservableCollection<ElementEntity>(collection);
-            _showCollection = new ObservableCollection<ElementEntity>(_collection);
-            InitializeComponent();
-
-            this.Title = $"KPLN: Выбери нужный элемент/ы";
-            Elements.ItemsSource = _showCollection;
-            PreviewKeyDown += new KeyEventHandler(HandleEsc);
-        }
-
-        [Obsolete("01.12.2025 - замена на наличие Owner для зависимости")]
-        public ElementMultiPick(IEnumerable<ElementEntity> collection, string title) : this(collection)
-        {
-            this.Title = $"KPLN: {title}";
-        }
 
         public ElementMultiPick(Window owner, IEnumerable<ElementEntity> collection)
         {
@@ -57,7 +38,10 @@ namespace KPLN_Library_Forms.UI
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                DialogResult = false;
                 Close();
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchText);
@@ -80,7 +64,7 @@ namespace KPLN_Library_Forms.UI
 
         private void RunBtn_Click(object sender, RoutedEventArgs e)
         {
-            this.DialogResult = true;
+            DialogResult = true;
             Close();
         }
 

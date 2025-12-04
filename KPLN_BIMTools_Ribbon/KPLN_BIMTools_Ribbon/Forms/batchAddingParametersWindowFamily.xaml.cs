@@ -37,8 +37,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
         }
-#endif
-#if Revit2023 || Debug2023
+#else
         public ForgeTypeId GetParameterTypeFromString(string dataType)
         {
             return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
@@ -123,8 +122,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 "Масса (Трубопроводы)", "Масса на единицу длины (Трубопроводы)", "Расход приборов"}},
             { "Энергия", new List<string>(){
                 "Энергия (Энергия)", "Коэффициент теплопередачи", "Термостойкость", "Тепловая нагрузка", "Теплопроводность", "Удельная теплоемкость", "Удельная теплоемкость парообразования", "Проницаемость"}}
-#endif
-#if Revit2023 || Debug2023
+#else
             { "Общие", new List<string>(){
                 "Текст", "Целое", "Угол", "Площадь", "Стоимость на единицу площади", "Расстояние", "Длина", "Массовая плотность", "Число", "Угол поворота", "Уклон (Общие)", "Скорость (Общие)", "Время", "Объем (Общие)", 
                 "Денежная единица", "URL", "Материал", "Образец заливки", "Изображение", "Да/Нет", "Многострочный текст"}},
@@ -857,8 +855,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                 {
                                     familyParameter = familyManager.AddParameter(fParamName, grouping, paramType, isInstance);
                                 }
-#endif
-#if Revit2023 || Debug2023
+#else
                                 ForgeTypeId groupType = GetParameterGroupFromString(paramDetails[5]);
                                 ForgeTypeId paramType = GetParameterTypeFromString(dataType);
 
