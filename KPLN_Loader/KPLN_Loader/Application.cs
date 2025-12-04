@@ -16,6 +16,8 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace KPLN_Loader
 {
@@ -45,6 +47,13 @@ namespace KPLN_Loader
         /// Queue для команд на выполнение по событию "OnIdling"
         /// </summary>
         public static Queue<IExecutableCommand> OnIdling_CommandQueue = new Queue<IExecutableCommand>();
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+        /// <summary>
+        /// Коллекция зарегестрированных кнопок для смены цвета
+        /// </summary>
+        public static List<(RibbonButton Button, string IconBaseName, string KPLNPluginAssembleName)> KPLNButtonsForImageReverse = new List<(RibbonButton, string, string)>();
+#endif
 
         /// <summary>
         /// ВНУТРИ KPLN: Основной путь к основным конфигам для работы всей экосистемы
@@ -79,8 +88,8 @@ namespace KPLN_Loader
 
         public Result OnShutdown(UIControlledApplication application)
         {
-            application.Idling -= new EventHandler<IdlingEventArgs>(OnIdling);
-            application.ControlledApplication.DocumentOpened -= new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
+            application.Idling -= OnIdling;
+            application.ControlledApplication.DocumentOpened -= OnDocumentOpened;
 
             foreach(IExternalModule module in _moduleInstances)
             {
@@ -348,9 +357,12 @@ namespace KPLN_Loader
             _logger.Info($"Успешная инициализация в Revit {RevitVersion}\n");
 
             #region Подписка на события
-            application.Idling += new EventHandler<IdlingEventArgs>(OnIdling);
-            application.ControlledApplication.DocumentOpened += new EventHandler<DocumentOpenedEventArgs>(OnDocumentOpened);
-            #endregion
+            application.Idling += OnIdling;
+            application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            application.ThemeChanged += OnThemeChanged;
+#endif
+#endregion
 
 
             return Result.Succeeded;
@@ -368,6 +380,38 @@ namespace KPLN_Loader
         /// <param name="spearator">Разделитель имени dll-модуля</param>
         /// <returns></returns>
         private bool CheckModuleName(string fileName, String[] spearator) => fileName.Split(spearator, StringSplitOptions.None).Count() > 1 && !fileName.Contains(".config");
+
+        /// <summary>
+        /// Метод для добавления иконки для кнопки в зависимости от темы
+        /// </summary>
+        /// <param name="iconBaseName">Чистое имя иконки</param>
+        /// <param name="size">Размер иконки</param>
+        public static ImageSource GetBtnImage_ByTheme(string assemblyName, string iconBaseName, int size)
+        {
+            string themeSuffix = string.Empty;
+
+            UITheme theme = UIThemeManager.CurrentTheme;
+            if (theme == UITheme.Dark)
+                themeSuffix = "_dark";
+
+            string fileName = $"{iconBaseName}{size}{themeSuffix}.png";
+            string uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
+
+            ImageSource result;
+            try
+            {
+                result = new BitmapImage(new Uri(uriString));
+            }
+            // Если нет дарк темы, то просто имя файла
+            catch (IOException)  
+            {
+                fileName = $"{iconBaseName}{size}.png";
+                uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
+                result = new BitmapImage(new Uri(uriString));
+            }
+
+            return result;
+        }
 
         /// <summary>
         /// Получить коллекцию модулей для пользователей типа ExtraNet (субчики)
@@ -544,5 +588,21 @@ namespace KPLN_Loader
             else
                 _dbService.SetRevitUserName(app.Username, CurrentRevitUser);
         }
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+        /// <summary>
+        /// Событие, происходящее при смене темы начиная с ревит 2024
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnThemeChanged(object sender, ThemeChangedEventArgs e)
+        {
+            foreach (var (button, iconBaseName, kplnPluginAssembleName) in KPLNButtonsForImageReverse)
+            {
+                button.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
+                button.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
+            }
+        }
+#endif
     }
 }
