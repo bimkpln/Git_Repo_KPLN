@@ -45,14 +45,22 @@ namespace KPLN_Tools.ExternalCommands
             return Result.Succeeded;
         }
 
+
+
+
+
+
+
+
+
+
         private void CheckGroupingVsPanelName(UIApplication uiapp, Document doc)
         {
             // Элементы узлов
             string[] nodeFamilyNames =
             {
                 "076_КШ_Шкаф_Универсальный_(ЭлУзл)",
-                "076_КШ_Шкаф_Корпус ЩМП У2 IP54_(ЭлУзл)",
-                "851_Щит_Универсальный_(ЭлОб)"
+                "076_КШ_Шкаф_Корпус ЩМП У2 IP54_(ЭлУзл)"
             };
 
             var nodeElements = new FilteredElementCollector(doc)
@@ -92,7 +100,11 @@ namespace KPLN_Tools.ExternalCommands
 
             // Электрооборудование 
             var cabinetInstances = new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance)).OfCategory(BuiltInCategory.OST_ElectricalEquipment).Cast<FamilyInstance>().ToList();
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_ElectricalEquipment)
+                .Cast<FamilyInstance>()
+                .Where(fi => fi.Symbol.Family.Name == "851_Щит_Универсальный_(ЭлОб)")
+                .ToList();
 
             if (!cabinetInstances.Any())
             {
@@ -174,6 +186,16 @@ namespace KPLN_Tools.ExternalCommands
 
             return p != null ? p.AsString() : null;
         }
+
+
+
+
+
+
+
+
+
+
 
         private void CheckDimensionsForGroups(UIApplication uiapp, Document doc)
         {

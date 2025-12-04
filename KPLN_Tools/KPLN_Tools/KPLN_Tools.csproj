@@ -285,11 +285,9 @@
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CabinetMismatchWindow.xaml.cs">
       <DependentUpon>CabinetMismatchWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ChangeCategoryWindowNodeManager.xaml.cs">
-      <DependentUpon>ChangeCategoryWindowNodeManager.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerFilterByTagsWindow.xaml.cs">
       <DependentUpon>NodeManagerFilterByTagsWindow.xaml</DependentUpon>
@@ -550,11 +548,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\NodeManagerChangeCategoryWindow.xaml">
-    <Page Include="Forms\CabinetMismatchWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ChangeCategoryWindowNodeManager.xaml">
+    <Page Include="Forms\CabinetMismatchWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
