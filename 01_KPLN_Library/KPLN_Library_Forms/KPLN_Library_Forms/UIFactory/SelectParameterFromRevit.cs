@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 
 namespace KPLN_Library_Forms.UIFactory
 {
@@ -23,6 +24,7 @@ namespace KPLN_Library_Forms.UIFactory
         /// <param name="includeTypeParams">Учитывать пар-ры типов</param>
         /// <returns></returns>
         public static ElementSinglePick CreateForm(
+            Window owner,
             Document doc,
             IEnumerable<Element> elemsToFindParam,
             StorageType storageType,
@@ -80,15 +82,20 @@ namespace KPLN_Library_Forms.UIFactory
                 string toolTip = string.Empty;
                 if (param.IsShared)
                     toolTip = $"Id: {param.Id}, GUID: {param.GUID}";
+#if !Debug2020 && !Debug2023 && !Revit2020 && !Revit2023
+                else if (param.Id.Value < 0)
+                    toolTip = $"Id: {param.Id}, это СИСТЕМНЫЙ параметр проекта";
+#else
                 else if (param.Id.IntegerValue < 0)
                     toolTip = $"Id: {param.Id}, это СИСТЕМНЫЙ параметр проекта";
+#endif
                 else
                     toolTip = $"Id: {param.Id}, это ПОЛЬЗОВАТЕЛЬСКИЙ параметр проекта";
 
                 paramsToChoose.Add(new ElementEntity(param, toolTip));
             }
 
-            ElementSinglePick pickForm = new ElementSinglePick(paramsToChoose.OrderBy(p => p.Name), "Выбери пар-р, общий для необходимых категорий проекта");
+            ElementSinglePick pickForm = new ElementSinglePick(owner, paramsToChoose.OrderBy(p => p.Name), "Выбери пар-р, общий для необходимых категорий проекта");
 
             return pickForm;
         }

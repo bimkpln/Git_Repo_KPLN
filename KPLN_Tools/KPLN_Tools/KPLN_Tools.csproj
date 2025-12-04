@@ -41,6 +41,7 @@
     <DefineConstants>Debug2020</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -48,6 +49,7 @@
     <DefineConstants>Debug2023</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -68,6 +70,10 @@
     </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_Library_PluginActivityWorker, Version=1.1.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
@@ -264,6 +270,8 @@
   </Choose>
   <ItemGroup>
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
+    <Compile Include="Common\ScheduleHelper.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
@@ -271,6 +279,7 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -371,9 +380,12 @@
     <Compile Include="Forms\Models\AR_PyatnGraph_VM.cs" />
     <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
     <Compile Include="Forms\Models\Core\RelayCommand.cs" />
-    <Compile Include="Forms\Models\OVVK_SystemManager_ViewModel.cs" />
+    <Compile Include="Forms\Models\OVVK_SystemManager_VM.cs" />
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
-    <Compile Include="Forms\Models\SendMsgToBitrix_ViewModel.cs" />
+    <Compile Include="Forms\Models\ScheduleFormM.cs" />
+    <Compile Include="Forms\Models\ScheduleFormVM.cs" />
+    <Compile Include="Forms\Models\ScheduleSubFormVM.cs" />
+    <Compile Include="Forms\Models\SendMsgToBitrix_VM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\OVVK_MergeSystemsForm.xaml.cs">
       <DependentUpon>OVVK_MergeSystemsForm.xaml</DependentUpon>
@@ -383,6 +395,12 @@
     </Compile>
     <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
       <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ScheduleSubForm.xaml.cs">
+      <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ScheduleMainForm.xaml.cs">
+      <DependentUpon>ScheduleMainForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\RLinkUpdateContent.xaml.cs">
       <DependentUpon>RLinkUpdateContent.xaml</DependentUpon>
@@ -490,6 +508,9 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\Styles.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -556,6 +577,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\ScheduleSubForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ScheduleMainForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\RLinkUpdateContent.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -612,12 +641,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\KPLN_Library_PluginActivityWorker.csproj">
-      <Project>{5acffdf4-72d4-40e6-8c7b-a66d3b8763a1}</Project>
-      <Name>KPLN_Library_PluginActivityWorker</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />

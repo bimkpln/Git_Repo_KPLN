@@ -15,6 +15,17 @@
     Title="KPLN: Выбор похожих"
     Background="#2B2F38">
 
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Enter"
+            Command="{Binding RunSelectionCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -75,11 +86,14 @@
                         HorizontalAlignment="Stretch"
                         IsEditable="True"
                         IsEnabled="{Binding What_ParameterData}"
-                        TextSearch.TextPath="CurrentParamName">
+                        IsTextSearchEnabled="False"
+                        StaysOpenOnEdit="True"
+                        Text="{Binding SearchParamText, UpdateSourceTrigger=PropertyChanged}"
+                        TextSearch.TextPath="RevitParamName">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock 
-                                    Text="{Binding CurrentParamName}"
+                                    Text="{Binding RevitParamName}"
                                     Style="{StaticResource TXT}"
                                     Foreground ="Black"
                                     FontSize ="12"
@@ -121,7 +135,7 @@
                         Style="{StaticResource CHB}" 
                         IsChecked="{Binding Belong_Group, 
                             UpdateSourceTrigger=PropertyChanged}" 
-                        Content="Эл-ты групп" />
+                        Content="Элементы групп" />
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -13,7 +13,7 @@ namespace KPLN_Tools.ExecutableCommand
 {
     internal class CommandSystemManager_ViewCreator : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_ViewModel _viewModel;
+        private readonly OVVK_SystemManager_VM _viewModel;
         private readonly string[] _systemSumParameters;
         private readonly List<ElementId> _docCatIdColl = new List<ElementId>();
 
@@ -26,7 +26,7 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_ViewCreator(OVVK_SystemManager_ViewModel currentViewModel, string[] systemSumParameters)
+        public CommandSystemManager_ViewCreator(OVVK_SystemManager_VM currentViewModel, string[] systemSumParameters)
         {
             _viewModel = currentViewModel;
             _systemSumParameters = systemSumParameters;

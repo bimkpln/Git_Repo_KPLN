@@ -9,9 +9,9 @@ namespace KPLN_Tools.ExecutableCommand
     /// </summary>
     internal class CommandSystemManager_VMUpdater : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_ViewModel _viewModel;
+        private readonly OVVK_SystemManager_VM _viewModel;
 
-        public CommandSystemManager_VMUpdater(OVVK_SystemManager_ViewModel viewModel)
+        public CommandSystemManager_VMUpdater(OVVK_SystemManager_VM viewModel)
         {
             _viewModel = viewModel;
         }

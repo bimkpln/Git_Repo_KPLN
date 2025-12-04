@@ -287,7 +287,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnMainPathAddRevitServerFolder(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(ModuleData.RevitVersion);
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(this, ModuleData.RevitVersion);
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
@@ -303,7 +303,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         .Select(f => new ElementEntity(f.Path))
                         .ToArray());
 
-                ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
+                ElementSinglePick pickForm = new ElementSinglePick(this, activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
                 if ((bool)pickForm.ShowDialog())
                     SharedPathTo = $"\\\\{selectedRSHostName}{pickForm.SelectedElement.Name}";
             }
@@ -332,7 +332,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnAddNewRevitServerLink(object sender, RoutedEventArgs e)
         {
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(this, ModuleData.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 

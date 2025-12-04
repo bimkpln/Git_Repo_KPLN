@@ -1,7 +1,9 @@
 ﻿using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 
 namespace KPLN_Library_Forms.UIFactory
 {
@@ -14,7 +16,7 @@ namespace KPLN_Library_Forms.UIFactory
         /// Метод создания окна для выбора корневой папки сервера
         /// </summary>
         /// <returns>Путь к корневой папки, с учетом имени сервера RS. Формат: "HOSTNAME\PATH"</returns>
-        public static ElementSinglePick CreateForm_SelectRSMainDir(int revitVersion)
+        public static ElementSinglePick CreateForm_SelectRSMainDir(Window owner, int revitVersion)
         {
             ObservableCollection<ElementEntity> rsColl = null;
             switch (revitVersion)
@@ -42,7 +44,7 @@ namespace KPLN_Library_Forms.UIFactory
                     break;
             }
 
-            ElementSinglePick pickForm = new ElementSinglePick(rsColl.OrderBy(p => p.Name), "Выбери корневую папку Revit-Server");
+            ElementSinglePick pickForm = new ElementSinglePick(owner, rsColl.OrderBy(p => p.Name), "Выбери корневую папку Revit-Server");
 
             return pickForm;
         }

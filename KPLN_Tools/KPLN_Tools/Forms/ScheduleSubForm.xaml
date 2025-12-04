@@ -1,0 +1,85 @@
+﻿<Window x:Class="KPLN_Tools.Forms.ScheduleSubForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
+        Height="250"
+        Width="350"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border
+        Style="{StaticResource RCTG}">
+        <StackPanel Margin="10">
+            <TextBlock 
+                Text="{Binding Header}"
+                Style="{StaticResource TXT}"/>
+
+            <TextBlock 
+                Text="Приставка (не обязательно):"
+                Style="{StaticResource TXT}"/>
+            <TextBox 
+                Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Auto"/>
+
+            <TextBlock 
+                Text="Номер:"
+                Style="{StaticResource TXT}"/>
+            <TextBox 
+                Text="{Binding StartNumber, UpdateSourceTrigger=PropertyChanged}"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Auto"/>
+
+            <CheckBox
+                Content="Увеличить значение по столбцу на +1?"
+                IsChecked="{Binding AutoIncrement}"
+                Style="{StaticResource CHB}"/>
+
+            <StackPanel 
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,5,0,0">
+                <Button 
+                    Content="OK"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    IsDefault="True"
+                    Command="{Binding RunCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button 
+                    Content="Отмена"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    Command="{Binding CloseWindowCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

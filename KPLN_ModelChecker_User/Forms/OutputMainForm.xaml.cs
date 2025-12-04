@@ -193,18 +193,13 @@ namespace KPLN_ModelChecker_User.Forms
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
                     userTextInput.ShowDialog();
 
-                    if (userTextInput.Status == UIStatus.RunStatus.Run)
-                    {
+                    if ((bool)userTextInput.ShowDialog())
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
-                    }
                 }
             }
         }
 
-        private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateEntityList();
-        }
+        private void OnSelectedCategoryChanged(object sender, SelectionChangedEventArgs e) => UpdateEntityList();
 
         /// <summary>
         /// Перезапустить плагин БЕЗ обновления информации по последнему запуску

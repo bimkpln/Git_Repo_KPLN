@@ -31,8 +31,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
         }
-#endif
-#if Revit2023 || Debug2023
+#else
         public ForgeTypeId GetParameterTypeFromString(string dataType)
         {
             return batchAddingParametersWindowСhoice.GetParameterTypeFromString(dataType);
@@ -578,8 +577,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                                         {
                                             familyParameter = familyManager.AddParameter(fParamName, grouping, paramType, isInstance);
                                         }
-#endif
-#if Revit2023 || Debug2023
+#else
                                         ForgeTypeId groupType = GetParameterGroupFromString(paramDetails[5]);
                                         ForgeTypeId paramType = GetParameterTypeFromString(dataType);
 

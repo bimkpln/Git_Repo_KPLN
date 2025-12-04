@@ -3,7 +3,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
@@ -20,17 +19,10 @@ namespace KPLN_Library_Forms.UI
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
-        /// <summary>
-        /// Статус запуска
-        /// </summary>
-        [Obsolete("Нужно использовать DialogResult")]
-        public RunStatus Status { get; private set; }
-
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                Status = RunStatus.Close;
                 DialogResult = false;
                 Close();
             }
@@ -50,15 +42,9 @@ namespace KPLN_Library_Forms.UI
         {
             
             if (CheckVerify(_inputPassword))
-            {
-                Status = RunStatus.Run;
                 DialogResult = true;
-            }
             else 
-            { 
-                Status = RunStatus.CloseBecauseError; 
                 DialogResult = false;
-            }
 
             Close();
         }
@@ -77,7 +63,8 @@ namespace KPLN_Library_Forms.UI
                     }
                 }
 
-                if (truePassowrd.Equals(password)) { return true; }
+                if (truePassowrd.Equals(password)) 
+                    return true;
 
                 return false;
 

@@ -12,7 +12,6 @@
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
         ResizeMode="CanResizeWithGrip" 
         WindowStyle="ToolWindow" 
-        Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         SizeToContent="WidthAndHeight" 
         Loaded="OnLoaded">

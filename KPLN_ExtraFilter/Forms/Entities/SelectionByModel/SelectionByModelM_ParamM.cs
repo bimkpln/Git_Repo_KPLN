@@ -13,7 +13,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
         private readonly SelectionByModelM _modelM;
         private Element[] _paramM_UserSelElems;
-        private ParamEntity _paramM_SelectedCategory;
+        private ParamEntity _paramM_SelectedParameter;
 
         public SelectionByModelM_ParamM(SelectionByModelM modelM)
         {
@@ -21,8 +21,6 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             ParamM_Doc = modelM.Doc;
             ParamM_UserSelElems = modelM.Where_UserSelElems;
-
-            ParamM_CategoryFilter.LoadCollection(ParamtM_DocCategories);
         }
 
         public Document ParamM_Doc { get; set; }
@@ -33,43 +31,43 @@ namespace KPLN_ExtraFilter.Forms.Entities
             set
             {
                 // запомним имя предыдущего выбора (если был)
-                int prevParamId = _paramM_SelectedCategory == null ? -1 : _paramM_SelectedCategory.RevitParamIntId;
+                int prevParamId = _paramM_SelectedParameter == null ? -1 : _paramM_SelectedParameter.RevitParamIntId;
 
                 _paramM_UserSelElems = value;
                 NotifyPropertyChanged();
 
-                ParamM_CategoryFilter.LoadCollection(ParamtM_DocCategories);
-                ParamM_CategoryFilter.View?.Refresh();
-                RestoreSelectedCategoryByName(prevParamId);
+                ParamM_ParamFilter.LoadCollection(ParamM_DocParameters);
+                ParamM_ParamFilter.View?.Refresh();
+                RestoreSelectedParamById(prevParamId);
 
-                NotifyPropertyChanged(nameof(ParamM_FilteredCategoryView));
+                NotifyPropertyChanged(nameof(ParamM_FilteredParamView));
             }
         }
 
         /// <summary>
-        /// Экземпляр фильтра по категории
+        /// Экземпляр фильтра по параметру
         /// </summary>
-        public CollectionFilter<ParamEntity> ParamM_CategoryFilter { get; } = new CollectionFilter<ParamEntity>();
+        public CollectionFilter<ParamEntity> ParamM_ParamFilter { get; } = new CollectionFilter<ParamEntity>();
 
         /// <summary>
         /// Пользовательский ввод для поиска параметра
         /// </summary>
         public string SearchParamText
         {
-            get => ParamM_CategoryFilter.SearchText;
-            set => ParamM_CategoryFilter.SearchText = value;
+            get => ParamM_ParamFilter.SearchText;
+            set => ParamM_ParamFilter.SearchText = value;
         }
 
-        public ICollectionView ParamM_FilteredCategoryView => ParamM_CategoryFilter.View;
+        public ICollectionView ParamM_FilteredParamView => ParamM_ParamFilter.View;
 
         /// <summary>
         /// Коллекция параметров типа/экземпляра у выбранного эл-та
         /// </summary>
-        public ParamEntity[] ParamtM_DocCategories
+        public ParamEntity[] ParamM_DocParameters
         {
             get
             {
-                IEnumerable<Parameter> elemsParams = DocWorker.GetAllParamsFromElems(ParamM_Doc, ParamM_UserSelElems);
+                IEnumerable<Parameter> elemsParams = DocWorker.GetAllParamsFromElems(ParamM_Doc, ParamM_UserSelElems, false);
                 if (elemsParams == null)
                     return null;
 
@@ -88,29 +86,26 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// </summary>
         public ParamEntity ParamM_SelectedParameter
         {
-            get => _paramM_SelectedCategory;
+            get => _paramM_SelectedParameter;
             set
             {
-                _paramM_SelectedCategory = value;
+                _paramM_SelectedParameter = value;
                 NotifyPropertyChanged();
                 _modelM.UpdateCanRunANDUserHelp();
             }
         }
 
-        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         /// <summary>
         /// Восстанавливает выбранный параметр, если в текущем View есть параметр с тем же id.
         /// </summary>
-        private void RestoreSelectedCategoryByName(int prevParamId)
+        public void RestoreSelectedParamById(int prevParamId)
         {
             // если нет предыдущего выбора или View — просто ничего не делаем
-            if (prevParamId == -1 || ParamM_CategoryFilter?.View == null)
+            if (prevParamId == -1 || ParamM_ParamFilter?.View == null)
                 return;
 
             // Проходим по элементам View и ищем экземпляр с тем же именем
-            var match = ParamM_CategoryFilter
+            var match = ParamM_ParamFilter
                 .View
                 .Cast<ParamEntity>()
                 .FirstOrDefault(c => c.RevitParamIntId == prevParamId);
@@ -122,5 +117,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             else
                 ParamM_SelectedParameter = null;
         }
+
+        private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

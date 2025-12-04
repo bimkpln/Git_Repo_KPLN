@@ -5,7 +5,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Library_Forms.UI
 {
@@ -14,18 +13,19 @@ namespace KPLN_Library_Forms.UI
         private readonly ObservableCollection<ElementEntity> _collection;
         private readonly ObservableCollection<ElementEntity> _showCollection;
 
-        public ElementMultiPick(IEnumerable<ElementEntity> collection)
+        public ElementMultiPick(Window owner, IEnumerable<ElementEntity> collection)
         {
             _collection = new ObservableCollection<ElementEntity>(collection);
             _showCollection = new ObservableCollection<ElementEntity>(_collection);
             InitializeComponent();
 
             this.Title = $"KPLN: Выбери нужный элемент/ы";
+            this.Owner = owner;
             Elements.ItemsSource = _showCollection;
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
         }
 
-        public ElementMultiPick(IEnumerable<ElementEntity> collection, string title) : this(collection)
+        public ElementMultiPick(Window owner, IEnumerable<ElementEntity> collection, string title) : this(owner, collection)
         {
             this.Title = $"KPLN: {title}";
         }
@@ -33,15 +33,15 @@ namespace KPLN_Library_Forms.UI
         /// <summary>
         /// Выбранная коллекция элементов
         /// </summary>
-        public List<ElementEntity> SelectedElements
-        {
-            get => _collection.Where(ee => ee.IsSelected).ToList();
-        }
+        public List<ElementEntity> SelectedElements => _collection.Where(ee => ee.IsSelected).ToList();
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                DialogResult = false;
                 Close();
+            }
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) => Keyboard.Focus(SearchText);
@@ -64,7 +64,7 @@ namespace KPLN_Library_Forms.UI
 
         private void RunBtn_Click(object sender, RoutedEventArgs e)
         {
-            this.DialogResult = true;
+            DialogResult = true;
             Close();
         }
 

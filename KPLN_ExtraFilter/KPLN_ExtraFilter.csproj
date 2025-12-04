@@ -177,16 +177,13 @@
     <Compile Include="Forms\Entities\SelectionByModelM.cs" />
     <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_ParamM.cs" />
     <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_CategoryM.cs" />
-    <Compile Include="Forms\Entities\SetParamsByFrame\MainItem.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrame\SetParamsByFrameM_ParamM.cs" />
     <Compile Include="Forms\Entities\ParamEntity.cs" />
-    <Compile Include="Forms\Entities\SetParamsByFrame\SetParamsByFrameEntity.cs" />
+    <Compile Include="Forms\Entities\SetParamsByFrameM.cs" />
     <Compile Include="Forms\Entities\TreeElementEntity.cs" />
     <Compile Include="Forms\Entities\CollectionFilter.cs" />
     <Compile Include="Forms\Entities\WSEntity.cs" />
     <Compile Include="Forms\Converters\EnumToBooleanConverter.cs" />
-    <Compile Include="Forms\SelectionOptions_MainControl.xaml.cs">
-      <DependentUpon>SelectionOptions_MainControl.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\SelectionByModel.xaml.cs">
       <DependentUpon>SelectionByModel.xaml</DependentUpon>
     </Compile>
@@ -199,6 +196,7 @@
     <Compile Include="Forms\ViewModels\SelectionByModelVM.cs" />
     <Compile Include="Forms\ViewModels\SelectionByClickVM.cs" />
     <Compile Include="Forms\Entities\SelectionByClickM.cs" />
+    <Compile Include="Forms\ViewModels\SetParamsByFrameVM.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -219,10 +217,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Forms\SelectionOptions_MainControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Forms\SelectionByModel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

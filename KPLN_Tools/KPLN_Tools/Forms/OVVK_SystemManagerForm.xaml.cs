@@ -14,7 +14,7 @@ namespace KPLN_Tools.Forms
     {
         public OVVK_SystemManagerForm(Document doc)
         {
-            CurrentViewModel = new OVVK_SystemManager_ViewModel(doc);
+            CurrentViewModel = new OVVK_SystemManager_VM(doc);
             if (!CurrentViewModel.ElementColl.Any())
             {
                 MessageBox.Show("В модели отсутсвуют элементы ОВВК для анализа!", "KPLN: Внимание", MessageBoxButton.OK);
@@ -27,7 +27,7 @@ namespace KPLN_Tools.Forms
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
-        public OVVK_SystemManager_ViewModel CurrentViewModel { get; private set; }
+        public OVVK_SystemManager_VM CurrentViewModel { get; private set; }
 
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {

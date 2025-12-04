@@ -58,25 +58,6 @@ namespace KPLN_Loader.Services
         public static string DatabaseConfigs_LoaderMainDB { get; } = "Loader_MainDB";
 
         /// <summary>
-        /// Имя вебхука для работы с BitrixAPI из конфигураций
-        /// </summary>
-        public static string BitrixConfigs_MainWebHookName { get; } = "MainWebHook";
-
-        /// <summary>
-        /// Коллекция десерилизованныйх данных по настройкам Bitrix
-        /// </summary>
-        public static Bitrix_Config[] BitrixConfigs
-        {
-            get
-            {
-                if (_bitrixConfigs == null)
-                    _bitrixConfigs = GetBitrixCongigs();
-
-                return _bitrixConfigs;
-            }
-        }
-
-        /// <summary>
         /// Коллекция десерилизованныйх данных по БД
         /// </summary>
         public static DB_Config[] DatabaseConfigs
@@ -87,6 +68,25 @@ namespace KPLN_Loader.Services
                     _databaseConfigs = GetDBCongigs();
 
                 return _databaseConfigs;
+            }
+        }
+
+        /// <summary>
+        /// Имя вебхука для работы с BitrixAPI из конфигураций
+        /// </summary>
+        internal static string BitrixConfigs_MainWebHookName { get; } = "MainWebHook";
+
+        /// <summary>
+        /// Коллекция десерилизованныйх данных по настройкам Bitrix
+        /// </summary>
+        internal static Bitrix_Config[] BitrixConfigs
+        {
+            get
+            {
+                if (_bitrixConfigs == null)
+                    _bitrixConfigs = GetBitrixCongigs();
+
+                return _bitrixConfigs;
             }
         }
 

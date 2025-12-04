@@ -30,13 +30,13 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 new ElementEntity(RevitDocExchangeEnum.Revit.ToString(), "Плагин \"RVT: Обмен\""),
                 new ElementEntity(RevitDocExchangeEnum.Navisworks.ToString(), "Плагин \"NWC: Обмен\""),
             };
-            ElementSinglePick elementSinglePick = new ElementSinglePick(plugins);
+            ElementSinglePick elementSinglePick = new ElementSinglePick(null, plugins);
             if (!(bool)elementSinglePick.ShowDialog())
                 return Result.Cancelled;
             RevitDocExchangeEnum selectedEnum = (RevitDocExchangeEnum)System.Enum.Parse(typeof(RevitDocExchangeEnum), elementSinglePick.SelectedElement.Name);
 
 
-            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(ModuleData.RevitVersion, true);
+            ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(null, ModuleData.RevitVersion, true);
             if (!(bool)selectedProjectForm.ShowDialog())
                 return Result.Cancelled;
 

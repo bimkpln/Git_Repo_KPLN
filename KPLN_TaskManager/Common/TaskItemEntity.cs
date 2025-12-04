@@ -45,7 +45,6 @@ namespace KPLN_TaskManager.Common
 
         
         private int _te_ImageBuffer_Current = 0;
-        private string _currentImgSpecialFormat = "0/0";
         private List<TaskEntity_ImageBuffer> _teImageBuffer = new List<TaskEntity_ImageBuffer>();
         private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 190, 104));
 
@@ -456,9 +455,7 @@ namespace KPLN_TaskManager.Common
                 if (_teImageBuffer.Count() > 0)
                     return _teImageBuffer;
 
-                if (this.Id == 0 || string.IsNullOrWhiteSpace(this.PathToImageBufferDB))
-                    _teImageBuffer = new List<TaskEntity_ImageBuffer>() { new TaskEntity_ImageBuffer() };
-                else
+                if (this.Id != 0 && !string.IsNullOrWhiteSpace(this.PathToImageBufferDB))
                     _teImageBuffer = TM_IBDBService.GetEntity_ByEntityId(this)
                         ?? new List<TaskEntity_ImageBuffer>() { new TaskEntity_ImageBuffer() };
 

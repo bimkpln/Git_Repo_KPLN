@@ -8,8 +8,6 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace KPLN_BIMTools_Ribbon
 {
@@ -18,6 +16,7 @@ namespace KPLN_BIMTools_Ribbon
         internal static Logger CurrentLogger { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
         private UIApplication _uiApp;
 
         public Result Close()
@@ -58,9 +57,13 @@ namespace KPLN_BIMTools_Ribbon
             PulldownButtonData uploadPullDownData = new PulldownButtonData("Выгрузка", "Выгрузка")
             {
                 ToolTip = "Плагины по выгрузке моделей",
-                LargeImage = PngImageSource("KPLN_BIMTools_Ribbon.Imagens.mainLoadBig.png"),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainLoad", 32),
             };
             PulldownButton uploadPullDown = panel.AddItem(uploadPullDownData) as PulldownButton;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((uploadPullDown, "mainLoad", Assembly.GetExecutingAssembly().GetName().Name));
+#endif
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -75,7 +78,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(CommandAutoExchangeConfig).FullName,
                 uploadPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.asConfigSmall.png",
+                "asConfig",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );
@@ -95,7 +98,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(CommandRVTExchange).FullName,
                 uploadPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.loadSmall.png",
+                "load",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );
@@ -112,7 +115,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(CommandNWExport).FullName,
                 uploadPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.nwExportSmall.png",
+                "nwExport",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );
@@ -122,9 +125,13 @@ namespace KPLN_BIMTools_Ribbon
             PulldownButtonData paramPullDownData = new PulldownButtonData("Параметры", "Параметры")
             {
                 ToolTip = "Плагины по работе с параметрами",
-                LargeImage = PngImageSource("KPLN_BIMTools_Ribbon.Imagens.mainParamBig.png"),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainParam", 32),
             };
             PulldownButton paramPullDown = panel.AddItem(paramPullDownData) as PulldownButton;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((paramPullDown, "mainParam", Assembly.GetExecutingAssembly().GetName().Name));
+#endif
 
             //Добавляю кнопки в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -139,7 +146,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(CommandLTablesExport).FullName,
                 paramPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.lookupSmall.png",
+                "lookup",
                 "http://moodle/",
                 false
             );
@@ -156,7 +163,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(batchAddingParameters).FullName,
                 paramPullDown,
-                "KPLN_BIMTools_Ribbon.Imagens.batchAddingParameters.png",
+                "batchAddingParameters",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1329",
                 false
             );
@@ -174,7 +181,7 @@ namespace KPLN_BIMTools_Ribbon
                 ),
                 typeof(CommandDBManager).FullName,
                 panel,
-                "KPLN_BIMTools_Ribbon.Imagens.dbSmall.png",
+                "db",
                 "http://moodle.stinproject.local",
                 true
             );
@@ -223,11 +230,16 @@ namespace KPLN_BIMTools_Ribbon
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
 
             if (avclass) button.AvailabilityClassName = typeof(StaticAvailable).FullName;
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
 
         /// <summary>
@@ -242,38 +254,31 @@ namespace KPLN_BIMTools_Ribbon
         /// <param name="imageName">Имя иконки, как ресурса</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(
-            string name, 
-            string text, 
-            string shortDescription, 
-            string longDescription, 
-            string className, 
-            RibbonPanel panel, 
-            string imageName, 
-            string contextualHelp, 
-            bool avclass)        
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            string className,
+            RibbonPanel panel,
+            string imageName,
+            string contextualHelp,
+            bool avclass)
         {
             PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = panel.AddItem(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
 
             if (avclass) button.AvailabilityClassName = typeof(StaticAvailable).FullName;
-        }
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
 
         /// <summary>

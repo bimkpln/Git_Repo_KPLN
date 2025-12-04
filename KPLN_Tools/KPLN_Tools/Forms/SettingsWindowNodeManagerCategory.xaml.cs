@@ -163,21 +163,23 @@ namespace KPLN_Tools.Forms
 
             var obj = (JObject)token;
 
-            if (!obj.ContainsKey("ID") || !obj.ContainsKey("EL"))
+            JToken idToken;
+            JToken elToken;
+
+            if (!obj.TryGetValue("ID", out idToken) || !obj.TryGetValue("EL", out elToken))
                 return null;
 
-            var idToken = obj["ID"];
             string idString;
 
             if (idToken?.Type == JTokenType.Integer || idToken?.Type == JTokenType.Float)
-                idString = Convert.ToString(idToken, CultureInfo.InvariantCulture); 
+                idString = Convert.ToString(idToken, CultureInfo.InvariantCulture);
             else
                 idString = idToken?.Value<string>() ?? "0";
 
             var node = new CategoryNode
             {
                 Id = idString,
-                Title = obj["EL"].Value<string>(),
+                Title = elToken.Value<string>(),
                 Parent = parent
             };
 
@@ -193,6 +195,7 @@ namespace KPLN_Tools.Forms
 
             return node;
         }
+
 
         private JObject ToJObject(CategoryNode n)
         {

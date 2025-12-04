@@ -1,12 +1,16 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_ConfigWorker;
+using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +54,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
     internal class SetParamsByFrameExtCmd : IExternalCommand
     {
         internal const string PluginName = "Выбрать/заполнить рамкой";
+        private SetParamsByFrameForm _mainForm;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -58,112 +63,66 @@ namespace KPLN_ExtraFilter.ExternalCommands
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            try
+            // Пользовательский элемент
+            IEnumerable<Element> userSelElems = null;
+            var userSelId = uidoc.Selection.GetElementIds();
+            if (userSelId.Any())
+                userSelElems = userSelId.Select(id => doc.GetElement(id));
+
+            _mainForm = new SetParamsByFrameForm(doc, userSelElems);
+            WindowHandleSearch.MainWindowHandle.SetAsOwner(_mainForm);
+            // Предустановка
+            if (userSelElems != null)
             {
-                IList<Reference> selectionRefers = uidoc.Selection.PickObjects(
-                    ObjectType.Element,
-                    new SelectorFilter(),
-                    "Выберите нужные элементы (рамкой, по одному) и нажмите \"Готово\"");
-
-                #region Подготовка параметров для запуска
-                // Выделенные эл-ты
-                Element[] selectedElemsToFind = selectionRefers
-                    .Select(r => doc.GetElement(r.ElementId))
-                    .ToArray();
-
-                if (!selectedElemsToFind.Any())
-                    return Result.Cancelled;
-
-                // Расширенная выборка к выделенным
-                Element[] expandedElemsToFind = ExtraSelection(doc, selectedElemsToFind).ToArray();
-
-                // Чистка коллекции от экз. Одинаковых семейств
-                // (многопоточность не справиться из-за ревит, поэтому нужно предв. Очистка)
-                Element[] clearedElemsToFind = expandedElemsToFind
-                    .GroupBy(x => x.GetTypeId())
-                    .Select(gr => gr.FirstOrDefault())
-                    .ToArray();
-
-                Parameter[] elemsParams = DocWorker.GetUnionParamsFromElems(doc, clearedElemsToFind).ToArray();
-
-                List<ParamEntity> allParamsEntities = new List<ParamEntity>(elemsParams.Count());
-                foreach (Parameter param in elemsParams)
-                {
-                    string toolTip = string.Empty;
-                    if (param.IsShared)
-                        toolTip = $"Id: {param.Id}, GUID: {param.GUID}";
-                    else if (param.Id.IntegerValue < 0)
-                        toolTip = $"Id: {param.Id}, это СИСТЕМНЫЙ параметр проекта";
-                    else
-                        toolTip = $"Id: {param.Id}, это ПОЛЬЗОВАТЕЛЬСКИЙ параметр проекта";
-
-                    allParamsEntities.Add(new ParamEntity(param, toolTip));
-                }
-                #endregion
-
-                // Чтение конфигурации последнего запуска
-                object lastRunConfigObj = ConfigService.ReadConfigFile<List<MainItem>>(ModuleData.RevitVersion, doc, ConfigType.Memory);
-
-                // Подготовка ViewModel для старта окна
-                SetParamsByFrameForm form = new SetParamsByFrameForm(expandedElemsToFind, allParamsEntities, lastRunConfigObj);
-                form.ShowDialog();
-
-                return Result.Succeeded;
+                _mainForm.CurrentSetParamsByFrameVM.CurrentSetParamsByFrameM.Doc = doc;
+                _mainForm.CurrentSetParamsByFrameVM.CurrentSetParamsByFrameM.UserSelElems = userSelElems;
             }
-            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
-            {
-                return Result.Cancelled;
-            }
-            catch (Exception ex)
-            {
-                HtmlOutput.PrintError(ex);
-                return Result.Failed;
-            }
+
+
+            // Создание ExternalEvent для переключения видов
+            ViewActivatedHandler viewHandler = new ViewActivatedHandler();
+            ExternalEvent viewExtEv = ExternalEvent.Create(viewHandler);
+
+            // Создание ExternalEvent для отписки от переключения видов (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
+            UnsubViewActHandler unsubViewHandler = new UnsubViewActHandler() { Handler = OnViewChanged };
+            ExternalEvent unsubViewExtEv = ExternalEvent.Create(unsubViewHandler);
+
+#if !Debug2020 && !Revit2020
+            // Создание ExternalEvent для выделения эл-в
+            SelectionChangedHandler selHandler = new SelectionChangedHandler();
+            ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
+
+            // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
+            UnsubSelChHandler unsubSelHandler = new UnsubSelChHandler() { Handler = OnSelectionChanged };
+            ExternalEvent unsubSelExtEv = ExternalEvent.Create(unsubSelHandler);
+
+            // Доп настройки окна
+            _mainForm.SetExternalEvent(viewExtEv, viewHandler, selExtEv, selHandler);
+#endif
+
+            // Подписываюсь на OnViewChanged
+            uiapp.ViewActivated += OnViewChanged;
+            // Подписываю окно на отписку (через ExternalEvent)
+            _mainForm.Closed += (s, e) => unsubViewExtEv.Raise();
+
+#if !Debug2020 && !Revit2020
+            // Подписываюсь на SelectionChanged
+            uiapp.SelectionChanged += OnSelectionChanged;
+            // Подписываю окно на отписку (через ExternalEvent)
+            _mainForm.Closed += (s, e) => unsubSelExtEv.Raise();
+#endif
+
+
+            _mainForm.Show();
+
+
+            return Result.Succeeded;
         }
 
-        /// <summary>
-        /// Расширенное выделение элементов модели
-        /// </summary>
-        /// <param name="doc">Ревит-док</param>
-        /// <param name="selectedElems">Коллекция выделенных в ревит эл-в</param>
-        /// <returns></returns>
-        private static IEnumerable<Element> ExtraSelection(Document doc, Element[] selectedElems)
-        {
-            List<Element> result = new List<Element>(selectedElems);
+#if !Debug2020 && !Revit2020
+        private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) => _mainForm.RaiseUpdateSelChanged();
+#endif
 
-            ElementClassFilter famIsntFilter = new ElementClassFilter(typeof(FamilyInstance));
-
-            // Изоляция воздуховодов и труб выделяется рамкой селектора
-            List<ElementFilter> filters = new List<ElementFilter>()
-            {
-                famIsntFilter,
-            };
-            LogicalOrFilter resultFilter = new LogicalOrFilter(filters);
-
-            foreach (Element elem in selectedElems)
-            {
-                IList<ElementId> depElems = elem.GetDependentElements(resultFilter);
-                foreach (ElementId id in depElems)
-                {
-                    Element currentElem = doc.GetElement(id);
-                    if (currentElem.Id.IntegerValue == elem.Id.IntegerValue)
-                        continue;
-
-                    // Игнорирую балясины (отдельно в спеки не идут)
-                    if (currentElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster)
-                        continue;
-
-                    // Предварительно фильтрую общие вложенные семейства
-                    if (currentElem is FamilyInstance famInst && famInst.SuperComponent != null)
-                        result.Add(famInst);
-                    // Добавляю ВСЕ остальное
-                    else
-                        result.Add(currentElem);
-                }
-
-            }
-
-            return result;
-        }
+        private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _mainForm.RaiseUpdateViewChanged();
     }
 }

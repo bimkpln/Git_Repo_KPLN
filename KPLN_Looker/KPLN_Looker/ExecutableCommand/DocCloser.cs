@@ -116,9 +116,7 @@ namespace KPLN_Looker.ExecutableCommand
             if (!isDocClose)
             {
                 if (args.Cancellable)
-                {
                     args.Cancel();
-                }
                 else
                 {
                     DBRevitDialog currentDBDialog = DBMainService.DBRevitDialogColl.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));

@@ -13,7 +13,6 @@
         WindowStyle="ToolWindow" 
         Topmost="False" 
         WindowStartupLocation="CenterScreen" 
-        Closing="Window_Closing" 
         SizeToContent="WidthAndHeight">
     <Window.Resources>
         <Style x:Key="BTN" TargetType="Button">

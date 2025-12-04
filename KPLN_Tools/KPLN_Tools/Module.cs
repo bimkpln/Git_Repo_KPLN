@@ -47,15 +47,15 @@ namespace KPLN_Tools
                 panel,
                 false);
 
+#if Debug2020 || Revit2020
             PushButtonData autonumber = CreateBtnData(
                 CommandAutonumber.PluginName,
                 CommandAutonumber.PluginName,
                 "Нумерация позици в спецификации на +1 от начального значения",
                 string.Format(
                     "Алгоритм запуска:\n" +
-                        "1. Запускаем плагин для фиксации размеров штампов;\n" +
-                        "2. Меняем семейство на согласованное с BIM-отделом;\n" +
-                        "3. Запускаем плагин для установки размеров листов и добавления параметров.\n\n" +
+                        "1. Выделяем стартовую ячейку спецификации;\n" +
+                        "2. Вводим данные, которые указаны в окне.\n\n" +
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
@@ -65,6 +65,26 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
+#else
+
+            PushButtonData autonumber = CreateBtnData(
+                ExtCmd_ScheduleIncrementor.PluginName,
+                ExtCmd_ScheduleIncrementor.PluginName,
+                "Нумерация позици в спецификации на +1 от начального значения",
+                string.Format(
+                    "Алгоритм запуска:\n" +
+                        "1. Выделяем стартовую ячейку спецификации;\n" +
+                        "2. Вводим данные, которые указаны в окне.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExtCmd_ScheduleIncrementor).FullName,
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "KPLN_Tools.Imagens.autonumberSmall.png",
+                "http://moodle/");
+#endif
 
             PushButtonData searchUser = CreateBtnData(
                 CommandSearchRevitUser.PluginName,
@@ -220,7 +240,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
             
-            #endregion
+#endregion
 
             #region Инструменты АР
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 2 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
