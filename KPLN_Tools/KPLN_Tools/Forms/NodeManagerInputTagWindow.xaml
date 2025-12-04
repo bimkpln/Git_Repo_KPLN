@@ -1,0 +1,35 @@
+﻿<Window x:Class="KPLN_Tools.Forms.NodeManagerInputTagWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Менедже узлов. Добавить свой тег"
+        Height="140"
+        Width="350"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Введите новый тег:" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtTag" MinWidth="200"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,5,0,0">
+            <Button Content="OK"
+                    Width="70"
+                    Margin="0,0,8,0"
+                    IsDefault="True"
+                    Click="Ok_Click"/>
+            <Button Content="Отмена"
+                    Width="70"
+                    IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
+
