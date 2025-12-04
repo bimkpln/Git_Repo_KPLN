@@ -12,7 +12,7 @@ namespace KPLN_Tools.Forms
     {
         public SendMsgToBitrix(ObservableCollection<SendMsgToBitrix_UserEntity> userEntitysCollection)
         {
-            CurrentViewModel = new SendMsgToBitrix_ViewModel(userEntitysCollection);
+            CurrentViewModel = new SendMsgToBitrix_VM(userEntitysCollection);
             InitializeComponent();
 
             //// Устанавливаем DataContext для привязки данных
@@ -24,7 +24,7 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// Модель для окна wpf
         /// </summary>
-        public SendMsgToBitrix_ViewModel CurrentViewModel { get; set; }
+        public SendMsgToBitrix_VM CurrentViewModel { get; set; }
 
         private static T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
         {
