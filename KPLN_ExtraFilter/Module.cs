@@ -40,7 +40,7 @@ namespace KPLN_ExtraFilter
                 panel,
                 "KPLN_ExtraFilter.Imagens.TreeModelSmall.png",
                 "KPLN_ExtraFilter.Imagens.TreeModelLarge.png",
-                "http://moodle.stinproject.local"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1341"
             );
 
 
@@ -63,7 +63,7 @@ namespace KPLN_ExtraFilter
                 AvailabilityClassName = typeof(ButtonAvailable).FullName,
 #endif
             };
-            btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+            btnSelectByClick.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/mod/book/view.php?id=502&chapterid=1341"));
 
 
             PushButtonData btnSetPramsByFrame = new PushButtonData(
@@ -87,7 +87,7 @@ namespace KPLN_ExtraFilter
                 AvailabilityClassName = typeof(ButtonAvailable).FullName,
 #endif
             };
-            btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle.stinproject.local"));
+            btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/mod/book/view.php?id=502&chapterid=1341"));
 
             IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
             // Скрываю текстовое название кнопок
