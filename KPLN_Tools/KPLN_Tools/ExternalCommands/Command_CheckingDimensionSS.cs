@@ -525,8 +525,8 @@ namespace KPLN_Tools.ExternalCommands
                 return
                     $"[{ElementId.IntegerValue}] {kind} {FamilyName}\n" +
                     $"{TypeName} (КП_О_Группирование: {GroupKey})\n" +
-                    $"ЭлУзлов:   H={100*HeightM:0.###}  W={100*WidthM:0.###}  D={100*DepthM:0.###} м\n" +
-                    $"Шкаф:       H={100*RefHeightM:0.###}  W={100*RefWidthM:0.###}  D={100*RefDepthM:0.###} м";
+                    $"ЭлУзлов:   H={1000*HeightM:0.###}  W={1000*WidthM:0.###}  D={1000*DepthM:0.###} мм\n" +
+                    $"Шкаф:       H={1000*RefHeightM:0.###}  W={1000*RefWidthM:0.###}  D={1000*RefDepthM:0.###} мм";
             }
         }
     }
