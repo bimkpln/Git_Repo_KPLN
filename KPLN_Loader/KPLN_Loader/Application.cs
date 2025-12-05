@@ -397,7 +397,7 @@ namespace KPLN_Loader
             string fileName = $"{iconBaseName}{size}{themeSuffix}.png";
             string uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
 
-            ImageSource result;
+            ImageSource result = null;
             try
             {
                 result = new BitmapImage(new Uri(uriString));
@@ -405,9 +405,27 @@ namespace KPLN_Loader
             // Если нет дарк темы, то просто имя файла
             catch (IOException)  
             {
-                fileName = $"{iconBaseName}{size}.png";
-                uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
-                result = new BitmapImage(new Uri(uriString));
+                try
+                {
+                    fileName = $"{iconBaseName}{size}.png";
+                    uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
+                    var a = new Uri(uriString).AbsolutePath;
+                    var aa = new Uri(uriString).LocalPath;
+
+                    result = new BitmapImage(new Uri(uriString));
+                }
+                catch
+                {
+                    // Если его нет - подсвечиваю ошибку разработчику
+                    if (CurrentRevitUser.IsDebugMode)
+                    {
+                        MessageBox.Show($"Ошибка поиска картинки для плагина {assemblyName}. Имя картинки {fileName} " +
+                                $"Разработчик - проверь структуру хранения данных, картинки должны быть в папке \"Imagens\", и должны быть ресурсом (Resource)", 
+                            "Ошибка", 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
+                    }
+                }
             }
 
             return result;
