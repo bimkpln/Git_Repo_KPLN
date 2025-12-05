@@ -70,7 +70,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.Colorize.FilterData
             MyDialogResult result = new MyDialogResult(ResultType.ok, "");
             if (catsIds.Count > 1)
             {
-                FormSelectCategories formSelCats = new FormSelectCategories(doc, catsIds);
+                FormSelectCategories formSelCats = new FormSelectCategories(catsIds);
                 if (formSelCats.ShowDialog() != System.Windows.Forms.DialogResult.OK)
                 {
                     result.ResultType = ResultType.cancel;

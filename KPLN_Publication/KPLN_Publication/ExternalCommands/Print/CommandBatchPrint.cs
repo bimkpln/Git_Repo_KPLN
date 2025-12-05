@@ -3,8 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Library_SQLiteWorker;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,28 +16,12 @@ namespace KPLN_Publication.ExternalCommands.Print
     [Transaction(TransactionMode.Manual)]
     class CommandBatchPrint : IExternalCommand
     {
-        private static DBUser _currentDBUser;
-
-        internal static DBUser CurrentDBUser
-        {
-            get
-            {
-                if (_currentDBUser == null)
-                {
-                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-                    _currentDBUser = userDbService.GetCurrentDBUser();
-                }
-
-                return _currentDBUser;
-            }
-        }
+        internal const string PluginName = "Пакетная выдача";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try
             {
-                Module.assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-
                 Logger logger = new Logger();
                 logger.Write("Print started");
 
@@ -56,7 +39,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     .ToArray();
 
                 // получаю выбранные виды в диспетчере проекта
-                View[] selViews= sel
+                View[] selViews = sel
                     .GetElementIds()
                     .Select(id => mainDoc.GetElement(id))
                     .Where(el => el is ViewPlan || el is ViewSection)
@@ -83,7 +66,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 Dictionary<string, List<MainEntity>> allEntities = EntitySupport.GetAllEntities(commandData, resultViews);
                 foreach (View view in resultViews)
                 {
-                    MainEntity entInBase = allEntities[mainDocTitle].Where(i => i.MainView.Id.IntegerValue == view.Id.IntegerValue).FirstOrDefault();
+                    MainEntity entInBase = allEntities[mainDocTitle].Where(i => i.MainView.Id.Equals(view.Id)).FirstOrDefault();
                     entInBase.IsPrintable = true;
 
                     if (view is ViewSheet sheet)
@@ -137,7 +120,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                             bool errorY1 = Math.Abs(blocks[i].Item1.Y) - Math.Abs(blocks[i - 1].Item1.Y) > tol;
                             bool errorY2 = Math.Abs(blocks[i].Item2.Y) - Math.Abs(blocks[i - 1].Item2.Y) > tol;
-                            
+
                             bool errorZ1 = Math.Abs(blocks[i].Item1.Z) - Math.Abs(blocks[i - 1].Item1.Z) > tol;
                             bool errorZ2 = Math.Abs(blocks[i].Item2.Z) - Math.Abs(blocks[i - 1].Item2.Z) > tol;
 
@@ -180,10 +163,10 @@ namespace KPLN_Publication.ExternalCommands.Print
             }
 #endif
 
-                logger.Write($"Пользователь {CurrentDBUser.Id}-{CurrentDBUser.Name}-{CurrentDBUser.Surname}");
+                logger.Write($"Пользователь {DBMainService.CurrentDBUser.Id}-{DBMainService.CurrentDBUser.Name}-{DBMainService.CurrentDBUser.Surname}");
 
                 YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings(selSheets.Any());
-                FormPrint form = new FormPrint(mainDoc, allEntities, printSettings, CurrentDBUser);
+                FormPrint form = new FormPrint(mainDoc, allEntities, printSettings);
                 form.ShowDialog();
 
                 printSettings = form.PrintSettings;
@@ -365,7 +348,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     {
                         foreach (ViewSheet vs in linkSheets)
                         {
-                            if (ms.ViewId == vs.Id.IntegerValue)
+                            if (ms.ViewId.Equals(vs.Id))
                             {
                                 MainEntity newMs = new MainEntity(vs);
                                 tempSheets.Add(newMs);
@@ -446,7 +429,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             }
                             else
                             {
-                                logger.Write("На листе 1 основная надпись Id " + msheet.TitleBlocks.First().Id.IntegerValue.ToString());
+                                logger.Write("На листе 1 основная надпись Id " + msheet.TitleBlocks.First().Id.ToString());
                                 tempFilename = fileName;
                             }
 
@@ -656,9 +639,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                         .Cast<RevitLinkType>()
                         .Where(i => EntitySupport.GetDocTitleWithoutRvt(i.Name) == docTitle)
                         .ToList();
-                    if (linkTypes.Count == 0) 
+                    if (linkTypes.Count == 0)
                         throw new Exception("Cant find opened link file " + docTitle);
-                    
+
                     rlt = linkTypes.First();
 
                     //проверю, не открыт ли уже документ, который пытаемся печатать
@@ -723,7 +706,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     {
                         foreach (ViewSheet vs in linkSheets)
                         {
-                            if (ms.ViewId == vs.Id.IntegerValue)
+                            if (ms.ViewId.Equals(vs.Id))
                             {
                                 MainEntity newMs = new MainEntity(vs);
                                 tempSheets.Add(newMs);

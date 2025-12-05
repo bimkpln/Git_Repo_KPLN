@@ -112,7 +112,11 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     .Where(e =>
                         e.Category != null
                         && e.Category.CategoryType == CategoryType.Model
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                         && (e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
+#else
+                        && (e.Category.Id.Value == (long)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
+#endif
                     .ToArray();
 
                 if (viewElemsColl.Length == 0)
@@ -122,7 +126,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 }
 
                 exportOptions.ViewId = viewId;
-                #endregion
+#endregion
 
                 #region Экспорт в Navisworks
                 string folderTo = $"{rsn}{nwConfigData.PathTo}";

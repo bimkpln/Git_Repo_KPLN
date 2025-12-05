@@ -1,15 +1,13 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using System.IO;
 using System.Reflection;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace KPLN_ViewsAndLists_Ribbon
 {
     public class Module : IExternalModule
     {
-        public static readonly string AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        public readonly static string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
@@ -22,8 +20,13 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ToolTip = "Пакетная работа с видами"
             };
             PulldownButton pullDown_Views = panel.AddItem(pullDownData_Views) as PulldownButton;
-            pullDown_Views.Image = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainViews.png");
-            pullDown_Views.LargeImage = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainViews.png");
+            pullDown_Views.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainViews", 32);
+            pullDown_Views.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainViews", 32);
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((pullDown_Views, "mainViews", _assemblyName));
+#endif
+
 
             // Добавляю выпадающие списки pullDown для листов
             PulldownButtonData pullDownData_Lists = new PulldownButtonData("Lists", "Листы")
@@ -31,8 +34,12 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ToolTip = "Пакетная работа с листами"
             };
             PulldownButton pullDown_Lists = panel.AddItem(pullDownData_Lists) as PulldownButton;
-            pullDown_Lists.Image = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainLists.png");
-            pullDown_Lists.LargeImage = PngImageSource("KPLN_ViewsAndLists_Ribbon.Resources.mainLists.png");
+            pullDown_Lists.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainLists", 32);
+            pullDown_Lists.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainLists", 32);
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((pullDown_Lists, "mainLists", _assemblyName));
+#endif
 
             #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
@@ -47,7 +54,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandCutCopy).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CutCopy_small.png",
+                "CutCopy",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1295"
             );
 
@@ -64,7 +71,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandViewTemplateCopy).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.ViewTemplateCopy_small.png",
+                "ViewTemplateCopy",
                 "http://moodle/"
             );
 
@@ -80,7 +87,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandCreate).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandCreate_small.png",
+                "CommandCreate",
                 "http://moodle/mod/book/view.php?id=502&chapterid=670"
             );
 
@@ -96,7 +103,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandBatchDelete_small.png",
+                "CommandBatchDelete",
                 "http://moodle/mod/book/view.php?id=502&chapterid=670"
             );
 
@@ -112,7 +119,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandViewColoring).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandViewColoring_small.png",
+                "CommandViewColoring",
                 "http://moodle/mod/book/view.php?id=502&chapterid=671l"
             );
 
@@ -132,7 +139,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Views.CommandWallHatch).FullName,
                 pullDown_Views,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandWallHatch_small.png",
+                "CommandWallHatch",
                 "http://bim-starter.com/plugins/wallhatch/"
             );
             #endregion
@@ -152,7 +159,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Lists.CommandListRenumber).FullName,
                 pullDown_Lists,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRename.png",
+                "CommandListRename",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
 
@@ -169,7 +176,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Lists.CommandListTBlockParamCopier).FullName,
                 pullDown_Lists,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListTBlockParamCopier.png",
+                "CommandListTBlockParamCopier",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
             );
 
@@ -188,7 +195,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 ),
                 typeof(ExternalCommands.Lists.CommandListRevisionClouds).FullName,
                 pullDown_Lists,
-                "KPLN_ViewsAndLists_Ribbon.Resources.CommandListRevisionClouds.png",
+                "CommandListRevisionClouds",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1330"
             );
             #endregion
@@ -214,26 +221,19 @@ namespace KPLN_ViewsAndLists_Ribbon
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = pullDown.AddPushButton(data) as PushButton;
             button.ToolTip = description;
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, anchorlHelp));
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
-        }
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

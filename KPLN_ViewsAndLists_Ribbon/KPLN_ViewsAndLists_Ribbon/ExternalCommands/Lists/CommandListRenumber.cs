@@ -30,24 +30,18 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //Get application and documnet objects
             UIApplication uiapp = commandData.Application;
             Document doc = uiapp.ActiveUIDocument.Document;
             Selection sel = commandData.Application.ActiveUIDocument.Selection;
 
-            //Workin with elements
             List<ViewSheet> mixedSheetsList = new List<ViewSheet>();
             List<Element> falseElemList = new List<Element>();
             List<ElementId> selIds = sel.GetElementIds().ToList();
             foreach (ElementId selId in selIds)
             {
                 Element elem = doc.GetElement(selId);
-                int catId = elem.Category.Id.IntegerValue;
-                if (catId.Equals((int)BuiltInCategory.OST_Sheets))
-                {
-                    ViewSheet curViewSheet = elem as ViewSheet;
+                if (elem is ViewSheet curViewSheet)
                     mixedSheetsList.Add(curViewSheet);
-                }
                 else
                     falseElemList.Add(elem);
             }

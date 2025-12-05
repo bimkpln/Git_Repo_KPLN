@@ -12,7 +12,7 @@ Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
 using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Publication.Common;
 using System;
 using System.Collections.Generic;
@@ -31,7 +31,7 @@ namespace KPLN_Publication
 
         public YayPrintSettings PrintSettings
         {
-            get =>  _printSettings;
+            get => _printSettings;
         }
 
         private readonly Dictionary<string, List<MainEntity>> _entitiesBaseToPrint = new Dictionary<string, List<MainEntity>>();
@@ -40,14 +40,14 @@ namespace KPLN_Publication
 
         public bool printToFile = false;
 
-        public FormPrint(Document doc, Dictionary<string, List<MainEntity>> mainEntites, YayPrintSettings printSettings, DBUser currentDBUser)
+        public FormPrint(Document doc, Dictionary<string, List<MainEntity>> mainEntites, YayPrintSettings printSettings)
         {
             InitializeComponent();
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
             this.pluginVersion.Text = $"v.{ModuleData.Version}";
 
-            int userDepartment = currentDBUser.SubDepartmentId;
+            int userDepartment = DBMainService.CurrentDBUser.SubDepartmentId;
             if (userDepartment == 2 || userDepartment == 8)
                 this.checkBoxExcludeBorders.Enabled = true;
 
@@ -120,7 +120,7 @@ namespace KPLN_Publication
 
                 comboBoxPrinters.DataSource = printers;
 
-                if (_printSettings!= null && printers.Contains(_printSettings.printerName))
+                if (_printSettings != null && printers.Contains(_printSettings.printerName))
                 {
                     comboBoxPrinters.SelectedItem = printers.Where(i => i.Equals(_printSettings.printerName)).First();
                 }
@@ -179,11 +179,11 @@ namespace KPLN_Publication
             comboBoxDWGExportTypes.DataSource = dwgSettings;
             comboBoxDWGExportTypes.DisplayMember = "Name";
 
-            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds => 
-                _printSettings!=null 
-                && _printSettings.dwgExportSettingShell != null 
+            int dwgExpTypeFromConfigIndex = dwgSettings.FindIndex(ds =>
+                _printSettings != null
+                && _printSettings.dwgExportSettingShell != null
                 && _printSettings.dwgExportSettingShell.Name.Equals(ds.Name));
-            
+
             if (dwgExpTypeFromConfigIndex != -1)
                 comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
             #endregion
@@ -214,12 +214,12 @@ namespace KPLN_Publication
                 foreach (TreeNode sheetNode in docNode.Nodes)
                 {
                     if (!sheetNode.Checked) continue;
-                    
+
                     string sheetTitle = sheetNode.Text;
 
                     var tempSheets = _entitiesBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
                     if (tempSheets.Count == 0) throw new Exception("Cant get sheets from TreeNode");
-                    
+
                     MainEntity msheet = tempSheets.First();
                     selectedSheetsInDoc.Add(msheet);
                 }

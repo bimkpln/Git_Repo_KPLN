@@ -1,10 +1,8 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using KPLN_ViewsAndLists_Ribbon.Views.Colorize;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
-using KPLN_ViewsAndLists_Ribbon.Views.Colorize;
 
 namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 {
@@ -29,19 +27,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 
             if (colorFill)
             {
-
-#if R2017 || R2018
-            ogs.SetProjectionFillColor(clr);
-            ogs.SetProjectionFillPatternId(solidFillPatternId);
-            ogs.SetCutFillColor(clr);
-            ogs.SetCutFillPatternId(solidFillPatternId);
-#else
                 ogs.SetSurfaceForegroundPatternColor(clr);
                 ogs.SetSurfaceForegroundPatternId(solidFillPatternId);
                 ogs.SetCutForegroundPatternColor(clr);
                 ogs.SetCutForegroundPatternId(solidFillPatternId);
-#endif
             }
+
             view.SetFilterOverrides(filter.Id, ogs);
         }
 
@@ -55,28 +46,23 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 
             View template = doc.GetElement(templateId) as View;
 
-            List<int> nonControlledParmsIds = template.GetNonControlledTemplateParameterIds()
-                .Select(p => p.IntegerValue)
-                .ToList();
+            IEnumerable<ElementId> nonControlledParmsIds = template.GetNonControlledTemplateParameterIds();
 
-            List<int> allTemplateParams = template.GetTemplateParameterIds()
-                .Select(p => p.IntegerValue)
-                .ToList();
+            IEnumerable<ElementId> allTemplateParams = template.GetTemplateParameterIds();
 
-            int visFiltersParamId = (int)BuiltInParameter.VIS_GRAPHICS_FILTERS;
-
-            foreach (int id in allTemplateParams)
+            foreach (ElementId id in allTemplateParams)
             {
-                if (id != visFiltersParamId) continue;
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                if (id.IntegerValue != (int)BuiltInParameter.VIS_GRAPHICS_FILTERS) 
+#else
+                if (id.Value != (long)BuiltInParameter.VIS_GRAPHICS_FILTERS) 
+#endif
+                continue;
 
                 if (nonControlledParmsIds.Contains(id))
-                {
                     return true;
-                }
                 else
-                {
                     return false;
-                }
             }
             throw new Exception("Не удалось определить возможность применения фильтров для вида " + view.Name);
         }
@@ -157,7 +143,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             {
                 Category cat = elem.Category;
                 if (cat == null) continue;
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                 if (cat.Id.IntegerValue == -2000500) continue;
+#else
+                if (cat.Id.Value == -2000500) continue;
+#endif
                 catsIds.Add(cat.Id);
             }
             return catsIds;
@@ -166,17 +156,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
         public static string GetParamName(Document doc, ElementId paramId)
         {
             string paramName = "error";
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
             if (paramId.IntegerValue < 0)
-            {
                 paramName = LabelUtils.GetLabelFor((BuiltInParameter)paramId.IntegerValue);
-            }
+#else
+            if (paramId.Value < 0)
+                paramName = LabelUtils.GetLabelFor((BuiltInParameter)paramId.Value);
+#endif
             else
-            {
                 paramName = doc.GetElement(paramId).Name;
-            }
-            if (paramName != "error") return paramName;
+            
+            if (paramName != "error") 
+                return paramName;
 
-            throw new Exception("Id не является идентификатором параметра: " + paramId.IntegerValue.ToString());
+            throw new Exception("Id не является идентификатором параметра: " + paramId.ToString());
         }
 
     }

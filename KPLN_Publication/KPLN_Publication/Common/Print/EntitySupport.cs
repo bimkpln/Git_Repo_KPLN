@@ -96,7 +96,7 @@ namespace KPLN_Publication
         {
             string message = "";
 
-            logger.Write("    ID основной надписи " + titleBlock.Id.IntegerValue.ToString());
+            logger.Write("    ID основной надписи " + titleBlock.Id.ToString());
 
             double widthMm = titleBlock.get_Parameter(BuiltInParameter.SHEET_WIDTH).AsDouble() * 304.8;
             widthMm = Math.Round(widthMm);

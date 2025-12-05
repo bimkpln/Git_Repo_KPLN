@@ -52,7 +52,7 @@ namespace KPLN_Publication
 
                 ent.TitleBlocks = tempTitleBlocks;
                 FamilyInstance titleBlock = tempTitleBlocks.First();
-                logger.Write(" На листе использована основная надпись Id " + titleBlock.Id.IntegerValue.ToString());
+                logger.Write(" На листе использована основная надпись Id " + titleBlock.Id.ToString());
 
                 widthMm = titleBlock.get_Parameter(BuiltInParameter.SHEET_WIDTH).AsDouble() * 304.8;
                 logger.Write(" BuiltInParameter.SHEET_WIDTH = " + widthMm.ToString("F3"));
@@ -191,8 +191,13 @@ namespace KPLN_Publication
 
             pps.PaperPlacement = PaperPlacementType.Margins;
             pps.MarginType = MarginType.UserDefined;
+#if Debug2020 || Revit2020
             pps.UserDefinedMarginX = offsetX;
             pps.UserDefinedMarginY = offsetY;
+#else
+            pps.OriginOffsetX = offsetX;
+            pps.OriginOffsetY = offsetY;
+#endif
 
             //RasterQualityType rqt =(RasterQualityType)Enum.Parse(typeof(RasterQualityType), printSettings.rasterQuality);
             pps.RasterQuality = printSettings.rasterQuality;

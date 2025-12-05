@@ -9,7 +9,6 @@
         FontSize="14"
         Title="KPLN: Конфигурация экспорта" 
         WindowStyle="ToolWindow" 
-        Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         ResizeMode="CanResize"
         Width="1000"

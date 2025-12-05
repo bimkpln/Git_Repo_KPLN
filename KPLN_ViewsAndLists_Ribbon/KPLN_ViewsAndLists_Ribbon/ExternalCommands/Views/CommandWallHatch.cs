@@ -148,7 +148,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
         {
             ElementId levelId = w.LevelId;
             if (levelId == null || levelId == ElementId.InvalidElementId)
-                throw new Exception("У стены нет базового уровня! ID стены: " + w.Id.IntegerValue.ToString());
+                throw new Exception("У стены нет базового уровня! ID стены: " + w.Id.ToString());
 
             Level lev = doc.GetElement(levelId) as Level;
             double levElev = lev.ProjectElevation;

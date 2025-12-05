@@ -23,7 +23,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             try
             {
                 Document doc = commandData.Application.ActiveUIDocument.Document;
-                string dllPath = Path.GetDirectoryName(Module.AssemblyPath);
+                string dllPath = Path.GetDirectoryName(Module._assemblyPath);
 
                 OpenFileDialog openCsvDialog = new OpenFileDialog
                 {

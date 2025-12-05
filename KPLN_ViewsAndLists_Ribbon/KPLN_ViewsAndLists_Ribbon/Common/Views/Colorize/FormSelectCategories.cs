@@ -1,32 +1,28 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using ElementId = Autodesk.Revit.DB.ElementId;
-using Category = Autodesk.Revit.DB.Category;
 
 namespace KPLN_ViewsAndLists_Ribbon
 {
-    public partial class FormSelectCategories : Form
+    public partial class FormSelectCategories : System.Windows.Forms.Form
     {
         public List<ElementId> checkedCategoriesIds;
 
-        public FormSelectCategories(Autodesk.Revit.DB.Document doc, List<ElementId> categoriesIds)
+        public FormSelectCategories(List<ElementId> categoriesIds)
         {
             InitializeComponent();
 
-            foreach(ElementId catId in categoriesIds)
+            foreach (ElementId catId in categoriesIds)
             {
-                Autodesk.Revit.DB.BuiltInCategory bic
-                    = (Autodesk.Revit.DB.BuiltInCategory)catId.IntegerValue;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                BuiltInCategory bic = (BuiltInCategory)catId.IntegerValue;
+#else
+                BuiltInCategory bic = (BuiltInCategory)catId.Value;
+#endif
                 checkedListBox1.Items.Add(bic, CheckState.Checked);
             }
-            
+
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)
@@ -40,8 +36,7 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             foreach (var checkedItem in checkedListBox1.CheckedItems)
             {
-                Autodesk.Revit.DB.BuiltInCategory cat =  
-                    (Autodesk.Revit.DB.BuiltInCategory)checkedItem;
+                BuiltInCategory cat =(BuiltInCategory)checkedItem;
 
                 checkedCategoriesIds.Add(new ElementId(cat));
             }

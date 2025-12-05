@@ -800,7 +800,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     }
                     else
                     {
-                        ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, imagePath);
+                        ImageTypeOptions opt = new ImageTypeOptions(imagePath);
+                        ImageType newImageTypeOld = ImageType.Create(uiapp.ActiveUIDocument.Document, opt);
                         familyManager.Set(familyParam, newImageTypeOld.Id);
                     }
                     break;

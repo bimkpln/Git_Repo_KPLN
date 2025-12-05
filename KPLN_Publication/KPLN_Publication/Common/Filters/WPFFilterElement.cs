@@ -55,7 +55,7 @@ namespace KPLN_Publication.Common.Filters
             {
                 foreach (Parameter p in view.Parameters)
                 {
-                    if (p.Id.IntegerValue == SelectedParameter.Parameter.Id.IntegerValue)
+                    if (p.Id.Equals(SelectedParameter.Parameter.Id))
                     {
                         string v = p.AsString();
                         if (v == null)

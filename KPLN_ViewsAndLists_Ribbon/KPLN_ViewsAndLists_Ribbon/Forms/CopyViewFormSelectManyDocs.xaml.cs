@@ -487,7 +487,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void AddButton_RevitServer_Click(object sender, RoutedEventArgs e)
         {
 
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(_revitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(this, _revitVersion);
             if (rsFilesPickForm == null)
                 return;
 

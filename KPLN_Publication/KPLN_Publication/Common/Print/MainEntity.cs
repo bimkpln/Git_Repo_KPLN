@@ -21,7 +21,7 @@ namespace KPLN_Publication
         
         public bool IsVertical { get; set; }
         
-        public int ViewId { get; private set; }
+        public ElementId ViewId { get; private set; }
         
         public bool IsPrintable { get; set; }
 
@@ -45,7 +45,7 @@ namespace KPLN_Publication
         public MainEntity(View view)
         {
             MainView = view;
-            ViewId = view.Id.IntegerValue;
+            ViewId = view.Id;
 
             ForceColored = false;
             Parameter isForceColoredParam = view.LookupParameter("Цветной");
@@ -157,7 +157,7 @@ namespace KPLN_Publication
                     val = param.AsString();
                     break;
                 case StorageType.ElementId:
-                    val = param.AsElementId().IntegerValue.ToString();
+                    val = param.AsElementId().ToString();
                     break;
                 default:
                     break;

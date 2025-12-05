@@ -117,35 +117,4 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="CommandBatchDelete_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandBatchDelete_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CommandCreate_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandCreate_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CommandListRename" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandListRename.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CommandListTBlockParamCopier" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandListTBlockParamCopier.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CommandViewColoring_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandViewColoring_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CommandWallHatch_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CommandWallHatch_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="CutCopy_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\CutCopy_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="mainLists" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\mainLists.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="mainViews" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\mainViews.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ViewTemplateCopy_small" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\ViewTemplateCopy_small.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
 </root>

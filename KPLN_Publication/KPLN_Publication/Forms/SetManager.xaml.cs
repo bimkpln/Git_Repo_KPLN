@@ -109,7 +109,7 @@ namespace KPLN_Publication.Forms
         {
             foreach (var i in list)
             {
-                if (p.Id.IntegerValue == i.Parameter.Id.IntegerValue && p.StorageType == i.Parameter.StorageType && p.Definition.Name == i.Parameter.Definition.Name && p.IsShared == i.Parameter.IsShared)
+                if (p.Id.Equals(i.Parameter.Id) && p.StorageType == i.Parameter.StorageType && p.Definition.Name == i.Parameter.Definition.Name && p.IsShared == i.Parameter.IsShared)
                 {
                     return true;
                 }
@@ -344,7 +344,7 @@ namespace KPLN_Publication.Forms
                 foreach (ComboBoxSet set in DocumentSets)
                 {
                     if (set.Set != null 
-                        && set.Set.Id.IntegerValue == pickedSet.Id.IntegerValue)
+                        && set.Set.Id.Equals(pickedSet.Id))
                     {
                         comboBoxDocumentSets.SelectedIndex = i;
                         comboBoxDocumentSets.SelectedItem = set;

@@ -9,7 +9,6 @@
         ResizeMode="CanResizeWithGrip" 
         Title="KPLN: Диспетчер конфигураций экспорта" 
         WindowStyle="ToolWindow" 
-        Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         SizeToContent="Width"
         Height="500" 

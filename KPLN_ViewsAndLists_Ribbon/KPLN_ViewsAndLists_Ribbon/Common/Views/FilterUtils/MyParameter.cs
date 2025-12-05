@@ -1,9 +1,6 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB;
 
 namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 {
@@ -45,7 +42,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                 case StorageType.String:
                     return this.AsString() == other.AsString();
                 case StorageType.ElementId:
-                    return this.AsElementId().IntegerValue == other.AsElementId().IntegerValue;
+                    return this.AsElementId().Equals(other.AsElementId());
                 default:
                     return false;
             }
@@ -229,60 +226,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                 case StorageType.String:
                     return stringValue;
                 case StorageType.ElementId:
-                    return elemIdValue.IntegerValue.ToString();
+                    return elemIdValue.ToString();
                 default:
                     return "";
             }
         }
-
-
-
-        public static void SetValue(Parameter param, string value)
-        {
-            switch (param.StorageType)
-            {
-                case StorageType.None:
-                    break;
-                case StorageType.Integer:
-                    param.Set(int.Parse(value));
-                    break;
-                case StorageType.Double:
-                    param.Set(double.Parse(value) / 304.8);
-                    break;
-                case StorageType.String:
-                    param.Set(value);
-                    break;
-                case StorageType.ElementId:
-                    int intval = int.Parse(value);
-                    ElementId newId = new ElementId(intval);
-                    param.Set(newId);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        public static string GetAsString(Parameter param)
-        {
-            switch (param.StorageType)
-            {
-                case StorageType.None:
-                    return "";
-                case StorageType.Integer:
-                    return param.AsInteger().ToString();
-                case StorageType.Double:
-                    double doubleval = param.AsDouble();
-                    doubleval = doubleval * 304.8;
-                    return param.AsDouble().ToString("F1");
-                case StorageType.String:
-                    return param.AsString();
-                case StorageType.ElementId:
-                    int intval = param.AsElementId().IntegerValue;
-                    return intval.ToString();
-                default:
-                    return "";
-            }
-        }
-
     }
 }

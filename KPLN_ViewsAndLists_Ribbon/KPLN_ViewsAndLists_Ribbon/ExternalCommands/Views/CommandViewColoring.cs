@@ -36,7 +36,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                      .Where(e => e != null)
                      .Where(e => e.IsValidObject)
                      .Where(e => e.Category != null)
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                      .Where(e => e.Category.Id.IntegerValue != -2000500)
+#else
+                     .Where(e => e.Category.Id.Value != -2000500)
+#endif
                      .ToList();
 
                 List<MyParameter> mparams = ViewUtils.GetAllFilterableParameters(doc, elems);

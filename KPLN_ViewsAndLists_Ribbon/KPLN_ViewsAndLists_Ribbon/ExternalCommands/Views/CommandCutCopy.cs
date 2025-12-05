@@ -47,11 +47,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 List<ElementEntity> viewEntities = docViewsElem
                     .Where(v => 
                         (v.ViewType == ViewType.CeilingPlan || v.ViewType == ViewType.EngineeringPlan || v.ViewType == ViewType.FloorPlan)
-                        && v.Id.IntegerValue != activeView.Id.IntegerValue
+                        && !(v.Id.Equals(activeView.Id))
                         && !v.IsTemplate)
                     .Select(el => new ElementEntity(el)).ToList();
 
-                ElementMultiPick mainForm = new ElementMultiPick(viewEntities, "Выбери планы для подрезки");
+                ElementMultiPick mainForm = new ElementMultiPick(null, viewEntities, "Выбери планы для подрезки");
                 mainForm.ShowDialog();
 
                 if (mainForm.SelectedElements.Count > 0)

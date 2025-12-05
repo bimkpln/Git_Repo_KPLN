@@ -1,22 +1,23 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.DB; //для работы с элементами модели Revit
-using Autodesk.Revit.UI;
 
 namespace KPLN_Publication
 {
     public static class SchedulesRefresh
     {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
         public static List<int> groupIds = new List<int>();
+#else
+        public static List<long> groupIds = new List<long>();
+#endif
+        
         public static void Start(Document doc, View sheet)
         {
             List<ScheduleSheetInstance> ssis = new FilteredElementCollector(doc)
                 .OfClass(typeof(ScheduleSheetInstance))
                 .Cast<ScheduleSheetInstance>()
-                .Where(i => i.OwnerViewId.IntegerValue == sheet.Id.IntegerValue)
+                .Where(i => i.OwnerViewId.Equals(sheet.Id))
                 .Where(i => !i.IsTitleblockRevisionSchedule)
                 .ToList();
 
@@ -28,7 +29,7 @@ namespace KPLN_Publication
 
                 foreach (ScheduleSheetInstance ssi in ssis)
                 {
-                    if(ssi.Pinned && (ssi.GroupId == null || ssi.GroupId == ElementId.InvalidElementId))
+                    if (ssi.Pinned && (ssi.GroupId == null || ssi.GroupId == ElementId.InvalidElementId))
                     {
                         ssi.Pinned = false;
                         pinnedSchedules.Add(ssi);
@@ -50,7 +51,7 @@ namespace KPLN_Publication
                     MoveScheduleOrGroup(doc, ssi, -0.1);
                 }
 
-                foreach(ScheduleSheetInstance ssi in pinnedSchedules)
+                foreach (ScheduleSheetInstance ssi in pinnedSchedules)
                 {
                     ssi.Pinned = true;
                 }
@@ -68,14 +69,23 @@ namespace KPLN_Publication
             else
             {
                 Element group = doc.GetElement(ssi.GroupId);
-                if(groupIds.Contains(ssi.GroupId.IntegerValue)) return;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                if (groupIds.Contains(ssi.GroupId.IntegerValue)) return;
+#else
+                if (groupIds.Contains(ssi.GroupId.Value)) return;
+#endif
 
-                if(group.Pinned)
-                {
+                if (group.Pinned)
                     group.Pinned = false;
-                }
+
                 ElementTransformUtils.MoveElement(doc, ssi.GroupId, new XYZ(distance, 0, 0));
+
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 groupIds.Add(ssi.GroupId.IntegerValue);
+#else
+                groupIds.Add(ssi.GroupId.Value);
+#endif
+
             }
         }
     }

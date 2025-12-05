@@ -273,8 +273,6 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\ExportDWGSettingsShell.cs" />
-    <Compile Include="ExternalCommands\BeforePublication\CommandDelViews.cs" />
-    <Compile Include="ExternalCommands\BeforePublication\CommandDelLists.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandOpenSetManager.cs" />
     <Compile Include="ExternalCommands\PublicationSet\CommandApplySet.cs" />
     <Compile Include="ExternalCommands\PublicationSet\CommandCreateSet.cs" />
@@ -374,20 +372,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Resources\PrintBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\PrintSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\UpdateBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\UpdateSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -396,24 +380,10 @@
     <Content Include="formats.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <EmbeddedResource Include="Resources\DeleteViews.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\PublSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\PublBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\DeleteLists.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\SetsBig.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Resources\SetsSmall.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <Resource Include="Imagens\printer16.png" />
+    <Resource Include="Imagens\printer16_dark.png" />
+    <Resource Include="Imagens\printer32.png" />
+    <Resource Include="Imagens\printer32_dark.png" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\EnterNameForm.xaml">

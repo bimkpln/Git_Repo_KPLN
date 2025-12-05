@@ -30,16 +30,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             foreach (ElementId selId in selIds)
             {
                 Element elem = doc.GetElement(selId);
-                int catId = elem.Category.Id.IntegerValue;
-                if (catId.Equals((int)BuiltInCategory.OST_Sheets))
-                {
-                    ViewSheet curViewSheet = elem as ViewSheet;
+                if (elem is ViewSheet curViewSheet)
                     mixedSheetsList.Add(curViewSheet);
-                }
                 else
-                {
                     falseElemList.Add(elem);
-                }
             }
 
             //Main part of code
@@ -108,7 +102,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                     .Select(id => doc.GetElement(id))
                     .Where(el => el.Category != null && (BuiltInCategory)el.Category.Id.IntegerValue == BuiltInCategory.OST_TitleBlocks);
 #endif
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
                 IEnumerable<Element> tBlocksOnView = dependentElemsColl
                     .Select(id => doc.GetElement(id))
                     .Where(el => el.Category != null && el.Category.BuiltInCategory == BuiltInCategory.OST_TitleBlocks);

@@ -62,7 +62,7 @@ namespace KPLN_BIMTools_Ribbon
             PulldownButton uploadPullDown = panel.AddItem(uploadPullDownData) as PulldownButton;
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
             // Регистрация кнопки для смены иконок
-            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((uploadPullDown, "mainLoad", Assembly.GetExecutingAssembly().GetName().Name));
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((uploadPullDown, "mainLoad", _assemblyName));
 #endif
 
             //Добавляю кнопки в выпадающий список pullDown

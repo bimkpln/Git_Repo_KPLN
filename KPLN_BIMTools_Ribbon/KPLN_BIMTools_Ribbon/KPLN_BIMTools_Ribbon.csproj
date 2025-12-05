@@ -491,6 +491,12 @@
     <Resource Include="Imagens\mainLoad32_dark.png" />
     <Resource Include="Imagens\mainParam32_dark.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\mainLoad16.png" />
+    <Resource Include="Imagens\mainLoad16_dark.png" />
+    <Resource Include="Imagens\mainParam16.png" />
+    <Resource Include="Imagens\mainParam16_dark.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
