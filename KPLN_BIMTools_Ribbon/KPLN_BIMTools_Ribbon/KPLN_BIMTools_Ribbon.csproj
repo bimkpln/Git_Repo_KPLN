@@ -101,8 +101,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Library_SQLiteWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>

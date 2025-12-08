@@ -48,10 +48,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 #endif
 
+#if Revit2024 || Debug2024
+        public Dictionary<string, ForgeTypeId> CreateGroupingDictionary()
+        {
+            return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
+        }
+#else
         public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
+#endif
 
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
@@ -807,7 +814,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     trans.Start();
 
                     FamilyManager familyManager = _doc.FamilyManager;
+#if Revit2020 || Debug2020
                     Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();
+#endif
 
                     bool successfulResult = false;
                     string problematicParametersLog = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n\n";

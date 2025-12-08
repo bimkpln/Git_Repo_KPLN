@@ -35,10 +35,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return batchAddingParametersWindowСhoice.CreateTypeInstanceList();
         }
 
+#if Revit2024 || Debug2024
+        public Dictionary<string, ForgeTypeId> CreateGroupingDictionary()
+        {
+            return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
+        }
+#else
         public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();
         }
+#endif
 
         public void RelationshipOfValuesWithTypesToAddToParameter(FamilyManager familyManager, FamilyParameter familyParam, string parameterValue, string parameterValueDataType)
         {
@@ -1050,7 +1057,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     trans.Start();
 
                     FamilyManager familyManager = _doc.FamilyManager;
+
+#if Revit2020 || Debug2020 || Revit2023 ||Debug2023
                     Dictionary<string, BuiltInParameterGroup> groupParameterDictionary = CreateGroupingDictionary();
+#else
+                    Dictionary<string, ForgeTypeId> groupParameterDictionary = CreateGroupingDictionary();
+#endif
 
                     bool successfulResult = false;
                     string problematicParametersLog = "ОТЧЁТ ОБ ОШИБКАХ.\n" + $"Параметры, которые не были добавлены в семейство {activeFamilyName}:\n";
@@ -1069,12 +1081,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         string parameterValue = paramDetails[5];
                         string parameterValueDataType = paramDetails[6];
 
+#if Revit2020 || Debug2020 || Revit2023 ||Debug2023
                         BuiltInParameterGroup grouping = BuiltInParameterGroup.INVALID;
-
                         if (groupParameterDictionary.TryGetValue(paramDetails[4], out BuiltInParameterGroup builtInParameterGroup))
                         {
                             grouping = builtInParameterGroup;
                         }
+#else
+                        ForgeTypeId grouping;
+                        if (!groupParameterDictionary.TryGetValue(paramDetails[4], out grouping))
+                        {
+                            grouping = GroupTypeId.General;
+                        }
+#endif
 
                         revitApp.SharedParametersFilename = generalParametersFileLink;
                         DefinitionFile sharedParameterFile = revitApp.OpenSharedParameterFile();

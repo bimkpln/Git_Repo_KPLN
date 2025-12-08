@@ -313,7 +313,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         return type.AsInteger(param).ToString();
 
                     case StorageType.ElementId:
-                        return type.AsElementId(param).IntegerValue.ToString();
+                        {
+                            var id = type.AsElementId(param);
+
+                            if (id == null || id == ElementId.InvalidElementId)
+                                return string.Empty;
+
+#if Revit2024 || Debug2024
+                            return id.Value.ToString();
+#else
+                            return id.IntegerValue.ToString();
+#endif
+                        }
 
                     default:
                         return "";
