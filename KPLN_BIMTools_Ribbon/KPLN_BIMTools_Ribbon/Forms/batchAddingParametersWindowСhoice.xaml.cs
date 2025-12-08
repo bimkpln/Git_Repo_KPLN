@@ -619,10 +619,96 @@ namespace KPLN_BIMTools_Ribbon.Forms
         }
 #endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if Revit2024 || Debug2024
+
         /// <summary>
-        /// Создание Dictionary с параметрами группирования для ComboBox "Параметры группирования"
+        /// Создание Dictionary с параметрами группирования для ComboBox "Параметры группирования" (Revit 2024+, GroupTypeId)
         /// </summary>
-        static public Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
+        public static Dictionary<string, ForgeTypeId> CreateGroupingDictionary()
+        {
+            var groupingDict = new Dictionary<string, ForgeTypeId>
+        {
+            { "Аналитическая модель", GroupTypeId.AnalyticalModel },
+            { "Видимость", GroupTypeId.Visibility },
+            { "Второстепенный конец", GroupTypeId.SecondaryEnd },
+            { "Выравнивание аналитической модели", GroupTypeId.AnalyticalAlignment },
+            { "Геометрия разделения", GroupTypeId.DivisionGeometry },
+            { "Графика", GroupTypeId.Graphics },
+            { "Данные", GroupTypeId.Data },
+            { "Зависимости", GroupTypeId.Constraints },
+            { "Идентификация", GroupTypeId.IdentityData },
+            { "Материалы и отделка", GroupTypeId.Materials },
+            { "Механизмы", GroupTypeId.Mechanical },
+            { "Механизмы - Нагрузки", GroupTypeId.MechanicalLoads },
+            { "Механизмы - Расход", GroupTypeId.MechanicalAirflow },
+            { "Моменты", GroupTypeId.Moments },
+            { "Набор", GroupTypeId.CouplerArray },
+            { "Набор арматурных стержней", GroupTypeId.RebarArray },
+            { "Несущие конструкции", GroupTypeId.Structural },
+            { "Общая легенда", GroupTypeId.OverallLegend },
+            { "Общие", GroupTypeId.General },
+            { "Основной конец", GroupTypeId.PrimaryEnd },
+            { "Параметры IFC", GroupTypeId.Ifc },
+            { "Прочее", GroupTypeId.General },
+            { "Размеры", GroupTypeId.Geometry },
+            { "Расчет несущих конструкций", GroupTypeId.StructuralAnalysis },
+            { "Расчет энергопотребления", GroupTypeId.EnergyAnalysis },
+            { "Редактирование формы перекрытия", GroupTypeId.SlabShapeEdit },
+            { "Результат анализа", GroupTypeId.AnalysisResults },
+            { "Сантехника", GroupTypeId.Plumbing },
+            { "Свойства модели", GroupTypeId.AdskModelProperties },
+            { "Свойства экологически чистого здания", GroupTypeId.GreenBuilding },
+            { "Сегменты и соединительные детали", GroupTypeId.SegmentsFittings },
+            { "Силы", GroupTypeId.Forces },
+            { "Система пожаротушения", GroupTypeId.FireProtection },
+            { "Слои", GroupTypeId.RebarSystemLayers },
+            { "Снятие связей/усилия для элемента", GroupTypeId.ReleasesMemberForces },
+            { "Стадии", GroupTypeId.Phasing },
+            { "Строительство", GroupTypeId.Construction },
+            { "Текст", GroupTypeId.Text },
+            { "Фотометрические", GroupTypeId.LightPhotometrics },
+            { "Шрифт заголовков", GroupTypeId.Title },
+            { "Электросети", GroupTypeId.Electrical },
+            { "Электросети - Нагрузки", GroupTypeId.ElectricalLoads },
+            { "Электросети - Освещение", GroupTypeId.ElectricalLighting },
+            { "Электросети - Создание цепей", GroupTypeId.ElectricalCircuiting },
+
+            { "R23. Анализ электросетей", GroupTypeId.ElectricalAnalysis },
+            { "R23. Силы жизнеобеспечения", GroupTypeId.LifeSafety },
+            { "R23. Электротехника", GroupTypeId.ElectricalEngineering },
+        };
+
+            return groupingDict;
+        }
+
+#else 
+        /// <summary>
+        /// Создание Dictionary с параметрами группирования для ComboBox "Параметры группирования" (Revit 2020/2023, BuiltInParameterGroup)
+        /// </summary>
+        public static Dictionary<string, BuiltInParameterGroup> CreateGroupingDictionary()
         {
             Dictionary<string, BuiltInParameterGroup> groupingDict = new Dictionary<string, BuiltInParameterGroup>
             {
@@ -679,6 +765,28 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             return groupingDict;
         }
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #if !Revit2020 && !Debug2020
         /// <summary>
