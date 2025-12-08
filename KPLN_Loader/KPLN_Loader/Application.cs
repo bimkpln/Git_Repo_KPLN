@@ -351,7 +351,7 @@ namespace KPLN_Loader
 
                 // Активация модулей для пользователя
                 _logger.Info("Активация модулей для пользователя:");
-                IEnumerable<Module> userAllModules = ExtraNetUserModules(application);
+                ExtraNetUserModules(application);
             }
 
             _logger.Info($"Успешная инициализация в Revit {RevitVersion}\n");
@@ -417,7 +417,7 @@ namespace KPLN_Loader
                 catch
                 {
                     // Если его нет - подсвечиваю ошибку разработчику
-                    if (CurrentRevitUser.IsDebugMode)
+                    if (CurrentRevitUser != null && CurrentRevitUser.IsDebugMode)
                     {
                         MessageBox.Show($"Ошибка поиска картинки для плагина {assemblyName}. Имя картинки {fileName} " +
                                 $"Разработчик - проверь структуру хранения данных, картинки должны быть в папке \"Imagens\", и должны быть ресурсом (Resource)", 
@@ -435,10 +435,8 @@ namespace KPLN_Loader
         /// Получить коллекцию модулей для пользователей типа ExtraNet (субчики)
         /// </summary>
         /// <returns></returns>
-        internal IEnumerable<Module> ExtraNetUserModules(UIControlledApplication application)
+        internal void ExtraNetUserModules(UIControlledApplication application)
         {
-            List<Module> modules = new List<Module>();
-
             // Подсчет загруженных модулей
             int uploadModules = 0;
             string pathToModules = Path.Combine(_pahtToLoaderDll, @"Modules");
@@ -525,8 +523,6 @@ namespace KPLN_Loader
                     _logger.Error(msg);
                 }
             }
-
-            return modules;
         }
 
         /// <summary>
