@@ -493,6 +493,11 @@ namespace KPLN_Tools.Forms
                     var levelNameParameter = element.get_Parameter(levelExportParametrs[0]);
                     var levelOffsetParameter = element.get_Parameter(levelExportParametrs[1]);
 
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                    BuiltInCategory elCatBIC = (BuiltInCategory)element.Category.Id.IntegerValue;
+#else
+                    BuiltInCategory elCatBIC = element.Category.BuiltInCategory;
+#endif
                     if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
                     {
                         FailureHandlingOptions failureHandlingOptions = transaction.GetFailureHandlingOptions();
@@ -503,8 +508,8 @@ namespace KPLN_Tools.Forms
                         levelNameParameter.Set(newLevel.Id);
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls ||
-                        element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns))
+                    if (levelExportParametrs.Length > 2 && (elCatBIC == BuiltInCategory.OST_Walls ||
+                        elCatBIC == BuiltInCategory.OST_StructuralColumns))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
@@ -516,8 +521,8 @@ namespace KPLN_Tools.Forms
                         elementHeight.Set(heightValue);
                     }
 
-                    if (levelExportParametrs.Length > 2 && (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs
-                        || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps))
+                    if (levelExportParametrs.Length > 2 && (elCatBIC == BuiltInCategory.OST_Stairs
+                        || elCatBIC == BuiltInCategory.OST_Ramps))
                     {
                         var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
                         var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);

@@ -66,9 +66,12 @@ namespace KPLN_Tools.Common
 
                     foreach (Category c in selectedCategories)
                     {
-                        int catId = c.Id.IntegerValue;
-                        if (catId != (int)BuiltInCategory.OST_Views && catId != (int)BuiltInCategory.OST_Sheets)
-                            return true;
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                        if (c.Id.IntegerValue != (int)BuiltInCategory.OST_Views && c.Id.IntegerValue != (int)BuiltInCategory.OST_Sheets)
+#else
+                        if (c.BuiltInCategory != BuiltInCategory.OST_Views && c.BuiltInCategory != BuiltInCategory.OST_Sheets)
+#endif
+                        return true;
                     }
                 }
             }

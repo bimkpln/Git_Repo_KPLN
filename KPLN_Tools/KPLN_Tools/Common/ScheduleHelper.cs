@@ -106,9 +106,15 @@ namespace KPLN_Tools.Common
         {
             Parameter p = null;
 
-            // Параметр экз.
-            if (field.ParameterId != ElementId.InvalidElementId)
-                p = el.get_Parameter((BuiltInParameter)field.ParameterId.IntegerValue);
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            BuiltInParameter parBIC = (BuiltInParameter)field.ParameterId.IntegerValue;
+#else
+            BuiltInParameter parBIC = (BuiltInParameter)field.ParameterId.Value;
+#endif
+
+                // Параметр экз.
+                if (field.ParameterId != ElementId.InvalidElementId)
+                p = el.get_Parameter(parBIC);
             else
                 p = el.LookupParameter(field.GetName());
 
@@ -120,7 +126,7 @@ namespace KPLN_Tools.Common
                 {
                     Parameter tp;
                     if (field.ParameterId != ElementId.InvalidElementId)
-                        tp = et.get_Parameter((BuiltInParameter)field.ParameterId.IntegerValue);
+                        tp = et.get_Parameter(parBIC);
                     else
                         tp = et.LookupParameter(field.GetName());
 

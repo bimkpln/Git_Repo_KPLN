@@ -331,7 +331,7 @@ namespace KPLN_Tools.Forms.Models
                     return null;
             }
             else
-                arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, new ARPG_DesOptEntity() { ARPG_DesignOptionId = -1 }, presetFlatCode);
+                arpgRooms = ARPG_Room.Get_ARPG_Rooms(_doc, ARPG_TZ_MainData, new ARPG_DesOptEntity() { ARPG_DesignOptionId = ElementId.InvalidElementId }, presetFlatCode);
 
             if (ARPG_Room.ErrorDict_Room.Keys.Count != 0)
             {

@@ -51,8 +51,12 @@ namespace KPLN_Tools.ExternalCommands
                 foreach (ElementId selId in selIds)
                 {
                     Element elem = doc.GetElement(selId);
-                    int catId = elem.Category.Id.IntegerValue;
-                    if (catId.Equals((int)BuiltInCategory.OST_Sheets))
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                    BuiltInCategory catBIC = (BuiltInCategory)elem.Category.Id.IntegerValue;                
+#else
+                    BuiltInCategory catBIC = elem.Category.BuiltInCategory;                
+#endif
+                    if (catBIC == BuiltInCategory.OST_Sheets)
                     {
                         ViewSheet curViewSheet = elem as ViewSheet;
                         sheetsList.Add(curViewSheet);
@@ -79,15 +83,20 @@ namespace KPLN_Tools.ExternalCommands
                 };
 
                 ButtonToRun buttonToRun = new ButtonToRun("Выбери сценарий для запуска", btnColl);
-                buttonToRun.ShowDialog();
 
-                if (buttonToRun.Status == UIStatus.RunStatus.Run && buttonToRun.SelectedButton != null)
+                if ((bool)buttonToRun.ShowDialog() && buttonToRun.SelectedButton != null)
                     _selectedBtn = buttonToRun.SelectedButton;
                 else
                     return Result.Cancelled;
 
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
+
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                BuiltInCategory catBIC = (BuiltInCategory)activeView.Category.Id.IntegerValue;                
+#else
+                BuiltInCategory catBIC = activeView.Category.BuiltInCategory;
+#endif
                 // Анализирую выбранные листы
                 if (sheetsList.Count > 0)
                 {
@@ -99,7 +108,7 @@ namespace KPLN_Tools.ExternalCommands
                 }
 
                 // Анализирую все видовые экраны активного листа
-                else if (activeView.Category.Id.IntegerValue.Equals((int)BuiltInCategory.OST_Sheets))
+                else if (catBIC == BuiltInCategory.OST_Sheets)
                 {
                     ViewSheet viewSheet = activeView as ViewSheet;
                     FindAllElementsOnList(doc, viewSheet);
@@ -140,23 +149,17 @@ namespace KPLN_Tools.ExternalCommands
             foreach (ElementId elementId in collection)
             {
                 RoomTag roomTag = doc.GetElement(elementId) as RoomTag;
-                if (roomTag.TaggedRoomId.LinkedElementId.IntegerValue == -1)
-                {
+                if (roomTag.TaggedRoomId.LinkedElementId.Equals(ElementId.InvalidElementId))
                     errorTags.Add(elementId);
-                }
 
             }
 
             if (errorTags.Count > 0)
             {
                 if (_errorDict.ContainsKey(viewId))
-                {
                     _errorDict[viewId].AddRange(errorTags);
-                }
                 else
-                {
                     _errorDict.Add(viewId, errorTags);
-                }
             }
         }
 

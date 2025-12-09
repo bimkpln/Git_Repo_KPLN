@@ -136,7 +136,7 @@ namespace KPLN_Tools.Forms
         {
             ResetConfigToLoad();
 
-            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
+            ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(this, ModuleData.RevitVersion);
             if (rsFilesPickForm == null)
                 return;
 

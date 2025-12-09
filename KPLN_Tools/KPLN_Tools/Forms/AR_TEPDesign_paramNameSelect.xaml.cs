@@ -189,8 +189,7 @@ namespace KPLN_Tools.Forms
                 Parameter param = element.LookupParameter(paramName);
                 if (param != null && param.HasValue)
                 {
-                    string value = "";
-
+                    string value;
                     switch (param.StorageType)
                     {
                         case StorageType.Double:
@@ -204,18 +203,14 @@ namespace KPLN_Tools.Forms
                             break;
                         case StorageType.ElementId:
                             ElementId elemId = param.AsElementId();
-                            value = elemId.IntegerValue >= 0
-                                ? doc.GetElement(elemId)?.Name ?? elemId.IntegerValue.ToString()
-                                : elemId.IntegerValue.ToString();
+                            value = doc.GetElement(elemId)?.Name ?? elemId.ToString();
                             break;
                         default:
                             continue;
                     }
 
                     if (!string.IsNullOrWhiteSpace(value))
-                    {
                         uniqueValues.Add(value);
-                    }
                 }
             }
 

@@ -15,16 +15,16 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_AR_TEPDesign : IExternalCommand
     {
-        static UIApplication uiapp;
-        ICollection<ElementId> viewportIds;
+        private static UIApplication uiapp;
+        private ICollection<ElementId> viewportIds;
 
-        Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = null;
-        Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict = null;
-        Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict = null;
-        Dictionary<ElementId, Dictionary<ElementId, Element>> viewportsMassFormDict = null;
+        private Dictionary<ElementId, Dictionary<ElementId, Room>> viewportsRoomsDict = null;
+        private Dictionary<ElementId, Dictionary<ElementId, Area>> viewportsAreasDict = null;
+        private Dictionary<ElementId, Dictionary<ElementId, FilledRegion>> viewportsColorRegionsDict = null;
+        private Dictionary<ElementId, Dictionary<ElementId, Element>> viewportsMassFormDict = null;
 
-        int selectedCategory;
-        int errorStatus = 0;
+        private int selectedCategory;
+        private int errorStatus = 0;
         ViewSchedule lastSchedule = null;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -554,7 +554,7 @@ namespace KPLN_Tools.ExternalCommands
 #if Debug2020 || Revit2020
             return (null, null, null);
 #endif
-#if Debug2023 || Revit2023
+#if !Debug2020 && !Revit2020
             var vp = doc.GetElement(elementId) as Viewport;
             if (vp == null)
             {
@@ -581,10 +581,16 @@ namespace KPLN_Tools.ExternalCommands
 
             ColorFillScheme scheme = allSchemes.FirstOrDefault(s =>
             {
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                BuiltInParameter sbic = (BuiltInParameter)s.ParameterDefinition.IntegerValue;
+#else
+                BuiltInParameter sbic = (BuiltInParameter)s.ParameterDefinition.Value;
+#endif
+
                 var pe = doc.GetElement(s.ParameterDefinition) as ParameterElement;
                 string defName = pe != null
                     ? pe.Name
-                    : LabelUtils.GetLabelFor((BuiltInParameter)s.ParameterDefinition.IntegerValue);
+                    : LabelUtils.GetLabelFor(sbic);
                 return defName == selectedParamName;
             });
 

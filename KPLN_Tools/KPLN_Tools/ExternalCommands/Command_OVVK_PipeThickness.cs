@@ -26,7 +26,7 @@ namespace KPLN_Tools.ExternalCommands
 #if Revit2020 || Debug2020
         private readonly DisplayUnitType _millimetersRevitType = DisplayUnitType.DUT_MILLIMETERS;
 #endif
-#if Revit2023 || Debug2023
+#if !Revit2020 && !Debug2020
         private readonly ForgeTypeId _millimetersRevitType = new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1");
 #endif
 

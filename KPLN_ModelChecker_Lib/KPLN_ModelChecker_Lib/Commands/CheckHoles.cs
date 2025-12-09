@@ -354,7 +354,11 @@ namespace KPLN_ModelChecker_Lib.Commands
                 }
 
                 double intersectPersent = holeData.SumIntersectArea / holeData.MainHoleFace.Area;
+#if Debug2020 || Revit2020
                 if (intersectPersent < 0.200 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
+#else
+                if (intersectPersent < 0.200 && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.BuiltInCategory == BuiltInCategory.OST_PipeCurves))
+#endif
                 {
                     CheckerEntity errorNoPipeAreaElem = new CheckerEntity(
                         hole,

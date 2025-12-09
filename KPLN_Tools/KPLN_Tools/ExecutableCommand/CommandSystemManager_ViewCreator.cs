@@ -78,7 +78,11 @@ namespace KPLN_Tools.ExecutableCommand
                 foreach (ElementId id in viewTemplNonControlIds)
                 {
                     // Для ревит 2020 нет возможности вытянуть чере API элемент фильтров шаблона. НО ID всегда один и тот же, даже для Ревит 2023 (но лучше отдельно прописать)
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                     if (id.IntegerValue == -1006964)
+#else
+                    if (id.Value == -1006964)
+#endif
                     {
                         isFiltersNonControlled = true;
                         break;
@@ -157,7 +161,11 @@ namespace KPLN_Tools.ExecutableCommand
             {
                 string filterName = $"prog_{_viewModel.ParameterName} = НРВ_{sysName}";
 
+#if Revit2020 || Debug2020
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_viewModel.ElementColl.FirstOrDefault().LookupParameter(_viewModel.ParameterName).Id, sysName, false);
+#else
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_viewModel.ElementColl.FirstOrDefault().LookupParameter(_viewModel.ParameterName).Id, sysName);
+#endif
                 ElementParameterFilter filterRules = new ElementParameterFilter(fRule);
 
                 ElementId viewFilterId = null;

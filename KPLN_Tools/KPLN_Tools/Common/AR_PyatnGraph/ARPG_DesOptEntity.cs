@@ -1,4 +1,6 @@
-﻿namespace KPLN_Tools.Common.AR_PyatnGraph
+﻿using Autodesk.Revit.DB;
+
+namespace KPLN_Tools.Common.AR_PyatnGraph
 {
     /// <summary>
     /// Контейнер по значениям выбранного DesignOption
@@ -9,6 +11,6 @@
 
         public string ARPG_DesignOptionName { get; set; }
 
-        public int ARPG_DesignOptionId { get; set; }
+        public ElementId ARPG_DesignOptionId { get; set; }
     }
 }

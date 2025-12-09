@@ -25,7 +25,7 @@ namespace KPLN_Tools.Forms
             DocARPGDesignOpts[0] = new ARPG_DesOptEntity() 
             { 
                 ARPG_DesignOptionName = "Главная модель",
-                ARPG_DesignOptionId = -1,
+                ARPG_DesignOptionId = ElementId.InvalidElementId,
             };
             
             for (int i = 1; i < designOptions.Length + 1; i++)
@@ -33,7 +33,7 @@ namespace KPLN_Tools.Forms
                 DocARPGDesignOpts[i] = new ARPG_DesOptEntity()
                 {
                     ARPG_DesignOptionName = designOptions[i - 1].Name,
-                    ARPG_DesignOptionId = designOptions[i - 1].Id.IntegerValue,
+                    ARPG_DesignOptionId = designOptions[i - 1].Id,
                 };
 
             }

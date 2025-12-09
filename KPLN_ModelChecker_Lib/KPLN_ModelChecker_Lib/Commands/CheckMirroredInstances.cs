@@ -93,7 +93,11 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                 // Для панелей витража анализируются ТОЛЬКО окна и двери. Также для них нужно брать основание - host.
                 // Основание дополнительно проверятся на поворот - flip
+#if Debug2020 || Revit2020
                 if ((BuiltInCategory)element.Category.Id.IntegerValue == BuiltInCategory.OST_CurtainWallPanels)
+#else
+                if (element.Category.BuiltInCategory == BuiltInCategory.OST_CurtainWallPanels)
+#endif
                 {
                     string elName = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM).AsValueString();
                     if (elName.StartsWith("135_")

@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 
 namespace KPLN_Tools
 {
@@ -18,7 +16,7 @@ namespace KPLN_Tools
         internal const string PluginName = "Маркировка IFC арматуры";
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIDocument uidoc = commandData.Application.ActiveUIDocument;   
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
             FilteredElementCollector RebarIFCFilter = new FilteredElementCollector(doc, doc.ActiveView.Id); //формируем фильтр
@@ -60,7 +58,7 @@ namespace KPLN_Tools
                 IFCRebars = TempIFCRebars;
 
                 IFCRebarIDs = IFCRebars.Select(it => it.Id).ToList();   //список ID стержней IFC арматуры
-              
+
                 foreach (ElementId elid in IFCRebarIDs)
                 {
                     Element el = doc.GetElement(elid);
@@ -125,16 +123,18 @@ namespace KPLN_Tools
                     List<Element> collElem = new List<Element>();
                     List<ElementId> collElemID = new List<ElementId>();
 
-                    if (rebar.Category != null && rebar.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows)
-                    {
+
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                    BuiltInCategory rBIC = (BuiltInCategory)rebar.Category.Id.IntegerValue;                
+#else
+                    BuiltInCategory rBIC = rebar.Category.BuiltInCategory;
+#endif
+                    if (rebar.Category != null && rBIC == BuiltInCategory.OST_Windows)
                         collElem.Add((rebar as FamilyInstance).Host);   //если это rebar с-во окна, то возвращает его хост 
-                    }
                     else
-                    {
                         //элементы видимые на виде, исключая текущий стержень/с-во, из списка разрешенных категорий, пересекающие BoundingBox арматуры
                         collElem = collector.Excluding(idsExclude).WherePasses(filterCat).WherePasses(filterColl).ToElements().ToList();
-                    }
-                  
+
                     if (collElem.Count > 1)
                     {
 
@@ -187,7 +187,7 @@ namespace KPLN_Tools
                     collElemID = collElem.Select(a => a.Id).ToList();
                 }
                 #endregion
-                
+
                 #region Транзакция
                 using (Transaction tr = new Transaction(doc, "Маркировка IFC-арматуры"))
                 {

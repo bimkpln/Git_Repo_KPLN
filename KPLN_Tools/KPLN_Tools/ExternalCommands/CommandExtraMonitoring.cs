@@ -74,7 +74,7 @@ namespace KPLN_Tools.ExternalCommands
                         {
                             foreach (var v in kvp.Value)
                             {
-                                if (v.ModelElement != null && v.ModelElement.Id.IntegerValue == id.IntegerValue)
+                                if (v.ModelElement != null && v.ModelElement.Id.Equals(id))
                                 {
                                     inColl = true;
                                     break;
@@ -141,7 +141,11 @@ namespace KPLN_Tools.ExternalCommands
         {
             // Очистка выборки от случайных элементов
             Element[] trueElems = selectedIds
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                 .Where(id => MonitoredBuiltInCatArr.Contains((BuiltInCategory)doc.GetElement(id).Category.Id.IntegerValue))
+#else
+                .Where(id => MonitoredBuiltInCatArr.Contains(doc.GetElement(id).Category.BuiltInCategory))
+#endif
                 .Select(id => doc.GetElement(id))
                 .ToArray();
             if (trueElems.Length == 0)
@@ -216,7 +220,7 @@ namespace KPLN_Tools.ExternalCommands
                             }
                             PreapareMonitorEntityColl(outlineForFilter);
                         }
-                        else if (_currentLink.Id.IntegerValue != currentLink.Id.IntegerValue)
+                        else if (!_currentLink.Id.Equals(currentLink.Id))
                             throw new Exception($"Работа экстренно прекращена! Элемент с id:{element.Id} - имеет мониторинг из другой связи. Можно выполнить проверку только с разделением по связям.");
                     
                         UpdateMonitorEntityColl(doc, element, docElemsParams);

@@ -35,6 +35,15 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2024\</OutputPath>
+    <DefineConstants>Revit2024</DefineConstants>
+    <Optimize>true</Optimize>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
@@ -47,6 +56,14 @@
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2023\</OutputPath>
     <DefineConstants>DEBUG;Debug2023</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2024\</OutputPath>
+    <DefineConstants>DEBUG;Debug2024</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
     <XamlDebuggingInformation>True</XamlDebuggingInformation>
@@ -195,6 +212,42 @@
         </Reference>
       </ItemGroup>
     </When>
+    <When Condition=" '$(Configuration)'=='Debug2024' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2024\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2024\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2024\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="UIFramework">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\UIFramework.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
@@ -262,7 +315,43 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\UIFramework.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\UIFramework.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2024' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2024\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2024\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2024\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="UIFramework">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\UIFramework.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -323,12 +412,6 @@
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
-    <Compile Include="Common\SS_System\GraphicsStyleWrapper.cs" />
-    <Compile Include="Common\SS_System\NumberService.cs" />
-    <Compile Include="Common\SS_System\PickFilter.cs" />
-    <Compile Include="Common\SS_System\SS_SystemCommand.cs" />
-    <Compile Include="Common\SS_System\SS_SystemEntity.cs" />
-    <Compile Include="Common\SS_System\SS_SystemViewEntity.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\LinkManager\LoadRLI_Service.cs" />
     <Compile Include="ExecutableCommand\CommandShowElement.cs" />
@@ -362,7 +445,6 @@
     <Compile Include="ExternalCommands\CommandSearchRevitUser.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
     <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
-    <Compile Include="ExternalCommands\Command_SS_Systems.cs" />
     <Compile Include="Forms\AR_PyatnGraph_Main.xaml.cs">
       <DependentUpon>AR_PyatnGraph_Main.xaml</DependentUpon>
     </Compile>
@@ -423,9 +505,6 @@
     <Compile Include="Forms\SizeMismatchWindow.xaml.cs">
       <DependentUpon>SizeMismatchWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml.cs">
-      <DependentUpon>SS_Sysetm_SelectIncludeElemAlg.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\UserPathInputForm.xaml.cs">
       <DependentUpon>UserPathInputForm.xaml</DependentUpon>
     </Compile>
@@ -440,9 +519,6 @@
     </Compile>
     <Compile Include="Forms\OVVK_PipeThicknessForm.xaml.cs">
       <DependentUpon>OVVK_PipeThicknessForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\SS_Sysetm_Main.xaml.cs">
-      <DependentUpon>SS_Sysetm_Main.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SendMsgToBitrix.xaml.cs">
       <DependentUpon>SendMsgToBitrix.xaml</DependentUpon>
@@ -619,10 +695,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\SS_Sysetm_SelectIncludeElemAlg.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Forms\UserPathInputForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -642,10 +714,6 @@
     <Page Include="Forms\OVVK_PipeThicknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\SS_Sysetm_Main.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\SendMsgToBitrix.xaml">
       <Generator>MSBuild:Compile</Generator>

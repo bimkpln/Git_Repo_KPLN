@@ -74,7 +74,7 @@ namespace KPLN_Tools.Forms
 
         private void BtnParamSearch_Click(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(_doc, _elementsToSet, StorageType.Double);
+            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(this, _doc, _elementsToSet, StorageType.Double);
             paramForm.ShowDialog();
 
             if (paramForm.SelectedElement != null)

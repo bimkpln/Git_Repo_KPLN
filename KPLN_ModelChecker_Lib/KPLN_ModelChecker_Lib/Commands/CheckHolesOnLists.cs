@@ -49,7 +49,11 @@ namespace KPLN_ModelChecker_Lib.Commands
             if (CheckDocument.Title.Contains("СЕТ_1")) 
             {
                 _isHolesFunc = fi =>
+#if Debug2020 || Revit2020
                     fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows
+#else
+                    fi.Category.BuiltInCategory == BuiltInCategory.OST_Windows
+#endif
                     && (fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие") 
                     || fi.Symbol.FamilyName.StartsWith("231_Отверстие") 
                     || fi.Symbol.FamilyName.StartsWith("231_Проем"));
@@ -57,7 +61,11 @@ namespace KPLN_ModelChecker_Lib.Commands
             else
             {
                 _isHolesFunc = fi =>
+#if Debug2020 || Revit2020
                     fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_MechanicalEquipment
+#else
+                    fi.Category.BuiltInCategory == BuiltInCategory.OST_MechanicalEquipment
+#endif
                     && (fi.Symbol.FamilyName.StartsWith("199_Отверстие")
                     || fi.Symbol.FamilyName.StartsWith("231_Отверстие")
                     || fi.Symbol.FamilyName.StartsWith("231_Проем"));

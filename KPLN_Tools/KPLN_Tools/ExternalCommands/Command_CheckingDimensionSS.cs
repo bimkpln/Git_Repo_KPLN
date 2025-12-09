@@ -482,8 +482,7 @@ namespace KPLN_Tools.ExternalCommands
         public string TypeName { get; set; }
         public string PanelName { get; set; }
 
-        public string DisplayName =>
-            $"[{ElementId.IntegerValue}] {FamilyName}\n{TypeName} ({PanelName})";
+        public string DisplayName => $"[{ElementId}] {FamilyName}\n{TypeName} ({PanelName})";
     }
 
     public class NodeMismatchItem
@@ -494,7 +493,7 @@ namespace KPLN_Tools.ExternalCommands
         public string GroupingValue { get; set; }
 
         public string DisplayName =>
-            $"[{ElementId.IntegerValue}] {FamilyName}\n{TypeName} ({GroupingValue})";
+            $"[{ElementId}] {FamilyName}\n{TypeName} ({GroupingValue})";
     }
 
     public class SizeMismatchItem
@@ -523,7 +522,7 @@ namespace KPLN_Tools.ExternalCommands
             {
                 string kind = IsCabinet ? "Шкаф" : "ЭлУзел";
                 return
-                    $"[{ElementId.IntegerValue}] {kind} {FamilyName}\n" +
+                    $"[{ElementId}] {kind} {FamilyName}\n" +
                     $"{TypeName} (КП_О_Группирование: {GroupKey})\n" +
                     $"ЭлУзлов:   H={1000*HeightM:0.###}  W={1000*WidthM:0.###}  D={1000*DepthM:0.###} мм\n" +
                     $"Шкаф:       H={1000*RefHeightM:0.###}  W={1000*RefWidthM:0.###}  D={1000*RefDepthM:0.###} мм";

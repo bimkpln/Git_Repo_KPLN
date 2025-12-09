@@ -128,7 +128,6 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// </summary>
         private CheckerEntity CheckDimValues(Dimension dim, double value, string overrideValue)
         {
-            int dimId = dim.Id.IntegerValue;
             string dimName = dim.Name;
 
             string ovverrideMinValue = String.Empty;
@@ -236,7 +235,11 @@ namespace KPLN_ModelChecker_Lib.Commands
                         if (currentAccuracy > 1.0)
                         {
                             result.Add(new CheckerEntity(
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                                 CheckDocument.GetElement(new ElementId(dimType.Id.IntegerValue)),
+#else
+                                CheckDocument.GetElement(new ElementId(dimType.Id.Value)),
+#endif
                                 "Нарушение точности в типе размера",
                                 "Размер имеет запрещенно низкую точность",
                                 $"Принятое округление в 1 мм, а в данном ТИПЕ - указано \"{currentAccuracy}\" мм. Замени округление, или удали типоразмер."));

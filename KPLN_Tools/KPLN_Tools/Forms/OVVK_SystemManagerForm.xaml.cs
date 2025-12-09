@@ -3,7 +3,6 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.Forms.Models;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -37,7 +36,7 @@ namespace KPLN_Tools.Forms
 
         private void BtnParamSearch_Click(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(CurrentViewModel.CurrentDoc, CurrentViewModel.ElementColl, StorageType.String);
+            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(this, CurrentViewModel.CurrentDoc, CurrentViewModel.ElementColl, StorageType.String);
             paramForm.ShowDialog();
 
             if (paramForm.SelectedElement != null)
@@ -71,10 +70,12 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            ElementMultiPick elementMultiPick = new ElementMultiPick(CurrentViewModel
-                .SystemSumParameters
-                .Where(pName => !pName.Contains("ВНИМАНИЕ!!!"))
-                .Select(pName => new KPLN_Library_Forms.Common.ElementEntity(pName)));
+            ElementMultiPick elementMultiPick = new ElementMultiPick(
+                this, 
+                CurrentViewModel
+                    .SystemSumParameters
+                    .Where(pName => !pName.Contains("ВНИМАНИЕ!!!"))
+                    .Select(pName => new KPLN_Library_Forms.Common.ElementEntity(pName)));
             
             if ((bool)elementMultiPick.ShowDialog())
             {

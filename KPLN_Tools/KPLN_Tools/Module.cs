@@ -493,22 +493,6 @@ namespace KPLN_Tools
                     panel,
                     false);
 
-                PushButtonData ssSystems = CreateBtnData(
-                    "Слаботочные системы",
-                    "Слаботочные системы",
-                    "Помощь в создании цепей СС",
-                    string.Format("Плагин создаёт цепи нестандартным путём - генерируются отдельные системы на участки между 2мя элементами. " +
-                        "При этом элементу №2 в качестве щита присваивается элемент №1.\n" +
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_SS_Systems).FullName,
-                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
-                    "KPLN_Tools.Imagens.ssSystemsSmall.png",
-                    "http://moodle");
-
                 PushButtonData ssFillInParameters = CreateBtnData(
                     "Заполнить параметры на чертежном виде",
                     "Заполнить параметры на чертежном виде",
@@ -541,7 +525,6 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/");
 
-                ssToolsPullDownBtn.AddPushButton(ssSystems);
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
                 ssToolsPullDownBtn.AddPushButton(ssCheckingDimension);
             }

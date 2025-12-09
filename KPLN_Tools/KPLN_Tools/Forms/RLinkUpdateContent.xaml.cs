@@ -70,7 +70,7 @@ namespace KPLN_Tools.Forms
 
         private void RevitServerPathSelect_Click(object sender, RoutedEventArgs e)
         {
-            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(ModuleData.RevitVersion);
+            ElementSinglePick selectedRevitServerMainDirForm = SelectRevitServerMainDir.CreateForm_SelectRSMainDir(null, ModuleData.RevitVersion);
             if ((bool)selectedRevitServerMainDirForm.ShowDialog())
             {
                 string selectedRSMainDirFullPath = selectedRevitServerMainDirForm.SelectedElement.Element as string;
@@ -86,7 +86,7 @@ namespace KPLN_Tools.Forms
                         .Select(f => new ElementEntity(f.Path))
                         .ToArray());
 
-                ElementSinglePick pickForm = new ElementSinglePick(activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
+                ElementSinglePick pickForm = new ElementSinglePick(null, activeEntitiesForForm.OrderBy(p => p.Name), "Выбери папку Revit-Server");
                 if ((bool)pickForm.ShowDialog())
                 {
                     string dirToRSModels = $"\\\\{selectedRSHostName}{pickForm.SelectedElement.Name}";
@@ -148,7 +148,7 @@ namespace KPLN_Tools.Forms
                 }
 
                 // Тут нужно заменить на одиночный выбор, но это нужно библиотеку править. Пока оставляю так
-                ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(ModuleData.RevitVersion);
+                ElementMultiPick rsFilesPickForm = SelectFilesFromRevitServer.CreateForm(null, ModuleData.RevitVersion);
                 if (rsFilesPickForm == null)
                     return;
 

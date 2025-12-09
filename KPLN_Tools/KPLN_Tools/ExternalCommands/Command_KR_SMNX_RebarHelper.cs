@@ -197,7 +197,11 @@ namespace KPLN_Tools.ExternalCommands
             List<FilterRule> filtRules_ZhB = new List<FilterRule>();
             foreach (string currentName in _exceptFamAndTypeNameStartWithList_ZhB)
             {
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
+#else
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName);
+#endif
                 filtRules_ZhB.Add(fRule);
             }
             ElementParameterFilter eFilter_ZhB = new ElementParameterFilter(filtRules_ZhB);
@@ -208,7 +212,11 @@ namespace KPLN_Tools.ExternalCommands
             List<FilterRule> filtRules_Rb = new List<FilterRule>();
             foreach (string currentName in _exceptFamAndTypeNameStartWithList_Rb)
             {
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
+#else
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName);
+#endif
                 filtRules_Rb.Add(fRule);
             }
             ElementParameterFilter eFilter_Rb = new ElementParameterFilter(filtRules_Rb);
@@ -593,7 +601,12 @@ namespace KPLN_Tools.ExternalCommands
                             Element hostElem = null;
                             if (int.TryParse(hostIdData, out int elemId))
                             {
-                                hostElem = doc.GetElement(new ElementId(int.Parse(hostIdData)));
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                                int hostId = int.Parse(hostIdData);
+#else
+                                long hostId = long.Parse(hostIdData);
+#endif
+                                hostElem = doc.GetElement(new ElementId(hostId));
                                 if (hostElem == null)
                                     throw new Exception($"Элемент с id: {hostIdData} отсутсвует. Покажи разработчику");
                             }

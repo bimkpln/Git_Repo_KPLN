@@ -100,7 +100,11 @@ namespace KPLN_Tools.ExecutableCommand
 
                         Parameter p = null;
                         if (targetParamId != ElementId.InvalidElementId)
-                            p = el.get_Parameter((BuiltInParameter)targetParamId.IntegerValue);
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                                p = el.get_Parameter((BuiltInParameter)targetParamId.IntegerValue);
+#else
+                                p = el.get_Parameter((BuiltInParameter)targetParamId.Value);
+#endif
 
                         if (p == null)
                             p = el.LookupParameter(body.GetCellText(0, targetCol));

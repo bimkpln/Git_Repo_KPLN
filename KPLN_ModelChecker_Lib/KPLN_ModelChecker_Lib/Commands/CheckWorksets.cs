@@ -45,7 +45,12 @@ namespace KPLN_ModelChecker_Lib.Commands
                     if (element is FamilyInstance fi && fi.SuperComponent != null) continue;
 
                     // Игнор разделителей помещений для СЕТ (так нужно)
+#if Debug2020 || Revit2020
                     if (isSET && element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RoomSeparationLines) continue;
+#else
+                    if (isSET && element.Category.BuiltInCategory == BuiltInCategory.OST_RoomSeparationLines) continue;
+#endif
+
 
                     // Анализ Revit-связей
                     if (element is RevitLinkInstance link)

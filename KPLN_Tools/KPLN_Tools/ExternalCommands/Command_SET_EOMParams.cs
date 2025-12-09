@@ -56,17 +56,22 @@ namespace KPLN_Tools.ExternalCommands
         }
         private static ElementType GetElementType(Element element)
         {
-            int categoryId = element.Category.Id.IntegerValue;
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            BuiltInCategory catBIC = (BuiltInCategory)element.Category.Id.IntegerValue;
+#else
+            BuiltInCategory catBIC = element.Category.BuiltInCategory;
+#endif
+
             string typeParam = element.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString();
             string familyParam = element.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM)?.AsValueString();
 
-            if (categoryId == (int)BuiltInCategory.OST_CableTray && typeParam?.Contains("tray") == true)
+            if (catBIC == BuiltInCategory.OST_CableTray && typeParam?.Contains("tray") == true)
                 return ElementType.CableTray;
-            if (categoryId == (int)BuiltInCategory.OST_CableTrayFitting && familyParam?.Contains("bend") == true)
+            if (catBIC == BuiltInCategory.OST_CableTrayFitting && familyParam?.Contains("bend") == true)
                 return ElementType.CableTrayFitting;
-            if (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ОГК") == true)
+            if (catBIC == BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ОГК") == true)
                 return ElementType.DuctOGK;
-            if (categoryId == (int)BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ЭГ") == true)
+            if (catBIC == BuiltInCategory.OST_DuctCurves && typeParam?.Contains("ASML_ЭГ") == true)
                 return ElementType.DuctEG;
 
             return ElementType.None;
@@ -144,8 +149,12 @@ namespace KPLN_Tools.ExternalCommands
                 return;
             }
 
-            int categoryId = element.Category.Id.IntegerValue;
-            if (categoryId == (int)BuiltInCategory.OST_CableTray || categoryId == (int)BuiltInCategory.OST_DuctCurves)
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            BuiltInCategory catBIC = (BuiltInCategory)element.Category.Id.IntegerValue;
+#else
+            BuiltInCategory catBIC = element.Category.BuiltInCategory;
+#endif
+            if (catBIC == BuiltInCategory.OST_CableTray || catBIC == BuiltInCategory.OST_DuctCurves)
             {
                 var lengthParam = element.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH)?.AsDouble() ?? 0.0;
                 var widthParam = element.get_Parameter(BuiltInParameter.RBS_CURVE_WIDTH_PARAM)?.AsDouble() ?? 0.0;
@@ -161,7 +170,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 qtyParam.Set((double)Math.Round(quantity, 2));
             }
-            else if (categoryId == (int)BuiltInCategory.OST_CableTrayFitting)
+            else if (catBIC == BuiltInCategory.OST_CableTrayFitting)
             {
                 qtyParam.Set(1);
             }

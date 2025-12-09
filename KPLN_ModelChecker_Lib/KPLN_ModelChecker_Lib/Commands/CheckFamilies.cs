@@ -112,11 +112,19 @@ namespace KPLN_ModelChecker_Lib.Commands
             if (currentCat == null)
                 return null;
 
+#if Debug2020 || Revit2020
+            BuiltInCategory currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;                    
+#else
+            BuiltInCategory currentBIC = currentCat.BuiltInCategory;                    
+#endif
+
+
             // Блок игнорирования семейств настроенных из шаблона (АР балясины, ограждения)
-            if (currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster
-                || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingTermination
-                || currentCat.Id.IntegerValue == (int)BuiltInCategory.OST_RailingSupport)
+            if (currentBIC.Equals(BuiltInCategory.OST_StairsRailingBaluster)
+                || currentBIC.Equals(BuiltInCategory.OST_RailingTermination)
+                || currentBIC.Equals(BuiltInCategory.OST_RailingSupport))
                 return null;
+
 
             // Блок игнорирования семейств аннотаций, кроме штампов (остальное проектировщики могут создавать)
             if (currentCat.CategoryType.Equals(CategoryType.Annotation)
@@ -126,7 +134,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                 && !currentFam.Name.ToLower().Contains("жук"))
                 return null;
 
-            BuiltInCategory currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;
+
+            // Блок игнорирования ДЛЯ вложенных семейств
             if (currentFam.get_Parameter(BuiltInParameter.FAMILY_SHARED).AsInteger() != 1
                 && currentFam.IsEditable
                 && !currentBIC.Equals(BuiltInCategory.OST_ProfileFamilies)

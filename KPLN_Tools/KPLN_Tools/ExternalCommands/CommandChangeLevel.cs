@@ -2,9 +2,6 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Forms;
-using System.Collections.Generic;
-
-
 
 namespace KPLN_Tools.ExternalCommands
 {
@@ -37,9 +34,14 @@ namespace KPLN_Tools.ExternalCommands
             BuiltInParameter topOffset;
             BuiltInParameter elementHeight;
 
-            string category = element.Category.Name;
 
-            if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls)
+
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            BuiltInCategory elBIC = (BuiltInCategory)element.Category.Id.IntegerValue;
+#else
+            BuiltInCategory elBIC = element.Category.BuiltInCategory;
+#endif
+            if (elBIC == BuiltInCategory.OST_Walls)
             {
                 baseLevel = BuiltInParameter.WALL_BASE_CONSTRAINT;
                 baseOffset = BuiltInParameter.WALL_BASE_OFFSET;
@@ -50,7 +52,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset, elementHeight };
 
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns)
+            else if (elBIC == BuiltInCategory.OST_StructuralColumns)
             {
                 baseLevel = BuiltInParameter.FAMILY_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM;
@@ -61,7 +63,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset, elementHeight };
 
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Floors)
+            else if (elBIC == BuiltInCategory.OST_Floors)
             {
                 baseLevel = BuiltInParameter.LEVEL_PARAM;
                 baseOffset = BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM;
@@ -69,7 +71,7 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
 
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ceilings)
+            else if (elBIC == BuiltInCategory.OST_Ceilings)
             {
                 baseLevel = BuiltInParameter.LEVEL_PARAM;
                 baseOffset = BuiltInParameter.CEILING_HEIGHTABOVELEVEL_PARAM;
@@ -77,21 +79,21 @@ namespace KPLN_Tools.ExternalCommands
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
 
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Roofs)
+            else if (elBIC == BuiltInCategory.OST_Roofs)
             {
                 baseLevel = BuiltInParameter.ROOF_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.ROOF_LEVEL_OFFSET_PARAM;
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Doors)
+            else if (elBIC == BuiltInCategory.OST_Windows || elBIC == BuiltInCategory.OST_Doors)
             {
                 baseLevel = BuiltInParameter.FAMILY_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM;
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset };
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Stairs || element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Ramps)
+            else if (elBIC == BuiltInCategory.OST_Stairs || elBIC == BuiltInCategory.OST_Ramps)
             {
                 baseLevel = BuiltInParameter.STAIRS_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.STAIRS_BASE_OFFSET;
@@ -100,7 +102,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 parameters = new BuiltInParameter[] { baseLevel, baseOffset, topLevel, topOffset };
             }
-            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailing)
+            else if (elBIC == BuiltInCategory.OST_StairsRailing)
             {
                 baseLevel = BuiltInParameter.STAIRS_RAILING_BASE_LEVEL_PARAM;
                 baseOffset = BuiltInParameter.STAIRS_RAILING_HEIGHT_OFFSET;

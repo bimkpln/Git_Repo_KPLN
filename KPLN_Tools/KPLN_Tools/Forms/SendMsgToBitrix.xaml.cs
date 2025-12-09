@@ -4,7 +4,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using static KPLN_Library_Forms.Common.UIStatus;
 
 namespace KPLN_Tools.Forms
 {
