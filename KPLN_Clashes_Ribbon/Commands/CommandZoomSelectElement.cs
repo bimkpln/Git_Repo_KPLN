@@ -11,7 +11,12 @@ namespace KPLN_Clashes_Ribbon.Commands
 {
     public class CommandZoomSelectElement : IExecutableCommand
     {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
         private readonly int _id;
+#else
+        private readonly long _id;
+#endif
+
         private readonly string _elInfo;
 
         public CommandZoomSelectElement(int id, string elInfo)

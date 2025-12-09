@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -16,7 +15,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         {
             public int GroupId { get; set; }
             public string Title { get; set; }
-            public string NameRaw { get; set; }   
+            public string NameRaw { get; set; }
             public bool IsEnabled { get; set; }
             public ReportGroup Group { get; set; }
         }
@@ -28,12 +27,14 @@ namespace KPLN_Clashes_Ribbon.Forms
         private string _search = string.Empty;
 
         public ReportGroup SelectedGroup { get; private set; }
-        public int SelectedNumber { get; private set; }  
+        public int SelectedNumber { get; private set; }
 
-        public ReportGroupPickerForm(IEnumerable<ReportGroup> groups, int currentGroupId)
+        public ReportGroupPickerForm(Window owner, IEnumerable<ReportGroup> groups, int currentGroupId)
         {
             InitializeComponent();
-            DataContext = this;
+
+            this.DataContext = this;
+            this.Owner = owner;
             _currentGroupId = currentGroupId;
 
             foreach (var g in groups)
@@ -43,7 +44,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     GroupId = g.Id,
                     Title = (g.Name ?? string.Empty) + " (ID: " + g.Id + ")",
                     NameRaw = g.Name ?? string.Empty,
-                    IsEnabled = g.Id != _currentGroupId, 
+                    IsEnabled = g.Id != _currentGroupId,
                     Group = g
                 });
             }

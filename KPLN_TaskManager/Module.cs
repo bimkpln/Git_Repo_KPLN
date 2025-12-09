@@ -8,11 +8,8 @@ using KPLN_TaskManager.ExternalCommands;
 using KPLN_TaskManager.Forms;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace KPLN_TaskManager
 {
@@ -36,6 +33,7 @@ namespace KPLN_TaskManager
         internal static int RevitVersion { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -48,7 +46,7 @@ namespace KPLN_TaskManager
             RevitVersion = int.Parse(_uiContrApp.ControlledApplication.VersionNumber);
 
             //Ищу или создаю панель инструменты
-            string panelName = "Инструменты";
+            string panelName = "Менеджеры";
             RibbonPanel panel = null;
             IEnumerable<RibbonPanel> tryPanels = _uiContrApp.GetRibbonPanels(tabName).Where(i => i.Name == panelName);
             if (tryPanels.Any())
@@ -68,7 +66,7 @@ namespace KPLN_TaskManager
                 ),
                 typeof(ShowMainMenu).FullName,
                 panel,
-                "KPLN_TaskManager.Imagens.showMenu.png",
+                "taskManager",
                 "http://moodle.stinproject.local"
             );
 
@@ -155,21 +153,14 @@ namespace KPLN_TaskManager
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-        }
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

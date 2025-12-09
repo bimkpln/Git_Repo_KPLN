@@ -473,6 +473,7 @@
                                             </StackPanel>
                                         </Button.ToolTip>
                                     </Button>
+                                    
                                     <Button 
                                         Visibility="{Binding AdminControllsVisibilityAdd}" 
                                         IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
@@ -494,10 +495,6 @@
                                     </Button>
 
 
-
-
-
-
                                     <Button 
                                          Visibility="{Binding AdminControllsVisibilityAdd}" 
                                          IsEnabled="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
@@ -517,13 +514,6 @@
                                             </StackPanel>
                                         </Button.ToolTip>
                                     </Button>
-
-
-                                    
-                                    
-                                    
-
-
                                 </StackPanel>
                                 
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">

@@ -287,7 +287,8 @@
                             VerticalAlignment="Top"
                             HorizontalAlignment="Center"
                             Opacity="0.5" 
-                            FontSize="16" 
+                            FontSize="64" 
+                            Background="Transparent"
                             Click="OnLoadImage"/>
                         <Image 
                             Grid.Row="1" 
@@ -295,7 +296,7 @@
                             Width="200" 
                             Height="200" 
                             VerticalAlignment="Top"
-                            Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+                            Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}"/>
                         <Rectangle 
                             Grid.Row="1"
                             Grid.Column="0" 
@@ -422,7 +423,8 @@
                                                 HorizontalAlignment="Center"
                                                 VerticalAlignment="Top"
                                                 Opacity="0.5" 
-                                                FontSize="16" 
+                                                Background="Transparent"
+                                                FontSize="24" 
                                                 Click="OnLoadImage"/>
                                             <Image 
                                                 Grid.Row="1" 
@@ -432,7 +434,7 @@
                                                 Margin="5" 
                                                 Width="80" 
                                                 Height="80" 
-                                                Source="{Binding ImageSource,UpdateSourceTrigger=PropertyChanged}"/>
+                                                Source="{Binding ImageSource, UpdateSourceTrigger=PropertyChanged}"/>
 
                                             <!--Элемент 1-->
                                             <TextBlock 

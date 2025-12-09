@@ -5,9 +5,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -277,11 +279,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             get => _source;
             set
             {
-                if (_source != value)
-                {
-                    _source = value;
-                    NotifyPropertyChanged();
-                }
+                _source = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -299,6 +298,23 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
         #endregion
 
+        /// <summary>
+        /// Получить приоритетный статус из инстансов внутри одного отчета
+        /// </summary>
+        public static KPItemStatus GetMainReportStatus(ReportItem[] riiColl)
+        {
+            if (riiColl.Any(c => c.Status == KPItemStatus.Opened))
+                return KPItemStatus.Opened;
+            else if (riiColl.All(c => c.Status == KPItemStatus.Closed))
+                return KPItemStatus.Closed;
+            else if (riiColl.Any(c => c.Status == KPItemStatus.Delegated))
+                return KPItemStatus.Delegated;
+            else if (riiColl.All(c => c.Status == KPItemStatus.Approved || c.Status == KPItemStatus.Closed))
+                return KPItemStatus.Approved;
+            else
+                return KPItemStatus.Opened;
+        }
+
         public void GetProgress()
         {
             Task t2 = Task.Run(() =>
@@ -312,14 +328,15 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private void UpdateProgress()
+        public void UpdateProgress()
         {
             int max = 0;
             int done = 0;
             int delegated = 0;
             int approved = 0;
             Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(PathToReportInstance);
-            foreach (ReportItem ri in sqliteService_ReportInstanceDB.GetAllReporItems())
+            ReportItem[] riColl = sqliteService_ReportInstanceDB.GetAllReporItems();
+            foreach (ReportItem ri in riColl)
             {
                 max++;
 
@@ -335,16 +352,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             DelegationProgress = (int)Math.Round((double)(delegated * 100 / max));
             ApprovedProgress = (int)Math.Round((double)(approved * 100 / max));
 
-            // Устанавливаю статус для смены пиктограммы при условии что все коллизии просмотрены (делегированы, либо устранены, либо открыты)
-            if (done == max)
-                Status = ClashesMainCollection.KPItemStatus.Closed;
-            else if (done + delegated == max && delegated > 0 || (done + delegated + approved == max && delegated > 0 && approved > 0))
-                Status = ClashesMainCollection.KPItemStatus.Delegated;
-            else if (done + approved == max && approved > 0)
-                Status = ClashesMainCollection.KPItemStatus.Approved;
-            else
-                Status = ClashesMainCollection.KPItemStatus.Opened;
-            
+            Status = GetMainReportStatus(riColl);
             _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Status, MainDB_Enumerator.Reports, Id);
 
             PbEnabled = System.Windows.Visibility.Visible;

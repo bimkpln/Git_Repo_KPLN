@@ -1,15 +1,13 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
-using System;
-using System.IO;
 using System.Reflection;
-using System.Windows.Media.Imaging;
 
 namespace KPLN_Clashes_Ribbon
 {
     public class Module : IExternalModule
     {
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -21,7 +19,7 @@ namespace KPLN_Clashes_Ribbon
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             //Добавляю панель
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Междисциплинарный анализ");
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Менеджеры");
 
             //Добавляю кнопку в панель (тут приведен пример поиска панели, вместо этого - панель можно создать)
             AddPushButtonDataInPanel(
@@ -36,7 +34,7 @@ namespace KPLN_Clashes_Ribbon
                 ),
                 typeof(Commands.CommandShowManager).FullName,
                 panel,
-                "icon_default.png",
+                "icon",
                 "http://moodle/mod/book/view.php?id=502&chapterid=672",
                 true
             );
@@ -57,29 +55,21 @@ namespace KPLN_Clashes_Ribbon
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp, bool avclass)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = panel.AddItem(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            BtnImagine(button, imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
 
-            if (avclass)
-            {
-                button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
-            }
-        }
+            if (avclass) button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="button">Кнопка, куда нужно добавить иконку</param>
-        /// <param name="imageName">Имя иконки с раширением</param>
-        private void BtnImagine(RibbonButton button, string imageName)
-        {
-            string imageFullPath = Path.Combine(new FileInfo(_AssemblyPath).DirectoryName, @"Source\ImageData\", imageName);
-            button.LargeImage = new BitmapImage(new Uri(imageFullPath));
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

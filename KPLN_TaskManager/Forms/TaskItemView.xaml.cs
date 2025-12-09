@@ -202,7 +202,11 @@ namespace KPLN_TaskManager.Forms
 
             CurrentTaskItemEntity.ElementIds = string.Join(",", selectedIds);
             if (isElemFromDoc)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 CurrentTaskItemEntity.ModelViewId = uidoc.ActiveView.Id.IntegerValue;
+#else
+                CurrentTaskItemEntity.ModelViewId = uidoc.ActiveView.Id.Value;
+#endif
         }
 
         private void RemoveElementIdsBtn_Click(object sender, RoutedEventArgs e)
@@ -257,7 +261,11 @@ namespace KPLN_TaskManager.Forms
                     .WhereElementIsNotElementType()
                     .Cast<View>()
                     .Where(v => !v.IsTemplate)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                     .FirstOrDefault(v => v.Id.IntegerValue == CurrentTaskItemEntity.ModelViewId);
+#else
+                    .FirstOrDefault(v => v.Id.Value == CurrentTaskItemEntity.ModelViewId);
+#endif
             }
             if (viewFromTask != null)
                 uidoc.ActiveView = viewFromTask;

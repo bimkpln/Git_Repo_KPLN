@@ -19,7 +19,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private DBManager _dBManagerForm;
+        private readonly DBManager _dBManagerForm;
         
         private DBProjectWrapper _createdDBProject;
 
@@ -78,12 +78,12 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                         || DBPrjWrapper.WrCode.Any(c => char.IsLower(c)) 
                         || DBPrjWrapper.WrCode.Any(c => char.IsSeparator(c) || c == '~' || c == '/'))
                     || string.IsNullOrEmpty(DBPrjWrapper.WrStage)
-                    || (DBPrjWrapper.WrRevitVersion != 2020 && DBPrjWrapper.WrRevitVersion != 2023)
+                    || (DBPrjWrapper.WrRevitVersion != 2020 && DBPrjWrapper.WrRevitVersion != 2023 & DBPrjWrapper.WrRevitVersion != 2024)
                     || string.IsNullOrEmpty(DBPrjWrapper.WrServerPath))
                 {
                     MessageBox.Show(
                         "Для создания проекта как минимум нужно указать:\n" +
-                            "Имя проекта;\nКод проекта (заглавные буквы, цифры, символы: \".\", \"_\");\nСтадию проекта;\nВерсию Revit (2020 или 2023);\nПуть к папке стадии на сервере",
+                            "Имя проекта;\nКод проекта (заглавные буквы, цифры, символы: \".\", \"_\");\nСтадию проекта;\nВерсию Revit (2020/2023/2024);\nПуть к папке стадии на сервере",
                         "KPLN_DB: Ошибка!",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);

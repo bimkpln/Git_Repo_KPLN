@@ -71,8 +71,9 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             InitializeComponent();
 
-            Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
-            DataContext = this;
+            this.Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
+            this.Owner = reportManagerForm;
+            this.DataContext = this;
 
             OnClosingActions.Add(new CommandRemoveInstance());
             Closing += RemoveOnClose;
@@ -184,25 +185,6 @@ namespace KPLN_Clashes_Ribbon.Forms
         /// </summary>
         public ICollectionView FilteredInstancesColl { get; private set; }
 
-        /// <summary>
-        /// Получить приоритетный статус из инстансов внутри одного отчета
-        /// </summary>
-        private KPItemStatus GetMainReportStatus()
-        {
-            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
-
-            if (ReportInstancesColl.Any(c => c.Status == KPItemStatus.Opened))
-                return KPItemStatus.Opened;
-            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Closed || c.Status == KPItemStatus.Approved))
-                return KPItemStatus.Closed;
-            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Delegated))
-                return KPItemStatus.Delegated;
-            else if (ReportInstancesColl.All(c => c.Status == KPItemStatus.Delegated || c.Status == KPItemStatus.Approved || c.Status == KPItemStatus.Closed))
-                return KPItemStatus.Delegated;
-            else
-                return KPItemStatus.Opened;
-        }
-
         private void RemoveOnClose(object sender, CancelEventArgs args)
         {
             foreach (IExecutableCommand cmd in OnClosingActions)
@@ -298,7 +280,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
 
             _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
-            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
+            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, Report.GetMainReportStatus(_sqliteService_ReportInstanceDB.GetAllReporItems()));
 
             item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
         }
@@ -315,7 +297,7 @@ namespace KPLN_Clashes_Ribbon.Forms
             _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
 
             _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
-            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, GetMainReportStatus());
+            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, Report.GetMainReportStatus(_sqliteService_ReportInstanceDB.GetAllReporItems()));
 
             item.Status = itemStatus;
             item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);

@@ -31,8 +31,12 @@ namespace KPLN_TaskManager.ExecutableCommand
             List<ElementId> elemIds = new List<ElementId>();
             foreach (string strId in _taskItemEntity.ElementIds.Split(','))
             {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 if (int.TryParse(strId, out int id))
-                    elemIds.Add(new ElementId(id));
+#else
+                if (long.TryParse(strId, out long id))
+#endif
+                elemIds.Add(new ElementId(id));
                 else
                     HtmlOutput.Print($"Ошибка парсинга данных - скинь разработчику! {strId} - НЕ число", MessageType.Error);
             }

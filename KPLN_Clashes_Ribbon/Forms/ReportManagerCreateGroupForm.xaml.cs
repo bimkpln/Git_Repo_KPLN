@@ -15,11 +15,12 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportManagerCreateGroupForm : Window
     {
-        public ReportManagerCreateGroupForm()
+        public ReportManagerCreateGroupForm(Window owner)
         {
             InitializeComponent();
 
             DataContext = CurrentReportGroup;
+            this.Owner = owner;
 
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }

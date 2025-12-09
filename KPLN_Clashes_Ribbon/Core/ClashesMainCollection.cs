@@ -1,10 +1,19 @@
-﻿namespace KPLN_Clashes_Ribbon.Core
+﻿using System.ComponentModel;
+
+namespace KPLN_Clashes_Ribbon.Core
 {
     public static class ClashesMainCollection
     {
         public enum KPIcon { Default, Report, Report_New, Report_Closed, Instance, Instance_Closed, Instance_Delegated, Instance_Approved }
 
-        public enum KPItemStatus { New, Opened, Closed, Approved, Delegated }
+        public enum KPItemStatus 
+        {
+            New, 
+            Opened, 
+            Closed, 
+            Approved,
+            Delegated, 
+        }
 
         public enum KPTaskDialogResult { Ok, Cancel, None }
 

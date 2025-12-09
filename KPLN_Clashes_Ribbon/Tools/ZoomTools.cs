@@ -38,7 +38,7 @@ namespace KPLN_Clashes_Ribbon.Tools
                 IList<UIView> views = uidoc.GetOpenUIViews();
                 foreach (UIView uvView in views)
                 {
-                    if (uvView.ViewId.IntegerValue == activeView.Id.IntegerValue)
+                    if (uvView.ViewId.Equals(activeView.Id))
                         uvView.ZoomAndCenterRectangle(box.Min, box.Max);
                 }
 

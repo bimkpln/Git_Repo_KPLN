@@ -36,7 +36,7 @@ namespace KPLN_TaskManager.Common
         public string _pathToImageBufferDB;
         private int _bitrixTaskId;
         private string _modelName;
-        private int _modelViewId;
+        private long _modelViewId;
         private string _elementIds;
         private TaskStatusEnum _taskStatus;
         private string _createdTaskData;
@@ -244,7 +244,7 @@ namespace KPLN_TaskManager.Common
         /// <summary>
         /// ID вида, на котором были выбраны элементы
         /// </summary>
-        public int ModelViewId
+        public long ModelViewId
         {
             get => _modelViewId;
             set

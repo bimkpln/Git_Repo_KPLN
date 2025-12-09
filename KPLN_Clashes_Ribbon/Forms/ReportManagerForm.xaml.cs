@@ -125,9 +125,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
             }
 
+            // Настройка визуализации Report если отчеты закрыты (смена картинки)
             foreach (Report report in reports)
             {
-                // Настройка визуализации Report если отчеты закрыты (смена картинки)
                 if (group.Status != Core.ClashesMainCollection.KPItemStatus.Closed)
                     report.IsGroupEnabled = Visibility.Visible;
                 else
@@ -560,11 +560,21 @@ namespace KPLN_Clashes_Ribbon.Forms
                 return sbNorm.ToString().Trim();
             }
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             string PairKey(int a, int b)
             {
                 if (a > b) { var t = a; a = b; b = t; }
                 return $"{a}|{b}";
             }
+#else
+            string PairKey(long a, long b)
+            {
+                if (a > b) { var t = a; a = b; b = t; }
+                return $"{a}|{b}";
+            }
+#endif
+
+
 
             bool IsGroupHeader(ReportItem r) => r != null && r.ParentGroupId == -1 && r.Element_1_Id < 0 && r.Element_2_Id < 0;
             bool IsSingle(ReportItem r) => r != null && r.ParentGroupId == -1 && r.Element_1_Id >= 0 && r.Element_2_Id >= 0;
@@ -656,7 +666,12 @@ namespace KPLN_Clashes_Ribbon.Forms
                 return string.Join("~", parts);
             }
 
+
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             string PairView(int a, int b) => $"({a},{b})";
+#else
+            string PairView(long a, long b) => $"({a},{b})";
+#endif
 
             // ВЫБОР ГРУПП И КОЛ-ВА КОММЕНТАРИЕВ
             var btn = sender as System.Windows.Controls.Button;
@@ -665,7 +680,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             var allGroups = _sqliteService_MainDB.GetReportGroups_ByDBProject(_project).OrderBy(gr => gr.Status != KPItemStatus.Closed).ThenBy(gr => gr.Id).ToList();
 
-            var picker = new ReportGroupPickerForm(allGroups, sourceGroup.Id);
+            var picker = new ReportGroupPickerForm(this, allGroups, sourceGroup.Id);
             bool? pickRes = picker.ShowDialog();
             if (pickRes != true || picker.SelectedGroup == null) return;
 
@@ -804,23 +819,6 @@ namespace KPLN_Clashes_Ribbon.Forms
                 }
             }
 
-            // Отладчик
-            void SavePreview(string text)
-            {
-                try
-                {
-                    var dlg = new Microsoft.Win32.SaveFileDialog
-                    {
-                        Title = "Сохранить отчёт по импорту комментариев",
-                        Filter = "Text file (*.txt)|*.txt",
-                        FileName = $"ImportComments_PREVIEW_{DateTime.Now:yyyyMMdd_HHmm}.txt"
-                    };
-                    if (dlg.ShowDialog() == true)
-                        System.IO.File.WriteAllText(dlg.FileName, text, System.Text.Encoding.UTF8);
-                }
-                catch {}
-            }
-
             // Сохранение в БД
             void ApplyWritePlan(Dictionary<Report, List<(ReportItem item, List<string> transformedLines)>> plan)
             {
@@ -931,59 +929,11 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
             if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
 
-            ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm();
+            ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm(this);
 
             if ((bool)groupCreateForm.ShowDialog())
             {

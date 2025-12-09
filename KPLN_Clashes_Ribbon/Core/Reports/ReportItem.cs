@@ -149,10 +149,16 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
         public byte[] Image { get; set; }
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
         public int Element_1_Id { get; set; } = -1;
-
         public int Element_2_Id { get; set; } = -1;
-        
+#else
+        public long Element_1_Id { get; set; } = -1;
+       
+        public long Element_2_Id { get; set; } = -1;
+#endif
+
+
         public string Element_1_Info { get; set; }
 
         public string Element_2_Info { get; set; }
@@ -267,7 +273,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 CommentCollection = ReportItemComment.ParseComments(_comments, this);
             }
         }
-        #endregion
+#endregion
 
         #region Дополнительная визуализация
         /// <summary>
