@@ -78,6 +78,34 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        private bool _isExpanded;
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded != value)
+                {
+                    _isExpanded = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public string DisplayTitle => $"{Title} ({TotalCount})";
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
@@ -196,6 +224,7 @@ namespace KPLN_Tools.Forms
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_NodeManager.db";
         public bool IsSuperUser { get; }
         private readonly string _userName;
+        private readonly int _subDB;
 
         private readonly UIApplication _uiapp;
         private readonly UIDocument _uidoc;
@@ -271,12 +300,11 @@ namespace KPLN_Tools.Forms
             if (currentUser != null)
             {
                 _userName = GetUserNameFromMainDb(currentUser.Id);
+                _subDB = currentUser.SubDepartmentId;
             }
 
             BtnCopyInView.IsEnabled = false;
             BtnCopyElements.IsEnabled = false;
-            TxtName.IsEnabled = false;
-            BtnSaveName.IsEnabled = false;
             TxtComment.IsEnabled = false;
             BtnSaveComment.IsEnabled = false;
             TxtTags.IsEnabled = false;
@@ -297,12 +325,25 @@ namespace KPLN_Tools.Forms
 
             LoadCategoriesTree();
             LoadElementCounts();
+
+            if (_currentSelectedNode != null)
+            {
+                LoadElementsForNode(_currentSelectedNode);
+            }
+
+            Loaded += MainWindowNodeManager_Loaded;
         }
 
+        private void MainWindowNodeManager_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (_currentSelectedNode != null)
+            {
+                _currentSelectedNode.IsExpanded = true;
+                _currentSelectedNode.IsSelected = true;
 
-
-
-
+                LoadElementsForNode(_currentSelectedNode);
+            }
+        }
 
 
         private bool IsUserInTestList()
@@ -444,10 +485,22 @@ namespace KPLN_Tools.Forms
                     conn.Open();
                     using (var cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = @"
-                    SELECT PATH 
-                    FROM RVTPath 
-                    WHERE PATH IS NOT NULL AND TRIM(PATH) <> '';";
+                        if (_subDB == 8)
+                        {
+                            cmd.CommandText = @"
+                                SELECT PATH
+                                FROM RVTPath
+                                WHERE PATH IS NOT NULL AND TRIM(PATH) <> '';";
+                        }
+                        else
+                        {
+                            cmd.CommandText = @"
+                                SELECT PATH
+                                FROM RVTPath
+                                WHERE SUBDP = @subdp
+                                  AND PATH IS NOT NULL AND TRIM(PATH) <> '';";
+                            cmd.Parameters.AddWithValue("@subdp", _subDB);
+                        }
 
                         using (var r = cmd.ExecuteReader())
                         {
@@ -460,19 +513,34 @@ namespace KPLN_Tools.Forms
                                 if (string.IsNullOrWhiteSpace(path))
                                     continue;
 
-                                result.Add(path.Trim());
+                                path = path.Trim();
+
+                                try
+                                {
+                                    path = System.IO.Path.GetFullPath(path);
+                                }
+                                catch
+                                {
+
+                                }
+
+                                result.Add(path);
                             }
                         }
                     }
                     conn.Close();
                 }
             }
-            catch { }
+            catch
+            {
+            }
 
             return result
                 .Distinct(StringComparer.InvariantCultureIgnoreCase)
                 .ToList();
         }
+
+
 
         //////////////////////////////// КАТЕГОРИИ УЗЛОВ
         private List<NodeCategoryRow> LoadNodeCategories()
@@ -505,15 +573,6 @@ namespace KPLN_Tools.Forms
             return result;
         }
 
-
-
-
-
-
-
-
-
-
         private void LoadCategoriesTree()
         {
             CategoryTree.Clear();
@@ -521,48 +580,145 @@ namespace KPLN_Tools.Forms
 
             var categories = LoadNodeCategories();
 
-            var globalNoCat = new NodeCategoryUi
-            {
-                CatId = 0,
-                Id = "0",
-                Title = "Без категории"
-            };
-            CategoryTree.Add(globalNoCat);
-            _nodeIndex[MakeKey(0, "0")] = globalNoCat;
+            NodeCategoryUi globalNoCat = null;
 
-            foreach (var cat in categories)
+            // "Без категории" — только суперюзеру
+            if (IsSuperUser)
             {
-                var rootNode = new NodeCategoryUi
+                globalNoCat = new NodeCategoryUi
                 {
-                    CatId = cat.Id,
-                    Id = cat.Id.ToString(CultureInfo.InvariantCulture),
-                    Title = cat.Name
+                    CatId = 0,
+                    Id = "0",
+                    Title = "Без категории"
                 };
+                CategoryTree.Add(globalNoCat);
+                _nodeIndex[MakeKey(0, "0")] = globalNoCat;
+            }
 
-                CategoryTree.Add(rootNode);
+            _currentSelectedNode = null;
 
-                _nodeIndex[MakeKey(cat.Id, "0")] = rootNode;
-
-                if (!string.IsNullOrWhiteSpace(cat.SubcatJson))
+            // ===== BIM =====
+            if (_subDB == 8)
+            {
+                // BIM видит все категории, как "старое" поведение
+                foreach (var cat in categories)
                 {
-                    try
+                    var rootNode = new NodeCategoryUi
                     {
-                        var subList = JsonConvert.DeserializeObject<List<SubcatDto>>(cat.SubcatJson);
-                        if (subList != null)
+                        CatId = cat.Id,
+                        Id = cat.Id.ToString(CultureInfo.InvariantCulture),
+                        Title = cat.Name
+                    };
+
+                    CategoryTree.Add(rootNode);
+                    _nodeIndex[MakeKey(cat.Id, "0")] = rootNode;
+
+                    if (!string.IsNullOrWhiteSpace(cat.SubcatJson))
+                    {
+                        try
                         {
-                            foreach (var s in subList)
+                            var subList = JsonConvert.DeserializeObject<List<SubcatDto>>(cat.SubcatJson);
+                            if (subList != null)
                             {
-                                AttachSubtree(cat.Id, rootNode, s);
+                                foreach (var s in subList)
+                                {
+                                    AttachSubtree(cat.Id, rootNode, s);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                $"Ошибка при разборе SUBCAT_JSON для категории '{cat.Name}':\n{ex.Message}");
+                        }
+                    }
+                }
+
+                // По умолчанию выбираем либо BIM-категорию, либо первую
+                _currentSelectedNode =
+                    CategoryTree.FirstOrDefault(n => n.CatId == 8)
+                    ?? CategoryTree.FirstOrDefault();
+            }
+            else
+            {
+                // ===== Обычные отделы (2–7) =====
+                var deptRow = categories.FirstOrDefault(c => c.Id == _subDB);
+
+                if (deptRow != null)
+                {
+                    var rootNode = new NodeCategoryUi
+                    {
+                        CatId = deptRow.Id,
+                        Id = deptRow.Id.ToString(CultureInfo.InvariantCulture),
+                        Title = deptRow.Name
+                    };
+
+                    CategoryTree.Add(rootNode);
+                    _nodeIndex[MakeKey(deptRow.Id, "0")] = rootNode;
+
+                    if (!string.IsNullOrWhiteSpace(deptRow.SubcatJson))
+                    {
+                        try
+                        {
+                            var subList = JsonConvert.DeserializeObject<List<SubcatDto>>(deptRow.SubcatJson);
+                            if (subList != null)
+                            {
+                                foreach (var s in subList)
+                                {
+                                    AttachSubtree(deptRow.Id, rootNode, s);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                $"Ошибка при разборе SUBCAT_JSON для категории '{deptRow.Name}':\n{ex.Message}");
+                        }
+                    }
+
+                    _currentSelectedNode = rootNode;
+                }
+                else
+                {
+                    foreach (var cat in categories)
+                    {
+                        var rootNode = new NodeCategoryUi
+                        {
+                            CatId = cat.Id,
+                            Id = cat.Id.ToString(CultureInfo.InvariantCulture),
+                            Title = cat.Name
+                        };
+
+                        CategoryTree.Add(rootNode);
+                        _nodeIndex[MakeKey(cat.Id, "0")] = rootNode;
+
+                        if (!string.IsNullOrWhiteSpace(cat.SubcatJson))
+                        {
+                            try
+                            {
+                                var subList = JsonConvert.DeserializeObject<List<SubcatDto>>(cat.SubcatJson);
+                                if (subList != null)
+                                {
+                                    foreach (var s in subList)
+                                    {
+                                        AttachSubtree(cat.Id, rootNode, s);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                TaskDialog.Show("KPLN. Менеджер узлов",
+                                    $"Ошибка при разборе SUBCAT_JSON для категории '{cat.Name}':\n{ex.Message}");
                             }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", $"Ошибка при разборе SUBCAT_JSON для категории '{cat.Name}':\n{ex.Message}");
-                    }
+
+                    _currentSelectedNode = CategoryTree.FirstOrDefault();
                 }
             }
         }
+
+
 
 
 
@@ -594,6 +750,12 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
+
+
+
+
+
+
         private List<NodeElementRow> LoadNodeElements()
         {
             var result = new List<NodeElementRow>();
@@ -604,12 +766,19 @@ namespace KPLN_Tools.Forms
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = "SELECT CAT, SUBCAT FROM nodeManager;";
+
                     using (var r = cmd.ExecuteReader())
                     {
                         while (r.Read())
                         {
                             int cat = r.IsDBNull(0) ? 0 : r.GetInt32(0);
                             string subcat = r.IsDBNull(1) ? null : r.GetString(1);
+
+                            if (_subDB != 8)
+                            {
+                                if (cat != _subDB && !(IsSuperUser && cat == 0))
+                                    continue;
+                            }
 
                             result.Add(new NodeElementRow
                             {
@@ -624,6 +793,14 @@ namespace KPLN_Tools.Forms
 
             return result;
         }
+
+
+
+
+
+
+
+
 
         private List<string> GetSubcatIdsRecursive(NodeCategoryUi node)
         {
@@ -640,6 +817,14 @@ namespace KPLN_Tools.Forms
             foreach (var child in node.Children)
                 CollectSubcatIds(child, list);
         }
+
+
+
+
+
+
+
+
 
         private void LoadElementCounts()
         {
@@ -658,12 +843,11 @@ namespace KPLN_Tools.Forms
                     ? "0"
                     : el.SubcatId.Trim();
 
-                if (!_nodeIndex.TryGetValue(MakeKey(catId, subId), out var node))
+                NodeCategoryUi node = null;
+
+                if (!_nodeIndex.TryGetValue(MakeKey(catId, subId), out node))
                 {
-                    if (!_nodeIndex.TryGetValue(MakeKey(catId, "0"), out node))
-                    {
-                        _nodeIndex.TryGetValue(MakeKey(0, "0"), out node);
-                    }
+                    _nodeIndex.TryGetValue(MakeKey(catId, "0"), out node);
                 }
 
                 if (node != null)
@@ -677,6 +861,11 @@ namespace KPLN_Tools.Forms
                 RecalculateTotals(root);
             }
         }
+
+
+
+
+
 
         private int RecalculateTotals(NodeCategoryUi node)
         {
@@ -1351,8 +1540,6 @@ namespace KPLN_Tools.Forms
             BtnCopyElements.IsEnabled = hasSelection;
 
             bool canEdit = hasSelection && IsSuperUser;
-            TxtName.IsEnabled = canEdit;
-            BtnSaveName.IsEnabled = canEdit;
             TxtTags.IsEnabled = canEdit;
             BtnAddTag.IsEnabled = canEdit;
             BtnChangeCategory.IsEnabled = canEdit;
@@ -1385,57 +1572,7 @@ namespace KPLN_Tools.Forms
 
             return string.Join(" > ", stack);
         }
-
-        private void BtnSaveName_Click(object sender, RoutedEventArgs e)
-        {
-            if (!IsSuperUser)
-                return;
-
-            var element = ElementsList.SelectedItem as NodeElementUi;
-            if (element == null)
-                return;
-
-            this.Topmost = false;
-
-            try
-            {
-                using (var conn = new SQLiteConnection("Data Source=" + DbPath + ";Version=3;FailIfMissing=False;"))
-                {
-                    conn.Open();
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                        string uName = _userName ?? string.Empty;
-
-                        cmd.CommandText = @"
-                            UPDATE nodeManager 
-                            SET NAME = @name,
-                                TIME_UPDATE = @timeUpd,
-                                USER_UPDATE = @userUpd
-                            WHERE ID = @id;";
-
-                        cmd.Parameters.AddWithValue("@name", element.Name ?? string.Empty);
-                        cmd.Parameters.AddWithValue("@timeUpd", now);
-                        cmd.Parameters.AddWithValue("@userUpd", uName);
-                        cmd.Parameters.AddWithValue("@id", element.Id);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                    conn.Close();
-                }
-
-                TaskDialog.Show("KPLN. Менеджер узлов", "Имя узла успешно обновлено.");
-                ApplySorting();
-                ReloadCurrentElement(element.Id);
-            }
-            catch (Exception ex)
-            {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при обновлении имени:\n" + ex.Message);
-            }
-
-            this.Topmost = true;
-        }
-
+     
         private void BtnSaveComment_Click(object sender, RoutedEventArgs e)
         {
             if (!IsSuperUser)
@@ -1444,8 +1581,6 @@ namespace KPLN_Tools.Forms
             var element = ElementsList.SelectedItem as NodeElementUi;
             if (element == null)
                 return;
-
-            this.Topmost = false;
 
             try
             {
@@ -1483,6 +1618,7 @@ namespace KPLN_Tools.Forms
             }
 
             this.Topmost = true;
+            this.Topmost = false;
         }
 
         private void BtnSaveTags_Click(object sender, RoutedEventArgs e)
@@ -1670,14 +1806,6 @@ namespace KPLN_Tools.Forms
             finally { }
         }
 
-
-
-
-
-
-
-
-
         private void BtnReplacePreview_Click(object sender, RoutedEventArgs e)
         {
             if (_currentElement == null)
@@ -1688,7 +1816,6 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                this.Topmost = false;
                 this.Hide();
 
                 string rvtPath = null;
@@ -1843,8 +1970,6 @@ namespace KPLN_Tools.Forms
                     }
                 }
 
-
-
                 UIDocument udoc = _uiapp.ActiveUIDocument;
                 if (udoc == null || udoc.Document != targetDoc)
                 {
@@ -1998,16 +2123,9 @@ namespace KPLN_Tools.Forms
 
                 this.Topmost = true;
                 this.Show();
+                this.Topmost = false;
             }
         }
-
-
-
-
-
-
-
-
 
         private void ReloadCurrentElement(long elementId)
         {
@@ -2060,8 +2178,6 @@ namespace KPLN_Tools.Forms
 
             if (dlg.ShowDialog() == true)
             {
-                this.Topmost = false;
-
                 switch (dlg.SelectedAction)
                 {
                     case SettingsAction.UpdateDb:
@@ -2070,7 +2186,7 @@ namespace KPLN_Tools.Forms
                         var rvtPaths = LoadRvtPathsFromDb();
                         if (rvtPaths == null || rvtPaths.Count == 0)
                         {
-                            TaskDialog.Show("KPLN. Менеджер узлов", "В таблице RVTPath нет ни одного пути. Добавьт,tе пути к моделям и повторите попытку.");
+                            TaskDialog.Show("KPLN. Менеджер узлов", "В таблице RVTPath нет ни одного пути. Добавьте пути к моделям и повторите попытку.");
                             break;
                         }
                         foreach (var path in rvtPaths)
@@ -2078,18 +2194,19 @@ namespace KPLN_Tools.Forms
                             HandleAction_UpdateDb(_uiapp, path, run, _userName);
                         }
 
-                        FinalizeUpdateDb(run);
+                        FinalizeUpdateDb(run, rvtPaths, _subDB == 8);
                         TaskDialog.Show("KPLN. Менеджер узлов", "Операция завершена");
                         break;
 
                     case SettingsAction.AddDelCategory:
-                        var w = new SettingsWindowNodeManagerCategory();
+                        var w = new SettingsWindowNodeManagerCategory(_subDB);
                         w.Owner = this;
                         w.ShowDialog();
                         break;
                 }
 
                 this.Topmost = true;
+                this.Topmost = false;
 
                 LoadCategoriesTree();
                 LoadElementCounts();
@@ -2296,7 +2413,12 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        public static void FinalizeUpdateDb(string runToken)
+
+
+
+
+
+        public static void FinalizeUpdateDb(string runToken, List<string> rvtPaths, bool isBimRun)
         {
             try
             {
@@ -2308,9 +2430,55 @@ namespace KPLN_Tools.Forms
                     using (var tx = conn.BeginTransaction())
                     using (var cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = "DELETE FROM " + "nodeManager" + " WHERE LAST_SEEN IS NULL OR LAST_SEEN <> @run;";
-                        cmd.Parameters.AddWithValue("@run", runToken);
-                        cmd.ExecuteNonQuery();
+                        if (isBimRun)
+                        {
+                            cmd.CommandText = @"
+                                DELETE FROM nodeManager
+                                WHERE LAST_SEEN IS NULL OR LAST_SEEN <> @run;";
+                            cmd.Parameters.AddWithValue("@run", runToken);
+                            cmd.ExecuteNonQuery();
+                        }
+                        else
+                        {
+                            if (rvtPaths != null && rvtPaths.Count > 0)
+                            {
+                                var normalized = rvtPaths
+                                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                                    .Select(p =>
+                                    {
+                                        var s = p.Trim();
+                                        try { s = System.IO.Path.GetFullPath(s); }
+                                        catch { }
+                                        return s;
+                                    })
+                                    .Distinct(StringComparer.InvariantCultureIgnoreCase)
+                                    .ToList();
+
+                                if (normalized.Count > 0)
+                                {
+                                    var paramNames = new List<string>();
+                                    for (int i = 0; i < normalized.Count; i++)
+                                    {
+                                        paramNames.Add("@p" + i);
+                                    }
+
+                                    cmd.CommandText = $@"
+                                        DELETE FROM nodeManager
+                                        WHERE (LAST_SEEN IS NULL OR LAST_SEEN <> @run)
+                                          AND RVT_PATH IN ({string.Join(", ", paramNames)});";
+
+                                    cmd.Parameters.AddWithValue("@run", runToken);
+
+                                    for (int i = 0; i < normalized.Count; i++)
+                                    {
+                                        cmd.Parameters.AddWithValue("@p" + i, normalized[i]);
+                                    }
+
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
                         tx.Commit();
                     }
                     conn.Close();
@@ -2322,6 +2490,12 @@ namespace KPLN_Tools.Forms
             }
         }
 
+
+
+
+
+
+        
         private static void EnsureSchema(SQLiteConnection conn)
         {
             using (var cmd = conn.CreateCommand())
@@ -2410,6 +2584,12 @@ namespace KPLN_Tools.Forms
         }
 
 
+
+
+
+
+
+
         private static Dictionary<string, long> LoadExistingByViewAndPath(SQLiteConnection conn)
         {
             var map = new Dictionary<string, long>(StringComparer.InvariantCultureIgnoreCase);
@@ -2489,8 +2669,6 @@ namespace KPLN_Tools.Forms
 
             var uidoc = _uiapp?.ActiveUIDocument;
 
-            this.Topmost = false;
-
             _copyHandler.Init(_uiapp, DbPath, _currentElement.Id, this);
             _copyEvent.Raise();
         }
@@ -2510,9 +2688,6 @@ namespace KPLN_Tools.Forms
 
             string propJson = null;
             string rvtPath = null;
-
-
-            this.Topmost = false;
 
             try
             {
@@ -3069,7 +3244,26 @@ namespace KPLN_Tools.Forms
             }
             finally
             {
-                try { _ownerWindow?.Dispatcher.Invoke(() => _ownerWindow.Topmost = true); } catch { }
+                try
+                {
+                    _ownerWindow?.Dispatcher.Invoke(() =>
+                    {
+                        _ownerWindow.Topmost = true;
+                        _ownerWindow.Activate();
+                    });
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    if (_ownerWindow != null && !_ownerWindow.Dispatcher.HasShutdownStarted)
+                    {
+                        _ownerWindow.Dispatcher.BeginInvoke(
+                            new Action(() => _ownerWindow.Topmost = false),
+                            System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                    }
+                }
             }
         }
     }
@@ -3132,6 +3326,7 @@ namespace KPLN_Tools.Forms
             }
 
             _ownerWindow.Topmost = true;
+            _ownerWindow.Topmost = false;
         }
 
         /// <summary>
@@ -3985,7 +4180,6 @@ namespace KPLN_Tools.Forms
             this.WindowStyle = WindowStyle.None;
             this.AllowsTransparency = true;
             this.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(10, 0, 0, 0));
-            this.Topmost = true;
             this.ResizeMode = ResizeMode.NoResize;
             this.ShowInTaskbar = false;
 

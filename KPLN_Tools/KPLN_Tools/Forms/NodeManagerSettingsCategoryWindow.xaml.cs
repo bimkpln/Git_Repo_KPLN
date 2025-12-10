@@ -17,10 +17,15 @@ namespace KPLN_Tools.Forms
         private ObservableCollection<CategoryNode> _root = new ObservableCollection<CategoryNode>();
         private readonly Dictionary<string, string> _jsonByName = new Dictionary<string, string>();
         private string _currentName;
+        private int _subDB;
 
-        public SettingsWindowNodeManagerCategory()
+        public SettingsWindowNodeManagerCategory(int subDB)
         {
             InitializeComponent();
+
+            _subDB = subDB;
+            CbNames.IsEnabled = (_subDB == 8);
+
             LoadNames();
         }
 
@@ -37,7 +42,7 @@ namespace KPLN_Tools.Forms
             try
             {
                 using (var conn = OpenConn())
-                using (var cmd = new SQLiteCommand("SELECT NAME, SUBCAT_JSON FROM nodeCategory;", conn))
+                using (var cmd = new SQLiteCommand("SELECT ID, NAME, SUBCAT_JSON FROM nodeCategory;", conn))
                 using (var rdr = cmd.ExecuteReader())
                 {
                     var names = new List<string>();
@@ -45,26 +50,33 @@ namespace KPLN_Tools.Forms
 
                     while (rdr.Read())
                     {
+                        int id = rdr["ID"] == null ? 0 : Convert.ToInt32(rdr["ID"]);
                         var name = rdr["NAME"] == null ? null : rdr["NAME"].ToString();
                         var json = rdr["SUBCAT_JSON"] == null ? "[]" : rdr["SUBCAT_JSON"].ToString();
 
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            names.Add(name);
-                            _jsonByName[name] = string.IsNullOrWhiteSpace(json) ? "[]" : json;
-                        }
+                        if (string.IsNullOrWhiteSpace(name))
+                            continue;
+
+                        if (_subDB != 8 && id != _subDB)
+                            continue;
+
+                        names.Add(name);
+                        _jsonByName[name] = string.IsNullOrWhiteSpace(json) ? "[]" : json;
                     }
 
                     CbNames.ItemsSource = names;
+
                     if (names.Count > 0)
                         CbNames.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Ошибка загрузки имён из БД:\n" + ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Ошибка загрузки имён из БД:\n" + ex.Message, "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
         private void LoadTreeForName(string name)
         {

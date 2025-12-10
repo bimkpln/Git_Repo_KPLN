@@ -7,7 +7,6 @@
         Width="1425"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Topmost="True"
         ShowInTaskbar="True">
 
     <Window.Resources>
@@ -39,6 +38,10 @@
                                   ItemsSource="{Binding Children}">
                                 <TextBlock Text="{Binding DisplayTitle}"/>
                             </HierarchicalDataTemplate>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            </Style>
                         </TreeView.Resources>
                     </TreeView>
                 </DockPanel>
@@ -62,9 +65,8 @@
                         <StackPanel Grid.Row="1" Margin="0,8,0,0">
 
                             <!-- Имя -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBox x:Name="TxtName" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="280"/>
-                                <Button x:Name="BtnSaveName" Content="Сохранить" Width="80" Margin="8,0,0,0" Click="BtnSaveName_Click"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" ToolTip="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox x:Name="TxtName" IsEnabled="False" Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="370"/>
                             </StackPanel>
 
                             <!-- Категория / подкатегория -->
