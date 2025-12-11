@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
@@ -114,7 +116,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             .ToList();
 
                         double tol = 0.001;
-                        for (int i = 1; i < blocks.Count - 1; i++)
+                        for (int i = 1; i < blocks.Count; i++)
                         {
                             bool errorXShift = Math.Abs(blocks[i].Item1.X) - Math.Abs(blocks[i - 1].Item2.X) > tol;
 
@@ -439,7 +441,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                             pdfFileNames.Add(fullFilename);
 
                             //смещаю область для печати многолистовых спецификаций
-                            double offsetX = -i * msheet.WidthMm / 25.4; //смещение задается в дюймах!
+                            double offsetX = -i * msheet.WidthMm / 25.4; //смещение задается в футах!
                             logger.Write("Смещение печати по X: " + offsetX.ToString("F3"));
 
                             PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0);
@@ -515,6 +517,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write("  " + pdfname);
             }
 
+            Thread.Sleep(500);
             logger.Write("PDF файлы напечатанные по факту:");
             foreach (string pdfnameOut in System.IO.Directory.GetFiles(outputFolder, "*.pdf"))
             {

@@ -70,9 +70,10 @@ namespace KPLN_Publication.Forms
                         {
                             string toolTip = "";
                             if (v.GetType() == typeof(ViewSheet))
-                            { toolTip = "Листы"; }
+                                toolTip = "Листы";
                             else
-                            { toolTip = "Виды"; }
+                                toolTip = "Виды";
+                            
                             parameters.Add(new ListBoxParameter(j, toolTip));
                         }
                     }

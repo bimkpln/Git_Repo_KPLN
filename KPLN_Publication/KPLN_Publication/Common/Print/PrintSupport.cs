@@ -191,7 +191,9 @@ namespace KPLN_Publication
 
             pps.PaperPlacement = PaperPlacementType.Margins;
             pps.MarginType = MarginType.UserDefined;
-#if Debug2020 || Revit2020
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            // ВАЖНО: Не смотря на то, что UserDefinedMarginX и UserDefinedMarginY для Р2023 Obsolete - нужно использовать именно их.
+            // Скорее всего - это коллизия в API, т.к. на Р2024 смещение происходит, а для Р2023 - нет.
             pps.UserDefinedMarginX = offsetX;
             pps.UserDefinedMarginY = offsetY;
 #else
@@ -250,7 +252,7 @@ namespace KPLN_Publication
                 pps.PageOrientation = PageOrientationType.Landscape;
 
             pSetup.CurrentPrintSetting = ps;
-            string printSetupName = "YayPrint" + DateTime.Now.ToShortTimeString() + "x" + (offsetX * 25.4).ToString("F0");
+            string printSetupName = "YayPrint: " + DateTime.Now.ToShortTimeString() + "x" + (offsetX * 25.4).ToString("F0");
             pSetup.SaveAs(printSetupName);
             // pManager.Apply();
 
@@ -264,34 +266,6 @@ namespace KPLN_Publication
             return yayPs;
         }
 
-
-
-
-
-        /// <summary>
-        /// Находит формат листа
-        /// </summary>
-        /// <param name="pManager"></param>
-        /// <param name="format"></param>
-        /// <returns></returns>
-        //public static PaperSize SearchPaperSize(PrintManager pManager, SheetFormat format)
-        //{
-        //    PaperSizeSet pss = pManager.PaperSizes;
-        //    if (format.PrinterPaperSizes == null) return null;
-        //    foreach (PaperSize pSize in pss)
-        //    {
-        //        for (int i = 0; i < format.PrinterPaperSizes.Count; i++)
-        //        {
-        //            string paperSizeName = format.PrinterPaperSizes[i];
-        //            bool check = StringAwesomeEquals(pSize.Name, paperSizeName);
-        //            if (check)
-        //            {
-        //                return pSize;
-        //            }
-        //        }
-        //    }
-        //    return null;
-        //}
 
         /// <summary>
         /// Находит формат листа в Revit по его имени
