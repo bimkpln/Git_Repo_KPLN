@@ -52,7 +52,12 @@ namespace KPLN_Loader
         /// <summary>
         /// Коллекция зарегестрированных кнопок для смены цвета
         /// </summary>
-        public static List<(RibbonButton Button, string IconBaseName, string KPLNPluginAssembleName)> KPLNButtonsForImageReverse = new List<(RibbonButton, string, string)>();
+        public static List<(RibbonButton RButton, string IconBaseName, string KPLNPluginAssembleName)> KPLNButtonsForImageReverse = new List<(RibbonButton, string, string)>();
+
+        /// <summary>
+        /// Коллекция зарегестрированных кнопок В СТЭКЕ для смены цвета
+        /// </summary>
+        public static List<(Autodesk.Windows.RibbonItem RItem, string IconBaseName, string KPLNPluginAssembleName)> KPLNStackButtonsForImageReverse = new List<(Autodesk.Windows.RibbonItem, string, string)>();
 #endif
 
         /// <summary>
@@ -611,10 +616,16 @@ namespace KPLN_Loader
         /// <param name="e"></param>
         private void OnThemeChanged(object sender, ThemeChangedEventArgs e)
         {
-            foreach (var (button, iconBaseName, kplnPluginAssembleName) in KPLNButtonsForImageReverse)
+            foreach (var (rButton, iconBaseName, kplnPluginAssembleName) in KPLNButtonsForImageReverse)
             {
-                button.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
-                button.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
+                rButton.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
+                rButton.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
+            }
+
+            foreach (var (rItem, iconBaseName, kplnPluginAssembleName) in KPLNStackButtonsForImageReverse)
+            {
+                rItem.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
+                rItem.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
             }
         }
 #endif
